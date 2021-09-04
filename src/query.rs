@@ -8,48 +8,6 @@ use cw0::Expiration;
 use crate::msg::Vote;
 use crate::state::Config;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub enum Cw3QueryMsg {
-    /// Returns the threshold rules that would be used for a new proposal that was
-    /// opened right now. The threshold rules do not change often, but the `total_weight`
-    /// in the response may easily differ from that used in previously opened proposals.
-    /// Returns ThresholdResponse.
-    Threshold {},
-    /// Returns details of the proposal state. Returns ProposalResponse.
-    Proposal { proposal_id: u64 },
-    /// Iterate over details of all proposals from oldest to newest. Returns ProposalListResponse
-    ListProposals {
-        start_after: Option<u64>,
-        limit: Option<u32>,
-    },
-    /// Iterate reverse over details of all proposals, this is useful to easily query
-    /// only the most recent proposals (to get updates). Returns ProposalListResponse
-    ReverseProposals {
-        start_before: Option<u64>,
-        limit: Option<u32>,
-    },
-    /// Query the vote made by the given voter on `proposal_id`. This should
-    /// return an error if there is no such proposal. It will return a None value
-    /// if the proposal exists but the voter did not vote. Returns VoteResponse
-    Vote { proposal_id: u64, voter: String },
-    /// Iterate (with pagination) over all votes for this proposal. The ordering is arbitrary,
-    /// unlikely to be sorted by address. But ordering is consistent and pagination from the end
-    /// of each page will cover all votes for the proposal. Returns VoteListResponse
-    ListVotes {
-        proposal_id: u64,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-    /// Voter extension: Returns VoterResponse
-    Voter { address: String },
-    /// ListVoters extension: Returns VoterListResponse
-    ListVoters {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-}
-
 /// This defines the different ways tallies can happen.
 /// Every contract should support a subset of these, ideally all.
 ///
