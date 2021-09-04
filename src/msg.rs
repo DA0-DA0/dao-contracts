@@ -172,6 +172,8 @@ pub enum QueryMsg {
     },
     /// Returns VoterInfo
     Voter { address: String },
+    /// Returns Config
+    GetConfig {},
 }
 
 #[cfg(test)]

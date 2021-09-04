@@ -6,6 +6,7 @@ use cosmwasm_std::{CosmosMsg, Decimal, Empty, Uint128};
 use cw0::Expiration;
 
 use crate::msg::Vote;
+use crate::state::Config;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -195,4 +196,9 @@ pub struct VoterListResponse {
 pub struct VoterDetail {
     pub addr: String,
     pub weight: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ConfigResponse {
+    pub config: Config,
 }

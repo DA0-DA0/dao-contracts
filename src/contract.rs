@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
 use crate::query::{
-    ProposalListResponse, ProposalResponse, Status, ThresholdResponse, VoteInfo, VoteListResponse,
-    VoteResponse, VoterResponse,
+    ConfigResponse, ProposalListResponse, ProposalResponse, Status, ThresholdResponse, VoteInfo,
+    VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
     next_id, parse_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, PROPOSALS,
@@ -286,6 +286,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
+        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
     }
 }
 
@@ -336,6 +337,11 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
         expires: prop.expires,
         threshold,
     })
+}
+
+fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    Ok(ConfigResponse { config })
 }
 
 // settings for pagination
@@ -1349,5 +1355,39 @@ mod tests {
             }
             _ => assert_eq!(true, false),
         }
+    }
+
+    #[test]
+    fn test_config_query() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(2000000);
+        let threshold = Threshold::AbsoluteCount {
+            weight: Uint128::new(3),
+        };
+        let (dao_addr, cw20_addr) = setup_test_case(
+            &mut app,
+            threshold.clone(),
+            voting_period.clone(),
+            coins(100, NATIVE_TOKEN_DENOM),
+        );
+
+        let config_query = QueryMsg::GetConfig {};
+        let res: ConfigResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &config_query)
+            .unwrap();
+
+        let cw20 = Cw20Contract(cw20_addr);
+        assert_eq!(
+            res,
+            ConfigResponse {
+                config: Config {
+                    threshold,
+                    max_voting_period: voting_period,
+                    cw20_addr: cw20,
+                },
+            }
+        )
     }
 }
