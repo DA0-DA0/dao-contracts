@@ -1,6 +1,9 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
-use crate::query::{ProposalListResponse, ProposalResponse, Status, ThresholdResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse, ConfigResponse};
+use crate::query::{
+    ConfigResponse, ProposalListResponse, ProposalResponse, Status, ThresholdResponse, VoteInfo,
+    VoteListResponse, VoteResponse, VoterResponse,
+};
 use crate::state::{
     next_id, parse_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, PROPOSALS,
 };
@@ -338,7 +341,7 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
 
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse{config})
+    Ok(ConfigResponse { config })
 }
 
 // settings for pagination
@@ -1370,16 +1373,21 @@ mod tests {
         );
 
         let config_query = QueryMsg::GetConfig {};
-        let res: ConfigResponse = app.wrap().query_wasm_smart(&dao_addr, &config_query).unwrap();
-
+        let res: ConfigResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &config_query)
+            .unwrap();
 
         let cw20 = Cw20Contract(cw20_addr);
-        assert_eq!(res, ConfigResponse{
-            config: Config {
-                threshold,
-                max_voting_period: voting_period,
-                cw20_addr: cw20,
-            },
-        })
+        assert_eq!(
+            res,
+            ConfigResponse {
+                config: Config {
+                    threshold,
+                    max_voting_period: voting_period,
+                    cw20_addr: cw20,
+                },
+            }
+        )
     }
 }
