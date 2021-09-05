@@ -17,6 +17,8 @@ pub struct InstantiateMsg {
     pub cw20_addr: String,
     pub threshold: Threshold,
     pub max_voting_period: Duration,
+    pub proposal_deposit_amount: Uint128,
+    pub proposal_deposit_token_address: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
@@ -142,6 +144,8 @@ pub enum ExecuteMsg {
     UpdateConfig {
         threshold: Threshold,
         max_voting_period: Duration,
+        proposal_deposit_amount: Uint128,
+        proposal_deposit_token_address: String,
     },
 }
 
