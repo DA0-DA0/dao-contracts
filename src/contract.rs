@@ -5,15 +5,15 @@ use crate::query::{
     VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
-    next_id, parse_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, PROPOSALS,
+    next_id, parse_id, Ballot, Config, Proposal, ProposalDeposit, Votes, BALLOTS, CONFIG, PROPOSALS,
 };
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, BlockInfo, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Order, Response, StdResult, Uint128,
+    MessageInfo, Order, Response, StdResult, Uint128, WasmMsg,
 };
 use cw0::{maybe_addr, Duration, Expiration};
 use cw2::set_contract_version;
-use cw20::{BalanceResponse, Cw20Contract, Cw20QueryMsg};
+use cw20::{BalanceResponse, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg};
 use cw20_base::state::TokenInfo;
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
@@ -35,6 +35,14 @@ pub fn instantiate(
         }
     })?);
 
+    let proposal_deposit_cw20_addr = Cw20Contract(
+        deps.api
+            .addr_validate(&msg.proposal_deposit_token_address)
+            .map_err(|_| ContractError::InvalidCw20 {
+                addr: msg.proposal_deposit_token_address.clone(),
+            })?,
+    );
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // // TODO Not sure if we need to validate on instantiate?
@@ -48,6 +56,10 @@ pub fn instantiate(
         threshold: msg.threshold,
         max_voting_period: msg.max_voting_period,
         cw20_addr,
+        proposal_deposit: ProposalDeposit {
+            amount: msg.proposal_deposit_amount,
+            token_address: proposal_deposit_cw20_addr,
+        },
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -74,7 +86,17 @@ pub fn execute(
         ExecuteMsg::UpdateConfig {
             threshold,
             max_voting_period,
-        } => execute_update_config(deps, env, info, threshold, max_voting_period),
+            proposal_deposit_amount,
+            proposal_deposit_token_address,
+        } => execute_update_config(
+            deps,
+            env,
+            info,
+            threshold,
+            max_voting_period,
+            proposal_deposit_amount,
+            proposal_deposit_token_address,
+        ),
     }
 }
 
@@ -113,6 +135,7 @@ pub fn execute_propose(
     let mut prop = Proposal {
         title,
         description,
+        proposer: info.sender.clone(),
         start_height: env.block.height,
         expires,
         msgs,
@@ -124,18 +147,44 @@ pub fn execute_propose(
             abstain: Uint128::zero(),
             veto: Uint128::zero(),
         },
-        threshold: cfg.threshold,
+        threshold: cfg.threshold.clone(),
         total_weight: total_supply,
+        deposit: cfg.proposal_deposit.clone(),
     };
     prop.update_status(&env.block);
     let id = next_id(deps.storage)?;
     PROPOSALS.save(deps.storage, id.into(), &prop)?;
 
+    let deposit_msg = get_deposit_message(&env, &info, &cfg.proposal_deposit)?;
+
     Ok(Response::new()
+        .add_messages(deposit_msg)
         .add_attribute("action", "propose")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", id.to_string())
         .add_attribute("status", format!("{:?}", prop.status)))
+}
+
+fn get_deposit_message(
+    env: &Env,
+    info: &MessageInfo,
+    config: &ProposalDeposit,
+) -> StdResult<Vec<CosmosMsg>> {
+    if config.amount == Uint128::zero() {
+        return Ok(vec![]);
+    }
+    let transfer_cw20_msg = Cw20ExecuteMsg::TransferFrom {
+        owner: info.sender.clone().into(),
+        recipient: env.contract.address.clone().into(),
+        amount: config.amount,
+    };
+    let exec_cw20_transfer = WasmMsg::Execute {
+        contract_addr: config.token_address.addr().into(),
+        msg: to_binary(&transfer_cw20_msg)?,
+        funds: vec![],
+    };
+    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
+    Ok(vec![cw20_transfer_cosmos_msg])
 }
 
 pub fn execute_vote(
@@ -205,12 +254,35 @@ pub fn execute_execute(
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
+    let refund_msg = get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit)?;
+
     // dispatch all proposed messages
     Ok(Response::new()
+        .add_messages(refund_msg)
         .add_messages(prop.msgs)
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
+}
+
+fn get_proposal_deposit_refund_message(
+    proposer: &Addr,
+    config: &ProposalDeposit,
+) -> StdResult<Vec<CosmosMsg>> {
+    if config.amount == Uint128::zero() {
+        return Ok(vec![]);
+    }
+    let transfer_cw20_msg = Cw20ExecuteMsg::Transfer {
+        recipient: proposer.into(),
+        amount: config.amount,
+    };
+    let exec_cw20_transfer = WasmMsg::Execute {
+        contract_addr: config.token_address.addr().into(),
+        msg: to_binary(&transfer_cw20_msg)?,
+        funds: vec![],
+    };
+    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
+    Ok(vec![cw20_transfer_cosmos_msg])
 }
 
 pub fn execute_close(
@@ -247,6 +319,8 @@ pub fn execute_update_config(
     info: MessageInfo,
     threshold: Threshold,
     max_voting_period: Duration,
+    proposal_deposit_amount: Uint128,
+    proposal_deposit_token_address: String,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
@@ -256,9 +330,21 @@ pub fn execute_update_config(
     let total_supply = get_total_supply(deps.as_ref())?;
     threshold.validate(total_supply)?;
 
+    let proposal_deposit_cw20_addr = Cw20Contract(
+        deps.api
+            .addr_validate(&proposal_deposit_token_address)
+            .map_err(|_| ContractError::InvalidCw20 {
+                addr: proposal_deposit_token_address.clone(),
+            })?,
+    );
+
     CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
         exists.threshold = threshold;
         exists.max_voting_period = max_voting_period;
+        exists.proposal_deposit = ProposalDeposit {
+            amount: proposal_deposit_amount,
+            token_address: proposal_deposit_cw20_addr,
+        };
         Ok(exists)
     })?;
 
@@ -332,10 +418,13 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
         id,
         title: prop.title,
         description: prop.description,
+        proposer: prop.proposer,
         msgs: prop.msgs,
         status,
         expires: prop.expires,
         threshold,
+        deposit_amount: prop.deposit.amount,
+        deposit_token_address: prop.deposit.token_address.addr(),
     })
 }
 
@@ -393,10 +482,13 @@ fn map_proposal(
         id: parse_id(&key)?,
         title: prop.title,
         description: prop.description,
+        proposer: prop.proposer,
         msgs: prop.msgs,
         status,
         expires: prop.expires,
         threshold,
+        deposit_amount: prop.deposit.amount,
+        deposit_token_address: prop.deposit.token_address.addr(),
     })
 }
 
@@ -542,6 +634,8 @@ mod tests {
             cw20_addr: cw20.to_string(),
             threshold,
             max_voting_period,
+            proposal_deposit_amount: Uint128::zero(),
+            proposal_deposit_token_address: cw20.to_string(),
         };
         app.instantiate_contract(flex_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
             .unwrap()
@@ -662,6 +756,8 @@ mod tests {
                 weight: Uint128::new(1),
             },
             max_voting_period,
+            proposal_deposit_amount: Uint128::zero(),
+            proposal_deposit_token_address: cw20_addr.to_string(),
         };
         let dao_addr = app
             .instantiate_contract(
@@ -794,12 +890,12 @@ mod tests {
         );
 
         let (_owner, voter1, voter2, voter3, _somebody) =
-            setup_accounts(&mut app, cw20_addr).unwrap();
+            setup_accounts(&mut app, cw20_addr.clone()).unwrap();
 
         // create proposal with 1 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(voter1, dao_addr.clone(), &proposal, &[])
+            .execute_contract(voter1.clone(), dao_addr.clone(), &proposal, &[])
             .unwrap();
         let proposal_id1: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
@@ -825,7 +921,7 @@ mod tests {
         // add one more open proposal, 2 votes
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(voter2, dao_addr.clone(), &proposal, &[])
+            .execute_contract(voter2.clone(), dao_addr.clone(), &proposal, &[])
             .unwrap();
         let proposal_id3: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
         let proposed_at = app.block_info();
@@ -871,6 +967,7 @@ mod tests {
             id: proposal_id3,
             title,
             description,
+            proposer: voter2,
             msgs,
             expires: voting_period.after(&proposed_at),
             status: Status::Open,
@@ -878,6 +975,8 @@ mod tests {
                 weight: Uint128::new(3),
                 total_weight: Uint128::new(20000000),
             },
+            deposit_amount: Uint128::zero(),
+            deposit_token_address: cw20_addr,
         };
         assert_eq!(&expected, &res.proposals[0]);
     }
@@ -1291,16 +1390,20 @@ mod tests {
         );
 
         let (owner, voter1, _voter2, voter3, _somebody) =
-            setup_accounts(&mut app, cw20_addr).unwrap();
+            setup_accounts(&mut app, cw20_addr.clone()).unwrap();
 
         // nobody can call call update contract method
         let new_threshold = Threshold::AbsoluteCount {
             weight: Uint128::new(50),
         };
         let new_voting_period = Duration::Time(5000000);
+        let new_proposal_deposit_amount = Uint128::from(10u8);
+        let new_deposit_token_address = String::from("updated");
         let update_config_msg = ExecuteMsg::UpdateConfig {
             threshold: new_threshold.clone(),
-            max_voting_period: new_voting_period,
+            max_voting_period: new_voting_period.clone(),
+            proposal_deposit_amount: new_proposal_deposit_amount,
+            proposal_deposit_token_address: new_deposit_token_address.clone(),
         };
         let res = app.execute_contract(voter1.clone(), dao_addr.clone(), &update_config_msg, &[]);
         assert!(res.is_err());
@@ -1339,22 +1442,26 @@ mod tests {
         assert!(res.is_ok());
 
         // Check that config was updated
-        let query_threshold_msg = QueryMsg::Threshold {};
-        let res: ThresholdResponse = app
+        let res: ConfigResponse = app
             .wrap()
-            .query_wasm_smart(dao_addr, &query_threshold_msg)
+            .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
             .unwrap();
 
-        match res {
-            ThresholdResponse::AbsoluteCount {
-                weight,
-                total_weight,
-            } => {
-                assert_eq!(weight, Uint128::new(50));
-                assert_eq!(total_weight, Uint128::new(20000000));
+        let cw20 = Cw20Contract(cw20_addr);
+        assert_eq!(
+            res,
+            ConfigResponse {
+                config: Config {
+                    threshold: new_threshold.clone(),
+                    max_voting_period: new_voting_period.clone(),
+                    cw20_addr: cw20,
+                    proposal_deposit: ProposalDeposit {
+                        amount: new_proposal_deposit_amount,
+                        token_address: Cw20Contract(Addr::unchecked(new_deposit_token_address)),
+                    }
+                },
             }
-            _ => assert_eq!(true, false),
-        }
+        )
     }
 
     #[test]
@@ -1378,16 +1485,130 @@ mod tests {
             .query_wasm_smart(&dao_addr, &config_query)
             .unwrap();
 
-        let cw20 = Cw20Contract(cw20_addr);
         assert_eq!(
             res,
             ConfigResponse {
                 config: Config {
                     threshold,
                     max_voting_period: voting_period,
-                    cw20_addr: cw20,
+                    cw20_addr: Cw20Contract(cw20_addr.clone()),
+                    proposal_deposit: ProposalDeposit {
+                        amount: Uint128::zero(),
+                        token_address: Cw20Contract(cw20_addr),
+                    }
                 },
             }
         )
+    }
+
+    #[test]
+    fn test_proposal_deposit_works() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(2000000);
+        let threshold = Threshold::AbsoluteCount {
+            weight: Uint128::new(3),
+        };
+        let (dao_addr, cw20_addr) = setup_test_case(
+            &mut app,
+            threshold.clone(),
+            voting_period,
+            coins(10, NATIVE_TOKEN_DENOM),
+        );
+
+        let cw20 = Cw20Contract(cw20_addr.clone());
+
+        let (owner, _voter1, _voter2, voter3, _somebody) =
+            setup_accounts(&mut app, cw20_addr.clone()).unwrap();
+
+        let initial_owner_cw20_balance = cw20.balance(&app, owner.clone()).unwrap();
+
+        // ensure we have cash to cover the proposal
+        let contract_bal = app
+            .wrap()
+            .query_balance(&dao_addr, NATIVE_TOKEN_DENOM)
+            .unwrap();
+        assert_eq!(contract_bal, coin(10, NATIVE_TOKEN_DENOM));
+
+        let proposal_deposit_amount = Uint128::new(10);
+
+        let update_config_msg = ExecuteMsg::UpdateConfig {
+            threshold,
+            max_voting_period: voting_period,
+            proposal_deposit_amount,
+            proposal_deposit_token_address: cw20_addr.to_string(),
+        };
+        let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
+
+        // Give dao allowance for proposal
+        let allowance = Cw20ExecuteMsg::IncreaseAllowance {
+            spender: dao_addr.clone().into(),
+            amount: proposal_deposit_amount,
+            expires: None,
+        };
+        let res = app
+            .execute_contract(owner.clone(), cw20_addr.clone(), &allowance, &[])
+            .unwrap();
+
+        // create proposal with 0 vote power
+        let proposal = pay_somebody_proposal();
+        let res = app
+            .execute_contract(owner.clone(), dao_addr.clone(), &proposal, &[])
+            .unwrap();
+
+        // Check proposal deposit was made
+        let balance = cw20.balance(&app, owner.clone()).unwrap();
+        let expected_balance = initial_owner_cw20_balance
+            .checked_sub(proposal_deposit_amount)
+            .unwrap();
+        assert_eq!(balance, expected_balance);
+
+        // Get the proposal id from the logs
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        // Only Passed can be executed
+        let execution = ExecuteMsg::Execute { proposal_id };
+        let err = app
+            .execute_contract(owner.clone(), dao_addr.clone(), &execution, &[])
+            .unwrap_err();
+        assert_eq!(
+            ContractError::WrongExecuteStatus {},
+            err.downcast().unwrap()
+        );
+
+        // Vote it, so it passes
+        let vote = ExecuteMsg::Vote {
+            proposal_id,
+            vote: Vote::Yes,
+        };
+        let res = app
+            .execute_contract(voter3.clone(), dao_addr.clone(), &vote, &[])
+            .unwrap();
+        assert_eq!(
+            res.custom_attrs(1),
+            [
+                ("action", "vote"),
+                ("sender", voter3.to_string().as_str()),
+                ("proposal_id", proposal_id.to_string().as_str()),
+                ("status", "Passed"),
+            ],
+        );
+
+        // Execute works. Anybody can execute Passed proposals
+        let res = app
+            .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &execution, &[])
+            .unwrap();
+        assert_eq!(
+            res.custom_attrs(1),
+            [
+                ("action", "execute"),
+                ("sender", SOMEBODY),
+                ("proposal_id", proposal_id.to_string().as_str()),
+            ],
+        );
+
+        // Check deposit has been refunded
+        let balance = cw20.balance(&app, owner.clone()).unwrap();
+        assert_eq!(balance, initial_owner_cw20_balance);
     }
 }

@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use cosmwasm_std::{CosmosMsg, Decimal, Empty, Uint128};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::Expiration;
 
 use crate::msg::Vote;
@@ -91,6 +91,7 @@ where
     pub id: u64,
     pub title: String,
     pub description: String,
+    pub proposer: Addr,
     pub msgs: Vec<CosmosMsg<T>>,
     pub status: Status,
     pub expires: Expiration,
@@ -98,6 +99,8 @@ where
     /// as well as the total_weight of the voting group may have changed since this time. That means
     /// that the generic `Threshold{}` query does not provide valid information for existing proposals.
     pub threshold: ThresholdResponse,
+    pub deposit_amount: Uint128,
+    pub deposit_token_address: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]

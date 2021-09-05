@@ -20,12 +20,20 @@ pub struct Config {
     pub max_voting_period: Duration,
     // Total weight and voters are queried from this contract
     pub cw20_addr: Cw20Contract,
+    pub proposal_deposit: ProposalDeposit,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ProposalDeposit {
+    pub amount: Uint128,
+    pub token_address: Cw20Contract,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Proposal {
     pub title: String,
     pub description: String,
+    pub proposer: Addr,
     pub start_height: u64,
     pub expires: Expiration,
     pub msgs: Vec<CosmosMsg<Empty>>,
@@ -36,6 +44,7 @@ pub struct Proposal {
     pub total_weight: Uint128,
     // summary of existing votes
     pub votes: Votes,
+    pub deposit: ProposalDeposit,
 }
 
 // weight of votes for each option
@@ -231,6 +240,7 @@ mod test {
         let prop = Proposal {
             title: "Demo".to_string(),
             description: "Info".to_string(),
+            proposer: Addr::unchecked("test"),
             start_height: 100,
             expires,
             msgs: vec![],
@@ -238,6 +248,10 @@ mod test {
             threshold,
             total_weight,
             votes,
+            deposit: ProposalDeposit {
+                amount: Uint128::zero(),
+                token_address: Cw20Contract(Addr::unchecked("test")),
+            },
         };
         prop.is_passed(&block)
     }
