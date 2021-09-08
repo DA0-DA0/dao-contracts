@@ -22,6 +22,10 @@ use std::cmp::Ordering;
 const CONTRACT_NAME: &str = "crates.io:sg_dao";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+// settings for pagination
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -433,10 +437,6 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(ConfigResponse { config })
 }
 
-// settings for pagination
-const MAX_LIMIT: u32 = 30;
-const DEFAULT_LIMIT: u32 = 10;
-
 fn list_proposals(
     deps: Deps,
     env: Env,
@@ -641,19 +641,6 @@ mod tests {
             .unwrap()
     }
 
-    fn setup_accounts(
-        router: &mut App,
-        cw20_addr: Addr,
-    ) -> Result<(Addr, Addr, Addr, Addr, Addr), ContractError> {
-        let owner: Addr = Addr::unchecked(OWNER);
-        let voter1: Addr = Addr::unchecked(VOTER1);
-        let voter2: Addr = Addr::unchecked(VOTER2);
-        let voter3: Addr = Addr::unchecked(VOTER3);
-        let somebody: Addr = Addr::unchecked(SOMEBODY);
-
-        Ok((owner, voter1, voter2, voter3, somebody))
-    }
-
     fn setup_test_case(
         app: &mut App,
         threshold: Threshold,
@@ -789,19 +776,17 @@ mod tests {
         let threshold = Threshold::AbsoluteCount {
             weight: Uint128::new(4),
         };
-        let (dao_addr, cw20_addr) = setup_test_case(
+        let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
         );
-        let (owner, _voter1, _voter2, voter3, somebody) =
-            setup_accounts(&mut app, cw20_addr).unwrap();
 
         let proposal = pay_somebody_proposal();
         // Only voters with a social token balance can propose
         let err = app
-            .execute_contract(somebody, dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &proposal, &[])
             .unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 
@@ -817,13 +802,18 @@ mod tests {
             latest: Some(Expiration::AtHeight(123456)),
         };
         let err = app
-            .execute_contract(owner, dao_addr.clone(), &proposal_wrong_exp, &[])
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                dao_addr.clone(),
+                &proposal_wrong_exp,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::WrongExpiration {}, err.downcast().unwrap());
 
         // Proposal from voter works
         let res = app
-            .execute_contract(voter3, dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &proposal, &[])
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
@@ -889,13 +879,10 @@ mod tests {
             coins(100, NATIVE_TOKEN_DENOM),
         );
 
-        let (_owner, voter1, voter2, voter3, _somebody) =
-            setup_accounts(&mut app, cw20_addr.clone()).unwrap();
-
         // create proposal with 1 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(voter1.clone(), dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &proposal, &[])
             .unwrap();
         let proposal_id1: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
@@ -903,7 +890,7 @@ mod tests {
         app.update_block(next_block);
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(voter3.clone(), dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &proposal, &[])
             .unwrap();
         let proposal_id2: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
@@ -912,7 +899,7 @@ mod tests {
             proposal_id: proposal_id2.clone(),
             vote: Vote::Yes,
         };
-        let res = app.execute_contract(voter3, dao_addr.clone(), &yes_vote, &[]);
+        let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
         assert!(res.is_ok());
 
         // expire them both
@@ -921,7 +908,7 @@ mod tests {
         // add one more open proposal, 2 votes
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(voter2.clone(), dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(VOTER2), dao_addr.clone(), &proposal, &[])
             .unwrap();
         let proposal_id3: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
         let proposed_at = app.block_info();
@@ -967,7 +954,7 @@ mod tests {
             id: proposal_id3,
             title,
             description,
-            proposer: voter2,
+            proposer: Addr::unchecked(VOTER2),
             msgs,
             expires: voting_period.after(&proposed_at),
             status: Status::Open,
@@ -989,20 +976,17 @@ mod tests {
         let threshold = Threshold::AbsoluteCount {
             weight: Uint128::new(10000000),
         };
-        let (dao_addr, cw20_addr) = setup_test_case(
+        let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
         );
 
-        let (owner, voter1, voter2, voter3, somebody) =
-            setup_accounts(&mut app, cw20_addr.clone()).unwrap();
-
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(owner.clone(), dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
             .unwrap();
 
         // Get the proposal id from the logs
@@ -1013,7 +997,7 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        let res = app.execute_contract(owner.clone(), dao_addr.clone(), &yes_vote, &[]);
+        let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &yes_vote, &[]);
         assert!(res.is_ok());
 
         // Owner cannot vote (again)
@@ -1022,25 +1006,25 @@ mod tests {
             vote: Vote::Yes,
         };
         let err = app
-            .execute_contract(owner, dao_addr.clone(), &yes_vote, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &yes_vote, &[])
             .unwrap_err();
         assert_eq!(ContractError::AlreadyVoted {}, err.downcast().unwrap());
 
         // Only voters can vote
         let err = app
-            .execute_contract(somebody, dao_addr.clone(), &yes_vote, &[])
+            .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &yes_vote, &[])
             .unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 
         // But voter1 can
         let res = app
-            .execute_contract(voter1.clone(), dao_addr.clone(), &yes_vote, &[])
+            .execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &yes_vote, &[])
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
             [
                 ("action", "vote"),
-                ("sender", voter1.clone().to_string().as_str()),
+                ("sender", VOTER1),
                 ("proposal_id", proposal_id.to_string().as_str()),
                 ("status", "Open"),
             ],
@@ -1057,7 +1041,7 @@ mod tests {
             vote: Vote::No,
         };
         let _ = app
-            .execute_contract(voter2, dao_addr.clone(), &no_vote, &[])
+            .execute_contract(Addr::unchecked(VOTER2), dao_addr.clone(), &no_vote, &[])
             .unwrap();
 
         // Cast a Veto vote
@@ -1066,21 +1050,21 @@ mod tests {
             vote: Vote::Veto,
         };
         let _ = app
-            .execute_contract(voter3.clone(), dao_addr.clone(), &veto_vote, &[])
+            .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &veto_vote, &[])
             .unwrap();
 
         // Tally unchanged
         assert_eq!(tally, get_tally(&app, dao_addr.as_ref(), proposal_id));
 
         let err = app
-            .execute_contract(voter3, dao_addr.clone(), &yes_vote, &[])
+            .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[])
             .unwrap_err();
         assert_eq!(ContractError::AlreadyVoted {}, err.downcast().unwrap());
 
         // Expired proposals cannot be voted
         app.update_block(expire(voting_period));
         let err = app
-            .execute_contract(voter1, dao_addr.clone(), &yes_vote, &[])
+            .execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &yes_vote, &[])
             .unwrap_err();
         assert_eq!(ContractError::Expired {}, err.downcast().unwrap());
         app.update_block(unexpire(voting_period));
@@ -1158,14 +1142,12 @@ mod tests {
         let threshold = Threshold::AbsoluteCount {
             weight: Uint128::new(3),
         };
-        let (dao_addr, cw20_addr) = setup_test_case(
+        let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             threshold,
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
         );
-        let (owner, _voter1, _voter2, voter3, _somebody) =
-            setup_accounts(&mut app, cw20_addr).unwrap();
 
         // ensure we have cash to cover the proposal
         let contract_bal = app
@@ -1177,7 +1159,7 @@ mod tests {
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(owner.clone(), dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
             .unwrap();
 
         // Get the proposal id from the logs
@@ -1186,7 +1168,7 @@ mod tests {
         // Only Passed can be executed
         let execution = ExecuteMsg::Execute { proposal_id };
         let err = app
-            .execute_contract(owner, dao_addr.clone(), &execution, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[])
             .unwrap_err();
         assert_eq!(
             ContractError::WrongExecuteStatus {},
@@ -1199,13 +1181,13 @@ mod tests {
             vote: Vote::Yes,
         };
         let res = app
-            .execute_contract(voter3.clone(), dao_addr.clone(), &vote, &[])
+            .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &vote, &[])
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
             [
                 ("action", "vote"),
-                ("sender", voter3.to_string().as_str()),
+                ("sender", VOTER3),
                 ("proposal_id", proposal_id.to_string().as_str()),
                 ("status", "Passed"),
             ],
@@ -1258,19 +1240,17 @@ mod tests {
         let threshold = Threshold::AbsoluteCount {
             weight: Uint128::new(3),
         };
-        let (dao_addr, cw20_addr) = setup_test_case(
+        let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             threshold,
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
         );
-        let (owner, _voter1, _voter2, _voter3, somebody) =
-            setup_accounts(&mut app, cw20_addr).unwrap();
 
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(owner, dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
             .unwrap();
 
         // Get the proposal id from the logs
@@ -1279,20 +1259,20 @@ mod tests {
         // Non-expired proposals cannot be closed
         let closing = ExecuteMsg::Close { proposal_id };
         let err = app
-            .execute_contract(somebody.clone(), dao_addr.clone(), &closing, &[])
+            .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &closing, &[])
             .unwrap_err();
         assert_eq!(ContractError::NotExpired {}, err.downcast().unwrap());
 
         // Expired proposals can be closed
         app.update_block(expire(voting_period));
         let res = app
-            .execute_contract(somebody.clone(), dao_addr.clone(), &closing, &[])
+            .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &closing, &[])
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
             [
                 ("action", "close"),
-                ("sender", somebody.to_string().as_str()),
+                ("sender", SOMEBODY),
                 ("proposal_id", proposal_id.to_string().as_str()),
             ],
         );
@@ -1300,7 +1280,7 @@ mod tests {
         // Trying to close it again fails
         let closing = ExecuteMsg::Close { proposal_id };
         let err = app
-            .execute_contract(somebody, dao_addr, &closing, &[])
+            .execute_contract(Addr::unchecked(SOMEBODY), dao_addr, &closing, &[])
             .unwrap_err();
         assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
     }
@@ -1312,7 +1292,7 @@ mod tests {
         // 33% required for quora, which is 5 of the initial 15
         // 50% yes required to pass early (8 of the initial 15)
         let voting_period = Duration::Time(20000);
-        let (dao_addr, cw20_addr) = setup_test_case(
+        let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             // note that 60% yes is not enough to pass without 20% no as well
             Threshold::ThresholdQuorum {
@@ -1322,13 +1302,11 @@ mod tests {
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
         );
-        let (owner, voter1, voter2, voter3, _somebody) =
-            setup_accounts(&mut app, cw20_addr).unwrap();
 
         // create proposal
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(voter1.clone(), dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &proposal, &[])
             .unwrap();
 
         // Get the proposal id from the logs
@@ -1347,13 +1325,13 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(voter1, dao_addr.clone(), &yes_vote, &[])
+        app.execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &yes_vote, &[])
             .unwrap();
-        app.execute_contract(voter2, dao_addr.clone(), &yes_vote, &[])
+        app.execute_contract(Addr::unchecked(VOTER2), dao_addr.clone(), &yes_vote, &[])
             .unwrap();
-        app.execute_contract(voter3, dao_addr.clone(), &yes_vote, &[])
+        app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[])
             .unwrap();
-        app.execute_contract(owner, dao_addr.clone(), &yes_vote, &[])
+        app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &yes_vote, &[])
             .unwrap();
 
         // 9 of 15 is 60% absolute threshold, but less than 12 (80% quorum needed)
@@ -1389,9 +1367,6 @@ mod tests {
             coins(100, NATIVE_TOKEN_DENOM),
         );
 
-        let (owner, voter1, _voter2, voter3, _somebody) =
-            setup_accounts(&mut app, cw20_addr.clone()).unwrap();
-
         // nobody can call call update contract method
         let new_threshold = Threshold::AbsoluteCount {
             weight: Uint128::new(50),
@@ -1405,9 +1380,19 @@ mod tests {
             proposal_deposit_amount: new_proposal_deposit_amount,
             proposal_deposit_token_address: new_deposit_token_address.clone(),
         };
-        let res = app.execute_contract(voter1.clone(), dao_addr.clone(), &update_config_msg, &[]);
+        let res = app.execute_contract(
+            Addr::unchecked(VOTER1),
+            dao_addr.clone(),
+            &update_config_msg,
+            &[],
+        );
         assert!(res.is_err());
-        let res = app.execute_contract(owner.clone(), dao_addr.clone(), &update_config_msg, &[]);
+        let res = app.execute_contract(
+            Addr::unchecked(OWNER),
+            dao_addr.clone(),
+            &update_config_msg,
+            &[],
+        );
         assert!(res.is_err());
 
         let wasm_msg = WasmMsg::Execute {
@@ -1424,7 +1409,7 @@ mod tests {
             latest: None,
         };
         let res = app
-            .execute_contract(owner.clone(), dao_addr.clone(), &proposal_msg, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
             .unwrap();
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
@@ -1433,12 +1418,12 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        let res = app.execute_contract(voter3, dao_addr.clone(), &yes_vote, &[]);
+        let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
         assert!(res.is_ok());
 
         // Execute
         let execution = ExecuteMsg::Execute { proposal_id };
-        let res = app.execute_contract(owner, dao_addr.clone(), &execution, &[]);
+        let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[]);
         assert!(res.is_ok());
 
         // Check that config was updated
@@ -1518,10 +1503,7 @@ mod tests {
 
         let cw20 = Cw20Contract(cw20_addr.clone());
 
-        let (owner, _voter1, _voter2, voter3, _somebody) =
-            setup_accounts(&mut app, cw20_addr.clone()).unwrap();
-
-        let initial_owner_cw20_balance = cw20.balance(&app, owner.clone()).unwrap();
+        let initial_owner_cw20_balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
 
         // ensure we have cash to cover the proposal
         let contract_bal = app
@@ -1539,6 +1521,7 @@ mod tests {
             proposal_deposit_token_address: cw20_addr.to_string(),
         };
         let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
+        assert!(res.is_ok());
 
         // Give dao allowance for proposal
         let allowance = Cw20ExecuteMsg::IncreaseAllowance {
@@ -1546,30 +1529,29 @@ mod tests {
             amount: proposal_deposit_amount,
             expires: None,
         };
-        let res = app
-            .execute_contract(owner.clone(), cw20_addr.clone(), &allowance, &[])
-            .unwrap();
+        let res = app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &allowance, &[]);
+        assert!(res.is_ok());
 
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(owner.clone(), dao_addr.clone(), &proposal, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
             .unwrap();
 
+        // Get the proposal id from the logs
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
         // Check proposal deposit was made
-        let balance = cw20.balance(&app, owner.clone()).unwrap();
+        let balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
         let expected_balance = initial_owner_cw20_balance
             .checked_sub(proposal_deposit_amount)
             .unwrap();
         assert_eq!(balance, expected_balance);
 
-        // Get the proposal id from the logs
-        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
-
         // Only Passed can be executed
         let execution = ExecuteMsg::Execute { proposal_id };
         let err = app
-            .execute_contract(owner.clone(), dao_addr.clone(), &execution, &[])
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[])
             .unwrap_err();
         assert_eq!(
             ContractError::WrongExecuteStatus {},
@@ -1582,13 +1564,13 @@ mod tests {
             vote: Vote::Yes,
         };
         let res = app
-            .execute_contract(voter3.clone(), dao_addr.clone(), &vote, &[])
+            .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &vote, &[])
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
             [
                 ("action", "vote"),
-                ("sender", voter3.to_string().as_str()),
+                ("sender", VOTER3),
                 ("proposal_id", proposal_id.to_string().as_str()),
                 ("status", "Passed"),
             ],
@@ -1608,7 +1590,7 @@ mod tests {
         );
 
         // Check deposit has been refunded
-        let balance = cw20.balance(&app, owner.clone()).unwrap();
+        let balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
         assert_eq!(balance, initial_owner_cw20_balance);
     }
 }
