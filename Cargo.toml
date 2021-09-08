@@ -1,7 +1,7 @@
 [package]
 name = "cw_dao"
 version = "0.1.0"
-authors = ["Jake Hartnell <jake@stargaze.zone>", "Ethan Frey <ethanfrey@users.noreply.github.com>"]
+authors = ["Jake Hartnell <jake@stargaze.zone>", "Ben2x4 <Ben2x4@tutanota.com>", "Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2018"
 description = "Implements a cw20 token governed DAO with multiple voting patterns."
 license = "Apache-2.0"
