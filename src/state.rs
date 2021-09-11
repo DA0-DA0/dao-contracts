@@ -109,9 +109,6 @@ impl Proposal {
     // sequence of possible votes can cause it to fail)
     pub fn is_passed(&self, block: &BlockInfo) -> bool {
         match self.threshold {
-            Threshold::AbsoluteCount {
-                weight: weight_needed,
-            } => self.votes.yes >= weight_needed,
             Threshold::AbsolutePercentage {
                 percentage: percentage_needed,
             } => {
@@ -254,37 +251,6 @@ mod test {
             },
         };
         prop.is_passed(&block)
-    }
-
-    #[test]
-    fn proposal_passed_absolute_count() {
-        let fixed = Threshold::AbsoluteCount {
-            weight: Uint128::new(10),
-        };
-        let mut votes = Votes::new(Uint128::new(7));
-        votes.add_vote(Vote::Veto, Uint128::new(4));
-        // same expired or not, total_weight or whatever
-        assert!(!check_is_passed(
-            fixed.clone(),
-            votes.clone(),
-            Uint128::new(30),
-            false
-        ));
-        assert!(!check_is_passed(
-            fixed.clone(),
-            votes.clone(),
-            Uint128::new(30),
-            true
-        ));
-        // a few more yes votes and we are good
-        votes.add_vote(Vote::Yes, Uint128::new(3));
-        assert!(check_is_passed(
-            fixed.clone(),
-            votes.clone(),
-            Uint128::new(30),
-            false
-        ));
-        assert!(check_is_passed(fixed, votes, Uint128::new(30), true));
     }
 
     #[test]
