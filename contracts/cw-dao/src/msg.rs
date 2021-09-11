@@ -45,9 +45,6 @@ pub enum Vote {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum Threshold {
-    /// Declares that a fixed weight of Yes votes is needed to pass.
-    AbsoluteCount { weight: Uint128 },
-
     /// Declares a percentage of the total weight that must cast Yes votes in order for
     /// a proposal to pass.
     /// See `ThresholdResponse.AbsolutePercentage` in the cw3 spec for details.
@@ -62,19 +59,8 @@ pub enum Threshold {
 impl Threshold {
     /// returns error if this is an unreachable value,
     /// given a total weight of all members in the group
-    pub fn validate(&self, total_weight: Uint128) -> Result<(), ContractError> {
+    pub fn validate(&self) -> Result<(), ContractError> {
         match self {
-            Threshold::AbsoluteCount {
-                weight: weight_needed,
-            } => {
-                if *weight_needed == Uint128::zero() {
-                    Err(ContractError::ZeroThreshold {})
-                } else if *weight_needed > total_weight {
-                    Err(ContractError::UnreachableThreshold {})
-                } else {
-                    Ok(())
-                }
-            }
             Threshold::AbsolutePercentage {
                 percentage: percentage_needed,
             } => valid_percentage(percentage_needed),
@@ -91,10 +77,6 @@ impl Threshold {
     /// Creates a response from the saved data, just missing the total_weight info
     pub fn to_response(&self, total_weight: Uint128) -> ThresholdResponse {
         match self.clone() {
-            Threshold::AbsoluteCount { weight } => ThresholdResponse::AbsoluteCount {
-                weight,
-                total_weight,
-            },
             Threshold::AbsolutePercentage { percentage } => ThresholdResponse::AbsolutePercentage {
                 percentage,
                 total_weight,
@@ -235,46 +217,17 @@ mod tests {
 
     #[test]
     fn validate_threshold() {
-        // absolute count ensures 0 < required <= total_weight
-        let err = Threshold::AbsoluteCount {
-            weight: Uint128::zero(),
-        }
-        .validate(Uint128::new(5))
-        .unwrap_err();
-        // TODO: remove to_string() when PartialEq implemented
-        assert_eq!(err.to_string(), ContractError::ZeroThreshold {}.to_string());
-        let err = Threshold::AbsoluteCount {
-            weight: Uint128::new(6),
-        }
-        .validate(Uint128::new(5))
-        .unwrap_err();
-        assert_eq!(
-            err.to_string(),
-            ContractError::UnreachableThreshold {}.to_string()
-        );
-
-        Threshold::AbsoluteCount {
-            weight: Uint128::new(1),
-        }
-        .validate(Uint128::new(5))
-        .unwrap();
-        Threshold::AbsoluteCount {
-            weight: Uint128::new(5),
-        }
-        .validate(Uint128::new(5))
-        .unwrap();
-
         // AbsolutePercentage just enforces valid_percentage (tested above)
         let err = Threshold::AbsolutePercentage {
             percentage: Decimal::zero(),
         }
-        .validate(Uint128::new(5))
+        .validate()
         .unwrap_err();
         assert_eq!(err.to_string(), ContractError::ZeroThreshold {}.to_string());
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(51),
         }
-        .validate(Uint128::new(5))
+        .validate()
         .unwrap();
 
         // Quorum enforces both valid just enforces valid_percentage (tested above)
@@ -282,13 +235,13 @@ mod tests {
             threshold: Decimal::percent(51),
             quorum: Decimal::percent(40),
         }
-        .validate(Uint128::new(5))
+        .validate()
         .unwrap();
         let err = Threshold::ThresholdQuorum {
             threshold: Decimal::percent(101),
             quorum: Decimal::percent(40),
         }
-        .validate(Uint128::new(5))
+        .validate()
         .unwrap_err();
         assert_eq!(
             err.to_string(),
@@ -298,7 +251,7 @@ mod tests {
             threshold: Decimal::percent(51),
             quorum: Decimal::percent(0),
         }
-        .validate(Uint128::new(5))
+        .validate()
         .unwrap_err();
         assert_eq!(err.to_string(), ContractError::ZeroThreshold {}.to_string());
     }
@@ -306,18 +259,6 @@ mod tests {
     #[test]
     fn threshold_response() {
         let total_weight = Uint128::new(100);
-
-        let res = Threshold::AbsoluteCount {
-            weight: Uint128::new(42),
-        }
-        .to_response(total_weight);
-        assert_eq!(
-            res,
-            ThresholdResponse::AbsoluteCount {
-                weight: Uint128::new(42),
-                total_weight
-            }
-        );
 
         let res = Threshold::AbsolutePercentage {
             percentage: Decimal::percent(51),

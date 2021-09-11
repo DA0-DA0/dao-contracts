@@ -49,12 +49,7 @@ pub fn instantiate(
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // // TODO Not sure if we need to validate on instantiate?
-    // // Get total cw20 supply
-    // let token_info: TokenInfo = deps
-    //     .querier
-    //     .query_wasm_smart(cw20_addr.clone().addr(), &cw20::msg::QueryMsg::TokenInfo {})?;
-    // msg.threshold.validate(token_info.total_supply)?;
+    msg.threshold.validate()?;
 
     let cfg = Config {
         threshold: msg.threshold,
@@ -331,8 +326,7 @@ pub fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    let total_supply = get_total_supply(deps.as_ref())?;
-    threshold.validate(total_supply)?;
+    threshold.validate()?;
 
     let proposal_deposit_cw20_addr = Cw20Contract(
         deps.api
@@ -693,54 +687,37 @@ mod tests {
 
         let max_voting_period = Duration::Time(1234567);
 
-        // // Zero required weight fails
-        // let instantiate_msg = InstantiateMsg {
-        //     sg20_addr: sg20_addr.to_string(),
-        //     threshold: Threshold::AbsoluteCount {
-        //         weight: Uint128::zero(),
-        //     },
-        //     max_voting_period,
-        // };
-        // let err = app
-        //     .instantiate_contract(
-        //         flex_id,
-        //         Addr::unchecked(OWNER),
-        //         &instantiate_msg,
-        //         &[],
-        //         "zero required weight",
-        //         None,
-        //     )
-        //     .unwrap_err();
-        // assert_eq!(ContractError::ZeroThreshold {}, err.downcast().unwrap());
-
-        // // Total weight less than required weight not allowed
-        // let instantiate_msg = InstantiateMsg {
-        //     sg20_addr: sg20_addr.to_string(),
-        //     threshold: Threshold::AbsoluteCount {
-        //         weight: Uint128::new(100),
-        //     },
-        //     max_voting_period,
-        // };
-        // let err = app
-        //     .instantiate_contract(
-        //         flex_id,
-        //         Addr::unchecked(OWNER),
-        //         &instantiate_msg,
-        //         &[],
-        //         "high required weight",
-        //         None,
-        //     )
-        //     .unwrap_err();
-        // assert_eq!(
-        //     ContractError::UnreachableThreshold {},
-        //     err.downcast().unwrap()
-        // );
+        // Total weight less than required weight not allowed
+        let instantiate_msg = InstantiateMsg {
+            cw20_addr: cw20_addr.to_string(),
+            threshold: Threshold::AbsolutePercentage {
+                percentage: Decimal::percent(101),
+            },
+            max_voting_period,
+            proposal_deposit_amount: Uint128::zero(),
+            proposal_deposit_token_address: cw20_addr.to_string(),
+        };
+        let err = app
+            .instantiate_contract(
+                flex_id,
+                Addr::unchecked(OWNER),
+                &instantiate_msg,
+                &[],
+                "high required weight",
+                None,
+            )
+            .unwrap_err();
+        assert_eq!(
+            ContractError::UnreachableThreshold {},
+            err.downcast().unwrap()
+        );
 
         // All valid
         let instantiate_msg = InstantiateMsg {
             cw20_addr: cw20_addr.to_string(),
-            threshold: Threshold::AbsoluteCount {
-                weight: Uint128::new(1),
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(51),
+                quorum: Decimal::percent(10),
             },
             max_voting_period,
             proposal_deposit_amount: Uint128::zero(),
@@ -773,8 +750,9 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Time(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(4),
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
         };
         let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
@@ -869,8 +847,9 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Time(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(3),
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
         };
         let (dao_addr, cw20_addr) = setup_test_case(
             &mut app,
@@ -958,8 +937,9 @@ mod tests {
             msgs,
             expires: voting_period.after(&proposed_at),
             status: Status::Open,
-            threshold: ThresholdResponse::AbsoluteCount {
-                weight: Uint128::new(3),
+            threshold: ThresholdResponse::ThresholdQuorum {
+                threshold: Decimal::percent(51),
+                quorum: Decimal::percent(10),
                 total_weight: Uint128::new(20000000),
             },
             deposit_amount: Uint128::zero(),
@@ -973,8 +953,9 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Time(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(10000000),
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
         };
         let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
@@ -1139,8 +1120,9 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Time(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(3),
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(10),
+            quorum: Decimal::percent(10),
         };
         let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
@@ -1237,8 +1219,9 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Height(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(3),
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
         };
         let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
@@ -1357,8 +1340,9 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Time(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(3),
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(20),
+            quorum: Decimal::percent(10),
         };
         let (dao_addr, cw20_addr) = setup_test_case(
             &mut app,
@@ -1368,8 +1352,9 @@ mod tests {
         );
 
         // nobody can call call update contract method
-        let new_threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(50),
+        let new_threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
         };
         let new_voting_period = Duration::Time(5000000);
         let new_proposal_deposit_amount = Uint128::from(10u8);
@@ -1454,8 +1439,9 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Time(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(3),
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
         };
         let (dao_addr, cw20_addr) = setup_test_case(
             &mut app,
@@ -1491,8 +1477,8 @@ mod tests {
         let mut app = mock_app();
 
         let voting_period = Duration::Time(2000000);
-        let threshold = Threshold::AbsoluteCount {
-            weight: Uint128::new(3),
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(20),
         };
         let (dao_addr, cw20_addr) = setup_test_case(
             &mut app,
