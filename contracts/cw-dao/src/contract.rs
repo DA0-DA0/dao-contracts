@@ -687,48 +687,30 @@ mod tests {
 
         let max_voting_period = Duration::Time(1234567);
 
-        // // Zero required weight fails
-        // let instantiate_msg = InstantiateMsg {
-        //     sg20_addr: sg20_addr.to_string(),
-        //     threshold: Threshold::AbsoluteCount {
-        //         weight: Uint128::zero(),
-        //     },
-        //     max_voting_period,
-        // };
-        // let err = app
-        //     .instantiate_contract(
-        //         flex_id,
-        //         Addr::unchecked(OWNER),
-        //         &instantiate_msg,
-        //         &[],
-        //         "zero required weight",
-        //         None,
-        //     )
-        //     .unwrap_err();
-        // assert_eq!(ContractError::ZeroThreshold {}, err.downcast().unwrap());
-
-        // // Total weight less than required weight not allowed
-        // let instantiate_msg = InstantiateMsg {
-        //     sg20_addr: sg20_addr.to_string(),
-        //     threshold: Threshold::AbsoluteCount {
-        //         weight: Uint128::new(100),
-        //     },
-        //     max_voting_period,
-        // };
-        // let err = app
-        //     .instantiate_contract(
-        //         flex_id,
-        //         Addr::unchecked(OWNER),
-        //         &instantiate_msg,
-        //         &[],
-        //         "high required weight",
-        //         None,
-        //     )
-        //     .unwrap_err();
-        // assert_eq!(
-        //     ContractError::UnreachableThreshold {},
-        //     err.downcast().unwrap()
-        // );
+        // Total weight less than required weight not allowed
+        let instantiate_msg = InstantiateMsg {
+            cw20_addr: cw20_addr.to_string(),
+            threshold: Threshold::AbsolutePercentage {
+                percentage: Decimal::percent(101),
+            },
+            max_voting_period,
+            proposal_deposit_amount: Uint128::zero(),
+            proposal_deposit_token_address: cw20_addr.to_string(),
+        };
+        let err = app
+            .instantiate_contract(
+                flex_id,
+                Addr::unchecked(OWNER),
+                &instantiate_msg,
+                &[],
+                "high required weight",
+                None,
+            )
+            .unwrap_err();
+        assert_eq!(
+            ContractError::UnreachableThreshold {},
+            err.downcast().unwrap()
+        );
 
         // All valid
         let instantiate_msg = InstantiateMsg {

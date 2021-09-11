@@ -3,16 +3,24 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "cw20_addr",
     "max_voting_period",
-    "sg20_addr",
+    "proposal_deposit_amount",
+    "proposal_deposit_token_address",
     "threshold"
   ],
   "properties": {
+    "cw20_addr": {
+      "description": "TODO other voting options Meant to cap whales from having too much power pub max_vote_size: Option<Uint128>, Lockup period pub lockup_period: Duration,",
+      "type": "string"
+    },
     "max_voting_period": {
       "$ref": "#/definitions/Duration"
     },
-    "sg20_addr": {
-      "description": "TODO other voting options Meant to cap whales from having too much power pub max_vote_size: Option<Uint128>, Lockup period pub lockup_period: Duration,",
+    "proposal_deposit_amount": {
+      "$ref": "#/definitions/Uint128"
+    },
+    "proposal_deposit_token_address": {
       "type": "string"
     },
     "threshold": {
@@ -61,27 +69,6 @@
     "Threshold": {
       "description": "This defines the different ways tallies can happen.\n\nThe total_weight used for calculating success as well as the weights of each individual voter used in tallying should be snapshotted at the beginning of the block at which the proposal starts (this is likely the responsibility of a correct cw4 implementation). See also `ThresholdResponse` in the cw3 spec.",
       "anyOf": [
-        {
-          "description": "Declares that a fixed weight of Yes votes is needed to pass.",
-          "type": "object",
-          "required": [
-            "absolute_count"
-          ],
-          "properties": {
-            "absolute_count": {
-              "type": "object",
-              "required": [
-                "weight"
-              ],
-              "properties": {
-                "weight": {
-                  "$ref": "#/definitions/Uint128"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
         {
           "description": "Declares a percentage of the total weight that must cast Yes votes in order for a proposal to pass. See `ThresholdResponse.AbsolutePercentage` in the cw3 spec for details.",
           "type": "object",

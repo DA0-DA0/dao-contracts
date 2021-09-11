@@ -184,6 +184,19 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Returns Config",
+      "type": "object",
+      "required": [
+        "get_config"
+      ],
+      "properties": {
+        "get_config": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }
