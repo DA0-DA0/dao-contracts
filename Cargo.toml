@@ -5,6 +5,10 @@ members = ["contracts/*"]
 codegen-units = 1
 incremental = false
 
+[profile.release.package.cw20-gov]
+codegen-units = 1
+incremental = false
+
 [profile.release]
 opt-level = 3
 debug = false

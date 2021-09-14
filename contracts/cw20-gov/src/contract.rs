@@ -16,7 +16,7 @@ use crate::allowances::{
 };
 use crate::enumerable::{query_all_accounts, query_all_allowances};
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{BalanceAtHeightResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{MinterData, TokenInfo, BALANCES, LOGO, MARKETING_INFO, TOKEN_INFO};
 
 // version info for migration info
@@ -155,7 +155,7 @@ pub fn create_accounts(deps: &mut DepsMut, accounts: &[Cw20Coin]) -> StdResult<U
     let mut total_supply = Uint128::zero();
     for row in accounts {
         let address = deps.api.addr_validate(&row.address)?;
-        BALANCES.save(deps.storage, &address, &row.amount)?;
+        BALANCES.save(deps.storage, &address, &row.amount, 0)?;
         total_supply += row.amount;
     }
     Ok(total_supply)
@@ -212,7 +212,7 @@ pub fn execute(
 
 pub fn execute_transfer(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     recipient: String,
     amount: Uint128,
@@ -226,6 +226,7 @@ pub fn execute_transfer(
     BALANCES.update(
         deps.storage,
         &info.sender,
+        env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
@@ -233,6 +234,7 @@ pub fn execute_transfer(
     BALANCES.update(
         deps.storage,
         &rcpt_addr,
+        env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
@@ -246,7 +248,7 @@ pub fn execute_transfer(
 
 pub fn execute_burn(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
@@ -258,6 +260,7 @@ pub fn execute_burn(
     BALANCES.update(
         deps.storage,
         &info.sender,
+        env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
@@ -277,7 +280,7 @@ pub fn execute_burn(
 
 pub fn execute_mint(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     recipient: String,
     amount: Uint128,
@@ -305,6 +308,7 @@ pub fn execute_mint(
     BALANCES.update(
         deps.storage,
         &rcpt_addr,
+        env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
@@ -317,7 +321,7 @@ pub fn execute_mint(
 
 pub fn execute_send(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     contract: String,
     amount: Uint128,
@@ -333,6 +337,7 @@ pub fn execute_send(
     BALANCES.update(
         deps.storage,
         &info.sender,
+        env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
@@ -340,6 +345,7 @@ pub fn execute_send(
     BALANCES.update(
         deps.storage,
         &rcpt_addr,
+        env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
@@ -451,6 +457,9 @@ pub fn execute_upload_logo(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
+        QueryMsg::BalanceAtHeight { address, height } => {
+            to_binary(&query_balance_at_height(deps, address, height)?)
+        }
         QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
         QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
         QueryMsg::Allowance { owner, spender } => {
@@ -475,6 +484,18 @@ pub fn query_balance(deps: Deps, address: String) -> StdResult<BalanceResponse> 
         .may_load(deps.storage, &address)?
         .unwrap_or_default();
     Ok(BalanceResponse { balance })
+}
+
+pub fn query_balance_at_height(
+    deps: Deps,
+    address: String,
+    height: u64,
+) -> StdResult<BalanceAtHeightResponse> {
+    let address = deps.api.addr_validate(&address)?;
+    let balance = BALANCES
+        .may_load_at_height(deps.storage, &address, height)?
+        .unwrap_or_default();
+    Ok(BalanceAtHeightResponse { balance, height })
 }
 
 pub fn query_token_info(deps: Deps) -> StdResult<TokenInfoResponse> {
@@ -943,6 +964,60 @@ mod tests {
         .unwrap();
         let loaded: BalanceResponse = from_binary(&data).unwrap();
         assert_eq!(loaded.balance, Uint128::zero());
+    }
+
+    #[test]
+    fn get_balance_at_height() {
+        let mut deps = mock_dependencies(&coins(2, "token"));
+        let addr1 = String::from("addr0001");
+        let addr2 = String::from("addr0002");
+        let amount1 = Uint128::from(12340000u128);
+        let transfer = Uint128::from(76543u128);
+
+        let mut env = mock_env();
+        let start_height = env.block.height;
+
+        do_instantiate(deps.as_mut(), &addr1, amount1);
+
+        env.block.height = env.block.height + 1;
+
+        // valid transfer
+        let info = mock_info(addr1.as_ref(), &[]);
+        let msg = ExecuteMsg::Transfer {
+            recipient: addr2.clone(),
+            amount: transfer,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(res.messages.len(), 0);
+
+        env.block.height = env.block.height + 1;
+
+        let remainder = amount1.checked_sub(transfer).unwrap();
+        assert_eq!(
+            query_balance_at_height(deps.as_ref(), addr1.clone().into(), start_height)
+                .unwrap()
+                .balance,
+            amount1
+        );
+        assert_eq!(
+            query_balance_at_height(deps.as_ref(), addr1.clone().into(), env.block.height)
+                .unwrap()
+                .balance,
+            remainder
+        );
+
+        assert_eq!(
+            query_balance_at_height(deps.as_ref(), addr2.clone().into(), start_height)
+                .unwrap()
+                .balance,
+            Uint128::zero()
+        );
+        assert_eq!(
+            query_balance_at_height(deps.as_ref(), addr2.clone().into(), env.block.height)
+                .unwrap()
+                .balance,
+            transfer
+        );
     }
 
     #[test]

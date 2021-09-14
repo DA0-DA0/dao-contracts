@@ -45,7 +45,8 @@ pub fn query_all_accounts(
     let start = start_after.map(Bound::exclusive);
 
     let accounts: Result<Vec<_>, _> = BALANCES
-        .keys(deps.storage, start, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .filter_map(|x| x.map(|x| x.0).ok())
         .map(String::from_utf8)
         .take(limit)
         .collect();

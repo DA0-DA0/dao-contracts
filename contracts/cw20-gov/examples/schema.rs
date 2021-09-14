@@ -7,7 +7,7 @@ use cw20::{
     AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
     TokenInfoResponse,
 };
-use cw20_base::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw20_gov::msg::{BalanceAtHeightResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

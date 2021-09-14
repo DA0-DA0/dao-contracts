@@ -74,6 +74,9 @@ pub enum QueryMsg {
     /// Returns the current balance of the given address, 0 if unset.
     /// Return type: BalanceResponse.
     Balance { address: String },
+    /// Returns the balance of the given address at given height, 0 if unset.
+    /// Return type: BalanceAtHeightResponse.
+    BalanceAtHeight { address: String, height: u64 },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     TokenInfo {},
@@ -110,4 +113,10 @@ pub enum QueryMsg {
     /// contract.
     /// Return type: DownloadLogoResponse.
     DownloadLogo {},
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct BalanceAtHeightResponse {
+    pub balance: Uint128,
+    pub height: u64,
 }

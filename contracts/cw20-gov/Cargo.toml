@@ -1,5 +1,5 @@
 [package]
-name = "cw20-base"
+name = "cw20-gov"
 version = "0.8.1"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>", "Ben2x4 <ben2x4@tutanota.com>"]
 edition = "2018"

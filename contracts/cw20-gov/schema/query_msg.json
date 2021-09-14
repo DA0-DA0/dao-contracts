@@ -24,6 +24,33 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the balance of the given address at given height, 0 if unset. Return type: BalanceAtHeightResponse.",
+      "type": "object",
+      "required": [
+        "balance_at_height"
+      ],
+      "properties": {
+        "balance_at_height": {
+          "type": "object",
+          "required": [
+            "address",
+            "height"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Returns metadata on the contract - name, decimals, supply, etc. Return type: TokenInfoResponse.",
       "type": "object",
       "required": [
