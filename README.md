@@ -1,5 +1,7 @@
 # cw20 DAO
 
+**NOT PRODUCTION READY**
+
 This builds on [cw3-flex-multisig](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw3-flex-multisig) and instead has the voting set maintained by cw20 tokens. This allows for the cw20s to serve as governance tokens in the DAO, similar to how governance tokens work using contracts like [Compound Governance](https://compound.finance/governance).
 
 ## Instantiation
