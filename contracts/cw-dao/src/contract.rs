@@ -14,7 +14,8 @@ use cosmwasm_std::{
 use cw0::{maybe_addr, Duration, Expiration};
 use cw2::set_contract_version;
 use cw20::{BalanceResponse, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg};
-use cw20_base::state::TokenInfo;
+use cw20_gov::msg::{BalanceAtHeightResponse, QueryMsg as Cw20GovQueryMsg};
+use cw20_gov::state::TokenInfo;
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 
@@ -202,8 +203,8 @@ pub fn execute_vote(
         return Err(ContractError::Expired {});
     }
 
-    // get voter balance
-    let vote_power = get_balance(deps.as_ref(), info.sender.clone())?;
+    // Get voter balance at proposal start
+    let vote_power = get_balance_at_height(deps.as_ref(), info.sender.clone(), prop.start_height)?;
 
     if vote_power == Uint128::zero() {
         return Err(ContractError::Unauthorized {});
@@ -401,6 +402,25 @@ fn get_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
     Ok(balance.balance)
 }
 
+fn get_balance_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
+    let cfg = CONFIG.load(deps.storage)?;
+    // Get total supply
+    let balance: BalanceAtHeightResponse = deps
+        .querier
+        .query_wasm_smart(
+            cfg.cw20_addr.addr(),
+            &Cw20GovQueryMsg::BalanceAtHeight {
+                address: address.to_string(),
+                height,
+            },
+        )
+        .unwrap_or(BalanceAtHeightResponse {
+            balance: Uint128::zero(),
+            height: 0,
+        });
+    Ok(balance.balance)
+}
+
 fn query_threshold(deps: Deps) -> StdResult<ThresholdResponse> {
     let cfg = CONFIG.load(deps.storage)?;
     let total_supply = get_total_supply(deps)?;
@@ -564,11 +584,11 @@ mod tests {
         Box::new(contract)
     }
 
-    pub fn contract_cw20() -> Box<dyn Contract<Empty>> {
+    pub fn contract_cw20_gov() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            cw20_base::contract::execute,
-            cw20_base::contract::instantiate,
-            cw20_base::contract::query,
+            cw20_gov::contract::execute,
+            cw20_gov::contract::instantiate,
+            cw20_gov::contract::query,
         );
         Box::new(contract)
     }
@@ -583,8 +603,8 @@ mod tests {
 
     // uploads code and returns address of cw20 contract
     fn instantiate_cw20(app: &mut App) -> Addr {
-        let cw20_id = app.store_code(contract_cw20());
-        let msg = cw20_base::msg::InstantiateMsg {
+        let cw20_id = app.store_code(contract_cw20_gov());
+        let msg = cw20_gov::msg::InstantiateMsg {
             name: String::from("Test"),
             symbol: String::from("TEST"),
             decimals: 6,

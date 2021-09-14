@@ -263,6 +263,7 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "cw20-gov",
  "schemars",
  "serde",
  "thiserror",
