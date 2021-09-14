@@ -28,14 +28,13 @@ jobs:
         env:
           RUST_BACKTRACE: 1
 
-      # TODO: Maybe get this working from root?
-      # - name: Compile WASM contract
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     command: wasm
-      #     args: --locked
-      #   env:
-      #     RUSTFLAGS: "-C link-arg=-s"
+      - name: Compile WASM contract
+        uses: actions-rs/cargo@v1
+        with:
+          command: wasm
+          args: --locked
+        env:
+          RUSTFLAGS: "-C link-arg=-s"
 
   lints:
     name: Lints
