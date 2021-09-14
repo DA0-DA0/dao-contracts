@@ -1,0 +1,28 @@
+[package]
+name = "cw20-gov"
+version = "0.8.1"
+authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>", "Ben2x4 <ben2x4@tutanota.com>"]
+edition = "2018"
+description = "CosmWasm-20 compliant token with checkpointing to enable DAOs"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cw0 = { version = "0.8.1" }
+cw2 = { version = "0.8.1" }
+cw20 = { version = "0.8.1" }
+cw-storage-plus = { version = "0.8.1" }
+cosmwasm-std = { version = "0.16.2" }
+schemars = "0.8.1"
+serde = { version = "1.0.103", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.23" }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "0.16.2" }
