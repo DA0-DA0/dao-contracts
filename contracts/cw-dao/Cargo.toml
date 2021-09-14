@@ -20,6 +20,7 @@ cw0 = {  version = "0.8.1" }
 cw2 = { version = "0.8.1" }
 cw20 ="0.8.1"
 cw20-base = {  version = "0.8.1", features = ["library"] }
+cw20-gov = { path = "../cw20-gov", version = "0.8.1" }
 cw-storage-plus = {  version = "0.8.1" }
 cosmwasm-std = { version = "0.16.0" }
 schemars = "0.8.1"
