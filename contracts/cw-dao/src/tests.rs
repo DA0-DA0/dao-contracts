@@ -20,7 +20,7 @@ mod tests {
     use cw0::{maybe_addr, Duration, Expiration};
     use cw2::{query_contract_info, ContractVersion};
     use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
-    use cw_multi_test::{next_block, App, BankKeeper, Contract, ContractWrapper, Executor};
+    use cw_multi_test::{next_block, App, AppBuilder, Contract, ContractWrapper, Executor};
 
     const OWNER: &str = "admin0001";
     const VOTER1: &str = "voter0001";
@@ -51,11 +51,7 @@ mod tests {
     }
 
     fn mock_app() -> App {
-        let env = mock_env();
-        let api = MockApi::default();
-        let bank = BankKeeper::new();
-
-        App::new(api, env.block, bank, MockStorage::new())
+        AppBuilder::new().build()
     }
 
     // uploads code and returns address of cw20 contract
