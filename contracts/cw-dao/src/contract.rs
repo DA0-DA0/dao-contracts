@@ -1,12 +1,12 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
 use crate::query::{
-    ConfigResponse, ProposalListResponse, ProposalResponse, Status, ThresholdResponse, VoteInfo,
-    VoteListResponse, VoteResponse, VoterResponse,
+    AllBalancesResponse, ConfigResponse, ProposalListResponse, ProposalResponse, Status,
+    ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
-    next_id, parse_id, AllBalancesResponse, Ballot, Config, Proposal, ProposalDeposit, Votes,
-    BALLOTS, CONFIG, PROPOSALS, TREASURY_TOKENS,
+    next_id, parse_id, Ballot, Config, Proposal, ProposalDeposit, Votes, BALLOTS, CONFIG,
+    PROPOSALS, TREASURY_TOKENS,
 };
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, BlockInfo, CosmosMsg, Deps, DepsMut, Empty, Env,
@@ -393,6 +393,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
         QueryMsg::AllBalances {} => to_binary(&query_all_balances(deps, env)?),
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
+        QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)?),
     }
 }
 
@@ -470,6 +471,11 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse { config })
+}
+
+fn query_cw20_token_list(deps: Deps) -> StdResult<TokenListResponse> {
+    let token_list = TREASURY_TOKENS.load(deps.storage)?;
+    Ok(TokenListResponse { token_list })
 }
 
 fn query_all_balances(deps: Deps, env: Env) -> StdResult<AllBalancesResponse> {

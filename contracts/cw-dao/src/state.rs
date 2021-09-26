@@ -1,10 +1,10 @@
 use crate::msg::{Threshold, Vote};
 use crate::query::Status;
 use cosmwasm_std::{
-    Addr, BlockInfo, Coin, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
+    Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
 };
 use cw0::{Duration, Expiration};
-use cw20::{Cw20CoinVerified, Cw20Contract};
+use cw20::Cw20Contract;
 use cw_storage_plus::{Item, Map, U64Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -149,13 +149,6 @@ fn votes_needed(weight: Uint128, percentage: Decimal) -> Uint128 {
 pub struct Ballot {
     pub weight: Uint128,
     pub vote: Vote,
-}
-
-// Holds DAO Balances
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct AllBalancesResponse {
-    pub native: Vec<Coin>,
-    pub cw20: Vec<Cw20CoinVerified>,
 }
 
 // unique items

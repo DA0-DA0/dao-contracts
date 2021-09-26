@@ -162,6 +162,8 @@ pub enum QueryMsg {
     AllBalances {},
     /// Returns Config
     GetConfig {},
+    /// Return list of cw20 Tokens associated with the DAO Treasury
+    Cw20TokenList {},
 }
 
 #[cfg(test)]
