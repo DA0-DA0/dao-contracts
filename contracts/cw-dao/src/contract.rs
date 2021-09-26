@@ -5,7 +5,8 @@ use crate::query::{
     VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
-    next_id, parse_id, Ballot, Config, Proposal, ProposalDeposit, Votes, BALLOTS, CONFIG, PROPOSALS,
+    next_id, parse_id, AllBalancesResponse, Ballot, Config, Proposal, ProposalDeposit, Votes,
+    BALLOTS, CONFIG, PROPOSALS, TREASURY_TOKENS,
 };
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, BlockInfo, CosmosMsg, Deps, DepsMut, Empty, Env,
@@ -13,7 +14,9 @@ use cosmwasm_std::{
 };
 use cw0::{maybe_addr, Duration, Expiration};
 use cw2::set_contract_version;
-use cw20::{BalanceResponse, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg};
+use cw20::{
+    BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg,
+};
 use cw20_gov::msg::{BalanceAtHeightResponse, QueryMsg as Cw20GovQueryMsg};
 use cw20_gov::state::TokenInfo;
 use cw_storage_plus::Bound;
@@ -47,6 +50,9 @@ pub fn instantiate(
                 addr: msg.proposal_deposit_token_address.clone(),
             })?,
     );
+
+    // TODO don't use unchecked here
+    TREASURY_TOKENS.save(deps.storage, &vec![Addr::unchecked(msg.cw20_addr)])?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -83,6 +89,7 @@ pub fn execute(
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
+        ExecuteMsg::Receive(msg) => execute_receive(deps, info, msg),
         ExecuteMsg::UpdateConfig {
             threshold,
             max_voting_period,
@@ -98,6 +105,19 @@ pub fn execute(
             proposal_deposit_token_address,
         ),
     }
+}
+
+pub fn execute_receive(
+    deps: DepsMut,
+    info: MessageInfo,
+    _wrapper: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    // Save token address to Tresury token list for receiving balances
+    let mut token_list = TREASURY_TOKENS.load(deps.storage)?;
+    token_list.push(info.sender);
+
+    TREASURY_TOKENS.save(deps.storage, &token_list)?;
+    Ok(Response::default())
 }
 
 pub fn execute_propose(
@@ -371,6 +391,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
+        QueryMsg::AllBalances {} => to_binary(&query_all_balances(deps, env)?),
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
     }
 }
@@ -449,6 +470,38 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse { config })
+}
+
+fn query_all_balances(deps: Deps, env: Env) -> StdResult<AllBalancesResponse> {
+    let native_balances = deps
+        .querier
+        .query_all_balances(env.contract.address.clone())?;
+
+    let cw20_balances: Vec<Cw20CoinVerified> = TREASURY_TOKENS
+        .load(deps.storage)?
+        .into_iter()
+        .map(|cw20_contract_address| {
+            let balance: BalanceResponse = deps
+                .querier
+                .query_wasm_smart(
+                    &cw20_contract_address,
+                    &Cw20QueryMsg::Balance {
+                        address: env.contract.address.to_string(),
+                    },
+                )
+                .unwrap();
+
+            return Cw20CoinVerified {
+                address: cw20_contract_address,
+                amount: balance.balance,
+            };
+        })
+        .collect::<Vec<Cw20CoinVerified>>();
+
+    Ok(AllBalancesResponse {
+        native: native_balances,
+        cw20: cw20_balances,
+    })
 }
 
 fn list_proposals(
@@ -1581,6 +1634,13 @@ mod tests {
                 ("status", "Passed"),
             ],
         );
+
+        // Query all balances
+        let res: AllBalancesResponse = app
+            .wrap()
+            .query_wasm_smart(dao_addr.clone(), &QueryMsg::AllBalances {})
+            .unwrap();
+        println!("{:?}", res);
 
         // Execute works. Anybody can execute Passed proposals
         let res = app

@@ -1,10 +1,10 @@
 use crate::msg::{Threshold, Vote};
 use crate::query::Status;
 use cosmwasm_std::{
-    Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
+    Addr, BlockInfo, Coin, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
 };
 use cw0::{Duration, Expiration};
-use cw20::Cw20Contract;
+use cw20::{Cw20CoinVerified, Cw20Contract};
 use cw_storage_plus::{Item, Map, U64Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -151,9 +151,17 @@ pub struct Ballot {
     pub vote: Vote,
 }
 
+// Holds DAO Balances
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct AllBalancesResponse {
+    pub native: Vec<Coin>,
+    pub cw20: Vec<Cw20CoinVerified>,
+}
+
 // unique items
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
+pub const TREASURY_TOKENS: Item<Vec<Addr>> = Item::new("treasury_tokens");
 
 // multiple-item map
 pub const BALLOTS: Map<(U64Key, &Addr), Ballot> = Map::new("votes");

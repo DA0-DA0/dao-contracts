@@ -1,10 +1,10 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use crate::error::ContractError;
 use crate::query::ThresholdResponse;
 use cosmwasm_std::{CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
+use cw20::Cw20ReceiveMsg;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
@@ -106,6 +106,7 @@ fn valid_percentage(percent: &Decimal) -> Result<(), ContractError> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    /// Makes a new proposal
     Propose {
         title: String,
         description: String,
@@ -113,16 +114,15 @@ pub enum ExecuteMsg {
         // note: we ignore API-spec'd earliest if passed, always opens immediately
         latest: Option<Expiration>,
     },
-    Vote {
-        proposal_id: u64,
-        vote: Vote,
-    },
-    Execute {
-        proposal_id: u64,
-    },
-    Close {
-        proposal_id: u64,
-    },
+    /// Vote on an open proposal
+    Vote { proposal_id: u64, vote: Vote },
+    /// Execute a passed proposal
+    Execute { proposal_id: u64 },
+    /// Close a failed proposal
+    Close { proposal_id: u64 },
+    /// This accepts a properly-encoded ReceiveMsg from a cw20 contract
+    Receive(Cw20ReceiveMsg),
+    /// Update DAO config (can only be called by DAO contract)
     UpdateConfig {
         threshold: Threshold,
         max_voting_period: Duration,
@@ -158,6 +158,8 @@ pub enum QueryMsg {
     },
     /// Returns VoterInfo
     Voter { address: String },
+    /// Returns All DAO Balances
+    AllBalances {},
     /// Returns Config
     GetConfig {},
 }
