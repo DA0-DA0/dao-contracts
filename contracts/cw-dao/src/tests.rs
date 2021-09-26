@@ -6,18 +6,13 @@ mod tests {
     use crate::query::{
         AllBalancesResponse, ConfigResponse, ProposalListResponse, ProposalResponse, Status,
         ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
-        VoterResponse,
     };
-    use crate::state::{
-        next_id, parse_id, Ballot, Config, Proposal, ProposalDeposit, Votes, BALLOTS, CONFIG,
-        PROPOSALS, TREASURY_TOKENS,
-    };
-    use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
+    use crate::state::{Config, ProposalDeposit};
     use cosmwasm_std::{
-        coin, coins, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, Decimal, Empty,
+        coin, coins, to_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Decimal, Empty,
         Timestamp, Uint128, WasmMsg,
     };
-    use cw0::{maybe_addr, Duration, Expiration};
+    use cw0::{Duration, Expiration};
     use cw2::{query_contract_info, ContractVersion};
     use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
     use cw_multi_test::{next_block, App, AppBuilder, Contract, ContractWrapper, Executor};
@@ -1035,13 +1030,6 @@ mod tests {
             ],
         );
 
-        // Query all balances
-        let res: AllBalancesResponse = app
-            .wrap()
-            .query_wasm_smart(dao_addr.clone(), &QueryMsg::AllBalances {})
-            .unwrap();
-        println!("{:?}", res);
-
         // Execute works. Anybody can execute Passed proposals
         let res = app
             .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &execution, &[])
@@ -1058,5 +1046,90 @@ mod tests {
         // Check deposit has been refunded
         let balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
         assert_eq!(balance, initial_owner_cw20_balance);
+    }
+
+    #[test]
+    fn treasury_queries() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(2000000);
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(20),
+        };
+        let (dao_addr, _cw20_addr) = setup_test_case(
+            &mut app,
+            threshold.clone(),
+            voting_period,
+            coins(10, NATIVE_TOKEN_DENOM),
+        );
+
+        // Query All Treasury Balances
+        let all_balances: AllBalancesResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::AllBalances {})
+            .unwrap();
+        assert_eq!(all_balances.native, coins(10, NATIVE_TOKEN_DENOM));
+
+        // Query token list
+        let token_list: TokenListResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::Cw20TokenList {})
+            .unwrap();
+        assert_eq!(token_list.token_list.len(), 1);
+
+        // Make a new token with initial balance
+        let cw20_id = app.store_code(contract_cw20_gov());
+        let msg = cw20_gov::msg::InstantiateMsg {
+            name: String::from("NewCoin"),
+            symbol: String::from("COIN"),
+            decimals: 6,
+            initial_balances: vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            }],
+            mint: None,
+            marketing: None,
+        };
+        let res =
+            app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
+        assert!(res.is_ok());
+        let other_cw20_addr = res.unwrap();
+
+        // Owner account sends tokens to DAO
+        let send_msg = Cw20ExecuteMsg::Send {
+            amount: Uint128::new(2),
+            contract: dao_addr.clone().into_string(),
+            msg: Binary::default(),
+        };
+        let res = app.execute_contract(
+            Addr::unchecked(OWNER),
+            other_cw20_addr.clone(),
+            &send_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // Token list should be 2 now
+        let token_list: TokenListResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::Cw20TokenList {})
+            .unwrap();
+        assert_eq!(token_list.token_list.len(), 2);
+
+        // Owner sends more tokens to DAO
+        let res = app.execute_contract(
+            Addr::unchecked(OWNER),
+            other_cw20_addr.clone(),
+            &send_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // Token list should still be 2
+        let token_list: TokenListResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::Cw20TokenList {})
+            .unwrap();
+        assert_eq!(token_list.token_list.len(), 2);
     }
 }

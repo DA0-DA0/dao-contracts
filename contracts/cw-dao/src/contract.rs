@@ -114,9 +114,18 @@ pub fn execute_receive(
 ) -> Result<Response, ContractError> {
     // Save token address to Tresury token list for receiving balances
     let mut token_list = TREASURY_TOKENS.load(deps.storage)?;
-    token_list.push(info.sender);
 
-    TREASURY_TOKENS.save(deps.storage, &token_list)?;
+    // Check that token isn't already added
+    if token_list
+        .clone()
+        .into_iter()
+        .find(|addr| addr == &info.sender)
+        .is_none()
+    {
+        token_list.push(info.sender);
+        TREASURY_TOKENS.save(deps.storage, &token_list)?;
+    }
+
     Ok(Response::default())
 }
 
