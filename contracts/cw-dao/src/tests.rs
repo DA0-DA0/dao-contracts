@@ -4,7 +4,7 @@ mod tests {
     use crate::error::ContractError;
     use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
     use crate::query::{
-        AllBalancesResponse, ConfigResponse, ProposalListResponse, ProposalResponse, Status,
+        ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
         ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
     };
     use crate::state::{Config, ProposalDeposit};
@@ -14,7 +14,7 @@ mod tests {
     };
     use cw0::{Duration, Expiration};
     use cw2::{query_contract_info, ContractVersion};
-    use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
+    use cw20::{Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg};
     use cw_multi_test::{next_block, App, AppBuilder, Contract, ContractWrapper, Executor};
 
     const OWNER: &str = "admin0001";
@@ -1064,11 +1064,21 @@ mod tests {
         );
 
         // Query All Treasury Balances
-        let all_balances: AllBalancesResponse = app
+        let cw20_token_balances_msg = QueryMsg::Cw20Balances {
+            start_after: None,
+            limit: None,
+        };
+        let all_balances: Cw20BalancesResponse = app
             .wrap()
-            .query_wasm_smart(&dao_addr, &QueryMsg::AllBalances {})
+            .query_wasm_smart(&dao_addr, &cw20_token_balances_msg)
             .unwrap();
-        assert_eq!(all_balances.native, coins(10, NATIVE_TOKEN_DENOM));
+        assert_eq!(
+            all_balances.cw20_balances,
+            vec![Cw20CoinVerified {
+                address: Addr::unchecked("Contract #0"),
+                amount: Uint128::zero(),
+            }]
+        );
 
         // Query token list
         let token_list: TokenListResponse = app

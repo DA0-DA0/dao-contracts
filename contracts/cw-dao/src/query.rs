@@ -1,6 +1,6 @@
 use crate::msg::Vote;
 use crate::state::Config;
-use cosmwasm_std::{Addr, Coin, CosmosMsg, Decimal, Empty, Uint128};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::Expiration;
 use cw20::Cw20CoinVerified;
 use schemars::JsonSchema;
@@ -164,9 +164,8 @@ pub struct ConfigResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct AllBalancesResponse {
-    pub native: Vec<Coin>,
-    pub cw20: Vec<Cw20CoinVerified>,
+pub struct Cw20BalancesResponse {
+    pub cw20_balances: Vec<Cw20CoinVerified>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

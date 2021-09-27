@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
 use crate::query::{
-    AllBalancesResponse, ConfigResponse, ProposalListResponse, ProposalResponse, Status,
+    ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
@@ -400,7 +400,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
-        QueryMsg::AllBalances {} => to_binary(&query_all_balances(deps, env)?),
+        QueryMsg::Cw20Balances { start_after, limit } => {
+            to_binary(&query_cw20_balances(deps, env, start_after, limit)?)
+        }
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)?),
     }
@@ -487,19 +489,23 @@ fn query_cw20_token_list(deps: Deps) -> StdResult<TokenListResponse> {
     Ok(TokenListResponse { token_list })
 }
 
-fn query_all_balances(deps: Deps, env: Env) -> StdResult<AllBalancesResponse> {
-    let native_balances = deps
-        .querier
-        .query_all_balances(env.contract.address.clone())?;
-
-    let cw20_balances: Vec<Cw20CoinVerified> = TREASURY_TOKENS
-        .load(deps.storage)?
-        .into_iter()
+fn query_cw20_balances(
+    deps: Deps,
+    env: Env,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<Cw20BalancesResponse> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let start = start_after.unwrap_or(0) as usize;
+    let token_list = TREASURY_TOKENS.load(deps.storage)?;
+    let cw20_balances = token_list[start..token_list.len()]
+        .iter()
+        .take(limit)
         .map(|cw20_contract_address| {
             let balance: BalanceResponse = deps
                 .querier
                 .query_wasm_smart(
-                    &cw20_contract_address,
+                    &cw20_contract_address.clone(),
                     &Cw20QueryMsg::Balance {
                         address: env.contract.address.to_string(),
                     },
@@ -507,15 +513,14 @@ fn query_all_balances(deps: Deps, env: Env) -> StdResult<AllBalancesResponse> {
                 .unwrap();
 
             return Cw20CoinVerified {
-                address: cw20_contract_address,
+                address: cw20_contract_address.clone(),
                 amount: balance.balance,
             };
         })
-        .collect::<Vec<Cw20CoinVerified>>();
+        .collect();
 
-    Ok(AllBalancesResponse {
-        native: native_balances,
-        cw20: cw20_balances,
+    Ok(Cw20BalancesResponse {
+        cw20_balances: cw20_balances,
     })
 }
 

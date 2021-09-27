@@ -158,10 +158,13 @@ pub enum QueryMsg {
     },
     /// Returns VoterInfo
     Voter { address: String },
-    /// Returns All DAO Balances
-    AllBalances {},
     /// Returns Config
     GetConfig {},
+    /// Returns All DAO Cw20 Balances
+    Cw20Balances {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
     /// Return list of cw20 Tokens associated with the DAO Treasury
     Cw20TokenList {},
 }
