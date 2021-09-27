@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::query::ThresholdResponse;
-use cosmwasm_std::{CosmosMsg, Decimal, Empty, Uint128};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
@@ -128,6 +128,11 @@ pub enum ExecuteMsg {
         max_voting_period: Duration,
         proposal_deposit_amount: Uint128,
         proposal_deposit_token_address: String,
+    },
+    /// Updates token list
+    UpdateCw20TokenList {
+        to_add: Vec<Addr>,
+        to_remove: Vec<Addr>,
     },
 }
 

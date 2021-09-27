@@ -1141,5 +1141,56 @@ mod tests {
             .query_wasm_smart(&dao_addr, &QueryMsg::Cw20TokenList {})
             .unwrap();
         assert_eq!(token_list.token_list.len(), 2);
+
+        // Contact #2 token has been added
+        assert!(token_list
+            .token_list
+            .contains(&Addr::unchecked("Contract #2")));
+
+        // Manually add token to list by voting
+        let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
+            to_add: vec![Addr::unchecked("NEW"), Addr::unchecked("NEWNEW")],
+            to_remove: vec![other_cw20_addr],
+        };
+        let wasm_msg = WasmMsg::Execute {
+            contract_addr: dao_addr.clone().into(),
+            msg: to_binary(&update_token_list_msg).unwrap(),
+            funds: vec![],
+        };
+        let proposal_msg = ExecuteMsg::Propose {
+            title: String::from("Change params"),
+            description: String::from("Updates threshold and max voting params"),
+            msgs: vec![wasm_msg.into()],
+            latest: None,
+        };
+        let res = app
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
+            .unwrap();
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        // Imediately passes on yes vote
+        let yes_vote = ExecuteMsg::Vote {
+            proposal_id,
+            vote: Vote::Yes,
+        };
+        let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
+        assert!(res.is_ok());
+
+        // Execute
+        let execution = ExecuteMsg::Execute { proposal_id };
+        let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[]);
+        assert!(res.is_ok());
+
+        // Token list should be 3 now
+        let token_list: TokenListResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::Cw20TokenList {})
+            .unwrap();
+        assert_eq!(token_list.token_list.len(), 3);
+
+        // Contact #2 token has been removed
+        assert!(!token_list
+            .token_list
+            .contains(&Addr::unchecked("Contract #2")));
     }
 }

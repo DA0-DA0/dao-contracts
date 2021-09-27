@@ -104,6 +104,9 @@ pub fn execute(
             proposal_deposit_amount,
             proposal_deposit_token_address,
         ),
+        ExecuteMsg::UpdateCw20TokenList { to_add, to_remove } => {
+            execute_update_cw20_token_list(deps, env, info, to_add, to_remove)
+        }
     }
 }
 
@@ -114,7 +117,6 @@ pub fn execute_receive(
 ) -> Result<Response, ContractError> {
     // Save token address to Tresury token list for receiving balances
     let mut token_list = TREASURY_TOKENS.load(deps.storage)?;
-
     // Check that token isn't already added
     if token_list
         .clone()
@@ -379,6 +381,29 @@ pub fn execute_update_config(
     Ok(Response::new()
         .add_attribute("action", "update_config")
         .add_attribute("sender", info.sender))
+}
+
+pub fn execute_update_cw20_token_list(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    mut to_add: Vec<Addr>,
+    to_remove: Vec<Addr>,
+) -> Result<Response<Empty>, ContractError> {
+    // Only contract can call this method
+    if env.contract.address != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    TREASURY_TOKENS.update(deps.storage, |mut list| -> StdResult<_> {
+        if to_add.len() > 0 {
+            list.append(&mut to_add);
+        }
+        if to_remove.len() > 0 {
+            list.retain(|x: &Addr| -> bool { !to_remove.contains(&x) });
+        }
+        Ok(list)
+    })?;
+    Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
