@@ -8,16 +8,15 @@ use cw0::{Duration, Expiration};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
-    /// TODO other voting options
-    /// Meant to cap whales from having too much power
-    /// pub max_vote_size: Option<Uint128>,
-    /// Lockup period
-    /// pub lockup_period: Duration,
-    // this is the cw20 contract is a valid social token for governance
+    /// cw20 contract address valid social token for governance
     pub cw20_addr: String,
+    /// Voting params configuration
     pub threshold: Threshold,
+    /// TODO ???
     pub max_voting_period: Duration,
+    /// Deposit required to make a proposal
     pub proposal_deposit_amount: Uint128,
+    /// The token address used to pay deposit proposal
     pub proposal_deposit_token_address: String,
 }
 

@@ -51,7 +51,22 @@ RUSTFLAGS='-C link-arg=-s' cargo wasm
 cp ../../target/wasm32-unknown-unknown/release/cw_dao.wasm .
 ls -l cw_dao.wasm
 sha256sum cw_dao.wasm
+
+cp ../../target/wasm32-unknown-unknown/release/cw20_gov.wasm .
+ls -l cw20_gov.wasm
+sha256sum cw20_gov.wasm
 ```
 
 Or for a production-ready (optimized) build, run a build command in
 the repository root: https://github.com/CosmWasm/cosmwasm-plus#compiling.
+
+## Deploying this contract
+
+An example deployment script is demonstrated in `script/deploy.sh`. Be sure to update script variables with your chain details.
+
+```sh
+cd scripts
+bash deploy.sh <your-address>
+```
+
+At a high level it involves: uploading the contract code to the blockchain (which only needs to be done once) and instantiating the contract. See script for further details.
