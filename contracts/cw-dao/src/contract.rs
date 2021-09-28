@@ -118,11 +118,10 @@ pub fn execute_receive(
     // Save token address to Tresury token list for receiving balances
     let mut token_list = TREASURY_TOKENS.load(deps.storage)?;
     // Check that token isn't already added
-    if token_list
+    if !token_list
         .clone()
         .into_iter()
-        .find(|addr| addr == &info.sender)
-        .is_none()
+        .any(|addr| addr == info.sender)
     {
         token_list.push(info.sender);
         TREASURY_TOKENS.save(deps.storage, &token_list)?;
@@ -395,11 +394,11 @@ pub fn execute_update_cw20_token_list(
         return Err(ContractError::Unauthorized {});
     }
     TREASURY_TOKENS.update(deps.storage, |mut list| -> StdResult<_> {
-        if to_add.len() > 0 {
+        if !to_add.is_empty() {
             list.append(&mut to_add);
         }
-        if to_remove.len() > 0 {
-            list.retain(|x: &Addr| -> bool { !to_remove.contains(&x) });
+        if !to_remove.is_empty() {
+            list.retain(|x: &Addr| -> bool { !to_remove.contains(x) });
         }
         Ok(list)
     })?;
@@ -537,16 +536,14 @@ fn query_cw20_balances(
                 )
                 .unwrap();
 
-            return Cw20CoinVerified {
+            Cw20CoinVerified {
                 address: cw20_contract_address.clone(),
                 amount: balance.balance,
-            };
+            }
         })
         .collect();
 
-    Ok(Cw20BalancesResponse {
-        cw20_balances: cw20_balances,
-    })
+    Ok(Cw20BalancesResponse { cw20_balances })
 }
 
 fn list_proposals(
