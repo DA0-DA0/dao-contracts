@@ -648,6 +648,7 @@ mod tests {
         cw20: Addr,
         threshold: Threshold,
         max_voting_period: Duration,
+        whale_limit: Option<Uint128>
     ) -> Addr {
         let flex_id = app.store_code(contract_dao());
         let msg = crate::msg::InstantiateMsg {
@@ -656,7 +657,7 @@ mod tests {
             max_voting_period,
             proposal_deposit_amount: Uint128::zero(),
             proposal_deposit_token_address: cw20.to_string(),
-            whale_limit: None
+            whale_limit: whale_limit
         };
         app.instantiate_contract(flex_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
             .unwrap()
@@ -667,13 +668,14 @@ mod tests {
         threshold: Threshold,
         max_voting_period: Duration,
         init_funds: Vec<Coin>,
+        whale_limit: Option<Uint128>
     ) -> (Addr, Addr) {
         // 1. Instantiate Social Token Contract
         let cw20_addr = instantiate_cw20(app);
         app.update_block(next_block);
 
         // 2. Set up Multisig backed by this group
-        let dao_addr = instantiate_dao(app, cw20_addr.clone(), threshold, max_voting_period);
+        let dao_addr = instantiate_dao(app, cw20_addr.clone(), threshold, max_voting_period, whale_limit);
         app.update_block(next_block);
 
         // Bonus: set some funds on the multisig contract for future proposals
@@ -788,6 +790,7 @@ mod tests {
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
+            None
         );
 
         let proposal = pay_somebody_proposal();
@@ -885,6 +888,7 @@ mod tests {
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
+            None
         );
 
         // create proposal with 1 vote power
@@ -991,6 +995,7 @@ mod tests {
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
+            None,
         );
 
         // create proposal with 0 vote power
@@ -1158,6 +1163,7 @@ mod tests {
             threshold,
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
+            None,
         );
 
         // ensure we have cash to cover the proposal
@@ -1257,6 +1263,7 @@ mod tests {
             threshold,
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
+            None,
         );
 
         // create proposal with 0 vote power
@@ -1313,6 +1320,7 @@ mod tests {
             },
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
+            None
         );
 
         // create proposal
@@ -1378,6 +1386,7 @@ mod tests {
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
+            None
         );
 
         // nobody can call call update contract method
@@ -1478,6 +1487,7 @@ mod tests {
             threshold.clone(),
             voting_period.clone(),
             coins(100, NATIVE_TOKEN_DENOM),
+            None,
         );
 
         let config_query = QueryMsg::GetConfig {};
@@ -1516,6 +1526,7 @@ mod tests {
             threshold.clone(),
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
+            None,
         );
 
         let cw20 = Cw20Contract(cw20_addr.clone());
