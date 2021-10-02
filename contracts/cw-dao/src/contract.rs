@@ -208,7 +208,7 @@ pub fn execute_vote(
 
     // Get voter balance at proposal start
     let vote_power = get_balance_at_height(deps.as_ref(), info.sender.clone(), prop.start_height)?;
-
+    println!("Voter Balance {}", vote_power);
     if vote_power == Uint128::zero() {
         return Err(ContractError::Unauthorized {});
     }
@@ -216,7 +216,8 @@ pub fn execute_vote(
     let config = CONFIG.load(deps.storage)?;
     let whale_cap_configured = config.whale_cap.unwrap_or(Uint128::MAX);
     let whale_capped_vote_power = cmp::min(vote_power, whale_cap_configured);
-
+    println!("Whale Capped Vote Power {}", whale_capped_vote_power);
+    
     BALLOTS.update(
         deps.storage,
         (proposal_id.into(), &info.sender),
@@ -224,13 +225,13 @@ pub fn execute_vote(
             Some(_) => Err(ContractError::AlreadyVoted {}),
             None => Ok(Ballot {
                 weight: whale_capped_vote_power,
-                vote,
+                vote: vote,
             }),
         },
     )?;
 
     // update vote tally
-    prop.votes.add_vote(vote, vote_power);
+    prop.votes.add_vote(vote, whale_capped_vote_power);
     prop.update_status(&env.block);
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
@@ -853,6 +854,23 @@ mod tests {
             .sum()
     }
 
+    fn get_tally_by_vote(app: &App, dao_addr: &str, proposal_id: u64, vote: Vote) -> Uint128 {
+        // Get all the voters on the proposal
+        let voters = QueryMsg::ListVotes {
+            proposal_id,
+            start_after: None,
+            limit: None,
+        };
+        let votes: VoteListResponse = app.wrap().query_wasm_smart(dao_addr, &voters).unwrap();
+        // Sum the weights of the Yes votes to get the tally
+        votes
+            .votes
+            .iter()
+            .filter(|&v| v.vote == vote)
+            .map(|v| v.weight)
+            .sum()
+    }
+
     fn expire(voting_period: Duration) -> impl Fn(&mut BlockInfo) {
         move |block: &mut BlockInfo| {
             match voting_period {
@@ -1147,6 +1165,100 @@ mod tests {
             .query_wasm_smart(&dao_addr, &QueryMsg::Vote { proposal_id, voter })
             .unwrap();
         assert!(vote.vote.is_none());
+    }
+
+
+    #[test]
+    fn test_whale_vote_limiting() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(2000000);
+        let contract_whale_limit = Uint128::new(1);
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
+        };
+        let (dao_addr, _cw20_addr) = setup_test_case(
+            &mut app,
+            threshold,
+            voting_period,
+            coins(10, NATIVE_TOKEN_DENOM),
+            Some(contract_whale_limit)
+        );
+
+        // create proposal with 0 vote power
+        let proposal = pay_somebody_proposal();
+        let res = app
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
+            .unwrap();
+
+        // Get the proposal id from the logs
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        // Owner votes
+        let yes_vote = ExecuteMsg::Vote {
+            proposal_id,
+            vote: Vote::Yes,
+        };
+        // Owner votes
+        let no_vote = ExecuteMsg::Vote {
+            proposal_id,
+            vote: Vote::No,
+        };
+
+        // voter has 1x tokens
+        let _ = app.execute_contract(
+            Addr::unchecked(OWNER), 
+            dao_addr.clone(), 
+            &no_vote, 
+            &[]).unwrap();
+        // voter has 1x tokens
+        println!("Tally 1: {}", get_tally(&app, dao_addr.as_ref(), proposal_id));
+        println!("Tally By No: {}", get_tally_by_vote(&app, dao_addr.as_ref(), proposal_id, Vote::No));
+        let _ = app.execute_contract(
+            Addr::unchecked(VOTER1),
+            dao_addr.clone(),
+            &no_vote,
+            &[]).unwrap();
+        // voter has 1x tokens
+        println!("Tally 2: {}", get_tally(&app, dao_addr.as_ref(), proposal_id));
+        println!("Tally By No: {}", get_tally_by_vote(&app, dao_addr.as_ref(), proposal_id, Vote::No));
+        let _ = app.execute_contract(
+            Addr::unchecked(VOTER2),
+            dao_addr.clone(),
+            &no_vote,
+            &[]).unwrap();
+        // voter has 2x tokens
+        println!("Tally 3: {}", get_tally(&app, dao_addr.as_ref(), proposal_id));
+        println!("Tally By No: {}", get_tally_by_vote(&app, dao_addr.as_ref(), proposal_id, Vote::No));
+        let _ = app.execute_contract(
+            Addr::unchecked(VOTER3),
+            dao_addr.clone(),
+            &no_vote,
+            &[]).unwrap();
+        
+        println!("Tally 4: {}", get_tally(&app, dao_addr.as_ref(), proposal_id));
+        println!("Tally By No: {}", get_tally_by_vote(&app, dao_addr.as_ref(), proposal_id, Vote::No));
+        // Power voter supports it (has 5x tokens), however he is capped at 1 vote power
+        let res = app.execute_contract(
+            Addr::unchecked(POWER_VOTER),
+            dao_addr.clone(),
+            &yes_vote,
+            &[],
+        ).unwrap();
+
+        println!("Tally 5: {}", get_tally(&app, dao_addr.as_ref(), proposal_id));
+        println!("Tally By No: {}", get_tally_by_vote(&app, dao_addr.as_ref(), proposal_id, Vote::No));
+
+        assert_eq!(
+            res.custom_attrs(1),
+            [
+                ("action", "vote"),
+                ("sender", POWER_VOTER),
+                ("proposal_id", proposal_id.to_string().as_str()),
+                ("status", "Failed"),
+            ],
+        );
     }
 
     #[test]
