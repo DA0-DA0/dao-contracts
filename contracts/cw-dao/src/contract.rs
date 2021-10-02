@@ -143,7 +143,6 @@ pub fn execute_propose(
         expires,
         msgs,
         status: Status::Open,
-        // votes: Votes::new(vote_power),
         votes: Votes {
             yes: Uint128::zero(),
             no: Uint128::zero(),
@@ -1174,10 +1173,15 @@ mod tests {
 
         let voting_period = Duration::Time(2000000);
         let contract_whale_limit = Uint128::new(1);
-        let threshold = Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(51),
-            quorum: Decimal::percent(10),
+        // let threshold = Threshold::ThresholdQuorum {
+        //     threshold: Decimal::percent(51),
+        //     quorum: Decimal::percent(10),
+        // };
+
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(51)
         };
+
         let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             threshold,

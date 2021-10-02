@@ -114,10 +114,20 @@ impl Proposal {
             Threshold::AbsolutePercentage {
                 percentage: percentage_needed,
             } => {
+
+                println!("Total Weight: {}", self.total_weight);
+                println!("Votes Yes: {}", self.votes.yes);
+                println!("Votes No: {}", self.votes.no);
+                println!("Votes Needed: {}", votes_needed(self.total_weight - self.votes.abstain, percentage_needed));
+
                 self.votes.yes
                     >= votes_needed(self.total_weight - self.votes.abstain, percentage_needed)
             }
             Threshold::ThresholdQuorum { threshold, quorum } => {
+                println!("Total Weight: {}", self.total_weight);
+                println!("Votes Yes: {}", self.votes.yes);
+                println!("Votes No: {}", self.votes.no);
+                println!("Votes Needed: {}", votes_needed(self.total_weight, quorum));
                 // we always require the quorum
                 if self.votes.total() < votes_needed(self.total_weight, quorum) {
                     return false;
@@ -142,7 +152,8 @@ impl Proposal {
 fn votes_needed(weight: Uint128, percentage: Decimal) -> Uint128 {
     let applied = percentage * Uint128::from(PRECISION_FACTOR * weight.u128());
     // Divide by PRECISION_FACTOR, rounding up to the nearest integer
-    Uint128::from((applied.u128() + PRECISION_FACTOR - 1) / PRECISION_FACTOR)
+    let votes_need =  Uint128::from((applied.u128() + PRECISION_FACTOR - 1) / PRECISION_FACTOR);
+    votes_need
 }
 
 // we cast a ballot with our chosen vote and a given weight
