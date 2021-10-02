@@ -656,6 +656,7 @@ mod tests {
             max_voting_period,
             proposal_deposit_amount: Uint128::zero(),
             proposal_deposit_token_address: cw20.to_string(),
+            whale_limit: None
         };
         app.instantiate_contract(flex_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
             .unwrap()
@@ -722,6 +723,7 @@ mod tests {
             max_voting_period,
             proposal_deposit_amount: Uint128::zero(),
             proposal_deposit_token_address: cw20_addr.to_string(),
+            whale_limit: None
         };
         let err = app
             .instantiate_contract(
@@ -748,6 +750,7 @@ mod tests {
             max_voting_period,
             proposal_deposit_amount: Uint128::zero(),
             proposal_deposit_token_address: cw20_addr.to_string(),
+            whale_limit: None,
         };
         let dao_addr = app
             .instantiate_contract(
@@ -1454,7 +1457,8 @@ mod tests {
                     proposal_deposit: ProposalDeposit {
                         amount: new_proposal_deposit_amount,
                         token_address: Cw20Contract(Addr::unchecked(new_deposit_token_address)),
-                    }
+                    },
+                    whale_cap: None
                 },
             }
         )
@@ -1492,7 +1496,8 @@ mod tests {
                     proposal_deposit: ProposalDeposit {
                         amount: Uint128::zero(),
                         token_address: Cw20Contract(cw20_addr),
-                    }
+                    },
+                    whale_cap: None
                 },
             }
         )
