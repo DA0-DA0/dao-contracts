@@ -21,6 +21,8 @@ pub struct Config {
     // Total weight and voters are queried from this contract
     pub cw20_addr: Cw20Contract,
     pub proposal_deposit: ProposalDeposit,
+    // Adds a whale cap to prevent one user from dominating the pools voting ground
+    pub whale_cap: Option<Uint128>
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

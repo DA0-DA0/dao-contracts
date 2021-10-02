@@ -18,6 +18,8 @@ use cw20_gov::msg::{BalanceAtHeightResponse, QueryMsg as Cw20GovQueryMsg};
 use cw20_gov::state::TokenInfo;
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
+use std::cmp;
+
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg_dao";
@@ -60,6 +62,7 @@ pub fn instantiate(
             amount: msg.proposal_deposit_amount,
             token_address: proposal_deposit_cw20_addr,
         },
+        whale_cap: msg.whale_limit
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -210,14 +213,17 @@ pub fn execute_vote(
         return Err(ContractError::Unauthorized {});
     }
 
-    // cast vote if no vote previously cast
+    let config = CONFIG.load(deps.storage)?;
+    let whale_cap_configured = config.whale_cap.unwrap_or(Uint128::MAX);
+    let whale_capped_vote_power = cmp::min(vote_power, whale_cap_configured);
+
     BALLOTS.update(
         deps.storage,
         (proposal_id.into(), &info.sender),
         |bal| match bal {
             Some(_) => Err(ContractError::AlreadyVoted {}),
             None => Ok(Ballot {
-                weight: vote_power,
+                weight: whale_capped_vote_power,
                 vote,
             }),
         },
