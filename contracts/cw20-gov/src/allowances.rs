@@ -1,13 +1,10 @@
-use cosmwasm_std::{
-    attr, Addr, Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-    Storage, Uint128,
-};
-use cw20::{AllowanceResponse, Cw20ReceiveMsg, Expiration};
-use cw20_base::allowances::{deduct_allowance};
-use cw20_base::state::{ALLOWANCES, TOKEN_INFO};
+use cosmwasm_std::{attr, Binary, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use cw20::Cw20ReceiveMsg;
+use cw20_base::allowances::deduct_allowance;
+use cw20_base::state::TOKEN_INFO;
 use cw20_base::ContractError;
 
-use crate::state::{BALANCES};
+use crate::state::BALANCES;
 
 pub fn execute_transfer_from(
     deps: DepsMut,
@@ -138,17 +135,18 @@ pub fn execute_send_from(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, CosmosMsg, SubMsg, Timestamp, WasmMsg};
-    use cw20::{Cw20Coin, TokenInfoResponse};
-    use cw20_base::allowances::{query_allowance};
-    use cw20_base::contract::{query_token_info};
-    use cw20_base::msg::{InstantiateMsg};
+    use cosmwasm_std::{CosmosMsg, Deps, StdError, SubMsg, WasmMsg};
+    use cw20::{AllowanceResponse, Cw20Coin, Expiration, TokenInfoResponse};
+    use cw20_base::allowances::query_allowance;
+    use cw20_base::contract::query_token_info;
+    use cw20_base::msg::InstantiateMsg;
+    use cw20_base::ContractError;
 
     use crate::contract::{execute, instantiate, query_balance};
-    use crate::msg::{ExecuteMsg};
+    use crate::msg::ExecuteMsg;
+
+    use super::*;
 
     fn get_balance<T: Into<String>>(deps: Deps, address: T) -> Uint128 {
         query_balance(deps, address.into()).unwrap().balance

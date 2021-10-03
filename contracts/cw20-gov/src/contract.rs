@@ -3,25 +3,24 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
 };
-
 use cw2::set_contract_version;
 use cw20::{
-    BalanceResponse, Cw20Coin, Cw20ReceiveMsg, DownloadLogoResponse, EmbeddedLogo, Logo, LogoInfo,
-    MarketingInfoResponse, MinterResponse, TokenInfoResponse,
+    BalanceResponse, Cw20Coin, Cw20ReceiveMsg, EmbeddedLogo, Logo, LogoInfo, MarketingInfoResponse,
 };
-
-use cw20_base::contract::{query_download_logo, query_marketing_info, query_token_info, query_minter, execute_upload_logo, execute_update_marketing};
-use cw20_base::ContractError;
-use cw20_base::allowances::{execute_increase_allowance, execute_decrease_allowance,query_allowance};
-use cw20_base::state::{MinterData, TokenInfo, LOGO, TOKEN_INFO, MARKETING_INFO};
+use cw20_base::allowances::{
+    execute_decrease_allowance, execute_increase_allowance, query_allowance,
+};
+use cw20_base::contract::{
+    execute_update_marketing, execute_upload_logo, query_download_logo, query_marketing_info,
+    query_minter, query_token_info,
+};
 use cw20_base::enumerable::query_all_allowances;
 use cw20_base::msg::InstantiateMsg;
+use cw20_base::state::{MinterData, TokenInfo, LOGO, MARKETING_INFO, TOKEN_INFO};
+use cw20_base::ContractError;
 
-use crate::allowances::{
-    execute_burn_from, execute_send_from,
-    execute_transfer_from
-};
-use crate::enumerable::{query_all_accounts};
+use crate::allowances::{execute_burn_from, execute_send_from, execute_transfer_from};
+use crate::enumerable::query_all_accounts;
 use crate::msg::{BalanceAtHeightResponse, ExecuteMsg, QueryMsg};
 use crate::state::BALANCES;
 
@@ -420,9 +419,10 @@ pub fn query_balance_at_height(
 mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, Addr, CosmosMsg, StdError, SubMsg, WasmMsg};
+    use cw20::{DownloadLogoResponse, MinterResponse, TokenInfoResponse};
+    use cw20_base::msg::InstantiateMarketingInfo;
 
     use super::*;
-    use cw20_base::msg::InstantiateMarketingInfo;
 
     fn get_balance<T: Into<String>>(deps: Deps, address: T) -> Uint128 {
         query_balance(deps, address.into()).unwrap().balance

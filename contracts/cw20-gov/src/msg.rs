@@ -1,9 +1,7 @@
-use cosmwasm_std::{StdError, StdResult, Uint128};
-use cw20::{Cw20Coin, Logo, MinterResponse};
+use cosmwasm_std::Uint128;
+pub use cw20::Cw20ExecuteMsg as ExecuteMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-pub use cw20::Cw20ExecuteMsg as ExecuteMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
