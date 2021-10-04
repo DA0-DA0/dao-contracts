@@ -11,20 +11,36 @@
   ],
   "properties": {
     "cw20_addr": {
-      "description": "TODO other voting options Meant to cap whales from having too much power pub max_vote_size: Option<Uint128>, Lockup period pub lockup_period: Duration,",
+      "description": "cw20 contract address valid social token for governance",
       "type": "string"
     },
     "max_voting_period": {
-      "$ref": "#/definitions/Duration"
+      "description": "TODO ???",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Duration"
+        }
+      ]
     },
     "proposal_deposit_amount": {
-      "$ref": "#/definitions/Uint128"
+      "description": "Deposit required to make a proposal",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     },
     "proposal_deposit_token_address": {
+      "description": "The token address used to pay deposit proposal",
       "type": "string"
     },
     "threshold": {
-      "$ref": "#/definitions/Threshold"
+      "description": "Voting params configuration",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Threshold"
+        }
+      ]
     }
   },
   "definitions": {

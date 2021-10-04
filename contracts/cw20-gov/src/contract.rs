@@ -3,21 +3,26 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
 };
-
 use cw2::set_contract_version;
 use cw20::{
-    BalanceResponse, Cw20Coin, Cw20ReceiveMsg, DownloadLogoResponse, EmbeddedLogo, Logo, LogoInfo,
-    MarketingInfoResponse, MinterResponse, TokenInfoResponse,
+    BalanceResponse, Cw20Coin, Cw20ReceiveMsg, EmbeddedLogo, Logo, LogoInfo, MarketingInfoResponse,
 };
+use cw20_base::allowances::{
+    execute_decrease_allowance, execute_increase_allowance, query_allowance,
+};
+use cw20_base::contract::{
+    execute_update_marketing, execute_upload_logo, query_download_logo, query_marketing_info,
+    query_minter, query_token_info,
+};
+use cw20_base::enumerable::query_all_allowances;
+use cw20_base::msg::InstantiateMsg;
+use cw20_base::state::{MinterData, TokenInfo, LOGO, MARKETING_INFO, TOKEN_INFO};
+use cw20_base::ContractError;
 
-use crate::allowances::{
-    execute_burn_from, execute_decrease_allowance, execute_increase_allowance, execute_send_from,
-    execute_transfer_from, query_allowance,
-};
-use crate::enumerable::{query_all_accounts, query_all_allowances};
-use crate::error::ContractError;
-use crate::msg::{BalanceAtHeightResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{MinterData, TokenInfo, BALANCES, LOGO, MARKETING_INFO, TOKEN_INFO};
+use crate::allowances::{execute_burn_from, execute_send_from, execute_transfer_from};
+use crate::enumerable::query_all_accounts;
+use crate::msg::{BalanceAtHeightResponse, ExecuteMsg, QueryMsg};
+use crate::state::BALANCES;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-base";
@@ -365,94 +370,6 @@ pub fn execute_send(
     Ok(res)
 }
 
-pub fn execute_update_marketing(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    project: Option<String>,
-    description: Option<String>,
-    marketing: Option<String>,
-) -> Result<Response, ContractError> {
-    let mut marketing_info = MARKETING_INFO
-        .may_load(deps.storage)?
-        .ok_or(ContractError::Unauthorized {})?;
-
-    if marketing_info
-        .marketing
-        .as_ref()
-        .ok_or(ContractError::Unauthorized {})?
-        != &info.sender
-    {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    match project {
-        Some(empty) if empty.trim().is_empty() => marketing_info.project = None,
-        Some(project) => marketing_info.project = Some(project),
-        None => (),
-    }
-
-    match description {
-        Some(empty) if empty.trim().is_empty() => marketing_info.description = None,
-        Some(description) => marketing_info.description = Some(description),
-        None => (),
-    }
-
-    match marketing {
-        Some(empty) if empty.trim().is_empty() => marketing_info.marketing = None,
-        Some(marketing) => marketing_info.marketing = Some(deps.api.addr_validate(&marketing)?),
-        None => (),
-    }
-
-    if marketing_info.project.is_none()
-        && marketing_info.description.is_none()
-        && marketing_info.marketing.is_none()
-        && marketing_info.logo.is_none()
-    {
-        MARKETING_INFO.remove(deps.storage);
-    } else {
-        MARKETING_INFO.save(deps.storage, &marketing_info)?;
-    }
-
-    let res = Response::new().add_attribute("action", "update_marketing");
-    Ok(res)
-}
-
-pub fn execute_upload_logo(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    logo: Logo,
-) -> Result<Response, ContractError> {
-    let mut marketing_info = MARKETING_INFO
-        .may_load(deps.storage)?
-        .ok_or(ContractError::Unauthorized {})?;
-
-    verify_logo(&logo)?;
-
-    if marketing_info
-        .marketing
-        .as_ref()
-        .ok_or(ContractError::Unauthorized {})?
-        != &info.sender
-    {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    LOGO.save(deps.storage, &logo)?;
-
-    let logo_info = match logo {
-        Logo::Url(url) => LogoInfo::Url(url),
-        Logo::Embedded(_) => LogoInfo::Embedded,
-    };
-
-    marketing_info.logo = Some(logo_info);
-    MARKETING_INFO.save(deps.storage, &marketing_info)?;
-
-    let res = Response::new().add_attribute("action", "upload_logo");
-    Ok(res)
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -498,55 +415,14 @@ pub fn query_balance_at_height(
     Ok(BalanceAtHeightResponse { balance, height })
 }
 
-pub fn query_token_info(deps: Deps) -> StdResult<TokenInfoResponse> {
-    let info = TOKEN_INFO.load(deps.storage)?;
-    let res = TokenInfoResponse {
-        name: info.name,
-        symbol: info.symbol,
-        decimals: info.decimals,
-        total_supply: info.total_supply,
-    };
-    Ok(res)
-}
-
-pub fn query_minter(deps: Deps) -> StdResult<Option<MinterResponse>> {
-    let meta = TOKEN_INFO.load(deps.storage)?;
-    let minter = match meta.mint {
-        Some(m) => Some(MinterResponse {
-            minter: m.minter.into(),
-            cap: m.cap,
-        }),
-        None => None,
-    };
-    Ok(minter)
-}
-
-pub fn query_marketing_info(deps: Deps) -> StdResult<MarketingInfoResponse> {
-    Ok(MARKETING_INFO.may_load(deps.storage)?.unwrap_or_default())
-}
-
-pub fn query_download_logo(deps: Deps) -> StdResult<DownloadLogoResponse> {
-    let logo = LOGO.load(deps.storage)?;
-    match logo {
-        Logo::Embedded(EmbeddedLogo::Svg(logo)) => Ok(DownloadLogoResponse {
-            mime_type: "image/svg+xml".to_owned(),
-            data: logo,
-        }),
-        Logo::Embedded(EmbeddedLogo::Png(logo)) => Ok(DownloadLogoResponse {
-            mime_type: "image/png".to_owned(),
-            data: logo,
-        }),
-        Logo::Url(_) => Err(StdError::not_found("logo")),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary, Addr, CosmosMsg, StdError, SubMsg, WasmMsg};
+    use cw20::{DownloadLogoResponse, MinterResponse, TokenInfoResponse};
+    use cw20_base::msg::InstantiateMarketingInfo;
 
     use super::*;
-    use crate::msg::InstantiateMarketingInfo;
 
     fn get_balance<T: Into<String>>(deps: Deps, address: T) -> Uint128 {
         query_balance(deps, address.into()).unwrap().balance

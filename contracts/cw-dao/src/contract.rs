@@ -14,8 +14,8 @@ use cosmwasm_std::{
 use cw0::{maybe_addr, Duration, Expiration};
 use cw2::set_contract_version;
 use cw20::{BalanceResponse, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg};
+use cw20_base::state::TokenInfo;
 use cw20_gov::msg::{BalanceAtHeightResponse, QueryMsg as Cw20GovQueryMsg};
-use cw20_gov::state::TokenInfo;
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 
@@ -604,7 +604,7 @@ mod tests {
     // uploads code and returns address of cw20 contract
     fn instantiate_cw20(app: &mut App) -> Addr {
         let cw20_id = app.store_code(contract_cw20_gov());
-        let msg = cw20_gov::msg::InstantiateMsg {
+        let msg = cw20_base::msg::InstantiateMsg {
             name: String::from("Test"),
             symbol: String::from("TEST"),
             decimals: 6,
