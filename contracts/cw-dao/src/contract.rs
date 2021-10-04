@@ -294,7 +294,6 @@ pub fn execute_close(
 ) -> Result<Response<Empty>, ContractError> {
     // anyone can trigger this if the vote passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
-
     if [Status::Executed, Status::Rejected, Status::Passed]
         .iter()
         .any(|x| *x == prop.status)
