@@ -18,6 +18,7 @@ pub struct InstantiateMsg {
     pub proposal_deposit_amount: Uint128,
     /// The token address used to pay deposit proposal
     pub proposal_deposit_token_address: String,
+    pub refund_failed_proposals: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
