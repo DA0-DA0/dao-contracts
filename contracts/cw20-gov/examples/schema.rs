@@ -8,7 +8,7 @@ use cw20::{
 };
 use cw20_base::msg::InstantiateMsg;
 
-use cw20_gov::msg::{VotingPowerAtHeightResponse, ExecuteMsg, QueryMsg};
+use cw20_gov::msg::{ExecuteMsg, QueryMsg, VotingPowerAtHeightResponse};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

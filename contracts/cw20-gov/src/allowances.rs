@@ -1,6 +1,4 @@
-use cosmwasm_std::{attr, Binary, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
-use cw20::Cw20ReceiveMsg;
-use cw20_base::state::TOKEN_INFO;
+use cosmwasm_std::{Binary, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
 use cw20_base::ContractError;
 
 use crate::state::VOTING_POWER;
@@ -30,12 +28,11 @@ pub fn execute_transfer_from(
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
-    Ok(cw20_base::allowances::execute_transfer_from(deps,env,info,owner,recipient, amount)?)
+    cw20_base::allowances::execute_transfer_from(deps, env, info, owner, recipient, amount)
 }
 
 pub fn execute_burn_from(
     deps: DepsMut,
-
     env: Env,
     info: MessageInfo,
     owner: String,
@@ -51,7 +48,7 @@ pub fn execute_burn_from(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    Ok(cw20_base::allowances::execute_burn_from(deps,env,info,owner,amount)?)
+    cw20_base::allowances::execute_burn_from(deps, env, info, owner, amount)
 }
 
 pub fn execute_send_from(
@@ -80,16 +77,16 @@ pub fn execute_send_from(
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
-    Ok(cw20_base::allowances::execute_send_from(deps,env,info,owner,contract,amount,msg)?)
+    cw20_base::allowances::execute_send_from(deps, env, info, owner, contract, amount, msg)
 }
 
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{CosmosMsg, Deps, StdError, SubMsg, WasmMsg};
-    use cw20::{AllowanceResponse, Cw20Coin, Expiration, TokenInfoResponse};
+    use cosmwasm_std::{attr, CosmosMsg, Deps, StdError, SubMsg, WasmMsg};
+    use cw20::{AllowanceResponse, Cw20Coin, Cw20ReceiveMsg, Expiration, TokenInfoResponse};
     use cw20_base::allowances::query_allowance;
-    use cw20_base::contract::{query_token_info, query_balance};
+    use cw20_base::contract::{query_balance, query_token_info};
     use cw20_base::msg::InstantiateMsg;
     use cw20_base::ContractError;
 

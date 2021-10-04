@@ -1,5 +1,5 @@
 use cosmwasm_std::{Addr, Uint128};
-use cw_storage_plus::{SnapshotMap, Strategy, Map};
+use cw_storage_plus::{Map, SnapshotMap, Strategy};
 
 pub const VOTING_POWER: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
     "voting_power",
@@ -9,4 +9,4 @@ pub const VOTING_POWER: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
 );
 
 // TODO: implement this feature
-pub const DELEGATIONS: Map<&Addr,&Addr> = Map::new("delegations");
+pub const DELEGATIONS: Map<&Addr, &Addr> = Map::new("delegations");
