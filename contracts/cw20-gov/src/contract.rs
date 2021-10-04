@@ -1,28 +1,25 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128,
-};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, Addr};
 use cw2::set_contract_version;
 use cw20::{
     BalanceResponse, Cw20Coin, Cw20ReceiveMsg, EmbeddedLogo, Logo, LogoInfo, MarketingInfoResponse,
 };
 use cw20_base::allowances::{
-    execute_decrease_allowance, execute_increase_allowance, query_allowance,
+    execute_decrease_allowance, execute_increase_allowance, query_allowance
 };
 use cw20_base::contract::{
     execute_update_marketing, execute_upload_logo, query_download_logo, query_marketing_info,
-    query_minter, query_token_info,
+    query_minter, query_token_info, query_balance
 };
-use cw20_base::enumerable::query_all_allowances;
+use cw20_base::enumerable::{query_all_allowances, query_all_accounts};
 use cw20_base::msg::InstantiateMsg;
 use cw20_base::state::{MinterData, TokenInfo, LOGO, MARKETING_INFO, TOKEN_INFO};
 use cw20_base::ContractError;
 
 use crate::allowances::{execute_burn_from, execute_send_from, execute_transfer_from};
-use crate::enumerable::query_all_accounts;
-use crate::msg::{BalanceAtHeightResponse, ExecuteMsg, QueryMsg};
-use crate::state::BALANCES;
+use crate::msg::{VotingPowerAtHeightResponse, ExecuteMsg, QueryMsg};
+use crate::state::VOTING_POWER;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-base";
@@ -98,60 +95,9 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    // check valid token info
-    msg.validate()?;
     // create initial accounts
-    let total_supply = create_accounts(&mut deps, &msg.initial_balances)?;
-
-    if let Some(limit) = msg.get_cap() {
-        if total_supply > limit {
-            return Err(StdError::generic_err("Initial supply greater than cap").into());
-        }
-    }
-
-    let mint = match msg.mint {
-        Some(m) => Some(MinterData {
-            minter: deps.api.addr_validate(&m.minter)?,
-            cap: m.cap,
-        }),
-        None => None,
-    };
-
-    // store token info
-    let data = TokenInfo {
-        name: msg.name,
-        symbol: msg.symbol,
-        decimals: msg.decimals,
-        total_supply,
-        mint,
-    };
-    TOKEN_INFO.save(deps.storage, &data)?;
-
-    if let Some(marketing) = msg.marketing {
-        let logo = if let Some(logo) = marketing.logo {
-            verify_logo(&logo)?;
-            LOGO.save(deps.storage, &logo)?;
-
-            match logo {
-                Logo::Url(url) => Some(LogoInfo::Url(url)),
-                Logo::Embedded(_) => Some(LogoInfo::Embedded),
-            }
-        } else {
-            None
-        };
-
-        let data = MarketingInfoResponse {
-            project: marketing.project,
-            description: marketing.description,
-            marketing: marketing
-                .marketing
-                .map(|addr| deps.api.addr_validate(&addr))
-                .transpose()?,
-            logo,
-        };
-        MARKETING_INFO.save(deps.storage, &data)?;
-    }
+    create_accounts(&mut deps, &msg.initial_balances)?;
+    cw20_base::contract::instantiate(deps, _env, _info, msg)?;
 
     Ok(Response::default())
 }
@@ -160,7 +106,7 @@ pub fn create_accounts(deps: &mut DepsMut, accounts: &[Cw20Coin]) -> StdResult<U
     let mut total_supply = Uint128::zero();
     for row in accounts {
         let address = deps.api.addr_validate(&row.address)?;
-        BALANCES.save(deps.storage, &address, &row.amount, 0)?;
+        VOTING_POWER.save(deps.storage, &address, &row.amount, 0)?;
         total_supply += row.amount;
     }
     Ok(total_supply)
@@ -222,13 +168,7 @@ pub fn execute_transfer(
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    if amount == Uint128::zero() {
-        return Err(ContractError::InvalidZeroAmount {});
-    }
-
-    let rcpt_addr = deps.api.addr_validate(&recipient)?;
-
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &info.sender,
         env.block.height,
@@ -236,19 +176,14 @@ pub fn execute_transfer(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    BALANCES.update(
+    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    VOTING_POWER.update(
         deps.storage,
         &rcpt_addr,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
-
-    let res = Response::new()
-        .add_attribute("action", "transfer")
-        .add_attribute("from", info.sender)
-        .add_attribute("to", recipient)
-        .add_attribute("amount", amount);
-    Ok(res)
+    Ok(cw20_base::contract::execute_transfer(deps, env, info, recipient, amount)?)
 }
 
 pub fn execute_burn(
@@ -257,12 +192,7 @@ pub fn execute_burn(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    if amount == Uint128::zero() {
-        return Err(ContractError::InvalidZeroAmount {});
-    }
-
-    // lower balance
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &info.sender,
         env.block.height,
@@ -270,17 +200,7 @@ pub fn execute_burn(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    // reduce total_supply
-    TOKEN_INFO.update(deps.storage, |mut info| -> StdResult<_> {
-        info.total_supply = info.total_supply.checked_sub(amount)?;
-        Ok(info)
-    })?;
-
-    let res = Response::new()
-        .add_attribute("action", "burn")
-        .add_attribute("from", info.sender)
-        .add_attribute("amount", amount);
-    Ok(res)
+    Ok(cw20_base::contract::execute_burn(deps,env,info,amount)?)
 }
 
 pub fn execute_mint(
@@ -290,38 +210,15 @@ pub fn execute_mint(
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    if amount == Uint128::zero() {
-        return Err(ContractError::InvalidZeroAmount {});
-    }
-
-    let mut config = TOKEN_INFO.load(deps.storage)?;
-    if config.mint.is_none() || config.mint.as_ref().unwrap().minter != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    // update supply and enforce cap
-    config.total_supply += amount;
-    if let Some(limit) = config.get_cap() {
-        if config.total_supply > limit {
-            return Err(ContractError::CannotExceedCap {});
-        }
-    }
-    TOKEN_INFO.save(deps.storage, &config)?;
-
-    // add amount to recipient balance
     let rcpt_addr = deps.api.addr_validate(&recipient)?;
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &rcpt_addr,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
-    let res = Response::new()
-        .add_attribute("action", "mint")
-        .add_attribute("to", recipient)
-        .add_attribute("amount", amount);
-    Ok(res)
+    Ok(cw20_base::contract::execute_mint(deps, env,info,recipient,amount)?)
 }
 
 pub fn execute_send(
@@ -332,14 +229,8 @@ pub fn execute_send(
     amount: Uint128,
     msg: Binary,
 ) -> Result<Response, ContractError> {
-    if amount == Uint128::zero() {
-        return Err(ContractError::InvalidZeroAmount {});
-    }
-
     let rcpt_addr = deps.api.addr_validate(&contract)?;
-
-    // move the tokens to the contract
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &info.sender,
         env.block.height,
@@ -347,36 +238,24 @@ pub fn execute_send(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &rcpt_addr,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
-
-    let res = Response::new()
-        .add_attribute("action", "send")
-        .add_attribute("from", &info.sender)
-        .add_attribute("to", &contract)
-        .add_attribute("amount", amount)
-        .add_message(
-            Cw20ReceiveMsg {
-                sender: info.sender.into(),
-                amount,
-                msg,
-            }
-            .into_cosmos_msg(contract)?,
-        );
-    Ok(res)
+    Ok(cw20_base::contract::execute_send(deps,env,info,contract,amount,msg)?)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
-        QueryMsg::BalanceAtHeight { address, height } => {
+        // Custom queries
+        QueryMsg::VotingPowerAtHeight { address, height } => {
             to_binary(&query_balance_at_height(deps, address, height)?)
         }
+        // Inherited from cw20_base
+        QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
         QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
         QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
         QueryMsg::Allowance { owner, spender } => {
@@ -395,24 +274,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_balance(deps: Deps, address: String) -> StdResult<BalanceResponse> {
-    let address = deps.api.addr_validate(&address)?;
-    let balance = BALANCES
-        .may_load(deps.storage, &address)?
-        .unwrap_or_default();
-    Ok(BalanceResponse { balance })
-}
-
 pub fn query_balance_at_height(
     deps: Deps,
     address: String,
     height: u64,
-) -> StdResult<BalanceAtHeightResponse> {
+) -> StdResult<VotingPowerAtHeightResponse> {
     let address = deps.api.addr_validate(&address)?;
-    let balance = BALANCES
+    let balance = VOTING_POWER
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
-    Ok(BalanceAtHeightResponse { balance, height })
+    Ok(VotingPowerAtHeightResponse { balance, height })
 }
 
 #[cfg(test)]

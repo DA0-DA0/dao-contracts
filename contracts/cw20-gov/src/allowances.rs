@@ -1,10 +1,9 @@
 use cosmwasm_std::{attr, Binary, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw20_base::allowances::deduct_allowance;
 use cw20_base::state::TOKEN_INFO;
 use cw20_base::ContractError;
 
-use crate::state::BALANCES;
+use crate::state::VOTING_POWER;
 
 pub fn execute_transfer_from(
     deps: DepsMut,
@@ -16,11 +15,7 @@ pub fn execute_transfer_from(
 ) -> Result<Response, ContractError> {
     let rcpt_addr = deps.api.addr_validate(&recipient)?;
     let owner_addr = deps.api.addr_validate(&owner)?;
-
-    // deduct allowance before doing anything else have enough allowance
-    deduct_allowance(deps.storage, &owner_addr, &info.sender, &env.block, amount)?;
-
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &owner_addr,
         env.block.height,
@@ -28,21 +23,14 @@ pub fn execute_transfer_from(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &rcpt_addr,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
 
-    let res = Response::new().add_attributes(vec![
-        attr("action", "transfer_from"),
-        attr("from", owner),
-        attr("to", recipient),
-        attr("by", info.sender),
-        attr("amount", amount),
-    ]);
-    Ok(res)
+    Ok(cw20_base::allowances::execute_transfer_from(deps,env,info,owner,recipient, amount)?)
 }
 
 pub fn execute_burn_from(
@@ -54,12 +42,8 @@ pub fn execute_burn_from(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let owner_addr = deps.api.addr_validate(&owner)?;
-
-    // deduct allowance before doing anything else have enough allowance
-    deduct_allowance(deps.storage, &owner_addr, &info.sender, &env.block, amount)?;
-
     // lower balance
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &owner_addr,
         env.block.height,
@@ -67,19 +51,7 @@ pub fn execute_burn_from(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    // reduce total_supply
-    TOKEN_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
-        meta.total_supply = meta.total_supply.checked_sub(amount)?;
-        Ok(meta)
-    })?;
-
-    let res = Response::new().add_attributes(vec![
-        attr("action", "burn_from"),
-        attr("from", owner),
-        attr("by", info.sender),
-        attr("amount", amount),
-    ]);
-    Ok(res)
+    Ok(cw20_base::allowances::execute_burn_from(deps,env,info,owner,amount)?)
 }
 
 pub fn execute_send_from(
@@ -93,12 +65,8 @@ pub fn execute_send_from(
 ) -> Result<Response, ContractError> {
     let rcpt_addr = deps.api.addr_validate(&contract)?;
     let owner_addr = deps.api.addr_validate(&owner)?;
-
-    // deduct allowance before doing anything else have enough allowance
-    deduct_allowance(deps.storage, &owner_addr, &info.sender, &env.block, amount)?;
-
     // move the tokens to the contract
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &owner_addr,
         env.block.height,
@@ -106,31 +74,13 @@ pub fn execute_send_from(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    BALANCES.update(
+    VOTING_POWER.update(
         deps.storage,
         &rcpt_addr,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
-
-    let attrs = vec![
-        attr("action", "send_from"),
-        attr("from", &owner),
-        attr("to", &contract),
-        attr("by", &info.sender),
-        attr("amount", amount),
-    ];
-
-    // create a send message
-    let msg = Cw20ReceiveMsg {
-        sender: info.sender.into(),
-        amount,
-        msg,
-    }
-    .into_cosmos_msg(contract)?;
-
-    let res = Response::new().add_message(msg).add_attributes(attrs);
-    Ok(res)
+    Ok(cw20_base::allowances::execute_send_from(deps,env,info,owner,contract,amount,msg)?)
 }
 
 #[cfg(test)]
@@ -139,11 +89,11 @@ mod tests {
     use cosmwasm_std::{CosmosMsg, Deps, StdError, SubMsg, WasmMsg};
     use cw20::{AllowanceResponse, Cw20Coin, Expiration, TokenInfoResponse};
     use cw20_base::allowances::query_allowance;
-    use cw20_base::contract::query_token_info;
+    use cw20_base::contract::{query_token_info, query_balance};
     use cw20_base::msg::InstantiateMsg;
     use cw20_base::ContractError;
 
-    use crate::contract::{execute, instantiate, query_balance};
+    use crate::contract::{execute, instantiate};
     use crate::msg::ExecuteMsg;
 
     use super::*;

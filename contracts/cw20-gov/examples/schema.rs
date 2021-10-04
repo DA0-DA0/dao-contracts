@@ -8,7 +8,7 @@ use cw20::{
 };
 use cw20_base::msg::InstantiateMsg;
 
-use cw20_gov::msg::{BalanceAtHeightResponse, ExecuteMsg, QueryMsg};
+use cw20_gov::msg::{VotingPowerAtHeightResponse, ExecuteMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -21,7 +21,7 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(AllowanceResponse), &out_dir);
     export_schema(&schema_for!(BalanceResponse), &out_dir);
-    export_schema(&schema_for!(BalanceAtHeightResponse), &out_dir);
+    export_schema(&schema_for!(VotingPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(TokenInfoResponse), &out_dir);
     export_schema(&schema_for!(AllAllowancesResponse), &out_dir);
     export_schema(&schema_for!(AllAccountsResponse), &out_dir);
