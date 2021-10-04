@@ -11,7 +11,7 @@ pub enum QueryMsg {
     Balance { address: String },
     /// Returns the balance of the given address at given height, 0 if unset.
     /// Return type: BalanceAtHeightResponse.
-    BalanceAtHeight { address: String, height: u64 },
+    VotingPowerAtHeight { address: String, height: u64 },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     TokenInfo {},
@@ -51,7 +51,7 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct BalanceAtHeightResponse {
+pub struct VotingPowerAtHeightResponse {
     pub balance: Uint128,
     pub height: u64,
 }
