@@ -60,6 +60,7 @@ pub fn instantiate(
             amount: msg.proposal_deposit_amount,
             token_address: proposal_deposit_cw20_addr,
         },
+        refund_failed_proposals: None
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -293,6 +294,7 @@ pub fn execute_close(
 ) -> Result<Response<Empty>, ContractError> {
     // anyone can trigger this if the vote passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
+
     if [Status::Executed, Status::Rejected, Status::Passed]
         .iter()
         .any(|x| *x == prop.status)
@@ -307,7 +309,14 @@ pub fn execute_close(
     prop.status = Status::Rejected;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
-    Ok(Response::new()
+    let response_with_optional_refund = if should_refund_failed_proposal(deps)? {
+        let msg = get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit)?;
+        Response::new().add_messages(msg)
+    } else {
+        Response::new()
+    };
+
+    Ok(response_with_optional_refund
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
@@ -383,6 +392,11 @@ fn get_total_supply(deps: Deps) -> StdResult<Uint128> {
         .querier
         .query_wasm_smart(cfg.cw20_addr.addr(), &Cw20QueryMsg::TokenInfo {})?;
     Ok(token_info.total_supply)
+}
+
+fn should_refund_failed_proposal(deps: DepsMut) -> StdResult<bool> {
+    let cfg = CONFIG.load(deps.storage)?;
+    Ok(cfg.refund_failed_proposals.unwrap_or(false))
 }
 
 fn get_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
@@ -1448,7 +1462,8 @@ mod tests {
                     proposal_deposit: ProposalDeposit {
                         amount: new_proposal_deposit_amount,
                         token_address: Cw20Contract(Addr::unchecked(new_deposit_token_address)),
-                    }
+                    },
+                    refund_failed_proposals: None
                 },
             }
         )
@@ -1486,7 +1501,8 @@ mod tests {
                     proposal_deposit: ProposalDeposit {
                         amount: Uint128::zero(),
                         token_address: Cw20Contract(cw20_addr),
-                    }
+                    },
+                    refund_failed_proposals: None,
                 },
             }
         )
