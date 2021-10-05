@@ -419,7 +419,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_cw20_balances(deps, env, start_after, limit)?)
         }
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
-        QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)?),
+        QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)),
     }
 }
 
@@ -499,15 +499,15 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(ConfigResponse { config })
 }
 
-fn query_cw20_token_list(deps: Deps) -> StdResult<TokenListResponse> {
+fn query_cw20_token_list(deps: Deps) -> TokenListResponse {
     let token_list: Result<Vec<Addr>, FromUtf8Error> = TREASURY_TOKENS
         .keys(deps.storage, None, None, Order::Ascending)
-        .map(|token| String::from_utf8(token).map(|a| Addr::unchecked(a)))
+        .map(|token| String::from_utf8(token).map(Addr::unchecked))
         .collect();
 
     match token_list {
-        Ok(token_list) => Ok(TokenListResponse { token_list }),
-        Err(_) => Ok(TokenListResponse { token_list: vec![] }),
+        Ok(token_list) => TokenListResponse { token_list },
+        Err(_) => TokenListResponse { token_list: vec![] },
     }
 }
 
@@ -526,7 +526,7 @@ fn query_cw20_balances(
         .take(limit)
         .map(|cw20_contract_address| {
             let cw20_contract_address = String::from_utf8(cw20_contract_address)
-                .map(|a| Addr::unchecked(a))
+                .map(Addr::unchecked)
                 .unwrap();
             let balance: BalanceResponse = deps
                 .querier
