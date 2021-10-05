@@ -1362,6 +1362,8 @@ mod tests {
         let res = app.execute_contract(Addr::unchecked(OWNER), _cw20_addr.clone(), &allowance, &[]);
         assert!(res.is_ok());
 
+        let owner_balance_before_proposal = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
+
         // let initial_owner_cw20_balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
         // let dao_cw20_balance = cw20.balance(&app, dao_addr.clone()).unwrap();
         // create proposal with 0 vote power
@@ -1369,7 +1371,6 @@ mod tests {
         let res = app
             .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
             .unwrap();
-
 
         println!("Owner Post Proposal Initiate {}", cw20.balance(&app, Addr::unchecked(OWNER)).unwrap());
 
@@ -1395,7 +1396,9 @@ mod tests {
 
         println!("Owner Post Closing {}", cw20.balance(&app, Addr::unchecked(OWNER)).unwrap());
         println!("SOMEBODY Post Closing {}", cw20.balance(&app, Addr::unchecked(SOMEBODY)).unwrap());
-        assert_eq!(false, true);
+        let owner_balance_after_failed_proposal = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
+
+        assert_eq!(owner_balance_after_failed_proposal, owner_balance_before_proposal)
     }
 
     #[test]
