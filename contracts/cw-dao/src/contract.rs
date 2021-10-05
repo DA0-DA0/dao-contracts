@@ -655,6 +655,7 @@ mod tests {
         cw20: Addr,
         threshold: Threshold,
         max_voting_period: Duration,
+        proposal_deposit_amount: Option<Uint128>,
         refund_failed_proposals: Option<bool>,
     ) -> Addr {
         let flex_id = app.store_code(contract_dao());
@@ -662,7 +663,7 @@ mod tests {
             cw20_addr: cw20.to_string(),
             threshold,
             max_voting_period,
-            proposal_deposit_amount: Uint128::zero(),
+            proposal_deposit_amount: proposal_deposit_amount.unwrap_or(Uint128::zero()),
             proposal_deposit_token_address: cw20.to_string(),
             refund_failed_proposals: refund_failed_proposals,
         };
@@ -675,6 +676,7 @@ mod tests {
         threshold: Threshold,
         max_voting_period: Duration,
         init_funds: Vec<Coin>,
+        proposal_deposit_amount: Option<Uint128>,
         refund_failed_proposals: Option<bool>,
     ) -> (Addr, Addr) {
         // 1. Instantiate Social Token Contract
@@ -687,6 +689,7 @@ mod tests {
             cw20_addr.clone(),
             threshold,
             max_voting_period,
+            proposal_deposit_amount,
             refund_failed_proposals);
 
         app.update_block(next_block);
@@ -804,6 +807,7 @@ mod tests {
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
             None,
+            None,
         );
 
         let proposal = pay_somebody_proposal();
@@ -901,6 +905,7 @@ mod tests {
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
+            None,
             None,
         );
 
@@ -1008,6 +1013,7 @@ mod tests {
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
+            None,
             None,
         );
 
@@ -1177,6 +1183,7 @@ mod tests {
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
             None,
+            None,
         );
 
         // ensure we have cash to cover the proposal
@@ -1277,6 +1284,7 @@ mod tests {
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
             None,
+            None,
         );
 
         // create proposal with 0 vote power
@@ -1332,6 +1340,8 @@ mod tests {
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
             None,
+            Some(true),
+            
         );
 
         // create proposal with 0 vote power
@@ -1350,6 +1360,7 @@ mod tests {
         let res = app
             .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &closing, &[])
             .unwrap();
+
         assert_eq!(
             res.custom_attrs(1),
             [
@@ -1377,6 +1388,7 @@ mod tests {
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
             None,
+            None
         );
 
         // create proposal
@@ -1442,6 +1454,7 @@ mod tests {
             threshold,
             voting_period,
             coins(100, NATIVE_TOKEN_DENOM),
+            None,
             None,
         );
 
@@ -1544,6 +1557,7 @@ mod tests {
             voting_period.clone(),
             coins(100, NATIVE_TOKEN_DENOM),
             None,
+            None,
         );
 
         let config_query = QueryMsg::GetConfig {};
@@ -1582,6 +1596,7 @@ mod tests {
             threshold.clone(),
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
+            None,
             None,
         );
 
