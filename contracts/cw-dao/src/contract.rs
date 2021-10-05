@@ -1362,7 +1362,6 @@ mod tests {
         let res = app.execute_contract(Addr::unchecked(OWNER), _cw20_addr.clone(), &allowance, &[]);
         assert!(res.is_ok());
 
-
         let owner_initial_balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();        
         let proposal = pay_somebody_proposal();
         let res = app
@@ -1380,7 +1379,6 @@ mod tests {
             .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &closing, &[])
             .unwrap();
         
-
         assert_eq!(
             res.custom_attrs(1),
             [
@@ -1393,7 +1391,7 @@ mod tests {
         let owner_balance_after_failed_proposal = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
         assert_eq!(owner_balance_after_failed_proposal, owner_initial_balance);
 
-        // Test given we update such that we do not refund proposals
+        // Update Config to not refund proposals
         let update_config_msg = ExecuteMsg::UpdateConfig {
             threshold,
             max_voting_period: voting_period,
