@@ -27,10 +27,10 @@
       "description": "Returns the balance of the given address at given height, 0 if unset. Return type: BalanceAtHeightResponse.",
       "type": "object",
       "required": [
-        "balance_at_height"
+        "voting_power_at_height"
       ],
       "properties": {
-        "balance_at_height": {
+        "voting_power_at_height": {
           "type": "object",
           "required": [
             "address",

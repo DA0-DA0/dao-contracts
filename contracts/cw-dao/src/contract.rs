@@ -17,8 +17,8 @@ use cw2::set_contract_version;
 use cw20::{
     BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg,
 };
-use cw20_gov::msg::{BalanceAtHeightResponse, QueryMsg as Cw20GovQueryMsg};
-use cw20_gov::state::TokenInfo;
+use cw20_base::state::TokenInfo;
+use cw20_gov::msg::{QueryMsg as Cw20GovQueryMsg, VotingPowerAtHeightResponse};
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
@@ -225,7 +225,8 @@ pub fn execute_vote(
     }
 
     // Get voter balance at proposal start
-    let vote_power = get_balance_at_height(deps.as_ref(), info.sender.clone(), prop.start_height)?;
+    let vote_power =
+        get_voting_power_at_height(deps.as_ref(), info.sender.clone(), prop.start_height)?;
 
     if vote_power == Uint128::zero() {
         return Err(ContractError::Unauthorized {});
@@ -450,19 +451,19 @@ fn get_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
     Ok(balance.balance)
 }
 
-fn get_balance_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
+fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
     let cfg = CONFIG.load(deps.storage)?;
     // Get total supply
-    let balance: BalanceAtHeightResponse = deps
+    let balance: VotingPowerAtHeightResponse = deps
         .querier
         .query_wasm_smart(
             cfg.cw20_addr.addr(),
-            &Cw20GovQueryMsg::BalanceAtHeight {
+            &Cw20GovQueryMsg::VotingPowerAtHeight {
                 address: address.to_string(),
                 height,
             },
         )
-        .unwrap_or(BalanceAtHeightResponse {
+        .unwrap_or(VotingPowerAtHeightResponse {
             balance: Uint128::zero(),
             height: 0,
         });

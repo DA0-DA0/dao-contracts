@@ -52,7 +52,7 @@ mod tests {
     // uploads code and returns address of cw20 contract
     fn instantiate_cw20(app: &mut App) -> Addr {
         let cw20_id = app.store_code(contract_cw20_gov());
-        let msg = cw20_gov::msg::InstantiateMsg {
+        let msg = cw20_base::msg::InstantiateMsg {
             name: String::from("Test"),
             symbol: String::from("TEST"),
             decimals: 6,
@@ -1089,7 +1089,7 @@ mod tests {
 
         // Make a new token with initial balance
         let cw20_id = app.store_code(contract_cw20_gov());
-        let msg = cw20_gov::msg::InstantiateMsg {
+        let msg = cw20_base::msg::InstantiateMsg {
             name: String::from("NewCoin"),
             symbol: String::from("COIN"),
             decimals: 6,
