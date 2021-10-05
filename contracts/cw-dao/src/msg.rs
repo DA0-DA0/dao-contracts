@@ -128,6 +128,7 @@ pub enum ExecuteMsg {
         max_voting_period: Duration,
         proposal_deposit_amount: Uint128,
         proposal_deposit_token_address: String,
+        refund_failed_proposals: Option<bool>,
     },
 }
 
