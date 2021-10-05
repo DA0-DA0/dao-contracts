@@ -1,7 +1,60 @@
-use cosmwasm_std::Uint128;
-pub use cw20::Cw20ExecuteMsg as ExecuteMsg;
+use cosmwasm_std::{Uint128, Binary, Addr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use cw20::{Expiration, Logo};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ExecuteMsg {
+    Transfer {
+        recipient: String,
+        amount: Uint128,
+    },
+    Burn {
+        amount: Uint128,
+    },
+    Send {
+        contract: String,
+        amount: Uint128,
+        msg: Binary,
+    },
+    IncreaseAllowance {
+        spender: String,
+        amount: Uint128,
+        expires: Option<Expiration>,
+    },
+    DecreaseAllowance {
+        spender: String,
+        amount: Uint128,
+        expires: Option<Expiration>,
+    },
+    TransferFrom {
+        owner: String,
+        recipient: String,
+        amount: Uint128,
+    },
+    SendFrom {
+        owner: String,
+        contract: String,
+        amount: Uint128,
+        msg: Binary,
+    },
+    BurnFrom {
+        owner: String,
+        amount: Uint128,
+    },
+    Mint {
+        recipient: String,
+        amount: Uint128,
+    },
+    UpdateMarketing {
+        project: Option<String>,
+        description: Option<String>,
+        marketing: Option<String>,
+    },
+    UploadLogo(Logo),
+    DelegateVotes{recipient: String},
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -12,6 +65,9 @@ pub enum QueryMsg {
     /// Returns the balance of the given address at given height, 0 if unset.
     /// Return type: BalanceAtHeightResponse.
     VotingPowerAtHeight { address: String, height: u64 },
+    /// Returns current delegation information
+    /// Return type: DelegationResponse.
+    Delegation { address: String},
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     TokenInfo {},
@@ -54,4 +110,9 @@ pub enum QueryMsg {
 pub struct VotingPowerAtHeightResponse {
     pub balance: Uint128,
     pub height: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct DelegationResponse {
+    pub delegation: String,
 }

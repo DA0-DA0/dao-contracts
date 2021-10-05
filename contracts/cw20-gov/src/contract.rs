@@ -1,8 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, Addr, Storage};
 use cw20::Cw20Coin;
 use cw20_base::allowances::{
     execute_decrease_allowance, execute_increase_allowance, query_allowance,
@@ -16,8 +14,10 @@ use cw20_base::msg::InstantiateMsg;
 use cw20_base::ContractError;
 
 use crate::allowances::{execute_burn_from, execute_send_from, execute_transfer_from};
-use crate::msg::{ExecuteMsg, QueryMsg, VotingPowerAtHeightResponse};
-use crate::state::VOTING_POWER;
+use crate::msg::{ExecuteMsg, QueryMsg, VotingPowerAtHeightResponse, DelegationResponse};
+use crate::state::{VOTING_POWER, DELEGATIONS};
+use cw20_base::state::BALANCES;
+use crate::msg::QueryMsg::Delegation;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -87,6 +87,7 @@ pub fn execute(
             marketing,
         } => execute_update_marketing(deps, env, info, project, description, marketing),
         ExecuteMsg::UploadLogo(logo) => execute_upload_logo(deps, env, info, logo),
+        ExecuteMsg::DelegateVotes {recipient} => execute_delegate_votes(deps,env,info,recipient),
     }
 }
 
@@ -97,22 +98,30 @@ pub fn execute_transfer(
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    transfer_voting_power(deps.storage, &env, &info.sender, &rcpt_addr, amount)?;
+    cw20_base::contract::execute_transfer(deps, env, info, recipient, amount)
+}
+
+fn transfer_voting_power(storage: &mut dyn Storage, env: &Env, sender: &Addr, recipient: &Addr, amount: Uint128) -> Result<(),ContractError>
+{
+    let sender_delegation = DELEGATIONS.may_load(storage, &sender)?.unwrap_or(sender.clone());
+    let recipient_delegation = DELEGATIONS.may_load(storage, &recipient)?.unwrap_or(recipient.clone());
     VOTING_POWER.update(
-        deps.storage,
-        &info.sender,
+        storage,
+        &sender_delegation,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    let rcpt_addr = deps.api.addr_validate(&recipient)?;
     VOTING_POWER.update(
-        deps.storage,
-        &rcpt_addr,
+        storage,
+        &recipient_delegation,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
-    cw20_base::contract::execute_transfer(deps, env, info, recipient, amount)
+    Ok(())
 }
 
 pub fn execute_burn(
@@ -121,9 +130,10 @@ pub fn execute_burn(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let sender_delegation = DELEGATIONS.may_load(deps.storage, &info.sender)?.unwrap_or(info.sender.clone());
     VOTING_POWER.update(
         deps.storage,
-        &info.sender,
+        &sender_delegation,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
@@ -140,9 +150,10 @@ pub fn execute_mint(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    let recipient_delegation = DELEGATIONS.may_load(deps.storage, &rcpt_addr)?.unwrap_or(rcpt_addr.clone());
     VOTING_POWER.update(
         deps.storage,
-        &rcpt_addr,
+        &recipient_delegation,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
@@ -158,10 +169,30 @@ pub fn execute_send(
     amount: Uint128,
     msg: Binary,
 ) -> Result<Response, ContractError> {
-    let rcpt_addr = deps.api.addr_validate(&contract)?;
-    VOTING_POWER.update(
+    let contract_addr = deps.api.addr_validate(&contract)?;
+    transfer_voting_power(deps.storage, &env, &info.sender, &contract_addr, amount)?;
+    cw20_base::contract::execute_send(deps, env, info, contract, amount, msg)
+}
+
+pub fn execute_delegate_votes(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    recipient: String,
+) -> Result<Response, ContractError> {
+    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+    let amount = BALANCES
+        .may_load(deps.storage, &info.sender)?
+        .unwrap_or_default();
+    let old_delegation = DELEGATIONS.may_load(deps.storage, &info.sender)?.unwrap_or(info.sender.clone());
+    DELEGATIONS.update(
         deps.storage,
         &info.sender,
+        |_| -> StdResult<_> { Ok(rcpt_addr.clone()) }
+    );
+    VOTING_POWER.update(
+        deps.storage,
+        &old_delegation,
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> {
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
@@ -173,7 +204,7 @@ pub fn execute_send(
         env.block.height,
         |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
     )?;
-    cw20_base::contract::execute_send(deps, env, info, contract, amount, msg)
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -185,6 +216,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         // Inherited from cw20_base
         QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
+        QueryMsg::Delegation {address} => to_binary(&query_delegation(deps,address)?),
         QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
         QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
         QueryMsg::Allowance { owner, spender } => {
@@ -213,6 +245,15 @@ pub fn query_balance_at_height(
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
     Ok(VotingPowerAtHeightResponse { balance, height })
+}
+
+pub fn query_delegation(
+    deps: Deps,
+    address: String,
+) -> StdResult<DelegationResponse> {
+    let address_addr = deps.api.addr_validate(&address)?;
+    let delegation = DELEGATIONS.may_load(deps.storage, &address_addr)?.unwrap_or(address_addr);
+    Ok(DelegationResponse { delegation: delegation.into() })
 }
 
 #[cfg(test)]
