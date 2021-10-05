@@ -310,10 +310,7 @@ pub fn execute_close(
     prop.status = Status::Rejected;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
-    let x = should_refund_failed_proposal(deps)?;
-    println!("in execute_close with result {}",x );
-    let response_with_optional_refund = if x {
-        println!("trying to refund");
+    let response_with_optional_refund = if should_refund_failed_proposal(deps)? {
         let msg = get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit)?;
         Response::new().add_messages(msg)
     } else {
