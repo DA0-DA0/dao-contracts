@@ -60,7 +60,7 @@ pub fn instantiate(
             amount: msg.proposal_deposit_amount,
             token_address: proposal_deposit_cw20_addr,
         },
-        refund_failed_proposals: msg.refund_failed_proposals
+        refund_failed_proposals: msg.refund_failed_proposals,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -89,7 +89,7 @@ pub fn execute(
             max_voting_period,
             proposal_deposit_amount,
             proposal_deposit_token_address,
-            refund_failed_proposals
+            refund_failed_proposals,
         } => execute_update_config(
             deps,
             env,
@@ -98,7 +98,7 @@ pub fn execute(
             max_voting_period,
             proposal_deposit_amount,
             proposal_deposit_token_address,
-            refund_failed_proposals
+            refund_failed_proposals,
         ),
     }
 }
@@ -331,7 +331,7 @@ pub fn execute_update_config(
     max_voting_period: Duration,
     proposal_deposit_amount: Uint128,
     proposal_deposit_token_address: String,
-    refund_failed_proposals: Option<bool>
+    refund_failed_proposals: Option<bool>,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
@@ -694,7 +694,8 @@ mod tests {
             threshold,
             max_voting_period,
             proposal_deposit_amount,
-            refund_failed_proposals);
+            refund_failed_proposals,
+        );
 
         app.update_block(next_block);
 
@@ -1332,7 +1333,6 @@ mod tests {
     #[test]
     fn test_close_works_with_refund() {
         let mut app = mock_app();
-        
         let voting_period = Duration::Height(2000000);
         let threshold = Threshold::ThresholdQuorum {
             threshold: Decimal::percent(51),
@@ -1359,7 +1359,7 @@ mod tests {
         let res = app.execute_contract(Addr::unchecked(OWNER), _cw20_addr.clone(), &allowance, &[]);
         assert!(res.is_ok());
 
-        let owner_initial_balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();        
+        let owner_initial_balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
         let proposal = pay_somebody_proposal();
         let res = app
             .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
@@ -1375,7 +1375,6 @@ mod tests {
         let res = app
             .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &closing, &[])
             .unwrap();
-        
         assert_eq!(
             res.custom_attrs(1),
             [
@@ -1385,7 +1384,8 @@ mod tests {
             ],
         );
 
-        let owner_balance_after_failed_proposal = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
+        let owner_balance_after_failed_proposal =
+            cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
         assert_eq!(owner_balance_after_failed_proposal, owner_initial_balance);
 
         // Update Config to not refund proposals
@@ -1396,7 +1396,7 @@ mod tests {
             proposal_deposit_token_address: _cw20_addr.to_string(),
             refund_failed_proposals: Some(false),
         };
-        
+
         let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
         assert!(res.is_ok());
 
@@ -1430,9 +1430,10 @@ mod tests {
             ],
         );
 
-        assert_eq!(owner_initial_balance - proposal_deposit_amount,
-            cw20.balance(&app, Addr::unchecked(OWNER)).unwrap());
-
+        assert_eq!(
+            owner_initial_balance - proposal_deposit_amount,
+            cw20.balance(&app, Addr::unchecked(OWNER)).unwrap()
+        );
     }
 
     #[test]
@@ -1452,7 +1453,7 @@ mod tests {
             voting_period,
             coins(10, NATIVE_TOKEN_DENOM),
             None,
-            None
+            None,
         );
 
         // create proposal
