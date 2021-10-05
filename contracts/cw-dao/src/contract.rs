@@ -21,6 +21,7 @@ use cw20_gov::msg::{BalanceAtHeightResponse, QueryMsg as Cw20GovQueryMsg};
 use cw20_gov::state::TokenInfo;
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
+use std::string::FromUtf8Error;
 
 // version info for migration info
 pub const CONTRACT_NAME: &str = "crates.io:sg_dao";
@@ -51,8 +52,8 @@ pub fn instantiate(
             })?,
     );
 
-    // Add cw20-gov token to list of TREASURY TOKENS
-    TREASURY_TOKENS.save(deps.storage, &vec![cw20_addr.addr()])?;
+    // Add cw20-gov token to map of TREASURY TOKENS
+    TREASURY_TOKENS.save(deps.storage, &cw20_addr.addr(), &Empty {})?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -115,17 +116,7 @@ pub fn execute_receive(
     info: MessageInfo,
     _wrapper: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    // Save token address to Tresury token list for receiving balances
-    let mut token_list = TREASURY_TOKENS.load(deps.storage)?;
-    // Check that token isn't already added
-    if !token_list
-        .clone()
-        .into_iter()
-        .any(|addr| addr == info.sender)
-    {
-        token_list.push(info.sender);
-        TREASURY_TOKENS.save(deps.storage, &token_list)?;
-    }
+    TREASURY_TOKENS.save(deps.storage, &info.sender, &Empty {})?;
 
     Ok(Response::default())
 }
@@ -386,22 +377,22 @@ pub fn execute_update_cw20_token_list(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    mut to_add: Vec<Addr>,
+    to_add: Vec<Addr>,
     to_remove: Vec<Addr>,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    TREASURY_TOKENS.update(deps.storage, |mut list| -> StdResult<_> {
-        if !to_add.is_empty() {
-            list.append(&mut to_add);
-        }
-        if !to_remove.is_empty() {
-            list.retain(|x: &Addr| -> bool { !to_remove.contains(x) });
-        }
-        Ok(list)
-    })?;
+
+    for token in &to_add {
+        TREASURY_TOKENS.save(deps.storage, token, &Empty {})?;
+    }
+
+    for token in &to_remove {
+        TREASURY_TOKENS.remove(deps.storage, token);
+    }
+
     Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
 }
 
@@ -509,35 +500,48 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 }
 
 fn query_cw20_token_list(deps: Deps) -> StdResult<TokenListResponse> {
-    let token_list = TREASURY_TOKENS.load(deps.storage)?;
-    Ok(TokenListResponse { token_list })
+    let token_list: Result<Vec<Addr>, FromUtf8Error> = TREASURY_TOKENS
+        .keys(deps.storage, None, None, Order::Ascending)
+        .map(|token| String::from_utf8(token).map(|a| Addr::unchecked(a)))
+        .collect();
+
+    match token_list {
+        Ok(token_list) => Ok(TokenListResponse { token_list }),
+        Err(_) => Ok(TokenListResponse { token_list: vec![] }),
+    }
 }
 
 fn query_cw20_balances(
     deps: Deps,
     env: Env,
-    start_after: Option<u64>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Cw20BalancesResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    let start = start_after.unwrap_or(0) as usize;
-    let token_list = TREASURY_TOKENS.load(deps.storage)?;
-    let cw20_balances = token_list[start..token_list.len()]
-        .iter()
+    let start_addr = maybe_addr(deps.api, start_after)?;
+    let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
+
+    let cw20_balances: Vec<Cw20CoinVerified> = TREASURY_TOKENS
+        .keys(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|cw20_contract_address| {
+            let cw20_contract_address = String::from_utf8(cw20_contract_address)
+                .map(|a| Addr::unchecked(a))
+                .unwrap();
             let balance: BalanceResponse = deps
                 .querier
                 .query_wasm_smart(
-                    &cw20_contract_address.clone(),
+                    &cw20_contract_address,
                     &Cw20QueryMsg::Balance {
                         address: env.contract.address.to_string(),
                     },
                 )
-                .unwrap();
+                .unwrap_or(BalanceResponse {
+                    balance: Uint128::zero(),
+                });
 
             Cw20CoinVerified {
-                address: cw20_contract_address.clone(),
+                address: cw20_contract_address,
                 amount: balance.balance,
             }
         })

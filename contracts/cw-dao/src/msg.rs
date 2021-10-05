@@ -167,7 +167,7 @@ pub enum QueryMsg {
     GetConfig {},
     /// Returns All DAO Cw20 Balances
     Cw20Balances {
-        start_after: Option<u64>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Return list of cw20 Tokens associated with the DAO Treasury
