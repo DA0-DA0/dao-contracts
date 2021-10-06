@@ -158,6 +158,7 @@ pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 // multiple-item map
 pub const BALLOTS: Map<(U64Key, &Addr), Ballot> = Map::new("votes");
 pub const PROPOSALS: Map<U64Key, Proposal> = Map::new("proposals");
+pub const TREASURY_TOKENS: Map<&Addr, Empty> = Map::new("treasury_tokens");
 
 pub fn next_id(store: &mut dyn Storage) -> StdResult<u64> {
     let id: u64 = PROPOSAL_COUNT.may_load(store)?.unwrap_or_default() + 1;
