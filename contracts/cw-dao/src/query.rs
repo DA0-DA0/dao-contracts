@@ -163,3 +163,4 @@ pub struct VoterDetail {
 pub struct ConfigResponse {
     pub config: Config,
 }
+

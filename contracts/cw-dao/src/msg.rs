@@ -132,6 +132,7 @@ pub enum ExecuteMsg {
     },
 }
 
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
@@ -161,6 +162,16 @@ pub enum QueryMsg {
     Voter { address: String },
     /// Returns Config
     GetConfig {},
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct UpdateConfigMsg {
+    pub threshold: Threshold,
+    pub max_voting_period: Duration,
+    pub proposal_deposit_amount: Uint128,
+    pub proposal_deposit_token_address: String,
+    pub refund_failed_proposals: Option<bool>,
 }
 
 #[cfg(test)]
