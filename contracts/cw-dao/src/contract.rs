@@ -314,11 +314,12 @@ pub fn execute_close(
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
     let cfg = CONFIG.load(deps.storage)?;
-    let response_with_optional_refund = if cfg.refund_failed_proposals.unwrap_or(false) {
-        let msg = get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit)?;
-        Response::new().add_messages(msg)
-    } else {
-        Response::new()
+
+    let response_with_optional_refund = match cfg.refund_failed_proposals {
+        Some(true) => 
+            Response::new()
+                .add_messages(get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit)?),
+        _ => Response::new(),
     };
 
     Ok(response_with_optional_refund
