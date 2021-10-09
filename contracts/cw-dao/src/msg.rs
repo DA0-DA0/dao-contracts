@@ -1,10 +1,10 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use crate::error::ContractError;
 use crate::query::ThresholdResponse;
-use cosmwasm_std::{CosmosMsg, Decimal, Empty, Uint128};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
+use cw20::Cw20ReceiveMsg;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
@@ -106,6 +106,7 @@ fn valid_percentage(percent: &Decimal) -> Result<(), ContractError> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    /// Makes a new proposal
     Propose {
         title: String,
         description: String,
@@ -113,22 +114,26 @@ pub enum ExecuteMsg {
         // note: we ignore API-spec'd earliest if passed, always opens immediately
         latest: Option<Expiration>,
     },
-    Vote {
-        proposal_id: u64,
-        vote: Vote,
-    },
-    Execute {
-        proposal_id: u64,
-    },
-    Close {
-        proposal_id: u64,
-    },
+    /// Vote on an open proposal
+    Vote { proposal_id: u64, vote: Vote },
+    /// Execute a passed proposal
+    Execute { proposal_id: u64 },
+    /// Close a failed proposal
+    Close { proposal_id: u64 },
+    /// This accepts a properly-encoded ReceiveMsg from a cw20 contract
+    Receive(Cw20ReceiveMsg),
+    /// Update DAO config (can only be called by DAO contract)
     UpdateConfig {
         threshold: Threshold,
         max_voting_period: Duration,
         proposal_deposit_amount: Uint128,
         proposal_deposit_token_address: String,
         refund_failed_proposals: Option<bool>,
+    },
+    /// Updates token list
+    UpdateCw20TokenList {
+        to_add: Vec<Addr>,
+        to_remove: Vec<Addr>,
     },
 }
 
@@ -162,6 +167,13 @@ pub enum QueryMsg {
     Voter { address: String },
     /// Returns Config
     GetConfig {},
+    /// Returns All DAO Cw20 Balances
+    Cw20Balances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Return list of cw20 Tokens associated with the DAO Treasury
+    Cw20TokenList {},
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

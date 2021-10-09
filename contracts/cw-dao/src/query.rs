@@ -1,12 +1,11 @@
+use crate::msg::Vote;
+use crate::state::Config;
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
+use cw0::Expiration;
+use cw20::Cw20CoinVerified;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
-use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
-use cw0::Expiration;
-
-use crate::msg::Vote;
-use crate::state::Config;
 
 /// This defines the different ways tallies can happen.
 /// Every contract should support a subset of these, ideally all.
@@ -164,3 +163,12 @@ pub struct ConfigResponse {
     pub config: Config,
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct Cw20BalancesResponse {
+    pub cw20_balances: Vec<Cw20CoinVerified>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct TokenListResponse {
+    pub token_list: Vec<Addr>,
+}
