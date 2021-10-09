@@ -313,7 +313,8 @@ pub fn execute_close(
     prop.status = Status::Rejected;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
-    let response_with_optional_refund = if should_refund_failed_proposal(deps)? {
+    let cfg = CONFIG.load(deps.storage)?;
+    let response_with_optional_refund = if cfg.refund_failed_proposals.unwrap_or(false) {
         let msg = get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit)?;
         Response::new().add_messages(msg)
     } else {
@@ -394,11 +395,6 @@ fn get_total_supply(deps: Deps) -> StdResult<Uint128> {
         .querier
         .query_wasm_smart(cfg.cw20_addr.addr(), &Cw20QueryMsg::TokenInfo {})?;
     Ok(token_info.total_supply)
-}
-
-fn should_refund_failed_proposal(deps: DepsMut) -> StdResult<bool> {
-    let cfg = CONFIG.load(deps.storage)?;
-    Ok(cfg.refund_failed_proposals.unwrap_or(false))
 }
 
 fn get_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
