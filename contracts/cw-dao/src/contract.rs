@@ -1334,7 +1334,7 @@ mod tests {
             quorum: Decimal::percent(10),
         };
         let proposal_deposit_amount = Uint128::new(10);
-        let (dao_addr, _cw20_addr) = setup_test_case(
+        let (dao_addr, cw20_addr) = setup_test_case(
             &mut app,
             threshold.clone(),
             voting_period,
@@ -1343,7 +1343,7 @@ mod tests {
             Some(true),
         );
 
-        let cw20 = Cw20Contract(_cw20_addr.clone());
+        let cw20 = Cw20Contract(cw20_addr.clone());
 
         let allowance = Cw20ExecuteMsg::IncreaseAllowance {
             spender: dao_addr.clone().into(),
@@ -1351,7 +1351,7 @@ mod tests {
             expires: None,
         };
 
-        let res = app.execute_contract(Addr::unchecked(OWNER), _cw20_addr.clone(), &allowance, &[]);
+        let res = app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &allowance, &[]);
         assert!(res.is_ok());
 
         let owner_initial_balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
@@ -1388,7 +1388,7 @@ mod tests {
             threshold,
             max_voting_period: voting_period,
             proposal_deposit_amount,
-            proposal_deposit_token_address: _cw20_addr.to_string(),
+            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: Some(false),
         };
 
@@ -1401,7 +1401,7 @@ mod tests {
             expires: None,
         };
 
-        let res = app.execute_contract(Addr::unchecked(OWNER), _cw20_addr.clone(), &allowance, &[]);
+        let res = app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &allowance, &[]);
         assert!(res.is_ok());
 
         let res = app
