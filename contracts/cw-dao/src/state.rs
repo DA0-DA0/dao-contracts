@@ -21,6 +21,7 @@ pub struct Config {
     // Total weight and voters are queried from this contract
     pub cw20_addr: Cw20Contract,
     pub proposal_deposit: ProposalDeposit,
+    pub refund_failed_proposals: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

@@ -1,5 +1,6 @@
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
+use crate::msg::UpdateConfigMsg;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Vote};
 use crate::query::{
     ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
@@ -12,7 +13,7 @@ use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, BlockInfo, CosmosMsg, Deps, DepsMut, Empty, Env,
     MessageInfo, Order, Response, StdResult, Uint128, WasmMsg,
 };
-use cw0::{maybe_addr, Duration, Expiration};
+use cw0::{maybe_addr, Expiration};
 use cw2::set_contract_version;
 use cw20::{
     BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg,
@@ -67,6 +68,7 @@ pub fn instantiate(
             amount: msg.proposal_deposit_amount,
             token_address: proposal_deposit_cw20_addr,
         },
+        refund_failed_proposals: msg.refund_failed_proposals,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -96,14 +98,18 @@ pub fn execute(
             max_voting_period,
             proposal_deposit_amount,
             proposal_deposit_token_address,
+            refund_failed_proposals,
         } => execute_update_config(
             deps,
             env,
             info,
-            threshold,
-            max_voting_period,
-            proposal_deposit_amount,
-            proposal_deposit_token_address,
+            UpdateConfigMsg {
+                threshold,
+                max_voting_period,
+                proposal_deposit_amount,
+                proposal_deposit_token_address,
+                refund_failed_proposals,
+            },
         ),
         ExecuteMsg::UpdateCw20TokenList { to_add, to_remove } => {
             execute_update_cw20_token_list(deps, env, info, to_add, to_remove)
@@ -329,7 +335,17 @@ pub fn execute_close(
     prop.status = Status::Rejected;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
-    Ok(Response::new()
+    let cfg = CONFIG.load(deps.storage)?;
+
+    let response_with_optional_refund = match cfg.refund_failed_proposals {
+        Some(true) => Response::new().add_messages(get_proposal_deposit_refund_message(
+            &prop.proposer,
+            &prop.deposit,
+        )?),
+        _ => Response::new(),
+    };
+
+    Ok(response_with_optional_refund
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
@@ -339,33 +355,31 @@ pub fn execute_update_config(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    threshold: Threshold,
-    max_voting_period: Duration,
-    proposal_deposit_amount: Uint128,
-    proposal_deposit_token_address: String,
+    update_config_msg: UpdateConfigMsg,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
-    threshold.validate()?;
+    update_config_msg.threshold.validate()?;
 
     let proposal_deposit_cw20_addr = Cw20Contract(
         deps.api
-            .addr_validate(&proposal_deposit_token_address)
+            .addr_validate(&update_config_msg.proposal_deposit_token_address)
             .map_err(|_| ContractError::InvalidCw20 {
-                addr: proposal_deposit_token_address.clone(),
+                addr: update_config_msg.proposal_deposit_token_address.clone(),
             })?,
     );
 
     CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
-        exists.threshold = threshold;
-        exists.max_voting_period = max_voting_period;
+        exists.threshold = update_config_msg.threshold;
+        exists.max_voting_period = update_config_msg.max_voting_period;
         exists.proposal_deposit = ProposalDeposit {
-            amount: proposal_deposit_amount,
+            amount: update_config_msg.proposal_deposit_amount,
             token_address: proposal_deposit_cw20_addr,
         };
+        exists.refund_failed_proposals = update_config_msg.refund_failed_proposals;
         Ok(exists)
     })?;
 

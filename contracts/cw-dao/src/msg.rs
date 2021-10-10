@@ -18,6 +18,7 @@ pub struct InstantiateMsg {
     pub proposal_deposit_amount: Uint128,
     /// The token address used to pay deposit proposal
     pub proposal_deposit_token_address: String,
+    pub refund_failed_proposals: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
@@ -127,6 +128,7 @@ pub enum ExecuteMsg {
         max_voting_period: Duration,
         proposal_deposit_amount: Uint128,
         proposal_deposit_token_address: String,
+        refund_failed_proposals: Option<bool>,
     },
     /// Updates token list
     UpdateCw20TokenList {
@@ -171,6 +173,16 @@ pub enum QueryMsg {
     },
     /// Return list of cw20 Tokens associated with the DAO Treasury
     Cw20TokenList {},
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct UpdateConfigMsg {
+    pub threshold: Threshold,
+    pub max_voting_period: Duration,
+    pub proposal_deposit_amount: Uint128,
+    pub proposal_deposit_token_address: String,
+    pub refund_failed_proposals: Option<bool>,
 }
 
 #[cfg(test)]
