@@ -1,6 +1,7 @@
 use cosmwasm_std::{Binary, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
 use cw20_base::ContractError;
 
+use crate::contract::transfer_voting_power;
 use crate::state::{DELEGATIONS, VOTING_POWER};
 
 pub fn execute_transfer_from(
@@ -13,27 +14,7 @@ pub fn execute_transfer_from(
 ) -> Result<Response, ContractError> {
     let rcpt_addr = deps.api.addr_validate(&recipient)?;
     let owner_addr = deps.api.addr_validate(&owner)?;
-    let owner_delegation = DELEGATIONS
-        .may_load(deps.storage, &owner_addr)?
-        .unwrap_or_else(|| owner_addr.clone());
-    let recipient_delegation = DELEGATIONS
-        .may_load(deps.storage, &rcpt_addr)?
-        .unwrap_or_else(|| rcpt_addr.clone());
-    VOTING_POWER.update(
-        deps.storage,
-        &owner_delegation,
-        env.block.height,
-        |balance: Option<Uint128>| -> StdResult<_> {
-            Ok(balance.unwrap_or_default().checked_sub(amount)?)
-        },
-    )?;
-    VOTING_POWER.update(
-        deps.storage,
-        &recipient_delegation,
-        env.block.height,
-        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
-    )?;
-
+    transfer_voting_power(deps.storage, &env, &owner_addr, &rcpt_addr, amount)?;
     cw20_base::allowances::execute_transfer_from(deps, env, info, owner, recipient, amount)
 }
 
@@ -71,27 +52,7 @@ pub fn execute_send_from(
 ) -> Result<Response, ContractError> {
     let rcpt_addr = deps.api.addr_validate(&contract)?;
     let owner_addr = deps.api.addr_validate(&owner)?;
-    let owner_delegation = DELEGATIONS
-        .may_load(deps.storage, &owner_addr)?
-        .unwrap_or_else(|| owner_addr.clone());
-    let recipient_delegation = DELEGATIONS
-        .may_load(deps.storage, &rcpt_addr)?
-        .unwrap_or_else(|| rcpt_addr.clone());
-    // move the tokens to the contract
-    VOTING_POWER.update(
-        deps.storage,
-        &owner_delegation,
-        env.block.height,
-        |balance: Option<Uint128>| -> StdResult<_> {
-            Ok(balance.unwrap_or_default().checked_sub(amount)?)
-        },
-    )?;
-    VOTING_POWER.update(
-        deps.storage,
-        &recipient_delegation,
-        env.block.height,
-        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
-    )?;
+    transfer_voting_power(deps.storage, &env, &owner_addr, &rcpt_addr, amount)?;
     cw20_base::allowances::execute_send_from(deps, env, info, owner, contract, amount, msg)
 }
 

@@ -107,7 +107,7 @@ pub fn execute_transfer(
     cw20_base::contract::execute_transfer(deps, env, info, recipient, amount)
 }
 
-fn transfer_voting_power(
+pub fn transfer_voting_power(
     storage: &mut dyn Storage,
     env: &Env,
     sender: &Addr,
