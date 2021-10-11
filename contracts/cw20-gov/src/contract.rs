@@ -628,7 +628,7 @@ mod tests {
     }
 
     #[test]
-    fn get_balance_at_height() {
+    fn get_voting_power_at_height() {
         let mut deps = mock_dependencies(&coins(2, "token"));
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
