@@ -401,25 +401,26 @@ mod tests {
 
         // delegate from owner to delegatee1
         let info = mock_info(owner.as_ref(), &[]);
-        let env = mock_env();
+        let mut env = mock_env();
         let msg = ExecuteMsg::DelegateVotes {
             recipient: delegatee_1.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        env.block.height += 1;
         assert_eq!(query_delegation(deps.as_ref(),owner.clone()).unwrap().delegation, delegatee_1);
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height+1).unwrap().balance, start);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height).unwrap().balance, start);
 
         // delegate from recpt to delegatee2
         let info = mock_info(rcpt.as_ref(), &[]);
-        let env = mock_env();
         let msg = ExecuteMsg::DelegateVotes {
             recipient: delegatee_2.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        env.block.height += 1;
         assert_eq!(query_delegation(deps.as_ref(),owner.clone()).unwrap().delegation, delegatee_1);
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),rcpt.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), rcpt.clone(), env.block.height+1).unwrap().balance, Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),rcpt.clone(),env.block.height).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), rcpt.clone(), env.block.height).unwrap().balance, Uint128::zero());
 
         // provide an allowance
         let allow1 = Uint128::new(77777);
@@ -440,9 +441,10 @@ mod tests {
         };
         let info = mock_info(spender.as_ref(), &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height+1).unwrap().balance, start.checked_sub(transfer).unwrap());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),delegatee_2.clone(),env.block.height+1).unwrap().balance,transfer);
+        env.block.height += 1;
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height).unwrap().balance, start.checked_sub(transfer).unwrap());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),delegatee_2.clone(),env.block.height).unwrap().balance,transfer);
     }
 
     #[test]
@@ -457,14 +459,15 @@ mod tests {
 
         // delegate from owner to delegatee1
         let info = mock_info(owner.as_ref(), &[]);
-        let env = mock_env();
+        let mut env = mock_env();
         let msg = ExecuteMsg::DelegateVotes {
             recipient: delegatee.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        env.block.height += 1;
         assert_eq!(query_delegation(deps.as_ref(), owner.clone()).unwrap().delegation, delegatee);
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), owner.clone(), env.block.height + 1).unwrap().balance, Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee.clone(), env.block.height + 1).unwrap().balance, start);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), owner.clone(), env.block.height).unwrap().balance, Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee.clone(), env.block.height).unwrap().balance, start);
 
         // provide an allowance
         let allow1 = Uint128::new(77777);
@@ -484,9 +487,10 @@ mod tests {
         };
         let info = mock_info(spender.as_ref(), &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        env.block.height += 1;
         assert_eq!(res.attributes[0], attr("action", "burn_from"));
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), owner.clone(), env.block.height + 1).unwrap().balance, Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee.clone(), env.block.height + 1).unwrap().balance, start-burn);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), owner.clone(), env.block.height).unwrap().balance, Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee.clone(), env.block.height).unwrap().balance, start-burn);
     }
 
     #[test]
@@ -503,25 +507,26 @@ mod tests {
 
         // delegate from owner to delegatee1
         let info = mock_info(owner.as_ref(), &[]);
-        let env = mock_env();
+        let mut env = mock_env();
         let msg = ExecuteMsg::DelegateVotes {
             recipient: delegatee_1.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        env.block.height += 1;
         assert_eq!(query_delegation(deps.as_ref(),owner.clone()).unwrap().delegation, delegatee_1);
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height+1).unwrap().balance, start);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height).unwrap().balance, start);
 
         // delegate from recpt to delegatee2
         let info = mock_info(rcpt.as_ref(), &[]);
-        let env = mock_env();
         let msg = ExecuteMsg::DelegateVotes {
             recipient: delegatee_2.clone(),
         };
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        env.block.height += 1;
         assert_eq!(query_delegation(deps.as_ref(),owner.clone()).unwrap().delegation, delegatee_1);
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),rcpt.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), rcpt.clone(), env.block.height+1).unwrap().balance, Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),rcpt.clone(),env.block.height).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), rcpt.clone(), env.block.height).unwrap().balance, Uint128::zero());
 
         // provide an allowance
         let allow1 = Uint128::new(77777);
@@ -544,8 +549,9 @@ mod tests {
         };
         let info = mock_info(spender.as_ref(), &[]);
         let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height+1).unwrap().balance, start.checked_sub(transfer).unwrap());
-        assert_eq!(query_voting_power_at_height(deps.as_ref(),delegatee_2.clone(),env.block.height+1).unwrap().balance,transfer);
+        env.block.height += 1;
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),owner.clone(),env.block.height).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(), delegatee_1.clone(), env.block.height).unwrap().balance, start.checked_sub(transfer).unwrap());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),delegatee_2.clone(),env.block.height).unwrap().balance,transfer);
     }
 }
