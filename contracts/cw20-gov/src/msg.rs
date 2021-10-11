@@ -1,7 +1,7 @@
-use cosmwasm_std::{Uint128, Binary, Addr};
+use cosmwasm_std::{Binary, Uint128};
+use cw20::{Expiration, Logo};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cw20::{Expiration, Logo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -53,7 +53,9 @@ pub enum ExecuteMsg {
         marketing: Option<String>,
     },
     UploadLogo(Logo),
-    DelegateVotes{recipient: String},
+    DelegateVotes {
+        recipient: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -67,7 +69,7 @@ pub enum QueryMsg {
     VotingPowerAtHeight { address: String, height: u64 },
     /// Returns current delegation information
     /// Return type: DelegationResponse.
-    Delegation { address: String},
+    Delegation { address: String },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     TokenInfo {},
