@@ -119,7 +119,7 @@ fn transfer_voting_power(storage: &mut dyn Storage, env: &Env, sender: &Addr, re
         storage,
         &recipient_delegation,
         env.block.height,
-        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
+        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default().checked_add(amount)?) },
     )?;
     Ok(())
 }
@@ -212,7 +212,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         // Custom queries
         QueryMsg::VotingPowerAtHeight { address, height } => {
-            to_binary(&query_balance_at_height(deps, address, height)?)
+            to_binary(&query_voting_power_at_height(deps, address, height)?)
         }
         // Inherited from cw20_base
         QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
@@ -235,7 +235,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_balance_at_height(
+pub fn query_voting_power_at_height(
     deps: Deps,
     address: String,
     height: u64,
@@ -635,26 +635,26 @@ mod tests {
 
         let remainder = amount1.checked_sub(transfer).unwrap();
         assert_eq!(
-            query_balance_at_height(deps.as_ref(), addr1.clone().into(), start_height)
+            query_voting_power_at_height(deps.as_ref(), addr1.clone().into(), start_height)
                 .unwrap()
                 .balance,
             amount1
         );
         assert_eq!(
-            query_balance_at_height(deps.as_ref(), addr1.clone().into(), env.block.height)
+            query_voting_power_at_height(deps.as_ref(), addr1.clone().into(), env.block.height)
                 .unwrap()
                 .balance,
             remainder
         );
 
         assert_eq!(
-            query_balance_at_height(deps.as_ref(), addr2.clone().into(), start_height)
+            query_voting_power_at_height(deps.as_ref(), addr2.clone().into(), start_height)
                 .unwrap()
                 .balance,
             Uint128::zero()
         );
         assert_eq!(
-            query_balance_at_height(deps.as_ref(), addr2.clone().into(), env.block.height)
+            query_voting_power_at_height(deps.as_ref(), addr2.clone().into(), env.block.height)
                 .unwrap()
                 .balance,
             transfer
@@ -842,5 +842,143 @@ mod tests {
             query_token_info(deps.as_ref()).unwrap().total_supply,
             amount1
         );
+    }
+
+    #[test]
+    fn delegate_and_transfer() {
+        let mut deps = mock_dependencies(&coins(2, "token"));
+        let addr1 = String::from("addr0001");
+        let addr2 = String::from("addr0002");
+        let addr3 = String::from("addr0003");
+        let amount1 = Uint128::from(12340000u128);
+        let transfer = Uint128::from(76543u128);
+
+        do_instantiate(deps.as_mut(), &addr1, amount1);
+
+        // delegate from addr1 to addr2
+        let info = mock_info(addr1.as_ref(), &[]);
+        let env = mock_env();
+        let msg = ExecuteMsg::DelegateVotes {
+            recipient: addr2.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(query_delegation(deps.as_ref(),addr1.clone()).unwrap().delegation, addr2);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance,amount1);
+
+        // send tokens and assert delegation changes
+        let info = mock_info(addr1.as_ref(), &[]);
+        let msg = ExecuteMsg::Transfer {
+            recipient: addr3.clone(),
+            amount: transfer,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance,amount1.checked_sub(transfer).unwrap());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr3.clone(),env.block.height+1).unwrap().balance,transfer);
+    }
+
+    #[test]
+    fn delegate_and_send() {
+        let mut deps = mock_dependencies(&coins(2, "token"));
+        let addr1 = String::from("addr0001");
+        let addr2 = String::from("addr0002");
+        let contract = String::from("addr0003");
+        let amount1 = Uint128::from(12340000u128);
+        let transfer = Uint128::from(76543u128);
+        let send_msg = Binary::from(r#"{"some":123}"#.as_bytes());
+
+
+        do_instantiate(deps.as_mut(), &addr1, amount1);
+
+        // delegate from addr1 to addr2
+        let info = mock_info(addr1.as_ref(), &[]);
+        let env = mock_env();
+        let msg = ExecuteMsg::DelegateVotes {
+            recipient: addr2.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(query_delegation(deps.as_ref(),addr1.clone()).unwrap().delegation, addr2);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance,amount1);
+
+        let info = mock_info(addr1.as_ref(), &[]);
+        let msg = ExecuteMsg::Send {
+            contract: contract.clone(),
+            amount: transfer,
+            msg: send_msg.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance,amount1.checked_sub(transfer).unwrap());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),contract.clone(),env.block.height+1).unwrap().balance,transfer);
+    }
+
+    #[test]
+    fn delegate_and_mint() {
+        let mut deps = mock_dependencies(&[]);
+
+        let mut deps = mock_dependencies(&coins(2, "token"));
+        let addr1 = String::from("addr0001");
+        let addr2 = String::from("addr0002");
+        let minter = String::from("addr0003");
+        let genesis_amount = Uint128::from(12340000u128);
+        let mint_amount = Uint128::from(76543u128);
+        let send_msg = Binary::from(r#"{"some":123}"#.as_bytes());
+        do_instantiate_with_minter(deps.as_mut(), &addr1, genesis_amount, &minter, None);
+
+        // delegate from addr1 to addr2
+        let info = mock_info(addr1.as_ref(), &[]);
+        let env = mock_env();
+        let msg = ExecuteMsg::DelegateVotes {
+            recipient: addr2.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(query_delegation(deps.as_ref(),addr1.clone()).unwrap().delegation, addr2);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance, genesis_amount);
+
+        // minted coins increase delegation
+        let msg = ExecuteMsg::Mint {
+            recipient: addr1.clone(),
+            amount: mint_amount,
+        };
+
+        let info = mock_info(minter.as_ref(), &[]);
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance, genesis_amount+mint_amount);
+    }
+
+    #[test]
+    fn delegate_and_burn() {
+        let mut deps = mock_dependencies(&coins(2, "token"));
+        let addr1 = String::from("addr0001");
+        let addr2 = String::from("addr0002");
+        let genesis_amount = Uint128::from(12340000u128);
+        let burn_amount = Uint128::from(76543u128);
+
+        do_instantiate(deps.as_mut(), &addr1, genesis_amount);
+
+        // delegate from addr1 to addr2
+        let info = mock_info(addr1.as_ref(), &[]);
+        let env = mock_env();
+        let msg = ExecuteMsg::DelegateVotes {
+            recipient: addr2.clone(),
+        };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(query_delegation(deps.as_ref(),addr1.clone()).unwrap().delegation, addr2);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance, genesis_amount);
+
+
+        // valid burn reduces total supply
+        let info = mock_info(addr1.as_ref(), &[]);
+        let msg = ExecuteMsg::Burn { amount: burn_amount };
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+        assert_eq!(res.messages.len(), 0);
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr1.clone(),env.block.height+1).unwrap().balance,Uint128::zero());
+        assert_eq!(query_voting_power_at_height(deps.as_ref(),addr2.clone(),env.block.height+1).unwrap().balance, genesis_amount-burn_amount);
     }
 }
