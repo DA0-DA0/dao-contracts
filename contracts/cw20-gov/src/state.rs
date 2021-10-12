@@ -9,4 +9,4 @@ pub const VOTING_POWER: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
 );
 
 // TODO: implement this feature
-pub const DELEGATIONS: Map<&Addr, &Addr> = Map::new("delegations");
+pub const DELEGATIONS: Map<&Addr, Addr> = Map::new("delegations");

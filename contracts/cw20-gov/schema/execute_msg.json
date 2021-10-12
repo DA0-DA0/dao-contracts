@@ -1,9 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Cw20ExecuteMsg",
+  "title": "ExecuteMsg",
   "anyOf": [
     {
-      "description": "Transfer is a base message to move tokens to another account without triggering actions",
       "type": "object",
       "required": [
         "transfer"
@@ -28,7 +27,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Burn is a base message to destroy tokens forever",
       "type": "object",
       "required": [
         "burn"
@@ -49,7 +47,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Send is a base message to transfer tokens to a contract and trigger an action on the receiving contract.",
       "type": "object",
       "required": [
         "send"
@@ -78,7 +75,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"approval\" extension. Allows spender to access an additional amount tokens from the owner's (env.sender) account. If expires is Some(), overwrites current allowance expiration with this one.",
       "type": "object",
       "required": [
         "increase_allowance"
@@ -113,7 +109,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"approval\" extension. Lowers the spender's access of tokens from the owner's (env.sender) account by amount. If expires is Some(), overwrites current allowance expiration with this one.",
       "type": "object",
       "required": [
         "decrease_allowance"
@@ -148,7 +143,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"approval\" extension. Transfers amount tokens from owner -> recipient if `env.sender` has sufficient pre-approval.",
       "type": "object",
       "required": [
         "transfer_from"
@@ -177,7 +171,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"approval\" extension. Sends amount tokens from owner -> contract if `env.sender` has sufficient pre-approval.",
       "type": "object",
       "required": [
         "send_from"
@@ -210,7 +203,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"approval\" extension. Destroys tokens forever",
       "type": "object",
       "required": [
         "burn_from"
@@ -235,7 +227,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with the \"mintable\" extension. If authorized, creates amount new tokens and adds to the recipient balance.",
       "type": "object",
       "required": [
         "mint"
@@ -260,7 +251,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with the \"marketing\" extension. If authorized, updates marketing metadata. Setting None/null for any of these will leave it unchanged. Setting Some(\"\") will clear this field on the contract storage",
       "type": "object",
       "required": [
         "update_marketing"
@@ -270,21 +260,18 @@
           "type": "object",
           "properties": {
             "description": {
-              "description": "A longer description of the token and it's utility. Designed for tooltips or such",
               "type": [
                 "string",
                 "null"
               ]
             },
             "marketing": {
-              "description": "The address (if any) who can update this data structure",
               "type": [
                 "string",
                 "null"
               ]
             },
             "project": {
-              "description": "A URL pointing to the project behind this token.",
               "type": [
                 "string",
                 "null"
@@ -296,7 +283,6 @@
       "additionalProperties": false
     },
     {
-      "description": "If set as the \"marketing\" role on the contract, upload a new URL, SVG, or PNG for the token",
       "type": "object",
       "required": [
         "upload_logo"
@@ -304,6 +290,26 @@
       "properties": {
         "upload_logo": {
           "$ref": "#/definitions/Logo"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "delegate_votes"
+      ],
+      "properties": {
+        "delegate_votes": {
+          "type": "object",
+          "required": [
+            "recipient"
+          ],
+          "properties": {
+            "recipient": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false

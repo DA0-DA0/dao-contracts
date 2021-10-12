@@ -51,6 +51,27 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns current delegation information Return type: DelegationResponse.",
+      "type": "object",
+      "required": [
+        "delegation"
+      ],
+      "properties": {
+        "delegation": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Returns metadata on the contract - name, decimals, supply, etc. Return type: TokenInfoResponse.",
       "type": "object",
       "required": [
