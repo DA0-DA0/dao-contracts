@@ -1,11 +1,11 @@
 #!/bin/sh
 
 # NOTE: you will need to update these to deploy on different network
-BINARY='starsd'
-DENOM='ustarx'
+BINARY='wasmd'
+DENOM='ujunox'
 CHAIN_ID='localnet-1'
-RPC='http://localhost:26657/'
-TXFLAG="--gas-prices 0.01$DENOM --gas auto --gas-adjustment 1.3 -y -b block --chain-id $CHAIN_ID --node $RPC"
+RPC='http://localhost:26657'
+TXFLAG="--gas-prices 0.01$DENOM --gas auto --gas-adjustment 1.3 -y -b block --chain-id $CHAIN_ID --node $RPC --keyring-backend test"
 
 : ${1?"Usage: $0 <address-to-deploy-conract-with>"}
 
@@ -14,6 +14,7 @@ COMPILED_CONTRACTS_DIR='../target/wasm32-unknown-unknown/release'
 
 echo "Address to deploy contracts: $1"
 echo "TX Flags: $TXFLAG"
+echo $BINARY
 
 #### CW20-GOV ####
 # Upload cw20 contract code
@@ -21,19 +22,22 @@ echo "TX Flags: $TXFLAG"
 CW20_CODE=$($BINARY tx wasm store "$COMPILED_CONTRACTS_DIR/cw20_gov.wasm" --from $1 $TXFLAG --output json | jq -r '.raw_log | fromjson | .[0].events[1].attributes[0].value' )
 
 # Instantiate cw20 contract
-CW20_INIT='{
-  "name": "daodao",
-  "symbol": "DAO",
-  "decimals": 6,
-  "initial_balances": []
-}'
-$BINARY tx wasm instantiate $CW20_CODE "$CW20_INIT" --from "$1" --label "gov token" $TXFLAG
+CW20_INIT="{
+  \"name\": \"daodao\",
+  \"symbol\": \"DAO\",
+  \"decimals\": 6,
+  \"initial_balances\": [
+    {
+      \"address\": \"$1\",
+      \"amount\": \"10000000000000\"
+    }
+  ]
+}"
+$BINARY tx wasm instantiate $CW20_CODE "$CW20_INIT" --from "$1" --label "gov token" $TXFLAG --admin $1
 
 # Get cw20 contract address
-$BINARY q wasm list-contract-by-code $CW20_CODE --output json
-CW20_CONTRACT=$($BINARY q wasm list-contract-by-code $CW20_CODE --output json | jq -r '.contracts[-1]')
-
-echo "cw20: $CW20_CONTRACT"
+$BINARY q wasm list-contract-by-code $CW20_CODE --output json --node $RPC
+CW20_CONTRACT=$($BINARY q wasm list-contract-by-code $CW20_CODE --node $RPC --output json | jq -r '.contracts[-1]')
 
 #### CW-DAO ####
 # Upload cw-dao contract code
@@ -52,9 +56,15 @@ CW_DAO_INIT="{
   \"max_voting_period\": {
     \"height\": 100
   },
-  \"proposal_deposit_amount\": \"1000000\",
+  \"proposal_deposit_amount\": \"10000\",
   \"proposal_deposit_token_address\": \"$CW20_CONTRACT\"
 }"
 
 echo $CW_DAO_INIT | jq .
-$BINARY tx wasm instantiate "$CW_DAO_CODE" "$CW_DAO_INIT" --from $1 --label "cw-dao" $TXFLAG
+$BINARY tx wasm instantiate "$CW_DAO_CODE" "$CW_DAO_INIT" --from $1 --label "cw-dao" $TXFLAG --admin $1
+
+$BINARY q wasm list-contract-by-code $CW_DAO_CODE --output json --node $RPC
+DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW_DAO_CODE --node $RPC --output json | jq -r '.contracts[-1]')
+
+echo "cw20: $CW20_CONTRACT"
+echo "dao: $DAO_CONTRACT"
