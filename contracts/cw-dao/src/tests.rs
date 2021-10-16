@@ -15,7 +15,7 @@ mod tests {
     use cw0::{Duration, Expiration};
     use cw2::{query_contract_info, ContractVersion};
     use cw20::{Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg};
-    use cw_multi_test::{next_block, App, AppBuilder, Contract, ContractWrapper, Executor};
+    use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
     const OWNER: &str = "admin0001";
     const VOTER1: &str = "voter0001";
@@ -46,7 +46,7 @@ mod tests {
     }
 
     fn mock_app() -> App {
-        AppBuilder::new().build()
+        App::default()
     }
 
     // uploads code and returns address of cw20 contract
@@ -131,7 +131,12 @@ mod tests {
 
         // Bonus: set some funds on the multisig contract for future proposals
         if !init_funds.is_empty() {
-            app.init_bank_balance(&dao_addr, init_funds).unwrap();
+            app.init_modules(|router, _, storage| {
+                router
+                    .bank
+                    .init_balance(storage, &dao_addr, init_funds)
+                    .unwrap()
+            });
         }
         (dao_addr, cw20_addr)
     }
