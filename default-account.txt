@@ -1,0 +1,13 @@
+- name: default-account
+  type: local
+  address: wasm1aq69sg9sdrqgflvrdnnjvaxmeu6azx2hyugk84
+  pubkey: wasmpub1addwnpepq07qp0t2ql4kspst6hz7fte3wrtcl32fx3hd806dlypxc7fhj23jkmgu88u
+  mnemonic: ""
+  threshold: 0
+  pubkeys: []
+
+
+**Important** write this mnemonic phrase in a safe place.
+It is the only way to recover your account if you ever forget your password.
+
+impulse citizen mixed envelope feed news nation become alpha write intact blouse void unknown dress enemy grief forest tired property slush parade chapter appear
