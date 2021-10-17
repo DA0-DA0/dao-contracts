@@ -65,6 +65,9 @@ Private key to export to Keplr:
 
 You can import this private key to your Keplr wallet, configure Keplr to point to your local chain (see `docker ps`), then interact with the contract addresses.
 
+Note: If you change  `.env.local`, you'll need to re-add the chain to Keplr. If you select a different chain in Keplr (like Cosmos), you can scroll down and remove the "Wasmd Test" chain, then you can re-add it by connecting your wallet.
+
+
 ## Deploying contract in production
 
 Once you are happy with the content, you can compile it to wasm via:
