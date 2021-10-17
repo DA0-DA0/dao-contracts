@@ -46,9 +46,7 @@ You can run unit tests on this via:
 
 ## Deploying in a development environment
 
-First, run the front end, which will pass the chain info to Keplr. From there, get a wasm address for one of your private keys.
-
-Then, deploy the contract to a local chain with:
+Deploy the contract to a local chain with:
 
 ``` sh
 bash scripts/deploy_local.sh wasm1aq69sg9sdrqgflvrdnnjvaxmeu6azx2hyugk84
