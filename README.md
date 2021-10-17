@@ -51,8 +51,10 @@ First, run the front end, which will pass the chain info to Keplr. From there, g
 Then, deploy the contract to a local chain with:
 
 ``` sh
-bash scripts/deploy_local.sh [your-wasm-address]
+bash scripts/deploy_local.sh wasm1aq69sg9sdrqgflvrdnnjvaxmeu6azx2hyugk84
 ```
+
+> Note: This Wasm account is from the [default account](default-account.txt), which you can use for testing. You can pass in any wasm account you want to use.
 
 This will run a chain locally in a docker container, then build and deploy the contracts to that chain.
 
