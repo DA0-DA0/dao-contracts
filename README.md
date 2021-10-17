@@ -63,7 +63,7 @@ CW20 Contract: wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujgqwg3
 CW_DAO Contract: wasm1nc5tatafv6eyq7llkr2gv50ff9e22mnfhap4vz
 ```
 
-You can import this private key to your Keplr wallet, configure Keplr to point to your local chain (see `docker ps`), then interact with the contract addresses.
+You can then interact with the contract addresses.
 
 Note: If you change  `.env.local`, you'll need to re-add the chain to Keplr. If you select a different chain in Keplr (like Cosmos), you can scroll down and remove the "Wasmd Test" chain, then you can re-add it by connecting your wallet. Additionally, each time you run `deploy-local.sh`, it will generate a new private key. This means you will have to add the new account to Keplr.
 
