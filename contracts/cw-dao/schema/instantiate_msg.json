@@ -11,7 +11,7 @@
   ],
   "properties": {
     "cw20_addr": {
-      "description": "cw20 contract address valid social token for governance",
+      "description": "cw20-gov token contract address",
       "type": "string"
     },
     "max_voting_period": {

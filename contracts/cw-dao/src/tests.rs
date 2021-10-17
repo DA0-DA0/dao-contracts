@@ -114,7 +114,7 @@ mod tests {
         proposal_deposit_amount: Option<Uint128>,
         refund_failed_proposals: Option<bool>,
     ) -> (Addr, Addr) {
-        // 1. Instantiate Social Token Contract
+        // 1. Instantiate Gov Token Contract
         let cw20_addr = instantiate_cw20(app);
         app.update_block(next_block);
 
@@ -251,7 +251,7 @@ mod tests {
         );
 
         let proposal = pay_somebody_proposal();
-        // Only voters with a social token balance can propose
+        // Only voters with a gov token balance can propose
         let err = app
             .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &proposal, &[])
             .unwrap_err();

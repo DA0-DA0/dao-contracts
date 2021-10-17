@@ -8,11 +8,11 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
-    /// cw20 contract address valid social token for governance
+    /// cw20 contract address valid gov token
     pub cw20_addr: String,
     /// Voting params configuration
     pub threshold: Threshold,
-    /// TODO ???
+    /// The amount of time a proposal can be voted on before expiring
     pub max_voting_period: Duration,
     /// Deposit required to make a proposal
     pub proposal_deposit_amount: Uint128,
