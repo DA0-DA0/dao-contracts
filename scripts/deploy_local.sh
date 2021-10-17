@@ -21,6 +21,9 @@ docker run --rm -d --name cosmwasm -p 26657:26657 -p 26656:26656 -p 1317:1317 \
     --mount type=volume,source=wasmd_data,target=/root \
     cosmwasm/wasmd:v0.20.0 /opt/run_wasmd.sh
 
+# Update app.toml
+docker cp docker/app.toml cosmwasm:/root/.wasmd/config/app.toml
+
 # Compile code
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
