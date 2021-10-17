@@ -65,7 +65,7 @@ Private key to export to Keplr:
 
 You can import this private key to your Keplr wallet, configure Keplr to point to your local chain (see `docker ps`), then interact with the contract addresses.
 
-Note: If you change  `.env.local`, you'll need to re-add the chain to Keplr. If you select a different chain in Keplr (like Cosmos), you can scroll down and remove the "Wasmd Test" chain, then you can re-add it by connecting your wallet.
+Note: If you change  `.env.local`, you'll need to re-add the chain to Keplr. If you select a different chain in Keplr (like Cosmos), you can scroll down and remove the "Wasmd Test" chain, then you can re-add it by connecting your wallet. Additionally, each time you run `deploy-local.sh`, it will generate a new private key. This means you will have to add the new account to Keplr.
 
 
 ## Deploying contract in production
