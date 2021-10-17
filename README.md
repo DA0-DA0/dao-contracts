@@ -65,9 +65,6 @@ CW_DAO Contract: wasm1nc5tatafv6eyq7llkr2gv50ff9e22mnfhap4vz
 
 You can then interact with the contract addresses.
 
-Note: If you change  `.env.local`, you'll need to re-add the chain to Keplr. If you select a different chain in Keplr (like Cosmos), you can scroll down and remove the "Wasmd Test" chain, then you can re-add it by connecting your wallet. Additionally, each time you run `deploy-local.sh`, it will generate a new private key. This means you will have to add the new account to Keplr.
-
-
 ## Deploying in production
 
 Once you are happy with the content, you can compile it to wasm via:
