@@ -2,7 +2,7 @@
 
 if [ "$1" = "" ]
 then
-  echo "Usage: $0 1 arg required, wasm address"
+  echo "Usage: $0 1 arg required, wasm address. See \"Deploying in a development environment\" in README."
   exit
 fi
 

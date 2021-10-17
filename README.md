@@ -46,10 +46,12 @@ You can run unit tests on this via:
 
 ## Deploying in a development environment
 
-You can deploy the contract to a local chain with:
+First, run the front end, which will pass the chain info to Keplr. From there, get a wasm address for one of your private keys.
+
+Then, deploy the contract to a local chain with:
 
 ``` sh
-bash scripts/deploy_local.sh
+bash scripts/deploy_local.sh [your-wasm-address]
 ```
 
 This will run a chain locally in a docker container, then build and deploy the contracts to that chain.
@@ -59,16 +61,11 @@ The script will output something like:
 ``` sh
 CW20 Contract: wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujgqwg3
 CW_DAO Contract: wasm1nc5tatafv6eyq7llkr2gv50ff9e22mnfhap4vz
-Private key to export to Keplr:
-3d50b1de3684c6541483f0f26e85e5687f4cdd7120cdacbe45c3c8d64bec2b2d
 ```
 
-You can import this private key to your Keplr wallet, configure Keplr to point to your local chain (see `docker ps`), then interact with the contract addresses.
+You can then interact with the contract addresses.
 
-Note: If you change  `.env.local`, you'll need to re-add the chain to Keplr. If you select a different chain in Keplr (like Cosmos), you can scroll down and remove the "Wasmd Test" chain, then you can re-add it by connecting your wallet. Additionally, each time you run `deploy-local.sh`, it will generate a new private key. This means you will have to add the new account to Keplr.
-
-
-## Deploying contract in production
+## Deploying in production
 
 Once you are happy with the content, you can compile it to wasm via:
 
