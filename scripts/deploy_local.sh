@@ -12,17 +12,21 @@ docker kill cosmwasm
 
 docker volume rm -f wasmd_data
 
+# Run wasmd setup script
 docker run --rm -it \
     -e PASSWORD=xxxxxxxxx \
     --mount type=volume,source=wasmd_data,target=/root \
     cosmwasm/wasmd:v0.20.0 /opt/setup_wasmd.sh cosmos1pkptre7fdkl6gfrzlesjjvhxhlc3r4gmmk8rs6
 
+# Add custom app.toml to wasmd_data volume
+docker run -v wasmd_data:/root --name helper busybox true
+docker cp docker/app.toml helper:/root/.wasmd/config/app.toml
+docker rm helper
+
+# Start wasmd
 docker run --rm -d --name cosmwasm -p 26657:26657 -p 26656:26656 -p 1317:1317 \
     --mount type=volume,source=wasmd_data,target=/root \
     cosmwasm/wasmd:v0.20.0 /opt/run_wasmd.sh
-
-# Update app.toml
-docker cp docker/app.toml cosmwasm:/root/.wasmd/config/app.toml
 
 # Compile code
 docker run --rm -v "$(pwd)":/code \
