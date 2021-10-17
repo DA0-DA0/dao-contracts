@@ -1,5 +1,11 @@
 #!/bin/sh
 
+if [ "$1" = "" ]
+then
+  echo "Usage: $0 1 arg required, wasm address"
+  exit
+fi
+
 # NOTE: you will need to update these to deploy on different network
 BINARY='docker exec -i cosmwasm wasmd'
 DENOM='ustake'
@@ -16,11 +22,12 @@ docker volume rm -f wasmd_data
 docker run --rm -it \
     -e PASSWORD=xxxxxxxxx \
     --mount type=volume,source=wasmd_data,target=/root \
-    cosmwasm/wasmd:v0.20.0 /opt/setup_wasmd.sh cosmos1pkptre7fdkl6gfrzlesjjvhxhlc3r4gmmk8rs6
+    cosmwasm/wasmd:v0.20.0 /opt/setup_wasmd.sh $1
 
 # Add custom app.toml to wasmd_data volume
 docker run -v wasmd_data:/root --name helper busybox true
 docker cp docker/app.toml helper:/root/.wasmd/config/app.toml
+docker cp docker/config.toml helper:/root/.wasmd/config/config.toml
 docker rm helper
 
 # Start wasmd
@@ -56,8 +63,9 @@ CW20_INIT='{
   "name": "daodao",
   "symbol": "DAO",
   "decimals": 6,
-  "initial_balances": []
+  "initial_balances": [{"address":"'"$1"'","amount":"1000000000"}]
 }'
+echo "$CW20_INIT"
 $(echo xxxxxxxxx | $BINARY tx wasm instantiate $CW20_CODE "$CW20_INIT" --from "validator" --label "gov token" $TXFLAG)
 
 # Get cw20 contract address
@@ -81,7 +89,7 @@ CW_DAO_INIT="{
   \"max_voting_period\": {
     \"height\": 100
   },
-  \"proposal_deposit_amount\": \"1000000\",
+  \"proposal_deposit_amount\": \"0\",
   \"proposal_deposit_token_address\": \"$CW20_CONTRACT\"
 }"
 
@@ -97,5 +105,3 @@ printf "Config Variables \n\n"
 
 echo "CW20 Contract: $CW20_CONTRACT"
 echo "CW_DAO Contract: $CW_DAO_CONTRACT"
-echo "Private key to export to Keplr:"
-$(printf 'y\nxxxxxxxxx\n' | $BINARY keys export --unsafe --unarmored-hex validator)
