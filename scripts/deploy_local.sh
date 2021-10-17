@@ -89,7 +89,7 @@ CW_DAO_INIT="{
   \"max_voting_period\": {
     \"height\": 100
   },
-  \"proposal_deposit_amount\": \"1000000\",
+  \"proposal_deposit_amount\": \"0\",
   \"proposal_deposit_token_address\": \"$CW20_CONTRACT\"
 }"
 
