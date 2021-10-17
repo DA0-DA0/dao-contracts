@@ -36,13 +36,36 @@ These contracts can be used in combination with the cw-dao contract to extend fu
 
 - [cw-vest](https://github.com/ben2x4/cw-vest): Adds the ability to vest cw-20 tokens. Useful if you want community members to be incentivized over a longer term or for payments on projects that have multiple phases.
 
-## Running this contract
+## Testing
 
 You will need Rust 1.44.1+ with `wasm32-unknown-unknown` target installed.
 
 You can run unit tests on this via:
 
 `cargo test`
+
+## Deploying in a development environment
+
+You can deploy the contract to a local chain with:
+
+``` sh
+bash scripts/deploy_local.sh
+```
+
+This will run a chain locally in a docker container, then build and deploy the contracts to that chain.
+
+The script will output something like:
+
+``` sh
+CW20 Contract: wasm14hj2tavq8fpesdwxxcu44rty3hh90vhujgqwg3
+CW_DAO Contract: wasm1nc5tatafv6eyq7llkr2gv50ff9e22mnfhap4vz
+Private key to export to Keplr:
+3d50b1de3684c6541483f0f26e85e5687f4cdd7120cdacbe45c3c8d64bec2b2d
+```
+
+You can import this private key to your Keplr wallet, configure Keplr to point to your local chain (see `docker ps`), then interact with the contract addresses.
+
+## Deploying contract in production
 
 Once you are happy with the content, you can compile it to wasm via:
 
@@ -60,13 +83,5 @@ sha256sum cw20_gov.wasm
 Or for a production-ready (optimized) build, run a build command in
 the repository root: https://github.com/CosmWasm/cosmwasm-plus#compiling.
 
-## Deploying this contract
-
-An example deployment script is demonstrated in `script/deploy.sh`. Be sure to update script variables with your chain details.
-
-```sh
-cd scripts
-bash deploy.sh <your-address>
-```
-
-At a high level it involves: uploading the contract code to the blockchain (which only needs to be done once) and instantiating the contract. See script for further details.
+You can then upload the contract code to the blockchain (which only needs to be
+done once) and instantiate the contract. (Further documentation coming soon).
