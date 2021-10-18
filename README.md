@@ -54,7 +54,7 @@ Then, deploy the contract to a local chain with:
 bash scripts/deploy_local.sh wasm1aq69sg9sdrqgflvrdnnjvaxmeu6azx2hyugk84
 ```
 
-> Note: This Wasm account is from the [default account](default-account.txt), which you can use for testing. You can pass in any wasm account you want to use, but *please not one where you store real funds*. (:
+> Note: This Wasm account is from the [default account](default-account.txt), which you can use for testing (DO NOT store any real funds with this account). You can pass in any wasm account address you want to use.
 
 This will run a chain locally in a docker container, then build and deploy the contracts to that chain.
 
