@@ -103,5 +103,5 @@ CW_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW_DAO_CODE --output jso
 printf "\n ------------------------ \n"
 printf "Config Variables \n\n"
 
-echo "CW20 Contract: $CW20_CONTRACT"
-echo "CW_DAO Contract: $CW_DAO_CONTRACT"
+echo "NEXT_PUBLIC_DAO_TOKEN_ADDRESS: $CW20_CONTRACT"
+echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS: $CW_DAO_CONTRACT"
