@@ -104,4 +104,4 @@ printf "\n ------------------------ \n"
 printf "Config Variables \n\n"
 
 echo "NEXT_PUBLIC_DAO_TOKEN_ADDRESS=$CW20_CONTRACT"
-echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS: $CW_DAO_CONTRACT"
+echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW_DAO_CONTRACT"
