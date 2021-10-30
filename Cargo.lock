@@ -170,6 +170,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-distribution"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-multi-test"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
