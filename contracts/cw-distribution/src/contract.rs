@@ -4,10 +4,8 @@ use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 
-use crate::msg::{
-    ExecuteMsg, InstantiateMsg, QueryMsg,
-};
 use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -16,7 +14,7 @@ pub fn instantiate(
     _info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
-   Ok(Response::default())
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -26,16 +24,13 @@ pub fn execute(
     _info: MessageInfo,
     _msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
-   Ok(Response::default())
+    Ok(Response::default())
 }
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     to_binary(&{})
 }
 
-
 #[cfg(test)]
-mod tests {
-}
+mod tests {}
