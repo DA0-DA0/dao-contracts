@@ -136,8 +136,6 @@ pub enum ExecuteMsg {
     Execute { proposal_id: u64 },
     /// Close a failed proposal
     Close { proposal_id: u64 },
-    /// This accepts a properly-encoded ReceiveMsg from a cw20 contract
-    Receive(Cw20ReceiveMsg),
     /// Update DAO config (can only be called by DAO contract)
     UpdateConfig {
         name: String,

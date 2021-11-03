@@ -94,7 +94,6 @@ pub fn execute(
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
-        ExecuteMsg::Receive(msg) => execute_receive(deps, info, msg),
         ExecuteMsg::UpdateConfig {
             name,
             description,
@@ -119,16 +118,6 @@ pub fn execute(
             execute_update_cw20_token_list(deps, env, info, to_add, to_remove)
         }
     }
-}
-
-pub fn execute_receive(
-    deps: DepsMut,
-    info: MessageInfo,
-    _wrapper: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
-    TREASURY_TOKENS.save(deps.storage, &info.sender, &Empty {})?;
-
-    Ok(Response::default())
 }
 
 pub fn execute_propose(
