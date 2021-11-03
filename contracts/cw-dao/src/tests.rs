@@ -101,7 +101,6 @@ mod tests {
             threshold,
             max_voting_period,
             proposal_deposit_amount: proposal_deposit_amount.unwrap_or(Uint128::zero()),
-            proposal_deposit_token_address: cw20.to_string(),
             refund_failed_proposals: refund_failed_proposals,
         };
         app.instantiate_contract(flex_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
@@ -184,7 +183,6 @@ mod tests {
             },
             max_voting_period,
             proposal_deposit_amount: Uint128::zero(),
-            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: None,
         };
         let err = app
@@ -213,7 +211,6 @@ mod tests {
             },
             max_voting_period,
             proposal_deposit_amount: Uint128::zero(),
-            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: None,
         };
         let dao_addr = app
@@ -836,7 +833,6 @@ mod tests {
             threshold,
             max_voting_period: voting_period,
             proposal_deposit_amount,
-            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: Some(false),
         };
 
@@ -981,7 +977,6 @@ mod tests {
             threshold: new_threshold.clone(),
             max_voting_period: new_voting_period.clone(),
             proposal_deposit_amount: new_proposal_deposit_amount,
-            proposal_deposit_token_address: new_deposit_token_address.clone(),
             refund_failed_proposals: None,
         };
         let res = app.execute_contract(
@@ -1137,7 +1132,6 @@ mod tests {
             threshold,
             max_voting_period: voting_period,
             proposal_deposit_amount,
-            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: None,
         };
         let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);

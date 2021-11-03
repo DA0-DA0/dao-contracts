@@ -89,8 +89,7 @@ CW_DAO_INIT="{
   \"max_voting_period\": {
     \"height\": 100
   },
-  \"proposal_deposit_amount\": \"0\",
-  \"proposal_deposit_token_address\": \"$CW20_CONTRACT\"
+  \"proposal_deposit_amount\": \"0\"
 }"
 
 echo $CW_DAO_INIT | jq .

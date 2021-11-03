@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::UpdateConfigMsg;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Vote};
+use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Vote};
 use crate::query::{
     ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
@@ -39,19 +39,19 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let cw20_addr = Cw20Contract(deps.api.addr_validate(&msg.cw20_addr).map_err(|_| {
-        ContractError::InvalidCw20 {
-            addr: msg.cw20_addr.clone(),
+    let cw20_addr = match msg.gov_token {
+        GovTokenMsg::InstantiateNewCw20 { msg } => {
+            println!("TODO: Instantiate a cw20");
+            Addr::unchecked("todo")
         }
-    })?);
-
-    let proposal_deposit_cw20_addr = Cw20Contract(
-        deps.api
-            .addr_validate(&msg.proposal_deposit_token_address)
-            .map_err(|_| ContractError::InvalidCw20 {
-                addr: msg.proposal_deposit_token_address.clone(),
-            })?,
-    );
+        GovTokenMsg::UseExistingCw20 { addr } => {
+            Cw20Contract(deps.api.addr_validate(&msg.cw20_addr).map_err(|_| {
+                ContractError::InvalidCw20 {
+                    addr: msg.cw20_addr.clone(),
+                }
+            })?)
+        }
+    };
 
     // Add cw20-gov token to map of TREASURY TOKENS
     TREASURY_TOKENS.save(deps.storage, &cw20_addr.addr(), &Empty {})?;
@@ -68,7 +68,7 @@ pub fn instantiate(
         cw20_addr,
         proposal_deposit: ProposalDeposit {
             amount: msg.proposal_deposit_amount,
-            token_address: proposal_deposit_cw20_addr,
+            token_address: cw20_addr,
         },
         refund_failed_proposals: msg.refund_failed_proposals,
     };
@@ -101,7 +101,6 @@ pub fn execute(
             threshold,
             max_voting_period,
             proposal_deposit_amount,
-            proposal_deposit_token_address,
             refund_failed_proposals,
         } => execute_update_config(
             deps,
@@ -113,7 +112,6 @@ pub fn execute(
                 threshold,
                 max_voting_period,
                 proposal_deposit_amount,
-                proposal_deposit_token_address,
                 refund_failed_proposals,
             },
         ),
