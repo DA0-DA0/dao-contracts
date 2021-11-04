@@ -139,7 +139,7 @@ pub fn execute_propose(
 ) -> Result<Response<Empty>, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
 
-    // Only owners of the social token can create a proposal
+    // Only owners of the gov token can create a proposal
     let balance = get_balance(deps.as_ref(), info.sender.clone())?;
     if balance == Uint128::zero() {
         return Err(ContractError::Unauthorized {});
