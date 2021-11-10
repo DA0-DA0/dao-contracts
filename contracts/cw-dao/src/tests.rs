@@ -2,7 +2,7 @@
 mod tests {
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::error::ContractError;
-    use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
+    use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
     use crate::query::{
         ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
         ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
@@ -97,7 +97,9 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             name: "dao-dao".to_string(),
             description: "a great DAO!".to_string(),
-            cw20_addr: cw20.to_string(),
+            gov_token: GovTokenMsg::UseExistingCw20 {
+                addr: cw20.to_string(),
+            },
             threshold,
             max_voting_period,
             proposal_deposit_amount: proposal_deposit_amount.unwrap_or(Uint128::zero()),
@@ -177,7 +179,9 @@ mod tests {
         let instantiate_msg = InstantiateMsg {
             name: "dao-dao".to_string(),
             description: "a great DAO!".to_string(),
-            cw20_addr: cw20_addr.to_string(),
+            gov_token: GovTokenMsg::UseExistingCw20 {
+                addr: cw20_addr.to_string(),
+            },
             threshold: Threshold::AbsolutePercentage {
                 percentage: Decimal::percent(101),
             },
@@ -204,7 +208,9 @@ mod tests {
         let instantiate_msg = InstantiateMsg {
             name: "dao-dao".to_string(),
             description: "a great DAO!".to_string(),
-            cw20_addr: cw20_addr.to_string(),
+            gov_token: GovTokenMsg::UseExistingCw20 {
+                addr: cw20_addr.to_string(),
+            },
             threshold: Threshold::ThresholdQuorum {
                 threshold: Decimal::percent(51),
                 quorum: Decimal::percent(10),
@@ -833,6 +839,7 @@ mod tests {
             threshold,
             max_voting_period: voting_period,
             proposal_deposit_amount,
+            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: Some(false),
         };
 
@@ -977,6 +984,7 @@ mod tests {
             threshold: new_threshold.clone(),
             max_voting_period: new_voting_period.clone(),
             proposal_deposit_amount: new_proposal_deposit_amount,
+            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: None,
         };
         let res = app.execute_contract(
@@ -1132,6 +1140,7 @@ mod tests {
             threshold,
             max_voting_period: voting_period,
             proposal_deposit_amount,
+            proposal_deposit_token_address: cw20_addr.to_string(),
             refund_failed_proposals: None,
         };
         let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);

@@ -41,20 +41,18 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     let cw20_addr = match msg.gov_token {
         GovTokenMsg::InstantiateNewCw20 { msg } => {
+            // TODO Instantiate a cw20 and return address
             println!("TODO: Instantiate a cw20");
             Addr::unchecked("todo")
         }
         GovTokenMsg::UseExistingCw20 { addr } => {
-            Cw20Contract(deps.api.addr_validate(&msg.cw20_addr).map_err(|_| {
-                ContractError::InvalidCw20 {
-                    addr: msg.cw20_addr.clone(),
-                }
-            })?)
+            // // TODO validate addr
+            Addr::unchecked(addr)
         }
     };
 
     // Add cw20-gov token to map of TREASURY TOKENS
-    TREASURY_TOKENS.save(deps.storage, &cw20_addr.addr(), &Empty {})?;
+    TREASURY_TOKENS.save(deps.storage, &cw20_addr, &Empty {})?;
 
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -65,10 +63,10 @@ pub fn instantiate(
         description: msg.description,
         threshold: msg.threshold,
         max_voting_period: msg.max_voting_period,
-        cw20_addr,
+        cw20_addr: Cw20Contract(cw20_addr.clone()),
         proposal_deposit: ProposalDeposit {
             amount: msg.proposal_deposit_amount,
-            token_address: cw20_addr,
+            token_address: Cw20Contract(cw20_addr),
         },
         refund_failed_proposals: msg.refund_failed_proposals,
     };
@@ -100,6 +98,7 @@ pub fn execute(
             threshold,
             max_voting_period,
             proposal_deposit_amount,
+            proposal_deposit_token_address,
             refund_failed_proposals,
         } => execute_update_config(
             deps,
@@ -111,6 +110,7 @@ pub fn execute(
                 threshold,
                 max_voting_period,
                 proposal_deposit_amount,
+                proposal_deposit_token_address,
                 refund_failed_proposals,
             },
         ),

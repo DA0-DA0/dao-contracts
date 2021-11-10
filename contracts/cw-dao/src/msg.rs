@@ -199,6 +199,7 @@ pub struct UpdateConfigMsg {
     pub threshold: Threshold,
     pub max_voting_period: Duration,
     pub proposal_deposit_amount: Uint128,
+    pub proposal_deposit_token_address: String,
     pub refund_failed_proposals: Option<bool>,
 }
 
