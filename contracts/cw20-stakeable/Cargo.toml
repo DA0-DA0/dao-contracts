@@ -5,6 +5,7 @@ authors = ["Ben2x4 <Ben2x4@tutanota.com>"]
 edition = "2018"
 license = "Apache-2.0"
 repository = "https://github.com/DA0-DA0/cw-dao/contracts/cw20-stakeable"
+description = "CW20 token that can be staked and staked balance can be queried at any height"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
