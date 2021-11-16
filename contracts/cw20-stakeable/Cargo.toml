@@ -1,10 +1,10 @@
 [package]
-name = "cw20-staking"
+name = "cw20-stakeable"
 version = "0.1.0"
 authors = ["Ben2x4 <Ben2x4@tutanota.com>"]
 edition = "2018"
 license = "Apache-2.0"
-repository = "https://github.com/DA0-DA0/cw-dao"
+repository = "https://github.com/DA0-DA0/cw-dao/contracts/cw20-stakeable"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
