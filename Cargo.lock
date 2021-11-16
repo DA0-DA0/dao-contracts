@@ -280,7 +280,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw20-staking"
+name = "cw20-stakeable"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
