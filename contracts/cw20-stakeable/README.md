@@ -1,3 +1,3 @@
-# CW20 Extension Base
+# CW20 Stakeable
 
-This is a simple base contract for implementing cw20 extensions. It imports the execute and query messages from [CW20-Base](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw20-base) and reimplements the exact same functionality. 
+This is an extension of cw20 that allows the token to be staked. Staked tokens can be unbonded with a configurable unbonding period. Staked balances can be queried at any arbitrary height by external contracts. This contract will be used to enable DAO voting.
