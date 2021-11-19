@@ -115,10 +115,10 @@ pub fn transfer_voting_power(
     amount: Uint128,
 ) -> Result<(), ContractError> {
     let sender_delegation = DELEGATIONS
-        .may_load(storage, &sender)?
+        .may_load(storage, sender)?
         .unwrap_or_else(|| sender.clone());
     let recipient_delegation = DELEGATIONS
-        .may_load(storage, &recipient)?
+        .may_load(storage, recipient)?
         .unwrap_or_else(|| recipient.clone());
     VOTING_POWER.update(
         storage,

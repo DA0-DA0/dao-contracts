@@ -2,6 +2,8 @@ use crate::error::ContractError;
 use crate::query::ThresholdResponse;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
+use cw20::Cw20Coin;
+use cw20_base::msg::InstantiateMarketingInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -28,12 +30,22 @@ pub struct InstantiateMsg {
 pub enum GovTokenMsg {
     // Instantiate a new cw20 token with the DAO as minter
     InstantiateNewCw20 {
-        msg: cw20_base::msg::InstantiateMsg,
+        code_id: u64,
+        label: String,
+        msg: GovTokenInstantiateMsg,
     },
     /// Use an existing cw20 token
-    UseExistingCw20 {
-        addr: String,
-    },
+    UseExistingCw20 { addr: String },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct GovTokenInstantiateMsg {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub initial_balances: Vec<Cw20Coin>,
+    pub marketing: Option<InstantiateMarketingInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]

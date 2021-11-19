@@ -15,11 +15,11 @@ use crate::state::{
 };
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Reply, Response, StdResult, Uint128, WasmMsg,
+    Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
-use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg};
+use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg, MinterResponse};
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
@@ -31,11 +31,12 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
+const INSTANTIATE_GOV_TOKEN_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -53,11 +54,36 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &cfg)?;
 
+    let mut msgs: Vec<SubMsg> = vec![];
+
     match msg.gov_token {
-        GovTokenMsg::InstantiateNewCw20 { msg } => {
-            println!("{:?}", msg);
-            // cw20_addr: Cw20Contract(cw20_addr.clone()),
-            // Ok(Response::default())
+        GovTokenMsg::InstantiateNewCw20 {
+            code_id,
+            label,
+            msg,
+        } => {
+            // TODO error if initial balances are empty
+            let msg = WasmMsg::Instantiate {
+                code_id,
+                funds: vec![],
+                admin: Some(env.contract.address.to_string()),
+                label,
+                msg: to_binary(&cw20_base::msg::InstantiateMsg {
+                    name: msg.name,
+                    symbol: msg.symbol,
+                    decimals: msg.decimals,
+                    initial_balances: msg.initial_balances,
+                    mint: Some(MinterResponse {
+                        minter: env.contract.address.to_string(),
+                        cap: None,
+                    }),
+                    marketing: msg.marketing,
+                })?,
+            };
+
+            let msg = SubMsg::reply_always(msg, INSTANTIATE_GOV_TOKEN_REPLY_ID);
+
+            msgs.append(&mut vec![msg]);
         }
         GovTokenMsg::UseExistingCw20 { addr } => {
             // // TODO validate addr
@@ -79,7 +105,7 @@ pub fn instantiate(
         }
     };
 
-    Ok(Response::default())
+    Ok(Response::default().add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -176,7 +202,7 @@ pub fn execute_propose(
         },
         threshold: cfg.threshold.clone(),
         total_weight: total_supply,
-        deposit: cfg.proposal_deposit.clone(),
+        deposit: cfg.proposal_deposit,
     };
     prop.update_status(&env.block);
     let id = next_id(deps.storage)?;
@@ -554,13 +580,24 @@ fn query_voter(deps: Deps, voter: String) -> StdResult<VoterResponse> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
-    let _res = parse_reply_instantiate_data(msg);
-    // TODO how to get user address?
-    // match res {
-    //     Ok(res) => {
-    //         COLLECTIONS.save(deps.storage, user_addr, contract_addr)
-    //     }
-    // }
-    Ok(Response::new())
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.id != INSTANTIATE_GOV_TOKEN_REPLY_ID {
+        return Err(ContractError::UnknownReplyId { id: msg.id });
+    };
+    let res = parse_reply_instantiate_data(msg);
+    match res {
+        Ok(res) => {
+            let cw20_addr = deps.api.addr_validate(&res.contract_address)?;
+
+            // Add cw20-gov token to map of TREASURY TOKENS
+            TREASURY_TOKENS.save(deps.storage, &cw20_addr, &Empty {})?;
+
+            // Save gov token
+            GOV_TOKEN.save(deps.storage, &cw20_addr)?;
+
+            // Response
+            Ok(Response::new())
+        }
+        Err(_) => Err(ContractError::InstantiateGovTokenError {}),
+    }
 }

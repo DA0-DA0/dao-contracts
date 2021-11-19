@@ -2,7 +2,9 @@
 mod tests {
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::error::ContractError;
-    use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Threshold, Vote};
+    use crate::msg::{
+        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Threshold, Vote,
+    };
     use crate::query::{
         ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
         ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
@@ -32,7 +34,8 @@ mod tests {
             crate::contract::execute,
             crate::contract::instantiate,
             crate::contract::query,
-        );
+        )
+        .with_reply(crate::contract::reply);
         Box::new(contract)
     }
 
@@ -93,7 +96,7 @@ mod tests {
         proposal_deposit_amount: Option<Uint128>,
         refund_failed_proposals: Option<bool>,
     ) -> Addr {
-        let flex_id = app.store_code(contract_dao());
+        let dao_code_id = app.store_code(contract_dao());
         let msg = crate::msg::InstantiateMsg {
             name: "dao-dao".to_string(),
             description: "a great DAO!".to_string(),
@@ -103,9 +106,9 @@ mod tests {
             threshold,
             max_voting_period,
             proposal_deposit_amount: proposal_deposit_amount.unwrap_or(Uint128::zero()),
-            refund_failed_proposals: refund_failed_proposals,
+            refund_failed_proposals,
         };
-        app.instantiate_contract(flex_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
+        app.instantiate_contract(dao_code_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
             .unwrap()
     }
 
@@ -171,7 +174,7 @@ mod tests {
 
         // make a simple group
         let cw20_addr = instantiate_cw20(&mut app);
-        let flex_id = app.store_code(contract_dao());
+        let dao_code_id = app.store_code(contract_dao());
 
         let max_voting_period = Duration::Time(1234567);
 
@@ -191,7 +194,7 @@ mod tests {
         };
         let err = app
             .instantiate_contract(
-                flex_id,
+                dao_code_id,
                 Addr::unchecked(OWNER),
                 &instantiate_msg,
                 &[],
@@ -221,7 +224,7 @@ mod tests {
         };
         let dao_addr = app
             .instantiate_contract(
-                flex_id,
+                dao_code_id,
                 Addr::unchecked(OWNER),
                 &instantiate_msg,
                 &[],
@@ -239,6 +242,70 @@ mod tests {
             },
             version,
         );
+    }
+
+    #[test]
+    fn instantiate_new_gov_token() {
+        let mut app = mock_app();
+        let cw20_code_id = app.store_code(contract_cw20_gov());
+        let dao_code_id = app.store_code(contract_dao());
+
+        // Instantiate new gov token
+        let instantiate_msg = InstantiateMsg {
+            name: "dao-dao".to_string(),
+            description: "a great DAO!".to_string(),
+            gov_token: GovTokenMsg::InstantiateNewCw20 {
+                code_id: cw20_code_id,
+                label: String::from("DAO DAO"),
+                msg: GovTokenInstantiateMsg {
+                    name: String::from("DAO DAO"),
+                    symbol: String::from("DAO"),
+                    decimals: 6,
+                    initial_balances: vec![
+                        Cw20Coin {
+                            address: OWNER.to_string(),
+                            amount: Uint128::new(INITIAL_BALANCE),
+                        },
+                        Cw20Coin {
+                            address: VOTER1.to_string(),
+                            amount: Uint128::new(INITIAL_BALANCE),
+                        },
+                        Cw20Coin {
+                            address: VOTER2.to_string(),
+                            amount: Uint128::new(INITIAL_BALANCE),
+                        },
+                        Cw20Coin {
+                            address: VOTER3.to_string(),
+                            amount: Uint128::new(INITIAL_BALANCE * 2),
+                        },
+                        Cw20Coin {
+                            address: POWER_VOTER.to_string(),
+                            amount: Uint128::new(INITIAL_BALANCE * 5),
+                        },
+                    ],
+                    marketing: None,
+                },
+            },
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(51),
+                quorum: Decimal::percent(10),
+            },
+            max_voting_period: Duration::Time(1234567),
+            proposal_deposit_amount: Uint128::zero(),
+            refund_failed_proposals: None,
+        };
+        let res = app.instantiate_contract(
+            dao_code_id,
+            Addr::unchecked(OWNER),
+            &instantiate_msg,
+            &[],
+            "all good",
+            None,
+        );
+        println!("{:?}", res);
+        assert!(res.is_ok());
+
+        // Query balance
     }
 
     #[test]
