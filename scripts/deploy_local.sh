@@ -55,46 +55,78 @@ echo "TX Flags: $TXFLAG"
 #### CW20-GOV ####
 # Upload cw20 contract code
 # download cw20-gov contract code
-$(echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG)
+echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG
 CW20_CODE=1
 
 # Instantiate cw20 contract
 CW20_INIT='{
-  "name": "daodao",
-  "symbol": "DAO",
+  "name": "Crab Coin",
+  "symbol": "CRAB",
   "decimals": 6,
   "initial_balances": [{"address":"'"$1"'","amount":"1000000000"}]
 }'
 echo "$CW20_INIT"
-$(echo xxxxxxxxx | $BINARY tx wasm instantiate $CW20_CODE "$CW20_INIT" --from "validator" --label "gov token" $TXFLAG)
+echo xxxxxxxxx | $BINARY tx wasm instantiate $CW20_CODE "$CW20_INIT" --from "validator" --label "gov token" $TXFLAG
 
 # Get cw20 contract address
 CW20_CONTRACT=$($BINARY q wasm list-contract-by-code $CW20_CODE --output json | jq -r '.contracts[-1]')
 
 #### CW-DAO ####
 # Upload cw-dao contract code
-$(echo xxxxxxxxx | $BINARY tx wasm store "/cw_dao.wasm" --from validator $TXFLAG)
+echo xxxxxxxxx | $BINARY tx wasm store "/cw_dao.wasm" --from validator $TXFLAG
 CW_DAO_CODE=2
 
 echo $CW_DAO_CODE
 
-# Instantiate cw-dao contract
-CW_DAO_INIT="{
-  \"cw20_addr\": \"$CW20_CONTRACT\",
-  \"threshold\": {
-    \"absolute_percentage\": {
-        \"percentage\": \"0.5\"
+# Instantiate cw-dao contract using existing token
+# CW_DAO_INIT='{
+#   "name": "DAO DAO",
+#   "description": "A DAO that makes DAO tooling",
+#   "gov_token": {
+#     "use_existing_cw20": {
+#       "addr": "'"$CW20_CONTRACT"'"
+#     }
+#   },
+#   "threshold": {
+#     "absolute_percentage": {
+#         "percentage": "0.5"
+#     }
+#   },
+#   "max_voting_period": {
+#     "height": 100
+#   },
+#   "proposal_deposit_amount": "0"
+# }'
+
+# DAO contract instantiates its own token
+CW_DAO_INIT='{
+  "name": "DAO DAO",
+  "description": "A DAO that makes DAO tooling",
+  "gov_token": {
+    "instantiate_new_cw20": {
+      "code_id": '$CW20_CODE',
+      "label": "DAO DAO v0.1.1",
+      "msg": {
+        "name": "daodao",
+        "symbol": "DAO",
+        "decimals": 6,
+        "initial_balances": [{"address":"'"$1"'","amount":"1000000000"}]
+      }
     }
   },
-  \"max_voting_period\": {
-    \"height\": 100
+  "threshold": {
+    "absolute_percentage": {
+        "percentage": "0.5"
+    }
   },
-  \"proposal_deposit_amount\": \"0\"
-}"
-
+  "max_voting_period": {
+    "height": 100
+  },
+  "proposal_deposit_amount": "0"
+}'
 echo $CW_DAO_INIT | jq .
 
-$(echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW_DAO_CODE" "$CW_DAO_INIT" --from validator --label "cw-dao" $TXFLAG)
+echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW_DAO_CODE" "$CW_DAO_INIT" --from validator --label "cw-dao" $TXFLAG
 
 CW_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW_DAO_CODE --output json | jq -r '.contracts[-1]')
 
