@@ -61,6 +61,8 @@ pub fn instantiate(
     msg.threshold.validate()?;
 
     let cfg = Config {
+        name: msg.name,
+        description: msg.description,
         threshold: msg.threshold,
         max_voting_period: msg.max_voting_period,
         cw20_addr,
@@ -94,6 +96,8 @@ pub fn execute(
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
         ExecuteMsg::Receive(msg) => execute_receive(deps, info, msg),
         ExecuteMsg::UpdateConfig {
+            name,
+            description,
             threshold,
             max_voting_period,
             proposal_deposit_amount,
@@ -104,6 +108,8 @@ pub fn execute(
             env,
             info,
             UpdateConfigMsg {
+                name,
+                description,
                 threshold,
                 max_voting_period,
                 proposal_deposit_amount,
@@ -373,6 +379,8 @@ pub fn execute_update_config(
     );
 
     CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
+        exists.name = update_config_msg.name;
+        exists.description = update_config_msg.description;
         exists.threshold = update_config_msg.threshold;
         exists.max_voting_period = update_config_msg.max_voting_period;
         exists.proposal_deposit = ProposalDeposit {
