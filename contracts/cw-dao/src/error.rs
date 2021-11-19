@@ -9,6 +9,9 @@ pub enum ContractError {
     #[error("Failed to instantiate governance token")]
     InstantiateGovTokenError {},
 
+    #[error("Initial governance token balances must not be empty")]
+    InitialBalancesError {},
+
     #[error("Required threshold cannot be zero")]
     ZeroThreshold {},
 

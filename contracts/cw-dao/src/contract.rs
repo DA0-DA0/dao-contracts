@@ -19,7 +19,7 @@ use cosmwasm_std::{
 };
 use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
-use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg, MinterResponse};
+use cw20::{BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse};
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
@@ -62,7 +62,10 @@ pub fn instantiate(
             label,
             msg,
         } => {
-            // TODO error if initial balances are empty
+            if msg.initial_balances.is_empty() {
+                return Err(ContractError::InitialBalancesError {});
+            }
+
             let msg = WasmMsg::Instantiate {
                 code_id,
                 funds: vec![],
@@ -86,22 +89,17 @@ pub fn instantiate(
             msgs.append(&mut vec![msg]);
         }
         GovTokenMsg::UseExistingCw20 { addr } => {
-            // // TODO validate addr
-            // let proposal_deposit_cw20_addr = Cw20Contract(
-            //     deps.api
-            //         .addr_validate(&update_config_msg.proposal_deposit_token_address)
-            //         .map_err(|_| ContractError::InvalidCw20 {
-            //             addr: update_config_msg.proposal_deposit_token_address.clone(),
-            //         })?,
-            // );
-
-            let cw20_addr = Addr::unchecked(addr);
+            let cw20_addr = Cw20Contract(
+                deps.api
+                    .addr_validate(&addr)
+                    .map_err(|_| ContractError::InvalidCw20 { addr })?,
+            );
 
             // Add cw20-gov token to map of TREASURY TOKENS
-            TREASURY_TOKENS.save(deps.storage, &cw20_addr, &Empty {})?;
+            TREASURY_TOKENS.save(deps.storage, &cw20_addr.addr(), &Empty {})?;
 
             // Save gov token
-            GOV_TOKEN.save(deps.storage, &cw20_addr)?;
+            GOV_TOKEN.save(deps.storage, &cw20_addr.addr())?;
         }
     };
 
@@ -587,6 +585,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     let res = parse_reply_instantiate_data(msg);
     match res {
         Ok(res) => {
+            // Validate contract address
             let cw20_addr = deps.api.addr_validate(&res.contract_address)?;
 
             // Add cw20-gov token to map of TREASURY TOKENS
@@ -595,7 +594,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             // Save gov token
             GOV_TOKEN.save(deps.storage, &cw20_addr)?;
 
-            // Response
             Ok(Response::new())
         }
         Err(_) => Err(ContractError::InstantiateGovTokenError {}),

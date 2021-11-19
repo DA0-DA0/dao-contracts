@@ -250,6 +250,39 @@ mod tests {
         let cw20_code_id = app.store_code(contract_cw20_gov());
         let dao_code_id = app.store_code(contract_dao());
 
+        // Fails with empty initial balances
+        let instantiate_msg = InstantiateMsg {
+            name: "dao-dao".to_string(),
+            description: "a great DAO!".to_string(),
+            gov_token: GovTokenMsg::InstantiateNewCw20 {
+                code_id: cw20_code_id,
+                label: String::from("DAO DAO"),
+                msg: GovTokenInstantiateMsg {
+                    name: String::from("DAO DAO"),
+                    symbol: String::from("DAO"),
+                    decimals: 6,
+                    initial_balances: vec![],
+                    marketing: None,
+                },
+            },
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(51),
+                quorum: Decimal::percent(10),
+            },
+            max_voting_period: Duration::Time(1234567),
+            proposal_deposit_amount: Uint128::zero(),
+            refund_failed_proposals: None,
+        };
+        let res = app.instantiate_contract(
+            dao_code_id,
+            Addr::unchecked(OWNER),
+            &instantiate_msg,
+            &[],
+            "all good",
+            None,
+        );
+        assert!(res.is_err());
+
         // Instantiate new gov token
         let instantiate_msg = InstantiateMsg {
             name: "dao-dao".to_string(),
@@ -302,10 +335,7 @@ mod tests {
             "all good",
             None,
         );
-        println!("{:?}", res);
         assert!(res.is_ok());
-
-        // Query balance
     }
 
     #[test]
