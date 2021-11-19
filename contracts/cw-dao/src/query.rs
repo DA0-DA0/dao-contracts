@@ -99,7 +99,6 @@ where
     /// that the generic `Threshold{}` query does not provide valid information for existing proposals.
     pub threshold: ThresholdResponse,
     pub deposit_amount: Uint128,
-    pub deposit_token_address: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]

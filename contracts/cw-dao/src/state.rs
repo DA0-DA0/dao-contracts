@@ -4,7 +4,6 @@ use cosmwasm_std::{
     Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
 };
 use cw0::{Duration, Expiration};
-use cw20::Cw20Contract;
 use cw_storage_plus::{Item, Map, U64Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,17 +19,11 @@ pub struct Config {
     pub description: String,
     pub threshold: Threshold,
     pub max_voting_period: Duration,
-    // Total weight and voters are queried from this contract
-    pub cw20_addr: Cw20Contract,
-    pub proposal_deposit: ProposalDeposit,
+    pub proposal_deposit: Uint128,
     pub refund_failed_proposals: Option<bool>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ProposalDeposit {
-    pub amount: Uint128,
-    pub token_address: Cw20Contract,
-}
+pub const GOV_TOKEN: Item<Addr> = Item::new("gov_token");
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Proposal {
@@ -41,13 +34,14 @@ pub struct Proposal {
     pub expires: Expiration,
     pub msgs: Vec<CosmosMsg<Empty>>,
     pub status: Status,
-    /// pass requirements
+    /// Pass requirements
     pub threshold: Threshold,
-    // the total weight when the proposal started (used to calculate percentages)
+    /// The total weight when the proposal started (used to calculate percentages)
     pub total_weight: Uint128,
-    // summary of existing votes
+    /// summary of existing votes
     pub votes: Votes,
-    pub deposit: ProposalDeposit,
+    /// Amount of the native governance token required for voting
+    pub deposit: Uint128,
 }
 
 // weight of votes for each option
@@ -249,10 +243,7 @@ mod test {
             threshold,
             total_weight,
             votes,
-            deposit: ProposalDeposit {
-                amount: Uint128::zero(),
-                token_address: Cw20Contract(Addr::unchecked("test")),
-            },
+            deposit: Uint128::zero(),
         };
         prop.is_passed(&block)
     }

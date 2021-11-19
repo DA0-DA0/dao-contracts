@@ -2,7 +2,6 @@ use crate::error::ContractError;
 use crate::query::ThresholdResponse;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
-use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

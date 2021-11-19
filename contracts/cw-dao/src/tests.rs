@@ -7,7 +7,7 @@ mod tests {
         ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
         ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
     };
-    use crate::state::{Config, ProposalDeposit};
+    use crate::state::Config;
     use cosmwasm_std::{
         coin, coins, to_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Decimal, Empty,
         Timestamp, Uint128, WasmMsg,
@@ -349,7 +349,7 @@ mod tests {
             threshold: Decimal::percent(51),
             quorum: Decimal::percent(10),
         };
-        let (dao_addr, cw20_addr) = setup_test_case(
+        let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             threshold,
             voting_period,
@@ -443,7 +443,6 @@ mod tests {
                 total_weight: Uint128::new(20000000),
             },
             deposit_amount: Uint128::zero(),
-            deposit_token_address: cw20_addr,
         };
         assert_eq!(&expected, &res.proposals[0]);
     }
@@ -976,7 +975,6 @@ mod tests {
         };
         let new_voting_period = Duration::Time(5000000);
         let new_proposal_deposit_amount = Uint128::from(10u8);
-        let new_deposit_token_address = String::from("updated");
         let update_config_msg = ExecuteMsg::UpdateConfig {
             name: "dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao".to_string(),
             description: "a really great DAO with emojis 💫 and a name that is really long!"
@@ -1039,7 +1037,6 @@ mod tests {
             .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
             .unwrap();
 
-        let cw20 = Cw20Contract(cw20_addr);
         assert_eq!(
             res,
             ConfigResponse {
@@ -1050,11 +1047,7 @@ mod tests {
                             .to_string(),
                     threshold: new_threshold.clone(),
                     max_voting_period: new_voting_period.clone(),
-                    cw20_addr: cw20,
-                    proposal_deposit: ProposalDeposit {
-                        amount: new_proposal_deposit_amount,
-                        token_address: Cw20Contract(Addr::unchecked(new_deposit_token_address)),
-                    },
+                    proposal_deposit: new_proposal_deposit_amount,
                     refund_failed_proposals: None,
                 },
             }
@@ -1070,7 +1063,7 @@ mod tests {
             threshold: Decimal::percent(51),
             quorum: Decimal::percent(10),
         };
-        let (dao_addr, cw20_addr) = setup_test_case(
+        let (dao_addr, _cw20_addr) = setup_test_case(
             &mut app,
             threshold.clone(),
             voting_period.clone(),
@@ -1093,11 +1086,7 @@ mod tests {
                     description: "a great DAO!".to_string(),
                     threshold,
                     max_voting_period: voting_period,
-                    cw20_addr: Cw20Contract(cw20_addr.clone()),
-                    proposal_deposit: ProposalDeposit {
-                        amount: Uint128::zero(),
-                        token_address: Cw20Contract(cw20_addr),
-                    },
+                    proposal_deposit: Uint128::zero(),
                     refund_failed_proposals: None,
                 },
             }
