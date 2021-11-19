@@ -1,8 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ExecuteMsg",
-  "anyOf": [
+  "oneOf": [
     {
+      "description": "Makes a new proposal",
       "type": "object",
       "required": [
         "propose"
@@ -44,6 +45,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Vote on an open proposal",
       "type": "object",
       "required": [
         "vote"
@@ -70,6 +72,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Execute a passed proposal",
       "type": "object",
       "required": [
         "execute"
@@ -92,6 +95,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Close a failed proposal",
       "type": "object",
       "required": [
         "close"
@@ -114,6 +118,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Update DAO config (can only be called by DAO contract)",
       "type": "object",
       "required": [
         "update_config"
@@ -122,20 +127,34 @@
         "update_config": {
           "type": "object",
           "required": [
+            "description",
             "max_voting_period",
+            "name",
             "proposal_deposit_amount",
             "proposal_deposit_token_address",
             "threshold"
           ],
           "properties": {
+            "description": {
+              "type": "string"
+            },
             "max_voting_period": {
               "$ref": "#/definitions/Duration"
+            },
+            "name": {
+              "type": "string"
             },
             "proposal_deposit_amount": {
               "$ref": "#/definitions/Uint128"
             },
             "proposal_deposit_token_address": {
               "type": "string"
+            },
+            "refund_failed_proposals": {
+              "type": [
+                "boolean",
+                "null"
+              ]
             },
             "threshold": {
               "$ref": "#/definitions/Threshold"
@@ -144,12 +163,47 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Updates token list",
+      "type": "object",
+      "required": [
+        "update_cw20_token_list"
+      ],
+      "properties": {
+        "update_cw20_token_list": {
+          "type": "object",
+          "required": [
+            "to_add",
+            "to_remove"
+          ],
+          "properties": {
+            "to_add": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "to_remove": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Addr"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
     "BankMsg": {
       "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "Sends native tokens from the contract to the given address.\n\nThis is translated to a [MsgSend](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto#L19-L28). `from_address` is automatically filled with the current contract's address.",
           "type": "object",
@@ -224,7 +278,7 @@
       }
     },
     "CosmosMsg_for_Empty": {
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "required": [
@@ -293,7 +347,7 @@
     },
     "DistributionMsg": {
       "description": "The message types of the distribution module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "This is translated to a [MsgSetWithdrawAddress](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L29-L37). `delegator_address` is automatically filled with the current contract's address.",
           "type": "object",
@@ -342,7 +396,7 @@
     },
     "Duration": {
       "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "required": [
@@ -380,7 +434,7 @@
     },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "AtHeight will expire when `env.block.height` >= height",
           "type": "object",
@@ -426,7 +480,7 @@
     },
     "StakingMsg": {
       "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90). `delegator_address` is automatically filled with the current contract's address.",
           "type": "object",
@@ -510,7 +564,7 @@
     },
     "Threshold": {
       "description": "This defines the different ways tallies can happen.\n\nThe total_weight used for calculating success as well as the weights of each individual voter used in tallying should be snapshotted at the beginning of the block at which the proposal starts (this is likely the responsibility of a correct cw4 implementation). See also `ThresholdResponse` in the cw3 spec.",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "Declares a percentage of the total weight that must cast Yes votes in order for a proposal to pass. See `ThresholdResponse.AbsolutePercentage` in the cw3 spec for details.",
           "type": "object",
@@ -586,7 +640,7 @@
     },
     "WasmMsg": {
       "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "Dispatches a call to another contract at a known address (with known ABI).\n\nThis is translated to a [MsgExecuteContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L68-L78). `sender` is automatically filled with the current contract's address.",
           "type": "object",

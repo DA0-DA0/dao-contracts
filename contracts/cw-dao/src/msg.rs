@@ -2,7 +2,8 @@ use crate::error::ContractError;
 use crate::query::ThresholdResponse;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
-use cw20::Cw20ReceiveMsg;
+use cw20::Cw20Coin;
+use cw20_base::msg::InstantiateMarketingInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,17 +13,39 @@ pub struct InstantiateMsg {
     pub name: String,
     // A description of the DAO.
     pub description: String,
-    /// cw20 contract address valid gov token
-    pub cw20_addr: String,
+    /// Set an existing governance token or launch a new one
+    pub gov_token: GovTokenMsg,
     /// Voting params configuration
     pub threshold: Threshold,
     /// The amount of time a proposal can be voted on before expiring
     pub max_voting_period: Duration,
     /// Deposit required to make a proposal
     pub proposal_deposit_amount: Uint128,
-    /// The token address used to pay deposit proposal
-    pub proposal_deposit_token_address: String,
+    /// Refund a proposal if it is rejected
     pub refund_failed_proposals: Option<bool>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum GovTokenMsg {
+    // Instantiate a new cw20 token with the DAO as minter
+    InstantiateNewCw20 {
+        code_id: u64,
+        label: String,
+        msg: GovTokenInstantiateMsg,
+    },
+    /// Use an existing cw20 token
+    UseExistingCw20 { addr: String },
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct GovTokenInstantiateMsg {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u8,
+    pub initial_balances: Vec<Cw20Coin>,
+    pub marketing: Option<InstantiateMarketingInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
@@ -124,8 +147,6 @@ pub enum ExecuteMsg {
     Execute { proposal_id: u64 },
     /// Close a failed proposal
     Close { proposal_id: u64 },
-    /// This accepts a properly-encoded ReceiveMsg from a cw20 contract
-    Receive(Cw20ReceiveMsg),
     /// Update DAO config (can only be called by DAO contract)
     UpdateConfig {
         name: String,

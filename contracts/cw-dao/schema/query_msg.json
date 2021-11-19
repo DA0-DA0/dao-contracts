@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "QueryMsg",
-  "anyOf": [
+  "oneOf": [
     {
       "description": "Return ThresholdResponse",
       "type": "object",
@@ -193,6 +193,48 @@
       ],
       "properties": {
         "get_config": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns All DAO Cw20 Balances",
+      "type": "object",
+      "required": [
+        "cw20_balances"
+      ],
+      "properties": {
+        "cw20_balances": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Return list of cw20 Tokens associated with the DAO Treasury",
+      "type": "object",
+      "required": [
+        "cw20_token_list"
+      ],
+      "properties": {
+        "cw20_token_list": {
           "type": "object"
         }
       },

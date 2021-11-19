@@ -6,6 +6,12 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("Failed to instantiate governance token")]
+    InstantiateGovTokenError {},
+
+    #[error("Initial governance token balances must not be empty")]
+    InitialBalancesError {},
+
     #[error("Required threshold cannot be zero")]
     ZeroThreshold {},
 
@@ -38,4 +44,7 @@ pub enum ContractError {
 
     #[error("Cannot close completed or passed proposals")]
     WrongCloseStatus {},
+
+    #[error("Got a submessage reply with unknown id: {id}")]
+    UnknownReplyId { id: u64 },
 }

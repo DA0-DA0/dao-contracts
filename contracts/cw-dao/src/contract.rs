@@ -1,25 +1,25 @@
 use crate::error::ContractError;
+use crate::helpers::{
+    get_balance, get_deposit_message, get_proposal_deposit_refund_message, get_total_supply,
+    get_voting_power_at_height, map_proposal,
+};
 use crate::msg::UpdateConfigMsg;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Vote};
+use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Vote};
 use crate::query::{
     ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
-    next_id, parse_id, Ballot, Config, Proposal, ProposalDeposit, Votes, BALLOTS, CONFIG,
-    PROPOSALS, TREASURY_TOKENS,
+    next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GOV_TOKEN, PROPOSALS,
+    TREASURY_TOKENS,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, BlockInfo, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Order, Response, StdResult, Uint128, WasmMsg,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
-use cw0::{maybe_addr, Expiration};
+use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
-use cw20::{
-    BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg,
-};
-use cw20_base::state::TokenInfo;
-use cw20_gov::msg::{QueryMsg as Cw20GovQueryMsg, VotingPowerAtHeightResponse};
+use cw20::{BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse};
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
@@ -31,31 +31,15 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
+const INSTANTIATE_GOV_TOKEN_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let cw20_addr = Cw20Contract(deps.api.addr_validate(&msg.cw20_addr).map_err(|_| {
-        ContractError::InvalidCw20 {
-            addr: msg.cw20_addr.clone(),
-        }
-    })?);
-
-    let proposal_deposit_cw20_addr = Cw20Contract(
-        deps.api
-            .addr_validate(&msg.proposal_deposit_token_address)
-            .map_err(|_| ContractError::InvalidCw20 {
-                addr: msg.proposal_deposit_token_address.clone(),
-            })?,
-    );
-
-    // Add cw20-gov token to map of TREASURY TOKENS
-    TREASURY_TOKENS.save(deps.storage, &cw20_addr.addr(), &Empty {})?;
-
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     msg.threshold.validate()?;
@@ -65,16 +49,61 @@ pub fn instantiate(
         description: msg.description,
         threshold: msg.threshold,
         max_voting_period: msg.max_voting_period,
-        cw20_addr,
-        proposal_deposit: ProposalDeposit {
-            amount: msg.proposal_deposit_amount,
-            token_address: proposal_deposit_cw20_addr,
-        },
+        proposal_deposit: msg.proposal_deposit_amount,
         refund_failed_proposals: msg.refund_failed_proposals,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
-    Ok(Response::default())
+    let mut msgs: Vec<SubMsg> = vec![];
+
+    match msg.gov_token {
+        GovTokenMsg::InstantiateNewCw20 {
+            code_id,
+            label,
+            msg,
+        } => {
+            if msg.initial_balances.is_empty() {
+                return Err(ContractError::InitialBalancesError {});
+            }
+
+            let msg = WasmMsg::Instantiate {
+                code_id,
+                funds: vec![],
+                admin: Some(env.contract.address.to_string()),
+                label,
+                msg: to_binary(&cw20_base::msg::InstantiateMsg {
+                    name: msg.name,
+                    symbol: msg.symbol,
+                    decimals: msg.decimals,
+                    initial_balances: msg.initial_balances,
+                    mint: Some(MinterResponse {
+                        minter: env.contract.address.to_string(),
+                        cap: None,
+                    }),
+                    marketing: msg.marketing,
+                })?,
+            };
+
+            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_GOV_TOKEN_REPLY_ID);
+
+            msgs.append(&mut vec![msg]);
+        }
+        GovTokenMsg::UseExistingCw20 { addr } => {
+            let cw20_addr = Cw20Contract(
+                deps.api
+                    .addr_validate(&addr)
+                    .map_err(|_| ContractError::InvalidCw20 { addr })?,
+            );
+
+            // Add cw20-gov token to map of TREASURY TOKENS
+            TREASURY_TOKENS.save(deps.storage, &cw20_addr.addr(), &Empty {})?;
+
+            // Save gov token
+            GOV_TOKEN.save(deps.storage, &cw20_addr.addr())?;
+        }
+    };
+
+    Ok(Response::default().add_submessages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -94,7 +123,6 @@ pub fn execute(
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
-        ExecuteMsg::Receive(msg) => execute_receive(deps, info, msg),
         ExecuteMsg::UpdateConfig {
             name,
             description,
@@ -123,16 +151,6 @@ pub fn execute(
     }
 }
 
-pub fn execute_receive(
-    deps: DepsMut,
-    info: MessageInfo,
-    _wrapper: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
-    TREASURY_TOKENS.save(deps.storage, &info.sender, &Empty {})?;
-
-    Ok(Response::default())
-}
-
 pub fn execute_propose(
     deps: DepsMut,
     env: Env,
@@ -144,6 +162,7 @@ pub fn execute_propose(
     latest: Option<Expiration>,
 ) -> Result<Response<Empty>, ContractError> {
     let cfg = CONFIG.load(deps.storage)?;
+    let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Only owners of the gov token can create a proposal
     let balance = get_balance(deps.as_ref(), info.sender.clone())?;
@@ -151,7 +170,7 @@ pub fn execute_propose(
         return Err(ContractError::Unauthorized {});
     }
 
-    // max expires also used as default
+    // Max expires also used as default
     let max_expires = cfg.max_voting_period.after(&env.block);
     let mut expires = latest.unwrap_or(max_expires);
     let comp = expires.partial_cmp(&max_expires);
@@ -164,7 +183,7 @@ pub fn execute_propose(
     // Get total supply
     let total_supply = get_total_supply(deps.as_ref())?;
 
-    // create a proposal
+    // Create a proposal
     let mut prop = Proposal {
         title,
         description,
@@ -173,7 +192,6 @@ pub fn execute_propose(
         expires,
         msgs,
         status: Status::Open,
-        // votes: Votes::new(vote_power),
         votes: Votes {
             yes: Uint128::zero(),
             no: Uint128::zero(),
@@ -182,13 +200,13 @@ pub fn execute_propose(
         },
         threshold: cfg.threshold.clone(),
         total_weight: total_supply,
-        deposit: cfg.proposal_deposit.clone(),
+        deposit: cfg.proposal_deposit,
     };
     prop.update_status(&env.block);
     let id = next_id(deps.storage)?;
     PROPOSALS.save(deps.storage, id.into(), &prop)?;
 
-    let deposit_msg = get_deposit_message(&env, &info, &cfg.proposal_deposit)?;
+    let deposit_msg = get_deposit_message(&env, &info, &cfg.proposal_deposit, &gov_token)?;
 
     Ok(Response::new()
         .add_messages(deposit_msg)
@@ -196,28 +214,6 @@ pub fn execute_propose(
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", id.to_string())
         .add_attribute("status", format!("{:?}", prop.status)))
-}
-
-fn get_deposit_message(
-    env: &Env,
-    info: &MessageInfo,
-    config: &ProposalDeposit,
-) -> StdResult<Vec<CosmosMsg>> {
-    if config.amount == Uint128::zero() {
-        return Ok(vec![]);
-    }
-    let transfer_cw20_msg = Cw20ExecuteMsg::TransferFrom {
-        owner: info.sender.clone().into(),
-        recipient: env.contract.address.clone().into(),
-        amount: config.amount,
-    };
-    let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: config.token_address.addr().into(),
-        msg: to_binary(&transfer_cw20_msg)?,
-        funds: vec![],
-    };
-    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
-    Ok(vec![cw20_transfer_cosmos_msg])
 }
 
 pub fn execute_vote(
@@ -275,8 +271,9 @@ pub fn execute_execute(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
-    // anyone can trigger this if the vote passed
+    let gov_token = GOV_TOKEN.load(deps.storage)?;
 
+    // anyone can trigger this if the vote passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
     // we allow execution even after the proposal "expiration" as long as all vote come in before
     // that point. If it was approved on time, it can be executed any time.
@@ -288,7 +285,8 @@ pub fn execute_execute(
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
-    let refund_msg = get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit)?;
+    let refund_msg =
+        get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit, &gov_token)?;
 
     // dispatch all proposed messages
     Ok(Response::new()
@@ -299,32 +297,14 @@ pub fn execute_execute(
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
 
-fn get_proposal_deposit_refund_message(
-    proposer: &Addr,
-    config: &ProposalDeposit,
-) -> StdResult<Vec<CosmosMsg>> {
-    if config.amount == Uint128::zero() {
-        return Ok(vec![]);
-    }
-    let transfer_cw20_msg = Cw20ExecuteMsg::Transfer {
-        recipient: proposer.into(),
-        amount: config.amount,
-    };
-    let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: config.token_address.addr().into(),
-        msg: to_binary(&transfer_cw20_msg)?,
-        funds: vec![],
-    };
-    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
-    Ok(vec![cw20_transfer_cosmos_msg])
-}
-
 pub fn execute_close(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<Empty>, ContractError> {
+    let gov_token = GOV_TOKEN.load(deps.storage)?;
+
     // anyone can trigger this if the vote passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
     if [Status::Executed, Status::Rejected, Status::Passed]
@@ -347,6 +327,7 @@ pub fn execute_close(
         Some(true) => Response::new().add_messages(get_proposal_deposit_refund_message(
             &prop.proposer,
             &prop.deposit,
+            &gov_token,
         )?),
         _ => Response::new(),
     };
@@ -370,23 +351,12 @@ pub fn execute_update_config(
 
     update_config_msg.threshold.validate()?;
 
-    let proposal_deposit_cw20_addr = Cw20Contract(
-        deps.api
-            .addr_validate(&update_config_msg.proposal_deposit_token_address)
-            .map_err(|_| ContractError::InvalidCw20 {
-                addr: update_config_msg.proposal_deposit_token_address.clone(),
-            })?,
-    );
-
     CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
         exists.name = update_config_msg.name;
         exists.description = update_config_msg.description;
         exists.threshold = update_config_msg.threshold;
         exists.max_voting_period = update_config_msg.max_voting_period;
-        exists.proposal_deposit = ProposalDeposit {
-            amount: update_config_msg.proposal_deposit_amount,
-            token_address: proposal_deposit_cw20_addr,
-        };
+        exists.proposal_deposit = update_config_msg.proposal_deposit_amount;
         exists.refund_failed_proposals = update_config_msg.refund_failed_proposals;
         Ok(exists)
     })?;
@@ -426,17 +396,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Proposal { proposal_id } => to_binary(&query_proposal(deps, env, proposal_id)?),
         QueryMsg::Vote { proposal_id, voter } => to_binary(&query_vote(deps, proposal_id, voter)?),
         QueryMsg::ListProposals { start_after, limit } => {
-            to_binary(&list_proposals(deps, env, start_after, limit)?)
+            to_binary(&query_list_proposals(deps, env, start_after, limit)?)
         }
         QueryMsg::ReverseProposals {
             start_before,
             limit,
-        } => to_binary(&reverse_proposals(deps, env, start_before, limit)?),
+        } => to_binary(&query_reverse_proposals(deps, env, start_before, limit)?),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
             limit,
-        } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
+        } => to_binary(&query_list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
         QueryMsg::Cw20Balances { start_after, limit } => {
             to_binary(&query_cw20_balances(deps, env, start_after, limit)?)
@@ -444,52 +414,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)),
     }
-}
-
-fn get_total_supply(deps: Deps) -> StdResult<Uint128> {
-    let cfg = CONFIG.load(deps.storage)?;
-
-    // Get total supply
-    let token_info: TokenInfo = deps
-        .querier
-        .query_wasm_smart(cfg.cw20_addr.addr(), &Cw20QueryMsg::TokenInfo {})?;
-    Ok(token_info.total_supply)
-}
-
-fn get_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
-    let cfg = CONFIG.load(deps.storage)?;
-    // Get total supply
-    let balance: BalanceResponse = deps
-        .querier
-        .query_wasm_smart(
-            cfg.cw20_addr.addr(),
-            &Cw20QueryMsg::Balance {
-                address: address.to_string(),
-            },
-        )
-        .unwrap_or(BalanceResponse {
-            balance: Uint128::zero(),
-        });
-    Ok(balance.balance)
-}
-
-fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
-    let cfg = CONFIG.load(deps.storage)?;
-    // Get total supply
-    let balance: VotingPowerAtHeightResponse = deps
-        .querier
-        .query_wasm_smart(
-            cfg.cw20_addr.addr(),
-            &Cw20GovQueryMsg::VotingPowerAtHeight {
-                address: address.to_string(),
-                height,
-            },
-        )
-        .unwrap_or(VotingPowerAtHeightResponse {
-            balance: Uint128::zero(),
-            height: 0,
-        });
-    Ok(balance.balance)
 }
 
 fn query_threshold(deps: Deps) -> StdResult<ThresholdResponse> {
@@ -512,8 +436,7 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
         status,
         expires: prop.expires,
         threshold,
-        deposit_amount: prop.deposit.amount,
-        deposit_token_address: prop.deposit.token_address.addr(),
+        deposit_amount: prop.deposit,
     })
 }
 
@@ -573,7 +496,7 @@ fn query_cw20_balances(
     Ok(Cw20BalancesResponse { cw20_balances })
 }
 
-fn list_proposals(
+fn query_list_proposals(
     deps: Deps,
     env: Env,
     start_after: Option<u64>,
@@ -590,7 +513,7 @@ fn list_proposals(
     Ok(ProposalListResponse { proposals: props? })
 }
 
-fn reverse_proposals(
+fn query_reverse_proposals(
     deps: Deps,
     env: Env,
     start_before: Option<u64>,
@@ -607,27 +530,6 @@ fn reverse_proposals(
     Ok(ProposalListResponse { proposals: props? })
 }
 
-fn map_proposal(
-    block: &BlockInfo,
-    item: StdResult<(Vec<u8>, Proposal)>,
-) -> StdResult<ProposalResponse> {
-    let (key, prop) = item?;
-    let status = prop.current_status(block);
-    let threshold = prop.threshold.to_response(prop.total_weight);
-    Ok(ProposalResponse {
-        id: parse_id(&key)?,
-        title: prop.title,
-        description: prop.description,
-        proposer: prop.proposer,
-        msgs: prop.msgs,
-        status,
-        expires: prop.expires,
-        threshold,
-        deposit_amount: prop.deposit.amount,
-        deposit_token_address: prop.deposit.token_address.addr(),
-    })
-}
-
 fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResponse> {
     let voter_addr = deps.api.addr_validate(&voter)?;
     let prop = BALLOTS.may_load(deps.storage, (proposal_id.into(), &voter_addr))?;
@@ -639,7 +541,7 @@ fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResp
     Ok(VoteResponse { vote })
 }
 
-fn list_votes(
+fn query_list_votes(
     deps: Deps,
     proposal_id: u64,
     start_after: Option<String>,
@@ -673,4 +575,27 @@ fn query_voter(deps: Deps, voter: String) -> StdResult<VoterResponse> {
     Ok(VoterResponse {
         weight: Some(weight),
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.id != INSTANTIATE_GOV_TOKEN_REPLY_ID {
+        return Err(ContractError::UnknownReplyId { id: msg.id });
+    };
+    let res = parse_reply_instantiate_data(msg);
+    match res {
+        Ok(res) => {
+            // Validate contract address
+            let cw20_addr = deps.api.addr_validate(&res.contract_address)?;
+
+            // Add cw20-gov token to map of TREASURY TOKENS
+            TREASURY_TOKENS.save(deps.storage, &cw20_addr, &Empty {})?;
+
+            // Save gov token
+            GOV_TOKEN.save(deps.storage, &cw20_addr)?;
+
+            Ok(Response::new())
+        }
+        Err(_) => Err(ContractError::InstantiateGovTokenError {}),
+    }
 }

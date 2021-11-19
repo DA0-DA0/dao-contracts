@@ -115,10 +115,10 @@ pub fn transfer_voting_power(
     amount: Uint128,
 ) -> Result<(), ContractError> {
     let sender_delegation = DELEGATIONS
-        .may_load(storage, &sender)?
+        .may_load(storage, sender)?
         .unwrap_or_else(|| sender.clone());
     let recipient_delegation = DELEGATIONS
-        .may_load(storage, &recipient)?
+        .may_load(storage, recipient)?
         .unwrap_or_else(|| recipient.clone());
     VOTING_POWER.update(
         storage,
@@ -279,7 +279,7 @@ pub fn query_delegation(deps: Deps, address: String) -> StdResult<DelegationResp
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary, CosmosMsg, StdError, SubMsg, WasmMsg};
+    use cosmwasm_std::{from_binary, CosmosMsg, StdError, SubMsg, WasmMsg};
     use cw20::{BalanceResponse, Cw20ReceiveMsg, MinterResponse, TokenInfoResponse};
 
     use super::*;
@@ -355,7 +355,7 @@ mod tests {
 
         #[test]
         fn basic() {
-            let mut deps = mock_dependencies(&[]);
+            let mut deps = mock_dependencies();
             let amount = Uint128::from(11223344u128);
             let instantiate_msg = InstantiateMsg {
                 name: "Cash Token".to_string(),
@@ -390,7 +390,7 @@ mod tests {
 
         #[test]
         fn mintable() {
-            let mut deps = mock_dependencies(&[]);
+            let mut deps = mock_dependencies();
             let amount = Uint128::new(11223344);
             let minter = String::from("asmodat");
             let limit = Uint128::new(511223344);
@@ -437,7 +437,7 @@ mod tests {
 
         #[test]
         fn mintable_over_cap() {
-            let mut deps = mock_dependencies(&[]);
+            let mut deps = mock_dependencies();
             let amount = Uint128::new(11223344);
             let minter = String::from("asmodat");
             let limit = Uint128::new(11223300);
@@ -467,7 +467,7 @@ mod tests {
 
     #[test]
     fn can_mint_by_minter() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
 
         let genesis = String::from("genesis");
         let amount = Uint128::new(11223344);
@@ -514,7 +514,7 @@ mod tests {
 
     #[test]
     fn others_cannot_mint() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         do_instantiate_with_minter(
             deps.as_mut(),
             &String::from("genesis"),
@@ -535,7 +535,7 @@ mod tests {
 
     #[test]
     fn no_one_mints_if_minter_unset() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         do_instantiate(deps.as_mut(), &String::from("genesis"), Uint128::new(1234));
 
         let msg = ExecuteMsg::Mint {
@@ -550,7 +550,7 @@ mod tests {
 
     #[test]
     fn instantiate_multiple_accounts() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let amount1 = Uint128::from(11223344u128);
         let addr1 = String::from("addr0001");
         let amount2 = Uint128::from(7890987u128);
@@ -592,7 +592,7 @@ mod tests {
 
     #[test]
     fn queries_work() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let amount1 = Uint128::from(12340000u128);
 
@@ -629,7 +629,7 @@ mod tests {
 
     #[test]
     fn get_voting_power_at_height() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let amount1 = Uint128::from(12340000u128);
@@ -683,7 +683,7 @@ mod tests {
 
     #[test]
     fn transfer() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let amount1 = Uint128::from(12340000u128);
@@ -743,7 +743,7 @@ mod tests {
 
     #[test]
     fn burn() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let amount1 = Uint128::from(12340000u128);
         let burn = Uint128::from(76543u128);
@@ -792,7 +792,7 @@ mod tests {
 
     #[test]
     fn send() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let contract = String::from("addr0002");
         let amount1 = Uint128::from(12340000u128);
@@ -866,7 +866,7 @@ mod tests {
 
     #[test]
     fn delegate_and_transfer() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let addr3 = String::from("addr0003");
@@ -932,7 +932,7 @@ mod tests {
 
     #[test]
     fn delegate_and_send() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let contract = String::from("addr0003");
@@ -999,9 +999,9 @@ mod tests {
 
     #[test]
     fn delegate_and_mint() {
-        let _deps = mock_dependencies(&[]);
+        let _deps = mock_dependencies();
 
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let minter = String::from("addr0003");
@@ -1063,7 +1063,7 @@ mod tests {
 
     #[test]
     fn delegate_and_burn() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let genesis_amount = Uint128::from(12340000u128);

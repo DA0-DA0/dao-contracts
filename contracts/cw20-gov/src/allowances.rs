@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn transfer_from_respects_limits() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = String::from("addr0001");
         let spender = String::from("addr0002");
         let rcpt = String::from("addr0003");
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn burn_from_respects_limits() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = String::from("addr0001");
         let spender = String::from("addr0002");
 
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn send_from_respects_limits() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = String::from("addr0001");
         let spender = String::from("addr0002");
         let contract = String::from("cool-dex");
@@ -360,7 +360,7 @@ mod tests {
 
     #[test]
     fn delegate_and_transfer_from() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = String::from("addr0001");
         let spender = String::from("addr0002");
         let rcpt = String::from("addr0003");
@@ -465,7 +465,7 @@ mod tests {
 
     #[test]
     fn delegate_and_burn_from() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = String::from("addr0001");
         let spender = String::from("addr0002");
         let delegatee = String::from("addr0003");
@@ -536,7 +536,7 @@ mod tests {
 
     #[test]
     fn delegate_and_send_from() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let owner = String::from("addr0001");
         let spender = String::from("addr0002");
         let rcpt = String::from("addr0003");
