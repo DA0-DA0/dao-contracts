@@ -1,4 +1,8 @@
 use crate::error::ContractError;
+use crate::helpers::{
+    get_balance, get_deposit_message, get_proposal_deposit_refund_message, get_total_supply,
+    get_voting_power_at_height, map_proposal,
+};
 use crate::msg::UpdateConfigMsg;
 use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Vote};
 use crate::query::{
@@ -6,18 +10,16 @@ use crate::query::{
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
-    next_id, parse_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GOV_TOKEN, PROPOSALS,
+    next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GOV_TOKEN, PROPOSALS,
     TREASURY_TOKENS,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, BlockInfo, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Order, Response, StdResult, Uint128, WasmMsg,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Response, StdResult, Uint128, WasmMsg,
 };
 use cw0::{maybe_addr, Expiration};
 use cw2::set_contract_version;
-use cw20::{BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg};
-use cw20_base::state::TokenInfo;
-use cw20_gov::msg::{QueryMsg as Cw20GovQueryMsg, VotingPowerAtHeightResponse};
+use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg};
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
@@ -190,29 +192,6 @@ pub fn execute_propose(
         .add_attribute("status", format!("{:?}", prop.status)))
 }
 
-fn get_deposit_message(
-    env: &Env,
-    info: &MessageInfo,
-    amount: &Uint128,
-    gov_token: &Addr,
-) -> StdResult<Vec<CosmosMsg>> {
-    if *amount == Uint128::zero() {
-        return Ok(vec![]);
-    }
-    let transfer_cw20_msg = Cw20ExecuteMsg::TransferFrom {
-        owner: info.sender.clone().into(),
-        recipient: env.contract.address.clone().into(),
-        amount: *amount,
-    };
-    let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: gov_token.into(),
-        msg: to_binary(&transfer_cw20_msg)?,
-        funds: vec![],
-    };
-    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
-    Ok(vec![cw20_transfer_cosmos_msg])
-}
-
 pub fn execute_vote(
     deps: DepsMut,
     env: Env,
@@ -292,27 +271,6 @@ pub fn execute_execute(
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
-}
-
-pub fn get_proposal_deposit_refund_message(
-    proposer: &Addr,
-    amount: &Uint128,
-    gov_token: &Addr,
-) -> StdResult<Vec<CosmosMsg>> {
-    if *amount == Uint128::zero() {
-        return Ok(vec![]);
-    }
-    let transfer_cw20_msg = Cw20ExecuteMsg::Transfer {
-        recipient: proposer.into(),
-        amount: *amount,
-    };
-    let exec_cw20_transfer = WasmMsg::Execute {
-        contract_addr: gov_token.into(),
-        msg: to_binary(&transfer_cw20_msg)?,
-        funds: vec![],
-    };
-    let cw20_transfer_cosmos_msg: CosmosMsg = exec_cw20_transfer.into();
-    Ok(vec![cw20_transfer_cosmos_msg])
 }
 
 pub fn execute_close(
@@ -414,17 +372,17 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Proposal { proposal_id } => to_binary(&query_proposal(deps, env, proposal_id)?),
         QueryMsg::Vote { proposal_id, voter } => to_binary(&query_vote(deps, proposal_id, voter)?),
         QueryMsg::ListProposals { start_after, limit } => {
-            to_binary(&list_proposals(deps, env, start_after, limit)?)
+            to_binary(&query_list_proposals(deps, env, start_after, limit)?)
         }
         QueryMsg::ReverseProposals {
             start_before,
             limit,
-        } => to_binary(&reverse_proposals(deps, env, start_before, limit)?),
+        } => to_binary(&query_reverse_proposals(deps, env, start_before, limit)?),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
             limit,
-        } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
+        } => to_binary(&query_list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
         QueryMsg::Cw20Balances { start_after, limit } => {
             to_binary(&query_cw20_balances(deps, env, start_after, limit)?)
@@ -432,54 +390,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)),
     }
-}
-
-fn get_total_supply(deps: Deps) -> StdResult<Uint128> {
-    let gov_token = GOV_TOKEN.load(deps.storage)?;
-
-    // Get total supply
-    let token_info: TokenInfo = deps
-        .querier
-        .query_wasm_smart(gov_token, &Cw20QueryMsg::TokenInfo {})?;
-    Ok(token_info.total_supply)
-}
-
-fn get_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
-    let gov_token = GOV_TOKEN.load(deps.storage)?;
-
-    // Get total supply
-    let balance: BalanceResponse = deps
-        .querier
-        .query_wasm_smart(
-            gov_token,
-            &Cw20QueryMsg::Balance {
-                address: address.to_string(),
-            },
-        )
-        .unwrap_or(BalanceResponse {
-            balance: Uint128::zero(),
-        });
-    Ok(balance.balance)
-}
-
-fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
-    let gov_token = GOV_TOKEN.load(deps.storage)?;
-
-    // Get total supply
-    let balance: VotingPowerAtHeightResponse = deps
-        .querier
-        .query_wasm_smart(
-            gov_token,
-            &Cw20GovQueryMsg::VotingPowerAtHeight {
-                address: address.to_string(),
-                height,
-            },
-        )
-        .unwrap_or(VotingPowerAtHeightResponse {
-            balance: Uint128::zero(),
-            height: 0,
-        });
-    Ok(balance.balance)
 }
 
 fn query_threshold(deps: Deps) -> StdResult<ThresholdResponse> {
@@ -562,7 +472,7 @@ fn query_cw20_balances(
     Ok(Cw20BalancesResponse { cw20_balances })
 }
 
-fn list_proposals(
+fn query_list_proposals(
     deps: Deps,
     env: Env,
     start_after: Option<u64>,
@@ -579,7 +489,7 @@ fn list_proposals(
     Ok(ProposalListResponse { proposals: props? })
 }
 
-fn reverse_proposals(
+fn query_reverse_proposals(
     deps: Deps,
     env: Env,
     start_before: Option<u64>,
@@ -596,26 +506,6 @@ fn reverse_proposals(
     Ok(ProposalListResponse { proposals: props? })
 }
 
-fn map_proposal(
-    block: &BlockInfo,
-    item: StdResult<(Vec<u8>, Proposal)>,
-) -> StdResult<ProposalResponse> {
-    let (key, prop) = item?;
-    let status = prop.current_status(block);
-    let threshold = prop.threshold.to_response(prop.total_weight);
-    Ok(ProposalResponse {
-        id: parse_id(&key)?,
-        title: prop.title,
-        description: prop.description,
-        proposer: prop.proposer,
-        msgs: prop.msgs,
-        status,
-        expires: prop.expires,
-        threshold,
-        deposit_amount: prop.deposit,
-    })
-}
-
 fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResponse> {
     let voter_addr = deps.api.addr_validate(&voter)?;
     let prop = BALLOTS.may_load(deps.storage, (proposal_id.into(), &voter_addr))?;
@@ -627,7 +517,7 @@ fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResp
     Ok(VoteResponse { vote })
 }
 
-fn list_votes(
+fn query_list_votes(
     deps: Deps,
     proposal_id: u64,
     start_after: Option<String>,

@@ -9,7 +9,7 @@ mod tests {
     };
     use crate::state::Config;
     use cosmwasm_std::{
-        coin, coins, to_binary, Addr, BankMsg, Binary, BlockInfo, Coin, CosmosMsg, Decimal, Empty,
+        coin, coins, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, Decimal, Empty,
         Timestamp, Uint128, WasmMsg,
     };
     use cw0::{Duration, Expiration};
@@ -1264,48 +1264,6 @@ mod tests {
             app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
         assert!(res.is_ok());
         let other_cw20_addr = res.unwrap();
-
-        // Owner account sends tokens to DAO
-        let send_msg = Cw20ExecuteMsg::Send {
-            amount: Uint128::new(2),
-            contract: dao_addr.clone().into_string(),
-            msg: Binary::default(),
-        };
-        let res = app.execute_contract(
-            Addr::unchecked(OWNER),
-            other_cw20_addr.clone(),
-            &send_msg,
-            &[],
-        );
-        assert!(res.is_ok());
-
-        // Token list should be 2 now
-        let token_list: TokenListResponse = app
-            .wrap()
-            .query_wasm_smart(&dao_addr, &QueryMsg::Cw20TokenList {})
-            .unwrap();
-        assert_eq!(token_list.token_list.len(), 2);
-
-        // Owner sends more tokens to DAO
-        let res = app.execute_contract(
-            Addr::unchecked(OWNER),
-            other_cw20_addr.clone(),
-            &send_msg,
-            &[],
-        );
-        assert!(res.is_ok());
-
-        // Token list should still be 2
-        let token_list: TokenListResponse = app
-            .wrap()
-            .query_wasm_smart(&dao_addr, &QueryMsg::Cw20TokenList {})
-            .unwrap();
-        assert_eq!(token_list.token_list.len(), 2);
-
-        // Contact #2 token has been added
-        assert!(token_list
-            .token_list
-            .contains(&Addr::unchecked("Contract #2")));
 
         // Manually add token to list by voting
         let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
