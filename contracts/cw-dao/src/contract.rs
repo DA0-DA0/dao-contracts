@@ -84,7 +84,7 @@ pub fn instantiate(
                 })?,
             };
 
-            let msg = SubMsg::reply_always(msg, INSTANTIATE_GOV_TOKEN_REPLY_ID);
+            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_GOV_TOKEN_REPLY_ID);
 
             msgs.append(&mut vec![msg]);
         }
