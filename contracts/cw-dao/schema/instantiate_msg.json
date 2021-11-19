@@ -3,24 +3,35 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "cw20_addr",
+    "description",
+    "gov_token",
     "max_voting_period",
+    "name",
     "proposal_deposit_amount",
-    "proposal_deposit_token_address",
     "threshold"
   ],
   "properties": {
-    "cw20_addr": {
-      "description": "cw20-gov token contract address",
+    "description": {
       "type": "string"
     },
+    "gov_token": {
+      "description": "Set an existing governance token or launch a new one",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GovTokenMsg"
+        }
+      ]
+    },
     "max_voting_period": {
-      "description": "TODO ???",
+      "description": "The amount of time a proposal can be voted on before expiring",
       "allOf": [
         {
           "$ref": "#/definitions/Duration"
         }
       ]
+    },
+    "name": {
+      "type": "string"
     },
     "proposal_deposit_amount": {
       "description": "Deposit required to make a proposal",
@@ -30,9 +41,12 @@
         }
       ]
     },
-    "proposal_deposit_token_address": {
-      "description": "The token address used to pay deposit proposal",
-      "type": "string"
+    "refund_failed_proposals": {
+      "description": "Refund a proposal if it is rejected",
+      "type": [
+        "boolean",
+        "null"
+      ]
     },
     "threshold": {
       "description": "Voting params configuration",
@@ -44,13 +58,32 @@
     }
   },
   "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "Cw20Coin": {
+      "type": "object",
+      "required": [
+        "address",
+        "amount"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        }
+      }
+    },
     "Decimal": {
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
     },
     "Duration": {
       "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "required": [
@@ -82,9 +115,197 @@
         }
       ]
     },
+    "EmbeddedLogo": {
+      "description": "This is used to store the logo on the blockchain in an accepted format. Enforce maximum size of 5KB on all variants.",
+      "oneOf": [
+        {
+          "description": "Store the Logo as an SVG file. The content must conform to the spec at https://en.wikipedia.org/wiki/Scalable_Vector_Graphics (The contract should do some light-weight sanity-check validation)",
+          "type": "object",
+          "required": [
+            "svg"
+          ],
+          "properties": {
+            "svg": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Store the Logo as a PNG file. This will likely only support up to 64x64 or so within the 5KB limit.",
+          "type": "object",
+          "required": [
+            "png"
+          ],
+          "properties": {
+            "png": {
+              "$ref": "#/definitions/Binary"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "GovTokenInstantiateMsg": {
+      "type": "object",
+      "required": [
+        "decimals",
+        "initial_balances",
+        "name",
+        "symbol"
+      ],
+      "properties": {
+        "decimals": {
+          "type": "integer",
+          "format": "uint8",
+          "minimum": 0.0
+        },
+        "initial_balances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Cw20Coin"
+          }
+        },
+        "marketing": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/InstantiateMarketingInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        }
+      }
+    },
+    "GovTokenMsg": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "instantiate_new_cw20"
+          ],
+          "properties": {
+            "instantiate_new_cw20": {
+              "type": "object",
+              "required": [
+                "code_id",
+                "label",
+                "msg"
+              ],
+              "properties": {
+                "code_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "label": {
+                  "type": "string"
+                },
+                "msg": {
+                  "$ref": "#/definitions/GovTokenInstantiateMsg"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Use an existing cw20 token",
+          "type": "object",
+          "required": [
+            "use_existing_cw20"
+          ],
+          "properties": {
+            "use_existing_cw20": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "InstantiateMarketingInfo": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "logo": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Logo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "marketing": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "project": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "Logo": {
+      "description": "This is used for uploading logo data, or setting it in InstantiateData",
+      "oneOf": [
+        {
+          "description": "A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.",
+          "type": "object",
+          "required": [
+            "url"
+          ],
+          "properties": {
+            "url": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Logo content stored on the blockchain. Enforce maximum size of 5KB on all variants",
+          "type": "object",
+          "required": [
+            "embedded"
+          ],
+          "properties": {
+            "embedded": {
+              "$ref": "#/definitions/EmbeddedLogo"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "Threshold": {
       "description": "This defines the different ways tallies can happen.\n\nThe total_weight used for calculating success as well as the weights of each individual voter used in tallying should be snapshotted at the beginning of the block at which the proposal starts (this is likely the responsibility of a correct cw4 implementation). See also `ThresholdResponse` in the cw3 spec.",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "Declares a percentage of the total weight that must cast Yes votes in order for a proposal to pass. See `ThresholdResponse.AbsolutePercentage` in the cw3 spec for details.",
           "type": "object",
