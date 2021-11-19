@@ -15,9 +15,9 @@ use crate::state::{
 };
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Response, StdResult, Uint128, WasmMsg,
+    Reply, Response, StdResult, Uint128, WasmMsg,
 };
-use cw0::{maybe_addr, Expiration};
+use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
 use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg};
 use cw_storage_plus::Bound;
@@ -551,4 +551,16 @@ fn query_voter(deps: Deps, voter: String) -> StdResult<VoterResponse> {
     Ok(VoterResponse {
         weight: Some(weight),
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
+    let _res = parse_reply_instantiate_data(msg);
+    // TODO how to get user address?
+    // match res {
+    //     Ok(res) => {
+    //         COLLECTIONS.save(deps.storage, user_addr, contract_addr)
+    //     }
+    // }
+    Ok(Response::new())
 }

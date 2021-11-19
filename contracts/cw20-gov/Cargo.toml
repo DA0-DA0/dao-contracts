@@ -1,6 +1,6 @@
 [package]
 name = "cw20-gov"
-version = "0.10.0"
+version = "0.10.2"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>", "Ben2x4 <ben2x4@tutanota.com>"]
 edition = "2018"
 description = "CosmWasm-20 compliant token with checkpointing to enable DAOs"
@@ -15,15 +15,15 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cw0 = { version = "0.10.0" }
-cw2 = { version = "0.10.0" }
-cw20 = { version = "0.10.0" }
-cw20-base = {  version = "0.10.0", features = ["library"] }
-cw-storage-plus = { version = "0.10.0" }
-cosmwasm-std = { version = "1.0.0-beta" }
-schemars = "0.8.3"
-serde = { version = "1.0.125", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.24" }
+cw0 = { version = "0.10.2" }
+cw2 = { version = "0.10.2" }
+cw20 = { version = "0.10.2" }
+cw20-base = {  version = "0.10.2", features = ["library"] }
+cw-storage-plus = { version = "0.10.2" }
+cosmwasm-std = { version = "1.0.0-beta2" }
+schemars = "0.8.6"
+serde = { version = "1.0.130", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.30" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta" }
+cosmwasm-schema = { version = "1.0.0-beta2" }

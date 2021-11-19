@@ -290,7 +290,7 @@ mod tests {
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, Deps, DepsMut, Uint128};
+    use cosmwasm_std::{Deps, DepsMut, Uint128};
     use cw0::Duration;
     use cw20::{Cw20Coin, MinterResponse, TokenInfoResponse};
     use cw20_base::contract::{query_balance, query_minter, query_token_info};
@@ -343,7 +343,7 @@ mod tests {
 
     #[test]
     fn test_staking() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let amount1 = Uint128::from(100u128);
@@ -483,7 +483,7 @@ mod tests {
 
     #[test]
     fn test_unstaking_with_claims() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let amount1 = Uint128::from(100u128);
         let unstaking_blocks = 10u64;
@@ -639,7 +639,7 @@ mod tests {
 
     #[test]
     fn unstaking_duration_query() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
+        let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let amount1 = Uint128::from(100u128);
         let unstaking_duration = Some(Duration::Height(10));
