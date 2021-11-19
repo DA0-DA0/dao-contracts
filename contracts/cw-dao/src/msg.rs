@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
+    // The name of the DAO.
+    pub name: String,
+    // A description of the DAO.
+    pub description: String,
     /// cw20 contract address valid gov token
     pub cw20_addr: String,
     /// Voting params configuration
@@ -124,6 +128,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Update DAO config (can only be called by DAO contract)
     UpdateConfig {
+        name: String,
+        description: String,
         threshold: Threshold,
         max_voting_period: Duration,
         proposal_deposit_amount: Uint128,
@@ -178,6 +184,8 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct UpdateConfigMsg {
+    pub name: String,
+    pub description: String,
     pub threshold: Threshold,
     pub max_voting_period: Duration,
     pub proposal_deposit_amount: Uint128,

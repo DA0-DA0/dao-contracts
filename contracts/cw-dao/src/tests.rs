@@ -95,6 +95,8 @@ mod tests {
     ) -> Addr {
         let flex_id = app.store_code(contract_dao());
         let msg = crate::msg::InstantiateMsg {
+            name: "dao-dao".to_string(),
+            description: "a great DAO!".to_string(),
             cw20_addr: cw20.to_string(),
             threshold,
             max_voting_period,
@@ -174,6 +176,8 @@ mod tests {
 
         // Total weight less than required weight not allowed
         let instantiate_msg = InstantiateMsg {
+            name: "dao-dao".to_string(),
+            description: "a great DAO!".to_string(),
             cw20_addr: cw20_addr.to_string(),
             threshold: Threshold::AbsolutePercentage {
                 percentage: Decimal::percent(101),
@@ -200,6 +204,8 @@ mod tests {
 
         // All valid
         let instantiate_msg = InstantiateMsg {
+            name: "dao-dao".to_string(),
+            description: "a great DAO!".to_string(),
             cw20_addr: cw20_addr.to_string(),
             threshold: Threshold::ThresholdQuorum {
                 threshold: Decimal::percent(51),
@@ -825,6 +831,8 @@ mod tests {
 
         // Update Config to not refund proposals
         let update_config_msg = ExecuteMsg::UpdateConfig {
+            name: "dao-dao".to_string(),
+            description: "a great DAO!".to_string(),
             threshold,
             max_voting_period: voting_period,
             proposal_deposit_amount,
@@ -967,6 +975,9 @@ mod tests {
         let new_proposal_deposit_amount = Uint128::from(10u8);
         let new_deposit_token_address = String::from("updated");
         let update_config_msg = ExecuteMsg::UpdateConfig {
+            name: "dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao".to_string(),
+            description: "a really great DAO with emojis 💫 and a name that is really long!"
+                .to_string(),
             threshold: new_threshold.clone(),
             max_voting_period: new_voting_period.clone(),
             proposal_deposit_amount: new_proposal_deposit_amount,
@@ -1030,6 +1041,10 @@ mod tests {
             res,
             ConfigResponse {
                 config: Config {
+                    name: "dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao".to_string(),
+                    description:
+                        "a really great DAO with emojis 💫 and a name that is really long!"
+                            .to_string(),
                     threshold: new_threshold.clone(),
                     max_voting_period: new_voting_period.clone(),
                     cw20_addr: cw20,
@@ -1071,6 +1086,8 @@ mod tests {
             res,
             ConfigResponse {
                 config: Config {
+                    name: "dao-dao".to_string(),
+                    description: "a great DAO!".to_string(),
                     threshold,
                     max_voting_period: voting_period,
                     cw20_addr: Cw20Contract(cw20_addr.clone()),
@@ -1115,6 +1132,8 @@ mod tests {
         let proposal_deposit_amount = Uint128::new(10);
 
         let update_config_msg = ExecuteMsg::UpdateConfig {
+            name: "dao-dao".to_string(),
+            description: "a great DAO!".to_string(),
             threshold,
             max_voting_period: voting_period,
             proposal_deposit_amount,
