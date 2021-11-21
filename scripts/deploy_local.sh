@@ -1,17 +1,20 @@
 #!/bin/bash
 
-if [ "$1" = "" ]
-then
-  echo "Usage: $0 1 arg required, wasm address. See \"Deploying in a development environment\" in README."
-  exit
-fi
+# Run this from the root repo directory
 
+## CONFIG
 # NOTE: you will need to update these to deploy on different network
 BINARY='docker exec -i cosmwasm wasmd'
 DENOM='ustake'
 CHAIN_ID='testing'
 RPC='http://localhost:26657/'
 TXFLAG="--gas-prices 0.01$DENOM --gas auto --gas-adjustment 1.3 -y -b block --chain-id $CHAIN_ID --node $RPC"
+
+if [ "$1" = "" ]
+then
+  echo "Usage: $0 1 arg required, wasm address. See \"Deploying in a development environment\" in README."
+  exit
+fi
 
 # Deploy wasmd in Docker
 docker kill cosmwasm
@@ -130,9 +133,28 @@ echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW_DAO_CODE" "$CW_DAO_INIT" --fro
 
 CW_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW_DAO_CODE --output json | jq -r '.contracts[-1]')
 
+# Download cw3-fixed-multisig and cw3-flex-multisig contracts
+cd scripts
+curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.10.2/cw3_flex_multisig.wasm
+curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.10.2/cw3_fixed_multisig.wasm
+
+# Copy wasm to docker
+docker cp cw3_flex_multisig.wasm cosmwasm:/cw3_flex_multisig.wasm
+docker cp cw3_fixed_multisig.wasm cosmwasm:/cw3_fixed_multisig.wasm
+
+
+# Upload cw3-fixed-multisig and cw3-flex-multisig code
+echo xxxxxxxxx | $BINARY tx wasm store "/cw3_fixed_multisig.wasm" --from validator $TXFLAG
+echo xxxxxxxxx | $BINARY tx wasm store "/cw3_flex_multisig.wasm" --from validator $TXFLAG
+
+
 # Print out config variables
 printf "\n ------------------------ \n"
 printf "Config Variables \n\n"
 
+echo "NEXT_PUBLIC_DAO_TOKEN_CODE_ID=$CW20_CODE"
 echo "NEXT_PUBLIC_DAO_TOKEN_ADDRESS=$CW20_CONTRACT"
+echo "NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=$CW_DAO_CODE"
 echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW_DAO_CONTRACT"
+echo "NEXT_PUBLIC_FIXED_MULTISIG_CODE_ID=3"
+echo "NEXT_PUBLIC_FLEX_MULTISIG_CODE_ID=4"
