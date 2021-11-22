@@ -303,7 +303,7 @@ mod tests {
     fn do_instantiate(
         mut deps: DepsMut,
         addr: &str,
-        amount: Uint128,
+        initial_balances: Vec<Cw20Coin>,
         mint: Option<MinterResponse>,
         unstaking_duration: Option<Duration>,
     ) -> TokenInfoResponse {
@@ -312,10 +312,7 @@ mod tests {
                 name: "Auto Gen".to_string(),
                 symbol: "AUTO".to_string(),
                 decimals: 3,
-                initial_balances: vec![Cw20Coin {
-                    address: addr.to_string(),
-                    amount,
-                }],
+                initial_balances: initial_balances.clone(),
                 mint: mint.clone(),
                 marketing: None,
             },
@@ -327,16 +324,16 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         let meta = query_token_info(deps.as_ref()).unwrap();
+        let total = initial_balances.into_iter().map(|x| x.amount).sum();
         assert_eq!(
             meta,
             TokenInfoResponse {
                 name: "Auto Gen".to_string(),
                 symbol: "AUTO".to_string(),
                 decimals: 3,
-                total_supply: amount,
+                total_supply: total,
             }
         );
-        assert_eq!(get_balance(deps.as_ref(), addr), amount);
         assert_eq!(query_minter(deps.as_ref()).unwrap(), mint,);
         meta
     }
@@ -347,7 +344,8 @@ mod tests {
         let addr1 = String::from("addr0001");
         let addr2 = String::from("addr0002");
         let amount1 = Uint128::from(100u128);
-        do_instantiate(deps.as_mut(), &addr1, amount1, None, None);
+        let initial_balances = vec![Cw20Coin{ address: addr1.clone(), amount: amount1 }];
+        do_instantiate(deps.as_mut(), &addr1, initial_balances, None, None);
 
         let info = mock_info(addr1.as_ref(), &[]);
         let mut env = mock_env();
@@ -486,11 +484,12 @@ mod tests {
         let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let amount1 = Uint128::from(100u128);
+        let initial_balances = vec![Cw20Coin{ address: addr1.clone(), amount: amount1 }];
         let unstaking_blocks = 10u64;
         do_instantiate(
             deps.as_mut(),
             &addr1,
-            amount1,
+            initial_balances,
             None,
             Some(Duration::Height(unstaking_blocks)),
         );
@@ -642,11 +641,115 @@ mod tests {
         let mut deps = mock_dependencies();
         let addr1 = String::from("addr0001");
         let amount1 = Uint128::from(100u128);
+        let initial_balances = vec![Cw20Coin{ address: addr1.clone(), amount: amount1 }];
         let unstaking_duration = Some(Duration::Height(10));
-        do_instantiate(deps.as_mut(), &addr1, amount1, None, unstaking_duration);
+        do_instantiate(deps.as_mut(), &addr1, initial_balances, None, unstaking_duration);
         assert_eq!(
             query_unstaking_duration(deps.as_ref()).unwrap().duration,
             unstaking_duration
+        );
+    }
+
+    #[test]
+    fn multiple_address_staking() {
+        let mut deps = mock_dependencies();
+        let addr1 = String::from("addr0001");
+        let addr2 = String::from("addr0002");
+        let addr3 = String::from("addr0003");
+        let addr4 = String::from("addr0004");
+        let amount1 = Uint128::from(100u128);
+        let initial_balances = vec![
+            Cw20Coin{ address: addr1.clone(), amount: amount1 },
+            Cw20Coin{ address: addr2.clone(), amount: amount1 },
+            Cw20Coin{ address: addr3.clone(), amount: amount1 },
+            Cw20Coin{ address: addr4.clone(), amount: amount1 },
+        ];
+        do_instantiate(deps.as_mut(), &addr1, initial_balances, None, None);
+        let mut env = mock_env();
+
+        let info = mock_info(addr1.as_ref(), &[]);
+        // Successful bond
+        let msg = ExecuteMsg::Stake {
+            amount: amount1,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(res.messages.len(), 0);
+        env.block.height = env.block.height + 1;
+
+        let info = mock_info(addr2.as_ref(), &[]);
+        // Successful bond
+        let msg = ExecuteMsg::Stake {
+            amount: amount1,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(res.messages.len(), 0);
+        env.block.height = env.block.height + 1;
+
+
+        let info = mock_info(addr3.as_ref(), &[]);
+        // Successful bond
+        let msg = ExecuteMsg::Stake {
+            amount: amount1,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(res.messages.len(), 0);
+        env.block.height = env.block.height + 1;
+
+
+        let info = mock_info(addr4.as_ref(), &[]);
+        // Successful bond
+        let msg = ExecuteMsg::Stake {
+            amount: amount1,
+        };
+        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        assert_eq!(res.messages.len(), 0);
+        env.block.height = env.block.height + 1;
+
+        assert_eq!(
+            query_staked_balance_at_height(deps.as_ref(), env.clone(), addr1.clone(), None)
+                .unwrap()
+                .balance,
+            amount1
+        );
+        assert_eq!(
+            query_staked_balance_at_height(deps.as_ref(), env.clone(), addr2.clone(), None)
+                .unwrap()
+                .balance,
+            amount1
+        );
+        assert_eq!(
+            query_staked_balance_at_height(deps.as_ref(), env.clone(), addr3.clone(), None)
+                .unwrap()
+                .balance,
+            amount1
+        );
+        assert_eq!(
+            query_staked_balance_at_height(deps.as_ref(), env.clone(), addr4.clone(), None)
+                .unwrap()
+                .balance,
+            amount1
+        );
+        assert_eq!(
+            query_total_staked_at_height(deps.as_ref(), env.clone(), None)
+                .unwrap()
+                .total,
+            amount1.checked_mul(Uint128::new(4)).unwrap()
+        );
+        assert_eq!(
+            get_balance(deps.as_ref(), addr1.clone()),
+            Uint128::zero()
+        );
+        assert_eq!(
+            get_balance(deps.as_ref(), addr2.clone()),
+            Uint128::zero()
+        );
+        assert_eq!(
+            get_balance(deps.as_ref(), addr3.clone()),
+            Uint128::zero()
+        );
+        assert_eq!(
+            get_balance(deps.as_ref(), addr4.clone()),
+            Uint128::zero()
         );
     }
 }
