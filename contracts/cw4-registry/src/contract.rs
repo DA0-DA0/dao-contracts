@@ -6,8 +6,8 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::INDEX;
 use cw2::set_contract_version;
-use cw4_group::helpers::Cw4GroupContract;
 use cw4::MemberChangedHookMsg;
+use cw4_group::helpers::Cw4GroupContract;
 
 const CONTRACT_NAME: &str = "crates.io:cw4-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -32,7 +32,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Register { contract_addr } => execute_register(deps, env, info, contract_addr),
-        ExecuteMsg::MemberChangedHook(msg) => execute_member_changed_hook(deps, env, info, msg)
+        ExecuteMsg::MemberChangedHook(msg) => execute_member_changed_hook(deps, env, info, msg),
     }
 }
 
@@ -65,7 +65,7 @@ pub fn execute_member_changed_hook(
         // add new addresses
         if md.new.is_some() {
             let addr = deps.api.addr_validate(md.key.as_str())?;
-            INDEX.save(deps.storage, (&info.sender, &addr), &Empty{})?;
+            INDEX.save(deps.storage, (&info.sender, &addr), &Empty {})?;
         }
 
         // remove old addresses
@@ -93,8 +93,8 @@ mod tests {
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use cosmwasm_std::{to_binary, Addr, Empty, WasmMsg};
     use cw4::Member;
-    use cw_multi_test::{App, Contract, ContractWrapper, Executor};
     use cw4_group::helpers::Cw4GroupContract;
+    use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
     fn mock_app() -> App {
         App::default()
@@ -189,8 +189,14 @@ mod tests {
             .unwrap();
 
         let add = vec![
-            Member{ addr: ADDR6.to_string(), weight: 2 },
-            Member{ addr: ADDR7.to_string(), weight: 9 }
+            Member {
+                addr: ADDR6.to_string(),
+                weight: 2,
+            },
+            Member {
+                addr: ADDR7.to_string(),
+                weight: 9,
+            },
         ];
         let remove = vec![ADDR1.to_string(), ADDR2.to_string()];
         let update_msg = group_contract.update_members(remove, add).unwrap();
