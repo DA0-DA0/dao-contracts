@@ -7,6 +7,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::INDEX;
 use cw2::set_contract_version;
 use cw4_group::helpers::Cw4GroupContract;
+use cw4::MemberChangedHookMsg;
 
 const CONTRACT_NAME: &str = "crates.io:cw4-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -31,6 +32,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Register { contract_addr } => execute_register(deps, env, info, contract_addr),
+        ExecuteMsg::MemberChangedHook(msg) => execute_member_changed_hook(deps, env, info, msg)
     }
 }
 
@@ -53,6 +55,28 @@ pub fn execute_register(
     Ok(Response::default())
 }
 
+pub fn execute_member_changed_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: MemberChangedHookMsg,
+) -> Result<Response, ContractError> {
+    for md in msg.diffs {
+        // add new addresses
+        if md.new.is_some() {
+            let addr = deps.api.addr_validate(md.key.as_str())?;
+            INDEX.save(deps.storage, (&info.sender, &addr), &Empty{})?;
+        }
+
+        // remove old addresses
+        if md.old.is_some() {
+            let addr = deps.api.addr_validate(md.key.as_str())?;
+            INDEX.remove(deps.storage, (&info.sender, &addr));
+        }
+    }
+
+    Ok(Response::default())
+}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!()
@@ -70,6 +94,7 @@ mod tests {
     use cosmwasm_std::{to_binary, Addr, Empty, WasmMsg};
     use cw4::Member;
     use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+    use cw4_group::helpers::Cw4GroupContract;
 
     fn mock_app() -> App {
         App::default()
@@ -90,12 +115,16 @@ mod tests {
     }
 
     const ADMIN_ADDR: &str = "admin";
-    const ADDR2: &str = "somebody";
-    const ADDR3: &str = "else";
-    const ADDR4: &str = "funny";
+    const ADDR1: &str = "add1";
+    const ADDR2: &str = "add2";
+    const ADDR3: &str = "add3";
+    const ADDR4: &str = "add4";
+    const ADDR5: &str = "add5";
+    const ADDR6: &str = "add6";
+    const ADDR7: &str = "add7";
 
     #[test]
-    fn cw4_registers() {
+    fn cw4_register_test() {
         let mut router = mock_app();
 
         let cw4_group_id = router.store_code(contract_cw4_group());
@@ -104,18 +133,22 @@ mod tests {
             admin: Some(ADMIN_ADDR.into()),
             members: vec![
                 Member {
-                    addr: ADDR2.into(),
+                    addr: ADDR1.into(),
                     weight: 11,
                 },
                 Member {
-                    addr: ADDR3.into(),
+                    addr: ADDR2.into(),
                     weight: 6,
+                },
+                Member {
+                    addr: ADDR3.into(),
+                    weight: 11,
                 },
             ],
         };
 
-        // instantiate cw4 group
-        let multisig_addr = router
+        // instantiate group
+        let group_addr = router
             .instantiate_contract(
                 cw4_group_id,
                 Addr::unchecked(ADDR2),
@@ -125,6 +158,7 @@ mod tests {
                 None,
             )
             .unwrap();
+        let group_contract = Cw4GroupContract::new(group_addr.clone());
 
         // instantiate cw4 registry
         let cw4_registry_code_id = router.store_code(contract_cw4_registry());
@@ -132,7 +166,7 @@ mod tests {
         let cw4_registry_addr = router
             .instantiate_contract(
                 cw4_registry_code_id,
-                multisig_addr.clone(),
+                group_addr.clone(),
                 &instantiate_msg,
                 &[],
                 "Registry",
@@ -142,7 +176,7 @@ mod tests {
 
         // register multisig to registry
         let register_msg = ExecuteMsg::Register {
-            contract_addr: multisig_addr.into_string(),
+            contract_addr: group_addr.clone().into_string(),
         };
         let wasm_msg = WasmMsg::Execute {
             contract_addr: cw4_registry_addr.to_string(),
@@ -153,5 +187,15 @@ mod tests {
         router
             .execute(Addr::unchecked(ADDR2), wasm_msg.into())
             .unwrap();
+
+        let add = vec![
+            Member{ addr: ADDR6.to_string(), weight: 2 },
+            Member{ addr: ADDR7.to_string(), weight: 9 }
+        ];
+        let remove = vec![ADDR1.to_string(), ADDR2.to_string()];
+        let update_msg = group_contract.update_members(remove, add).unwrap();
+        // current list: ADDR3, ADDR6, ADDR7
+
+        router.execute(group_addr, update_msg).unwrap();
     }
 }
