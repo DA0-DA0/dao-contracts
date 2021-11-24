@@ -1,13 +1,5 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_std::{Addr, Empty};
+use cw_storage_plus::{Item, Map};
 
-use cosmwasm_std::Addr;
-use cw_storage_plus::Item;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    pub count: i32,
-    pub owner: Addr,
-}
-
-pub const STATE: Item<State> = Item::new("state");
+// (user address, multisig addr) -> Empty
+pub const INDEX: Map<(&Addr, &Addr), Empty> = Map::new("index");
