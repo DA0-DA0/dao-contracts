@@ -5,7 +5,7 @@ use cosmwasm_std::{
 };
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, QueryMsg};
 use crate::state::GROUPS;
 
 use cw2::set_contract_version;
@@ -131,11 +131,6 @@ pub fn query_groups(
     let groups_str = groups?.into_iter().map(|g| g.into_string()).collect();
 
     Ok(ListGroupsResponse { groups: groups_str })
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    unimplemented!()
 }
 
 #[cfg(test)]
