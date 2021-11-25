@@ -1,20 +1,18 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_slice, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    from_slice, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
     StdResult,
 };
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, MigrateMsg, QueryMsg};
 use crate::state::GROUPS;
-use cw0::maybe_addr;
+
 use cw2::set_contract_version;
 use cw4::MemberChangedHookMsg;
 use cw4_group::helpers::Cw4GroupContract;
-use cw_storage_plus::{range_with_prefix, Bound, Prefix, Prefixer, PrimaryKey};
-use schemars::_serde_json::to_string;
-use std::str::from_utf8;
+use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = "crates.io:cw4-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -180,8 +178,6 @@ mod tests {
     const ADDR1: &str = "add1";
     const ADDR2: &str = "add2";
     const ADDR3: &str = "add3";
-    const ADDR4: &str = "add4";
-    const ADDR5: &str = "add5";
     const ADDR6: &str = "add6";
     const ADDR7: &str = "add7";
 
@@ -236,7 +232,7 @@ mod tests {
 
         // register multisig to registry
         let register_msg = ExecuteMsg::Register {
-            contract_addr: group_addr.clone().into_string(),
+            contract_addr: group_addr.into_string(),
         };
         let wasm_msg = WasmMsg::Execute {
             contract_addr: registry_addr.to_string(),
@@ -301,7 +297,7 @@ mod tests {
         let (group_contract, registry_contract) = setup_environment(&mut router);
 
         // query for groups
-        let query_msg = QueryMsg::ListGroups {
+        let _query_msg = QueryMsg::ListGroups {
             user_addr: ADDR1.into(),
             start_after: None,
             limit: None,

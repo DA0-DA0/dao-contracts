@@ -1,10 +1,7 @@
-use crate::msg::{ExecuteMsg, ListGroupsResponse, QueryMsg};
-use cosmwasm_std::{
-    to_binary, Addr, CosmosMsg, Empty, Querier, QuerierWrapper, StdResult, WasmMsg, WasmQuery,
-};
+use crate::msg::{ListGroupsResponse, QueryMsg};
+use cosmwasm_std::{to_binary, Addr, Empty, Querier, QuerierWrapper, StdResult, WasmQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::ops::Deref;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Cw4RegistryContract(pub Addr);
@@ -16,15 +13,6 @@ impl Cw4RegistryContract {
 
     pub fn new(addr: Addr) -> Self {
         Cw4RegistryContract(addr)
-    }
-
-    fn encode_msg(&self, msg: ExecuteMsg) -> StdResult<CosmosMsg> {
-        Ok(WasmMsg::Execute {
-            contract_addr: self.0.clone().into_string(),
-            msg: to_binary(&msg)?,
-            funds: vec![],
-        }
-        .into())
     }
 
     /// Get token balance for the given address
