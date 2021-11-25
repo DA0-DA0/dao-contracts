@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -108,13 +108,13 @@ mod tests {
     use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::ContractError;
     use anyhow::Error;
-    use anyhow::{anyhow, Result};
+    
     use assert_matches::assert_matches;
     use cosmwasm_std::{to_binary, Addr, Empty, WasmMsg};
     use cw4::Member;
     use cw4_group::helpers::Cw4GroupContract;
-    use cw_multi_test::{App, BasicApp, Contract, ContractWrapper, Executor, Router};
-    use std::borrow::{Borrow, BorrowMut};
+    use cw_multi_test::{App, BasicApp, Contract, ContractWrapper, Executor};
+    
 
     fn mock_app() -> App {
         App::default()
@@ -247,7 +247,7 @@ mod tests {
         let update_msg = group_contract.update_members(op_remove, op_add).unwrap();
 
         let err = router.execute(hacker, update_msg).unwrap_err();
-        let expected = Error::new(ContractError::Unauthorized {});
-        assert_matches!(err, expected);
+        let _expected = Error::new(ContractError::Unauthorized {});
+        assert_matches!(err, _expected);
     }
 }
