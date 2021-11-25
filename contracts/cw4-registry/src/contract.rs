@@ -1,6 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult, Addr};
+use cosmwasm_std::{
+    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult,
+};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, MigrateMsg, QueryMsg};
@@ -126,10 +128,7 @@ pub fn query_groups(
         .take(limit)
         .collect();
 
-    let groups_str = groups?
-        .into_iter()
-        .map(|g| g.into_string())
-        .collect();
+    let groups_str = groups?.into_iter().map(|g| g.into_string()).collect();
 
     Ok(ListGroupsResponse { groups: groups_str })
 }
@@ -264,7 +263,9 @@ mod tests {
         let update_msg = group_contract.update_members(remove, add).unwrap();
         // current list: ADDR3, ADDR6, ADDR7
 
-        router.execute(Addr::unchecked(ADMIN_ADDR), update_msg).unwrap();
+        router
+            .execute(Addr::unchecked(ADMIN_ADDR), update_msg)
+            .unwrap();
     }
 
     #[test]
@@ -300,9 +301,7 @@ mod tests {
             limit: None,
         };
 
-        let groups = registry_contract
-            .list_group(&router, ADDR1)
-            .unwrap();
+        let groups = registry_contract.list_group(&router, ADDR1).unwrap();
 
         assert_eq!(groups.groups, vec![group_contract.addr()])
     }

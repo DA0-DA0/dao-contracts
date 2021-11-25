@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use cw4_registry::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ListGroupsResponse};
+use cw4_registry::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, MigrateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
