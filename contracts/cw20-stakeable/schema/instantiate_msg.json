@@ -42,7 +42,7 @@
     },
     "Duration": {
       "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "required": [
@@ -76,7 +76,7 @@
     },
     "EmbeddedLogo": {
       "description": "This is used to store the logo on the blockchain in an accepted format. Enforce maximum size of 5KB on all variants.",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "Store the Logo as an SVG file. The content must conform to the spec at https://en.wikipedia.org/wiki/Scalable_Vector_Graphics (The contract should do some light-weight sanity-check validation)",
           "type": "object",
@@ -188,7 +188,7 @@
     },
     "Logo": {
       "description": "This is used for uploading logo data, or setting it in InstantiateData",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "A reference to an externally hosted logo. Must be a valid HTTP or HTTPS URL.",
           "type": "object",
