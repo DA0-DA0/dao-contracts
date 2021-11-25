@@ -1,15 +1,18 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, to_binary, Order, Addr, from_slice};
+use cosmwasm_std::{
+    from_slice, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    StdResult,
+};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ListGroupsResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, MigrateMsg, QueryMsg};
 use crate::state::GROUPS;
+use cw0::maybe_addr;
 use cw2::set_contract_version;
 use cw4::MemberChangedHookMsg;
 use cw4_group::helpers::Cw4GroupContract;
-use cw_storage_plus::{Prefixer, PrimaryKey, Bound, Prefix, range_with_prefix};
-use cw0::maybe_addr;
+use cw_storage_plus::{range_with_prefix, Bound, Prefix, Prefixer, PrimaryKey};
 use schemars::_serde_json::to_string;
 use std::str::from_utf8;
 
@@ -100,7 +103,11 @@ pub fn execute_member_changed_hook(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::ListGroups{ user_addr, start_after, limit } => to_binary(&query_groups(deps, user_addr, start_after, limit)?),
+        QueryMsg::ListGroups {
+            user_addr,
+            start_after,
+            limit,
+        } => to_binary(&query_groups(deps, user_addr, start_after, limit)?),
     }
 }
 
@@ -108,19 +115,28 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
-pub fn query_groups(deps: Deps, user_addr: String, start_after: Option<String>, limit: Option<u32>) -> StdResult<ListGroupsResponse> {
+pub fn query_groups(
+    deps: Deps,
+    user_addr: String,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<ListGroupsResponse> {
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let addr = deps.api.addr_validate(user_addr.as_str())?;
     let start_after = start_after.map(Bound::exclusive);
 
-    let groups: StdResult<Vec<_>> = GROUPS.prefix(&addr)
+    let groups: StdResult<Vec<_>> = GROUPS
+        .prefix(&addr)
         .keys_de(deps.storage, start_after, None, Order::Ascending)
         .take(limit)
         .collect();
 
-    let groups_str = groups?.into_iter().map(|g| from_slice(&g).unwrap()).collect();
+    let groups_str = groups?
+        .into_iter()
+        .map(|g| from_slice(&g).unwrap())
+        .collect();
 
-    Ok(ListGroupsResponse{ groups: groups_str})
+    Ok(ListGroupsResponse { groups: groups_str })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -135,13 +151,12 @@ mod tests {
     use crate::ContractError;
     use anyhow::Error;
 
+    use crate::helpers::Cw4RegistryContract;
     use assert_matches::assert_matches;
     use cosmwasm_std::{to_binary, Addr, Empty, WasmMsg};
     use cw4::Member;
     use cw4_group::helpers::Cw4GroupContract;
     use cw_multi_test::{App, BasicApp, Contract, ContractWrapper, Executor};
-    use crate::helpers::Cw4RegistryContract;
-
 
     fn mock_app() -> App {
         App::default()
@@ -207,7 +222,7 @@ mod tests {
         // instantiate cw4 registry
         let cw4_registry_code_id = router.store_code(contract_cw4_registry());
         let instantiate_msg = InstantiateMsg {};
-        let registry_addr= router
+        let registry_addr = router
             .instantiate_contract(
                 cw4_registry_code_id,
                 group_addr.clone(),
@@ -240,7 +255,7 @@ mod tests {
     fn test_register() {
         let mut router = mock_app();
 
-        let (group_contract,_) = setup_environment(&mut router);
+        let (group_contract, _) = setup_environment(&mut router);
 
         let add = vec![
             Member {
@@ -263,7 +278,7 @@ mod tests {
     fn test_membership_auth() {
         let mut router = mock_app();
 
-        let (group_contract,_) = setup_environment(&mut router);
+        let (group_contract, _) = setup_environment(&mut router);
 
         let hacker = Addr::unchecked("hacker");
 
@@ -279,21 +294,22 @@ mod tests {
         assert_matches!(err, _expected);
     }
 
-
     #[test]
     fn test_query_list_group() {
         let mut router = mock_app();
 
-        let (group_contract,registry_contract) = setup_environment(&mut router);
+        let (group_contract, registry_contract) = setup_environment(&mut router);
 
         // query for groups
         let query_msg = QueryMsg::ListGroups {
             user_addr: ADDR1.into(),
             start_after: None,
-            limit: None
+            limit: None,
         };
 
-        let groups = registry_contract.list_group(&router, group_contract.addr()).unwrap();
+        let groups = registry_contract
+            .list_group(&router, group_contract.addr())
+            .unwrap();
 
         assert_eq!(groups.groups, vec![ADDR1])
     }

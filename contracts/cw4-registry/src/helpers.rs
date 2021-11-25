@@ -1,16 +1,18 @@
-use std::ops::Deref;
+use crate::msg::{ExecuteMsg, ListGroupsResponse, QueryMsg};
+use cosmwasm_std::{
+    to_binary, Addr, CosmosMsg, Empty, Querier, QuerierWrapper, StdResult, WasmMsg, WasmQuery,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, StdResult, CosmosMsg, WasmMsg, to_binary, Querier, WasmQuery, QuerierWrapper, Empty};
-use crate::msg::{QueryMsg, ListGroupsResponse, ExecuteMsg};
+use std::ops::Deref;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Cw4RegistryContract(pub Addr);
 
 impl Cw4RegistryContract {
     pub fn addr(&self) -> Addr {
-            self.0.clone()
-        }
+        self.0.clone()
+    }
 
     pub fn new(addr: Addr) -> Self {
         Cw4RegistryContract(addr)
@@ -22,7 +24,7 @@ impl Cw4RegistryContract {
             msg: to_binary(&msg)?,
             funds: vec![],
         }
-            .into())
+        .into())
     }
 
     /// Get token balance for the given address
@@ -34,13 +36,13 @@ impl Cw4RegistryContract {
         let msg = QueryMsg::ListGroups {
             user_addr: address.into(),
             start_after: None,
-            limit: None
+            limit: None,
         };
         let query = WasmQuery::Smart {
             contract_addr: self.0.clone().into(),
             msg: to_binary(&msg)?,
         }
-            .into();
+        .into();
         let res: ListGroupsResponse = QuerierWrapper::<Empty>::new(querier).query(&query)?;
         Ok(res)
     }

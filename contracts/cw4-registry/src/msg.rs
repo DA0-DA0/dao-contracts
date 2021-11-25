@@ -20,7 +20,7 @@ pub enum QueryMsg {
         user_addr: String,
         start_after: Option<String>,
         limit: Option<u32>,
-    }
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
