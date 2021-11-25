@@ -43,6 +43,7 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 cosmwasm-std = { version = "1.0.0-beta" }
 cosmwasm-storage = { version = "1.0.0-beta" }
 cw-storage-plus = "0.10.3"
+cw0 = "0.10.3"
 cw2 = "0.10.3"
 cw4 = "0.10.3"
 cw4-group = { version = "0.10.3", features = ["library"] }
