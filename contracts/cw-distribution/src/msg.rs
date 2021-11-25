@@ -6,10 +6,8 @@ pub struct InstantiateMsg {}
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub struct ExecuteMsg {
-}
+pub struct ExecuteMsg {}
 
 #[derive(Serialize, Deserialize, JsonSchema, Clone, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
-pub struct QueryMsg {
-}
+pub struct QueryMsg {}
