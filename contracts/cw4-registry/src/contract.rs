@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -57,7 +57,7 @@ pub fn execute_register(
 
 pub fn execute_member_changed_hook(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: MemberChangedHookMsg,
 ) -> Result<Response, ContractError> {
@@ -65,12 +65,27 @@ pub fn execute_member_changed_hook(
         // add new addresses
         if md.new.is_some() {
             let addr = deps.api.addr_validate(md.key.as_str())?;
+            let key = deps.api.addr_validate(md.key.as_str())?;
+
+            let auth = INDEX.may_load(deps.storage, (&key, &env.contract.address))?;
+
+            if auth.is_none() {
+                return Err(ContractError::Unauthorized {});
+            }
             INDEX.save(deps.storage, (&info.sender, &addr), &Empty {})?;
         }
 
         // remove old addresses
         if md.old.is_some() {
             let addr = deps.api.addr_validate(md.key.as_str())?;
+            let key = deps.api.addr_validate(md.key.as_str())?;
+
+            let auth = INDEX.may_load(deps.storage, (&key, &env.contract.address))?;
+
+            if auth.is_none() {
+                return Err(ContractError::Unauthorized {});
+            }
+
             INDEX.remove(deps.storage, (&info.sender, &addr));
         }
     }
@@ -91,10 +106,15 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 mod tests {
     use crate::contract::{execute, instantiate, query};
     use crate::msg::{ExecuteMsg, InstantiateMsg};
+    use crate::ContractError;
+    use anyhow::Error;
+    use anyhow::{anyhow, Result};
+    use assert_matches::assert_matches;
     use cosmwasm_std::{to_binary, Addr, Empty, WasmMsg};
     use cw4::Member;
     use cw4_group::helpers::Cw4GroupContract;
-    use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+    use cw_multi_test::{App, BasicApp, Contract, ContractWrapper, Executor, Router};
+    use std::borrow::{Borrow, BorrowMut};
 
     fn mock_app() -> App {
         App::default()
@@ -123,10 +143,7 @@ mod tests {
     const ADDR6: &str = "add6";
     const ADDR7: &str = "add7";
 
-    #[test]
-    fn cw4_register_test() {
-        let mut router = mock_app();
-
+    fn setup_environment(router: &mut BasicApp) -> Cw4GroupContract {
         let cw4_group_id = router.store_code(contract_cw4_group());
 
         let cw4_instantiate_msg = cw4_group::msg::InstantiateMsg {
@@ -188,6 +205,15 @@ mod tests {
             .execute(Addr::unchecked(ADDR2), wasm_msg.into())
             .unwrap();
 
+        group_contract
+    }
+
+    #[test]
+    fn test_register() {
+        let mut router = mock_app();
+
+        let group_contract = setup_environment(&mut router);
+
         let add = vec![
             Member {
                 addr: ADDR6.to_string(),
@@ -202,6 +228,26 @@ mod tests {
         let update_msg = group_contract.update_members(remove, add).unwrap();
         // current list: ADDR3, ADDR6, ADDR7
 
-        router.execute(group_addr, update_msg).unwrap();
+        router.execute(group_contract.addr(), update_msg).unwrap();
+    }
+
+    #[test]
+    fn test_membership_auth() {
+        let mut router = mock_app();
+
+        let group_contract = setup_environment(&mut router);
+
+        let hacker = Addr::unchecked("hacker");
+
+        let op_add = vec![Member {
+            addr: ADDR6.to_string(),
+            weight: 2,
+        }];
+        let op_remove = vec![ADDR2.to_string()];
+        let update_msg = group_contract.update_members(op_remove, op_add).unwrap();
+
+        let err = router.execute(hacker, update_msg).unwrap_err();
+        let expected = Error::new(ContractError::Unauthorized {});
+        assert_matches!(err, expected);
     }
 }
