@@ -6,7 +6,7 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, QueryMsg};
-use crate::state::{MEMBER_INDEX, EMPTY};
+use crate::state::{EMPTY, MEMBER_INDEX};
 
 use cw2::set_contract_version;
 use cw4::MemberChangedHookMsg;
@@ -35,7 +35,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Register { contract_addr } => execute_register(deps, env, info, contract_addr),
+        ExecuteMsg::Register { group_addrs } => execute_register(deps, env, info, group_addrs),
         ExecuteMsg::MemberChangedHook(msg) => execute_member_changed_hook(deps, env, info, msg),
     }
 }
@@ -44,16 +44,19 @@ pub fn execute_register(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    contract_addr: String,
+    group_addrs: Vec<String>,
 ) -> Result<Response, ContractError> {
-    let group_addr = deps.api.addr_validate(&contract_addr)?;
+    // register groups
+    for addr in group_addrs {
+        let group_addr = deps.api.addr_validate(&addr)?;
 
-    let contract = Cw4GroupContract::new(group_addr.clone());
-    let members = contract.list_members(&deps.querier, None, None)?;
+        let contract = Cw4GroupContract::new(group_addr.clone());
+        let members = contract.list_members(&deps.querier, None, None)?;
 
-    for m in members {
-        let member_addr = deps.api.addr_validate(m.addr.as_str())?;
-        MEMBER_INDEX.save(deps.storage, (&member_addr, &group_addr), &EMPTY)?;
+        for m in members {
+            let member_addr = deps.api.addr_validate(m.addr.as_str())?;
+            MEMBER_INDEX.save(deps.storage, (&member_addr, &group_addr), &EMPTY)?;
+        }
     }
 
     Ok(Response::default())
@@ -223,7 +226,7 @@ mod tests {
 
         // register multisig to registry
         let register_msg = ExecuteMsg::Register {
-            contract_addr: group_addr.into_string(),
+            group_addrs: vec![group_addr.into_string()],
         };
         let wasm_msg = WasmMsg::Execute {
             contract_addr: registry_addr.to_string(),
