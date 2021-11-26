@@ -11,11 +11,14 @@
         "register": {
           "type": "object",
           "required": [
-            "contract_addr"
+            "group_addrs"
           ],
           "properties": {
-            "contract_addr": {
-              "type": "string"
+            "group_addrs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         }
