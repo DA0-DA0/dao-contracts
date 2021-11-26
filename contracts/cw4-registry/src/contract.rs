@@ -76,7 +76,9 @@ pub fn execute_member_changed_hook(
 
             let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &env.contract.address))?;
 
-            if auth.is_none() {
+            if let Some(_) = auth {
+                println!("Matched {:?}!", i);
+            } else {
                 return Err(ContractError::Unauthorized {});
             }
             MEMBER_INDEX.save(deps.storage, (&info.sender, &addr), &EMPTY)?;
