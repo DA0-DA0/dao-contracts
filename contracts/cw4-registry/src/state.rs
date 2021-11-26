@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Empty};
+use cosmwasm_std::{Addr};
 use cw_storage_plus::Map;
 
 pub static EMPTY: u16 = 0;

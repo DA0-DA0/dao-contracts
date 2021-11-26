@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult,
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
 };
 
 use crate::error::ContractError;
@@ -139,7 +139,7 @@ pub fn query_groups(
 #[cfg(test)]
 mod tests {
     use crate::contract::{execute, instantiate, query};
-    use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+    use crate::msg::{ExecuteMsg, InstantiateMsg};
     use crate::ContractError;
     use anyhow::Error;
 
