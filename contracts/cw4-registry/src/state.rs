@@ -1,5 +1,10 @@
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::Map;
 
-// (user address, group addr) -> Empty
-pub const GROUPS: Map<(&Addr, &Addr), Empty> = Map::new("groups");
+pub static EMPTY: u16 = 0;
+
+// (member address, group addr) -> Empty
+pub const MEMBER_INDEX: Map<(&Addr, &Addr), u16> = Map::new("member_index");
+
+// (Group address, user addr) -> Empty
+pub const GROUP_INDEX: Map<(&Addr, &Addr), u16> = Map::new("group_index");

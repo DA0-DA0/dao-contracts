@@ -6,7 +6,7 @@ use cosmwasm_std::{
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, ListGroupsResponse, QueryMsg};
-use crate::state::GROUPS;
+use crate::state::{MEMBER_INDEX, EMPTY};
 
 use cw2::set_contract_version;
 use cw4::MemberChangedHookMsg;
@@ -53,7 +53,7 @@ pub fn execute_register(
 
     for m in members {
         let member_addr = deps.api.addr_validate(m.addr.as_str())?;
-        GROUPS.save(deps.storage, (&member_addr, &group_addr), &Empty {})?;
+        MEMBER_INDEX.save(deps.storage, (&member_addr, &group_addr), &EMPTY)?;
     }
 
     Ok(Response::default())
@@ -71,12 +71,12 @@ pub fn execute_member_changed_hook(
             let addr = deps.api.addr_validate(md.key.as_str())?;
             let key = deps.api.addr_validate(md.key.as_str())?;
 
-            let auth = GROUPS.may_load(deps.storage, (&key, &env.contract.address))?;
+            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &env.contract.address))?;
 
             if auth.is_none() {
                 return Err(ContractError::Unauthorized {});
             }
-            GROUPS.save(deps.storage, (&info.sender, &addr), &Empty {})?;
+            MEMBER_INDEX.save(deps.storage, (&info.sender, &addr), &EMPTY)?;
         }
 
         // remove old addresses
@@ -84,13 +84,13 @@ pub fn execute_member_changed_hook(
             let addr = deps.api.addr_validate(md.key.as_str())?;
             let key = deps.api.addr_validate(md.key.as_str())?;
 
-            let auth = GROUPS.may_load(deps.storage, (&key, &env.contract.address))?;
+            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &env.contract.address))?;
 
             if auth.is_none() {
                 return Err(ContractError::Unauthorized {});
             }
 
-            GROUPS.remove(deps.storage, (&info.sender, &addr));
+            MEMBER_INDEX.remove(deps.storage, (&info.sender, &addr));
         }
     }
 
@@ -122,7 +122,7 @@ pub fn query_groups(
     let addr = deps.api.addr_validate(user_addr.as_str())?;
     let start_after = start_after.map(Bound::inclusive);
 
-    let groups: StdResult<Vec<Addr>> = GROUPS
+    let groups: StdResult<Vec<Addr>> = MEMBER_INDEX
         .prefix_de(&addr)
         .keys_de(deps.storage, start_after, None, Order::Ascending)
         .take(limit)
@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn test_register() {
+    fn test_update_members() {
         let mut router = mock_app();
 
         let (group_contract, _) = setup_environment(&mut router);
@@ -289,15 +289,7 @@ mod tests {
 
         let (group_contract, registry_contract) = setup_environment(&mut router);
 
-        // query for groups
-        let _query_msg = QueryMsg::ListGroups {
-            user_addr: ADDR1.into(),
-            start_after: None,
-            limit: None,
-        };
-
         let groups = registry_contract.list_group(&router, ADDR1).unwrap();
-
         assert_eq!(groups.groups, vec![group_contract.addr()])
     }
 }
