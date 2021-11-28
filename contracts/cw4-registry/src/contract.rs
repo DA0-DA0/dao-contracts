@@ -251,17 +251,13 @@ mod tests {
         router
             .execute(
                 Addr::unchecked(ADMIN_ADDR),
-                group1_contract
-                    .add_hook(registry_contract.addr().clone())
-                    .unwrap(),
+                group1_contract.add_hook(registry_contract.addr()).unwrap(),
             )
             .unwrap();
         router
             .execute(
                 Addr::unchecked(ADMIN_ADDR),
-                group2_contract
-                    .add_hook(registry_contract.addr().clone())
-                    .unwrap(),
+                group2_contract.add_hook(registry_contract.addr()).unwrap(),
             )
             .unwrap();
 
@@ -285,8 +281,7 @@ mod tests {
     fn test_update_members() {
         let mut router = mock_app();
 
-        let ((group1_contract, _), registry_contract) =
-            setup_environment(&mut router);
+        let ((group1_contract, _), registry_contract) = setup_environment(&mut router);
 
         let add = vec![
             Member {
@@ -307,9 +302,7 @@ mod tests {
             .unwrap();
 
         // check if deleted
-        let res = registry_contract
-            .list_group(&router, ADDR1)
-            .unwrap();
+        let res = registry_contract.list_group(&router, ADDR1).unwrap();
         assert!(res.groups.is_empty());
     }
 
