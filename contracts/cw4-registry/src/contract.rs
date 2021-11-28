@@ -42,7 +42,7 @@ pub fn execute(
 
 pub fn execute_register(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     group_addrs: Vec<String>,
 ) -> Result<Response, ContractError> {
@@ -51,6 +51,11 @@ pub fn execute_register(
         let group_addr = deps.api.addr_validate(&addr)?;
 
         let contract = Cw4GroupContract::new(group_addr.clone());
+        // is registered as hook?
+        if !contract.hooks(&deps.querier)?.contains(&env.contract.address.into_string()) {
+            return Err(ContractError::Unauthorized {});
+        }
+        
         let members = contract.list_members(&deps.querier, None, None)?;
 
         for m in members {
@@ -78,7 +83,7 @@ pub fn execute_member_changed_hook(
                 return Err(ContractError::Unauthorized {});
             }
 
-            MEMBER_INDEX.save(deps.storage, (&info.sender, &key), &EMPTY)?;
+            MEMBER_INDEX.save(deps.storage, (&key, &info.sender), &EMPTY)?;
         }
 
         // remove old addresses
@@ -90,7 +95,7 @@ pub fn execute_member_changed_hook(
                 return Err(ContractError::Unauthorized {});
             }
 
-            MEMBER_INDEX.remove(deps.storage, (&info.sender, &key));
+            MEMBER_INDEX.remove(deps.storage, (&key, &info.sender));
         }
     }
 
@@ -172,10 +177,10 @@ mod tests {
     const ADDR6: &str = "add6";
     const ADDR7: &str = "add7";
 
-    fn setup_environment(router: &mut BasicApp) -> (Cw4GroupContract, Cw4RegistryContract) {
+    fn setup_environment(router: &mut BasicApp) -> ((Cw4GroupContract,Cw4GroupContract), Cw4RegistryContract) {
         let cw4_group_id = router.store_code(contract_cw4_group());
 
-        let cw4_instantiate_msg = cw4_group::msg::InstantiateMsg {
+        let msg1 = cw4_group::msg::InstantiateMsg {
             admin: Some(ADMIN_ADDR.into()),
             members: vec![
                 Member {
@@ -194,17 +199,44 @@ mod tests {
         };
 
         // instantiate group
-        let group_addr = router
+        let group1_addr = router
             .instantiate_contract(
                 cw4_group_id,
                 Addr::unchecked(ADDR2),
-                &cw4_instantiate_msg,
+                &msg1,
                 &[],
                 "Consortium",
                 None,
             )
             .unwrap();
-        let group_contract = Cw4GroupContract::new(group_addr.clone());
+        let group1_contract = Cw4GroupContract::new(group1_addr.clone());
+
+        let msg2 = cw4_group::msg::InstantiateMsg {
+            admin: Some(ADMIN_ADDR.into()),
+            members: vec![
+                Member {
+                    addr: ADDR6.into(),
+                    weight: 12,
+                },
+                Member {
+                    addr: ADDR7.into(),
+                    weight: 2,
+                }
+            ],
+        };
+
+        // instantiate group
+        let group2_addr = router
+            .instantiate_contract(
+                cw4_group_id,
+                Addr::unchecked(ADDR3),
+                &msg2,
+                &[],
+                "Consortium2",
+                None,
+            )
+            .unwrap();
+        let group2_contract = Cw4GroupContract::new(group2_addr.clone());
 
         // instantiate cw4 registry
         let cw4_registry_code_id = router.store_code(contract_cw4_registry());
@@ -212,7 +244,7 @@ mod tests {
         let registry_addr = router
             .instantiate_contract(
                 cw4_registry_code_id,
-                group_addr.clone(),
+                group1_addr.clone(),
                 &instantiate_msg,
                 &[],
                 "Registry",
@@ -223,26 +255,25 @@ mod tests {
 
         // register multisig to registry
         let register_msg = ExecuteMsg::Register {
-            group_addrs: vec![group_addr.into_string()],
+            group_addrs: vec![group1_addr.into_string(),group2_addr],
         };
         let wasm_msg = WasmMsg::Execute {
             contract_addr: registry_addr.to_string(),
             msg: to_binary(&register_msg).unwrap(),
             funds: vec![],
         };
-
         router
             .execute(Addr::unchecked(ADDR2), wasm_msg.into())
             .unwrap();
 
-        (group_contract, registry_contract)
+        ((group1_contract, group2_contract), registry_contract)
     }
 
     #[test]
     fn test_update_members() {
         let mut router = mock_app();
 
-        let (group_contract, _) = setup_environment(&mut router);
+        let ((group1_contract,group2_contract), registry_contract) = setup_environment(&mut router);
 
         let add = vec![
             Member {
@@ -255,19 +286,22 @@ mod tests {
             },
         ];
         let remove = vec![ADDR1.to_string(), ADDR2.to_string()];
-        let update_msg = group_contract.update_members(remove, add).unwrap();
+        let update_msg = group1_contract.update_members(remove, add).unwrap();
         // current list: ADDR3, ADDR6, ADDR7
 
         router
             .execute(Addr::unchecked(ADMIN_ADDR), update_msg)
             .unwrap();
+
+        let res = registry_contract.list_group(&router, group1_contract.addr()).unwrap();
+        println!("{:?}",res)
     }
 
     #[test]
     fn test_membership_auth() {
         let mut router = mock_app();
 
-        let (group_contract, _) = setup_environment(&mut router);
+        let ((group_contract,_), _) = setup_environment(&mut router);
 
         let hacker = Addr::unchecked("hacker");
 
@@ -279,15 +313,15 @@ mod tests {
         let update_msg = group_contract.update_members(op_remove, op_add).unwrap();
 
         let err = router.execute(hacker, update_msg).unwrap_err();
-        let _expected = Error::new(ContractError::Unauthorized {});
-        assert_matches!(err, _expected);
+        let expected = Error::new(ContractError::Unauthorized {});
+        assert_matches!(err, expected);
     }
 
     #[test]
     fn test_query_list_group() {
         let mut router = mock_app();
 
-        let (group_contract, registry_contract) = setup_environment(&mut router);
+        let ((group_contract,_), registry_contract) = setup_environment(&mut router);
 
         let groups = registry_contract.list_group(&router, ADDR1).unwrap();
         assert_eq!(groups.groups, vec![group_contract.addr()])
