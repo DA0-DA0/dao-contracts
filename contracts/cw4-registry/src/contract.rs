@@ -52,10 +52,13 @@ pub fn execute_register(
 
         let contract = Cw4GroupContract::new(group_addr.clone());
         // is registered as hook?
-        if !contract.hooks(&deps.querier)?.contains(&env.contract.address.into_string()) {
+        if !contract
+            .hooks(&deps.querier)?
+            .contains(&env.contract.address.clone().into_string())
+        {
             return Err(ContractError::Unauthorized {});
         }
-        
+
         let members = contract.list_members(&deps.querier, None, None)?;
 
         for m in members {
@@ -73,29 +76,18 @@ pub fn execute_member_changed_hook(
     info: MessageInfo,
     msg: MemberChangedHookMsg,
 ) -> Result<Response, ContractError> {
+    let group_addr = info.sender;
     for md in msg.diffs {
         // add new addresses
         if md.new.is_some() {
             let key = deps.api.addr_validate(md.key.as_str())?;
-
-            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &info.sender))?;
-            if auth.is_none() {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            MEMBER_INDEX.save(deps.storage, (&key, &info.sender), &EMPTY)?;
+            MEMBER_INDEX.save(deps.storage, (&key, &group_addr), &EMPTY)?;
         }
 
         // remove old addresses
         if md.old.is_some() {
             let key = deps.api.addr_validate(md.key.as_str())?;
-
-            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &info.sender))?;
-            if auth.is_none() {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            MEMBER_INDEX.remove(deps.storage, (&key, &info.sender));
+            MEMBER_INDEX.remove(deps.storage, (&key, &group_addr));
         }
     }
 
@@ -177,7 +169,9 @@ mod tests {
     const ADDR6: &str = "add6";
     const ADDR7: &str = "add7";
 
-    fn setup_environment(router: &mut BasicApp) -> ((Cw4GroupContract,Cw4GroupContract), Cw4RegistryContract) {
+    fn setup_environment(
+        router: &mut BasicApp,
+    ) -> ((Cw4GroupContract, Cw4GroupContract), Cw4RegistryContract) {
         let cw4_group_id = router.store_code(contract_cw4_group());
 
         let msg1 = cw4_group::msg::InstantiateMsg {
@@ -221,7 +215,7 @@ mod tests {
                 Member {
                     addr: ADDR7.into(),
                     weight: 2,
-                }
+                },
             ],
         };
 
@@ -253,9 +247,27 @@ mod tests {
             .unwrap();
         let registry_contract = Cw4RegistryContract::new(registry_addr.clone());
 
-        // register multisig to registry
+        // add hooks
+        router
+            .execute(
+                Addr::unchecked(ADMIN_ADDR),
+                group1_contract
+                    .add_hook(registry_contract.addr().clone())
+                    .unwrap(),
+            )
+            .unwrap();
+        router
+            .execute(
+                Addr::unchecked(ADMIN_ADDR),
+                group2_contract
+                    .add_hook(registry_contract.addr().clone())
+                    .unwrap(),
+            )
+            .unwrap();
+
+        // register multisigs to registry
         let register_msg = ExecuteMsg::Register {
-            group_addrs: vec![group1_addr.into_string(),group2_addr],
+            group_addrs: vec![group1_addr.into_string(), group2_addr.into_string()],
         };
         let wasm_msg = WasmMsg::Execute {
             contract_addr: registry_addr.to_string(),
@@ -273,7 +285,8 @@ mod tests {
     fn test_update_members() {
         let mut router = mock_app();
 
-        let ((group1_contract,group2_contract), registry_contract) = setup_environment(&mut router);
+        let ((group1_contract, _), registry_contract) =
+            setup_environment(&mut router);
 
         let add = vec![
             Member {
@@ -293,15 +306,18 @@ mod tests {
             .execute(Addr::unchecked(ADMIN_ADDR), update_msg)
             .unwrap();
 
-        let res = registry_contract.list_group(&router, group1_contract.addr()).unwrap();
-        println!("{:?}",res)
+        // check if deleted
+        let res = registry_contract
+            .list_group(&router, ADDR1)
+            .unwrap();
+        assert!(res.groups.is_empty());
     }
 
     #[test]
     fn test_membership_auth() {
         let mut router = mock_app();
 
-        let ((group_contract,_), _) = setup_environment(&mut router);
+        let ((group_contract, _), _) = setup_environment(&mut router);
 
         let hacker = Addr::unchecked("hacker");
 
@@ -312,16 +328,17 @@ mod tests {
         let op_remove = vec![ADDR2.to_string()];
         let update_msg = group_contract.update_members(op_remove, op_add).unwrap();
 
+        // only group can change
         let err = router.execute(hacker, update_msg).unwrap_err();
-        let expected = Error::new(ContractError::Unauthorized {});
-        assert_matches!(err, expected);
+        let _expected = Error::new(ContractError::Unauthorized {});
+        assert_matches!(err, _expected);
     }
 
     #[test]
     fn test_query_list_group() {
         let mut router = mock_app();
 
-        let ((group_contract,_), registry_contract) = setup_environment(&mut router);
+        let ((group_contract, _), registry_contract) = setup_environment(&mut router);
 
         let groups = registry_contract.list_group(&router, ADDR1).unwrap();
         assert_eq!(groups.groups, vec![group_contract.addr()])
