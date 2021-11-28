@@ -64,38 +64,33 @@ pub fn execute_register(
 
 pub fn execute_member_changed_hook(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: MemberChangedHookMsg,
 ) -> Result<Response, ContractError> {
     for md in msg.diffs {
         // add new addresses
         if md.new.is_some() {
-            let addr = deps.api.addr_validate(md.key.as_str())?;
             let key = deps.api.addr_validate(md.key.as_str())?;
 
-            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &env.contract.address))?;
-
-            if let Some(_) = auth {
-                println!("Matched {:?}!", i);
-            } else {
-                return Err(ContractError::Unauthorized {});
-            }
-            MEMBER_INDEX.save(deps.storage, (&info.sender, &addr), &EMPTY)?;
-        }
-
-        // remove old addresses
-        if md.old.is_some() {
-            let addr = deps.api.addr_validate(md.key.as_str())?;
-            let key = deps.api.addr_validate(md.key.as_str())?;
-
-            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &env.contract.address))?;
-
+            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &info.sender))?;
             if auth.is_none() {
                 return Err(ContractError::Unauthorized {});
             }
 
-            MEMBER_INDEX.remove(deps.storage, (&info.sender, &addr));
+            MEMBER_INDEX.save(deps.storage, (&info.sender, &key), &EMPTY)?;
+        }
+
+        // remove old addresses
+        if md.old.is_some() {
+            let key = deps.api.addr_validate(md.key.as_str())?;
+
+            let auth = MEMBER_INDEX.may_load(deps.storage, (&key, &info.sender))?;
+            if auth.is_none() {
+                return Err(ContractError::Unauthorized {});
+            }
+
+            MEMBER_INDEX.remove(deps.storage, (&info.sender, &key));
         }
     }
 
