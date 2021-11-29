@@ -442,7 +442,8 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
 
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse { config })
+    let gov_token = GOV_TOKEN.load(deps.storage)?;
+    Ok(ConfigResponse { config, gov_token })
 }
 
 fn query_cw20_token_list(deps: Deps) -> TokenListResponse {

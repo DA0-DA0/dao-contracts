@@ -1147,6 +1147,7 @@ mod tests {
                     proposal_deposit: new_proposal_deposit_amount,
                     refund_failed_proposals: None,
                 },
+                gov_token: cw20_addr
             }
         )
     }
@@ -1160,7 +1161,7 @@ mod tests {
             threshold: Decimal::percent(51),
             quorum: Decimal::percent(10),
         };
-        let (dao_addr, _cw20_addr) = setup_test_case(
+        let (dao_addr, cw20_addr) = setup_test_case(
             &mut app,
             threshold.clone(),
             voting_period.clone(),
@@ -1186,6 +1187,7 @@ mod tests {
                     proposal_deposit: Uint128::zero(),
                     refund_failed_proposals: None,
                 },
+                gov_token: cw20_addr
             }
         )
     }
