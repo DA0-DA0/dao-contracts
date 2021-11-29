@@ -1,5 +1,6 @@
 use crate::error::ContractError;
 use crate::query::ThresholdResponse;
+use crate::state::Config;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
 use cw20::Cw20Coin;
@@ -118,32 +119,33 @@ fn valid_percentage(percent: &Decimal) -> Result<(), ContractError> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ProposeMsg {
+    pub title: String,
+    pub description: String,
+    pub msgs: Vec<CosmosMsg<Empty>>,
+    // note: we ignore API-spec'd earliest if passed, always opens immediately
+    pub latest: Option<Expiration>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct VoteMsg {
+    pub proposal_id: u64,
+    pub vote: Vote,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Makes a new proposal
-    Propose {
-        title: String,
-        description: String,
-        msgs: Vec<CosmosMsg<Empty>>,
-        // note: we ignore API-spec'd earliest if passed, always opens immediately
-        latest: Option<Expiration>,
-    },
+    Propose(ProposeMsg),
     /// Vote on an open proposal
-    Vote { proposal_id: u64, vote: Vote },
+    Vote(VoteMsg),
     /// Execute a passed proposal
     Execute { proposal_id: u64 },
     /// Close a failed proposal
     Close { proposal_id: u64 },
     /// Update DAO config (can only be called by DAO contract)
-    UpdateConfig {
-        name: String,
-        description: String,
-        threshold: Threshold,
-        max_voting_period: Duration,
-        proposal_deposit_amount: Uint128,
-        proposal_deposit_token_address: String,
-        refund_failed_proposals: Option<bool>,
-    },
+    UpdateConfig(Config),
     /// Updates token list
     UpdateCw20TokenList {
         to_add: Vec<Addr>,
@@ -163,7 +165,7 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
-    /// Returns ProposalListResponse
+    /// Returns ProposalListResponseb
     ReverseProposals {
         start_before: Option<u64>,
         limit: Option<u32>,
@@ -189,18 +191,6 @@ pub enum QueryMsg {
     Cw20TokenList {},
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct UpdateConfigMsg {
-    pub name: String,
-    pub description: String,
-    pub threshold: Threshold,
-    pub max_voting_period: Duration,
-    pub proposal_deposit_amount: Uint128,
-    pub proposal_deposit_token_address: String,
-    pub refund_failed_proposals: Option<bool>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,10 +207,10 @@ mod tests {
 
     #[test]
     fn vote_encoding_embedded() {
-        let msg = ExecuteMsg::Vote {
+        let msg = ExecuteMsg::Vote(VoteMsg {
             proposal_id: 17,
             vote: Vote::No,
-        };
+        });
         let encoded = to_vec(&msg).unwrap();
         let json = String::from_utf8_lossy(&encoded).to_string();
         assert_eq!(r#"{"vote":{"proposal_id":17,"vote":"no"}}"#, json.as_str());
