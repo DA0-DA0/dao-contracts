@@ -21,12 +21,7 @@ docker kill cosmwasm
 
 docker volume rm -f junod_data
 
-# Run wasmd setup script
-# docker run --rm -it \
-#     -e PASSWORD=xxxxxxxxx \
-#     --mount type=volume,source=junod_data,target=/root \
-#     cosmwasm/wasmd:v0.20.0 /opt/setup_wasmd.sh $1
-
+# Run junod setup script
 docker run --rm -it \
     -e PASSWORD=xxxxxxxxx \
     --mount type=volume,source=junod_data,target=/root \
