@@ -16,7 +16,7 @@ then
   exit
 fi
 
-# Deploy wasmd in Docker
+# Deploy junod in Docker
 docker kill cosmwasm
 
 docker volume rm -f junod_data
