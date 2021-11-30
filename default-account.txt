@@ -1,13 +1,11 @@
 - name: default-account
   type: local
-  address: wasm1aq69sg9sdrqgflvrdnnjvaxmeu6azx2hyugk84
-  pubkey: wasmpub1addwnpepq07qp0t2ql4kspst6hz7fte3wrtcl32fx3hd806dlypxc7fhj23jkmgu88u
+  address: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"A2/eXrCgEB5XuHw/fD8QgCKZfAuHQWwpOphdlV6CTieC"}'
   mnemonic: ""
-  threshold: 0
-  pubkeys: []
 
 
 **Important** write this mnemonic phrase in a safe place.
 It is the only way to recover your account if you ever forget your password.
 
-impulse citizen mixed envelope feed news nation become alpha write intact blouse void unknown dress enemy grief forest tired property slush parade chapter appear
+siren window salt bullet cream letter huge satoshi fade shiver permit offer happy immense wage fitness goose usual aim hammer clap about super trend
