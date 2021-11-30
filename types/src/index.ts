@@ -20,7 +20,7 @@ export type CompilationSpec = {
 
 dotenv.config()
 
-const CONTRACTS_OUTPUT_DIR = 'build'
+const CONTRACTS_OUTPUT_DIR = '.'
 const TSCONFIG_DEFAULT = `{
   "compilerOptions": {
     "target": "es2017",
@@ -319,15 +319,15 @@ async function main() {
   for (const root of config.schemaRoots) {
     const { name, paths, outputName, outputDir } = root
     const contractOutputPath = path.join(outputDir, outputName)
-    log(`Clearing output path ${contractOutputPath}`)
-    removeDirectory(contractOutputPath)
-      ensurePath(contractOutputPath)
+    // log(`Clearing output path ${contractOutputPath}`)
+    // removeDirectory(contractOutputPath)
+    ensurePath(contractOutputPath)
     for (const path of paths) {
       const schemaDirectories = await getSchemaDirectories(path)
       for (const [directory, contractName] of schemaDirectories) {
         const compilationOptions = await schemaCompileOptions(
           contractName,
-          name,
+          outputName,
           outputDir,
           directory
         )
