@@ -8,12 +8,12 @@ fi
 
 CW_DAO_CONTRACT=$1
 PASSWORD=xxxxxxxxx
-VALIDATOR_ADDRESS=$(echo xxxxxxxxx | docker exec -i cosmwasm  wasmd keys show validator -a)
+VALIDATOR_ADDRESS=$(echo xxxxxxxxx | docker exec -i cosmwasm  junod keys show validator -a)
 
 echo "VALIDATOR_ADDRESS: $VALIDATOR_ADDRESS"
 
 # NOTE: you will need to update these to deploy on different network
-BINARY='docker exec -i cosmwasm wasmd'
+BINARY='docker exec -i cosmwasm junod'
 DENOM='ustake'
 CHAIN_ID='testing'
 RPC='http://localhost:26657/'

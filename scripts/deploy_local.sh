@@ -4,7 +4,7 @@
 
 ## CONFIG
 # NOTE: you will need to update these to deploy on different network
-BINARY='docker exec -i cosmwasm wasmd'
+BINARY='docker exec -i cosmwasm junod'
 DENOM='ustake'
 CHAIN_ID='testing'
 RPC='http://localhost:26657/'
@@ -16,27 +16,27 @@ then
   exit
 fi
 
-# Deploy wasmd in Docker
+# Deploy junod in Docker
 docker kill cosmwasm
 
-docker volume rm -f wasmd_data
+docker volume rm -f junod_data
 
-# Run wasmd setup script
+# Run junod setup script
 docker run --rm -it \
     -e PASSWORD=xxxxxxxxx \
-    --mount type=volume,source=wasmd_data,target=/root \
-    cosmwasm/wasmd:v0.20.0 /opt/setup_wasmd.sh $1
+    --mount type=volume,source=junod_data,target=/root \
+    ghcr.io/cosmoscontracts/juno:pr-105 /opt/setup_junod.sh $1
 
-# Add custom app.toml to wasmd_data volume
-docker run -v wasmd_data:/root --name helper busybox true
-docker cp docker/app.toml helper:/root/.wasmd/config/app.toml
-docker cp docker/config.toml helper:/root/.wasmd/config/config.toml
+# Add custom app.toml to junod_data volume
+docker run -v junod_data:/root --name helper busybox true
+docker cp docker/app.toml helper:/root/.juno/config/app.toml
+docker cp docker/config.toml helper:/root/.juno/config/config.toml
 docker rm helper
 
-# Start wasmd
+# Start junod
 docker run --rm -d --name cosmwasm -p 26657:26657 -p 26656:26656 -p 1317:1317 \
-    --mount type=volume,source=wasmd_data,target=/root \
-    cosmwasm/wasmd:v0.20.0 /opt/run_wasmd.sh
+    --mount type=volume,source=junod_data,target=/root \
+    ghcr.io/cosmoscontracts/juno:pr-105 /opt/run_junod.sh
 
 # Compile code
 docker run --rm -v "$(pwd)":/code \
