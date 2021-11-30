@@ -1,12 +1,12 @@
 {
-  "name": "types",
-  "version": "1.0.0",
+  "name": "@dao-contracts/types",
+  "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
     "prepare": "tsc",
     "build": "tsc",
-    "start": "ts-node src/index.ts"
+    "codegen": "ts-node src/index.ts"
   },
   "keywords": [],
   "author": "",
