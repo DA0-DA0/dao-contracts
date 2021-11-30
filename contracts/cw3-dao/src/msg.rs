@@ -4,6 +4,7 @@ use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
+use cw3::Vote;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -46,20 +47,6 @@ pub struct GovTokenInstantiateMsg {
     pub decimals: u8,
     pub initial_balances: Vec<Cw20Coin>,
     pub marketing: Option<InstantiateMarketingInfo>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "lowercase")]
-pub enum Vote {
-    /// Marks support for the proposal.
-    Yes,
-    /// Marks opposition to the proposal.
-    No,
-    /// Marks participation but does not count towards the ratio of support / opposed
-    Abstain,
-    /// Veto is generally to be treated as a No vote. Some implementations may allow certain
-    /// voters to be able to Veto, or them to be counted stronger than No in some way.
-    Veto,
 }
 
 /// This defines the different ways tallies can happen.

@@ -4,9 +4,9 @@ use crate::helpers::{
     get_voting_power_at_height, map_proposal,
 };
 use crate::msg::UpdateConfigMsg;
-use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Vote};
+use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg};
 use crate::query::{
-    ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
+    ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
 };
 use crate::state::{
@@ -20,6 +20,7 @@ use cosmwasm_std::{
 use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
 use cw20::{BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse};
+use cw3::{Status, Vote};
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;

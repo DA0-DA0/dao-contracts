@@ -1,8 +1,8 @@
-use crate::msg::Vote;
 use crate::state::Config;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::Expiration;
 use cw20::Cw20CoinVerified;
+use cw3::{Status, Vote};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -99,22 +99,6 @@ where
     /// that the generic `Threshold{}` query does not provide valid information for existing proposals.
     pub threshold: ThresholdResponse,
     pub deposit_amount: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "lowercase")]
-#[repr(u8)]
-pub enum Status {
-    /// proposal was created, but voting has not yet begun for whatever reason
-    Pending = 1,
-    /// you can vote on this
-    Open = 2,
-    /// voting is over and it did not pass
-    Rejected = 3,
-    /// voting is over and it did pass, but has not yet executed
-    Passed = 4,
-    /// voting is over it passed, and the proposal was executed
-    Executed = 5,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
