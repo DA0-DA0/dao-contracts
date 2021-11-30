@@ -2,11 +2,12 @@
 
 **NOT PRODUCTION READY**
 
-| Contract                              | Description                                            |
-|:--------------------------------------|:-------------------------------------------------------|
-| [cw3-dao](contracts/cw3-dao)          | A governance token based DAO.                          |
-| [cw20-gov](contract/cw20-gov)         | A cw20 token for use with cw3-dao                      |
-| [cw4-registry](contract/cw4-registry) | A contract for keeping track of instantiated multisigs |
+| Contract                                        | Description                                            |
+|:------------------------------------------------|:-------------------------------------------------------|
+| [cw3-dao](contracts/cw3-dao)                    | A governance token based DAO.                          |
+| [cw20-gov](contract/cw20-gov)                   | A cw20 token for use with cw3-dao                      |
+| [cw4-registry](contract/cw4-registry)           | A contract for keeping track of instantiated multisigs |
+| [cw3-flex-multisig](contract/cw3-flex-multisig) | A multisig contract                                                       |
 
 ## Deploying in a development environment
 
