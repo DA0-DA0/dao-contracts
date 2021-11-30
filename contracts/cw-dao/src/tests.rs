@@ -16,7 +16,9 @@ mod tests {
     };
     use cw0::{Duration, Expiration};
     use cw2::{query_contract_info, ContractVersion};
-    use cw20::{Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg};
+    use cw20::{
+        BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg,
+    };
     use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
     const OWNER: &str = "admin0001";
@@ -336,6 +338,99 @@ mod tests {
             None,
         );
         assert!(res.is_ok());
+
+        let dao_addr = res.unwrap();
+        let res: ConfigResponse = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
+            .unwrap();
+        let cw20_addr = res.gov_token;
+
+        // Make proposal to mint some gov tokens for the DAO
+        let wasm_exec_msg = WasmMsg::Execute {
+            contract_addr: cw20_addr.clone().into(),
+            msg: to_binary(&Cw20ExecuteMsg::Mint {
+                recipient: dao_addr.clone().into(),
+                amount: Uint128::new(1000),
+            })
+            .unwrap(),
+            funds: vec![],
+        };
+        let (_msgs, title, description) = proposal_info();
+        let proposal_msg = ExecuteMsg::Propose {
+            title,
+            description,
+            msgs: vec![wasm_exec_msg.into()],
+            latest: None,
+        };
+
+        let res = app.execute_contract(
+            Addr::unchecked(VOTER3),
+            dao_addr.clone(),
+            &proposal_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        let proposal_id: u64 = res.unwrap().custom_attrs(1)[2].value.parse().unwrap();
+
+        // Proposal passes
+        let yes_vote = ExecuteMsg::Vote {
+            proposal_id,
+            vote: Vote::Yes,
+        };
+        let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
+        assert!(res.is_ok());
+        let res = app
+            .execute_contract(
+                Addr::unchecked(POWER_VOTER),
+                dao_addr.clone(),
+                &yes_vote,
+                &[],
+            )
+            .unwrap();
+
+        assert_eq!(
+            res.custom_attrs(1),
+            [
+                ("action", "vote"),
+                ("sender", POWER_VOTER),
+                ("proposal_id", proposal_id.to_string().as_str()),
+                ("status", "Passed"),
+            ],
+        );
+
+        // Proposal is executed
+        let execution = ExecuteMsg::Execute { proposal_id };
+        // Execute works. Anybody can execute Passed proposals
+        let res = app
+            .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &execution, &[])
+            .unwrap();
+        assert_eq!(
+            res.custom_attrs(1),
+            [
+                ("action", "execute"),
+                ("sender", SOMEBODY),
+                ("proposal_id", proposal_id.to_string().as_str()),
+            ],
+        );
+
+        // Query gov token contract to get DAO balance
+        let res: BalanceResponse = app
+            .wrap()
+            .query_wasm_smart(
+                cw20_addr,
+                &Cw20QueryMsg::Balance {
+                    address: dao_addr.into(),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            res,
+            BalanceResponse {
+                balance: Uint128::new(1000)
+            }
+        )
     }
 
     #[test]
@@ -1147,6 +1242,7 @@ mod tests {
                     proposal_deposit: new_proposal_deposit_amount,
                     refund_failed_proposals: None,
                 },
+                gov_token: cw20_addr
             }
         )
     }
@@ -1160,7 +1256,7 @@ mod tests {
             threshold: Decimal::percent(51),
             quorum: Decimal::percent(10),
         };
-        let (dao_addr, _cw20_addr) = setup_test_case(
+        let (dao_addr, cw20_addr) = setup_test_case(
             &mut app,
             threshold.clone(),
             voting_period.clone(),
@@ -1186,6 +1282,7 @@ mod tests {
                     proposal_deposit: Uint128::zero(),
                     refund_failed_proposals: None,
                 },
+                gov_token: cw20_addr
             }
         )
     }
