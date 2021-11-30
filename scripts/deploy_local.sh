@@ -45,8 +45,9 @@ docker run --rm -v "$(pwd)":/code \
   cosmwasm/rust-optimizer:0.12.3
 
 # Copy binaries to docker container
-docker cp artifacts/cw_dao.wasm cosmwasm:/cw_dao.wasm
+docker cp artifacts/cw3_dao.wasm cosmwasm:/cw3_dao.wasm
 docker cp artifacts/cw20_gov.wasm cosmwasm:/cw20_gov.wasm
+docker cp artifacts/cw3_flex_multisig.wasm cosmwasm:/cw3_flex_multisig.wasm
 
 # Sleep while waiting for chain to post genesis block
 sleep 3
@@ -57,7 +58,6 @@ echo "TX Flags: $TXFLAG"
 
 #### CW20-GOV ####
 # Upload cw20 contract code
-# download cw20-gov contract code
 echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG
 CW20_CODE=1
 
@@ -76,13 +76,13 @@ CW20_CONTRACT=$($BINARY q wasm list-contract-by-code $CW20_CODE --output json | 
 
 #### CW-DAO ####
 # Upload cw-dao contract code
-echo xxxxxxxxx | $BINARY tx wasm store "/cw_dao.wasm" --from validator $TXFLAG
-CW_DAO_CODE=2
+echo xxxxxxxxx | $BINARY tx wasm store "/cw3_dao.wasm" --from validator $TXFLAG
+CW3_DAO_CODE=2
 
-echo $CW_DAO_CODE
+echo $CW3_DAO_CODE
 
 # Instantiate cw-dao contract using existing token
-# CW_DAO_INIT='{
+# CW3_DAO_INIT='{
 #   "name": "DAO DAO",
 #   "description": "A DAO that makes DAO tooling",
 #   "gov_token": {
@@ -102,7 +102,7 @@ echo $CW_DAO_CODE
 # }'
 
 # DAO contract instantiates its own token
-CW_DAO_INIT='{
+CW3_DAO_INIT='{
   "name": "DAO DAO",
   "description": "A DAO that makes DAO tooling",
   "gov_token": {
@@ -127,34 +127,34 @@ CW_DAO_INIT='{
   },
   "proposal_deposit_amount": "0"
 }'
-echo $CW_DAO_INIT | jq .
+echo $CW3_DAO_INIT | jq .
 
-echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW_DAO_CODE" "$CW_DAO_INIT" --from validator --label "cw-dao" $TXFLAG
+echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "cw-dao" $TXFLAG
 
-CW_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW_DAO_CODE --output json | jq -r '.contracts[-1]')
+CW3_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW3_DAO_CODE --output json | jq -r '.contracts[-1]')
 
-# Download cw3-fixed-multisig and cw3-flex-multisig contracts
+# Download cw3-fixed-multisig and cw4-group contracts
 cd scripts
-curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.10.2/cw3_flex_multisig.wasm
 curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.10.2/cw3_fixed_multisig.wasm
+curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.10.2/cw4_group.wasm
 
 # Copy wasm to docker
-docker cp cw3_flex_multisig.wasm cosmwasm:/cw3_flex_multisig.wasm
 docker cp cw3_fixed_multisig.wasm cosmwasm:/cw3_fixed_multisig.wasm
-
+docker cp cw4_group.wasm cosmwasm:/cw4_group.wasm
 
 # Upload cw3-fixed-multisig and cw3-flex-multisig code
 echo xxxxxxxxx | $BINARY tx wasm store "/cw3_fixed_multisig.wasm" --from validator $TXFLAG
 echo xxxxxxxxx | $BINARY tx wasm store "/cw3_flex_multisig.wasm" --from validator $TXFLAG
-
+echo xxxxxxxxx | $BINARY tx wasm store "/cw4_group.wasm" --from validator $TXFLAG
 
 # Print out config variables
 printf "\n ------------------------ \n"
 printf "Config Variables \n\n"
 
 echo "NEXT_PUBLIC_DAO_TOKEN_CODE_ID=$CW20_CODE"
-echo "NEXT_PUBLIC_DAO_TOKEN_ADDRESS=$CW20_CONTRACT"
-echo "NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=$CW_DAO_CODE"
-echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW_DAO_CONTRACT"
+echo "NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=$CW3_DAO_CODE"
 echo "NEXT_PUBLIC_FIXED_MULTISIG_CODE_ID=3"
 echo "NEXT_PUBLIC_FLEX_MULTISIG_CODE_ID=4"
+echo "NEXT_PUBLIC_C4_GROUP_CODE_ID=5"
+echo "NEXT_PUBLIC_DAO_TOKEN_ADDRESS=$CW20_CONTRACT"
+echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW3_DAO_CONTRACT"
