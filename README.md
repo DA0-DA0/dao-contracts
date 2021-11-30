@@ -28,3 +28,15 @@ NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=juno1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737
 ```
 
 You can then interact with the contract addresses.
+
+Note, you can send commands to the docker container like so.
+
+``` sh
+docker exec -i cosmwasm  junod status
+```
+
+Some commands require a password which defaults to `xxxxxxxxx`. You can use them like so:
+
+``` sh
+echo xxxxxxxxx | docker exec -i cosmwasm  junod keys show validator -a
+```
