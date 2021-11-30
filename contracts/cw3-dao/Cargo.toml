@@ -1,5 +1,5 @@
 [package]
-name = "cw_dao"
+name = "cw3_dao"
 version = "0.1.1"
 authors = ["Jake Hartnell <jake@stargaze.zone>", "Ben2x4 <Ben2x4@tutanota.com>", "Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2018"
