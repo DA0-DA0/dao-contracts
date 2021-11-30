@@ -61,7 +61,7 @@ pub fn instantiate(
                 code_id,
                 funds: vec![],
                 admin: Some(env.contract.address.to_string()),
-                label: label,
+                label,
                 msg: to_binary(&Cw4InstantiateMsg {
                     admin: Some(env.contract.address.to_string()),
                     members: voters,
