@@ -1,9 +1,9 @@
-use crate::msg::{Threshold, Vote};
-use crate::query::Status;
+use crate::msg::Threshold;
 use cosmwasm_std::{
     Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
 };
 use cw0::{Duration, Expiration};
+use cw3::{Status, Vote};
 use cw_storage_plus::{Item, Map, U64Key};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

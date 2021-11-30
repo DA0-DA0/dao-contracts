@@ -3,10 +3,10 @@ mod tests {
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::error::ContractError;
     use crate::msg::{
-        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Threshold, Vote,
+        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Threshold,
     };
     use crate::query::{
-        ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse, Status,
+        ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
         ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
     };
     use crate::state::Config;
@@ -19,6 +19,7 @@ mod tests {
     use cw20::{
         BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg,
     };
+    use cw3::{Status, Vote};
     use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
     const OWNER: &str = "admin0001";

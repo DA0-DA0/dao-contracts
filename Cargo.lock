@@ -304,6 +304,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw3"
+version = "0.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3d4c8c8c7b7fac5852987b0faff849f50b6d599fb8444451cd6f3f9cc80871cc"
+dependencies = [
+ "cosmwasm-std",
+ "cw0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw4"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -365,6 +377,7 @@ dependencies = [
  "cw20",
  "cw20-base",
  "cw20-gov",
+ "cw3",
  "schemars",
  "serde",
  "thiserror",
