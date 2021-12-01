@@ -11,6 +11,8 @@ use crate::msg::{
 use crate::state::{Config, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
 use cw20_base::state::BALANCES;
+pub use cw20_base::contract::{execute_transfer, execute_burn, execute_mint, execute_send, execute_update_marketing, execute_upload_logo};
+pub use cw20_base::allowances::{execute_send_from, execute_transfer_from, execute_burn_from, execute_increase_allowance, execute_decrease_allowance};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -40,26 +42,26 @@ pub fn execute(
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => {
-            cw20_base::contract::execute_transfer(deps, _env, info, recipient, amount)
+            execute_transfer(deps, _env, info, recipient, amount)
                 .map_err(ContractError::Cw20Error)
         }
-        ExecuteMsg::Burn { amount } => cw20_base::contract::execute_burn(deps, _env, info, amount)
+        ExecuteMsg::Burn { amount } => execute_burn(deps, _env, info, amount)
             .map_err(ContractError::Cw20Error),
         ExecuteMsg::Send {
             contract,
             amount,
             msg,
-        } => cw20_base::contract::execute_send(deps, _env, info, contract, amount, msg)
+        } => execute_send(deps, _env, info, contract, amount, msg)
             .map_err(ContractError::Cw20Error),
         ExecuteMsg::Mint { recipient, amount } => {
-            cw20_base::contract::execute_mint(deps, _env, info, recipient, amount)
+            execute_mint(deps, _env, info, recipient, amount)
                 .map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::IncreaseAllowance {
             spender,
             amount,
             expires,
-        } => cw20_base::allowances::execute_increase_allowance(
+        } => execute_increase_allowance(
             deps, _env, info, spender, amount, expires,
         )
         .map_err(ContractError::Cw20Error),
@@ -67,7 +69,7 @@ pub fn execute(
             spender,
             amount,
             expires,
-        } => cw20_base::allowances::execute_decrease_allowance(
+        } => execute_decrease_allowance(
             deps, _env, info, spender, amount, expires,
         )
         .map_err(ContractError::Cw20Error),
@@ -76,11 +78,11 @@ pub fn execute(
             recipient,
             amount,
         } => {
-            cw20_base::allowances::execute_transfer_from(deps, _env, info, owner, recipient, amount)
+            execute_transfer_from(deps, _env, info, owner, recipient, amount)
                 .map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::BurnFrom { owner, amount } => {
-            cw20_base::allowances::execute_burn_from(deps, _env, info, owner, amount)
+            execute_burn_from(deps, _env, info, owner, amount)
                 .map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::SendFrom {
@@ -89,14 +91,14 @@ pub fn execute(
             amount,
             msg,
         } => {
-            cw20_base::allowances::execute_send_from(deps, _env, info, owner, contract, amount, msg)
+            execute_send_from(deps, _env, info, owner, contract, amount, msg)
                 .map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::UpdateMarketing {
             project,
             description,
             marketing,
-        } => cw20_base::contract::execute_update_marketing(
+        } => execute_update_marketing(
             deps,
             _env,
             info,
@@ -106,7 +108,7 @@ pub fn execute(
         )
         .map_err(ContractError::Cw20Error),
         ExecuteMsg::UploadLogo(logo) => {
-            cw20_base::contract::execute_upload_logo(deps, _env, info, logo)
+            execute_upload_logo(deps, _env, info, logo)
                 .map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::Stake { amount } => execute_stake(deps, _env, info, amount),
