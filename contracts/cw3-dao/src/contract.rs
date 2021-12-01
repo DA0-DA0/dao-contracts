@@ -4,7 +4,7 @@ use crate::helpers::{
     get_voting_power_at_height, map_proposal,
 };
 use crate::msg::UpdateConfigMsg;
-use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, Propose, QueryMsg};
+use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, ProposalVote, Propose, QueryMsg};
 use crate::query::{
     ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
@@ -115,9 +115,15 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
-        // ExecuteMsg::Propose (p) => execute_propose(deps, env, info, p),
-        ExecuteMsg::Propose (Propose{title, description, msgs, latest}) => execute_propose(deps, env, info, title, description, msgs, latest),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
+        ExecuteMsg::Propose(Propose {
+            title,
+            description,
+            msgs,
+            latest,
+        }) => execute_propose(deps, env, info, title, description, msgs, latest),
+        ExecuteMsg::Vote(ProposalVote { proposal_id, vote }) => {
+            execute_vote(deps, env, info, proposal_id, vote)
+        }
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
         ExecuteMsg::UpdateConfig {
