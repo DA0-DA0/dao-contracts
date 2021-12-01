@@ -53,6 +53,13 @@ pub enum ExecuteMsg {
         marketing: Option<String>,
     },
     UploadLogo(Logo),
+    Stake {
+        amount: Uint128,
+    },
+    Unstake {
+        amount: Uint128,
+    },
+    Claim {},
     DelegateVotes {
         recipient: String,
     },
@@ -106,6 +113,17 @@ pub enum QueryMsg {
     /// contract.
     /// Return type: DownloadLogoResponse.
     DownloadLogo {},
+    StakedBalanceAtHeight {
+        address: String,
+        height: Option<u64>,
+    },
+    TotalStakedAtHeight {
+        height: Option<u64>,
+    },
+    UnstakingDuration {},
+    Claims {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
