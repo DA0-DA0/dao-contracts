@@ -3,7 +3,7 @@ mod tests {
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::error::ContractError;
     use crate::msg::{
-        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, QueryMsg, Threshold,
+        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, Propose, QueryMsg, Threshold,
     };
     use crate::query::{
         ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
@@ -163,12 +163,12 @@ mod tests {
 
     fn pay_somebody_proposal() -> ExecuteMsg {
         let (msgs, title, description) = proposal_info();
-        ExecuteMsg::Propose {
+        ExecuteMsg::Propose(Propose {
             title,
             description,
             msgs,
             latest: None,
-        }
+        })
     }
 
     #[test]
@@ -358,12 +358,12 @@ mod tests {
             funds: vec![],
         };
         let (_msgs, title, description) = proposal_info();
-        let proposal_msg = ExecuteMsg::Propose {
+        let proposal_msg = ExecuteMsg::Propose(Propose {
             title,
             description,
             msgs: vec![wasm_exec_msg.into()],
             latest: None,
-        };
+        });
 
         let res = app.execute_contract(
             Addr::unchecked(VOTER3),
@@ -461,15 +461,15 @@ mod tests {
 
         // Wrong expiration option fails
         let msgs = match proposal.clone() {
-            ExecuteMsg::Propose { msgs, .. } => msgs,
+            ExecuteMsg::Propose (Propose{ msgs, .. }) => msgs,
             _ => panic!("Wrong variant"),
         };
-        let proposal_wrong_exp = ExecuteMsg::Propose {
+        let proposal_wrong_exp = ExecuteMsg::Propose(Propose{
             title: "Rewarding somebody".to_string(),
             description: "Do we reward her?".to_string(),
             msgs,
             latest: Some(Expiration::AtHeight(123456)),
-        };
+        });
         let err = app
             .execute_contract(
                 Addr::unchecked(OWNER),
@@ -1200,12 +1200,12 @@ mod tests {
         };
 
         // Update config proposal must be made
-        let proposal_msg = ExecuteMsg::Propose {
+        let proposal_msg = ExecuteMsg::Propose( Propose {
             title: String::from("Change params"),
             description: String::from("Updates threshold and max voting params"),
             msgs: vec![wasm_msg.into()],
             latest: None,
-        };
+        });
         let res = app
             .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
             .unwrap();
@@ -1470,12 +1470,12 @@ mod tests {
             msg: to_binary(&update_token_list_msg).unwrap(),
             funds: vec![],
         };
-        let proposal_msg = ExecuteMsg::Propose {
+        let proposal_msg = ExecuteMsg::Propose(Propose{
             title: String::from("Change params"),
             description: String::from("Updates threshold and max voting params"),
             msgs: vec![wasm_msg.into()],
             latest: None,
-        };
+        });
         let res = app
             .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
             .unwrap();
