@@ -13,6 +13,7 @@ use crate::ContractError;
 use cw20_base::state::BALANCES;
 pub use cw20_base::contract::{execute_transfer, execute_burn, execute_mint, execute_send, execute_update_marketing, execute_upload_logo};
 pub use cw20_base::allowances::{execute_send_from, execute_transfer_from, execute_burn_from, execute_increase_allowance, execute_decrease_allowance};
+use cw_controllers::ClaimsResponse;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -245,7 +246,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::UnstakingDuration {} => to_binary(&query_unstaking_duration(deps)?),
         QueryMsg::Claims { address } => {
-            to_binary(&CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)?)
+            to_binary(&query_claims(deps,address)?)
         }
     }
 }
@@ -281,6 +282,10 @@ pub fn query_unstaking_duration(deps: Deps) -> StdResult<UnstakingDurationRespon
     Ok(UnstakingDurationResponse {
         duration: config.unstaking_duration,
     })
+}
+
+pub fn query_claims (deps: Deps, address: String) -> StdResult<ClaimsResponse> {
+    CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
 
 #[cfg(test)]
