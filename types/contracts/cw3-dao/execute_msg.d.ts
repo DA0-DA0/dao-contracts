@@ -1,13 +1,7 @@
 import { Binary, Duration, Threshold, Uint128 } from "./shared-types";
 
 export type ExecuteMsg = ({
-propose: {
-description: string
-latest?: (Expiration | null)
-msgs: CosmosMsgFor_Empty[]
-title: string
-[k: string]: unknown
-}
+propose: Propose
 } | {
 vote: {
 proposal_id: number
@@ -220,6 +214,13 @@ export type Vote = ("yes" | "no" | "abstain" | "veto")
  */
 export type Addr = string
 
+export interface Propose {
+description: string
+latest?: (Expiration | null)
+msgs: CosmosMsgFor_Empty[]
+title: string
+[k: string]: unknown
+}
 export interface Coin {
 amount: Uint128
 denom: string

@@ -23,7 +23,21 @@
       ],
       "properties": {
         "vote": {
-          "$ref": "#/definitions/ProposalVote"
+          "type": "object",
+          "required": [
+            "proposal_id",
+            "vote"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "vote": {
+              "$ref": "#/definitions/Vote"
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -434,23 +448,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "ProposalVote": {
-      "type": "object",
-      "required": [
-        "proposal_id",
-        "vote"
-      ],
-      "properties": {
-        "proposal_id": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "vote": {
-          "$ref": "#/definitions/Vote"
-        }
-      }
     },
     "Propose": {
       "type": "object",
