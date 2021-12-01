@@ -14,10 +14,10 @@ use crate::state::{
     TREASURY_TOKENS,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
     Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
-use cw0::{maybe_addr, parse_reply_instantiate_data};
+use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
 use cw20::{BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse};
 use cw3::{Status, Vote};
@@ -115,7 +115,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
-        ExecuteMsg::Propose (p) => execute_propose(deps, env, info, p),
+        // ExecuteMsg::Propose (p) => execute_propose(deps, env, info, p),
+        ExecuteMsg::Propose (Propose{title, description, msgs, latest}) => execute_propose(deps, env, info, title, description, msgs, latest),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
@@ -151,12 +152,11 @@ pub fn execute_propose(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    propose: Propose
-    // title: String,
-    // description: String,
-    // msgs: Vec<CosmosMsg>,
-    // // we ignore earliest
-    // latest: Option<Expiration>,
+    title: String,
+    description: String,
+    msgs: Vec<CosmosMsg<Empty>>,
+    // we ignore earliest
+    latest: Option<Expiration>,
 ) -> Result<Response<Empty>, ContractError> {
     // let {title, description, msgs, latest} = proposal;
     let cfg = CONFIG.load(deps.storage)?;
@@ -170,7 +170,7 @@ pub fn execute_propose(
 
     // Max expires also used as default
     let max_expires = cfg.max_voting_period.after(&env.block);
-    let mut expires = propose.latest.unwrap_or(max_expires);
+    let mut expires = latest.unwrap_or(max_expires);
     let comp = expires.partial_cmp(&max_expires);
     if let Some(Ordering::Greater) = comp {
         expires = max_expires;
@@ -183,12 +183,12 @@ pub fn execute_propose(
 
     // Create a proposal
     let mut prop = Proposal {
-        title: propose.title,
-        description: propose.description,
+        title,
+        description,
         proposer: info.sender.clone(),
         start_height: env.block.height,
         expires,
-        msgs: propose.msgs,
+        msgs,
         status: Status::Open,
         votes: Votes {
             yes: Uint128::zero(),
