@@ -10,36 +10,7 @@
       ],
       "properties": {
         "propose": {
-          "type": "object",
-          "required": [
-            "description",
-            "msgs",
-            "title"
-          ],
-          "properties": {
-            "description": {
-              "type": "string"
-            },
-            "latest": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Expiration"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "msgs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/CosmosMsg_for_Empty"
-              }
-            },
-            "title": {
-              "type": "string"
-            }
-          }
+          "$ref": "#/definitions/Propose"
         }
       },
       "additionalProperties": false
@@ -477,6 +448,38 @@
           "additionalProperties": false
         }
       ]
+    },
+    "Propose": {
+      "type": "object",
+      "required": [
+        "description",
+        "msgs",
+        "title"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "latest": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "msgs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CosmosMsg_for_Empty"
+          }
+        },
+        "title": {
+          "type": "string"
+        }
+      }
     },
     "StakingMsg": {
       "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
