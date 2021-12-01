@@ -118,16 +118,19 @@ fn valid_percentage(percent: &Decimal) -> Result<(), ContractError> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Propose {
+    pub title: String,
+    pub description: String,
+    pub msgs: Vec<CosmosMsg<Empty>>,
+    // note: we ignore API-spec'd earliest if passed, always opens immediately
+    pub latest: Option<Expiration>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Makes a new proposal
-    Propose {
-        title: String,
-        description: String,
-        msgs: Vec<CosmosMsg<Empty>>,
-        // note: we ignore API-spec'd earliest if passed, always opens immediately
-        latest: Option<Expiration>,
-    },
+    Propose(Propose),
     /// Vote on an open proposal
     Vote { proposal_id: u64, vote: Vote },
     /// Execute a passed proposal
