@@ -3,11 +3,7 @@ import { Binary, Duration, Threshold, Uint128 } from "./shared-types";
 export type ExecuteMsg = ({
 propose: Propose
 } | {
-vote: {
-proposal_id: number
-vote: Vote
-[k: string]: unknown
-}
+vote: ProposalVote
 } | {
 execute: {
 proposal_id: number
@@ -232,5 +228,10 @@ denom: string
  * It is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)
  */
 export interface Empty {
+[k: string]: unknown
+}
+export interface ProposalVote {
+proposal_id: number
+vote: Vote
 [k: string]: unknown
 }
