@@ -279,6 +279,7 @@ dependencies = [
  "cw0",
  "cw2",
  "cw20",
+ "cw20-base",
  "cw20-stakeable",
  "schemars",
  "serde",

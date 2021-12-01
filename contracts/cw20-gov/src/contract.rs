@@ -193,13 +193,12 @@ mod tests {
 
     use super::*;
 
-    // this will set up the instantiation for other tests
-    fn _do_instantiate(
-        mut deps: DepsMut,
-        addr: &str,
-        amount: Uint128,
-        mint: Option<MinterResponse>,
-    ) -> TokenInfoResponse {
+    #[test]
+    fn test_contract() {
+        let mut deps = mock_dependencies();
+        let addr = "ADDR0001";
+        let delegatee = "ADDR0002";
+        let amount = Uint128::new(100);
         let instantiate_msg = InstantiateMsg {
             cw20_base: cw20_base::msg::InstantiateMsg {
                 name: "Auto Gen".to_string(),
@@ -209,28 +208,46 @@ mod tests {
                     address: addr.to_string(),
                     amount,
                 }],
-                mint: mint.clone(),
+                mint: None,
                 marketing: None,
             },
             unstaking_duration: None
         };
         let info = mock_info("creator", &[]);
-        let env = mock_env();
-        let res = instantiate(deps.branch(), env, info, instantiate_msg).unwrap();
+        let mut env = mock_env();
+        let res = instantiate(deps.as_mut(), env.clone(), info, instantiate_msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let meta = query_token_info(deps.as_ref()).unwrap();
-        assert_eq!(
-            meta,
-            TokenInfoResponse {
-                name: "Auto Gen".to_string(),
-                symbol: "AUTO".to_string(),
-                decimals: 3,
-                total_supply: amount,
-            }
-        );
-        assert_eq!(get_balance(deps.as_ref(), addr), amount);
-        assert_eq!(query_minter(deps.as_ref()).unwrap(), mint,);
-        meta
+        assert_eq!(Uint128::zero(), query_voting_power_at_height(deps.as_ref(),addr.to_string(),env.block.height).unwrap().balance);
+
+        // Stake tokens
+        let info = mock_info(addr, &[]);
+        let res = execute_stake(deps.as_mut(), env.clone(), info, amount).unwrap();
+        env.block.height += 1;
+        assert_eq!(amount,cw20_stakeable::contract::query_staked_balance_at_height(deps.as_ref(), env.clone(), addr.to_string(), None).unwrap().balance);
+        assert_eq!(amount, query_voting_power_at_height(deps.as_ref(),addr.to_string(),env.block.height).unwrap().balance);
+        assert_eq!(Uint128::zero(), query_voting_power_at_height(deps.as_ref(),delegatee.to_string(),env.block.height).unwrap().balance);
+
+        // Delegate votes
+        let info = mock_info(addr, &[]);
+        let res = execute_delegate_votes(deps.as_mut(),env.clone(), info, delegatee.to_string()).unwrap();
+        env.block.height += 1;
+        assert_eq!(Uint128::zero(), query_voting_power_at_height(deps.as_ref(),addr.to_string(),env.block.height).unwrap().balance);
+        assert_eq!(amount, query_voting_power_at_height(deps.as_ref(),delegatee.to_string(),env.block.height).unwrap().balance);
+
+        // Partially unstake
+        let info = mock_info(addr, &[]);
+        let res = execute_unstake(deps.as_mut(), env.clone(), info, Uint128::new(50)).unwrap();
+        env.block.height += 1;
+        assert_eq!(Uint128::zero(), query_voting_power_at_height(deps.as_ref(),addr.to_string(),env.block.height).unwrap().balance);
+        assert_eq!(Uint128::new(50), query_voting_power_at_height(deps.as_ref(),delegatee.to_string(),env.block.height).unwrap().balance);
+
+        // Fully unstake
+        let info = mock_info(addr, &[]);
+        let res = execute_unstake(deps.as_mut(), env.clone(), info, Uint128::new(50)).unwrap();
+        env.block.height += 1;
+        assert_eq!(Uint128::zero(), query_voting_power_at_height(deps.as_ref(),addr.to_string(),env.block.height).unwrap().balance);
+        assert_eq!(Uint128::zero(), query_voting_power_at_height(deps.as_ref(),delegatee.to_string(),env.block.height).unwrap().balance);
     }
+
 }
