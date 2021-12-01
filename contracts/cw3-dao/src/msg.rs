@@ -127,12 +127,18 @@ pub struct Propose {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ProposalVote {
+    pub proposal_id: u64,
+    pub vote: Vote,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Makes a new proposal
     Propose(Propose),
     /// Vote on an open proposal
-    Vote { proposal_id: u64, vote: Vote },
+    Vote(ProposalVote),
     /// Execute a passed proposal
     Execute { proposal_id: u64 },
     /// Close a failed proposal
@@ -220,10 +226,10 @@ mod tests {
 
     #[test]
     fn vote_encoding_embedded() {
-        let msg = ExecuteMsg::Vote {
+        let msg = ExecuteMsg::Vote(ProposalVote {
             proposal_id: 17,
             vote: Vote::No,
-        };
+        });
         let encoded = to_vec(&msg).unwrap();
         let json = String::from_utf8_lossy(&encoded).to_string();
         assert_eq!(r#"{"vote":{"proposal_id":17,"vote":"no"}}"#, json.as_str());

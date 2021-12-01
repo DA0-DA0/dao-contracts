@@ -3,7 +3,8 @@ mod tests {
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::error::ContractError;
     use crate::msg::{
-        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, Propose, QueryMsg, Threshold,
+        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposalVote, Propose,
+        QueryMsg, Threshold,
     };
     use crate::query::{
         ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
@@ -461,10 +462,10 @@ mod tests {
 
         // Wrong expiration option fails
         let msgs = match proposal.clone() {
-            ExecuteMsg::Propose (Propose{ msgs, .. }) => msgs,
+            ExecuteMsg::Propose(Propose { msgs, .. }) => msgs,
             _ => panic!("Wrong variant"),
         };
-        let proposal_wrong_exp = ExecuteMsg::Propose(Propose{
+        let proposal_wrong_exp = ExecuteMsg::Propose(Propose {
             title: "Rewarding somebody".to_string(),
             description: "Do we reward her?".to_string(),
             msgs,
@@ -1200,7 +1201,7 @@ mod tests {
         };
 
         // Update config proposal must be made
-        let proposal_msg = ExecuteMsg::Propose( Propose {
+        let proposal_msg = ExecuteMsg::Propose(Propose {
             title: String::from("Change params"),
             description: String::from("Updates threshold and max voting params"),
             msgs: vec![wasm_msg.into()],
@@ -1470,7 +1471,7 @@ mod tests {
             msg: to_binary(&update_token_list_msg).unwrap(),
             funds: vec![],
         };
-        let proposal_msg = ExecuteMsg::Propose(Propose{
+        let proposal_msg = ExecuteMsg::Propose(Propose {
             title: String::from("Change params"),
             description: String::from("Updates threshold and max voting params"),
             msgs: vec![wasm_msg.into()],
