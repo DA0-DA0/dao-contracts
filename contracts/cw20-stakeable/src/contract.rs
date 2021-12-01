@@ -11,8 +11,9 @@ use crate::msg::{
 use crate::state::{Config, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
 use cw20_base::state::BALANCES;
-pub use cw20_base::contract::{execute_transfer, execute_burn, execute_mint, execute_send, execute_update_marketing, execute_upload_logo};
-pub use cw20_base::allowances::{execute_send_from, execute_transfer_from, execute_burn_from, execute_increase_allowance, execute_decrease_allowance};
+pub use cw20_base::contract::{execute_transfer, execute_burn, execute_mint, execute_send, execute_update_marketing, execute_upload_logo, query_balance, query_minter, query_token_info, query_marketing_info, query_download_logo};
+pub use cw20_base::allowances::{execute_send_from, execute_transfer_from, execute_burn_from, execute_increase_allowance, execute_decrease_allowance, query_allowance};
+pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -216,28 +217,28 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         // Inherited from cw20_base
         QueryMsg::Balance { address } => {
-            to_binary(&cw20_base::contract::query_balance(deps, address)?)
+            to_binary(&query_balance(deps, address)?)
         }
-        QueryMsg::TokenInfo {} => to_binary(&cw20_base::contract::query_token_info(deps)?),
-        QueryMsg::Minter {} => to_binary(&cw20_base::contract::query_minter(deps)?),
+        QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
+        QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
         QueryMsg::Allowance { owner, spender } => to_binary(
-            &cw20_base::allowances::query_allowance(deps, owner, spender)?,
+            &query_allowance(deps, owner, spender)?,
         ),
         QueryMsg::AllAllowances {
             owner,
             start_after,
             limit,
-        } => to_binary(&cw20_base::enumerable::query_all_allowances(
+        } => to_binary(&query_all_allowances(
             deps,
             owner,
             start_after,
             limit,
         )?),
         QueryMsg::AllAccounts { start_after, limit } => to_binary(
-            &cw20_base::enumerable::query_all_accounts(deps, start_after, limit)?,
+            &query_all_accounts(deps, start_after, limit)?,
         ),
-        QueryMsg::MarketingInfo {} => to_binary(&cw20_base::contract::query_marketing_info(deps)?),
-        QueryMsg::DownloadLogo {} => to_binary(&cw20_base::contract::query_download_logo(deps)?),
+        QueryMsg::MarketingInfo {} => to_binary(&query_marketing_info(deps)?),
+        QueryMsg::DownloadLogo {} => to_binary(&query_download_logo(deps)?),
         QueryMsg::StakedBalanceAtHeight { address, height } => to_binary(
             &query_staked_balance_at_height(deps, _env, address, height)?,
         ),
