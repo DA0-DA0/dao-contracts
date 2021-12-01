@@ -2,6 +2,7 @@ use cosmwasm_std::{Binary, Uint128};
 use cw20::{Expiration, Logo};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+pub use cw20_stakeable::msg::InstantiateMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

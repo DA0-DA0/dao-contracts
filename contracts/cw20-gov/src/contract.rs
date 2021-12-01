@@ -6,9 +6,8 @@ use cw20_stakeable::contract::{
     execute_update_marketing, execute_upload_logo, query_balance, query_download_logo,
     query_marketing_info, query_minter, query_token_info, query_allowance, query_all_accounts, query_all_allowances
 };
-use cw20_stakeable::msg::InstantiateMsg;
 
-use crate::msg::{DelegationResponse, ExecuteMsg, QueryMsg, VotingPowerAtHeightResponse};
+use crate::msg::{DelegationResponse, ExecuteMsg, QueryMsg, VotingPowerAtHeightResponse, InstantiateMsg};
 use crate::state::{DELEGATIONS, VOTING_POWER};
 use cw20_stakeable::ContractError;
 use cw20_stakeable::state::STAKED_BALANCES;
