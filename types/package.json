@@ -1,8 +1,8 @@
 {
-  "name": "@dao_dao/types",
-  "version": "0.0.1",
+  "name": "types",
+  "version": "1.0.0",
   "description": "",
-  "main": "build/index.js",
+  "main": "index.js",
   "scripts": {
     "prepare": "tsc",
     "build": "tsc",
