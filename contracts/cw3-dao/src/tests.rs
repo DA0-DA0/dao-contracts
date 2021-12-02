@@ -3,8 +3,8 @@ mod tests {
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::error::ContractError;
     use crate::msg::{
-        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposalVote, Propose,
-        QueryMsg, Threshold,
+        ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg,
+        Threshold, VoteMsg,
     };
     use crate::query::{
         ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
@@ -164,7 +164,7 @@ mod tests {
 
     fn pay_somebody_proposal() -> ExecuteMsg {
         let (msgs, title, description) = proposal_info();
-        ExecuteMsg::Propose(Propose {
+        ExecuteMsg::Propose(ProposeMsg {
             title,
             description,
             msgs,
@@ -359,7 +359,7 @@ mod tests {
             funds: vec![],
         };
         let (_msgs, title, description) = proposal_info();
-        let proposal_msg = ExecuteMsg::Propose(Propose {
+        let proposal_msg = ExecuteMsg::Propose(ProposeMsg {
             title,
             description,
             msgs: vec![wasm_exec_msg.into()],
@@ -377,7 +377,7 @@ mod tests {
         let proposal_id: u64 = res.unwrap().custom_attrs(1)[2].value.parse().unwrap();
 
         // Proposal passes
-        let yes_vote = ExecuteMsg::Vote(ProposalVote {
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });
@@ -462,10 +462,10 @@ mod tests {
 
         // Wrong expiration option fails
         let msgs = match proposal.clone() {
-            ExecuteMsg::Propose(Propose { msgs, .. }) => msgs,
+            ExecuteMsg::Propose(ProposeMsg { msgs, .. }) => msgs,
             _ => panic!("Wrong variant"),
         };
-        let proposal_wrong_exp = ExecuteMsg::Propose(Propose {
+        let proposal_wrong_exp = ExecuteMsg::Propose(ProposeMsg {
             title: "Rewarding somebody".to_string(),
             description: "Do we reward her?".to_string(),
             msgs,
@@ -568,7 +568,7 @@ mod tests {
         let proposal_id2: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
         // Imediately passes on yes vote
-        let yes_vote = ExecuteMsg::Vote(ProposalVote {
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id: proposal_id2.clone(),
             vote: Vote::Yes,
         });
@@ -669,7 +669,7 @@ mod tests {
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
         // Owner votes
-        let yes_vote = ExecuteMsg::Vote(ProposalVote {
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });
@@ -677,7 +677,7 @@ mod tests {
         assert!(res.is_ok());
 
         // Owner cannot vote (again)
-        let yes_vote = ExecuteMsg::Vote(ProposalVote {
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });
@@ -712,7 +712,7 @@ mod tests {
         assert_eq!(tally, Uint128::new(4000000));
 
         // Cast a No vote
-        let no_vote = ExecuteMsg::Vote(ProposalVote {
+        let no_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::No,
         });
@@ -721,7 +721,7 @@ mod tests {
             .unwrap();
 
         // Cast a Veto vote
-        let veto_vote = ExecuteMsg::Vote(ProposalVote {
+        let veto_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Veto,
         });
@@ -855,7 +855,7 @@ mod tests {
         );
 
         // Vote it, so it passes
-        let vote = ExecuteMsg::Vote(ProposalVote {
+        let vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });
@@ -1026,15 +1026,14 @@ mod tests {
         assert_eq!(owner_balance_after_failed_proposal, owner_initial_balance);
 
         // Update Config to not refund proposals
-        let update_config_msg = ExecuteMsg::UpdateConfig {
+        let update_config_msg = ExecuteMsg::UpdateConfig(Config {
             name: "dao-dao".to_string(),
             description: "a great DAO!".to_string(),
             threshold,
             max_voting_period: voting_period,
-            proposal_deposit_amount,
-            proposal_deposit_token_address: cw20_addr.to_string(),
+            proposal_deposit: proposal_deposit_amount,
             refund_failed_proposals: Some(false),
-        };
+        });
 
         let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
         assert!(res.is_ok());
@@ -1113,7 +1112,7 @@ mod tests {
         app.update_block(|block| block.height += 3);
 
         // reach 60% of yes votes, not enough to pass early (or late)
-        let yes_vote = ExecuteMsg::Vote(ProposalVote {
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });
@@ -1130,7 +1129,7 @@ mod tests {
         assert_eq!(prop_status(&app), Status::Open);
 
         // add 3 weight no vote and we hit quorum and this passes
-        let no_vote = ExecuteMsg::Vote(ProposalVote {
+        let no_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::No,
         });
@@ -1169,16 +1168,15 @@ mod tests {
         };
         let new_voting_period = Duration::Time(5000000);
         let new_proposal_deposit_amount = Uint128::from(10u8);
-        let update_config_msg = ExecuteMsg::UpdateConfig {
+        let update_config_msg = ExecuteMsg::UpdateConfig(Config {
             name: "dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao".to_string(),
             description: "a really great DAO with emojis 💫 and a name that is really long!"
                 .to_string(),
             threshold: new_threshold.clone(),
             max_voting_period: new_voting_period.clone(),
-            proposal_deposit_amount: new_proposal_deposit_amount,
-            proposal_deposit_token_address: cw20_addr.to_string(),
+            proposal_deposit: new_proposal_deposit_amount,
             refund_failed_proposals: None,
-        };
+        });
         let res = app.execute_contract(
             Addr::unchecked(VOTER1),
             dao_addr.clone(),
@@ -1201,7 +1199,7 @@ mod tests {
         };
 
         // Update config proposal must be made
-        let proposal_msg = ExecuteMsg::Propose(Propose {
+        let proposal_msg = ExecuteMsg::Propose(ProposeMsg {
             title: String::from("Change params"),
             description: String::from("Updates threshold and max voting params"),
             msgs: vec![wasm_msg.into()],
@@ -1213,7 +1211,7 @@ mod tests {
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
         // Imediately passes on yes vote
-        let yes_vote = ExecuteMsg::Vote(ProposalVote {
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });
@@ -1319,15 +1317,14 @@ mod tests {
 
         let proposal_deposit_amount = Uint128::new(10);
 
-        let update_config_msg = ExecuteMsg::UpdateConfig {
+        let update_config_msg = ExecuteMsg::UpdateConfig(Config {
             name: "dao-dao".to_string(),
             description: "a great DAO!".to_string(),
             threshold,
             max_voting_period: voting_period,
-            proposal_deposit_amount,
-            proposal_deposit_token_address: cw20_addr.to_string(),
+            proposal_deposit: proposal_deposit_amount,
             refund_failed_proposals: None,
-        };
+        });
         let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
         assert!(res.is_ok());
 
@@ -1367,7 +1364,7 @@ mod tests {
         );
 
         // Vote it, so it passes
-        let vote = ExecuteMsg::Vote(ProposalVote {
+        let vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });
@@ -1471,7 +1468,7 @@ mod tests {
             msg: to_binary(&update_token_list_msg).unwrap(),
             funds: vec![],
         };
-        let proposal_msg = ExecuteMsg::Propose(Propose {
+        let proposal_msg = ExecuteMsg::Propose(ProposeMsg {
             title: String::from("Change params"),
             description: String::from("Updates threshold and max voting params"),
             msgs: vec![wasm_msg.into()],
@@ -1483,7 +1480,7 @@ mod tests {
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
         // Imediately passes on yes vote
-        let yes_vote = ExecuteMsg::Vote(ProposalVote {
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
             proposal_id,
             vote: Vote::Yes,
         });

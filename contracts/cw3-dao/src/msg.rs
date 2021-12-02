@@ -1,5 +1,6 @@
 use crate::error::ContractError;
 use crate::query::ThresholdResponse;
+use crate::state::Config;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::{Duration, Expiration};
 use cw20::Cw20Coin;
@@ -118,7 +119,7 @@ fn valid_percentage(percent: &Decimal) -> Result<(), ContractError> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Propose {
+pub struct ProposeMsg {
     pub title: String,
     pub description: String,
     pub msgs: Vec<CosmosMsg<Empty>>,
@@ -127,7 +128,7 @@ pub struct Propose {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ProposalVote {
+pub struct VoteMsg {
     pub proposal_id: u64,
     pub vote: Vote,
 }
@@ -136,23 +137,15 @@ pub struct ProposalVote {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Makes a new proposal
-    Propose(Propose),
+    Propose(ProposeMsg),
     /// Vote on an open proposal
-    Vote(ProposalVote),
+    Vote(VoteMsg),
     /// Execute a passed proposal
     Execute { proposal_id: u64 },
     /// Close a failed proposal
     Close { proposal_id: u64 },
     /// Update DAO config (can only be called by DAO contract)
-    UpdateConfig {
-        name: String,
-        description: String,
-        threshold: Threshold,
-        max_voting_period: Duration,
-        proposal_deposit_amount: Uint128,
-        proposal_deposit_token_address: String,
-        refund_failed_proposals: Option<bool>,
-    },
+    UpdateConfig(Config),
     /// Updates token list
     UpdateCw20TokenList {
         to_add: Vec<Addr>,
@@ -172,7 +165,7 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
-    /// Returns ProposalListResponse
+    /// Returns ProposalListResponseb
     ReverseProposals {
         start_before: Option<u64>,
         limit: Option<u32>,
@@ -198,18 +191,6 @@ pub enum QueryMsg {
     Cw20TokenList {},
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct UpdateConfigMsg {
-    pub name: String,
-    pub description: String,
-    pub threshold: Threshold,
-    pub max_voting_period: Duration,
-    pub proposal_deposit_amount: Uint128,
-    pub proposal_deposit_token_address: String,
-    pub refund_failed_proposals: Option<bool>,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -226,7 +207,7 @@ mod tests {
 
     #[test]
     fn vote_encoding_embedded() {
-        let msg = ExecuteMsg::Vote(ProposalVote {
+        let msg = ExecuteMsg::Vote(VoteMsg {
             proposal_id: 17,
             vote: Vote::No,
         });
