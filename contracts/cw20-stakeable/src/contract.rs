@@ -10,10 +10,17 @@ use crate::msg::{
 };
 use crate::state::{Config, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
-use cw20_base::state::BALANCES;
-pub use cw20_base::contract::{execute_transfer, execute_burn, execute_mint, execute_send, execute_update_marketing, execute_upload_logo, query_balance, query_minter, query_token_info, query_marketing_info, query_download_logo};
-pub use cw20_base::allowances::{execute_send_from, execute_transfer_from, execute_burn_from, execute_increase_allowance, execute_decrease_allowance, query_allowance};
+pub use cw20_base::allowances::{
+    execute_burn_from, execute_decrease_allowance, execute_increase_allowance, execute_send_from,
+    execute_transfer_from, query_allowance,
+};
+pub use cw20_base::contract::{
+    execute_burn, execute_mint, execute_send, execute_transfer, execute_update_marketing,
+    execute_upload_logo, query_balance, query_download_logo, query_marketing_info, query_minter,
+    query_token_info,
+};
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
+use cw20_base::state::BALANCES;
 use cw_controllers::ClaimsResponse;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -44,74 +51,57 @@ pub fn execute(
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => {
-            execute_transfer(deps, _env, info, recipient, amount)
-                .map_err(ContractError::Cw20Error)
+            execute_transfer(deps, _env, info, recipient, amount).map_err(ContractError::Cw20Error)
         }
-        ExecuteMsg::Burn { amount } => execute_burn(deps, _env, info, amount)
-            .map_err(ContractError::Cw20Error),
+        ExecuteMsg::Burn { amount } => {
+            execute_burn(deps, _env, info, amount).map_err(ContractError::Cw20Error)
+        }
         ExecuteMsg::Send {
             contract,
             amount,
             msg,
-        } => execute_send(deps, _env, info, contract, amount, msg)
-            .map_err(ContractError::Cw20Error),
+        } => {
+            execute_send(deps, _env, info, contract, amount, msg).map_err(ContractError::Cw20Error)
+        }
         ExecuteMsg::Mint { recipient, amount } => {
-            execute_mint(deps, _env, info, recipient, amount)
-                .map_err(ContractError::Cw20Error)
+            execute_mint(deps, _env, info, recipient, amount).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::IncreaseAllowance {
             spender,
             amount,
             expires,
-        } => execute_increase_allowance(
-            deps, _env, info, spender, amount, expires,
-        )
-        .map_err(ContractError::Cw20Error),
+        } => execute_increase_allowance(deps, _env, info, spender, amount, expires)
+            .map_err(ContractError::Cw20Error),
         ExecuteMsg::DecreaseAllowance {
             spender,
             amount,
             expires,
-        } => execute_decrease_allowance(
-            deps, _env, info, spender, amount, expires,
-        )
-        .map_err(ContractError::Cw20Error),
+        } => execute_decrease_allowance(deps, _env, info, spender, amount, expires)
+            .map_err(ContractError::Cw20Error),
         ExecuteMsg::TransferFrom {
             owner,
             recipient,
             amount,
-        } => {
-            execute_transfer_from(deps, _env, info, owner, recipient, amount)
-                .map_err(ContractError::Cw20Error)
-        }
+        } => execute_transfer_from(deps, _env, info, owner, recipient, amount)
+            .map_err(ContractError::Cw20Error),
         ExecuteMsg::BurnFrom { owner, amount } => {
-            execute_burn_from(deps, _env, info, owner, amount)
-                .map_err(ContractError::Cw20Error)
+            execute_burn_from(deps, _env, info, owner, amount).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::SendFrom {
             owner,
             contract,
             amount,
             msg,
-        } => {
-            execute_send_from(deps, _env, info, owner, contract, amount, msg)
-                .map_err(ContractError::Cw20Error)
-        }
+        } => execute_send_from(deps, _env, info, owner, contract, amount, msg)
+            .map_err(ContractError::Cw20Error),
         ExecuteMsg::UpdateMarketing {
             project,
             description,
             marketing,
-        } => execute_update_marketing(
-            deps,
-            _env,
-            info,
-            project,
-            description,
-            marketing,
-        )
-        .map_err(ContractError::Cw20Error),
+        } => execute_update_marketing(deps, _env, info, project, description, marketing)
+            .map_err(ContractError::Cw20Error),
         ExecuteMsg::UploadLogo(logo) => {
-            execute_upload_logo(deps, _env, info, logo)
-                .map_err(ContractError::Cw20Error)
+            execute_upload_logo(deps, _env, info, logo).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::Stake { amount } => execute_stake(deps, _env, info, amount),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, _env, info, amount),
@@ -216,27 +206,20 @@ pub fn execute_claim(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         // Inherited from cw20_base
-        QueryMsg::Balance { address } => {
-            to_binary(&query_balance(deps, address)?)
-        }
+        QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
         QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
         QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
-        QueryMsg::Allowance { owner, spender } => to_binary(
-            &query_allowance(deps, owner, spender)?,
-        ),
+        QueryMsg::Allowance { owner, spender } => {
+            to_binary(&query_allowance(deps, owner, spender)?)
+        }
         QueryMsg::AllAllowances {
             owner,
             start_after,
             limit,
-        } => to_binary(&query_all_allowances(
-            deps,
-            owner,
-            start_after,
-            limit,
-        )?),
-        QueryMsg::AllAccounts { start_after, limit } => to_binary(
-            &query_all_accounts(deps, start_after, limit)?,
-        ),
+        } => to_binary(&query_all_allowances(deps, owner, start_after, limit)?),
+        QueryMsg::AllAccounts { start_after, limit } => {
+            to_binary(&query_all_accounts(deps, start_after, limit)?)
+        }
         QueryMsg::MarketingInfo {} => to_binary(&query_marketing_info(deps)?),
         QueryMsg::DownloadLogo {} => to_binary(&query_download_logo(deps)?),
         QueryMsg::StakedBalanceAtHeight { address, height } => to_binary(
@@ -246,9 +229,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_total_staked_at_height(deps, _env, height)?)
         }
         QueryMsg::UnstakingDuration {} => to_binary(&query_unstaking_duration(deps)?),
-        QueryMsg::Claims { address } => {
-            to_binary(&query_claims(deps,address)?)
-        }
+        QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
     }
 }
 
@@ -285,7 +266,7 @@ pub fn query_unstaking_duration(deps: Deps) -> StdResult<UnstakingDurationRespon
     })
 }
 
-pub fn query_claims (deps: Deps, address: String) -> StdResult<ClaimsResponse> {
+pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
 

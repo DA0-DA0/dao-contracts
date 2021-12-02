@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use std::borrow::BorrowMut;
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::error::ContractError;
     use crate::msg::{
@@ -24,6 +23,7 @@ mod tests {
     };
     use cw3::{Status, Vote};
     use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+    use std::borrow::BorrowMut;
 
     const OWNER: &str = "admin0001";
     const VOTER1: &str = "voter0001";
@@ -83,18 +83,20 @@ mod tests {
                 amount: Uint128::new(INITIAL_BALANCE * 5),
             },
         ];
-        let msg = cw20_gov::msg::InstantiateMsg {cw20_base: cw20_base::msg::InstantiateMsg {
-            name: String::from("Test"),
-            symbol: String::from("TEST"),
-            decimals: 6,
-            initial_balances: initial_balances.clone(),
-            mint: None,
-            marketing: None,
-        },
-            unstaking_duration: None
+        let msg = cw20_gov::msg::InstantiateMsg {
+            cw20_base: cw20_base::msg::InstantiateMsg {
+                name: String::from("Test"),
+                symbol: String::from("TEST"),
+                decimals: 6,
+                initial_balances: initial_balances.clone(),
+                mint: None,
+                marketing: None,
+            },
+            unstaking_duration: None,
         };
-        
-        let contract = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
+
+        let contract = app
+            .instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
             .unwrap();
         stake_balances(app, initial_balances, &contract);
         contract
@@ -102,8 +104,16 @@ mod tests {
 
     fn stake_balances(app: &mut App, initial_balances: Vec<Cw20Coin>, contract: &Addr) {
         for balance in initial_balances.into_iter() {
-            let msg = cw20_gov::msg::ExecuteMsg::Stake { amount: balance.amount.checked_div(Uint128::new(2)).unwrap() };
-            app.execute_contract(Addr::unchecked(balance.address), contract.clone(), &msg, &[]).unwrap();
+            let msg = cw20_gov::msg::ExecuteMsg::Stake {
+                amount: balance.amount.checked_div(Uint128::new(2)).unwrap(),
+            };
+            app.execute_contract(
+                Addr::unchecked(balance.address),
+                contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
         }
         app.update_block(next_block);
     }
@@ -337,7 +347,7 @@ mod tests {
                     symbol: String::from("DAO"),
                     decimals: 6,
                     initial_balances: initial_balances.clone(),
-                    marketing: None
+                    marketing: None,
                 },
             },
             threshold: Threshold::ThresholdQuorum {
@@ -1685,18 +1695,19 @@ mod tests {
 
         // Make a new token with initial balance
         let cw20_id = app.store_code(contract_cw20_gov());
-        let msg = cw20_gov::msg::InstantiateMsg{ cw20_base: cw20_base::msg::InstantiateMsg {
-            name: String::from("NewCoin"),
-            symbol: String::from("COIN"),
-            decimals: 6,
-            initial_balances: vec![Cw20Coin {
-                address: OWNER.to_string(),
-                amount: Uint128::new(INITIAL_BALANCE * 5),
-            }],
-            mint: None,
-            marketing: None,
-        },
-        unstaking_duration: None,
+        let msg = cw20_gov::msg::InstantiateMsg {
+            cw20_base: cw20_base::msg::InstantiateMsg {
+                name: String::from("NewCoin"),
+                symbol: String::from("COIN"),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: OWNER.to_string(),
+                    amount: Uint128::new(INITIAL_BALANCE * 5),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            unstaking_duration: None,
         };
         let res =
             app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);

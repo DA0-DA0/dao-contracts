@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::helpers::{
-    get_staked_balance, get_deposit_message, get_proposal_deposit_refund_message, get_total_staked_supply,
-    get_voting_power_at_height, map_proposal,
+    get_deposit_message, get_proposal_deposit_refund_message, get_staked_balance,
+    get_total_staked_supply, get_voting_power_at_height, map_proposal,
 };
 use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg, VoteMsg};
 use crate::query::{
@@ -72,18 +72,19 @@ pub fn instantiate(
                 funds: vec![],
                 admin: Some(env.contract.address.to_string()),
                 label,
-                msg: to_binary(&cw20_gov::msg::InstantiateMsg { cw20_base: cw20_base::msg::InstantiateMsg {
-                    name: msg.name,
-                    symbol: msg.symbol,
-                    decimals: msg.decimals,
-                    initial_balances: msg.initial_balances,
-                    mint: Some(MinterResponse {
-                        minter: env.contract.address.to_string(),
-                        cap: None,
-                    }),
-                    marketing: msg.marketing,
-                },
-                    unstaking_duration: None
+                msg: to_binary(&cw20_gov::msg::InstantiateMsg {
+                    cw20_base: cw20_base::msg::InstantiateMsg {
+                        name: msg.name,
+                        symbol: msg.symbol,
+                        decimals: msg.decimals,
+                        initial_balances: msg.initial_balances,
+                        mint: Some(MinterResponse {
+                            minter: env.contract.address.to_string(),
+                            cap: None,
+                        }),
+                        marketing: msg.marketing,
+                    },
+                    unstaking_duration: None,
                 })?,
             };
 
