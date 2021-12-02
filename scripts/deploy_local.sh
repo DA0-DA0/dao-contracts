@@ -5,7 +5,7 @@
 ## CONFIG
 # NOTE: you will need to update these to deploy on different network
 BINARY='docker exec -i cosmwasm junod'
-DENOM='ustake'
+DENOM='ujunox'
 CHAIN_ID='testing'
 RPC='http://localhost:26657/'
 TXFLAG="--gas-prices 0.01$DENOM --gas auto --gas-adjustment 1.3 -y -b block --chain-id $CHAIN_ID --node $RPC"
@@ -23,6 +23,7 @@ docker volume rm -f junod_data
 
 # Run junod setup script
 docker run --rm -it \
+    -e STAKE_TOKEN=$DENOM \
     -e PASSWORD=xxxxxxxxx \
     --mount type=volume,source=junod_data,target=/root \
     ghcr.io/cosmoscontracts/juno:pr-105 /opt/setup_junod.sh $1
