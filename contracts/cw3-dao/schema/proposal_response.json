@@ -1,124 +1,58 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ExecuteMsg",
-  "oneOf": [
-    {
-      "description": "Makes a new proposal",
-      "type": "object",
-      "required": [
-        "propose"
-      ],
-      "properties": {
-        "propose": {
-          "$ref": "#/definitions/ProposeMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Vote on an open proposal",
-      "type": "object",
-      "required": [
-        "vote"
-      ],
-      "properties": {
-        "vote": {
-          "$ref": "#/definitions/VoteMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Execute a passed proposal",
-      "type": "object",
-      "required": [
-        "execute"
-      ],
-      "properties": {
-        "execute": {
-          "type": "object",
-          "required": [
-            "proposal_id"
-          ],
-          "properties": {
-            "proposal_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Close a failed proposal",
-      "type": "object",
-      "required": [
-        "close"
-      ],
-      "properties": {
-        "close": {
-          "type": "object",
-          "required": [
-            "proposal_id"
-          ],
-          "properties": {
-            "proposal_id": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Update DAO config (can only be called by DAO contract)",
-      "type": "object",
-      "required": [
-        "update_config"
-      ],
-      "properties": {
-        "update_config": {
-          "$ref": "#/definitions/Config"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Updates token list",
-      "type": "object",
-      "required": [
-        "update_cw20_token_list"
-      ],
-      "properties": {
-        "update_cw20_token_list": {
-          "type": "object",
-          "required": [
-            "to_add",
-            "to_remove"
-          ],
-          "properties": {
-            "to_add": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Addr"
-              }
-            },
-            "to_remove": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/Addr"
-              }
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    }
+  "title": "ProposalResponse",
+  "description": "Note, if you are storing custom messages in the proposal, the querier needs to know what possible custom message types those are in order to parse the response",
+  "type": "object",
+  "required": [
+    "deposit_amount",
+    "description",
+    "expires",
+    "id",
+    "msgs",
+    "proposer",
+    "status",
+    "threshold",
+    "title"
   ],
+  "properties": {
+    "deposit_amount": {
+      "$ref": "#/definitions/Uint128"
+    },
+    "description": {
+      "type": "string"
+    },
+    "expires": {
+      "$ref": "#/definitions/Expiration"
+    },
+    "id": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "msgs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CosmosMsg_for_Empty"
+      }
+    },
+    "proposer": {
+      "$ref": "#/definitions/Addr"
+    },
+    "status": {
+      "$ref": "#/definitions/Status"
+    },
+    "threshold": {
+      "description": "This is the threshold that is applied to this proposal. Both the rules of the voting contract, as well as the total_weight of the voting group may have changed since this time. That means that the generic `Threshold{}` query does not provide valid information for existing proposals.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ThresholdResponse"
+        }
+      ]
+    },
+    "title": {
+      "type": "string"
+    }
+  },
   "definitions": {
     "Addr": {
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
@@ -197,39 +131,6 @@
         },
         "denom": {
           "type": "string"
-        }
-      }
-    },
-    "Config": {
-      "type": "object",
-      "required": [
-        "description",
-        "max_voting_period",
-        "name",
-        "proposal_deposit",
-        "threshold"
-      ],
-      "properties": {
-        "description": {
-          "type": "string"
-        },
-        "max_voting_period": {
-          "$ref": "#/definitions/Duration"
-        },
-        "name": {
-          "type": "string"
-        },
-        "proposal_deposit": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "refund_failed_proposals": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "threshold": {
-          "$ref": "#/definitions/Threshold"
         }
       }
     },
@@ -350,40 +251,6 @@
         }
       ]
     },
-    "Duration": {
-      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "height"
-          ],
-          "properties": {
-            "height": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Time in seconds",
-          "type": "object",
-          "required": [
-            "time"
-          ],
-          "properties": {
-            "time": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "Empty": {
       "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
       "type": "object"
@@ -433,38 +300,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "ProposeMsg": {
-      "type": "object",
-      "required": [
-        "description",
-        "msgs",
-        "title"
-      ],
-      "properties": {
-        "description": {
-          "type": "string"
-        },
-        "latest": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "msgs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CosmosMsg_for_Empty"
-          }
-        },
-        "title": {
-          "type": "string"
-        }
-      }
     },
     "StakingMsg": {
       "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -550,11 +385,46 @@
         }
       ]
     },
-    "Threshold": {
-      "description": "This defines the different ways tallies can happen.\n\nThe total_weight used for calculating success as well as the weights of each individual voter used in tallying should be snapshotted at the beginning of the block at which the proposal starts (this is likely the responsibility of a correct cw4 implementation). See also `ThresholdResponse` in the cw3 spec.",
+    "Status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "open",
+        "rejected",
+        "passed",
+        "executed"
+      ]
+    },
+    "ThresholdResponse": {
+      "description": "This defines the different ways tallies can happen. Every contract should support a subset of these, ideally all.\n\nThe total_weight used for calculating success as well as the weights of each individual voter used in tallying should be snapshotted at the beginning of the block at which the proposal starts (this is likely the responsibility of a correct cw4 implementation).",
       "oneOf": [
         {
-          "description": "Declares a percentage of the total weight that must cast Yes votes in order for a proposal to pass. See `ThresholdResponse.AbsolutePercentage` in the cw3 spec for details.",
+          "description": "Declares that a fixed weight of yes votes is needed to pass. It does not matter how many no votes are cast, or how many do not vote, as long as `weight` yes votes are cast.\n\nThis is the simplest format and usually suitable for small multisigs of trusted parties, like 3 of 5. (weight: 3, total_weight: 5)\n\nA proposal of this type can pass early as soon as the needed weight of yes votes has been cast.",
+          "type": "object",
+          "required": [
+            "absolute_count"
+          ],
+          "properties": {
+            "absolute_count": {
+              "type": "object",
+              "required": [
+                "total_weight",
+                "weight"
+              ],
+              "properties": {
+                "total_weight": {
+                  "$ref": "#/definitions/Uint128"
+                },
+                "weight": {
+                  "$ref": "#/definitions/Uint128"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Declares a percentage of the total weight that must cast Yes votes, in order for a proposal to pass. The passing weight is computed over the total weight minus the weight of the abstained votes.\n\nThis is useful for similar circumstances as `AbsoluteCount`, where we have a relatively small set of voters, and participation is required. It is understood that if the voting set (group) changes between different proposals that refer to the same group, each proposal will work with a different set of voter weights (the ones snapshotted at proposal creation), and the passing weight for each proposal will be computed based on the absolute percentage, times the total weights of the members at the time of each proposal creation.\n\nExample: we set `percentage` to 51%. Proposal 1 starts when there is a `total_weight` of 5. This will require 3 weight of Yes votes in order to pass. Later, the Proposal 2 starts but the `total_weight` of the group has increased to 9. That proposal will then automatically require 5 Yes of 9 to pass, rather than 3 yes of 9 as would be the case with `AbsoluteCount`.",
           "type": "object",
           "required": [
             "absolute_percentage"
@@ -563,11 +433,15 @@
             "absolute_percentage": {
               "type": "object",
               "required": [
-                "percentage"
+                "percentage",
+                "total_weight"
               ],
               "properties": {
                 "percentage": {
                   "$ref": "#/definitions/Decimal"
+                },
+                "total_weight": {
+                  "$ref": "#/definitions/Uint128"
                 }
               }
             }
@@ -575,7 +449,7 @@
           "additionalProperties": false
         },
         {
-          "description": "Declares a `quorum` of the total votes that must participate in the election in order for the vote to be considered at all. See `ThresholdResponse.ThresholdQuorum` in the cw3 spec for details.",
+          "description": "In addition to a `threshold`, declares a `quorum` of the total votes that must participate in the election in order for the vote to be considered at all. Within the votes that were cast, it requires `threshold` votes in favor. That is calculated by ignoring the Abstain votes (they count towards `quorum`, but do not influence `threshold`). That is, we calculate `Yes / (Yes + No + Veto)` and compare it with `threshold` to consider if the proposal was passed.\n\nIt is rather difficult for a proposal of this type to pass early. That can only happen if the required quorum has been already met, and there are already enough Yes votes for the proposal to pass.\n\n30% Yes votes, 10% No votes, and 20% Abstain would pass early if quorum <= 60% (who has cast votes) and if the threshold is <= 37.5% (the remaining 40% voting no => 30% yes + 50% no). Once the voting period has passed with no additional votes, that same proposal would be considered successful if quorum <= 60% and threshold <= 75% (percent in favor if we ignore abstain votes).\n\nThis type is more common in general elections, where participation is often expected to be low, and `AbsolutePercentage` would either be too high to pass anything, or allow low percentages to pass, independently of if there was high participation in the election or not.",
           "type": "object",
           "required": [
             "threshold_quorum"
@@ -585,7 +459,8 @@
               "type": "object",
               "required": [
                 "quorum",
-                "threshold"
+                "threshold",
+                "total_weight"
               ],
               "properties": {
                 "quorum": {
@@ -593,6 +468,9 @@
                 },
                 "threshold": {
                   "$ref": "#/definitions/Decimal"
+                },
+                "total_weight": {
+                  "$ref": "#/definitions/Uint128"
                 }
               }
             }
@@ -616,32 +494,6 @@
     "Uint64": {
       "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
       "type": "string"
-    },
-    "Vote": {
-      "type": "string",
-      "enum": [
-        "yes",
-        "no",
-        "abstain",
-        "veto"
-      ]
-    },
-    "VoteMsg": {
-      "type": "object",
-      "required": [
-        "proposal_id",
-        "vote"
-      ],
-      "properties": {
-        "proposal_id": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "vote": {
-          "$ref": "#/definitions/Vote"
-        }
-      }
     },
     "WasmMsg": {
       "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",

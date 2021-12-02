@@ -70,7 +70,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Returns ProposalListResponse",
+      "description": "Returns ProposalListResponseb",
       "type": "object",
       "required": [
         "reverse_proposals"

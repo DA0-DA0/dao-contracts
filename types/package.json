@@ -2,11 +2,11 @@
   "name": "@dao_dao/types",
   "version": "0.0.1",
   "description": "",
-  "main": "build/index.js",
+  "main": "build/codegen.js",
   "scripts": {
     "prepare": "tsc",
     "build": "tsc",
-    "codegen": "ts-node src/index.ts"
+    "codegen": "ts-node src/codegen.ts"
   },
   "keywords": [],
   "author": "",
