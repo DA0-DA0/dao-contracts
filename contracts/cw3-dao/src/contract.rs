@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::helpers::{
-    get_balance, get_deposit_message, get_proposal_deposit_refund_message, get_total_supply,
+    get_staked_balance, get_deposit_message, get_proposal_deposit_refund_message, get_total_staked_supply,
     get_voting_power_at_height, map_proposal,
 };
 use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg, VoteMsg};
@@ -150,7 +150,7 @@ pub fn execute_propose(
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Only owners of the gov token can create a proposal
-    let balance = get_balance(deps.as_ref(), info.sender.clone())?;
+    let balance = get_staked_balance(deps.as_ref(), info.sender.clone())?;
     if balance == Uint128::zero() {
         return Err(ContractError::Unauthorized {});
     }
@@ -166,7 +166,7 @@ pub fn execute_propose(
     }
 
     // Get total supply
-    let total_supply = get_total_supply(deps.as_ref())?;
+    let total_supply = get_total_staked_supply(deps.as_ref())?;
 
     // Create a proposal
     let mut prop = Proposal {
@@ -398,14 +398,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn query_threshold(deps: Deps) -> StdResult<ThresholdResponse> {
     let cfg = CONFIG.load(deps.storage)?;
-    let total_supply = get_total_supply(deps)?;
+    let total_supply = get_total_staked_supply(deps)?;
     Ok(cfg.threshold.to_response(total_supply))
 }
 
 fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> {
     let prop = PROPOSALS.load(deps.storage, id.into())?;
     let status = prop.current_status(&env.block);
-    let threshold = prop.threshold.to_response(prop.total_weight);
+    let total_supply = get_total_staked_supply(deps)?;
+    let threshold = prop.threshold.to_response(total_supply);
     Ok(ProposalResponse {
         id,
         title: prop.title,
@@ -569,7 +570,7 @@ fn query_list_votes(
 
 fn query_voter(deps: Deps, voter: String) -> StdResult<VoterResponse> {
     let voter_addr = deps.api.addr_validate(&voter)?;
-    let weight = get_balance(deps, voter_addr)?;
+    let weight = get_staked_balance(deps, voter_addr)?;
 
     Ok(VoterResponse {
         weight: Some(weight),
