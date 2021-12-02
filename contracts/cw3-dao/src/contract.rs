@@ -72,7 +72,7 @@ pub fn instantiate(
                 funds: vec![],
                 admin: Some(env.contract.address.to_string()),
                 label,
-                msg: to_binary(&cw20_base::msg::InstantiateMsg {
+                msg: to_binary(&cw20_gov::msg::InstantiateMsg { cw20_base: cw20_base::msg::InstantiateMsg {
                     name: msg.name,
                     symbol: msg.symbol,
                     decimals: msg.decimals,
@@ -82,6 +82,8 @@ pub fn instantiate(
                         cap: None,
                     }),
                     marketing: msg.marketing,
+                },
+                    unstaking_duration: None
                 })?,
             };
 
