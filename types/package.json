@@ -1,0 +1,33 @@
+{
+  "name": "@dao_dao/types",
+  "version": "0.0.1",
+  "description": "",
+  "main": "build/codegen.js",
+  "scripts": {
+    "prepare": "tsc",
+    "build": "tsc",
+    "codegen": "ts-node src/codegen.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "husky": {
+    "hooks": {
+      "pre-commit": "pretty-quick --staged"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^15.14.9",
+    "husky": "^7.0.4",
+    "prettier": "^2.5.0",
+    "pretty-quick": "^3.1.2",
+    "tailwindcss": "^2.2.7",
+    "ts-dedupe": "^0.3.1",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.2"
+  },
+  "dependencies": {
+    "dotenv": "^10.0.0",
+    "json-schema-to-typescript": "^10.1.5"
+  }
+}

@@ -3,8 +3,7 @@ use crate::helpers::{
     get_balance, get_deposit_message, get_proposal_deposit_refund_message, get_total_supply,
     get_voting_power_at_height, map_proposal,
 };
-use crate::msg::UpdateConfigMsg;
-use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg, VoteMsg};
 use crate::query::{
     ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
     ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
@@ -115,34 +114,34 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
-        ExecuteMsg::Propose {
+        ExecuteMsg::Propose(ProposeMsg {
             title,
             description,
             msgs,
             latest,
-        } => execute_propose(deps, env, info, title, description, msgs, latest),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
+        }) => execute_propose(deps, env, info, title, description, msgs, latest),
+        ExecuteMsg::Vote(VoteMsg { proposal_id, vote }) => {
+            execute_vote(deps, env, info, proposal_id, vote)
+        }
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
-        ExecuteMsg::UpdateConfig {
+        ExecuteMsg::UpdateConfig(Config {
             name,
             description,
             threshold,
             max_voting_period,
-            proposal_deposit_amount,
-            proposal_deposit_token_address,
+            proposal_deposit,
             refund_failed_proposals,
-        } => execute_update_config(
+        }) => execute_update_config(
             deps,
             env,
             info,
-            UpdateConfigMsg {
+            Config {
                 name,
                 description,
                 threshold,
                 max_voting_period,
-                proposal_deposit_amount,
-                proposal_deposit_token_address,
+                proposal_deposit,
                 refund_failed_proposals,
             },
         ),
@@ -158,10 +157,11 @@ pub fn execute_propose(
     info: MessageInfo,
     title: String,
     description: String,
-    msgs: Vec<CosmosMsg>,
+    msgs: Vec<CosmosMsg<Empty>>,
     // we ignore earliest
     latest: Option<Expiration>,
 ) -> Result<Response<Empty>, ContractError> {
+    // let {title, description, msgs, latest} = proposal;
     let cfg = CONFIG.load(deps.storage)?;
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
@@ -343,7 +343,7 @@ pub fn execute_update_config(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    update_config_msg: UpdateConfigMsg,
+    update_config_msg: Config,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
@@ -357,7 +357,7 @@ pub fn execute_update_config(
         exists.description = update_config_msg.description;
         exists.threshold = update_config_msg.threshold;
         exists.max_voting_period = update_config_msg.max_voting_period;
-        exists.proposal_deposit = update_config_msg.proposal_deposit_amount;
+        exists.proposal_deposit = update_config_msg.proposal_deposit;
         exists.refund_failed_proposals = update_config_msg.refund_failed_proposals;
         Ok(exists)
     })?;
