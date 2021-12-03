@@ -1,5 +1,6 @@
 // dedup emptied this file
 // export * from "./config";
+export * from "./cw20_balances_response";
 export * from "./execute_msg";
 export * from "./instantiate_msg";
 export * from "./proposal_list_response";
