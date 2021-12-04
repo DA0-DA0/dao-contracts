@@ -5,11 +5,10 @@
 ## CONFIG
 # NOTE: you will need to update these to deploy on different network
 BINARY='docker exec -i cosmwasm junod'
-DENOM='junox'
-FEE_DENOM="u${DENOM}"
+DENOM='ujunox'
 CHAIN_ID='testing'
 RPC='http://localhost:26657/'
-TXFLAG="--gas-prices 0.01$FEE_DENOM --gas auto --gas-adjustment 1.3 -y -b block --chain-id $CHAIN_ID --node $RPC"
+TXFLAG="--gas-prices 0.01$DENOM --gas auto --gas-adjustment 1.3 -y -b block --chain-id $CHAIN_ID --node $RPC"
 
 if [ "$1" = "" ]
 then
@@ -25,7 +24,6 @@ docker volume rm -f junod_data
 # Run junod setup script
 docker run --rm -it \
     -e STAKE_TOKEN=$DENOM \
-    -e FEE_TOKEN=$FEE_DENOM \
     -e PASSWORD=xxxxxxxxx \
     --mount type=volume,source=junod_data,target=/root \
     ghcr.io/cosmoscontracts/juno:pr-105 /opt/setup_junod.sh $1
@@ -153,7 +151,7 @@ echo xxxxxxxxx | $BINARY tx wasm store "/cw4_group.wasm" --from validator $TXFLA
 # Send some coins to the dao contract to initializae its
 # treasury. Unless this is done the DAO will be unable to perform
 # actions like executing proposals that require it to pay gas fees.
-$BINARY tx bank send validator $CW3_DAO_CONTRACT 9000000ujunox --chain-id testing -y
+$BINARY tx bank send validator $CW3_DAO_CONTRACT 9000000$DENOM --chain-id testing -y
 
 # Print out config variables
 printf "\n ------------------------ \n"
