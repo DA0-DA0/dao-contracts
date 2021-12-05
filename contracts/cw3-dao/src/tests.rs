@@ -9,8 +9,9 @@ mod tests {
     use crate::query::{
         ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
         ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
+        VoteTallyResponse,
     };
-    use crate::state::Config;
+    use crate::state::{Config, Votes};
     use cosmwasm_std::{
         coin, coins, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, Decimal, Empty,
         Timestamp, Uint128, WasmMsg,
@@ -1220,6 +1221,150 @@ mod tests {
         };
 
         assert_eq!(total_weight, Uint128::from(20000000u128));
+    }
+
+    #[test]
+    fn query_proposal_tally() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(20000);
+        let (dao_addr, _cw20_addr) = setup_test_case(
+            &mut app,
+            Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(80),
+            },
+            voting_period,
+            coins(10, NATIVE_TOKEN_DENOM),
+            None,
+            None,
+        );
+
+        let assert_tally_is = |app: &mut App, proposal_id, expected| {
+            let query_prop = QueryMsg::Tally { proposal_id };
+            let prop: VoteTallyResponse =
+                app.wrap().query_wasm_smart(&dao_addr, &query_prop).unwrap();
+            assert_eq!(prop, expected);
+        };
+
+        // create proposal
+        let proposal = pay_somebody_proposal();
+        let res = app
+            .execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &proposal, &[])
+            .unwrap();
+
+        // Get the proposal id from the logs
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        assert_tally_is(
+            &mut app,
+            proposal_id,
+            VoteTallyResponse {
+                status: Status::Open,
+                threshold: ThresholdResponse::ThresholdQuorum {
+                    threshold: Decimal::percent(50),
+                    quorum: Decimal::percent(80),
+                    total_weight: Uint128::from(20000000u128),
+                },
+                quorum: Decimal::percent(0),
+                total_votes: Uint128::zero(),
+                total_weight: Uint128::from(20000000u128),
+                votes: Votes::new(Uint128::zero()),
+            },
+        );
+
+        // Vote yes with 20% of voting power. This will not pass the
+        // proposal.
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
+            proposal_id,
+            vote: Vote::Yes,
+        });
+        let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
+        assert!(res.is_ok());
+
+        assert_tally_is(
+            &mut app,
+            proposal_id,
+            VoteTallyResponse {
+                status: Status::Open,
+                threshold: ThresholdResponse::ThresholdQuorum {
+                    threshold: Decimal::percent(50),
+                    quorum: Decimal::percent(80),
+                    total_weight: Uint128::from(20000000u128),
+                },
+                quorum: Decimal::percent(20),
+                total_votes: Uint128::from(4000000u128),
+                total_weight: Uint128::from(20000000u128),
+                votes: Votes::new(Uint128::from(4000000u128)),
+            },
+        );
+
+        // Vote abstain with 10% of voting power. This will not pass
+        // the proposal.
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
+            proposal_id,
+            vote: Vote::Abstain,
+        });
+        let res = app.execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &yes_vote, &[]);
+        assert!(res.is_ok());
+
+        assert_tally_is(
+            &mut app,
+            proposal_id,
+            VoteTallyResponse {
+                status: Status::Open,
+                threshold: ThresholdResponse::ThresholdQuorum {
+                    threshold: Decimal::percent(50),
+                    quorum: Decimal::percent(80),
+                    total_weight: Uint128::from(20000000u128),
+                },
+                quorum: Decimal::percent(30),
+                total_votes: Uint128::from(6000000u128),
+                total_weight: Uint128::from(20000000u128),
+                votes: Votes {
+                    yes: Uint128::from(4000000u128),
+                    abstain: Uint128::from(2000000u128),
+                    no: Uint128::zero(),
+                    veto: Uint128::zero(),
+                },
+            },
+        );
+
+        // Vote yes with and additional 50% of voting power. This will
+        // pass the proposal at 80% quorum and 70% yes.
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
+            proposal_id,
+            vote: Vote::Yes,
+        });
+        let res = app.execute_contract(
+            Addr::unchecked(POWER_VOTER),
+            dao_addr.clone(),
+            &yes_vote,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        assert_tally_is(
+            &mut app,
+            proposal_id,
+            VoteTallyResponse {
+                status: Status::Passed,
+                threshold: ThresholdResponse::ThresholdQuorum {
+                    threshold: Decimal::percent(50),
+                    quorum: Decimal::percent(80),
+                    total_weight: Uint128::from(20000000u128),
+                },
+                quorum: Decimal::percent(80),
+                total_votes: Uint128::from(16000000u128),
+                total_weight: Uint128::from(20000000u128),
+                votes: Votes {
+                    yes: Uint128::from(14000000u128),
+                    abstain: Uint128::from(2000000u128),
+                    no: Uint128::zero(),
+                    veto: Uint128::zero(),
+                },
+            },
+        );
     }
 
     #[test]

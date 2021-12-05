@@ -1,4 +1,4 @@
-use crate::state::Config;
+use crate::state::{Config, Votes};
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
 use cw0::Expiration;
 use cw20::Cw20CoinVerified;
@@ -109,6 +109,23 @@ pub struct ProposalListResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct VoteListResponse {
     pub votes: Vec<VoteInfo>,
+}
+
+/// Information about the current status of a proposal.
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct VoteTallyResponse {
+    // Current proposal status
+    pub status: Status,
+    // Required passing criteria
+    pub threshold: ThresholdResponse,
+    // Percentage of turnout
+    pub quorum: Decimal,
+    // Total number of votes
+    pub total_votes: Uint128,
+    // absolute number of votes
+    pub total_weight: Uint128,
+    // Tally's of the different votes
+    pub votes: Votes,
 }
 
 /// Returns the vote (opinion as well as weight counted) as well as
