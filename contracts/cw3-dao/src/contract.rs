@@ -426,8 +426,7 @@ fn query_threshold(deps: Deps) -> StdResult<ThresholdResponse> {
 fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> {
     let prop = PROPOSALS.load(deps.storage, id.into())?;
     let status = prop.current_status(&env.block);
-    let total_supply = get_total_supply(deps)?;
-    let threshold = prop.threshold.to_response(total_supply);
+    let threshold = prop.threshold.to_response(prop.total_weight);
     Ok(ProposalResponse {
         id,
         title: prop.title,

@@ -1144,6 +1144,85 @@ mod tests {
     }
 
     #[test]
+    fn test_burn_does_not_change_proposal_query_response_threshold() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(2000000);
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(20),
+            quorum: Decimal::percent(10),
+        };
+        let (dao_addr, cw20_addr) = setup_test_case(
+            &mut app,
+            threshold,
+            voting_period,
+            coins(100, NATIVE_TOKEN_DENOM),
+            None,
+            None,
+        );
+
+        let proposal = pay_somebody_proposal();
+        let res = app
+            .execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &proposal, &[])
+            .unwrap();
+
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        let query_prop = QueryMsg::Proposal { proposal_id };
+        let prop: ProposalResponse = app.wrap().query_wasm_smart(&dao_addr, &query_prop).unwrap();
+
+        let total_weight = match prop.threshold {
+            ThresholdResponse::AbsoluteCount {
+                weight: _,
+                total_weight,
+            } => total_weight,
+            ThresholdResponse::AbsolutePercentage {
+                percentage: _,
+                total_weight,
+            } => total_weight,
+            ThresholdResponse::ThresholdQuorum {
+                threshold: _,
+                quorum: _,
+                total_weight,
+            } => total_weight,
+        };
+
+        assert_eq!(total_weight, Uint128::from(20000000u128));
+
+        // Burn some tokens
+        app.execute_contract(
+            Addr::unchecked(VOTER1),
+            cw20_addr,
+            &cw20::Cw20ExecuteMsg::Burn {
+                amount: Uint128::from(1u128),
+            },
+            &[],
+        )
+        .unwrap();
+
+        let query_prop = QueryMsg::Proposal { proposal_id };
+        let prop: ProposalResponse = app.wrap().query_wasm_smart(&dao_addr, &query_prop).unwrap();
+
+        let total_weight = match prop.threshold {
+            ThresholdResponse::AbsoluteCount {
+                weight: _,
+                total_weight,
+            } => total_weight,
+            ThresholdResponse::AbsolutePercentage {
+                percentage: _,
+                total_weight,
+            } => total_weight,
+            ThresholdResponse::ThresholdQuorum {
+                threshold: _,
+                quorum: _,
+                total_weight,
+            } => total_weight,
+        };
+
+        assert_eq!(total_weight, Uint128::from(20000000u128));
+    }
+
+    #[test]
     fn test_update_config() {
         let mut app = mock_app();
 
