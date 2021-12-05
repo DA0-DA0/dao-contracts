@@ -178,6 +178,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns information about current tallys for a
+    /// proposal. Returns type `VoteTallyResponse`.
+    Tally { proposal_id: u64 },
     /// Returns VoterInfo
     Voter { address: String },
     /// Returns Config

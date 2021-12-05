@@ -6,15 +6,16 @@ use crate::helpers::{
 use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg, VoteMsg};
 use crate::query::{
     ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
-    ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse, VoterResponse,
+    ThresholdResponse, TokenListResponse, VoteInfo, VoteListResponse, VoteResponse,
+    VoteTallyResponse, VoterResponse,
 };
 use crate::state::{
     next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GOV_TOKEN, PROPOSALS,
     TREASURY_TOKENS,
 };
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
+    MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
@@ -414,6 +415,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)),
+        QueryMsg::Tally { proposal_id } => {
+            to_binary(&query_proposal_tally(deps, env, proposal_id)?)
+        }
     }
 }
 
@@ -437,6 +441,25 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
         expires: prop.expires,
         threshold,
         deposit_amount: prop.deposit,
+    })
+}
+
+fn query_proposal_tally(deps: Deps, env: Env, id: u64) -> StdResult<VoteTallyResponse> {
+    let prop = PROPOSALS.load(deps.storage, id.into())?;
+    let status = prop.current_status(&env.block);
+    let total_weight = prop.total_weight;
+    let threshold = prop.threshold.to_response(total_weight);
+
+    let total_votes = prop.votes.total();
+    let quorum = Decimal::from_ratio(total_votes, total_weight);
+
+    Ok(VoteTallyResponse {
+        status,
+        threshold,
+        quorum,
+        total_votes,
+        total_weight,
+        votes: prop.votes,
     })
 }
 
