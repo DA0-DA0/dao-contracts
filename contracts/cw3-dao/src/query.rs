@@ -114,17 +114,17 @@ pub struct VoteListResponse {
 /// Information about the current status of a proposal.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct VoteTallyResponse {
-    // Current proposal status
+    /// Current proposal status
     pub status: Status,
-    // Required passing criteria
+    /// Required passing criteria
     pub threshold: ThresholdResponse,
-    // Percentage of turnout
+    /// Current percentage turnout
     pub quorum: Decimal,
-    // Total number of votes
+    /// Total number of votes for the proposal
     pub total_votes: Uint128,
-    // absolute number of votes
+    /// Total number of votes possible for the proposal
     pub total_weight: Uint128,
-    // Tally's of the different votes
+    /// Tally of the different votes
     pub votes: Votes,
 }
 
