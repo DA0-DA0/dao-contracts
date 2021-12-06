@@ -271,7 +271,7 @@ dependencies = [
 
 [[package]]
 name = "cw20-gov"
-version = "0.10.2"
+version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -287,7 +287,7 @@ dependencies = [
 
 [[package]]
 name = "cw20-stakeable"
-version = "0.10.2"
+version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "cw3-dao"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
