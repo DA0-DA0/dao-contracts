@@ -16,7 +16,13 @@ const PRECISION_FACTOR: u128 = 1_000_000_000;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {
+    /// The name of the multisig.
+    pub name: String,
+    /// A description of the multisig.
+    pub description: String,
+    /// The threshold for a proposal to pass.
     pub threshold: Threshold,
+    /// The amount of time a proposal can be voted on.
     pub max_voting_period: Duration,
 }
 

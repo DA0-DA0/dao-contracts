@@ -9,6 +9,10 @@ use cw4::{Member, MemberChangedHookMsg};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
+    /// The name of the multisig.
+    pub name: String,
+    /// A description of the multisig.
+    pub description: String,
     // List of voters that will be used to create a new cw4-group contract
     pub group: GroupMsg,
     pub threshold: Threshold,
@@ -185,6 +189,9 @@ pub enum QueryMsg {
     /// Returns information about current tallys for a
     /// proposal. Returns type `VoteTallyResponse`.
     Tally { proposal_id: u64 },
+    /// Get the multisig's current config. Returns type
+    /// `ConfigResponse`.
+    GetConfig,
 }
 
 #[cfg(test)]

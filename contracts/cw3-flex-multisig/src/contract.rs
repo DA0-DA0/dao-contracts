@@ -19,7 +19,7 @@ use cw_storage_plus::Bound;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, GroupMsg, InstantiateMsg, QueryMsg};
-use crate::query::VoteTallyResponse;
+use crate::query::{ConfigResponse, VoteTallyResponse};
 use crate::state::{
     next_id, parse_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GROUP_ADDRESS, PROPOSALS,
 };
@@ -40,6 +40,8 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let cfg = Config {
+        name: msg.name,
+        description: msg.description,
         threshold: msg.threshold.clone(),
         max_voting_period: msg.max_voting_period,
     };
@@ -329,6 +331,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Tally { proposal_id } => {
             to_binary(&query_proposal_tally(deps, env, proposal_id)?)
         }
+        QueryMsg::GetConfig => to_binary(&query_config(deps)?),
     }
 }
 
@@ -370,6 +373,15 @@ fn query_proposal_tally(deps: Deps, env: Env, id: u64) -> StdResult<VoteTallyRes
         total_votes,
         total_weight: Uint128::from(total_weight),
         votes: prop.votes,
+    })
+}
+
+fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    let group_address = GROUP_ADDRESS.load(deps.storage)?;
+    Ok(ConfigResponse {
+        config,
+        group_address,
     })
 }
 
@@ -598,6 +610,8 @@ mod tests {
     ) -> Addr {
         let flex_id = app.store_code(contract_flex());
         let msg = crate::msg::InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group.to_string(),
             },
@@ -710,6 +724,8 @@ mod tests {
 
         // Zero required weight fails
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group_addr.to_string(),
             },
@@ -733,6 +749,8 @@ mod tests {
 
         // Total weight less than required weight not allowed
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group_addr.to_string(),
             },
@@ -753,6 +771,8 @@ mod tests {
 
         // All valid
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group_addr.to_string(),
             },
@@ -780,6 +800,25 @@ mod tests {
             version,
         );
 
+        // Verify contract config set properly.
+        let config: ConfigResponse = app
+            .wrap()
+            .query_wasm_smart(&flex_addr, &QueryMsg::GetConfig)
+            .unwrap();
+
+        assert_eq!(
+            config,
+            ConfigResponse {
+                config: Config {
+                    name: "fishsig".to_string(),
+                    description: "🐟".to_string(),
+                    threshold: Threshold::AbsoluteCount { weight: 1 },
+                    max_voting_period,
+                },
+                group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
+            }
+        );
+
         // Get voters query
         let voters: VoterListResponse = app
             .wrap()
@@ -803,6 +842,8 @@ mod tests {
         let group_id = app.store_code(contract_group());
         // All valid
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::InstantiateNewGroup {
                 code_id: group_id,
                 label: String::from("Test Instantiating New Group"),
