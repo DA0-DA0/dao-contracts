@@ -1,9 +1,10 @@
 use cosmwasm_std::{Decimal, Uint128};
 use cw3::{Status, ThresholdResponse};
+use cw4::Cw4Contract;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::Votes;
+use crate::state::{Config, Votes};
 
 /// Information about the current status of a proposal.
 ///
@@ -24,4 +25,10 @@ pub struct VoteTallyResponse {
     pub total_weight: Uint128,
     /// Tally of the different votes
     pub votes: Votes,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ConfigResponse {
+    pub config: Config,
+    pub group_address: Cw4Contract,
 }

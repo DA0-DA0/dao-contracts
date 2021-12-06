@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ContractError;
+use crate::{error::ContractError, state::Config};
 use cosmwasm_std::{CosmosMsg, Decimal, Empty};
 use cw0::{Duration, Expiration};
 use cw3::{ThresholdResponse, Vote};
@@ -9,6 +9,10 @@ use cw4::{Member, MemberChangedHookMsg};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {
+    /// The name of the multisig.
+    pub name: String,
+    /// A description of the multisig.
+    pub description: String,
     // List of voters that will be used to create a new cw4-group contract
     pub group: GroupMsg,
     pub threshold: Threshold,
@@ -147,6 +151,8 @@ pub enum ExecuteMsg {
     },
     /// Handles update hook messages from the group contract
     MemberChangedHook(MemberChangedHookMsg),
+    /// Update the multisg config.
+    UpdateConfig(Config),
 }
 
 // We can also add this as a cw3 extension
@@ -185,6 +191,9 @@ pub enum QueryMsg {
     /// Returns information about current tallys for a
     /// proposal. Returns type `VoteTallyResponse`.
     Tally { proposal_id: u64 },
+    /// Get the multisig's current config. Returns type
+    /// `ConfigResponse`.
+    GetConfig,
 }
 
 #[cfg(test)]

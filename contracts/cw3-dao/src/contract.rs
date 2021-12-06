@@ -126,26 +126,7 @@ pub fn execute(
         }
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
-        ExecuteMsg::UpdateConfig(Config {
-            name,
-            description,
-            threshold,
-            max_voting_period,
-            proposal_deposit,
-            refund_failed_proposals,
-        }) => execute_update_config(
-            deps,
-            env,
-            info,
-            Config {
-                name,
-                description,
-                threshold,
-                max_voting_period,
-                proposal_deposit,
-                refund_failed_proposals,
-            },
-        ),
+        ExecuteMsg::UpdateConfig(config) => execute_update_config(deps, env, info, config),
         ExecuteMsg::UpdateCw20TokenList { to_add, to_remove } => {
             execute_update_cw20_token_list(deps, env, info, to_add, to_remove)
         }
@@ -353,15 +334,7 @@ pub fn execute_update_config(
 
     update_config_msg.threshold.validate()?;
 
-    CONFIG.update(deps.storage, |mut exists| -> StdResult<_> {
-        exists.name = update_config_msg.name;
-        exists.description = update_config_msg.description;
-        exists.threshold = update_config_msg.threshold;
-        exists.max_voting_period = update_config_msg.max_voting_period;
-        exists.proposal_deposit = update_config_msg.proposal_deposit;
-        exists.refund_failed_proposals = update_config_msg.refund_failed_proposals;
-        Ok(exists)
-    })?;
+    CONFIG.save(deps.storage, &update_config_msg)?;
 
     Ok(Response::new()
         .add_attribute("action", "update_config")

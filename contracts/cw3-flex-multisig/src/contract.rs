@@ -19,7 +19,7 @@ use cw_storage_plus::Bound;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, GroupMsg, InstantiateMsg, QueryMsg};
-use crate::query::VoteTallyResponse;
+use crate::query::{ConfigResponse, VoteTallyResponse};
 use crate::state::{
     next_id, parse_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GROUP_ADDRESS, PROPOSALS,
 };
@@ -40,6 +40,8 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let cfg = Config {
+        name: msg.name,
+        description: msg.description,
         threshold: msg.threshold.clone(),
         max_voting_period: msg.max_voting_period,
     };
@@ -115,6 +117,7 @@ pub fn execute(
         ExecuteMsg::MemberChangedHook(MemberChangedHookMsg { diffs }) => {
             execute_membership_hook(deps, env, info, diffs)
         }
+        ExecuteMsg::UpdateConfig(config) => execute_update_config(deps, env, info, config),
     }
 }
 
@@ -163,6 +166,12 @@ pub fn execute_propose(
         threshold: cfg.threshold,
         total_weight: group_addr.total_weight(&deps.querier)?,
     };
+
+    // Ensure that the incoming update config message doesn't propose
+    // a threshold that would excede the sum of weights of members of
+    // the multisig.
+    prop.validate_update_config_msgs(deps.storage, &deps.querier)?;
+
     prop.update_status(&env.block);
     let id = next_id(deps.storage)?;
     PROPOSALS.save(deps.storage, id.into(), &prop)?;
@@ -304,6 +313,29 @@ pub fn execute_membership_hook(
     Ok(Response::default())
 }
 
+pub fn execute_update_config(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    new_config: Config,
+) -> Result<Response<Empty>, ContractError> {
+    // Only contract can call this method
+    if env.contract.address != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let group_addr = GROUP_ADDRESS.load(deps.storage)?;
+
+    let total_weight = group_addr.total_weight(&deps.querier)?;
+    new_config.threshold.validate(total_weight)?;
+
+    CONFIG.save(deps.storage, &new_config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_config")
+        .add_attribute("sender", info.sender))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -329,6 +361,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Tally { proposal_id } => {
             to_binary(&query_proposal_tally(deps, env, proposal_id)?)
         }
+        QueryMsg::GetConfig => to_binary(&query_config(deps)?),
     }
 }
 
@@ -370,6 +403,15 @@ fn query_proposal_tally(deps: Deps, env: Env, id: u64) -> StdResult<VoteTallyRes
         total_votes,
         total_weight: Uint128::from(total_weight),
         votes: prop.votes,
+    })
+}
+
+fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    let group_address = GROUP_ADDRESS.load(deps.storage)?;
+    Ok(ConfigResponse {
+        config,
+        group_address,
     })
 }
 
@@ -598,6 +640,8 @@ mod tests {
     ) -> Addr {
         let flex_id = app.store_code(contract_flex());
         let msg = crate::msg::InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group.to_string(),
             },
@@ -698,6 +742,19 @@ mod tests {
         }
     }
 
+    fn update_config_proposal(new_config: Config, flex_addr: String) -> ExecuteMsg {
+        ExecuteMsg::Propose {
+            title: "Update config".to_string(),
+            description: "Should we update the config".to_string(),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: flex_addr,
+                msg: to_binary(&ExecuteMsg::UpdateConfig(new_config)).unwrap(),
+                funds: vec![],
+            })],
+            latest: None,
+        }
+    }
+
     #[test]
     fn test_instantiate_works() {
         let mut app = mock_app(&[]);
@@ -710,6 +767,8 @@ mod tests {
 
         // Zero required weight fails
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group_addr.to_string(),
             },
@@ -733,6 +792,8 @@ mod tests {
 
         // Total weight less than required weight not allowed
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group_addr.to_string(),
             },
@@ -753,6 +814,8 @@ mod tests {
 
         // All valid
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::UseExistingGroup {
                 addr: group_addr.to_string(),
             },
@@ -780,6 +843,25 @@ mod tests {
             version,
         );
 
+        // Verify contract config set properly.
+        let config: ConfigResponse = app
+            .wrap()
+            .query_wasm_smart(&flex_addr, &QueryMsg::GetConfig)
+            .unwrap();
+
+        assert_eq!(
+            config,
+            ConfigResponse {
+                config: Config {
+                    name: "fishsig".to_string(),
+                    description: "🐟".to_string(),
+                    threshold: Threshold::AbsoluteCount { weight: 1 },
+                    max_voting_period,
+                },
+                group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
+            }
+        );
+
         // Get voters query
         let voters: VoterListResponse = app
             .wrap()
@@ -803,6 +885,8 @@ mod tests {
         let group_id = app.store_code(contract_group());
         // All valid
         let instantiate_msg = InstantiateMsg {
+            name: "fishsig".to_string(),
+            description: "🐟".to_string(),
             group: GroupMsg::InstantiateNewGroup {
                 code_id: group_id,
                 label: String::from("Test Instantiating New Group"),
@@ -887,6 +971,79 @@ mod tests {
                 ("status", "Passed"),
             ],
         );
+    }
+
+    #[test]
+    fn test_update_config() {
+        let init_funds = coins(10, "BTC");
+        let mut app = mock_app(&init_funds);
+
+        let required_weight = 4;
+        let voting_period = Duration::Time(2000000);
+        let (flex_addr, group_addr) =
+            setup_test_case_fixed(&mut app, required_weight, voting_period, init_funds, false);
+
+        let proposal = update_config_proposal(
+            Config {
+                name: "dogsig".to_string(),
+                description: "🐶".to_string(),
+                threshold: Threshold::AbsoluteCount {
+                    weight: required_weight,
+                },
+                max_voting_period: voting_period,
+            },
+            flex_addr.clone().to_string(),
+        );
+
+        // Proposal from voter with enough vote power directly passes
+        let res = app
+            .execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &proposal, &[])
+            .unwrap();
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        app.execute_contract(
+            Addr::unchecked(VOTER4),
+            flex_addr.clone(),
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+        .unwrap();
+
+        // Verify contract config set properly.
+        let config: ConfigResponse = app
+            .wrap()
+            .query_wasm_smart(&flex_addr, &QueryMsg::GetConfig)
+            .unwrap();
+
+        assert_eq!(
+            config,
+            ConfigResponse {
+                config: Config {
+                    name: "dogsig".to_string(),
+                    description: "🐶".to_string(),
+                    threshold: Threshold::AbsoluteCount {
+                        weight: required_weight,
+                    },
+                    max_voting_period: voting_period,
+                },
+                group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
+            }
+        );
+
+        // Propose a config update with an invalid threshold
+        let proposal = update_config_proposal(
+            Config {
+                name: "dogsig".to_string(),
+                description: "🐶".to_string(),
+                threshold: Threshold::AbsoluteCount { weight: 10000 },
+                max_voting_period: voting_period,
+            },
+            flex_addr.clone().to_string(),
+        );
+
+        // Proposal from voter with enough vote power directly passes
+        let res = app.execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &proposal, &[]);
+        assert!(res.is_err())
     }
 
     fn get_tally(app: &App, flex_addr: &str, proposal_id: u64) -> u64 {
