@@ -1,6 +1,6 @@
 [package]
 name = "cw20-stakeable"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["Ben2x4 <Ben2x4@tutanota.com>"]
 edition = "2018"
 license = "Apache-2.0"
