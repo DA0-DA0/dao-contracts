@@ -240,6 +240,20 @@ export interface Coin {
     amount: Uint128;
     denom: string;
 }
+
+/** Tallys of how many tokens have been cast for each outcome for a
+ * proposal. */
+export interface Votes {
+    /** The number of tokens that have been used to vote yes. */
+    yes: Uint128,
+    /** The number of tokens that have been used to vote no. */
+    no: Uint128,
+    /** The number of tokens that have been used to vote abstain. */
+    abstain: Uint128,
+    /** The number of tokens that have been used to vote veto. */
+    veto: Uint128
+}
+
 /**
  * An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.
  *
