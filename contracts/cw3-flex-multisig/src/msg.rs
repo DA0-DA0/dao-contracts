@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ContractError;
+use crate::{error::ContractError, state::Config};
 use cosmwasm_std::{CosmosMsg, Decimal, Empty};
 use cw0::{Duration, Expiration};
 use cw3::{ThresholdResponse, Vote};
@@ -151,6 +151,8 @@ pub enum ExecuteMsg {
     },
     /// Handles update hook messages from the group contract
     MemberChangedHook(MemberChangedHookMsg),
+    /// Update the multisg config.
+    UpdateConfig(Config),
 }
 
 // We can also add this as a cw3 extension

@@ -1,6 +1,7 @@
-use crate::msg::Threshold;
+use crate::msg::{ExecuteMsg, Threshold};
 use cosmwasm_std::{
-    Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
+    from_binary, Addr, BlockInfo, CosmosMsg, Decimal, Empty, QuerierWrapper, StdError, StdResult,
+    Storage, Uint128, WasmMsg::Execute,
 };
 use cw0::{Duration, Expiration};
 use cw3::{Status, Vote};
@@ -130,6 +131,40 @@ impl Proposal {
                 }
             }
         }
+    }
+
+    /// Validates that the thresholds proposed in `UpdateConfig`
+    /// messages do not excede sum of weights of multisig members.
+    pub fn validate_update_config_msgs(
+        &self,
+        store: &dyn Storage,
+        querier: &QuerierWrapper,
+    ) -> StdResult<()> {
+        self.msgs.iter().try_for_each(|msg| -> StdResult<()> {
+            match msg {
+                CosmosMsg::Wasm(Execute {
+                    contract_addr: _,
+                    msg,
+                    funds: _,
+                }) => match from_binary::<ExecuteMsg>(msg) {
+                    Ok(ExecuteMsg::UpdateConfig(new_config)) => {
+                        let group_addr = GROUP_ADDRESS.load(store)?;
+
+                        let total_weight = group_addr.total_weight(querier)?;
+                        new_config.threshold.validate(total_weight).map_err(|e| {
+                            StdError::GenericErr {
+                                msg: format!(
+                                    "Invalid threshold in update config proposal message: ({})",
+                                    e
+                                ),
+                            }
+                        })
+                    }
+                    _ => Ok(()),
+                },
+                _ => Ok(()),
+            }
+        })
     }
 }
 
