@@ -7,25 +7,16 @@ export type Duration = ({
     time: number
     });
 /**
- * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u128` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
- *
- * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
- *
- * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
- */
-export type Uint128 = string;
-/**
  * This defines the different ways tallies can happen.
  *
  * The total_weight used for calculating success as well as the weights of each individual voter used in tallying should be snapshotted at the beginning of the block at which the proposal starts (this is likely the responsibility of a correct cw4 implementation). See also `ThresholdResponse` in the cw3 spec.
  */
 export type Threshold = ({
+    absolute_count: {
+    weight: number
+    [k: string]: unknown
+    }
+    } | {
     absolute_percentage: {
     percentage: Decimal
     [k: string]: unknown
@@ -43,23 +34,23 @@ export type Threshold = ({
  * The greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)
  */
 export type Decimal = string;
-/**
- * A human readable address.
- *
- * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.
- *
- * This type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.
- *
- * This type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.
- */
-export type Addr = string;
 export interface Config {
     [k: string]: unknown;
+    /**
+     * A description of the multisig.
+     */
     description: string;
+    /**
+     * The amount of time a proposal can be voted on.
+     */
     max_voting_period: Duration;
+    /**
+     * The name of the multisig.
+     */
     name: string;
-    proposal_deposit: Uint128;
-    refund_failed_proposals?: (boolean | null);
+    /**
+     * The threshold for a proposal to pass.
+     */
     threshold: Threshold;
 }
 /**
@@ -126,6 +117,20 @@ export type BankMsg = ({
     [k: string]: unknown
     }
     });
+/**
+ * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u128` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+ *
+ * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+ *
+ * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ */
+export type Uint128 = string;
 /**
  * The message types of the staking module.
  *
@@ -256,30 +261,30 @@ export type Status = ("pending" | "open" | "rejected" | "passed" | "executed");
  */
 export type ThresholdResponse = ({
     absolute_count: {
-    total_weight: Uint128
-    weight: Uint128
+    total_weight: number
+    weight: number
     [k: string]: unknown
     }
     } | {
     absolute_percentage: {
     percentage: Decimal
-    total_weight: Uint128
+    total_weight: number
     [k: string]: unknown
     }
     } | {
     threshold_quorum: {
     quorum: Decimal
     threshold: Decimal
-    total_weight: Uint128
+    total_weight: number
     [k: string]: unknown
     }
     });
 export interface Votes {
     [k: string]: unknown;
-    abstain: Uint128;
-    no: Uint128;
-    veto: Uint128;
-    yes: Uint128;
+    abstain: number;
+    no: number;
+    veto: number;
+    yes: number;
 }
 /**
  * Returns the vote (opinion as well as weight counted) as well as the address of the voter who submitted it
@@ -288,5 +293,5 @@ export interface VoteInfo {
     [k: string]: unknown;
     vote: Vote;
     voter: string;
-    weight: Uint128;
+    weight: number;
 }

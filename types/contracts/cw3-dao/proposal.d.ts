@@ -1,4 +1,4 @@
-import { Addr, CosmosMsgFor_Empty, Expiration, Status, Threshold, Uint128 } from "./shared-types";
+import { Addr, CosmosMsgFor_Empty, Expiration, Status, Threshold, Uint128, Votes } from "./shared-types";
 
 export interface Proposal {
 /**
@@ -24,13 +24,5 @@ total_weight: Uint128
  * summary of existing votes
  */
 votes: Votes
-[k: string]: unknown
-}
-
-export interface Votes {
-abstain: Uint128
-no: Uint128
-veto: Uint128
-yes: Uint128
 [k: string]: unknown
 }

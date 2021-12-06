@@ -1,4 +1,4 @@
-export type QueryMsg = ({
+export type QueryMsg = ("get_config" | {
 threshold: {
 [k: string]: unknown
 }
@@ -41,6 +41,11 @@ address: string
 list_voters: {
 limit?: (number | null)
 start_after?: (string | null)
+[k: string]: unknown
+}
+} | {
+tally: {
+proposal_id: number
 [k: string]: unknown
 }
 })

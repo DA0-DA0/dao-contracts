@@ -165,6 +165,29 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns information about current tallys for a proposal. Returns type `VoteTallyResponse`.",
+      "type": "object",
+      "required": [
+        "tally"
+      ],
+      "properties": {
+        "tally": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Returns VoterInfo",
       "type": "object",
       "required": [
