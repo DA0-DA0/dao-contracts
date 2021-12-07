@@ -73,20 +73,13 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// Returns the current balance of the given address, 0 if unset.
     /// Return type: BalanceResponse.
-    Balance {
-        address: String,
-    },
+    Balance { address: String },
     /// Returns the balance of the given address at given height, 0 if unset.
     /// Return type: BalanceAtHeightResponse.
-    VotingPowerAtHeight {
-        address: String,
-        height: u64,
-    },
+    VotingPowerAtHeight { address: String, height: u64 },
     /// Returns current delegation information
     /// Return type: DelegationResponse.
-    Delegation {
-        address: String,
-    },
+    Delegation { address: String },
     /// Returns metadata on the contract - name, decimals, supply, etc.
     /// Return type: TokenInfoResponse.
     TokenInfo {},
@@ -97,10 +90,7 @@ pub enum QueryMsg {
     /// Only with "allowance" extension.
     /// Returns how much spender can use from owner account, 0 if unset.
     /// Return type: AllowanceResponse.
-    Allowance {
-        owner: String,
-        spender: String,
-    },
+    Allowance { owner: String, spender: String },
     /// Only with "enumerable" extension (and "allowances")
     /// Returns all allowances this owner has approved. Supports pagination.
     /// Return type: AllAllowancesResponse.
@@ -134,15 +124,11 @@ pub enum QueryMsg {
     },
     /// Returns the total staked amount of tokens at a given height, if no height is provided
     /// defaults to current block height.
-    TotalStakedAtHeight {
-        height: Option<u64>,
-    },
+    TotalStakedAtHeight { height: Option<u64> },
     /// Returns the unstaking duration for the contract.
     UnstakingDuration {},
     /// Returns existing claims for tokens currently unstaking for a given address.
-    Claims {
-        address: String,
-    },
+    Claims { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

@@ -60,9 +60,7 @@ pub fn execute(
             contract,
             amount,
             msg,
-        } => {
-            execute_send(deps, env, info, contract, amount, msg).map_err(ContractError::Cw20Error)
-        }
+        } => execute_send(deps, env, info, contract, amount, msg).map_err(ContractError::Cw20Error),
         ExecuteMsg::Mint { recipient, amount } => {
             execute_mint(deps, env, info, recipient, amount).map_err(ContractError::Cw20Error)
         }

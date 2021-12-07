@@ -70,14 +70,13 @@ pub fn get_total_staked_supply(deps: Deps) -> StdResult<Uint128> {
 pub fn get_staked_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
     // Get total supply
-    let res: cw20_gov::msg::StakedBalanceAtHeightResponse =
-        deps.querier.query_wasm_smart(
-            gov_token,
-            &Cw20GovQueryMsg::StakedBalanceAtHeight {
-                address: address.to_string(),
-                height: None,
-            },
-        )?;
+    let res: cw20_gov::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
+        gov_token,
+        &Cw20GovQueryMsg::StakedBalanceAtHeight {
+            address: address.to_string(),
+            height: None,
+        },
+    )?;
     Ok(res.balance)
 }
 
@@ -85,15 +84,13 @@ pub fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> Std
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Get total supply
-    let balance: VotingPowerAtHeightResponse = deps
-        .querier
-        .query_wasm_smart(
-            gov_token,
-            &Cw20GovQueryMsg::VotingPowerAtHeight {
-                address: address.to_string(),
-                height,
-            },
-        )?;
+    let balance: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        gov_token,
+        &Cw20GovQueryMsg::VotingPowerAtHeight {
+            address: address.to_string(),
+            height,
+        },
+    )?;
     Ok(balance.balance)
 }
 
