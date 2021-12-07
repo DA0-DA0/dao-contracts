@@ -1,4 +1,4 @@
-import { Status, ThresholdResponse, Decimal, Uint128, Votes } from './shared-types'
+import { Decimal, Status, ThresholdResponse, Uint128, Votes } from './shared-types';
 
 /** Tally information for a proposal. */
 export interface ProposalTallyResponse {

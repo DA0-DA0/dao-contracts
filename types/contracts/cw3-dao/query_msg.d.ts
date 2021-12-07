@@ -33,6 +33,11 @@ start_after?: (string | null)
 [k: string]: unknown
 }
 } | {
+tally: {
+proposal_id: number
+[k: string]: unknown
+}
+} | {
 voter: {
 address: string
 [k: string]: unknown

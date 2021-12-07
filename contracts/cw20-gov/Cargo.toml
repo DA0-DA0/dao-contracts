@@ -1,6 +1,6 @@
 [package]
 name = "cw20-gov"
-version = "0.10.2"
+version = "0.1.0"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>", "Ben2x4 <ben2x4@tutanota.com>"]
 edition = "2018"
 description = "CosmWasm-20 compliant token with checkpointing to enable DAOs"

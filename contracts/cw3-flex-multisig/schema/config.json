@@ -1,10 +1,9 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InstantiateMsg",
+  "title": "Config",
   "type": "object",
   "required": [
     "description",
-    "group",
     "max_voting_period",
     "name",
     "threshold"
@@ -14,18 +13,25 @@
       "description": "A description of the multisig.",
       "type": "string"
     },
-    "group": {
-      "$ref": "#/definitions/GroupMsg"
-    },
     "max_voting_period": {
-      "$ref": "#/definitions/Duration"
+      "description": "The amount of time a proposal can be voted on.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Duration"
+        }
+      ]
     },
     "name": {
       "description": "The name of the multisig.",
       "type": "string"
     },
     "threshold": {
-      "$ref": "#/definitions/Threshold"
+      "description": "The threshold for a proposal to pass.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Threshold"
+        }
+      ]
     }
   },
   "definitions": {
@@ -66,81 +72,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "GroupMsg": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "instantiate_new_group"
-          ],
-          "properties": {
-            "instantiate_new_group": {
-              "type": "object",
-              "required": [
-                "code_id",
-                "label",
-                "voters"
-              ],
-              "properties": {
-                "code_id": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                },
-                "label": {
-                  "type": "string"
-                },
-                "voters": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/Member"
-                  }
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "use_existing_group"
-          ],
-          "properties": {
-            "use_existing_group": {
-              "type": "object",
-              "required": [
-                "addr"
-              ],
-              "properties": {
-                "addr": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "Member": {
-      "description": "A group member has a weight associated with them. This may all be equal, or may have meaning in the app that makes use of the group (eg. voting power)",
-      "type": "object",
-      "required": [
-        "addr",
-        "weight"
-      ],
-      "properties": {
-        "addr": {
-          "type": "string"
-        },
-        "weight": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        }
-      }
     },
     "Threshold": {
       "description": "This defines the different ways tallies can happen.\n\nThe total_weight used for calculating success as well as the weights of each individual voter used in tallying should be snapshotted at the beginning of the block at which the proposal starts (this is likely the responsibility of a correct cw4 implementation). See also `ThresholdResponse` in the cw3 spec.",

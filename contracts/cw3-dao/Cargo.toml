@@ -1,6 +1,6 @@
 [package]
 name = "cw3-dao"
-version = "0.1.1"
+version = "0.1.0"
 authors = ["Jake Hartnell <jake@stargaze.zone>", "Ben2x4 <Ben2x4@tutanota.com>", "Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2018"
 description = "Implements a cw20 token governed DAO with multiple voting patterns."
@@ -21,7 +21,7 @@ cw2 = { version = "0.10.3" }
 cw3 = { version = "0.10.3" }
 cw20 ="0.10.3"
 cw20-base = {  version = "0.10.3", features = ["library"] }
-cw20-gov = { path = "../cw20-gov", version = "0.10.2" }
+cw20-gov = { path = "../cw20-gov", version = "0.1.0" }
 cw-storage-plus = {  version = "0.10.3" }
 cosmwasm-std = { version = "1.0.0-beta2" }
 schemars = "0.8.6"
