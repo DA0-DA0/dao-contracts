@@ -45,67 +45,67 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::Transfer { recipient, amount } => {
-            execute_transfer(deps, _env, info, recipient, amount).map_err(ContractError::Cw20Error)
+            execute_transfer(deps, env, info, recipient, amount).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::Burn { amount } => {
-            execute_burn(deps, _env, info, amount).map_err(ContractError::Cw20Error)
+            execute_burn(deps, env, info, amount).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::Send {
             contract,
             amount,
             msg,
         } => {
-            execute_send(deps, _env, info, contract, amount, msg).map_err(ContractError::Cw20Error)
+            execute_send(deps, env, info, contract, amount, msg).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::Mint { recipient, amount } => {
-            execute_mint(deps, _env, info, recipient, amount).map_err(ContractError::Cw20Error)
+            execute_mint(deps, env, info, recipient, amount).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::IncreaseAllowance {
             spender,
             amount,
             expires,
-        } => execute_increase_allowance(deps, _env, info, spender, amount, expires)
+        } => execute_increase_allowance(deps, env, info, spender, amount, expires)
             .map_err(ContractError::Cw20Error),
         ExecuteMsg::DecreaseAllowance {
             spender,
             amount,
             expires,
-        } => execute_decrease_allowance(deps, _env, info, spender, amount, expires)
+        } => execute_decrease_allowance(deps, env, info, spender, amount, expires)
             .map_err(ContractError::Cw20Error),
         ExecuteMsg::TransferFrom {
             owner,
             recipient,
             amount,
-        } => execute_transfer_from(deps, _env, info, owner, recipient, amount)
+        } => execute_transfer_from(deps, env, info, owner, recipient, amount)
             .map_err(ContractError::Cw20Error),
         ExecuteMsg::BurnFrom { owner, amount } => {
-            execute_burn_from(deps, _env, info, owner, amount).map_err(ContractError::Cw20Error)
+            execute_burn_from(deps, env, info, owner, amount).map_err(ContractError::Cw20Error)
         }
         ExecuteMsg::SendFrom {
             owner,
             contract,
             amount,
             msg,
-        } => execute_send_from(deps, _env, info, owner, contract, amount, msg)
+        } => execute_send_from(deps, env, info, owner, contract, amount, msg)
             .map_err(ContractError::Cw20Error),
         ExecuteMsg::UpdateMarketing {
             project,
             description,
             marketing,
-        } => execute_update_marketing(deps, _env, info, project, description, marketing)
+        } => execute_update_marketing(deps, env, info, project, description, marketing)
             .map_err(ContractError::Cw20Error),
         ExecuteMsg::UploadLogo(logo) => {
-            execute_upload_logo(deps, _env, info, logo).map_err(ContractError::Cw20Error)
+            execute_upload_logo(deps, env, info, logo).map_err(ContractError::Cw20Error)
         }
-        ExecuteMsg::Stake { amount } => execute_stake(deps, _env, info, amount),
-        ExecuteMsg::Unstake { amount } => execute_unstake(deps, _env, info, amount),
-        ExecuteMsg::Claim {} => execute_claim(deps, _env, info),
+        ExecuteMsg::Stake { amount } => execute_stake(deps, env, info, amount),
+        ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
+        ExecuteMsg::Claim {} => execute_claim(deps, env, info),
     }
 }
 
