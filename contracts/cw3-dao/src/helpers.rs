@@ -1,9 +1,11 @@
 use cosmwasm_std::{
     to_binary, Addr, BlockInfo, CosmosMsg, Deps, Env, MessageInfo, StdResult, Uint128, WasmMsg,
 };
-use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
-use cw20_base::state::TokenInfo;
-use cw20_gov::msg::{QueryMsg as Cw20GovQueryMsg, VotingPowerAtHeightResponse};
+use cw20::Cw20ExecuteMsg;
+
+use cw20_gov::msg::{
+    QueryMsg as Cw20GovQueryMsg, TotalStakedAtHeightResponse, VotingPowerAtHeightResponse,
+};
 
 use crate::{
     query::ProposalResponse,
@@ -54,51 +56,41 @@ pub fn get_proposal_deposit_refund_message(
     Ok(vec![cw20_transfer_cosmos_msg])
 }
 
-pub fn get_total_supply(deps: Deps) -> StdResult<Uint128> {
+pub fn get_total_staked_supply(deps: Deps) -> StdResult<Uint128> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Get total supply
-    let token_info: TokenInfo = deps
-        .querier
-        .query_wasm_smart(gov_token, &Cw20QueryMsg::TokenInfo {})?;
-    Ok(token_info.total_supply)
+    let total: TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
+        gov_token,
+        &Cw20GovQueryMsg::TotalStakedAtHeight { height: None },
+    )?;
+    Ok(total.total)
 }
 
-pub fn get_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
+pub fn get_staked_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
-
     // Get total supply
-    let balance: BalanceResponse = deps
-        .querier
-        .query_wasm_smart(
-            gov_token,
-            &Cw20QueryMsg::Balance {
-                address: address.to_string(),
-            },
-        )
-        .unwrap_or(BalanceResponse {
-            balance: Uint128::zero(),
-        });
-    Ok(balance.balance)
+    let res: cw20_gov::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
+        gov_token,
+        &Cw20GovQueryMsg::StakedBalanceAtHeight {
+            address: address.to_string(),
+            height: None,
+        },
+    )?;
+    Ok(res.balance)
 }
 
 pub fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Get total supply
-    let balance: VotingPowerAtHeightResponse = deps
-        .querier
-        .query_wasm_smart(
-            gov_token,
-            &Cw20GovQueryMsg::VotingPowerAtHeight {
-                address: address.to_string(),
-                height,
-            },
-        )
-        .unwrap_or(VotingPowerAtHeightResponse {
-            balance: Uint128::zero(),
-            height: 0,
-        });
+    let balance: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        gov_token,
+        &Cw20GovQueryMsg::VotingPowerAtHeight {
+            address: address.to_string(),
+            height,
+        },
+    )?;
     Ok(balance.balance)
 }
 

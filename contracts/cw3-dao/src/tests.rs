@@ -23,6 +23,7 @@ mod tests {
     };
     use cw3::{Status, Vote};
     use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+    use std::borrow::BorrowMut;
 
     const OWNER: &str = "admin0001";
     const VOTER1: &str = "voter0001";
@@ -32,7 +33,7 @@ mod tests {
     const POWER_VOTER: &str = "power-voter";
 
     const NATIVE_TOKEN_DENOM: &str = "ustars";
-    const INITIAL_BALANCE: u128 = 2000000;
+    const INITIAL_BALANCE: u128 = 4000000;
 
     pub fn contract_dao() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
@@ -60,37 +61,61 @@ mod tests {
     // uploads code and returns address of cw20 contract
     fn instantiate_cw20(app: &mut App) -> Addr {
         let cw20_id = app.store_code(contract_cw20_gov());
-        let msg = cw20_base::msg::InstantiateMsg {
-            name: String::from("Test"),
-            symbol: String::from("TEST"),
-            decimals: 6,
-            initial_balances: vec![
-                Cw20Coin {
-                    address: OWNER.to_string(),
-                    amount: Uint128::new(INITIAL_BALANCE),
-                },
-                Cw20Coin {
-                    address: VOTER1.to_string(),
-                    amount: Uint128::new(INITIAL_BALANCE),
-                },
-                Cw20Coin {
-                    address: VOTER2.to_string(),
-                    amount: Uint128::new(INITIAL_BALANCE),
-                },
-                Cw20Coin {
-                    address: VOTER3.to_string(),
-                    amount: Uint128::new(INITIAL_BALANCE * 2),
-                },
-                Cw20Coin {
-                    address: POWER_VOTER.to_string(),
-                    amount: Uint128::new(INITIAL_BALANCE * 5),
-                },
-            ],
-            mint: None,
-            marketing: None,
+        let initial_balances = vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE),
+            },
+            Cw20Coin {
+                address: VOTER2.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE),
+            },
+            Cw20Coin {
+                address: VOTER3.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 2),
+            },
+            Cw20Coin {
+                address: POWER_VOTER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ];
+        let msg = cw20_gov::msg::InstantiateMsg {
+            cw20_base: cw20_base::msg::InstantiateMsg {
+                name: String::from("Test"),
+                symbol: String::from("TEST"),
+                decimals: 6,
+                initial_balances: initial_balances.clone(),
+                mint: None,
+                marketing: None,
+            },
+            unstaking_duration: None,
         };
-        app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
-            .unwrap()
+
+        let contract = app
+            .instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
+            .unwrap();
+        stake_balances(app, initial_balances, &contract);
+        contract
+    }
+
+    fn stake_balances(app: &mut App, initial_balances: Vec<Cw20Coin>, contract: &Addr) {
+        for balance in initial_balances.into_iter() {
+            let msg = cw20_gov::msg::ExecuteMsg::Stake {
+                amount: balance.amount.checked_div(Uint128::new(2)).unwrap(),
+            };
+            app.execute_contract(
+                Addr::unchecked(balance.address),
+                contract.clone(),
+                &msg,
+                &[],
+            )
+            .unwrap();
+        }
+        app.update_block(next_block);
     }
 
     fn instantiate_dao(
@@ -287,6 +312,28 @@ mod tests {
             None,
         );
         assert!(res.is_err());
+        let initial_balances = vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE),
+            },
+            Cw20Coin {
+                address: VOTER2.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE),
+            },
+            Cw20Coin {
+                address: VOTER3.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 2),
+            },
+            Cw20Coin {
+                address: POWER_VOTER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ];
 
         // Instantiate new gov token
         let instantiate_msg = InstantiateMsg {
@@ -299,28 +346,7 @@ mod tests {
                     name: String::from("DAO DAO"),
                     symbol: String::from("DAO"),
                     decimals: 6,
-                    initial_balances: vec![
-                        Cw20Coin {
-                            address: OWNER.to_string(),
-                            amount: Uint128::new(INITIAL_BALANCE),
-                        },
-                        Cw20Coin {
-                            address: VOTER1.to_string(),
-                            amount: Uint128::new(INITIAL_BALANCE),
-                        },
-                        Cw20Coin {
-                            address: VOTER2.to_string(),
-                            amount: Uint128::new(INITIAL_BALANCE),
-                        },
-                        Cw20Coin {
-                            address: VOTER3.to_string(),
-                            amount: Uint128::new(INITIAL_BALANCE * 2),
-                        },
-                        Cw20Coin {
-                            address: POWER_VOTER.to_string(),
-                            amount: Uint128::new(INITIAL_BALANCE * 5),
-                        },
-                    ],
+                    initial_balances: initial_balances.clone(),
                     marketing: None,
                 },
             },
@@ -348,6 +374,9 @@ mod tests {
             .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
             .unwrap();
         let cw20_addr = res.gov_token;
+
+        // Stake balances
+        stake_balances(app.borrow_mut(), initial_balances, &cw20_addr);
 
         // Make proposal to mint some gov tokens for the DAO
         let wasm_exec_msg = WasmMsg::Execute {
@@ -1666,16 +1695,19 @@ mod tests {
 
         // Make a new token with initial balance
         let cw20_id = app.store_code(contract_cw20_gov());
-        let msg = cw20_base::msg::InstantiateMsg {
-            name: String::from("NewCoin"),
-            symbol: String::from("COIN"),
-            decimals: 6,
-            initial_balances: vec![Cw20Coin {
-                address: OWNER.to_string(),
-                amount: Uint128::new(INITIAL_BALANCE * 5),
-            }],
-            mint: None,
-            marketing: None,
+        let msg = cw20_gov::msg::InstantiateMsg {
+            cw20_base: cw20_base::msg::InstantiateMsg {
+                name: String::from("NewCoin"),
+                symbol: String::from("COIN"),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: OWNER.to_string(),
+                    amount: Uint128::new(INITIAL_BALANCE * 5),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            unstaking_duration: None,
         };
         let res =
             app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);

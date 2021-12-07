@@ -1,7 +1,7 @@
 [package]
 name = "cw20-gov"
 version = "0.1.0"
-authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>", "Ben2x4 <ben2x4@tutanota.com>"]
+authors = ["Ben2x4 <ben2x4@tutanota.com>"]
 edition = "2018"
 description = "CosmWasm-20 compliant token with checkpointing to enable DAOs"
 license = "Apache-2.0"
@@ -18,6 +18,7 @@ library = []
 cw0 = { version = "0.10.2" }
 cw2 = { version = "0.10.2" }
 cw20 = { version = "0.10.2" }
+cw20-stakeable = { path = "../cw20-stakeable", version = "0.1.2", features = ["library"]  }
 cw20-base = {  version = "0.10.2", features = ["library"] }
 cw-storage-plus = { version = "0.10.2" }
 cosmwasm-std = { version = "1.0.0-beta2" }
