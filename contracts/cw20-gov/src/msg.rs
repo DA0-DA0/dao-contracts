@@ -122,18 +122,24 @@ pub enum QueryMsg {
     /// Return type: MarketingInfoResponse
     MarketingInfo {},
     /// Only with "marketing" extension
-    /// Downloads the mbeded logo data (if stored on chain). Errors if no logo data ftored for this
+    /// Downloads the embeded logo data (if stored on chain). Errors if no logo data ftored for this
     /// contract.
     /// Return type: DownloadLogoResponse.
     DownloadLogo {},
+    /// Returns the staked balance for a given address at a given height, if no height is provided
+    /// defaults to current block height.
     StakedBalanceAtHeight {
         address: String,
         height: Option<u64>,
     },
+    /// Returns the total staked amount of tokens at a given height, if no height is provided
+    /// defaults to current block height.
     TotalStakedAtHeight {
         height: Option<u64>,
     },
+    /// Returns the unstaking duration for the contract.
     UnstakingDuration {},
+    /// Returns existing claims for tokens currently unstaking for a given address.
     Claims {
         address: String,
     },
