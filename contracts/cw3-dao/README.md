@@ -20,7 +20,8 @@ message to mark it closed. This has no effect beyond cleaning up the UI/database
 These contracts can be used in combination with the cw-dao contract to extend functionality. Simply make a proposal to instantiate them via the cw-dao.
 
 - [cw-vest](https://github.com/ben2x4/cw-vest): Adds the ability to vest cw-20 tokens. Useful if you want community members to be incentivized over a longer term or for payments on projects that have multiple phases.
-- [cw3-flex-multisig](../cw3-flex-multisig): Can be used to add SubDAO functionality. Create teams and assign them budgets.
+- [cw3-multisig](../cw3-multisig): Can be used to add SubDAO functionality. Create teams and assign them budgets.
+- [cw20-escrow](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw20-escrow): Can be used for setting aside funds intended for a bounty. DAO votes to create a bounty via the cw20-escrow contract and again to payout the bounty when someone submits a claim proposal.
 
 ## Testing
 

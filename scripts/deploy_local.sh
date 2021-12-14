@@ -48,7 +48,7 @@ docker run --rm -v "$(pwd)":/code \
 # Copy binaries to docker container
 docker cp artifacts/cw3_dao.wasm cosmwasm:/cw3_dao.wasm
 docker cp artifacts/cw20_gov.wasm cosmwasm:/cw20_gov.wasm
-docker cp artifacts/cw3_flex_multisig.wasm cosmwasm:/cw3_flex_multisig.wasm
+docker cp artifacts/cw3_multisig.wasm cosmwasm:/cw3_multisig.wasm
 
 # Sleep while waiting for chain to post genesis block
 sleep 3
@@ -62,18 +62,18 @@ echo "TX Flags: $TXFLAG"
 echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG
 CW20_CODE=1
 
-# Instantiate cw20 contract
-CW20_INIT='{
-  "name": "Crab Coin",
-  "symbol": "CRAB",
-  "decimals": 6,
-  "initial_balances": [{"address":"'"$1"'","amount":"1000000000"}]
-}'
-echo "$CW20_INIT"
-echo xxxxxxxxx | $BINARY tx wasm instantiate $CW20_CODE "$CW20_INIT" --from "validator" --label "gov token" $TXFLAG
+# # Instantiate cw20 contract
+# CW20_INIT='{
+#   "name": "Crab Coin",
+#   "symbol": "CRAB",
+#   "decimals": 6,
+#   "initial_balances": [{"address":"'"$1"'","amount":"1000000000"}]
+# }'
+# echo "$CW20_INIT"
+# echo xxxxxxxxx | $BINARY tx wasm instantiate $CW20_CODE "$CW20_INIT" --from "validator" --label "gov token" $TXFLAG
 
-# Get cw20 contract address
-CW20_CONTRACT=$($BINARY q wasm list-contract-by-code $CW20_CODE --output json | jq -r '.contracts[-1]')
+# # Get cw20 contract address
+# CW20_CONTRACT=$($BINARY q wasm list-contract-by-code $CW20_CODE --output json | jq -r '.contracts[-1]')
 
 #### CW-DAO ####
 # Upload cw-dao contract code
@@ -134,18 +134,15 @@ echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --f
 
 CW3_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW3_DAO_CODE --output json | jq -r '.contracts[-1]')
 
-# Download cw3-fixed-multisig and cw4-group contracts
+# Download cw4-group contracts
 cd scripts
-curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.10.2/cw3_fixed_multisig.wasm
 curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.10.2/cw4_group.wasm
 
 # Copy wasm to docker
-docker cp cw3_fixed_multisig.wasm cosmwasm:/cw3_fixed_multisig.wasm
 docker cp cw4_group.wasm cosmwasm:/cw4_group.wasm
 
-# Upload cw3-fixed-multisig and cw3-flex-multisig code
-echo xxxxxxxxx | $BINARY tx wasm store "/cw3_fixed_multisig.wasm" --from validator $TXFLAG
-echo xxxxxxxxx | $BINARY tx wasm store "/cw3_flex_multisig.wasm" --from validator $TXFLAG
+# Upload cw3-multisig and cw4-group code
+echo xxxxxxxxx | $BINARY tx wasm store "/cw3_multisig.wasm" --from validator $TXFLAG
 echo xxxxxxxxx | $BINARY tx wasm store "/cw4_group.wasm" --from validator $TXFLAG
 
 # Send some coins to the dao contract to initializae its
@@ -159,8 +156,6 @@ printf "Config Variables \n\n"
 
 echo "NEXT_PUBLIC_DAO_TOKEN_CODE_ID=$CW20_CODE"
 echo "NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=$CW3_DAO_CODE"
-echo "NEXT_PUBLIC_FIXED_MULTISIG_CODE_ID=3"
-echo "NEXT_PUBLIC_FLEX_MULTISIG_CODE_ID=4"
-echo "NEXT_PUBLIC_C4_GROUP_CODE_ID=5"
-echo "NEXT_PUBLIC_DAO_TOKEN_ADDRESS=$CW20_CONTRACT"
+echo "NEXT_PUBLIC_MULTISIG_CODE_ID=3"
+echo "NEXT_PUBLIC_C4_GROUP_CODE_ID=4"
 echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW3_DAO_CONTRACT"
