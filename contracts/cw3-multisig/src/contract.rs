@@ -25,7 +25,7 @@ use crate::state::{
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw3-flex-multisig";
+const CONTRACT_NAME: &str = "crates.io:cw3-multisig";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_CW4_GROUP_REPLY_ID: u64 = 0;

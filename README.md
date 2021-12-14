@@ -6,7 +6,7 @@
 |:------------------------------------------------|:-------------------------------------------------------|
 | [cw3-dao](contracts/cw3-dao)                    | A governance token based DAO.                          |
 | [cw20-gov](contract/cw20-gov)                   | A cw20 token for use with cw3-dao                      |
-| [cw3-flex-multisig](contract/cw3-flex-multisig) | A multisig contract                                                       |
+| [cw3-multisig](contract/cw3-multisig) | A multisig contract                                                       |
 
 ## Deploying in a development environment
 
@@ -25,9 +25,8 @@ The script will output something like:
 ``` sh
 NEXT_PUBLIC_DAO_TOKEN_CODE_ID=1
 NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=2
-NEXT_PUBLIC_FIXED_MULTISIG_CODE_ID=3
-NEXT_PUBLIC_FLEX_MULTISIG_CODE_ID=4
-NEXT_PUBLIC_C4_GROUP_CODE_ID=5
+NEXT_PUBLIC_MULTISIG_CODE_ID=3
+NEXT_PUBLIC_C4_GROUP_CODE_ID=4
 NEXT_PUBLIC_DAO_TOKEN_ADDRESS=juno14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9skjuwg8
 NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=juno1nc5tatafv6eyq7llkr2gv50ff9e22mnf70qgjlv737ktmt4eswrq68ev2p
 ```

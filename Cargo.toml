@@ -5,7 +5,7 @@ members = ["contracts/*"]
 codegen-units = 1
 incremental = false
 
-[profile.release.package.cw3-flex-multisig]
+[profile.release.package.cw3-multisig]
 codegen-units = 1
 incremental = false
 

@@ -336,8 +336,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw3-flex-multisig"
-version = "0.10.3"
+name = "cw3-multisig"
+version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
