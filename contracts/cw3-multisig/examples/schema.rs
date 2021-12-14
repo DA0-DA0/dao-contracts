@@ -1,8 +1,8 @@
 use cosmwasm_schema::{export_schema_with_title, remove_schemas, schema_for};
 use cw3::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse};
-use cw3_flex_multisig::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw3_flex_multisig::query::{ConfigResponse, VoteTallyResponse};
-use cw3_flex_multisig::state::{Config, Proposal};
+use cw3_multisig::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw3_multisig::query::{ConfigResponse, VoteTallyResponse};
+use cw3_multisig::state::{Config, Proposal};
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
