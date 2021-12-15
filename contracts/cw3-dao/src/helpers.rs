@@ -1,5 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Addr, BlockInfo, CosmosMsg, Deps, Env, MessageInfo, StdResult, Uint128, WasmMsg,
+    to_binary, Addr, BlockInfo, CosmosMsg, Deps, Env, MessageInfo, StdError, StdResult, Uint128,
+    WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -10,6 +11,7 @@ use cw20_gov::msg::{
 use crate::{
     query::ProposalResponse,
     state::{parse_id, Proposal, GOV_TOKEN},
+    ContractError,
 };
 
 pub fn get_deposit_message(
@@ -112,4 +114,23 @@ pub fn map_proposal(
         threshold,
         deposit_amount: prop.deposit,
     })
+}
+
+pub fn get_and_check_limit(limit: Option<u32>, max: u32, default: u32) -> StdResult<u32> {
+    match limit {
+        Some(l) => {
+            if l <= max {
+                Ok(l)
+            } else {
+                Err(StdError::GenericErr {
+                    msg: ContractError::OversizedRequest {
+                        size: l as u64,
+                        max: max as u64,
+                    }
+                    .to_string(),
+                })
+            }
+        }
+        None => Ok(default),
+    }
 }

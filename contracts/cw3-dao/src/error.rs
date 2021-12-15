@@ -47,4 +47,7 @@ pub enum ContractError {
 
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
+
+    #[error("Request size ({size}) is above limit of ({max})")]
+    OversizedRequest { size: u64, max: u64 },
 }

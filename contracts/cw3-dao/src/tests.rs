@@ -672,6 +672,159 @@ mod tests {
     }
 
     #[test]
+    fn test_query_limited() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(2000000);
+        let threshold = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
+        };
+        let (dao_addr, _) = setup_test_case(
+            &mut app,
+            threshold,
+            voting_period,
+            coins(100, NATIVE_TOKEN_DENOM),
+            None,
+            None,
+        );
+
+        // Make some queries that should be limited
+        let res: Result<ProposalListResponse, _> = app.wrap().query_wasm_smart(
+            &dao_addr,
+            &QueryMsg::ReverseProposals {
+                start_before: None,
+                limit: Some(40),
+            },
+        );
+        assert!(res.is_err());
+        let res: Result<ProposalListResponse, _> = app.wrap().query_wasm_smart(
+            &dao_addr,
+            &QueryMsg::ListProposals {
+                start_after: None,
+                limit: Some(31),
+            },
+        );
+        assert!(res.is_err());
+        let res: Result<Cw20BalancesResponse, _> = app.wrap().query_wasm_smart(
+            &dao_addr,
+            &QueryMsg::Cw20Balances {
+                start_after: None,
+                limit: Some(3000),
+            },
+        );
+        assert!(res.is_err());
+
+        // Make some queries that should not be limited
+        let res: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                &dao_addr,
+                &QueryMsg::ReverseProposals {
+                    start_before: None,
+                    limit: Some(30),
+                },
+            )
+            .unwrap();
+        assert_eq!(res.proposals, vec![]);
+        let res: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                &dao_addr,
+                &QueryMsg::ListProposals {
+                    start_after: None,
+                    limit: Some(0),
+                },
+            )
+            .unwrap();
+        assert_eq!(res.proposals, vec![]);
+        let res: Cw20BalancesResponse = app
+            .wrap()
+            .query_wasm_smart(
+                &dao_addr,
+                &QueryMsg::Cw20Balances {
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            res.cw20_balances,
+            vec![Cw20CoinVerified {
+                address: Addr::unchecked("Contract #0"),
+                amount: Uint128::zero()
+            }]
+        );
+    }
+
+    #[test]
+    fn test_token_add_limited() {
+        let mut app = mock_app();
+
+        let voting_period = Duration::Time(2000000);
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(20),
+        };
+        let (dao_addr, _cw20_addr) = setup_test_case(
+            &mut app,
+            threshold.clone(),
+            voting_period,
+            coins(10, NATIVE_TOKEN_DENOM),
+            None,
+            None,
+        );
+
+        // Attempt to add a bunch of nonesense tokens
+        let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
+            to_add: (0..20)
+                .into_iter()
+                .map(|i| Addr::unchecked(i.to_string()))
+                .collect(),
+            to_remove: (20..31)
+                .into_iter()
+                .map(|i| Addr::unchecked(i.to_string()))
+                .collect(),
+        };
+        let wasm_msg = WasmMsg::Execute {
+            contract_addr: dao_addr.clone().into(),
+            msg: to_binary(&update_token_list_msg).unwrap(),
+            funds: vec![],
+        };
+        let proposal_msg = ExecuteMsg::Propose(ProposeMsg {
+            title: String::from("Change params"),
+            description: String::from("Add some _totally legit_ tokens"),
+            msgs: vec![wasm_msg.into()],
+            latest: None,
+        });
+        let res = app
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
+            .unwrap();
+        let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        // Imediately passes on yes vote
+        let yes_vote = ExecuteMsg::Vote(VoteMsg {
+            proposal_id,
+            vote: Vote::Yes,
+        });
+        let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
+        assert!(res.is_ok());
+
+        // Execute - this ought to fail as we are attempting to add
+        // far too many voting tokens.
+        let execution = ExecuteMsg::Execute { proposal_id };
+        let err = app
+            .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[])
+            .unwrap_err();
+        assert!(matches!(
+            err.downcast().unwrap(),
+            ContractError::OversizedRequest {
+                size: 31u64,
+                max: 30u64
+            }
+        ));
+    }
+
+    #[test]
     fn test_vote_works() {
         let mut app = mock_app();
 
