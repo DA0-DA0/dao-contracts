@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::helpers::{
-    get_deposit_message, get_proposal_deposit_refund_message, get_staked_balance,
-    get_total_staked_supply, get_voting_power_at_height, map_proposal,
+    get_and_check_limit, get_deposit_message, get_proposal_deposit_refund_message,
+    get_staked_balance, get_total_staked_supply, get_voting_power_at_height, map_proposal,
 };
 use crate::msg::{ExecuteMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg, VoteMsg};
 use crate::query::{
@@ -356,6 +356,15 @@ pub fn execute_update_cw20_token_list(
         return Err(ContractError::Unauthorized {});
     }
 
+    // Limit the number of token modifications that can occur in one
+    // execution to prevent out of gas issues.
+    if to_add.len() + to_remove.len() > MAX_LIMIT as usize {
+        return Err(ContractError::OversizedRequest {
+            size: (to_add.len() + to_remove.len()) as u64,
+            max: MAX_LIMIT as u64,
+        });
+    }
+
     for token in &to_add {
         TREASURY_TOKENS.save(deps.storage, token, &Empty {})?;
     }
@@ -464,7 +473,8 @@ fn query_cw20_balances(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Cw20BalancesResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let limit = get_and_check_limit(limit, MAX_LIMIT, DEFAULT_LIMIT)? as usize;
+
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
 
@@ -503,7 +513,7 @@ fn query_list_proposals(
     start_after: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<ProposalListResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let limit = get_and_check_limit(limit, MAX_LIMIT, DEFAULT_LIMIT)? as usize;
     let start = start_after.map(Bound::exclusive_int);
     let props: StdResult<Vec<_>> = PROPOSALS
         .range(deps.storage, start, None, Order::Ascending)
@@ -520,7 +530,7 @@ fn query_reverse_proposals(
     start_before: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<ProposalListResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let limit = get_and_check_limit(limit, MAX_LIMIT, DEFAULT_LIMIT)? as usize;
     let end = start_before.map(Bound::exclusive_int);
     let props: StdResult<Vec<_>> = PROPOSALS
         .range(deps.storage, None, end, Order::Descending)
@@ -548,7 +558,7 @@ fn query_list_votes(
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<VoteListResponse> {
-    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let limit = get_and_check_limit(limit, MAX_LIMIT, DEFAULT_LIMIT)? as usize;
     let addr = maybe_addr(deps.api, start_after)?;
     let start = addr.map(|addr| Bound::exclusive(addr.as_ref()));
 
