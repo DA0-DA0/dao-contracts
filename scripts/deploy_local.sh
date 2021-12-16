@@ -4,11 +4,12 @@
 
 ## CONFIG
 # NOTE: you will need to update these to deploy on different network
+IMAGE_TAG="pr-126" # moneta
 BINARY='docker exec -i cosmwasm junod'
 DENOM='ujunox'
 CHAIN_ID='testing'
 RPC='http://localhost:26657/'
-TXFLAG="--gas-prices 0.01$DENOM --gas auto --gas-adjustment 1.3 -y -b block --chain-id $CHAIN_ID --node $RPC"
+TXFLAG="--gas-prices 0.1$DENOM --gas auto --gas-adjustment 1.5 -y -b block --chain-id $CHAIN_ID --node $RPC"
 
 if [ "$1" = "" ]
 then
@@ -26,7 +27,7 @@ docker run --rm -it \
     -e STAKE_TOKEN=$DENOM \
     -e PASSWORD=xxxxxxxxx \
     --mount type=volume,source=junod_data,target=/root \
-    ghcr.io/cosmoscontracts/juno:pr-105 /opt/setup_junod.sh $1
+    ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/setup_junod.sh $1
 
 # Add custom app.toml to junod_data volume
 docker run -v junod_data:/root --name helper busybox true
@@ -37,7 +38,7 @@ docker rm helper
 # Start junod
 docker run --rm -d --name cosmwasm -p 26657:26657 -p 26656:26656 -p 1317:1317 \
     --mount type=volume,source=junod_data,target=/root \
-    ghcr.io/cosmoscontracts/juno:pr-105 /opt/run_junod.sh
+    ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/run_junod.sh
 
 # Compile code
 docker run --rm -v "$(pwd)":/code \
@@ -59,8 +60,9 @@ echo "TX Flags: $TXFLAG"
 
 #### CW20-GOV ####
 # Upload cw20 contract code
-echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG
-CW20_CODE=1
+CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+echo "CW20 code:"
+echo $CW20_CODE
 
 # # Instantiate cw20 contract
 # CW20_INIT='{
@@ -77,9 +79,8 @@ CW20_CODE=1
 
 #### CW-DAO ####
 # Upload cw-dao contract code
-echo xxxxxxxxx | $BINARY tx wasm store "/cw3_dao.wasm" --from validator $TXFLAG
-CW3_DAO_CODE=2
-
+CW3_DAO_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw3_dao.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+echo "CW3_DAO_CODE:"
 echo $CW3_DAO_CODE
 
 # Instantiate cw-dao contract using existing token
@@ -130,7 +131,8 @@ CW3_DAO_INIT='{
 }'
 echo $CW3_DAO_INIT | jq .
 
-echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "cw-dao" $TXFLAG
+DAO_INIT=$(echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "cw-dao" $TXFLAG --output json)
+echo $DAO_INIT | jq .
 
 CW3_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW3_DAO_CODE --output json | jq -r '.contracts[-1]')
 
