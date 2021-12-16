@@ -60,8 +60,9 @@ echo "TX Flags: $TXFLAG"
 
 #### CW20-GOV ####
 # Upload cw20 contract code
-echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG
-CW20_CODE=1
+CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+echo "CW20 code:"
+echo $CW20_CODE
 
 # # Instantiate cw20 contract
 # CW20_INIT='{
@@ -78,9 +79,8 @@ CW20_CODE=1
 
 #### CW-DAO ####
 # Upload cw-dao contract code
-echo xxxxxxxxx | $BINARY tx wasm store "/cw3_dao.wasm" --from validator $TXFLAG
-CW3_DAO_CODE=2
-
+CW3_DAO_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw3_dao.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+echo "CW3_DAO_CODE:"
 echo $CW3_DAO_CODE
 
 # Instantiate cw-dao contract using existing token
@@ -131,7 +131,8 @@ CW3_DAO_INIT='{
 }'
 echo $CW3_DAO_INIT | jq .
 
-echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "cw-dao" $TXFLAG
+DAO_INIT=$(echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "cw-dao" $TXFLAG --output json)
+echo $DAO_INIT | jq .
 
 CW3_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW3_DAO_CODE --output json | jq -r '.contracts[-1]')
 
