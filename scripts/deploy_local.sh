@@ -4,7 +4,7 @@
 
 ## CONFIG
 # NOTE: you will need to update these to deploy on different network
-IMAGE_TAG="v2.0.6" # moneta
+IMAGE_TAG="pr-126" # moneta
 BINARY='docker exec -i cosmwasm junod'
 DENOM='ujunox'
 CHAIN_ID='testing'
