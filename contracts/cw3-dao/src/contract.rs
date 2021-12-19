@@ -32,6 +32,8 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
+
+// Reply IDs
 const INSTANTIATE_GOV_TOKEN_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -396,14 +398,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&query_list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
-        QueryMsg::Cw20Balances { start_after, limit } => {
-            to_binary(&query_cw20_balances(deps, env, start_after, limit)?)
-        }
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
-        QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)),
         QueryMsg::Tally { proposal_id } => {
             to_binary(&query_proposal_tally(deps, env, proposal_id)?)
         }
+        QueryMsg::Cw20Balances { start_after, limit } => {
+            to_binary(&query_cw20_balances(deps, env, start_after, limit)?)
+        }
+        QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)),
     }
 }
 
