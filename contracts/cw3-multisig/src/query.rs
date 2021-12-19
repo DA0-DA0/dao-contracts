@@ -1,4 +1,5 @@
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
+use cw20::Cw20CoinVerified;
 use cw3::{Status, ThresholdResponse};
 use cw4::Cw4Contract;
 use schemars::JsonSchema;
@@ -31,4 +32,14 @@ pub struct VoteTallyResponse {
 pub struct ConfigResponse {
     pub config: Config,
     pub group_address: Cw4Contract,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct Cw20BalancesResponse {
+    pub cw20_balances: Vec<Cw20CoinVerified>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct TokenListResponse {
+    pub token_list: Vec<Addr>,
 }

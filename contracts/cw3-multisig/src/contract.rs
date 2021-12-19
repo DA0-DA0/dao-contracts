@@ -1,14 +1,16 @@
 use std::cmp::Ordering;
+use std::string::FromUtf8Error;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, BlockInfo, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, MessageInfo,
-    Order, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 
 use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
+use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg};
 use cw3::{
     ProposalListResponse, ProposalResponse, Status, ThresholdResponse, Vote, VoteInfo,
     VoteListResponse, VoteResponse, VoterDetail, VoterListResponse, VoterResponse,
@@ -18,16 +20,23 @@ use cw4_group::msg::InstantiateMsg as Cw4InstantiateMsg;
 use cw_storage_plus::Bound;
 
 use crate::error::ContractError;
+use crate::helpers::{get_and_check_limit, map_proposal};
 use crate::msg::{ExecuteMsg, GroupMsg, InstantiateMsg, QueryMsg};
-use crate::query::{ConfigResponse, VoteTallyResponse};
+use crate::query::{ConfigResponse, Cw20BalancesResponse, TokenListResponse, VoteTallyResponse};
 use crate::state::{
-    next_id, parse_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GROUP_ADDRESS, PROPOSALS,
+    next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GROUP_ADDRESS, PROPOSALS,
+    TREASURY_TOKENS,
 };
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw3-multisig";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+// settings for pagination
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
+
+// Reply IDs
 const INSTANTIATE_CW4_GROUP_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -118,6 +127,9 @@ pub fn execute(
             execute_membership_hook(deps, env, info, diffs)
         }
         ExecuteMsg::UpdateConfig(config) => execute_update_config(deps, env, info, config),
+        ExecuteMsg::UpdateCw20TokenList { to_add, to_remove } => {
+            execute_update_cw20_token_list(deps, env, info, to_add, to_remove)
+        }
     }
 }
 
@@ -336,6 +348,38 @@ pub fn execute_update_config(
         .add_attribute("sender", info.sender))
 }
 
+pub fn execute_update_cw20_token_list(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    to_add: Vec<Addr>,
+    to_remove: Vec<Addr>,
+) -> Result<Response<Empty>, ContractError> {
+    // Only contract can call this method
+    if env.contract.address != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Limit the number of token modifications that can occur in one
+    // execution to prevent out of gas issues.
+    if to_add.len() + to_remove.len() > MAX_LIMIT as usize {
+        return Err(ContractError::OversizedRequest {
+            size: (to_add.len() + to_remove.len()) as u64,
+            max: MAX_LIMIT as u64,
+        });
+    }
+
+    for token in &to_add {
+        TREASURY_TOKENS.save(deps.storage, token, &Empty {})?;
+    }
+
+    for token in &to_remove {
+        TREASURY_TOKENS.remove(deps.storage, token);
+    }
+
+    Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -343,26 +387,30 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Proposal { proposal_id } => to_binary(&query_proposal(deps, env, proposal_id)?),
         QueryMsg::Vote { proposal_id, voter } => to_binary(&query_vote(deps, proposal_id, voter)?),
         QueryMsg::ListProposals { start_after, limit } => {
-            to_binary(&list_proposals(deps, env, start_after, limit)?)
+            to_binary(&query_list_proposals(deps, env, start_after, limit)?)
         }
         QueryMsg::ReverseProposals {
             start_before,
             limit,
-        } => to_binary(&reverse_proposals(deps, env, start_before, limit)?),
+        } => to_binary(&query_reverse_proposals(deps, env, start_before, limit)?),
         QueryMsg::ProposalCount {} => to_binary(&query_proposal_count(deps)),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
             limit,
-        } => to_binary(&list_votes(deps, proposal_id, start_after, limit)?),
+        } => to_binary(&query_list_votes(deps, proposal_id, start_after, limit)?),
         QueryMsg::Voter { address } => to_binary(&query_voter(deps, address)?),
         QueryMsg::ListVoters { start_after, limit } => {
-            to_binary(&list_voters(deps, start_after, limit)?)
+            to_binary(&query_list_voters(deps, start_after, limit)?)
         }
+        QueryMsg::GetConfig => to_binary(&query_config(deps)?),
         QueryMsg::Tally { proposal_id } => {
             to_binary(&query_proposal_tally(deps, env, proposal_id)?)
         }
-        QueryMsg::GetConfig => to_binary(&query_config(deps)?),
+        QueryMsg::Cw20Balances { start_after, limit } => {
+            to_binary(&query_cw20_balances(deps, env, start_after, limit)?)
+        }
+        QueryMsg::Cw20TokenList {} => to_binary(&query_cw20_token_list(deps)),
     }
 }
 
@@ -416,11 +464,59 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     })
 }
 
-// settings for pagination
-const MAX_LIMIT: u32 = 30;
-const DEFAULT_LIMIT: u32 = 10;
+fn query_cw20_token_list(deps: Deps) -> TokenListResponse {
+    let token_list: Result<Vec<Addr>, FromUtf8Error> = TREASURY_TOKENS
+        .keys(deps.storage, None, None, Order::Ascending)
+        .map(|token| String::from_utf8(token).map(Addr::unchecked))
+        .collect();
 
-fn list_proposals(
+    match token_list {
+        Ok(token_list) => TokenListResponse { token_list },
+        Err(_) => TokenListResponse { token_list: vec![] },
+    }
+}
+
+fn query_cw20_balances(
+    deps: Deps,
+    env: Env,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Cw20BalancesResponse> {
+    let limit = get_and_check_limit(limit, MAX_LIMIT, DEFAULT_LIMIT)? as usize;
+
+    let start_addr = maybe_addr(deps.api, start_after)?;
+    let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
+
+    let cw20_balances: Vec<Cw20CoinVerified> = TREASURY_TOKENS
+        .keys(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|cw20_contract_address| {
+            let cw20_contract_address = String::from_utf8(cw20_contract_address)
+                .map(Addr::unchecked)
+                .unwrap();
+            let balance: BalanceResponse = deps
+                .querier
+                .query_wasm_smart(
+                    &cw20_contract_address,
+                    &Cw20QueryMsg::Balance {
+                        address: env.contract.address.to_string(),
+                    },
+                )
+                .unwrap_or(BalanceResponse {
+                    balance: Uint128::zero(),
+                });
+
+            Cw20CoinVerified {
+                address: cw20_contract_address,
+                amount: balance.balance,
+            }
+        })
+        .collect();
+
+    Ok(Cw20BalancesResponse { cw20_balances })
+}
+
+fn query_list_proposals(
     deps: Deps,
     env: Env,
     start_after: Option<u64>,
@@ -443,7 +539,7 @@ fn query_proposal_count(deps: Deps) -> u64 {
         .count() as u64
 }
 
-fn reverse_proposals(
+fn query_reverse_proposals(
     deps: Deps,
     env: Env,
     start_before: Option<u64>,
@@ -460,24 +556,6 @@ fn reverse_proposals(
     Ok(ProposalListResponse { proposals: props? })
 }
 
-fn map_proposal(
-    block: &BlockInfo,
-    item: StdResult<(Vec<u8>, Proposal)>,
-) -> StdResult<ProposalResponse> {
-    let (key, prop) = item?;
-    let status = prop.current_status(block);
-    let threshold = prop.threshold.to_response(prop.total_weight);
-    Ok(ProposalResponse {
-        id: parse_id(&key)?,
-        title: prop.title,
-        description: prop.description,
-        msgs: prop.msgs,
-        status,
-        expires: prop.expires,
-        threshold,
-    })
-}
-
 fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResponse> {
     let voter_addr = deps.api.addr_validate(&voter)?;
     let prop = BALLOTS.may_load(deps.storage, (proposal_id.into(), &voter_addr))?;
@@ -489,7 +567,7 @@ fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResp
     Ok(VoteResponse { vote })
 }
 
-fn list_votes(
+fn query_list_votes(
     deps: Deps,
     proposal_id: u64,
     start_after: Option<String>,
@@ -524,7 +602,7 @@ fn query_voter(deps: Deps, voter: String) -> StdResult<VoterResponse> {
     Ok(VoterResponse { weight })
 }
 
-fn list_voters(
+fn query_list_voters(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -573,7 +651,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coin, coins, Addr, BankMsg, Coin, Decimal, Timestamp};
+    use cosmwasm_std::{coin, coins, Addr, BankMsg, BlockInfo, Coin, Decimal, Timestamp};
 
     use cw0::Duration;
     use cw2::{query_contract_info, ContractVersion};
