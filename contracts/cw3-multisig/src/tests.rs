@@ -41,7 +41,7 @@ mod tests {
         }
     }
 
-    pub fn contract_flex() -> Box<dyn Contract<Empty>> {
+    pub fn contract_multisig() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             crate::contract::execute,
             crate::contract::instantiate,
@@ -90,13 +90,13 @@ mod tests {
     }
 
     #[track_caller]
-    fn instantiate_flex(
+    fn instantiate_multisig(
         app: &mut App,
         group: Addr,
         threshold: Threshold,
         max_voting_period: Duration,
     ) -> Addr {
-        let flex_id = app.store_code(contract_flex());
+        let multisig_id = app.store_code(contract_multisig());
         let msg = crate::msg::InstantiateMsg {
             name: "fishsig".to_string(),
             description: "🐟".to_string(),
@@ -106,8 +106,15 @@ mod tests {
             threshold,
             max_voting_period,
         };
-        app.instantiate_contract(flex_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
-            .unwrap()
+        app.instantiate_contract(
+            multisig_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &[],
+            "multisig",
+            None,
+        )
+        .unwrap()
     }
 
     // this will set up both contracts, instantiating the group with
@@ -153,13 +160,14 @@ mod tests {
         app.update_block(next_block);
 
         // 2. Set up Multisig backed by this group
-        let flex_addr = instantiate_flex(app, group_addr.clone(), threshold, max_voting_period);
+        let multisig_addr =
+            instantiate_multisig(app, group_addr.clone(), threshold, max_voting_period);
         app.update_block(next_block);
 
         // 3. (Optional) Set the multisig as the group owner
         if multisig_as_group_admin {
             let update_admin = Cw4ExecuteMsg::UpdateAdmin {
-                admin: Some(flex_addr.to_string()),
+                admin: Some(multisig_addr.to_string()),
             };
             app.execute_contract(
                 Addr::unchecked(OWNER),
@@ -173,10 +181,10 @@ mod tests {
 
         // Bonus: set some funds on the multisig contract for future proposals
         if !init_funds.is_empty() {
-            app.send_tokens(Addr::unchecked(OWNER), flex_addr.clone(), &init_funds)
+            app.send_tokens(Addr::unchecked(OWNER), multisig_addr.clone(), &init_funds)
                 .unwrap();
         }
-        (flex_addr, group_addr)
+        (multisig_addr, group_addr)
     }
 
     fn proposal_info() -> (Vec<CosmosMsg<Empty>>, String, String) {
@@ -200,12 +208,12 @@ mod tests {
         }
     }
 
-    fn update_config_proposal(new_config: Config, flex_addr: String) -> ExecuteMsg {
+    fn update_config_proposal(new_config: Config, multisig_addr: String) -> ExecuteMsg {
         ExecuteMsg::Propose {
             title: "Update config".to_string(),
             description: "Should we update the config".to_string(),
             msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: flex_addr,
+                contract_addr: multisig_addr,
                 msg: to_binary(&ExecuteMsg::UpdateConfig(new_config)).unwrap(),
                 funds: vec![],
             })],
@@ -219,7 +227,7 @@ mod tests {
 
         // make a simple group
         let group_addr = instantiate_group(&mut app, vec![member(OWNER, 1)]);
-        let flex_id = app.store_code(contract_flex());
+        let multisig_id = app.store_code(contract_multisig());
 
         let max_voting_period = Duration::Time(1234567);
 
@@ -238,7 +246,7 @@ mod tests {
         };
         let err = app
             .instantiate_contract(
-                flex_id,
+                multisig_id,
                 Addr::unchecked(OWNER),
                 &instantiate_msg,
                 &[],
@@ -260,7 +268,7 @@ mod tests {
         };
         let err = app
             .instantiate_contract(
-                flex_id,
+                multisig_id,
                 Addr::unchecked(OWNER),
                 &instantiate_msg,
                 &[],
@@ -280,9 +288,9 @@ mod tests {
             threshold: Threshold::AbsoluteCount { weight: 1 },
             max_voting_period,
         };
-        let flex_addr = app
+        let multisig_addr = app
             .instantiate_contract(
-                flex_id,
+                multisig_id,
                 Addr::unchecked(OWNER),
                 &instantiate_msg,
                 &[],
@@ -292,7 +300,7 @@ mod tests {
             .unwrap();
 
         // Verify contract version set properly
-        let version = query_contract_info(&app, flex_addr.clone()).unwrap();
+        let version = query_contract_info(&app, multisig_addr.clone()).unwrap();
         assert_eq!(
             ContractVersion {
                 contract: CONTRACT_NAME.to_string(),
@@ -304,7 +312,7 @@ mod tests {
         // Verify contract config set properly.
         let config: ConfigResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::GetConfig)
+            .query_wasm_smart(&multisig_addr, &QueryMsg::GetConfig)
             .unwrap();
 
         assert_eq!(
@@ -324,7 +332,7 @@ mod tests {
         let voters: VoterListResponse = app
             .wrap()
             .query_wasm_smart(
-                &flex_addr,
+                &multisig_addr,
                 &QueryMsg::ListVoters {
                     start_after: None,
                     limit: None,
@@ -354,7 +362,7 @@ mod tests {
             max_voting_period,
         };
         let res = app.instantiate_contract(
-            flex_id,
+            multisig_id,
             Addr::unchecked(OWNER),
             &instantiate_msg,
             &[],
@@ -371,13 +379,18 @@ mod tests {
 
         let required_weight = 4;
         let voting_period = Duration::Time(2000000);
-        let (flex_addr, _) =
+        let (multisig_addr, _) =
             setup_test_case_fixed(&mut app, required_weight, voting_period, init_funds, false);
 
         let proposal = pay_somebody_proposal();
         // Only voters can propose
         let err = app
-            .execute_contract(Addr::unchecked(SOMEBODY), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(SOMEBODY),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 
@@ -395,7 +408,7 @@ mod tests {
         let err = app
             .execute_contract(
                 Addr::unchecked(OWNER),
-                flex_addr.clone(),
+                multisig_addr.clone(),
                 &proposal_wrong_exp,
                 &[],
             )
@@ -404,7 +417,12 @@ mod tests {
 
         // Proposal from voter works
         let res = app
-            .execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER3),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
@@ -418,7 +436,7 @@ mod tests {
 
         // Proposal from voter with enough vote power directly passes
         let res = app
-            .execute_contract(Addr::unchecked(VOTER4), flex_addr, &proposal, &[])
+            .execute_contract(Addr::unchecked(VOTER4), multisig_addr, &proposal, &[])
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
@@ -438,7 +456,7 @@ mod tests {
 
         let required_weight = 4;
         let voting_period = Duration::Time(2000000);
-        let (flex_addr, group_addr) =
+        let (multisig_addr, group_addr) =
             setup_test_case_fixed(&mut app, required_weight, voting_period, init_funds, false);
 
         let proposal = update_config_proposal(
@@ -450,18 +468,23 @@ mod tests {
                 },
                 max_voting_period: voting_period,
             },
-            flex_addr.clone().to_string(),
+            multisig_addr.clone().to_string(),
         );
 
         // Proposal from voter with enough vote power directly passes
         let res = app
-            .execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER4),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
         app.execute_contract(
             Addr::unchecked(VOTER4),
-            flex_addr.clone(),
+            multisig_addr.clone(),
             &ExecuteMsg::Execute { proposal_id },
             &[],
         )
@@ -470,7 +493,7 @@ mod tests {
         // Verify contract config set properly.
         let config: ConfigResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::GetConfig)
+            .query_wasm_smart(&multisig_addr, &QueryMsg::GetConfig)
             .unwrap();
 
         assert_eq!(
@@ -496,22 +519,27 @@ mod tests {
                 threshold: Threshold::AbsoluteCount { weight: 10000 },
                 max_voting_period: voting_period,
             },
-            flex_addr.clone().to_string(),
+            multisig_addr.clone().to_string(),
         );
 
         // Proposal from voter with enough vote power directly passes
-        let res = app.execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &proposal, &[]);
+        let res = app.execute_contract(
+            Addr::unchecked(VOTER4),
+            multisig_addr.clone(),
+            &proposal,
+            &[],
+        );
         assert!(res.is_err())
     }
 
-    fn get_tally(app: &App, flex_addr: &str, proposal_id: u64) -> u64 {
+    fn get_tally(app: &App, multisig_addr: &str, proposal_id: u64) -> u64 {
         // Get all the voters on the proposal
         let voters = QueryMsg::ListVotes {
             proposal_id,
             start_after: None,
             limit: None,
         };
-        let votes: VoteListResponse = app.wrap().query_wasm_smart(flex_addr, &voters).unwrap();
+        let votes: VoteListResponse = app.wrap().query_wasm_smart(multisig_addr, &voters).unwrap();
         // Sum the weights of the Yes votes to get the tally
         votes
             .votes
@@ -552,12 +580,18 @@ mod tests {
             threshold: Decimal::percent(80),
             quorum: Decimal::percent(20),
         };
-        let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, false);
+        let (multisig_addr, _) =
+            setup_test_case(&mut app, threshold, voting_period, init_funds, false);
 
         // create proposal with 1 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER1), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER1),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         let proposal_id1: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
@@ -565,7 +599,12 @@ mod tests {
         app.update_block(next_block);
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER4),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         let proposal_id2: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
 
@@ -575,7 +614,12 @@ mod tests {
         // add one more open proposal, 2 votes
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER2),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         let proposal_id3: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
         let proposed_at = app.block_info();
@@ -588,7 +632,7 @@ mod tests {
         };
         let res: ProposalListResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &list_query)
+            .query_wasm_smart(&multisig_addr, &list_query)
             .unwrap();
         assert_eq!(3, res.proposals.len());
 
@@ -616,7 +660,7 @@ mod tests {
         };
         let res: ProposalListResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &list_query)
+            .query_wasm_smart(&multisig_addr, &list_query)
             .unwrap();
         assert_eq!(1, res.proposals.len());
 
@@ -647,13 +691,14 @@ mod tests {
             quorum: Decimal::percent(75),
         };
         let voting_period = Duration::Time(2000000);
-        let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, true);
+        let (multisig_addr, _) =
+            setup_test_case(&mut app, threshold, voting_period, init_funds, true);
 
         let assert_tally_is = |app: &mut App, proposal_id, expected| {
             let query_prop = QueryMsg::Tally { proposal_id };
             let prop: VoteTallyResponse = app
                 .wrap()
-                .query_wasm_smart(&flex_addr, &query_prop)
+                .query_wasm_smart(&multisig_addr, &query_prop)
                 .unwrap();
             assert_eq!(prop, expected);
         };
@@ -661,7 +706,12 @@ mod tests {
         // create proposal
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER1), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER1),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
 
         // Get the proposal id from the logs
@@ -690,8 +740,13 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER3),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
 
         assert_tally_is(
             &mut app,
@@ -716,8 +771,13 @@ mod tests {
             proposal_id,
             vote: Vote::Abstain,
         };
-        app.execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER2),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
 
         assert_tally_is(
             &mut app,
@@ -747,8 +807,13 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER4),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
 
         assert_tally_is(
             &mut app,
@@ -780,7 +845,8 @@ mod tests {
 
         let voting_period = Duration::Time(2000000);
         let threshold = Threshold::AbsoluteCount { weight: 1 };
-        let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, false);
+        let (multisig_addr, _) =
+            setup_test_case(&mut app, threshold, voting_period, init_funds, false);
 
         // Attempt to add a bunch of nonesense tokens
         let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
@@ -794,7 +860,7 @@ mod tests {
                 .collect(),
         };
         let wasm_msg = WasmMsg::Execute {
-            contract_addr: flex_addr.clone().into(),
+            contract_addr: multisig_addr.clone().into(),
             msg: to_binary(&update_token_list_msg).unwrap(),
             funds: vec![],
         };
@@ -807,7 +873,7 @@ mod tests {
         let res = app
             .execute_contract(
                 Addr::unchecked(OWNER),
-                flex_addr.clone(),
+                multisig_addr.clone(),
                 &proposal_msg,
                 &[],
             )
@@ -819,14 +885,24 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        let res = app.execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &yes_vote, &[]);
+        let res = app.execute_contract(
+            Addr::unchecked(VOTER3),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        );
         assert!(res.is_ok());
 
         // Execute - this ought to fail as we are attempting to add
         // far too many voting tokens.
         let execution = ExecuteMsg::Execute { proposal_id };
         let err = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &execution, &[])
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                multisig_addr.clone(),
+                &execution,
+                &[],
+            )
             .unwrap_err();
         assert!(matches!(
             err.downcast().unwrap(),
@@ -847,19 +923,25 @@ mod tests {
             quorum: Decimal::percent(1),
         };
         let voting_period = Duration::Time(2000000);
-        let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, false);
+        let (multisig_addr, _) =
+            setup_test_case(&mut app, threshold, voting_period, init_funds, false);
 
         // Proposal count is 0
         let prop_count: u64 = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::ProposalCount {})
+            .query_wasm_smart(&multisig_addr, &QueryMsg::ProposalCount {})
             .unwrap();
         assert_eq!(prop_count, 0);
 
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
 
         // Get the proposal id from the logs
@@ -868,7 +950,7 @@ mod tests {
         // Proposal count is now 1
         let prop_count: u64 = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::ProposalCount {})
+            .query_wasm_smart(&multisig_addr, &QueryMsg::ProposalCount {})
             .unwrap();
         assert_eq!(prop_count, 1);
 
@@ -878,19 +960,34 @@ mod tests {
             vote: Vote::Yes,
         };
         let err = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 
         // Only voters can vote
         let err = app
-            .execute_contract(Addr::unchecked(SOMEBODY), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(SOMEBODY),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 
         // But voter1 can
         let res = app
-            .execute_contract(Addr::unchecked(VOTER1), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER1),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
@@ -904,13 +1001,18 @@ mod tests {
 
         // VOTER1 cannot vote again
         let err = app
-            .execute_contract(Addr::unchecked(VOTER1), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER1),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::AlreadyVoted {}, err.downcast().unwrap());
 
         // No/Veto votes have no effect on the tally
         // Compute the current tally
-        let tally = get_tally(&app, flex_addr.as_ref(), proposal_id);
+        let tally = get_tally(&app, multisig_addr.as_ref(), proposal_id);
         assert_eq!(tally, 1);
 
         // Cast a No vote
@@ -919,7 +1021,12 @@ mod tests {
             vote: Vote::No,
         };
         let _ = app
-            .execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &no_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER2),
+                multisig_addr.clone(),
+                &no_vote,
+                &[],
+            )
             .unwrap();
 
         // Cast a Veto vote
@@ -928,28 +1035,48 @@ mod tests {
             vote: Vote::Veto,
         };
         let _ = app
-            .execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &veto_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER3),
+                multisig_addr.clone(),
+                &veto_vote,
+                &[],
+            )
             .unwrap();
 
         // Tally unchanged
-        assert_eq!(tally, get_tally(&app, flex_addr.as_ref(), proposal_id));
+        assert_eq!(tally, get_tally(&app, multisig_addr.as_ref(), proposal_id));
 
         let err = app
-            .execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER3),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::AlreadyVoted {}, err.downcast().unwrap());
 
         // Expired proposals cannot be voted
         app.update_block(expire(voting_period));
         let err = app
-            .execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER4),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::Expired {}, err.downcast().unwrap());
         app.update_block(unexpire(voting_period));
 
         // Powerful voter supports it, so it passes
         let res = app
-            .execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER4),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
@@ -963,7 +1090,12 @@ mod tests {
 
         // non-Open proposals cannot be voted
         let err = app
-            .execute_contract(Addr::unchecked(VOTER5), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER5),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::NotOpen {}, err.downcast().unwrap());
 
@@ -972,7 +1104,7 @@ mod tests {
         let voter = OWNER.into();
         let vote: VoteResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::Vote { proposal_id, voter })
+            .query_wasm_smart(&multisig_addr, &QueryMsg::Vote { proposal_id, voter })
             .unwrap();
         assert_eq!(
             vote.vote.unwrap(),
@@ -987,7 +1119,7 @@ mod tests {
         let voter = VOTER2.into();
         let vote: VoteResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::Vote { proposal_id, voter })
+            .query_wasm_smart(&multisig_addr, &QueryMsg::Vote { proposal_id, voter })
             .unwrap();
         assert_eq!(
             vote.vote.unwrap(),
@@ -1002,7 +1134,7 @@ mod tests {
         let voter = VOTER5.into();
         let vote: VoteResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::Vote { proposal_id, voter })
+            .query_wasm_smart(&multisig_addr, &QueryMsg::Vote { proposal_id, voter })
             .unwrap();
         assert!(vote.vote.is_none());
     }
@@ -1017,16 +1149,22 @@ mod tests {
             quorum: Decimal::percent(1),
         };
         let voting_period = Duration::Time(2000000);
-        let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, true);
+        let (multisig_addr, _) =
+            setup_test_case(&mut app, threshold, voting_period, init_funds, true);
 
         // ensure we have cash to cover the proposal
-        let contract_bal = app.wrap().query_balance(&flex_addr, "BTC").unwrap();
+        let contract_bal = app.wrap().query_balance(&multisig_addr, "BTC").unwrap();
         assert_eq!(contract_bal, coin(10, "BTC"));
 
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
 
         // Get the proposal id from the logs
@@ -1035,7 +1173,12 @@ mod tests {
         // Only Passed can be executed
         let execution = ExecuteMsg::Execute { proposal_id };
         let err = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &execution, &[])
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                multisig_addr.clone(),
+                &execution,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(
             ContractError::WrongExecuteStatus {},
@@ -1048,7 +1191,7 @@ mod tests {
             vote: Vote::Yes,
         };
         let res = app
-            .execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &vote, &[])
+            .execute_contract(Addr::unchecked(VOTER4), multisig_addr.clone(), &vote, &[])
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
@@ -1063,7 +1206,7 @@ mod tests {
         // In passing: Try to close Passed fails
         let closing = ExecuteMsg::Close { proposal_id };
         let err = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &closing, &[])
+            .execute_contract(Addr::unchecked(OWNER), multisig_addr.clone(), &closing, &[])
             .unwrap_err();
         assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
 
@@ -1071,7 +1214,7 @@ mod tests {
         let res = app
             .execute_contract(
                 Addr::unchecked(SOMEBODY),
-                flex_addr.clone(),
+                multisig_addr.clone(),
                 &execution,
                 &[],
             )
@@ -1088,12 +1231,12 @@ mod tests {
         // verify money was transfered
         let some_bal = app.wrap().query_balance(SOMEBODY, "BTC").unwrap();
         assert_eq!(some_bal, coin(1, "BTC"));
-        let contract_bal = app.wrap().query_balance(&flex_addr, "BTC").unwrap();
+        let contract_bal = app.wrap().query_balance(&multisig_addr, "BTC").unwrap();
         assert_eq!(contract_bal, coin(9, "BTC"));
 
         // In passing: Try to close Executed fails
         let err = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr, &closing, &[])
+            .execute_contract(Addr::unchecked(OWNER), multisig_addr, &closing, &[])
             .unwrap_err();
         assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
     }
@@ -1108,12 +1251,18 @@ mod tests {
             quorum: Decimal::percent(1),
         };
         let voting_period = Duration::Height(2000000);
-        let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, true);
+        let (multisig_addr, _) =
+            setup_test_case(&mut app, threshold, voting_period, init_funds, true);
 
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
 
         // Get the proposal id from the logs
@@ -1122,14 +1271,24 @@ mod tests {
         // Non-expired proposals cannot be closed
         let closing = ExecuteMsg::Close { proposal_id };
         let err = app
-            .execute_contract(Addr::unchecked(SOMEBODY), flex_addr.clone(), &closing, &[])
+            .execute_contract(
+                Addr::unchecked(SOMEBODY),
+                multisig_addr.clone(),
+                &closing,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::NotExpired {}, err.downcast().unwrap());
 
         // Expired proposals can be closed
         app.update_block(expire(voting_period));
         let res = app
-            .execute_contract(Addr::unchecked(SOMEBODY), flex_addr.clone(), &closing, &[])
+            .execute_contract(
+                Addr::unchecked(SOMEBODY),
+                multisig_addr.clone(),
+                &closing,
+                &[],
+            )
             .unwrap();
         assert_eq!(
             res.custom_attrs(1),
@@ -1143,7 +1302,7 @@ mod tests {
         // Trying to close it again fails
         let closing = ExecuteMsg::Close { proposal_id };
         let err = app
-            .execute_contract(Addr::unchecked(SOMEBODY), flex_addr, &closing, &[])
+            .execute_contract(Addr::unchecked(SOMEBODY), multisig_addr, &closing, &[])
             .unwrap_err();
         assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
     }
@@ -1159,13 +1318,18 @@ mod tests {
             quorum: Decimal::percent(1),
         };
         let voting_period = Duration::Time(20000);
-        let (flex_addr, group_addr) =
+        let (multisig_addr, group_addr) =
             setup_test_case(&mut app, threshold, voting_period, init_funds, false);
 
         // VOTER1 starts a proposal to send some tokens (1/4 votes)
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER1), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER1),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         // Get the proposal id from the logs
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
@@ -1173,7 +1337,7 @@ mod tests {
             let query_prop = QueryMsg::Proposal { proposal_id };
             let prop: ProposalResponse = app
                 .wrap()
-                .query_wasm_smart(&flex_addr, &query_prop)
+                .query_wasm_smart(&multisig_addr, &query_prop)
                 .unwrap();
             prop.status
         };
@@ -1184,7 +1348,7 @@ mod tests {
         // check current threshold (global)
         let threshold: ThresholdResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::Threshold {})
+            .query_wasm_smart(&multisig_addr, &QueryMsg::Threshold {})
             .unwrap();
         let expected_thresh = ThresholdResponse::ThresholdQuorum {
             total_weight: 23,
@@ -1214,7 +1378,7 @@ mod tests {
         };
         let power: VoterResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &query_voter)
+            .query_wasm_smart(&multisig_addr, &query_voter)
             .unwrap();
         assert_eq!(power.weight, None);
 
@@ -1227,7 +1391,12 @@ mod tests {
         // make a second proposal
         let proposal2 = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER1), flex_addr.clone(), &proposal2, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER1),
+                multisig_addr.clone(),
+                &proposal2,
+                &[],
+            )
             .unwrap();
         // Get the proposal id from the logs
         let proposal_id2: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
@@ -1237,8 +1406,13 @@ mod tests {
             proposal_id: proposal_id2,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER2),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
         assert_eq!(prop_status(&app, proposal_id2), Status::Passed);
 
         // VOTER2 can only vote on first proposal with weight of 2 (not enough to pass)
@@ -1246,24 +1420,39 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER2),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
         assert_eq!(prop_status(&app, proposal_id), Status::Open);
 
         // newbie cannot vote
         let err = app
-            .execute_contract(Addr::unchecked(newbie), flex_addr.clone(), &yes_vote, &[])
+            .execute_contract(
+                Addr::unchecked(newbie),
+                multisig_addr.clone(),
+                &yes_vote,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 
         // previously removed VOTER3 can still vote, passing the proposal
-        app.execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER3),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
 
         // check current threshold (global) is updated
         let threshold: ThresholdResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::Threshold {})
+            .query_wasm_smart(&multisig_addr, &QueryMsg::Threshold {})
             .unwrap();
         let expected_thresh = ThresholdResponse::ThresholdQuorum {
             total_weight: 41,
@@ -1285,7 +1474,7 @@ mod tests {
 
         let required_weight = 4;
         let voting_period = Duration::Time(20000);
-        let (flex_addr, group_addr) =
+        let (multisig_addr, group_addr) =
             setup_test_case_fixed(&mut app, required_weight, voting_period, init_funds, true);
 
         // Start a proposal to remove VOTER3 from the set
@@ -1301,7 +1490,7 @@ mod tests {
         let res = app
             .execute_contract(
                 Addr::unchecked(VOTER1),
-                flex_addr.clone(),
+                multisig_addr.clone(),
                 &update_proposal,
                 &[],
             )
@@ -1317,7 +1506,7 @@ mod tests {
         let res = app
             .execute_contract(
                 Addr::unchecked(VOTER1),
-                flex_addr.clone(),
+                multisig_addr.clone(),
                 &cash_proposal,
                 &[],
             )
@@ -1331,7 +1520,7 @@ mod tests {
             let query_prop = QueryMsg::Proposal { proposal_id };
             let prop: ProposalResponse = app
                 .wrap()
-                .query_wasm_smart(&flex_addr, &query_prop)
+                .query_wasm_smart(&multisig_addr, &query_prop)
                 .unwrap();
             prop.status
         };
@@ -1346,13 +1535,23 @@ mod tests {
             proposal_id: update_proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER4),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
         let execution = ExecuteMsg::Execute {
             proposal_id: update_proposal_id,
         };
-        app.execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &execution, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER4),
+            multisig_addr.clone(),
+            &execution,
+            &[],
+        )
+        .unwrap();
 
         // ensure that the update_proposal is executed, but the other unchanged
         assert_eq!(prop_status(&app, update_proposal_id), Status::Executed);
@@ -1367,8 +1566,13 @@ mod tests {
             proposal_id: cash_proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER3),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
         assert_eq!(prop_status(&app, cash_proposal_id), Status::Passed);
 
         // but cannot open a new one
@@ -1376,7 +1580,7 @@ mod tests {
         let err = app
             .execute_contract(
                 Addr::unchecked(VOTER3),
-                flex_addr.clone(),
+                multisig_addr.clone(),
                 &cash_proposal,
                 &[],
             )
@@ -1388,7 +1592,12 @@ mod tests {
             diffs: vec![MemberDiff::new(VOTER1, Some(1), None)],
         });
         let err = app
-            .execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &hook_hack, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER2),
+                multisig_addr.clone(),
+                &hook_hack,
+                &[],
+            )
             .unwrap_err();
         assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
     }
@@ -1405,13 +1614,18 @@ mod tests {
             quorum: Decimal::percent(1),
         };
         let voting_period = Duration::Time(20000);
-        let (flex_addr, group_addr) =
+        let (multisig_addr, group_addr) =
             setup_test_case(&mut app, threshold, voting_period, init_funds, false);
 
         // VOTER3 starts a proposal to send some tokens (3/12 votes)
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER3),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         // Get the proposal id from the logs
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
@@ -1419,7 +1633,7 @@ mod tests {
             let query_prop = QueryMsg::Proposal { proposal_id };
             let prop: ProposalResponse = app
                 .wrap()
-                .query_wasm_smart(&flex_addr, &query_prop)
+                .query_wasm_smart(&multisig_addr, &query_prop)
                 .unwrap();
             prop.status
         };
@@ -1448,14 +1662,24 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER2),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
         assert_eq!(prop_status(&app), Status::Open);
 
         // new proposal can be passed single-handedly by newbie
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(newbie), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(newbie),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         // Get the proposal id from the logs
         let proposal_id2: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
@@ -1466,7 +1690,7 @@ mod tests {
         };
         let prop: ProposalResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &query_prop)
+            .query_wasm_smart(&multisig_addr, &query_prop)
             .unwrap();
         assert_eq!(Status::Passed, prop.status);
     }
@@ -1480,7 +1704,7 @@ mod tests {
         // 33% required for quora, which is 8 of the initial 24
         // 50% yes required to pass early (12 of the initial 24)
         let voting_period = Duration::Time(20000);
-        let (flex_addr, group_addr) = setup_test_case(
+        let (multisig_addr, group_addr) = setup_test_case(
             &mut app,
             Threshold::ThresholdQuorum {
                 threshold: Decimal::percent(51),
@@ -1494,7 +1718,12 @@ mod tests {
         // VOTER3 starts a proposal to send some tokens (3 votes)
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER3),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         // Get the proposal id from the logs
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
@@ -1502,7 +1731,7 @@ mod tests {
             let query_prop = QueryMsg::Proposal { proposal_id };
             let prop: ProposalResponse = app
                 .wrap()
-                .query_wasm_smart(&flex_addr, &query_prop)
+                .query_wasm_smart(&multisig_addr, &query_prop)
                 .unwrap();
             prop.status
         };
@@ -1531,8 +1760,13 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER2), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER2),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
         // not expired yet
         assert_eq!(prop_status(&app), Status::Open);
 
@@ -1549,7 +1783,7 @@ mod tests {
         // 33% required for quora, which is 5 of the initial 15
         // 50% yes required to pass early (8 of the initial 15)
         let voting_period = Duration::Time(20000);
-        let (flex_addr, _) = setup_test_case(
+        let (multisig_addr, _) = setup_test_case(
             &mut app,
             // note that 60% yes is not enough to pass without 20% no as well
             Threshold::ThresholdQuorum {
@@ -1564,7 +1798,12 @@ mod tests {
         // create proposal
         let proposal = pay_somebody_proposal();
         let res = app
-            .execute_contract(Addr::unchecked(VOTER5), flex_addr.clone(), &proposal, &[])
+            .execute_contract(
+                Addr::unchecked(VOTER5),
+                multisig_addr.clone(),
+                &proposal,
+                &[],
+            )
             .unwrap();
         // Get the proposal id from the logs
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
@@ -1572,7 +1811,7 @@ mod tests {
             let query_prop = QueryMsg::Proposal { proposal_id };
             let prop: ProposalResponse = app
                 .wrap()
-                .query_wasm_smart(&flex_addr, &query_prop)
+                .query_wasm_smart(&multisig_addr, &query_prop)
                 .unwrap();
             prop.status
         };
@@ -1584,8 +1823,13 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        app.execute_contract(Addr::unchecked(VOTER4), flex_addr.clone(), &yes_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER4),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        )
+        .unwrap();
         // 9 of 15 is 60% absolute threshold, but less than 12 (80% quorum needed)
         assert_eq!(prop_status(&app), Status::Open);
 
@@ -1594,8 +1838,13 @@ mod tests {
             proposal_id,
             vote: Vote::No,
         };
-        app.execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &no_vote, &[])
-            .unwrap();
+        app.execute_contract(
+            Addr::unchecked(VOTER3),
+            multisig_addr.clone(),
+            &no_vote,
+            &[],
+        )
+        .unwrap();
         assert_eq!(prop_status(&app), Status::Passed);
     }
 
@@ -1606,7 +1855,8 @@ mod tests {
 
         let voting_period = Duration::Time(2000000);
         let threshold = Threshold::AbsoluteCount { weight: 1 };
-        let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, false);
+        let (multisig_addr, _) =
+            setup_test_case(&mut app, threshold, voting_period, init_funds, false);
 
         // Query All Treasury Balances
         let cw20_token_balances_msg = QueryMsg::Cw20Balances {
@@ -1615,14 +1865,14 @@ mod tests {
         };
         let all_balances: Cw20BalancesResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &cw20_token_balances_msg)
+            .query_wasm_smart(&multisig_addr, &cw20_token_balances_msg)
             .unwrap();
         assert_eq!(all_balances.cw20_balances, vec![]);
 
         // Query token list
         let token_list: TokenListResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::Cw20TokenList {})
+            .query_wasm_smart(&multisig_addr, &QueryMsg::Cw20TokenList {})
             .unwrap();
         assert_eq!(token_list.token_list.len(), 0);
 
@@ -1653,7 +1903,7 @@ mod tests {
             to_remove: vec![other_cw20_addr],
         };
         let wasm_msg = WasmMsg::Execute {
-            contract_addr: flex_addr.clone().into(),
+            contract_addr: multisig_addr.clone().into(),
             msg: to_binary(&update_token_list_msg).unwrap(),
             funds: vec![],
         };
@@ -1666,7 +1916,7 @@ mod tests {
         let res = app
             .execute_contract(
                 Addr::unchecked(OWNER),
-                flex_addr.clone(),
+                multisig_addr.clone(),
                 &proposal_msg,
                 &[],
             )
@@ -1678,18 +1928,28 @@ mod tests {
             proposal_id,
             vote: Vote::Yes,
         };
-        let res = app.execute_contract(Addr::unchecked(VOTER3), flex_addr.clone(), &yes_vote, &[]);
+        let res = app.execute_contract(
+            Addr::unchecked(VOTER3),
+            multisig_addr.clone(),
+            &yes_vote,
+            &[],
+        );
         assert!(res.is_ok());
 
         // Execute
         let execution = ExecuteMsg::Execute { proposal_id };
-        let res = app.execute_contract(Addr::unchecked(OWNER), flex_addr.clone(), &execution, &[]);
+        let res = app.execute_contract(
+            Addr::unchecked(OWNER),
+            multisig_addr.clone(),
+            &execution,
+            &[],
+        );
         assert!(res.is_ok());
 
         // Token list should be 2 now
         let token_list: TokenListResponse = app
             .wrap()
-            .query_wasm_smart(&flex_addr, &QueryMsg::Cw20TokenList {})
+            .query_wasm_smart(&multisig_addr, &QueryMsg::Cw20TokenList {})
             .unwrap();
         assert_eq!(token_list.token_list.len(), 2);
 

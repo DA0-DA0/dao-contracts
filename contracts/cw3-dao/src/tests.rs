@@ -138,8 +138,15 @@ mod tests {
             proposal_deposit_amount: proposal_deposit_amount.unwrap_or(Uint128::zero()),
             refund_failed_proposals,
         };
-        app.instantiate_contract(dao_code_id, Addr::unchecked(OWNER), &msg, &[], "flex", None)
-            .unwrap()
+        app.instantiate_contract(
+            dao_code_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &[],
+            "cw3-dao",
+            None,
+        )
+        .unwrap()
     }
 
     fn setup_test_case(

@@ -1,4 +1,4 @@
-# CW3 Flexible Multisig
+# CW3 Multisig
 
 This is a DAO DAO fork of [cw3-flex-multisig](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw3-flex-multisig) which builds on [cw3-fixed-multisig](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw3-fixed-multisig) with a more powerful implementation of the [cw3 spec](https://github.com/CosmWasm/cw-plus/tree/main/packages/cw3). It is a multisig contract that is backed by a [cw4 (group)](https://github.com/CosmWasm/cw-plus/tree/main/packages/cw4) contract, which independently maintains the voter set.
 
