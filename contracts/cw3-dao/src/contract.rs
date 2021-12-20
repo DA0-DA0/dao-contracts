@@ -25,11 +25,11 @@ use cw_storage_plus::Bound;
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
 
-// version info for migration info
+// Version info for migration info
 pub const CONTRACT_NAME: &str = "crates.io:sg_dao";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// settings for pagination
+// Settings for pagination
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
