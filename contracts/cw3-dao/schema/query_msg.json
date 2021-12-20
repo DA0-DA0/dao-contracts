@@ -101,6 +101,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the number of proposals in the DAO (u64)",
+      "type": "object",
+      "required": [
+        "proposal_count"
+      ],
+      "properties": {
+        "proposal_count": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Returns VoteResponse",
       "type": "object",
       "required": [

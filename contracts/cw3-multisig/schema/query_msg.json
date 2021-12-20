@@ -107,6 +107,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the number of proposals in the multisig (u64)",
+      "type": "object",
+      "required": [
+        "proposal_count"
+      ],
+      "properties": {
+        "proposal_count": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Returns VoteResponse",
       "type": "object",
       "required": [
@@ -239,6 +252,48 @@
               "minimum": 0.0
             }
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns All DAO Cw20 Balances",
+      "type": "object",
+      "required": [
+        "cw20_balances"
+      ],
+      "properties": {
+        "cw20_balances": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Return list of cw20 Tokens associated with the DAO Treasury",
+      "type": "object",
+      "required": [
+        "cw20_token_list"
+      ],
+      "properties": {
+        "cw20_token_list": {
+          "type": "object"
         }
       },
       "additionalProperties": false
