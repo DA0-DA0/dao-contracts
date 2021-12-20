@@ -849,6 +849,13 @@ mod tests {
         let voting_period = Duration::Time(2000000);
         let (flex_addr, _) = setup_test_case(&mut app, threshold, voting_period, init_funds, false);
 
+        // Proposal count is 0
+        let prop_count: u64 = app
+            .wrap()
+            .query_wasm_smart(&flex_addr, &QueryMsg::ProposalCount {})
+            .unwrap();
+        assert_eq!(prop_count, 0);
+
         // create proposal with 0 vote power
         let proposal = pay_somebody_proposal();
         let res = app
@@ -857,6 +864,13 @@ mod tests {
 
         // Get the proposal id from the logs
         let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        // Proposal count is now 1
+        let prop_count: u64 = app
+            .wrap()
+            .query_wasm_smart(&flex_addr, &QueryMsg::ProposalCount {})
+            .unwrap();
+        assert_eq!(prop_count, 1);
 
         // Owner with 0 voting power cannot vote
         let yes_vote = ExecuteMsg::Vote {
