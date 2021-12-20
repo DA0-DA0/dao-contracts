@@ -20,6 +20,10 @@ start_before?: (number | null)
 [k: string]: unknown
 }
 } | {
+proposal_count: {
+[k: string]: unknown
+}
+} | {
 vote: {
 proposal_id: number
 voter: string

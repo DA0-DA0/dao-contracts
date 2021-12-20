@@ -23,8 +23,6 @@ pub struct Config {
     pub refund_failed_proposals: Option<bool>,
 }
 
-pub const GOV_TOKEN: Item<Addr> = Item::new("gov_token");
-
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Proposal {
     pub title: String,
@@ -148,11 +146,14 @@ pub struct Ballot {
     pub vote: Vote,
 }
 
-// unique items
+// Unique items
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 
-// multiple-item map
+// Total weight and voters are queried from this contract
+pub const GOV_TOKEN: Item<Addr> = Item::new("gov_token");
+
+// Multiple-item map
 pub const BALLOTS: Map<(U64Key, &Addr), Ballot> = Map::new("votes");
 pub const PROPOSALS: Map<U64Key, Proposal> = Map::new("proposals");
 pub const TREASURY_TOKENS: Map<&Addr, Empty> = Map::new("treasury_tokens");

@@ -29,6 +29,7 @@ cw0 = {  version = "0.10.3" }
 cw2 = {  version = "0.10.3" }
 cw3 = {  version = "0.10.3" }
 cw4 = {  version = "0.10.3" }
+cw20 = {  version = "0.10.3" }
 cw4-group = { version = "0.10.3" }
 cw-storage-plus = { version = "0.10.3" }
 cosmwasm-std = { version = "1.0.0-beta2" }
@@ -39,3 +40,5 @@ thiserror = { version = "1.0.23" }
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta" }
 cw-multi-test = {  version = "0.10.3" }
+cw20-base = {  version = "0.10.3", features = ["library"] }
+cw20-gov = { path = "../cw20-gov", version = "0.1.0" }

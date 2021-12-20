@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{error::ContractError, state::Config};
-use cosmwasm_std::{CosmosMsg, Decimal, Empty};
+use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty};
 use cw0::{Duration, Expiration};
 use cw3::{ThresholdResponse, Vote};
 use cw4::{Member, MemberChangedHookMsg};
@@ -153,6 +153,11 @@ pub enum ExecuteMsg {
     MemberChangedHook(MemberChangedHookMsg),
     /// Update the multisg config.
     UpdateConfig(Config),
+    /// Updates token list
+    UpdateCw20TokenList {
+        to_add: Vec<Addr>,
+        to_remove: Vec<Addr>,
+    },
 }
 
 // We can also add this as a cw3 extension
@@ -196,6 +201,13 @@ pub enum QueryMsg {
     /// Get the multisig's current config. Returns type
     /// `ConfigResponse`.
     GetConfig,
+    /// Returns All DAO Cw20 Balances
+    Cw20Balances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Return list of cw20 Tokens associated with the DAO Treasury
+    Cw20TokenList {},
 }
 
 #[cfg(test)]

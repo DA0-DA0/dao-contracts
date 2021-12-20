@@ -352,7 +352,7 @@ mod tests {
         };
         let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         assert_eq!(
             query_staked_balance_at_height(deps.as_ref(), env.clone(), addr1.clone(), None)
@@ -389,7 +389,7 @@ mod tests {
             recipient: addr2.clone(),
             amount: Uint128::from(20u128),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
 
         assert_eq!(
@@ -406,9 +406,9 @@ mod tests {
         let msg = ExecuteMsg::Stake {
             amount: Uint128::from(20u128),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         assert_eq!(
             query_staked_balance_at_height(deps.as_ref(), env.clone(), addr2.clone(), None)
@@ -429,16 +429,16 @@ mod tests {
         let msg = ExecuteMsg::Unstake {
             amount: Uint128::from(100u128),
         };
-        let _err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        let _err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
 
         // Successful unstake
         let info = mock_info(addr2.as_ref(), &[]);
         let msg = ExecuteMsg::Unstake {
             amount: Uint128::from(10u128),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         assert_eq!(
             query_staked_balance_at_height(deps.as_ref(), env.clone(), addr2.clone(), None)
@@ -452,21 +452,15 @@ mod tests {
                 .total,
             Uint128::from(60u128)
         );
-        assert_eq!(
-            get_balance(deps.as_ref(), addr2.clone()),
-            Uint128::from(10u128)
-        );
+        assert_eq!(get_balance(deps.as_ref(), addr2), Uint128::from(10u128));
 
         assert_eq!(
-            query_staked_balance_at_height(deps.as_ref(), env.clone(), addr1.clone(), None)
+            query_staked_balance_at_height(deps.as_ref(), env, addr1.clone(), None)
                 .unwrap()
                 .balance,
             Uint128::from(50u128)
         );
-        assert_eq!(
-            get_balance(deps.as_ref(), addr1.clone()),
-            Uint128::from(30u128)
-        );
+        assert_eq!(get_balance(deps.as_ref(), addr1), Uint128::from(30u128));
     }
 
     #[test]
@@ -494,9 +488,9 @@ mod tests {
         let msg = ExecuteMsg::Stake {
             amount: Uint128::from(50u128),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         assert_eq!(
             query_staked_balance_at_height(deps.as_ref(), env.clone(), addr1.clone(), None)
@@ -520,9 +514,9 @@ mod tests {
         let msg = ExecuteMsg::Unstake {
             amount: Uint128::from(10u128),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         assert_eq!(
             query_staked_balance_at_height(deps.as_ref(), env.clone(), addr1.clone(), None)
@@ -544,14 +538,14 @@ mod tests {
         // Cannot claim when nothing is available
         let info = mock_info(addr1.as_ref(), &[]);
         let msg = ExecuteMsg::Claim {};
-        let _err = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap_err();
+        let _err = execute(deps.as_mut(), env.clone(), info, msg).unwrap_err();
         assert_eq!(_err, ContractError::NothingToClaim {});
 
         // Successful claim
-        env.block.height = env.block.height + unstaking_blocks;
+        env.block.height += unstaking_blocks;
         let info = mock_info(addr1.as_ref(), &[]);
         let msg = ExecuteMsg::Claim {};
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
 
         assert_eq!(
@@ -576,17 +570,17 @@ mod tests {
         let msg = ExecuteMsg::Unstake {
             amount: Uint128::from(5u128),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         let info = mock_info(addr1.as_ref(), &[]);
         let msg = ExecuteMsg::Unstake {
             amount: Uint128::from(5u128),
         };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         assert_eq!(
             query_staked_balance_at_height(deps.as_ref(), env.clone(), addr1.clone(), None)
@@ -605,10 +599,10 @@ mod tests {
             Uint128::from(60u128)
         );
 
-        env.block.height = env.block.height + unstaking_blocks;
+        env.block.height += unstaking_blocks;
         let info = mock_info(addr1.as_ref(), &[]);
         let msg = ExecuteMsg::Claim {};
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
 
         assert_eq!(
@@ -618,15 +612,12 @@ mod tests {
             Uint128::from(30u128)
         );
         assert_eq!(
-            query_total_staked_at_height(deps.as_ref(), env.clone(), None)
+            query_total_staked_at_height(deps.as_ref(), env, None)
                 .unwrap()
                 .total,
             Uint128::from(30u128)
         );
-        assert_eq!(
-            get_balance(deps.as_ref(), addr1.clone()),
-            Uint128::from(70u128)
-        );
+        assert_eq!(get_balance(deps.as_ref(), addr1), Uint128::from(70u128));
     }
 
     #[test]
@@ -684,30 +675,30 @@ mod tests {
         let info = mock_info(addr1.as_ref(), &[]);
         // Successful bond
         let msg = ExecuteMsg::Stake { amount: amount1 };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         let info = mock_info(addr2.as_ref(), &[]);
         // Successful bond
         let msg = ExecuteMsg::Stake { amount: amount1 };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         let info = mock_info(addr3.as_ref(), &[]);
         // Successful bond
         let msg = ExecuteMsg::Stake { amount: amount1 };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         let info = mock_info(addr4.as_ref(), &[]);
         // Successful bond
         let msg = ExecuteMsg::Stake { amount: amount1 };
-        let res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 0);
-        env.block.height = env.block.height + 1;
+        env.block.height += 1;
 
         assert_eq!(
             query_staked_balance_at_height(deps.as_ref(), env.clone(), addr1.clone(), None)
@@ -734,14 +725,14 @@ mod tests {
             amount1
         );
         assert_eq!(
-            query_total_staked_at_height(deps.as_ref(), env.clone(), None)
+            query_total_staked_at_height(deps.as_ref(), env, None)
                 .unwrap()
                 .total,
             amount1.checked_mul(Uint128::new(4)).unwrap()
         );
-        assert_eq!(get_balance(deps.as_ref(), addr1.clone()), Uint128::zero());
-        assert_eq!(get_balance(deps.as_ref(), addr2.clone()), Uint128::zero());
-        assert_eq!(get_balance(deps.as_ref(), addr3.clone()), Uint128::zero());
-        assert_eq!(get_balance(deps.as_ref(), addr4.clone()), Uint128::zero());
+        assert_eq!(get_balance(deps.as_ref(), addr1), Uint128::zero());
+        assert_eq!(get_balance(deps.as_ref(), addr2), Uint128::zero());
+        assert_eq!(get_balance(deps.as_ref(), addr3), Uint128::zero());
+        assert_eq!(get_balance(deps.as_ref(), addr4), Uint128::zero());
     }
 }
