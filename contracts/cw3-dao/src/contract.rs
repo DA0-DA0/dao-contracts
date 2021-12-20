@@ -389,6 +389,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         } => to_binary(&query_reverse_proposals(deps, env, start_before, limit)?),
+        QueryMsg::ProposalCount {} => to_binary(&query_proposal_count(deps)),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
@@ -539,6 +540,12 @@ fn query_reverse_proposals(
         .collect();
 
     Ok(ProposalListResponse { proposals: props? })
+}
+
+fn query_proposal_count(deps: Deps) -> u64 {
+    PROPOSALS
+        .keys(deps.storage, None, None, Order::Descending)
+        .count() as u64
 }
 
 fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResponse> {

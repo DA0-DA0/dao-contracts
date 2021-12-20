@@ -170,6 +170,8 @@ pub enum QueryMsg {
         start_before: Option<u64>,
         limit: Option<u32>,
     },
+    /// Returns the number of proposals in the DAO (u64)
+    ProposalCount {},
     /// Returns VoteResponse
     Vote { proposal_id: u64, voter: String },
     /// Returns VoteListResponse
