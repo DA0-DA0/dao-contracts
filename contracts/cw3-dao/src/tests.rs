@@ -582,12 +582,24 @@ mod tests {
             None,
         );
 
+        let prop_count: u64 = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::ProposalCount {})
+            .unwrap();
+        assert_eq!(prop_count, 0);
+
         // create proposal with 1 vote power
         let proposal = pay_somebody_proposal();
         let res = app
             .execute_contract(Addr::unchecked(VOTER1), dao_addr.clone(), &proposal, &[])
             .unwrap();
         let proposal_id1: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+        let prop_count: u64 = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::ProposalCount {})
+            .unwrap();
+        assert_eq!(prop_count, 1);
 
         // another proposal
         app.update_block(next_block);
@@ -615,6 +627,12 @@ mod tests {
             .unwrap();
         let proposal_id3: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
         let proposed_at = app.block_info();
+
+        let prop_count: u64 = app
+            .wrap()
+            .query_wasm_smart(&dao_addr, &QueryMsg::ProposalCount {})
+            .unwrap();
+        assert_eq!(prop_count, 3);
 
         // next block, let's query them all... make sure status is properly updated (1 should be rejected in query)
         app.update_block(next_block);
