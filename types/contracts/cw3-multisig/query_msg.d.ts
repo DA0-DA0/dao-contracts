@@ -20,6 +20,10 @@ start_before?: (number | null)
 [k: string]: unknown
 }
 } | {
+proposal_count: {
+[k: string]: unknown
+}
+} | {
 vote: {
 proposal_id: number
 voter: string
@@ -46,6 +50,16 @@ start_after?: (string | null)
 } | {
 tally: {
 proposal_id: number
+[k: string]: unknown
+}
+} | {
+cw20_balances: {
+limit?: (number | null)
+start_after?: (string | null)
+[k: string]: unknown
+}
+} | {
+cw20_token_list: {
 [k: string]: unknown
 }
 })
