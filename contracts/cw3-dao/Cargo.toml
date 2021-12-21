@@ -16,18 +16,18 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cw0 = {  version = "0.10.3" }
-cw2 = { version = "0.10.3" }
-cw3 = { version = "0.10.3" }
-cw20 ="0.10.3"
-cw20-base = {  version = "0.10.3", features = ["library"] }
+cw0 = {  version = "0.10" }
+cw2 = { version = "0.10" }
+cw3 = { version = "0.10" }
+cw20 = "0.10"
+cw20-base = {  version = "0.10", features = ["library"] }
 cw20-gov = { path = "../cw20-gov", version = "0.1.0" }
-cw-storage-plus = {  version = "0.10.3" }
-cosmwasm-std = { version = "1.0.0-beta2" }
+cw-storage-plus = {  version = "0.10" }
+cosmwasm-std = { version = "1.0.0-beta" }
 schemars = "0.8.6"
 serde = { version = "1.0.130", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.30" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta2" }
-cw-multi-test = {  version = "0.10.3" }
+cosmwasm-schema = { version = "1.0.0-beta" }
+cw-multi-test = {  version = "0.10" }
