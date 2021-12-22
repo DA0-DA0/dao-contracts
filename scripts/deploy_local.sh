@@ -150,7 +150,7 @@ echo xxxxxxxxx | $BINARY tx wasm store "/cw4_group.wasm" --from validator $TXFLA
 # Send some coins to the dao contract to initializae its
 # treasury. Unless this is done the DAO will be unable to perform
 # actions like executing proposals that require it to pay gas fees.
-$BINARY tx bank send validator $CW3_DAO_CONTRACT 9000000$DENOM --chain-id testing -y
+$BINARY tx bank send validator $CW3_DAO_CONTRACT 9000000$DENOM --chain-id testing $TXFLAG -y
 
 # Print out config variables
 printf "\n ------------------------ \n"
