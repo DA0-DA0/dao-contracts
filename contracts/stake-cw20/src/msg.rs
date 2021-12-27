@@ -1,5 +1,5 @@
-use cosmwasm_std::{Addr, Binary, Uint128};
-use cw20::{Expiration, Logo, Cw20ReceiveMsg};
+use cosmwasm_std::{Addr, Uint128};
+use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -17,9 +17,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Unstake {
-        amount: Uint128,
-    },
+    Unstake { amount: Uint128 },
     Claim {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

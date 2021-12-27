@@ -1,11 +1,16 @@
-use std::ops::Add;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, Uint128, from_binary, Addr};
-use cw20::Cw20QueryMsg::Balance;
-use cw20::{Cw20CoinVerified, Cw20ReceiveMsg};
+use cosmwasm_std::{
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdResult, Uint128,
+};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse};
+use cw20::Cw20ReceiveMsg;
+
+use crate::msg::{
+    ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+    TotalStakedAtHeightResponse, UnstakingDurationResponse,
+};
 use crate::state::{Config, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
 pub use cw20_base::allowances::{
@@ -56,14 +61,20 @@ pub fn execute_receive(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if info.sender != config.token_address {
-       return Err(ContractError::InvalidToken { received: info.sender, expected: config.token_address })
+        return Err(ContractError::InvalidToken {
+            received: info.sender,
+            expected: config.token_address,
+        });
     }
     let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
     let api = deps.api;
     match msg {
-        ReceiveMsg::Stake{} => {
-            execute_stake(deps, env,&api.addr_validate(&wrapper.sender)?, wrapper.amount)
-        }
+        ReceiveMsg::Stake {} => execute_stake(
+            deps,
+            env,
+            &api.addr_validate(&wrapper.sender)?,
+            wrapper.amount,
+        ),
     }
 }
 
@@ -75,7 +86,7 @@ pub fn execute_stake(
 ) -> Result<Response, ContractError> {
     STAKED_BALANCES.update(
         deps.storage,
-        &sender,
+        sender,
         env.block.height,
         |bal| -> StdResult<Uint128> { Ok(bal.unwrap_or_default().checked_add(amount)?) },
     )?;
@@ -88,8 +99,7 @@ pub fn execute_stake(
     Ok(Response::new()
         .add_attribute("action", "stake")
         .add_attribute("from", sender)
-        .add_attribute("amount", amount)
-    )
+        .add_attribute("amount", amount))
 }
 
 pub fn execute_unstake(
@@ -114,12 +124,12 @@ pub fn execute_unstake(
         None => {
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
                 recipient: info.sender.to_string(),
-                amount
+                amount,
             };
             let wasm_msg = cosmwasm_std::WasmMsg::Execute {
                 contract_addr: config.token_address.to_string(),
                 msg: to_binary(&cw_send_msg)?,
-                funds: vec![]
+                funds: vec![],
             };
             Ok(Response::new()
                 .add_message(wasm_msg)
@@ -157,12 +167,12 @@ pub fn execute_claim(
     let config = CONFIG.load(deps.storage)?;
     let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
         recipient: info.sender.to_string(),
-        amount: release
+        amount: release,
     };
     let wasm_msg = cosmwasm_std::WasmMsg::Execute {
         contract_addr: config.token_address.to_string(),
         msg: to_binary(&cw_send_msg)?,
-        funds: vec![]
+        funds: vec![],
     };
     let res = Response::new()
         .add_message(wasm_msg)
@@ -226,27 +236,25 @@ pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
 #[cfg(test)]
 mod tests {
     use std::borrow::BorrowMut;
-    use std::ops::Add;
-    use crate::contract::{
-        execute, instantiate, query_staked_balance_at_height, query_total_staked_at_height,
-        query_unstaking_duration,
+
+    use crate::msg::{
+        ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+        TotalStakedAtHeightResponse, UnstakingDurationResponse,
     };
-    use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse};
     use crate::ContractError;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage};
-    use cosmwasm_std::{Addr, Deps, DepsMut, Empty, Env, MessageInfo, OwnedDeps, Response, StdResult, to_binary, Uint128};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
     use cw0::Duration;
-    use cw20::{Cw20Coin, Cw20ReceiveMsg, MinterResponse, TokenInfoResponse};
-    use cw20_base::contract::{query_balance, query_minter, query_token_info};
-    use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor, next_block};
+    use cw20::Cw20Coin;
+
+    use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 
     use anyhow::Result as AnyResult;
-    use crate::msg::QueryMsg::UnstakingDuration;
 
-    const addr1: &str = "addr0001";
-    const addr2: &str = "addr0002";
-    const addr3: &str = "addr0003";
-    const addr4: &str = "addr0004";
+    const ADDR1: &str = "addr0001";
+    const ADDR2: &str = "addr0002";
+    const ADDR3: &str = "addr0003";
+    const ADDR4: &str = "addr0004";
 
     pub fn contract_staking() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
@@ -270,9 +278,16 @@ mod tests {
         App::default()
     }
 
-    fn get_balance<T: Into<String>, U: Into<String>>(app: &App, contract_addr: T, address: U) -> Uint128 {
-        let msg = cw20::Cw20QueryMsg::Balance { address: address.into() };
-        let result: cw20::BalanceResponse = app.wrap().query_wasm_smart(contract_addr,&msg).unwrap();
+    fn get_balance<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = cw20::Cw20QueryMsg::Balance {
+            address: address.into(),
+        };
+        let result: cw20::BalanceResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.balance
     }
 
@@ -282,15 +297,13 @@ mod tests {
             name: String::from("Test"),
             symbol: String::from("TEST"),
             decimals: 6,
-            initial_balances: initial_balances.clone(),
+            initial_balances,
             mint: None,
             marketing: None,
         };
 
-        let contract = app
-            .instantiate_contract(cw20_id, Addr::unchecked(addr1), &msg, &[], "cw20", None)
-            .unwrap();
-        contract
+        app.instantiate_contract(cw20_id, Addr::unchecked(ADDR1), &msg, &[], "cw20", None)
+            .unwrap()
     }
 
     fn instantiate_staking(
@@ -301,87 +314,109 @@ mod tests {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
             token_address: cw20,
-            unstaking_duration
+            unstaking_duration,
         };
         app.instantiate_contract(
             staking_code_id,
-            Addr::unchecked(addr1),
+            Addr::unchecked(ADDR1),
             &msg,
             &[],
             "staking",
             None,
-        ).unwrap()
+        )
+        .unwrap()
     }
 
     fn setup_test_case(
         app: &mut App,
         initial_balances: Vec<Cw20Coin>,
-        unstaking_duration: Option<Duration>
+        unstaking_duration: Option<Duration>,
     ) -> (Addr, Addr) {
         // 1. Instantiate Gov Token Contract
         let cw20_addr = instantiate_cw20(app, initial_balances);
         app.update_block(next_block);
-        let staking_addr = instantiate_staking(
-            app,
-            cw20_addr.clone(),
-            unstaking_duration,
-        );
+        let staking_addr = instantiate_staking(app, cw20_addr.clone(), unstaking_duration);
         app.update_block(next_block);
         (staking_addr, cw20_addr)
     }
 
-    fn query_staked_balance<T: Into<String>, U: Into<String>>(app: &App, contract_addr: T, address: U) -> Uint128 {
-        let msg = QueryMsg::StakedBalanceAtHeight { address: address.into(), height: None };
-        let result: StakedBalanceAtHeightResponse = app.wrap().query_wasm_smart(contract_addr,&msg).unwrap();
+    fn query_staked_balance<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = QueryMsg::StakedBalanceAtHeight {
+            address: address.into(),
+            height: None,
+        };
+        let result: StakedBalanceAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.balance
     }
 
     fn query_total_staked<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
         let msg = QueryMsg::TotalStakedAtHeight { height: None };
-        let result: TotalStakedAtHeightResponse = app.wrap().query_wasm_smart(contract_addr,&msg).unwrap();
+        let result: TotalStakedAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.total
     }
 
-    fn stake_tokens(app: &mut App, staking_addr: &Addr, cw20_addr: &Addr, info: MessageInfo, amount: Uint128) -> AnyResult<AppResponse> {
+    fn stake_tokens(
+        app: &mut App,
+        staking_addr: &Addr,
+        cw20_addr: &Addr,
+        info: MessageInfo,
+        amount: Uint128,
+    ) -> AnyResult<AppResponse> {
         let msg = cw20::Cw20ExecuteMsg::Send {
             contract: staking_addr.to_string(),
             amount,
-            msg: to_binary(&ReceiveMsg::Stake {}).unwrap()
+            msg: to_binary(&ReceiveMsg::Stake {}).unwrap(),
         };
         app.execute_contract(info.sender, cw20_addr.clone(), &msg, &[])
     }
 
-    fn unstake_tokens(app: &mut App, staking_addr: &Addr,info: MessageInfo, amount: Uint128) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::Unstake {
-            amount,
-        };
+    fn unstake_tokens(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+        amount: Uint128,
+    ) -> AnyResult<AppResponse> {
+        let msg = ExecuteMsg::Unstake { amount };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
-    fn claim_tokens(app: &mut App, staking_addr: &Addr,info: MessageInfo) -> AnyResult<AppResponse> {
+    fn claim_tokens(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+    ) -> AnyResult<AppResponse> {
         let msg = ExecuteMsg::Claim {};
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
     #[test]
     fn test_staking() {
-        let mut deps = mock_dependencies();
+        let _deps = mock_dependencies();
 
         let mut app = mock_app();
         let amount1 = Uint128::from(100u128);
-        let token_address= Addr::unchecked("token_address");
-        let initial_balances = vec![Cw20Coin{ address: addr1.to_string(), amount: amount1 }];
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
         let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, None);
 
-        let info = mock_info(addr1.as_ref(), &[]);
-        let mut env = mock_env();
+        let info = mock_info(ADDR1, &[]);
+        let _env = mock_env();
 
         // Successful bond
         let amount = Uint128::new(50);
         stake_tokens(&mut app, &staking_addr, &cw20_addr, info.clone(), amount).unwrap();
         app.update_block(next_block);
         assert_eq!(
-            query_staked_balance(&app, &staking_addr, addr1.to_string()),
+            query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
             Uint128::from(50u128)
         );
         assert_eq!(
@@ -389,294 +424,269 @@ mod tests {
             Uint128::from(50u128)
         );
         assert_eq!(
-            get_balance(&app, &cw20_addr, addr1.to_string()),
+            get_balance(&app, &cw20_addr, ADDR1.to_string()),
             Uint128::from(50u128)
         );
 
         // Can't transfer bonded amount
         let msg = cw20::Cw20ExecuteMsg::Transfer {
-            recipient: addr2.to_string(),
+            recipient: ADDR2.to_string(),
             amount: Uint128::from(51u128),
         };
-        let _err = app.borrow_mut().execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[]).unwrap_err();
+        let _err = app
+            .borrow_mut()
+            .execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[])
+            .unwrap_err();
 
         // Sucessful transfer
         // Can't transfer bonded amount
         let msg = cw20::Cw20ExecuteMsg::Transfer {
-            recipient: addr2.to_string(),
+            recipient: ADDR2.to_string(),
             amount: Uint128::from(20u128),
         };
-        let res = app.borrow_mut().execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[]).unwrap();
+        let _res = app
+            .borrow_mut()
+            .execute_contract(info.sender, cw20_addr.clone(), &msg, &[])
+            .unwrap();
 
-        assert_eq!(
-            get_balance(&app, &cw20_addr, addr1.clone()),
-            Uint128::from(30u128)
-        );
-        assert_eq!(
-            get_balance(&app, &cw20_addr, addr2.clone()),
-            Uint128::from(20u128)
-        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(30u128));
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::from(20u128));
 
         // Addr 2 successful bond
-        let info = mock_info(addr2.as_ref(), &[]);
-        stake_tokens(&mut app, &staking_addr, &cw20_addr, info.clone(), Uint128::new(20)).unwrap();
+        let info = mock_info(ADDR2, &[]);
+        stake_tokens(&mut app, &staking_addr, &cw20_addr, info, Uint128::new(20)).unwrap();
 
         app.update_block(next_block);
 
         assert_eq!(
-            query_staked_balance(&app, &staking_addr, addr2.clone()),
+            query_staked_balance(&app, &staking_addr, ADDR2),
             Uint128::from(20u128)
         );
         assert_eq!(
-            query_total_staked(&app,&staking_addr),
+            query_total_staked(&app, &staking_addr),
             Uint128::from(70u128)
         );
-        assert_eq!(get_balance(&app, &cw20_addr, addr2.clone()), Uint128::zero());
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::zero());
 
         // Can't unstake when you have more staked
-        let info = mock_info(addr2.as_ref(), &[]);
-        let _err = unstake_tokens(&mut app,&staking_addr, info,Uint128::new(100)).unwrap_err();
+        let info = mock_info(ADDR2, &[]);
+        let _err = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(100)).unwrap_err();
 
         // Successful unstake
-        let info = mock_info(addr2.as_ref(), &[]);
-        let res = unstake_tokens(&mut app,&staking_addr, info,Uint128::new(10)).unwrap();
+        let info = mock_info(ADDR2, &[]);
+        let _res = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(10)).unwrap();
         app.update_block(next_block);
 
         assert_eq!(
-            query_staked_balance(&app, &staking_addr, addr2),
+            query_staked_balance(&app, &staking_addr, ADDR2),
             Uint128::from(10u128)
         );
         assert_eq!(
             query_total_staked(&app, &staking_addr),
             Uint128::from(60u128)
         );
-        assert_eq!(get_balance(&app, &cw20_addr, addr2), Uint128::from(10u128));
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::from(10u128));
 
         assert_eq!(
-            query_staked_balance(&app, &staking_addr, addr1),
+            query_staked_balance(&app, &staking_addr, ADDR1),
             Uint128::from(50u128)
         );
-        assert_eq!(get_balance(&app,&cw20_addr, addr1), Uint128::from(30u128));
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(30u128));
     }
 
+    #[test]
+    fn test_unstaking_with_claims() {
+        let _deps = mock_dependencies();
 
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let unstaking_blocks = 10u64;
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, cw20_addr) = setup_test_case(
+            &mut app,
+            initial_balances,
+            Some(Duration::Height(unstaking_blocks)),
+        );
 
-       #[test]
-       fn test_unstaking_with_claims() {
-           let mut deps = mock_dependencies();
+        let info = mock_info(ADDR1, &[]);
 
-           let mut app = mock_app();
-           let amount1 = Uint128::from(100u128);
-           let unstaking_blocks = 10u64;
-           let token_address= Addr::unchecked("token_address");
-           let initial_balances = vec![Cw20Coin{ address: addr1.to_string(), amount: amount1 }];
-           let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, Some(Duration::Height(unstaking_blocks)));
+        // Successful bond
+        let _res =
+            stake_tokens(&mut app, &staking_addr, &cw20_addr, info, Uint128::new(50)).unwrap();
+        app.update_block(next_block);
 
-           let info = mock_info(addr1.as_ref(), &[]);
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1),
+            Uint128::from(50u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(50u128)
+        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(50u128));
 
-           // Successful bond
-           let res = stake_tokens(&mut app, &staking_addr, &cw20_addr,info,Uint128::new(50)).unwrap();
-           app.update_block(next_block);
+        // Unstake
+        let info = mock_info(ADDR1, &[]);
+        let _res = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(10)).unwrap();
+        app.update_block(next_block);
 
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr1.clone()),
-               Uint128::from(50u128)
-           );
-           assert_eq!(
-               query_total_staked(&app,&staking_addr),
-               Uint128::from(50u128)
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr1),
-               Uint128::from(50u128)
-           );
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1),
+            Uint128::from(40u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(40u128)
+        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(50u128));
 
-           // Unstake
-           let info = mock_info(addr1.as_ref(), &[]);
-           let res = unstake_tokens(&mut app, &staking_addr, info,Uint128::new(10)).unwrap();
-           app.update_block(next_block);
+        // Cannot claim when nothing is available
+        let info = mock_info(ADDR1, &[]);
+        let _err: ContractError = claim_tokens(&mut app, &staking_addr, info)
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(_err, ContractError::NothingToClaim {});
 
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr1.clone()),
-               Uint128::from(40u128)
-           );
-           assert_eq!(
-               query_total_staked(&app,&staking_addr),
-               Uint128::from(40u128)
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr1),
-               Uint128::from(50u128)
-           );
+        // Successful claim
+        app.update_block(|b| b.height += unstaking_blocks);
+        let info = mock_info(ADDR1, &[]);
+        let _res = claim_tokens(&mut app, &staking_addr, info).unwrap();
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1),
+            Uint128::from(40u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(40u128)
+        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(60u128));
 
-           // Cannot claim when nothing is available
-           let info = mock_info(addr1.as_ref(), &[]);
-           let _err: ContractError = claim_tokens(&mut app, &staking_addr, info).unwrap_err().downcast().unwrap();
-           assert_eq!(_err, ContractError::NothingToClaim {});
+        // Unstake and claim multiple
+        let _info = mock_info(ADDR1, &[]);
+        let info = mock_info(ADDR1, &[]);
+        let _res = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(5)).unwrap();
+        app.update_block(next_block);
 
-           // Successful claim
-           app.update_block(|b| b.height += unstaking_blocks);
-           let info = mock_info(addr1.as_ref(), &[]);
-           let _res= claim_tokens(&mut app, &staking_addr, info).unwrap();
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr1.clone()),
-               Uint128::from(40u128)
-           );
-           assert_eq!(
-               query_total_staked(&app,&staking_addr),
-               Uint128::from(40u128)
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr1),
-               Uint128::from(60u128)
-           );
+        let _info = mock_info(ADDR1, &[]);
+        let info = mock_info(ADDR1, &[]);
+        let _res = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(5)).unwrap();
+        app.update_block(next_block);
 
-           // Unstake and claim multiple
-           let info = mock_info(addr1.as_ref(), &[]);
-           let info = mock_info(addr1.as_ref(), &[]);
-           let res = unstake_tokens(&mut app, &staking_addr, info,Uint128::new(5)).unwrap();
-           app.update_block(next_block);
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1),
+            Uint128::from(30u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(30u128)
+        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(60u128));
 
-           let info = mock_info(addr1.as_ref(), &[]);
-           let info = mock_info(addr1.as_ref(), &[]);
-           let res = unstake_tokens(&mut app, &staking_addr, info,Uint128::new(5)).unwrap();
-           app.update_block(next_block);
+        app.update_block(|b| b.height += unstaking_blocks);
+        let info = mock_info(ADDR1, &[]);
+        let _res = claim_tokens(&mut app, &staking_addr, info).unwrap();
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1),
+            Uint128::from(30u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(30u128)
+        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(70u128));
+    }
 
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr1.clone()),
-               Uint128::from(30u128)
-           );
-           assert_eq!(
-               query_total_staked(&app,&staking_addr),
-               Uint128::from(30u128)
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr1),
-               Uint128::from(60u128)
-           );
+    #[test]
+    fn unstaking_duration_query() {
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let unstaking_duration = Some(Duration::Height(10));
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, _cw20_addr) =
+            setup_test_case(&mut app, initial_balances, unstaking_duration);
 
-           app.update_block(|b| b.height += unstaking_blocks);
-           let info = mock_info(addr1.as_ref(), &[]);
-           let _res= claim_tokens(&mut app, &staking_addr, info).unwrap();
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr1.clone()),
-               Uint128::from(30u128)
-           );
-           assert_eq!(
-               query_total_staked(&app,&staking_addr),
-               Uint128::from(30u128)
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr1),
-               Uint128::from(70u128)
-           );
+        let msg = QueryMsg::UnstakingDuration {};
+        let res: UnstakingDurationResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&staking_addr, &msg)
+            .unwrap();
+        assert_eq!(res.duration, unstaking_duration);
+    }
 
-       }
+    #[test]
+    fn multiple_address_staking() {
+        let amount1 = Uint128::from(100u128);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: amount1,
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: amount1,
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: amount1,
+            },
+            Cw20Coin {
+                address: ADDR4.to_string(),
+                amount: amount1,
+            },
+        ];
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let unstaking_blocks = 10u64;
+        let _token_address = Addr::unchecked("token_address");
+        let (staking_addr, cw20_addr) = setup_test_case(
+            &mut app,
+            initial_balances,
+            Some(Duration::Height(unstaking_blocks)),
+        );
 
+        let info = mock_info(ADDR1, &[]);
+        // Successful bond
+        let _res = stake_tokens(&mut app, &staking_addr, &cw20_addr, info, amount1).unwrap();
+        app.update_block(next_block);
 
-       #[test]
-       fn unstaking_duration_query() {
-           let mut app = mock_app();
-           let amount1 = Uint128::from(100u128);
-           let unstaking_duration = Some(Duration::Height(10));
-           let token_address= Addr::unchecked("token_address");
-           let initial_balances = vec![Cw20Coin{ address: addr1.to_string(), amount: amount1 }];
-           let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, unstaking_duration);
+        let info = mock_info(ADDR2, &[]);
+        // Successful bond
+        let _res = stake_tokens(&mut app, &staking_addr, &cw20_addr, info, amount1).unwrap();
+        app.update_block(next_block);
 
-           let msg = QueryMsg::UnstakingDuration {};
-           let res: UnstakingDurationResponse = app.borrow_mut().wrap().query_wasm_smart(&staking_addr,&msg).unwrap();
-           assert_eq!(
-               res.duration,
-               unstaking_duration
-           );
-       }
+        let info = mock_info(ADDR3, &[]);
+        // Successful bond
+        let _res = stake_tokens(&mut app, &staking_addr, &cw20_addr, info, amount1).unwrap();
+        app.update_block(next_block);
 
-       #[test]
-       fn multiple_address_staking() {
-           let amount1 = Uint128::from(100u128);
-           let initial_balances = vec![
-               Cw20Coin {
-                   address: addr1.to_string(),
-                   amount: amount1,
-               },
-               Cw20Coin {
-                   address: addr2.to_string(),
-                   amount: amount1,
-               },
-               Cw20Coin {
-                   address: addr3.to_string(),
-                   amount: amount1,
-               },
-               Cw20Coin {
-                   address: addr4.to_string(),
-                   amount: amount1,
-               },
-           ];
-           let mut app = mock_app();
-           let amount1 = Uint128::from(100u128);
-           let unstaking_blocks = 10u64;
-           let token_address= Addr::unchecked("token_address");
-           let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, Some(Duration::Height(unstaking_blocks)));
+        let info = mock_info(ADDR4, &[]);
+        // Successful bond
+        let _res = stake_tokens(&mut app, &staking_addr, &cw20_addr, info, amount1).unwrap();
+        app.update_block(next_block);
 
-           let info = mock_info(addr1.as_ref(), &[]);
-           // Successful bond
-           let res = stake_tokens(&mut app,&staking_addr,&cw20_addr,info,amount1).unwrap();
-           app.update_block(next_block);
+        assert_eq!(query_staked_balance(&app, &staking_addr, ADDR1), amount1);
+        assert_eq!(query_staked_balance(&app, &staking_addr, ADDR2), amount1);
+        assert_eq!(query_staked_balance(&app, &staking_addr, ADDR3), amount1);
+        assert_eq!(query_staked_balance(&app, &staking_addr, ADDR4), amount1);
 
-           let info = mock_info(addr2.as_ref(), &[]);
-           // Successful bond
-           let res = stake_tokens(&mut app,&staking_addr,&cw20_addr,info,amount1).unwrap();
-           app.update_block(next_block);
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            amount1.checked_mul(Uint128::new(4)).unwrap()
+        );
 
-           let info = mock_info(addr3.as_ref(), &[]);
-           // Successful bond
-           let res = stake_tokens(&mut app,&staking_addr,&cw20_addr,info,amount1).unwrap();
-           app.update_block(next_block);
-
-           let info = mock_info(addr4.as_ref(), &[]);
-           // Successful bond
-           let res = stake_tokens(&mut app,&staking_addr,&cw20_addr,info,amount1).unwrap();
-           app.update_block(next_block);
-
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr1.clone()),
-               amount1
-           );
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr2.clone()),
-               amount1
-           );
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr3.clone()),
-               amount1
-           );
-           assert_eq!(
-               query_staked_balance(&app,  &staking_addr, addr4.clone()),
-               amount1
-           );
-
-           assert_eq!(
-               query_total_staked(&app,&staking_addr),
-               amount1.checked_mul(Uint128::new(4)).unwrap()
-           );
-
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr1),
-               Uint128::zero()
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr2),
-               Uint128::zero()
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr3),
-               Uint128::zero()
-           );
-           assert_eq!(
-               get_balance(&app, &cw20_addr, addr4),
-               Uint128::zero()
-           );
-
-       }
-
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::zero());
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::zero());
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR3), Uint128::zero());
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR4), Uint128::zero());
+    }
 }

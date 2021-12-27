@@ -10,8 +10,5 @@ pub enum ContractError {
     #[error("Nothing to claim")]
     NothingToClaim {},
     #[error("Invalid token")]
-    InvalidToken {
-        received: Addr,
-        expected: Addr
-    }
+    InvalidToken { received: Addr, expected: Addr },
 }
