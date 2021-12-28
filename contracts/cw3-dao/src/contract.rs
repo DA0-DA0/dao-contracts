@@ -11,6 +11,7 @@ use crate::query::{
 };
 use crate::state::{
     next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GOV_TOKEN, PROPOSALS,
+    STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_UNSTAKING_DURATION,
     TREASURY_TOKENS,
 };
 use cosmwasm_std::{
@@ -35,6 +36,7 @@ const DEFAULT_LIMIT: u32 = 10;
 
 // Reply IDs
 const INSTANTIATE_GOV_TOKEN_REPLY_ID: u64 = 0;
+const INSTANTIATE_STAKING_CONTRACT_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -61,32 +63,34 @@ pub fn instantiate(
 
     match msg.gov_token {
         GovTokenMsg::InstantiateNewCw20 {
-            code_id,
+            cw20_code_id,
+            stake_contract_code_id,
             label,
             msg,
+            unstaking_duration,
         } => {
             if msg.initial_balances.is_empty() {
                 return Err(ContractError::InitialBalancesError {});
             }
 
+            STAKING_CONTRACT_CODE_ID.save(deps.storage, &stake_contract_code_id)?;
+            STAKING_CONTRACT_UNSTAKING_DURATION.save(deps.storage, &unstaking_duration)?;
+
             let msg = WasmMsg::Instantiate {
-                code_id,
+                code_id: cw20_code_id,
                 funds: vec![],
                 admin: Some(env.contract.address.to_string()),
                 label,
-                msg: to_binary(&cw20_gov::msg::InstantiateMsg {
-                    cw20_base: cw20_base::msg::InstantiateMsg {
-                        name: msg.name,
-                        symbol: msg.symbol,
-                        decimals: msg.decimals,
-                        initial_balances: msg.initial_balances,
-                        mint: Some(MinterResponse {
-                            minter: env.contract.address.to_string(),
-                            cap: None,
-                        }),
-                        marketing: msg.marketing,
-                    },
-                    unstaking_duration: None,
+                msg: to_binary(&cw20_base::msg::InstantiateMsg {
+                    name: msg.name,
+                    symbol: msg.symbol,
+                    decimals: msg.decimals,
+                    initial_balances: msg.initial_balances,
+                    mint: Some(MinterResponse {
+                        minter: env.contract.address.to_string(),
+                        cap: None,
+                    }),
+                    marketing: msg.marketing,
                 })?,
             };
 
@@ -94,18 +98,38 @@ pub fn instantiate(
 
             msgs.append(&mut vec![msg]);
         }
-        GovTokenMsg::UseExistingCw20 { addr } => {
+        GovTokenMsg::UseExistingCw20 {
+            addr,
+            stake_contract_code_id,
+            label,
+            unstaking_duration,
+        } => {
             let cw20_addr = Cw20Contract(
                 deps.api
                     .addr_validate(&addr)
                     .map_err(|_| ContractError::InvalidCw20 { addr })?,
             );
 
-            // Add cw20-gov token to map of TREASURY TOKENS
+            // Add cw20 token to map of TREASURY TOKENS
             TREASURY_TOKENS.save(deps.storage, &cw20_addr.addr(), &Empty {})?;
 
             // Save gov token
             GOV_TOKEN.save(deps.storage, &cw20_addr.addr())?;
+
+            let msg = WasmMsg::Instantiate {
+                code_id: stake_contract_code_id,
+                funds: vec![],
+                admin: Some(env.contract.address.to_string()),
+                label,
+                msg: to_binary(&stake_cw20::msg::InstantiateMsg {
+                    unstaking_duration,
+                    token_address: cw20_addr.addr(),
+                })?,
+            };
+
+            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_CONTRACT_REPLY_ID);
+
+            msgs.append(&mut vec![msg]);
         }
     };
 
@@ -455,7 +479,12 @@ fn query_proposal_tally(deps: Deps, env: Env, id: u64) -> StdResult<VoteTallyRes
 fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     let gov_token = GOV_TOKEN.load(deps.storage)?;
-    Ok(ConfigResponse { config, gov_token })
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+    Ok(ConfigResponse {
+        config,
+        gov_token,
+        staking_contract,
+    })
 }
 
 fn query_cw20_token_list(deps: Deps) -> TokenListResponse {
@@ -598,24 +627,57 @@ fn query_voter(deps: Deps, voter: String) -> StdResult<VoterResponse> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.id != INSTANTIATE_GOV_TOKEN_REPLY_ID {
-        return Err(ContractError::UnknownReplyId { id: msg.id });
-    };
-    let res = parse_reply_instantiate_data(msg);
-    match res {
-        Ok(res) => {
-            // Validate contract address
-            let cw20_addr = deps.api.addr_validate(&res.contract_address)?;
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        INSTANTIATE_GOV_TOKEN_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg);
+            match res {
+                Ok(res) => {
+                    // Validate contract address
+                    let cw20_addr = deps.api.addr_validate(&res.contract_address)?;
 
-            // Add cw20-gov token to map of TREASURY TOKENS
-            TREASURY_TOKENS.save(deps.storage, &cw20_addr, &Empty {})?;
+                    // Add cw20 token to map of TREASURY TOKENS
+                    TREASURY_TOKENS.save(deps.storage, &cw20_addr, &Empty {})?;
 
-            // Save gov token
-            GOV_TOKEN.save(deps.storage, &cw20_addr)?;
+                    // Save gov token
+                    GOV_TOKEN.save(deps.storage, &cw20_addr)?;
 
-            Ok(Response::new())
+                    // Instantiate staking contract
+                    let code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
+                    let unstaking_duration =
+                        STAKING_CONTRACT_UNSTAKING_DURATION.load(deps.storage)?;
+                    let msg = WasmMsg::Instantiate {
+                        code_id,
+                        funds: vec![],
+                        admin: Some(env.contract.address.to_string()),
+                        label: env.contract.address.to_string(),
+                        msg: to_binary(&stake_cw20::msg::InstantiateMsg {
+                            unstaking_duration,
+                            token_address: cw20_addr,
+                        })?,
+                    };
+
+                    let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_CONTRACT_REPLY_ID);
+                    Ok(Response::new().add_submessage(msg))
+                }
+                Err(_) => Err(ContractError::InstantiateGovTokenError {}),
+            }
         }
-        Err(_) => Err(ContractError::InstantiateGovTokenError {}),
+        INSTANTIATE_STAKING_CONTRACT_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg);
+            match res {
+                Ok(res) => {
+                    // Validate contract address
+                    let staking_contract_addr = deps.api.addr_validate(&res.contract_address)?;
+
+                    // Save gov token
+                    STAKING_CONTRACT.save(deps.storage, &staking_contract_addr)?;
+
+                    Ok(Response::new())
+                }
+                Err(_) => Err(ContractError::InstantiateGovTokenError {}),
+            }
+        }
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

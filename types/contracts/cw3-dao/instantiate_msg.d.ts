@@ -2,14 +2,17 @@ import { Binary, Duration, Threshold, Uint128 } from "./shared-types";
 
 export type GovTokenMsg = ({
 instantiate_new_cw20: {
-code_id: number
+cw20_code_id: number
 label: string
 msg: GovTokenInstantiateMsg
+stake_contract_code_id: number
 [k: string]: unknown
 }
 } | {
 use_existing_cw20: {
 addr: string
+label: string
+stake_contract_code_id: number
 [k: string]: unknown
 }
 })

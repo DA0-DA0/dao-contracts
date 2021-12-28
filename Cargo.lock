@@ -270,41 +270,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw20-gov"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus",
- "cw0",
- "cw2",
- "cw20",
- "cw20-base",
- "cw20-stakeable",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw20-stakeable"
-version = "0.1.2"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-controllers",
- "cw-storage-plus",
- "cw0",
- "cw2",
- "cw20",
- "cw20-base",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "cw3"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -328,10 +293,10 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
- "cw20-gov",
  "cw3",
  "schemars",
  "serde",
+ "stake-cw20",
  "thiserror",
 ]
 
@@ -347,7 +312,6 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
- "cw20-gov",
  "cw3",
  "cw4",
  "cw4-group",
