@@ -36,12 +36,14 @@ pub enum GovTokenMsg {
         stake_contract_code_id: u64,
         label: String,
         msg: GovTokenInstantiateMsg,
+        unstaking_duration: Option<Duration>,
     },
     /// Use an existing cw20 token
     UseExistingCw20 {
         addr: String,
         label: String,
         stake_contract_code_id: u64,
+        unstaking_duration: Option<Duration>,
     },
 }
 

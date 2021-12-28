@@ -11,7 +11,8 @@ use crate::query::{
 };
 use crate::state::{
     next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GOV_TOKEN, PROPOSALS,
-    STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, TREASURY_TOKENS,
+    STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_UNSTAKING_DURATION,
+    TREASURY_TOKENS,
 };
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
@@ -66,12 +67,14 @@ pub fn instantiate(
             stake_contract_code_id,
             label,
             msg,
+            unstaking_duration,
         } => {
             if msg.initial_balances.is_empty() {
                 return Err(ContractError::InitialBalancesError {});
             }
 
             STAKING_CONTRACT_CODE_ID.save(deps.storage, &stake_contract_code_id)?;
+            STAKING_CONTRACT_UNSTAKING_DURATION.save(deps.storage, &unstaking_duration)?;
 
             let msg = WasmMsg::Instantiate {
                 code_id: cw20_code_id,
@@ -99,6 +102,7 @@ pub fn instantiate(
             addr,
             stake_contract_code_id,
             label,
+            unstaking_duration,
         } => {
             let cw20_addr = Cw20Contract(
                 deps.api
@@ -118,7 +122,7 @@ pub fn instantiate(
                 admin: Some(env.contract.address.to_string()),
                 label,
                 msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                    unstaking_duration: None,
+                    unstaking_duration,
                     token_address: cw20_addr.addr(),
                 })?,
             };
@@ -640,13 +644,15 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
                     // Instantiate staking contract
                     let code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
+                    let unstaking_duration =
+                        STAKING_CONTRACT_UNSTAKING_DURATION.load(deps.storage)?;
                     let msg = WasmMsg::Instantiate {
                         code_id,
                         funds: vec![],
                         admin: Some(env.contract.address.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            unstaking_duration: None,
+                            unstaking_duration,
                             token_address: cw20_addr,
                         })?,
                     };

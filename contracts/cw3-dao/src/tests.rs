@@ -106,6 +106,7 @@ fn instantiate_dao(
             addr: cw20.to_string(),
             stake_contract_code_id: staking_code_id,
             label: "dao-dao".to_string(),
+            unstaking_duration: None,
         },
         threshold,
         max_voting_period,
@@ -261,6 +262,7 @@ fn test_instantiate_works() {
             addr: cw20_addr.to_string(),
             stake_contract_code_id,
             label: "dao-dao".to_string(),
+            unstaking_duration: None,
         },
         threshold: Threshold::AbsolutePercentage {
             percentage: Decimal::percent(101),
@@ -317,6 +319,7 @@ fn instantiate_new_gov_token() {
                 initial_balances: vec![],
                 marketing: None,
             },
+            unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {
             threshold: Decimal::percent(51),
@@ -373,6 +376,7 @@ fn instantiate_new_gov_token() {
                 initial_balances: initial_balances.clone(),
                 marketing: None,
             },
+            unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {
             threshold: Decimal::percent(51),
