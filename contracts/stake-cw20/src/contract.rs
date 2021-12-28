@@ -67,14 +67,9 @@ pub fn execute_receive(
         });
     }
     let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
-    let api = deps.api;
+    let sender = deps.api.addr_validate(&wrapper.sender)?;
     match msg {
-        ReceiveMsg::Stake {} => execute_stake(
-            deps,
-            env,
-            &api.addr_validate(&wrapper.sender)?,
-            wrapper.amount,
-        ),
+        ReceiveMsg::Stake {} => execute_stake(deps, env, &sender, wrapper.amount),
     }
 }
 
@@ -145,12 +140,11 @@ pub fn execute_unstake(
                 amount,
                 duration.after(&_env.block),
             )?;
-            let res = Response::new()
+            Ok(Response::new()
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
-                .add_attribute("claim_duration", format!("{}", duration));
-            Ok(res)
+                .add_attribute("claim_duration", format!("{}", duration)))
         }
     }
 }
@@ -174,12 +168,11 @@ pub fn execute_claim(
         msg: to_binary(&cw_send_msg)?,
         funds: vec![],
     };
-    let res = Response::new()
+    Ok(Response::new()
         .add_message(wasm_msg)
         .add_attribute("action", "claim")
         .add_attribute("from", info.sender)
-        .add_attribute("amount", release);
-    Ok(res)
+        .add_attribute("amount", release))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -332,9 +325,10 @@ mod tests {
         initial_balances: Vec<Cw20Coin>,
         unstaking_duration: Option<Duration>,
     ) -> (Addr, Addr) {
-        // 1. Instantiate Gov Token Contract
+        // Instantiate cw20 contract
         let cw20_addr = instantiate_cw20(app, initial_balances);
         app.update_block(next_block);
+        // Instantiate staking contract
         let staking_addr = instantiate_staking(app, cw20_addr.clone(), unstaking_duration);
         app.update_block(next_block);
         (staking_addr, cw20_addr)
@@ -438,8 +432,7 @@ mod tests {
             .execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[])
             .unwrap_err();
 
-        // Sucessful transfer
-        // Can't transfer bonded amount
+        // Sucessful transfer of unbonded amount
         let msg = cw20::Cw20ExecuteMsg::Transfer {
             recipient: ADDR2.to_string(),
             amount: Uint128::from(20u128),
@@ -468,7 +461,7 @@ mod tests {
         );
         assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::zero());
 
-        // Can't unstake when you have more staked
+        // Can't unstake more than you have staked
         let info = mock_info(ADDR2, &[]);
         let _err = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(100)).unwrap_err();
 
