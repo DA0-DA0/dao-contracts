@@ -21,6 +21,7 @@ use cw20::{
 };
 use cw3::{Status, Vote};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+use stake_cw20::msg::ReceiveMsg;
 use std::borrow::BorrowMut;
 
 const OWNER: &str = "admin0001";
@@ -45,9 +46,18 @@ pub fn contract_dao() -> Box<dyn Contract<Empty>> {
 
 pub fn contract_cw20_gov() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw20_gov::contract::execute,
-        cw20_gov::contract::instantiate,
-        cw20_gov::contract::query,
+        cw20_base::contract::execute,
+        cw20_base::contract::instantiate,
+        cw20_base::contract::query,
+    );
+    Box::new(contract)
+}
+
+pub fn contract_staking() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        stake_cw20::contract::execute,
+        stake_cw20::contract::instantiate,
+        stake_cw20::contract::query,
     );
     Box::new(contract)
 }
@@ -56,58 +66,21 @@ fn mock_app() -> App {
     App::default()
 }
 
-// uploads code and returns address of cw20 contract
-fn instantiate_cw20(app: &mut App) -> Addr {
-    let cw20_id = app.store_code(contract_cw20_gov());
-    let initial_balances = vec![
-        Cw20Coin {
-            address: OWNER.to_string(),
-            amount: Uint128::new(INITIAL_BALANCE),
-        },
-        Cw20Coin {
-            address: VOTER1.to_string(),
-            amount: Uint128::new(INITIAL_BALANCE),
-        },
-        Cw20Coin {
-            address: VOTER2.to_string(),
-            amount: Uint128::new(INITIAL_BALANCE),
-        },
-        Cw20Coin {
-            address: VOTER3.to_string(),
-            amount: Uint128::new(INITIAL_BALANCE * 2),
-        },
-        Cw20Coin {
-            address: POWER_VOTER.to_string(),
-            amount: Uint128::new(INITIAL_BALANCE * 5),
-        },
-    ];
-    let msg = cw20_gov::msg::InstantiateMsg {
-        cw20_base: cw20_base::msg::InstantiateMsg {
-            name: String::from("Test"),
-            symbol: String::from("TEST"),
-            decimals: 6,
-            initial_balances: initial_balances.clone(),
-            mint: None,
-            marketing: None,
-        },
-        unstaking_duration: None,
-    };
-
-    let contract = app
-        .instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
-        .unwrap();
-    stake_balances(app, initial_balances, &contract);
-    contract
-}
-
-fn stake_balances(app: &mut App, initial_balances: Vec<Cw20Coin>, contract: &Addr) {
+fn stake_balances(
+    app: &mut App,
+    initial_balances: Vec<Cw20Coin>,
+    cw20_addr: &Addr,
+    staking_addr: &Addr,
+) {
     for balance in initial_balances.into_iter() {
-        let msg = cw20_gov::msg::ExecuteMsg::Stake {
+        let msg = cw20::Cw20ExecuteMsg::Send {
+            contract: staking_addr.to_string(),
             amount: balance.amount.checked_div(Uint128::new(2)).unwrap(),
+            msg: to_binary(&ReceiveMsg::Stake {}).unwrap(),
         };
         app.execute_contract(
             Addr::unchecked(balance.address),
-            contract.clone(),
+            cw20_addr.clone(),
             &msg,
             &[],
         )
@@ -125,11 +98,14 @@ fn instantiate_dao(
     refund_failed_proposals: Option<bool>,
 ) -> Addr {
     let dao_code_id = app.store_code(contract_dao());
+    let staking_code_id = app.store_code(contract_staking());
     let msg = crate::msg::InstantiateMsg {
         name: "dao-dao".to_string(),
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::UseExistingCw20 {
             addr: cw20.to_string(),
+            stake_contract_code_id: staking_code_id,
+            label: "dao-dao".to_string(),
         },
         threshold,
         max_voting_period,
@@ -154,12 +130,47 @@ fn setup_test_case(
     init_funds: Vec<Coin>,
     proposal_deposit_amount: Option<Uint128>,
     refund_failed_proposals: Option<bool>,
-) -> (Addr, Addr) {
-    // 1. Instantiate Gov Token Contract
-    let cw20_addr = instantiate_cw20(app);
+) -> (Addr, Addr, Addr) {
+    // Instantiate Gov Token Contract
+    let cw20_id = app.store_code(contract_cw20_gov());
+    let initial_balances = vec![
+        Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE),
+        },
+        Cw20Coin {
+            address: VOTER1.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE),
+        },
+        Cw20Coin {
+            address: VOTER2.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE),
+        },
+        Cw20Coin {
+            address: VOTER3.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE * 2),
+        },
+        Cw20Coin {
+            address: POWER_VOTER.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE * 5),
+        },
+    ];
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("Test"),
+        symbol: String::from("TEST"),
+        decimals: 6,
+        initial_balances: initial_balances.clone(),
+        mint: None,
+        marketing: None,
+    };
+
+    let cw20_addr = app
+        .instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
+        .unwrap();
+
     app.update_block(next_block);
 
-    // 2. Set up Multisig backed by this group
+    // Instantiate DAO Contract
     let dao_addr = instantiate_dao(
         app,
         cw20_addr.clone(),
@@ -170,7 +181,7 @@ fn setup_test_case(
     );
     app.update_block(next_block);
 
-    // Bonus: set some funds on the multisig contract for future proposals
+    // Bonus: set some funds on the DAO contract for future proposals
     if !init_funds.is_empty() {
         app.init_modules(|router, _, storage| {
             router
@@ -179,7 +190,23 @@ fn setup_test_case(
                 .unwrap()
         });
     }
-    (dao_addr, cw20_addr)
+
+    // Get staking contract address
+    let res: ConfigResponse = app
+        .wrap()
+        .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
+        .unwrap();
+    let staking_addr = res.staking_contract;
+
+    // Stake balances
+    stake_balances(
+        app.borrow_mut(),
+        initial_balances,
+        &cw20_addr,
+        &staking_addr,
+    );
+
+    (dao_addr, cw20_addr, staking_addr)
 }
 
 fn proposal_info() -> (Vec<CosmosMsg<Empty>>, String, String) {
@@ -207,11 +234,24 @@ fn pay_somebody_proposal() -> ExecuteMsg {
 fn test_instantiate_works() {
     let mut app = mock_app();
 
-    // make a simple group
-    let cw20_addr = instantiate_cw20(&mut app);
     let dao_code_id = app.store_code(contract_dao());
+    let stake_contract_code_id = app.store_code(contract_staking());
 
     let max_voting_period = Duration::Time(1234567);
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(51),
+        quorum: Decimal::percent(10),
+    };
+
+    // Setup test case instantiates all contracts
+    let (dao_addr, cw20_addr, _staking_addr) = setup_test_case(
+        &mut app,
+        threshold,
+        max_voting_period,
+        coins(100, NATIVE_TOKEN_DENOM),
+        None,
+        None,
+    );
 
     // Total weight less than required weight not allowed
     let instantiate_msg = InstantiateMsg {
@@ -219,6 +259,8 @@ fn test_instantiate_works() {
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::UseExistingCw20 {
             addr: cw20_addr.to_string(),
+            stake_contract_code_id,
+            label: "dao-dao".to_string(),
         },
         threshold: Threshold::AbsolutePercentage {
             percentage: Decimal::percent(101),
@@ -242,32 +284,6 @@ fn test_instantiate_works() {
         err.downcast().unwrap()
     );
 
-    // All valid
-    let instantiate_msg = InstantiateMsg {
-        name: "dao-dao".to_string(),
-        description: "a great DAO!".to_string(),
-        gov_token: GovTokenMsg::UseExistingCw20 {
-            addr: cw20_addr.to_string(),
-        },
-        threshold: Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(51),
-            quorum: Decimal::percent(10),
-        },
-        max_voting_period,
-        proposal_deposit_amount: Uint128::zero(),
-        refund_failed_proposals: None,
-    };
-    let dao_addr = app
-        .instantiate_contract(
-            dao_code_id,
-            Addr::unchecked(OWNER),
-            &instantiate_msg,
-            &[],
-            "all good",
-            None,
-        )
-        .unwrap();
-
     // Verify contract version set properly
     let version = query_contract_info(&app, dao_addr).unwrap();
     assert_eq!(
@@ -284,13 +300,15 @@ fn instantiate_new_gov_token() {
     let mut app = mock_app();
     let cw20_code_id = app.store_code(contract_cw20_gov());
     let dao_code_id = app.store_code(contract_dao());
+    let stake_contract_code_id = app.store_code(contract_staking());
 
     // Fails with empty initial balances
     let instantiate_msg = InstantiateMsg {
         name: "dao-dao".to_string(),
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::InstantiateNewCw20 {
-            code_id: cw20_code_id,
+            cw20_code_id,
+            stake_contract_code_id,
             label: String::from("DAO DAO"),
             msg: GovTokenInstantiateMsg {
                 name: String::from("DAO DAO"),
@@ -345,7 +363,8 @@ fn instantiate_new_gov_token() {
         name: "dao-dao".to_string(),
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::InstantiateNewCw20 {
-            code_id: cw20_code_id,
+            cw20_code_id,
+            stake_contract_code_id,
             label: String::from("DAO DAO"),
             msg: GovTokenInstantiateMsg {
                 name: String::from("DAO DAO"),
@@ -379,9 +398,15 @@ fn instantiate_new_gov_token() {
         .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
         .unwrap();
     let cw20_addr = res.gov_token;
+    let staking_addr = res.staking_contract;
 
     // Stake balances
-    stake_balances(app.borrow_mut(), initial_balances, &cw20_addr);
+    stake_balances(
+        app.borrow_mut(),
+        initial_balances,
+        &cw20_addr,
+        &staking_addr,
+    );
 
     // Make proposal to mint some gov tokens for the DAO
     let wasm_exec_msg = WasmMsg::Execute {
@@ -479,7 +504,7 @@ fn test_propose_works() {
         threshold: Decimal::percent(51),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -577,7 +602,7 @@ fn test_proposal_queries() {
         threshold: Decimal::percent(51),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -700,7 +725,7 @@ fn test_query_limited() {
         threshold: Decimal::percent(51),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, _) = setup_test_case(
+    let (dao_addr, _, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -785,7 +810,7 @@ fn test_token_add_limited() {
     let threshold = Threshold::AbsolutePercentage {
         percentage: Decimal::percent(20),
     };
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _cw20_addr, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -853,7 +878,7 @@ fn test_vote_works() {
         threshold: Decimal::percent(51),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _cw20_addr, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -1022,7 +1047,7 @@ fn test_execute_works() {
         threshold: Decimal::percent(10),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _cw20_addr, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -1123,7 +1148,7 @@ fn test_close_works() {
         threshold: Decimal::percent(51),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _cw20_addr, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -1179,7 +1204,7 @@ fn test_close_works_with_refund() {
         quorum: Decimal::percent(10),
     };
     let proposal_deposit_amount = Uint128::new(10);
-    let (dao_addr, cw20_addr) = setup_test_case(
+    let (dao_addr, cw20_addr, _) = setup_test_case(
         &mut app,
         threshold.clone(),
         voting_period,
@@ -1283,7 +1308,7 @@ fn quorum_enforced_even_if_absolute_threshold_met() {
     // 33% required for quora, which is 5 of the initial 15
     // 50% yes required to pass early (8 of the initial 15)
     let voting_period = Duration::Time(20000);
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _cw20_addr, _) = setup_test_case(
         &mut app,
         // note that 60% yes is not enough to pass without 20% no as well
         Threshold::ThresholdQuorum {
@@ -1353,7 +1378,7 @@ fn test_burn_does_not_change_proposal_query_response_threshold() {
         threshold: Decimal::percent(20),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, cw20_addr) = setup_test_case(
+    let (dao_addr, cw20_addr, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -1428,7 +1453,7 @@ fn query_proposal_tally() {
     let mut app = mock_app();
 
     let voting_period = Duration::Time(20000);
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _, _) = setup_test_case(
         &mut app,
         Threshold::ThresholdQuorum {
             threshold: Decimal::percent(50),
@@ -1575,7 +1600,7 @@ fn test_update_config() {
         threshold: Decimal::percent(20),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, cw20_addr) = setup_test_case(
+    let (dao_addr, cw20_addr, staking_addr) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -1664,7 +1689,8 @@ fn test_update_config() {
                 proposal_deposit: new_proposal_deposit_amount,
                 refund_failed_proposals: None,
             },
-            gov_token: cw20_addr
+            gov_token: cw20_addr,
+            staking_contract: staking_addr
         }
     )
 }
@@ -1678,7 +1704,7 @@ fn test_config_query() {
         threshold: Decimal::percent(51),
         quorum: Decimal::percent(10),
     };
-    let (dao_addr, cw20_addr) = setup_test_case(
+    let (dao_addr, cw20_addr, staking_addr) = setup_test_case(
         &mut app,
         threshold.clone(),
         voting_period,
@@ -1704,7 +1730,8 @@ fn test_config_query() {
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
             },
-            gov_token: cw20_addr
+            gov_token: cw20_addr,
+            staking_contract: staking_addr
         }
     )
 }
@@ -1717,7 +1744,7 @@ fn test_proposal_deposit_works() {
     let threshold = Threshold::AbsolutePercentage {
         percentage: Decimal::percent(20),
     };
-    let (dao_addr, cw20_addr) = setup_test_case(
+    let (dao_addr, cw20_addr, _) = setup_test_case(
         &mut app,
         threshold.clone(),
         voting_period,
@@ -1829,7 +1856,7 @@ fn treasury_queries() {
     let threshold = Threshold::AbsolutePercentage {
         percentage: Decimal::percent(20),
     };
-    let (dao_addr, _cw20_addr) = setup_test_case(
+    let (dao_addr, _, _) = setup_test_case(
         &mut app,
         threshold,
         voting_period,
@@ -1864,19 +1891,16 @@ fn treasury_queries() {
 
     // Make a new token with initial balance
     let cw20_id = app.store_code(contract_cw20_gov());
-    let msg = cw20_gov::msg::InstantiateMsg {
-        cw20_base: cw20_base::msg::InstantiateMsg {
-            name: String::from("NewCoin"),
-            symbol: String::from("COIN"),
-            decimals: 6,
-            initial_balances: vec![Cw20Coin {
-                address: OWNER.to_string(),
-                amount: Uint128::new(INITIAL_BALANCE * 5),
-            }],
-            mint: None,
-            marketing: None,
-        },
-        unstaking_duration: None,
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NewCoin"),
+        symbol: String::from("COIN"),
+        decimals: 6,
+        initial_balances: vec![Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE * 5),
+        }],
+        mint: None,
+        marketing: None,
     };
     let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
     assert!(res.is_ok());

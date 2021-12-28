@@ -4,13 +4,13 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ExecuteMsg;
 
-use cw20_gov::msg::{
-    QueryMsg as Cw20GovQueryMsg, TotalStakedAtHeightResponse, VotingPowerAtHeightResponse,
+use stake_cw20::msg::{
+    QueryMsg as StakingContractQueryMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 
 use crate::{
     query::ProposalResponse,
-    state::{parse_id, Proposal, GOV_TOKEN},
+    state::{parse_id, Proposal, STAKING_CONTRACT},
     ContractError,
 };
 
@@ -59,22 +59,22 @@ pub fn get_proposal_deposit_refund_message(
 }
 
 pub fn get_total_staked_supply(deps: Deps) -> StdResult<Uint128> {
-    let gov_token = GOV_TOKEN.load(deps.storage)?;
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
 
     // Get total supply
     let total: TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
-        gov_token,
-        &Cw20GovQueryMsg::TotalStakedAtHeight { height: None },
+        staking_contract,
+        &StakingContractQueryMsg::TotalStakedAtHeight { height: None },
     )?;
     Ok(total.total)
 }
 
 pub fn get_staked_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
-    let gov_token = GOV_TOKEN.load(deps.storage)?;
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     // Get total supply
-    let res: cw20_gov::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
-        gov_token,
-        &Cw20GovQueryMsg::StakedBalanceAtHeight {
+    let res: StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
+        staking_contract,
+        &StakingContractQueryMsg::StakedBalanceAtHeight {
             address: address.to_string(),
             height: None,
         },
@@ -83,14 +83,14 @@ pub fn get_staked_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
 }
 
 pub fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
-    let gov_token = GOV_TOKEN.load(deps.storage)?;
+    let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
 
     // Get total supply
-    let balance: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        gov_token,
-        &Cw20GovQueryMsg::VotingPowerAtHeight {
+    let balance: StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
+        staking_contract,
+        &StakingContractQueryMsg::StakedBalanceAtHeight {
             address: address.to_string(),
-            height,
+            height: Some(height),
         },
     )?;
     Ok(balance.balance)

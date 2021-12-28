@@ -151,7 +151,13 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 
 // Total weight and voters are queried from this contract
+pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
+
+// Address of the token used for staking
 pub const GOV_TOKEN: Item<Addr> = Item::new("gov_token");
+
+// Stores staking contract CODE ID for use in a reply
+pub const STAKING_CONTRACT_CODE_ID: Item<u64> = Item::new("staking_contract_code_id");
 
 // Multiple-item map
 pub const BALLOTS: Map<(U64Key, &Addr), Ballot> = Map::new("votes");

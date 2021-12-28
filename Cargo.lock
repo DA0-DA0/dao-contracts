@@ -328,10 +328,10 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
- "cw20-gov",
  "cw3",
  "schemars",
  "serde",
+ "stake-cw20",
  "thiserror",
 ]
 

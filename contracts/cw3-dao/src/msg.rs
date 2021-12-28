@@ -32,12 +32,17 @@ pub struct InstantiateMsg {
 pub enum GovTokenMsg {
     // Instantiate a new cw20 token with the DAO as minter
     InstantiateNewCw20 {
-        code_id: u64,
+        cw20_code_id: u64,
+        stake_contract_code_id: u64,
         label: String,
         msg: GovTokenInstantiateMsg,
     },
     /// Use an existing cw20 token
-    UseExistingCw20 { addr: String },
+    UseExistingCw20 {
+        addr: String,
+        label: String,
+        stake_contract_code_id: u64,
+    },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

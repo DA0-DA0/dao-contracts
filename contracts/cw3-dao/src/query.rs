@@ -162,6 +162,7 @@ pub struct VoterDetail {
 pub struct ConfigResponse {
     pub config: Config,
     pub gov_token: Addr,
+    pub staking_contract: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
