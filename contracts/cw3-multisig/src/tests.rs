@@ -58,9 +58,9 @@ pub fn contract_group() -> Box<dyn Contract<Empty>> {
 
 pub fn contract_cw20_gov() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw20_gov::contract::execute,
-        cw20_gov::contract::instantiate,
-        cw20_gov::contract::query,
+        cw20_base::contract::execute,
+        cw20_base::contract::instantiate,
+        cw20_base::contract::query,
     );
     Box::new(contract)
 }
@@ -1855,19 +1855,16 @@ fn treasury_queries() {
 
     // Make a new token with initial balance
     let cw20_id = app.store_code(contract_cw20_gov());
-    let msg = cw20_gov::msg::InstantiateMsg {
-        cw20_base: cw20_base::msg::InstantiateMsg {
-            name: String::from("NewCoin"),
-            symbol: String::from("COIN"),
-            decimals: 6,
-            initial_balances: vec![Cw20Coin {
-                address: OWNER.to_string(),
-                amount: Uint128::new(INITIAL_BALANCE * 5),
-            }],
-            mint: None,
-            marketing: None,
-        },
-        unstaking_duration: None,
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NewCoin"),
+        symbol: String::from("COIN"),
+        decimals: 6,
+        initial_balances: vec![Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE * 5),
+        }],
+        mint: None,
+        marketing: None,
     };
     let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
     assert!(res.is_ok());

@@ -2,17 +2,17 @@
 
 **NOT PRODUCTION READY**
 
-| Contract                                        | Description                                            |
-|:------------------------------------------------|:-------------------------------------------------------|
-| [cw3-dao](contracts/cw3-dao)                    | A governance token based DAO.                          |
-| [cw20-gov](contract/cw20-gov)                   | A cw20 token for use with cw3-dao                      |
-| [cw3-multisig](contract/cw3-multisig) | A multisig contract                                                       |
+| Contract                              | Description                                  |
+| :------------------------------------ | :------------------------------------------- |
+| [cw3-dao](contracts/cw3-dao)          | A governance token based DAO.                |
+| [stake-cw20](contract/stake-cw20)     | A cw20 staking contract for use with cw3-dao |
+| [cw3-multisig](contract/cw3-multisig) | A multisig contract                          |
 
 ## Deploying in a development environment
 
 Deploy the contract to a local chain with:
 
-``` sh
+```sh
 bash scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
 ```
 
@@ -22,7 +22,7 @@ This will run a chain locally in a docker container, then build and deploy the c
 
 The script will output something like:
 
-``` sh
+```sh
 NEXT_PUBLIC_DAO_TOKEN_CODE_ID=1
 NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=2
 NEXT_PUBLIC_MULTISIG_CODE_ID=3
@@ -37,12 +37,12 @@ You can then interact with the contract addresses.
 
 Note, to send commands to the docker container:
 
-``` sh
+```sh
 docker exec -i cosmwasm  junod status
 ```
 
 Some commands require a password which defaults to `xxxxxxxxx`. You can use them like so:
 
-``` sh
+```sh
 echo xxxxxxxxx | docker exec -i cosmwasm  junod keys show validator -a
 ```
