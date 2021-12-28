@@ -4,13 +4,17 @@
   "type": "object",
   "required": [
     "config",
-    "gov_token"
+    "gov_token",
+    "staking_contract"
   ],
   "properties": {
     "config": {
       "$ref": "#/definitions/Config"
     },
     "gov_token": {
+      "$ref": "#/definitions/Addr"
+    },
+    "staking_contract": {
       "$ref": "#/definitions/Addr"
     }
   },

@@ -195,12 +195,13 @@
             "instantiate_new_cw20": {
               "type": "object",
               "required": [
-                "code_id",
+                "cw20_code_id",
                 "label",
-                "msg"
+                "msg",
+                "stake_contract_code_id"
               ],
               "properties": {
-                "code_id": {
+                "cw20_code_id": {
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
@@ -210,6 +211,11 @@
                 },
                 "msg": {
                   "$ref": "#/definitions/GovTokenInstantiateMsg"
+                },
+                "stake_contract_code_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
                 }
               }
             }
@@ -226,11 +232,21 @@
             "use_existing_cw20": {
               "type": "object",
               "required": [
-                "addr"
+                "addr",
+                "label",
+                "stake_contract_code_id"
               ],
               "properties": {
                 "addr": {
                   "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "stake_contract_code_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
                 }
               }
             }
