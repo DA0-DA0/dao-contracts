@@ -206,6 +206,16 @@
                   "format": "uint64",
                   "minimum": 0.0
                 },
+                "initial_dao_balance": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Uint128"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
                 "label": {
                   "type": "string"
                 },
@@ -216,6 +226,16 @@
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
+                },
+                "unstaking_duration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Duration"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               }
             }
@@ -247,6 +267,16 @@
                   "type": "integer",
                   "format": "uint64",
                   "minimum": 0.0
+                },
+                "unstaking_duration": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/definitions/Duration"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               }
             }
