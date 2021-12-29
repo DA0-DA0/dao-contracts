@@ -20,7 +20,9 @@ use cosmwasm_std::{
 };
 use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
-use cw20::{BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse};
+use cw20::{
+    BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse,
+};
 use cw3::{Status, Vote};
 use cw_storage_plus::Bound;
 use std::cmp::Ordering;
@@ -66,16 +68,30 @@ pub fn instantiate(
             cw20_code_id,
             stake_contract_code_id,
             label,
+            initial_dao_balance,
             msg,
             unstaking_duration,
         } => {
+            // Check that someone has an initial balance to be able to vote in the DAO
             if msg.initial_balances.is_empty() {
                 return Err(ContractError::InitialBalancesError {});
             }
 
+            let mut initial_balances = msg.initial_balances;
+
+            // Check if an initial gov token balance will be created for the DAO
+            if let Some(initial_dao_balance) = initial_dao_balance {
+                initial_balances.push(Cw20Coin {
+                    address: env.contract.address.to_string(),
+                    amount: initial_dao_balance,
+                });
+            }
+
+            // Save info for use in reply SubMsgs
             STAKING_CONTRACT_CODE_ID.save(deps.storage, &stake_contract_code_id)?;
             STAKING_CONTRACT_UNSTAKING_DURATION.save(deps.storage, &unstaking_duration)?;
 
+            // Instantiate new Gov Token with DAO as admin and minter
             let msg = WasmMsg::Instantiate {
                 code_id: cw20_code_id,
                 funds: vec![],
@@ -85,7 +101,7 @@ pub fn instantiate(
                     name: msg.name,
                     symbol: msg.symbol,
                     decimals: msg.decimals,
-                    initial_balances: msg.initial_balances,
+                    initial_balances,
                     mint: Some(MinterResponse {
                         minter: env.contract.address.to_string(),
                         cap: None,
@@ -116,6 +132,7 @@ pub fn instantiate(
             // Save gov token
             GOV_TOKEN.save(deps.storage, &cw20_addr.addr())?;
 
+            // Instantiate staking contract with DAO as admin
             let msg = WasmMsg::Instantiate {
                 code_id: stake_contract_code_id,
                 funds: vec![],
@@ -172,7 +189,6 @@ pub fn execute_propose(
     // we ignore earliest
     latest: Option<Expiration>,
 ) -> Result<Response<Empty>, ContractError> {
-    // let {title, description, msgs, latest} = proposal;
     let cfg = CONFIG.load(deps.storage)?;
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
@@ -235,7 +251,7 @@ pub fn execute_vote(
     proposal_id: u64,
     vote: Vote,
 ) -> Result<Response<Empty>, ContractError> {
-    // ensure proposal exists and can be voted on
+    // Ensure proposal exists and can be voted on
     let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
     if prop.status != Status::Open {
         return Err(ContractError::NotOpen {});
@@ -252,7 +268,7 @@ pub fn execute_vote(
         return Err(ContractError::Unauthorized {});
     }
 
-    // cast vote if no vote previously cast
+    // Cast vote if no vote previously cast
     BALLOTS.update(
         deps.storage,
         (proposal_id.into(), &info.sender),
@@ -265,7 +281,7 @@ pub fn execute_vote(
         },
     )?;
 
-    // update vote tally
+    // Update vote tally
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
@@ -285,22 +301,22 @@ pub fn execute_execute(
 ) -> Result<Response, ContractError> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
-    // anyone can trigger this if the vote passed
+    // Anyone can trigger this if the vote passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
-    // we allow execution even after the proposal "expiration" as long as all vote come in before
+    // We allow execution even after the proposal "expiration" as long as all vote come in before
     // that point. If it was approved on time, it can be executed any time.
     if prop.status != Status::Passed {
         return Err(ContractError::WrongExecuteStatus {});
     }
 
-    // set it to executed
+    // Set it to executed
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
     let refund_msg =
         get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit, &gov_token)?;
 
-    // dispatch all proposed messages
+    // Dispatch all proposed messages
     Ok(Response::new()
         .add_messages(refund_msg)
         .add_messages(prop.msgs)
@@ -317,7 +333,7 @@ pub fn execute_close(
 ) -> Result<Response<Empty>, ContractError> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
-    // anyone can trigger this if the vote passed
+    // Anyone can trigger this if the vote passed
     let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
     if [Status::Executed, Status::Rejected, Status::Passed]
         .iter()
@@ -329,7 +345,7 @@ pub fn execute_close(
         return Err(ContractError::NotExpired {});
     }
 
-    // set it to failed
+    // Set it to failed
     prop.status = Status::Rejected;
     PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
 
@@ -642,7 +658,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Save gov token
                     GOV_TOKEN.save(deps.storage, &cw20_addr)?;
 
-                    // Instantiate staking contract
+                    // Instantiate staking contract with DAO as admin
                     let code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
                     let unstaking_duration =
                         STAKING_CONTRACT_UNSTAKING_DURATION.load(deps.storage)?;
@@ -656,8 +672,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                             token_address: cw20_addr,
                         })?,
                     };
-
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_CONTRACT_REPLY_ID);
+
                     Ok(Response::new().add_submessage(msg))
                 }
                 Err(_) => Err(ContractError::InstantiateGovTokenError {}),

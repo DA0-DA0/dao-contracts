@@ -20,7 +20,7 @@ use cw20::{
     BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg,
 };
 use cw3::{Status, Vote};
-use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use stake_cw20::msg::ReceiveMsg;
 use std::borrow::BorrowMut;
 
@@ -182,14 +182,15 @@ fn setup_test_case(
     );
     app.update_block(next_block);
 
-    // Bonus: set some funds on the DAO contract for future proposals
+    // Set some funds on the DAO contract for future proposals
     if !init_funds.is_empty() {
-        app.init_modules(|router, _, storage| {
-            router
-                .bank
-                .init_balance(storage, &dao_addr, init_funds)
-                .unwrap()
-        });
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: dao_addr.to_string(),
+                amount: init_funds,
+            }
+        }))
+        .ok();
     }
 
     // Get staking contract address
@@ -312,6 +313,7 @@ fn instantiate_new_gov_token() {
             cw20_code_id,
             stake_contract_code_id,
             label: String::from("DAO DAO"),
+            initial_dao_balance: Some(Uint128::new(1000000)),
             msg: GovTokenInstantiateMsg {
                 name: String::from("DAO DAO"),
                 symbol: String::from("DAO"),
@@ -369,6 +371,7 @@ fn instantiate_new_gov_token() {
             cw20_code_id,
             stake_contract_code_id,
             label: String::from("DAO DAO"),
+            initial_dao_balance: None,
             msg: GovTokenInstantiateMsg {
                 name: String::from("DAO DAO"),
                 symbol: String::from("DAO"),
@@ -407,7 +410,7 @@ fn instantiate_new_gov_token() {
     // Stake balances
     stake_balances(
         app.borrow_mut(),
-        initial_balances,
+        initial_balances.clone(),
         &cw20_addr,
         &staking_addr,
     );
@@ -496,7 +499,63 @@ fn instantiate_new_gov_token() {
         BalanceResponse {
             balance: Uint128::new(1000)
         }
-    )
+    );
+
+    // Test giving DAO an initial gov token balance
+    let instantiate_msg = InstantiateMsg {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        gov_token: GovTokenMsg::InstantiateNewCw20 {
+            cw20_code_id,
+            stake_contract_code_id,
+            label: String::from("DAO DAO"),
+            initial_dao_balance: Some(Uint128::new(1000)),
+            msg: GovTokenInstantiateMsg {
+                name: String::from("DAO DAO"),
+                symbol: String::from("DAO"),
+                decimals: 6,
+                initial_balances,
+                marketing: None,
+            },
+            unstaking_duration: None,
+        },
+        threshold: Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
+        },
+        max_voting_period: Duration::Time(1234567),
+        proposal_deposit_amount: Uint128::zero(),
+        refund_failed_proposals: None,
+    };
+    let res = app.instantiate_contract(
+        dao_code_id,
+        Addr::unchecked(OWNER),
+        &instantiate_msg,
+        &[],
+        "all good",
+        None,
+    );
+    let dao_addr = res.unwrap();
+    let res: ConfigResponse = app
+        .wrap()
+        .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
+        .unwrap();
+    let cw20_addr = res.gov_token;
+    let res: BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            cw20_addr,
+            &Cw20QueryMsg::Balance {
+                address: dao_addr.into(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        res,
+        BalanceResponse {
+            balance: Uint128::new(1000)
+        }
+    );
 }
 
 #[test]

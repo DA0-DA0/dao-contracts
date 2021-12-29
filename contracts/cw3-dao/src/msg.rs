@@ -35,6 +35,7 @@ pub enum GovTokenMsg {
         cw20_code_id: u64,
         stake_contract_code_id: u64,
         label: String,
+        initial_dao_balance: Option<Uint128>,
         msg: GovTokenInstantiateMsg,
         unstaking_duration: Option<Duration>,
     },
