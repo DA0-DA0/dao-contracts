@@ -6,16 +6,16 @@ use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, Decimal, Empty, Timestamp,
     Uint128, WasmMsg,
 };
-use cw0::{Duration, Expiration};
 use cw2::{query_contract_info, ContractVersion};
 use cw20::Cw20Coin;
 use cw3::{
-    ProposalListResponse, ProposalResponse, Status, ThresholdResponse, Vote, VoteInfo,
-    VoteListResponse, VoteResponse, VoterDetail, VoterListResponse, VoterResponse,
+    ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
+    VoterDetail, VoterListResponse, VoterResponse,
 };
 use cw4::{Cw4Contract, Cw4ExecuteMsg, Member, MemberChangedHookMsg, MemberDiff};
 use cw4_group::helpers::Cw4GroupContract;
 use cw_multi_test::{next_block, App, AppBuilder, Contract, ContractWrapper, Executor};
+use cw_utils::{Duration, Expiration, ThresholdResponse};
 
 const OWNER: &str = "admin0001";
 const VOTER1: &str = "voter0001";

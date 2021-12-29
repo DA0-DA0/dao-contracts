@@ -237,8 +237,8 @@ mod tests {
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
-    use cw0::Duration;
     use cw20::Cw20Coin;
+    use cw_utils::Duration;
 
     use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 

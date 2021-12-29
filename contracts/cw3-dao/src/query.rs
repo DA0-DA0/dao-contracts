@@ -1,8 +1,8 @@
 use crate::state::{Config, Votes};
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
-use cw0::Expiration;
 use cw20::Cw20CoinVerified;
 use cw3::{Status, Vote};
+use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;

@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::{error::ContractError, state::Config};
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty};
-use cw0::{Duration, Expiration};
-use cw3::{ThresholdResponse, Vote};
+use cw3::Vote;
 use cw4::{Member, MemberChangedHookMsg};
+use cw_utils::{Duration, Expiration, ThresholdResponse};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {

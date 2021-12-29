@@ -8,16 +8,16 @@ use cosmwasm_std::{
     Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 
-use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
 use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg};
 use cw3::{
-    ProposalListResponse, ProposalResponse, Status, ThresholdResponse, Vote, VoteInfo,
-    VoteListResponse, VoteResponse, VoterDetail, VoterListResponse, VoterResponse,
+    ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
+    VoterDetail, VoterListResponse, VoterResponse,
 };
 use cw4::{Cw4Contract, MemberChangedHookMsg, MemberDiff};
 use cw4_group::msg::InstantiateMsg as Cw4InstantiateMsg;
 use cw_storage_plus::Bound;
+use cw_utils::{maybe_addr, parse_reply_instantiate_data, Expiration, ThresholdResponse};
 
 use crate::error::ContractError;
 use crate::helpers::{get_and_check_limit, map_proposal};
@@ -186,14 +186,14 @@ pub fn execute_propose(
 
     prop.update_status(&env.block);
     let id = next_id(deps.storage)?;
-    PROPOSALS.save(deps.storage, id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, id, &prop)?;
 
     // add the first yes vote from voter
     let ballot = Ballot {
         weight: vote_power,
         vote: Vote::Yes,
     };
-    BALLOTS.save(deps.storage, (id.into(), &info.sender), &ballot)?;
+    BALLOTS.save(deps.storage, (id, &info.sender), &ballot)?;
 
     Ok(Response::new()
         .add_attribute("action", "propose")
@@ -213,7 +213,7 @@ pub fn execute_vote(
     let group_addr = GROUP_ADDRESS.load(deps.storage)?;
 
     // ensure proposal exists and can be voted on
-    let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
+    let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     if prop.status != Status::Open {
         return Err(ContractError::NotOpen {});
     }
@@ -229,22 +229,18 @@ pub fn execute_vote(
         .ok_or(ContractError::Unauthorized {})?;
 
     // cast vote if no vote previously cast
-    BALLOTS.update(
-        deps.storage,
-        (proposal_id.into(), &info.sender),
-        |bal| match bal {
-            Some(_) => Err(ContractError::AlreadyVoted {}),
-            None => Ok(Ballot {
-                weight: vote_power,
-                vote,
-            }),
-        },
-    )?;
+    BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
+        Some(_) => Err(ContractError::AlreadyVoted {}),
+        None => Ok(Ballot {
+            weight: vote_power,
+            vote,
+        }),
+    })?;
 
     // update vote tally
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
-    PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     Ok(Response::new()
         .add_attribute("action", "vote")
@@ -261,7 +257,7 @@ pub fn execute_execute(
 ) -> Result<Response, ContractError> {
     // anyone can trigger this if the vote passed
 
-    let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
+    let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     // we allow execution even after the proposal "expiration" as long as all vote come in before
     // that point. If it was approved on time, it can be executed any time.
     if prop.status != Status::Passed {
@@ -270,7 +266,7 @@ pub fn execute_execute(
 
     // set it to executed
     prop.status = Status::Executed;
-    PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     // dispatch all proposed messages
     Ok(Response::new()
@@ -288,7 +284,7 @@ pub fn execute_close(
 ) -> Result<Response<Empty>, ContractError> {
     // anyone can trigger this if the vote passed
 
-    let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
+    let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     if [Status::Executed, Status::Rejected, Status::Passed]
         .iter()
         .any(|x| *x == prop.status)
@@ -301,7 +297,7 @@ pub fn execute_close(
 
     // set it to failed
     prop.status = Status::Rejected;
-    PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     Ok(Response::new()
         .add_attribute("action", "close")
@@ -422,7 +418,7 @@ fn query_threshold(deps: Deps) -> StdResult<ThresholdResponse> {
 }
 
 fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> {
-    let prop = PROPOSALS.load(deps.storage, id.into())?;
+    let prop = PROPOSALS.load(deps.storage, id)?;
     let status = prop.current_status(&env.block);
     let threshold = prop.threshold.to_response(prop.total_weight);
     Ok(ProposalResponse {
@@ -437,7 +433,7 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
 }
 
 fn query_proposal_tally(deps: Deps, env: Env, id: u64) -> StdResult<VoteTallyResponse> {
-    let prop = PROPOSALS.load(deps.storage, id.into())?;
+    let prop = PROPOSALS.load(deps.storage, id)?;
     let status = prop.current_status(&env.block);
     let total_weight = prop.total_weight;
     let threshold = prop.threshold.to_response(total_weight);
@@ -466,7 +462,7 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
 fn query_cw20_token_list(deps: Deps) -> TokenListResponse {
     let token_list: Result<Vec<Addr>, FromUtf8Error> = TREASURY_TOKENS
-        .keys(deps.storage, None, None, Order::Ascending)
+        .keys_raw(deps.storage, None, None, Order::Ascending)
         .map(|token| String::from_utf8(token).map(Addr::unchecked))
         .collect();
 
@@ -488,7 +484,7 @@ fn query_cw20_balances(
     let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
 
     let cw20_balances: Vec<Cw20CoinVerified> = TREASURY_TOKENS
-        .keys(deps.storage, start, None, Order::Ascending)
+        .keys_raw(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|cw20_contract_address| {
             let cw20_contract_address = String::from_utf8(cw20_contract_address)
@@ -525,7 +521,7 @@ fn query_list_proposals(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let start = start_after.map(Bound::exclusive_int);
     let props: StdResult<Vec<_>> = PROPOSALS
-        .range(deps.storage, start, None, Order::Ascending)
+        .range_raw(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|p| map_proposal(&env.block, p))
         .collect();
@@ -548,7 +544,7 @@ fn query_reverse_proposals(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let end = start_before.map(Bound::exclusive_int);
     let props: StdResult<Vec<_>> = PROPOSALS
-        .range(deps.storage, None, end, Order::Descending)
+        .range_raw(deps.storage, None, end, Order::Descending)
         .take(limit)
         .map(|p| map_proposal(&env.block, p))
         .collect();
@@ -558,7 +554,7 @@ fn query_reverse_proposals(
 
 fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResponse> {
     let voter_addr = deps.api.addr_validate(&voter)?;
-    let prop = BALLOTS.may_load(deps.storage, (proposal_id.into(), &voter_addr))?;
+    let prop = BALLOTS.may_load(deps.storage, (proposal_id, &voter_addr))?;
     let vote = prop.map(|b| VoteInfo {
         voter,
         vote: b.vote,
@@ -578,8 +574,8 @@ fn query_list_votes(
     let start = addr.map(|addr| Bound::exclusive(addr.as_ref()));
 
     let votes: StdResult<Vec<_>> = BALLOTS
-        .prefix(proposal_id.into())
-        .range(deps.storage, start, None, Order::Ascending)
+        .prefix(proposal_id)
+        .range_raw(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
             let (voter, ballot) = item?;

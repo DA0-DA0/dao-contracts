@@ -120,8 +120,8 @@ pub fn query_groups(
     let start_after = start_after.map(Bound::inclusive);
 
     let groups: StdResult<Vec<Addr>> = MEMBER_INDEX
-        .prefix_de(&addr)
-        .keys_de(deps.storage, start_after, None, Order::Ascending)
+        .prefix(&addr)
+        .keys(deps.storage, start_after, None, Order::Ascending)
         .take(limit)
         .collect();
 

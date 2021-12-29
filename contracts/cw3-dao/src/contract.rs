@@ -18,11 +18,13 @@ use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
     MessageInfo, Order, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
-use cw0::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use cw2::set_contract_version;
-use cw20::{BalanceResponse, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse};
+use cw20::{
+    BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse,
+};
 use cw3::{Status, Vote};
 use cw_storage_plus::Bound;
+use cw_utils::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
 
@@ -66,16 +68,30 @@ pub fn instantiate(
             cw20_code_id,
             stake_contract_code_id,
             label,
+            initial_dao_balance,
             msg,
             unstaking_duration,
         } => {
+            // Check that someone has an initial balance to be able to vote in the DAO
             if msg.initial_balances.is_empty() {
                 return Err(ContractError::InitialBalancesError {});
             }
 
+            let mut initial_balances = msg.initial_balances;
+
+            // Check if an initial gov token balance will be created for the DAO
+            if let Some(initial_dao_balance) = initial_dao_balance {
+                initial_balances.push(Cw20Coin {
+                    address: env.contract.address.to_string(),
+                    amount: initial_dao_balance,
+                });
+            }
+
+            // Save info for use in reply SubMsgs
             STAKING_CONTRACT_CODE_ID.save(deps.storage, &stake_contract_code_id)?;
             STAKING_CONTRACT_UNSTAKING_DURATION.save(deps.storage, &unstaking_duration)?;
 
+            // Instantiate new Gov Token with DAO as admin and minter
             let msg = WasmMsg::Instantiate {
                 code_id: cw20_code_id,
                 funds: vec![],
@@ -85,7 +101,7 @@ pub fn instantiate(
                     name: msg.name,
                     symbol: msg.symbol,
                     decimals: msg.decimals,
-                    initial_balances: msg.initial_balances,
+                    initial_balances,
                     mint: Some(MinterResponse {
                         minter: env.contract.address.to_string(),
                         cap: None,
@@ -116,6 +132,7 @@ pub fn instantiate(
             // Save gov token
             GOV_TOKEN.save(deps.storage, &cw20_addr.addr())?;
 
+            // Instantiate staking contract with DAO as admin
             let msg = WasmMsg::Instantiate {
                 code_id: stake_contract_code_id,
                 funds: vec![],
@@ -172,7 +189,6 @@ pub fn execute_propose(
     // we ignore earliest
     latest: Option<Expiration>,
 ) -> Result<Response<Empty>, ContractError> {
-    // let {title, description, msgs, latest} = proposal;
     let cfg = CONFIG.load(deps.storage)?;
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
@@ -216,7 +232,7 @@ pub fn execute_propose(
     };
     prop.update_status(&env.block);
     let id = next_id(deps.storage)?;
-    PROPOSALS.save(deps.storage, id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, id, &prop)?;
 
     let deposit_msg = get_deposit_message(&env, &info, &cfg.proposal_deposit, &gov_token)?;
 
@@ -235,8 +251,8 @@ pub fn execute_vote(
     proposal_id: u64,
     vote: Vote,
 ) -> Result<Response<Empty>, ContractError> {
-    // ensure proposal exists and can be voted on
-    let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
+    // Ensure proposal exists and can be voted on
+    let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     if prop.status != Status::Open {
         return Err(ContractError::NotOpen {});
     }
@@ -252,23 +268,19 @@ pub fn execute_vote(
         return Err(ContractError::Unauthorized {});
     }
 
-    // cast vote if no vote previously cast
-    BALLOTS.update(
-        deps.storage,
-        (proposal_id.into(), &info.sender),
-        |bal| match bal {
-            Some(_) => Err(ContractError::AlreadyVoted {}),
-            None => Ok(Ballot {
-                weight: vote_power,
-                vote,
-            }),
-        },
-    )?;
+    // Cast vote if no vote previously cast
+    BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
+        Some(_) => Err(ContractError::AlreadyVoted {}),
+        None => Ok(Ballot {
+            weight: vote_power,
+            vote,
+        }),
+    })?;
 
-    // update vote tally
+    // Update vote tally
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
-    PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     Ok(Response::new()
         .add_attribute("action", "vote")
@@ -285,22 +297,22 @@ pub fn execute_execute(
 ) -> Result<Response, ContractError> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
-    // anyone can trigger this if the vote passed
-    let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
-    // we allow execution even after the proposal "expiration" as long as all vote come in before
+    // Anyone can trigger this if the vote passed
+    let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    // We allow execution even after the proposal "expiration" as long as all vote come in before
     // that point. If it was approved on time, it can be executed any time.
     if prop.status != Status::Passed {
         return Err(ContractError::WrongExecuteStatus {});
     }
 
-    // set it to executed
+    // Set it to executed
     prop.status = Status::Executed;
-    PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let refund_msg =
         get_proposal_deposit_refund_message(&prop.proposer, &prop.deposit, &gov_token)?;
 
-    // dispatch all proposed messages
+    // Dispatch all proposed messages
     Ok(Response::new()
         .add_messages(refund_msg)
         .add_messages(prop.msgs)
@@ -317,8 +329,8 @@ pub fn execute_close(
 ) -> Result<Response<Empty>, ContractError> {
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
-    // anyone can trigger this if the vote passed
-    let mut prop = PROPOSALS.load(deps.storage, proposal_id.into())?;
+    // Anyone can trigger this if the vote passed
+    let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     if [Status::Executed, Status::Rejected, Status::Passed]
         .iter()
         .any(|x| *x == prop.status)
@@ -329,9 +341,9 @@ pub fn execute_close(
         return Err(ContractError::NotExpired {});
     }
 
-    // set it to failed
+    // Set it to failed
     prop.status = Status::Rejected;
-    PROPOSALS.save(deps.storage, proposal_id.into(), &prop)?;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let cfg = CONFIG.load(deps.storage)?;
 
@@ -440,7 +452,7 @@ fn query_threshold(deps: Deps) -> StdResult<ThresholdResponse> {
 }
 
 fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> {
-    let prop = PROPOSALS.load(deps.storage, id.into())?;
+    let prop = PROPOSALS.load(deps.storage, id)?;
     let status = prop.current_status(&env.block);
     let total_supply = get_total_staked_supply(deps)?;
     let threshold = prop.threshold.to_response(total_supply);
@@ -458,7 +470,7 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
 }
 
 fn query_proposal_tally(deps: Deps, env: Env, id: u64) -> StdResult<VoteTallyResponse> {
-    let prop = PROPOSALS.load(deps.storage, id.into())?;
+    let prop = PROPOSALS.load(deps.storage, id)?;
     let status = prop.current_status(&env.block);
     let total_weight = prop.total_weight;
     let threshold = prop.threshold.to_response(total_weight);
@@ -489,7 +501,7 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
 fn query_cw20_token_list(deps: Deps) -> TokenListResponse {
     let token_list: Result<Vec<Addr>, FromUtf8Error> = TREASURY_TOKENS
-        .keys(deps.storage, None, None, Order::Ascending)
+        .keys_raw(deps.storage, None, None, Order::Ascending)
         .map(|token| String::from_utf8(token).map(Addr::unchecked))
         .collect();
 
@@ -511,7 +523,7 @@ fn query_cw20_balances(
     let start = start_addr.map(|addr| Bound::exclusive(addr.as_ref()));
 
     let cw20_balances: Vec<Cw20CoinVerified> = TREASURY_TOKENS
-        .keys(deps.storage, start, None, Order::Ascending)
+        .keys_raw(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|cw20_contract_address| {
             let cw20_contract_address = String::from_utf8(cw20_contract_address)
@@ -548,7 +560,7 @@ fn query_list_proposals(
     let limit = get_and_check_limit(limit, MAX_LIMIT, DEFAULT_LIMIT)? as usize;
     let start = start_after.map(Bound::exclusive_int);
     let props: StdResult<Vec<_>> = PROPOSALS
-        .range(deps.storage, start, None, Order::Ascending)
+        .range_raw(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|p| map_proposal(&env.block, p))
         .collect();
@@ -565,7 +577,7 @@ fn query_reverse_proposals(
     let limit = get_and_check_limit(limit, MAX_LIMIT, DEFAULT_LIMIT)? as usize;
     let end = start_before.map(Bound::exclusive_int);
     let props: StdResult<Vec<_>> = PROPOSALS
-        .range(deps.storage, None, end, Order::Descending)
+        .range_raw(deps.storage, None, end, Order::Descending)
         .take(limit)
         .map(|p| map_proposal(&env.block, p))
         .collect();
@@ -581,7 +593,7 @@ fn query_proposal_count(deps: Deps) -> u64 {
 
 fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<VoteResponse> {
     let voter_addr = deps.api.addr_validate(&voter)?;
-    let prop = BALLOTS.may_load(deps.storage, (proposal_id.into(), &voter_addr))?;
+    let prop = BALLOTS.may_load(deps.storage, (proposal_id, &voter_addr))?;
     let vote = prop.map(|b| VoteInfo {
         voter,
         vote: b.vote,
@@ -601,8 +613,8 @@ fn query_list_votes(
     let start = addr.map(|addr| Bound::exclusive(addr.as_ref()));
 
     let votes: StdResult<Vec<_>> = BALLOTS
-        .prefix(proposal_id.into())
-        .range(deps.storage, start, None, Order::Ascending)
+        .prefix(proposal_id)
+        .range_raw(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
             let (voter, ballot) = item?;
@@ -642,7 +654,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     // Save gov token
                     GOV_TOKEN.save(deps.storage, &cw20_addr)?;
 
-                    // Instantiate staking contract
+                    // Instantiate staking contract with DAO as admin
                     let code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
                     let unstaking_duration =
                         STAKING_CONTRACT_UNSTAKING_DURATION.load(deps.storage)?;
@@ -656,8 +668,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                             token_address: cw20_addr,
                         })?,
                     };
-
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_CONTRACT_REPLY_ID);
+
                     Ok(Response::new().add_submessage(msg))
                 }
                 Err(_) => Err(ContractError::InstantiateGovTokenError {}),
