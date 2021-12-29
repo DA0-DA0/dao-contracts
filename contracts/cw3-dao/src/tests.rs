@@ -14,13 +14,13 @@ use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, Decimal, Empty, Timestamp,
     Uint128, WasmMsg,
 };
-use cw0::{Duration, Expiration};
 use cw2::{query_contract_info, ContractVersion};
 use cw20::{
     BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg,
 };
 use cw3::{Status, Vote};
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_utils::{Duration, Expiration};
 use stake_cw20::msg::ReceiveMsg;
 use std::borrow::BorrowMut;
 

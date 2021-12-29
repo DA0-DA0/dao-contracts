@@ -1,6 +1,6 @@
 [package]
 name = "cw3-multisig"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2018"
 description = "Implementing cw3 with multiple voting patterns and dynamic groups"
@@ -25,19 +25,19 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cw0 = {  version = "0.10" }
-cw2 = {  version = "0.10" }
-cw3 = {  version = "0.10" }
-cw4 = {  version = "0.10" }
-cw20 = {  version = "0.10" }
-cw4-group = { version = "0.10" }
-cw-storage-plus = { version = "0.10" }
+cw-utils = {  version = "0.11" }
+cw2 = {  version = "0.11" }
+cw3 = {  version = "0.11" }
+cw4 = {  version = "0.11" }
+cw20 = {  version = "0.11" }
+cw4-group = { version = "0.11" }
+cw-storage-plus = { version = "0.11" }
 cosmwasm-std = { version = "1.0.0-beta" }
-schemars = "0.8.1"
-serde = { version = "1.0.103", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.23" }
+schemars = "0.8.8"
+serde = { version = "1.0.132", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.30" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta" }
-cw-multi-test = {  version = "0.10" }
-cw20-base = {  version = "0.10", features = ["library"] }
+cw-multi-test = {  version = "0.11" }
+cw20-base = {  version = "0.11", features = ["library"] }

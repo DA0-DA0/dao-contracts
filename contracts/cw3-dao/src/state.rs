@@ -2,9 +2,9 @@ use crate::msg::Threshold;
 use cosmwasm_std::{
     Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
 };
-use cw0::{Duration, Expiration};
 use cw3::{Status, Vote};
-use cw_storage_plus::{Item, Map, U64Key};
+use cw_storage_plus::{Item, Map};
+use cw_utils::{Duration, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -162,8 +162,8 @@ pub const STAKING_CONTRACT_UNSTAKING_DURATION: Item<Option<Duration>> =
     Item::new("staking_contract_unstaking_duration");
 
 // Multiple-item map
-pub const BALLOTS: Map<(U64Key, &Addr), Ballot> = Map::new("votes");
-pub const PROPOSALS: Map<U64Key, Proposal> = Map::new("proposals");
+pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("votes");
+pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
 pub const TREASURY_TOKENS: Map<&Addr, Empty> = Map::new("treasury_tokens");
 
 pub fn next_id(store: &mut dyn Storage) -> StdResult<u64> {

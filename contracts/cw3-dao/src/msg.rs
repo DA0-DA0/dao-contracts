@@ -2,10 +2,10 @@ use crate::error::ContractError;
 use crate::query::ThresholdResponse;
 use crate::state::Config;
 use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
-use cw0::{Duration, Expiration};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw3::Vote;
+use cw_utils::{Duration, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

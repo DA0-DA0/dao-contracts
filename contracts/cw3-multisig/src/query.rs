@@ -1,7 +1,8 @@
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw20::Cw20CoinVerified;
-use cw3::{Status, ThresholdResponse};
+use cw3::Status;
 use cw4::Cw4Contract;
+use cw_utils::ThresholdResponse;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

@@ -3,10 +3,10 @@ use cosmwasm_std::{
     from_binary, Addr, BlockInfo, CosmosMsg, Decimal, Empty, QuerierWrapper, StdError, StdResult,
     Storage, Uint128, WasmMsg::Execute,
 };
-use cw0::{Duration, Expiration};
 use cw3::{Status, Vote};
 use cw4::Cw4Contract;
-use cw_storage_plus::{Item, Map, U64Key};
+use cw_storage_plus::{Item, Map};
+use cw_utils::{Duration, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -192,8 +192,8 @@ pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const GROUP_ADDRESS: Item<Cw4Contract> = Item::new("group_address");
 
 // multiple-item map
-pub const BALLOTS: Map<(U64Key, &Addr), Ballot> = Map::new("votes");
-pub const PROPOSALS: Map<U64Key, Proposal> = Map::new("proposals");
+pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("votes");
+pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
 pub const TREASURY_TOKENS: Map<&Addr, Empty> = Map::new("treasury_tokens");
 
 pub fn next_id(store: &mut dyn Storage) -> StdResult<u64> {
