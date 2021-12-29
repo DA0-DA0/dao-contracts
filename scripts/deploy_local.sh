@@ -40,7 +40,7 @@ docker run --rm -d --name cosmwasm -p 26657:26657 -p 26656:26656 -p 1317:1317 \
     --mount type=volume,source=junod_data,target=/root \
     ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/run_junod.sh
 
-# Compile code
+# Compile dao-dao code
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
@@ -48,8 +48,9 @@ docker run --rm -v "$(pwd)":/code \
 
 # Copy binaries to docker container
 docker cp artifacts/cw3_dao.wasm cosmwasm:/cw3_dao.wasm
-docker cp artifacts/cw20_gov.wasm cosmwasm:/cw20_gov.wasm
+docker cp artifacts/cw20_base.wasm cosmwasm:/cw20_base.wasm
 docker cp artifacts/cw3_multisig.wasm cosmwasm:/cw3_multisig.wasm
+docker cp artifacts/stake_cw20.wasm cosmwasm:/stake_cw20.wasm
 
 # Sleep while waiting for chain to post genesis block
 sleep 3
@@ -60,9 +61,13 @@ echo "TX Flags: $TXFLAG"
 
 #### CW20-GOV ####
 # Upload cw20 contract code
-CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw20_gov.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw20_base.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 echo "CW20 code:"
 echo $CW20_CODE
+
+STAKE_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/stake_cw20.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+echo "Stake code:"
+echo $STAKE_CODE
 
 # # Instantiate cw20 contract
 # CW20_INIT='{
@@ -109,7 +114,8 @@ CW3_DAO_INIT='{
   "description": "A DAO that makes DAO tooling",
   "gov_token": {
     "instantiate_new_cw20": {
-      "code_id": '$CW20_CODE',
+      "cw20_code_id": '$CW20_CODE',
+      "stake_contract_code_id": '$STAKE_CODE',
       "label": "DAO DAO v0.1.1",
       "msg": {
         "name": "daodao",
