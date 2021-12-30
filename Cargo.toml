@@ -13,6 +13,10 @@ incremental = false
 codegen-units = 1
 incremental = false
 
+[profile.release.package.stake-cw20-gov]
+codegen-units = 1
+incremental = false
+
 [profile.release.package.cw-distribution]
 codegen-units = 1
 incremental = false
