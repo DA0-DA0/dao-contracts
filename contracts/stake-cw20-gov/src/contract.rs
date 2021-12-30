@@ -1,14 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, from_binary, Addr};
+use cosmwasm_std::{
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Uint128,
+};
 use cw20::Cw20ReceiveMsg;
 
-use stake_cw20::contract::{
-    query_all_accounts, query_all_allowances, query_allowance, query_balance, query_download_logo,
-    query_marketing_info, query_minter, query_token_info,
+use crate::msg::{
+    DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg,
+    VotingPowerAtHeightResponse,
 };
-
-use crate::msg::{DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, VotingPowerAtHeightResponse};
 use crate::state::{DELEGATIONS, VOTING_POWER};
 use stake_cw20::state::{CONFIG, STAKED_BALANCES};
 use stake_cw20::ContractError;
@@ -39,7 +40,6 @@ pub fn execute(
         }
     }
 }
-
 
 pub fn execute_receive(
     deps: DepsMut,
@@ -185,16 +185,15 @@ pub fn query_delegation(deps: Deps, address: String) -> StdResult<DelegationResp
 mod tests {
     use super::*;
     use cw20::Cw20Coin;
-    use std::borrow::BorrowMut;
-    use std::ops::Add;
+
     use crate::msg::{
         ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
         TotalStakedAtHeightResponse,
     };
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use anyhow::Result as AnyResult;
+    use cosmwasm_std::testing::mock_info;
     use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
     use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
-    use anyhow::Result as AnyResult;
 
     const ADDR1: &str = "addr0001";
     const ADDR2: &str = "addr0002";
@@ -249,10 +248,7 @@ mod tests {
             .unwrap()
     }
 
-    fn instantiate_staking(
-        app: &mut App,
-        cw20: Addr,
-    ) -> Addr {
+    fn instantiate_staking(app: &mut App, cw20: Addr) -> Addr {
         let staking_code_id = app.store_code(contract_staking_gov());
         let msg = crate::msg::InstantiateMsg {
             token_address: cw20,
@@ -266,13 +262,10 @@ mod tests {
             "staking",
             None,
         )
-            .unwrap()
+        .unwrap()
     }
 
-    fn setup_test_case(
-        app: &mut App,
-        initial_balances: Vec<Cw20Coin>,
-    ) -> (Addr, Addr) {
+    fn setup_test_case(app: &mut App, initial_balances: Vec<Cw20Coin>) -> (Addr, Addr) {
         // Instantiate cw20 contract
         let cw20_addr = instantiate_cw20(app, initial_balances);
         app.update_block(next_block);
@@ -365,7 +358,6 @@ mod tests {
 
     #[test]
     fn test_contract() {
-
         let mut app = mock_app();
         let amount1 = Uint128::from(100u128);
         let initial_balances = vec![Cw20Coin {
@@ -374,11 +366,11 @@ mod tests {
         }];
         let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances);
 
-        let info = mock_info(ADDR1, &[]);
+        let _info = mock_info(ADDR1, &[]);
 
         assert_eq!(
             Uint128::zero(),
-            query_voting_power(&app,&staking_addr,ADDR1)
+            query_voting_power(&app, &staking_addr, ADDR1)
         );
 
         // Stake tokens
@@ -386,21 +378,12 @@ mod tests {
         let amount = Uint128::new(50);
         let _res = stake_tokens(&mut app, &staking_addr, &cw20_addr, info, amount).unwrap();
         app.update_block(next_block);
-        assert_eq!(
-            amount,
-            query_staked_balance(&app, &staking_addr, ADDR1)
-        );
-        assert_eq!(
-            amount,
-            query_total_staked(&app,&staking_addr)
-        );
-        assert_eq!(
-            amount,
-            query_voting_power(&app,&staking_addr, ADDR1)
-        );
+        assert_eq!(amount, query_staked_balance(&app, &staking_addr, ADDR1));
+        assert_eq!(amount, query_total_staked(&app, &staking_addr));
+        assert_eq!(amount, query_voting_power(&app, &staking_addr, ADDR1));
         assert_eq!(
             Uint128::zero(),
-            query_voting_power(&app,&staking_addr, ADDR2)
+            query_voting_power(&app, &staking_addr, ADDR2)
         );
 
         // Delegate votes
@@ -409,12 +392,9 @@ mod tests {
         app.update_block(next_block);
         assert_eq!(
             Uint128::zero(),
-            query_voting_power(&app,&staking_addr, ADDR1)
+            query_voting_power(&app, &staking_addr, ADDR1)
         );
-        assert_eq!(
-            amount,
-            query_voting_power(&app,&staking_addr, ADDR2)
-        );
+        assert_eq!(amount, query_voting_power(&app, &staking_addr, ADDR2));
 
         // Partially unstake
         let info = mock_info(ADDR1, &[]);
@@ -423,11 +403,11 @@ mod tests {
         app.update_block(next_block);
         assert_eq!(
             Uint128::zero(),
-            query_voting_power(&app,&staking_addr, ADDR1)
+            query_voting_power(&app, &staking_addr, ADDR1)
         );
         assert_eq!(
             Uint128::new(40),
-            query_voting_power(&app,&staking_addr, ADDR2)
+            query_voting_power(&app, &staking_addr, ADDR2)
         );
 
         // Fully unstake
@@ -437,11 +417,11 @@ mod tests {
         app.update_block(next_block);
         assert_eq!(
             Uint128::zero(),
-            query_voting_power(&app,&staking_addr, ADDR1)
+            query_voting_power(&app, &staking_addr, ADDR1)
         );
         assert_eq!(
             Uint128::zero(),
-            query_voting_power(&app,&staking_addr, ADDR2)
+            query_voting_power(&app, &staking_addr, ADDR2)
         );
     }
 }

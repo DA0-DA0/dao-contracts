@@ -1,22 +1,18 @@
-use cosmwasm_std::{Binary, Uint128};
-use cw20::{Cw20ReceiveMsg, Expiration, Logo};
+use cosmwasm_std::Uint128;
+use cw20::Cw20ReceiveMsg;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 pub use stake_cw20::msg::{
     InstantiateMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Unstake {
-        amount: Uint128,
-    },
+    Unstake { amount: Uint128 },
     Claim {},
-    DelegateVotes {
-        recipient: String,
-    },
+    DelegateVotes { recipient: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -30,7 +26,10 @@ pub enum ReceiveMsg {
 pub enum QueryMsg {
     /// Returns the balance of the given address at given height, 0 if unset.
     /// Return type: BalanceAtHeightResponse.
-    VotingPowerAtHeight { address: String, height: Option<u64> },
+    VotingPowerAtHeight {
+        address: String,
+        height: Option<u64>,
+    },
     /// Returns current delegation information
     /// Return type: DelegationResponse.
     Delegation { address: String },
