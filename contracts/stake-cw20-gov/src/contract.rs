@@ -1,20 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, from_binary, Addr};
+use cw20::Cw20ReceiveMsg;
 
-use cw20_stakeable::contract::{
+use stake_cw20::contract::{
     query_all_accounts, query_all_allowances, query_allowance, query_balance, query_download_logo,
     query_marketing_info, query_minter, query_token_info,
 };
 
-use crate::msg::{
-    DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VotingPowerAtHeightResponse,
-};
+use crate::msg::{DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, VotingPowerAtHeightResponse};
 use crate::state::{DELEGATIONS, VOTING_POWER};
-use cw20_stakeable::state::STAKED_BALANCES;
-use cw20_stakeable::ContractError;
+use stake_cw20::state::{CONFIG, STAKED_BALANCES};
+use stake_cw20::ContractError;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -23,7 +20,7 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    cw20_stakeable::contract::instantiate(deps, _env, _info, msg)
+    stake_cw20::contract::instantiate(deps, _env, _info, msg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -34,96 +31,45 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Transfer { recipient, amount } => {
-            cw20_stakeable::contract::execute_transfer(deps, env, info, recipient, amount)
-                .map_err(ContractError::Cw20Error)
-        }
-        ExecuteMsg::Burn { amount } => {
-            cw20_stakeable::contract::execute_burn(deps, env, info, amount)
-                .map_err(ContractError::Cw20Error)
-        }
-        ExecuteMsg::Send {
-            contract,
-            amount,
-            msg,
-        } => cw20_stakeable::contract::execute_send(deps, env, info, contract, amount, msg)
-            .map_err(ContractError::Cw20Error),
-        ExecuteMsg::Mint { recipient, amount } => {
-            cw20_stakeable::contract::execute_mint(deps, env, info, recipient, amount)
-                .map_err(ContractError::Cw20Error)
-        }
-        ExecuteMsg::IncreaseAllowance {
-            spender,
-            amount,
-            expires,
-        } => cw20_stakeable::contract::execute_increase_allowance(
-            deps, env, info, spender, amount, expires,
-        )
-        .map_err(ContractError::Cw20Error),
-        ExecuteMsg::DecreaseAllowance {
-            spender,
-            amount,
-            expires,
-        } => cw20_stakeable::contract::execute_decrease_allowance(
-            deps, env, info, spender, amount, expires,
-        )
-        .map_err(ContractError::Cw20Error),
-        ExecuteMsg::TransferFrom {
-            owner,
-            recipient,
-            amount,
-        } => cw20_stakeable::contract::execute_transfer_from(
-            deps, env, info, owner, recipient, amount,
-        )
-        .map_err(ContractError::Cw20Error),
-        ExecuteMsg::BurnFrom { owner, amount } => {
-            cw20_stakeable::contract::execute_burn_from(deps, env, info, owner, amount)
-                .map_err(ContractError::Cw20Error)
-        }
-        ExecuteMsg::SendFrom {
-            owner,
-            contract,
-            amount,
-            msg,
-        } => cw20_stakeable::contract::execute_send_from(
-            deps, env, info, owner, contract, amount, msg,
-        )
-        .map_err(ContractError::Cw20Error),
-        ExecuteMsg::UpdateMarketing {
-            project,
-            description,
-            marketing,
-        } => cw20_stakeable::contract::execute_update_marketing(
-            deps,
-            env,
-            info,
-            project,
-            description,
-            marketing,
-        )
-        .map_err(ContractError::Cw20Error),
-        ExecuteMsg::UploadLogo(logo) => {
-            cw20_stakeable::contract::execute_upload_logo(deps, env, info, logo)
-                .map_err(ContractError::Cw20Error)
-        }
-        ExecuteMsg::Stake { amount } => execute_stake(deps, env, info, amount),
+        ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
-        ExecuteMsg::Claim {} => cw20_stakeable::contract::execute_claim(deps, env, info),
+        ExecuteMsg::Claim {} => stake_cw20::contract::execute_claim(deps, env, info),
         ExecuteMsg::DelegateVotes { recipient } => {
             execute_delegate_votes(deps, env, info, recipient)
         }
     }
 }
 
-pub fn execute_stake(
+
+pub fn execute_receive(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    wrapper: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.token_address {
+        return Err(ContractError::InvalidToken {
+            received: info.sender,
+            expected: config.token_address,
+        });
+    }
+    let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
+    let sender = deps.api.addr_validate(&wrapper.sender)?;
+    match msg {
+        ReceiveMsg::Stake {} => execute_stake(deps, env, &sender, wrapper.amount),
+    }
+}
+
+pub fn execute_stake(
+    deps: DepsMut,
+    env: Env,
+    sender: &Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let delegation = DELEGATIONS
-        .may_load(deps.storage, &info.sender)?
-        .unwrap_or_else(|| info.sender.clone());
+        .may_load(deps.storage, sender)?
+        .unwrap_or_else(|| sender.clone());
     VOTING_POWER.update(
         deps.storage,
         &delegation,
@@ -132,7 +78,7 @@ pub fn execute_stake(
             Ok(balance.unwrap_or_default().checked_add(amount)?)
         },
     )?;
-    cw20_stakeable::contract::execute_stake(deps, env, info, amount)
+    stake_cw20::contract::execute_stake(deps, env, sender, amount)
 }
 
 pub fn execute_unstake(
@@ -152,7 +98,7 @@ pub fn execute_unstake(
             Ok(balance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
-    cw20_stakeable::contract::execute_unstake(deps, env, info, amount)
+    stake_cw20::contract::execute_unstake(deps, env, info, amount)
 }
 
 pub fn execute_delegate_votes(
@@ -189,51 +135,36 @@ pub fn execute_delegate_votes(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         // Custom queries
         QueryMsg::VotingPowerAtHeight { address, height } => {
-            to_binary(&query_voting_power_at_height(deps, address, height)?)
+            to_binary(&query_voting_power_at_height(deps, env, address, height)?)
         }
-        // Inherited from cw20_base
-        QueryMsg::Balance { address } => to_binary(&query_balance(deps, address)?),
         QueryMsg::Delegation { address } => to_binary(&query_delegation(deps, address)?),
-        QueryMsg::TokenInfo {} => to_binary(&query_token_info(deps)?),
-        QueryMsg::Minter {} => to_binary(&query_minter(deps)?),
-        QueryMsg::Allowance { owner, spender } => {
-            to_binary(&query_allowance(deps, owner, spender)?)
-        }
-        QueryMsg::AllAllowances {
-            owner,
-            start_after,
-            limit,
-        } => to_binary(&query_all_allowances(deps, owner, start_after, limit)?),
-        QueryMsg::AllAccounts { start_after, limit } => {
-            to_binary(&query_all_accounts(deps, start_after, limit)?)
-        }
-        QueryMsg::MarketingInfo {} => to_binary(&query_marketing_info(deps)?),
-        QueryMsg::DownloadLogo {} => to_binary(&query_download_logo(deps)?),
         QueryMsg::TotalStakedAtHeight { height } => to_binary(
-            &cw20_stakeable::contract::query_total_staked_at_height(deps, _env, height)?,
+            &stake_cw20::contract::query_total_staked_at_height(deps, env, height)?,
         ),
         QueryMsg::StakedBalanceAtHeight { address, height } => to_binary(
-            &cw20_stakeable::contract::query_staked_balance_at_height(deps, _env, address, height)?,
+            &stake_cw20::contract::query_staked_balance_at_height(deps, env, address, height)?,
         ),
         QueryMsg::UnstakingDuration {} => {
-            to_binary(&cw20_stakeable::contract::query_unstaking_duration(deps)?)
+            to_binary(&stake_cw20::contract::query_unstaking_duration(deps)?)
         }
         QueryMsg::Claims { address } => {
-            to_binary(&cw20_stakeable::contract::query_claims(deps, address)?)
+            to_binary(&stake_cw20::contract::query_claims(deps, address)?)
         }
     }
 }
 
 pub fn query_voting_power_at_height(
     deps: Deps,
+    env: Env,
     address: String,
-    height: u64,
+    height: Option<u64>,
 ) -> StdResult<VotingPowerAtHeightResponse> {
     let address = deps.api.addr_validate(&address)?;
+    let height = height.unwrap_or(env.block.height);
     let balance = VOTING_POWER
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
@@ -252,122 +183,265 @@ pub fn query_delegation(deps: Deps, address: String) -> StdResult<DelegationResp
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-
-    use cw20::Cw20Coin;
-
     use super::*;
+    use cw20::Cw20Coin;
+    use std::borrow::BorrowMut;
+    use std::ops::Add;
+    use crate::msg::{
+        ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+        TotalStakedAtHeightResponse,
+    };
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
+    use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
+    use anyhow::Result as AnyResult;
+
+    const ADDR1: &str = "addr0001";
+    const ADDR2: &str = "addr0002";
+
+    pub fn contract_staking_gov() -> Box<dyn Contract<Empty>> {
+        let contract = ContractWrapper::new(
+            crate::contract::execute,
+            crate::contract::instantiate,
+            crate::contract::query,
+        );
+        Box::new(contract)
+    }
+
+    pub fn contract_cw20() -> Box<dyn Contract<Empty>> {
+        let contract = ContractWrapper::new(
+            cw20_base::contract::execute,
+            cw20_base::contract::instantiate,
+            cw20_base::contract::query,
+        );
+        Box::new(contract)
+    }
+
+    fn mock_app() -> App {
+        App::default()
+    }
+
+    fn get_balance<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = cw20::Cw20QueryMsg::Balance {
+            address: address.into(),
+        };
+        let result: cw20::BalanceResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.balance
+    }
+
+    fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
+        let cw20_id = app.store_code(contract_cw20());
+        let msg = cw20_base::msg::InstantiateMsg {
+            name: String::from("Test"),
+            symbol: String::from("TEST"),
+            decimals: 6,
+            initial_balances,
+            mint: None,
+            marketing: None,
+        };
+
+        app.instantiate_contract(cw20_id, Addr::unchecked(ADDR1), &msg, &[], "cw20", None)
+            .unwrap()
+    }
+
+    fn instantiate_staking(
+        app: &mut App,
+        cw20: Addr,
+    ) -> Addr {
+        let staking_code_id = app.store_code(contract_staking_gov());
+        let msg = crate::msg::InstantiateMsg {
+            token_address: cw20,
+            unstaking_duration: None,
+        };
+        app.instantiate_contract(
+            staking_code_id,
+            Addr::unchecked(ADDR1),
+            &msg,
+            &[],
+            "staking",
+            None,
+        )
+            .unwrap()
+    }
+
+    fn setup_test_case(
+        app: &mut App,
+        initial_balances: Vec<Cw20Coin>,
+    ) -> (Addr, Addr) {
+        // Instantiate cw20 contract
+        let cw20_addr = instantiate_cw20(app, initial_balances);
+        app.update_block(next_block);
+        // Instantiate staking contract
+        let staking_addr = instantiate_staking(app, cw20_addr.clone());
+        app.update_block(next_block);
+        (staking_addr, cw20_addr)
+    }
+
+    fn query_staked_balance<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = QueryMsg::StakedBalanceAtHeight {
+            address: address.into(),
+            height: None,
+        };
+        let result: StakedBalanceAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.balance
+    }
+
+    fn query_total_staked<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
+        let msg = QueryMsg::TotalStakedAtHeight { height: None };
+        let result: TotalStakedAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.total
+    }
+
+    fn query_voting_power<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = QueryMsg::VotingPowerAtHeight {
+            address: address.into(),
+            height: None,
+        };
+        let result: VotingPowerAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.balance
+    }
+
+    fn stake_tokens(
+        app: &mut App,
+        staking_addr: &Addr,
+        cw20_addr: &Addr,
+        info: MessageInfo,
+        amount: Uint128,
+    ) -> AnyResult<AppResponse> {
+        let msg = cw20::Cw20ExecuteMsg::Send {
+            contract: staking_addr.to_string(),
+            amount,
+            msg: to_binary(&ReceiveMsg::Stake {}).unwrap(),
+        };
+        app.execute_contract(info.sender, cw20_addr.clone(), &msg, &[])
+    }
+
+    fn delegate<T: Into<String>>(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+        delegate_adder: T,
+    ) -> AnyResult<AppResponse> {
+        let msg = ExecuteMsg::DelegateVotes {
+            recipient: delegate_adder.into(),
+        };
+        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+    }
+
+    fn unstake_tokens(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+        amount: Uint128,
+    ) -> AnyResult<AppResponse> {
+        let msg = ExecuteMsg::Unstake { amount };
+        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+    }
+
+    fn claim_tokens(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+    ) -> AnyResult<AppResponse> {
+        let msg = ExecuteMsg::Claim {};
+        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+    }
 
     #[test]
     fn test_contract() {
-        let mut deps = mock_dependencies();
-        let addr = "ADDR0001";
-        let delegatee = "ADDR0002";
-        let amount = Uint128::new(100);
-        let instantiate_msg = InstantiateMsg {
-            cw20_base: cw20_base::msg::InstantiateMsg {
-                name: "Auto Gen".to_string(),
-                symbol: "AUTO".to_string(),
-                decimals: 3,
-                initial_balances: vec![Cw20Coin {
-                    address: addr.to_string(),
-                    amount,
-                }],
-                mint: None,
-                marketing: None,
-            },
-            unstaking_duration: None,
-        };
-        let info = mock_info("creator", &[]);
-        let mut env = mock_env();
-        let res = instantiate(deps.as_mut(), env.clone(), info, instantiate_msg).unwrap();
-        assert_eq!(0, res.messages.len());
+
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances);
+
+        let info = mock_info(ADDR1, &[]);
 
         assert_eq!(
             Uint128::zero(),
-            query_voting_power_at_height(deps.as_ref(), addr.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_voting_power(&app,&staking_addr,ADDR1)
         );
 
         // Stake tokens
-        let info = mock_info(addr, &[]);
-        let _res = execute_stake(deps.as_mut(), env.clone(), info, amount).unwrap();
-        env.block.height += 1;
+        let info = mock_info(ADDR1, &[]);
+        let amount = Uint128::new(50);
+        let _res = stake_tokens(&mut app, &staking_addr, &cw20_addr, info, amount).unwrap();
+        app.update_block(next_block);
         assert_eq!(
             amount,
-            cw20_stakeable::contract::query_staked_balance_at_height(
-                deps.as_ref(),
-                env.clone(),
-                addr.to_string(),
-                None
-            )
-            .unwrap()
-            .balance
+            query_staked_balance(&app, &staking_addr, ADDR1)
         );
         assert_eq!(
             amount,
-            query_voting_power_at_height(deps.as_ref(), addr.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_total_staked(&app,&staking_addr)
+        );
+        assert_eq!(
+            amount,
+            query_voting_power(&app,&staking_addr, ADDR1)
         );
         assert_eq!(
             Uint128::zero(),
-            query_voting_power_at_height(deps.as_ref(), delegatee.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_voting_power(&app,&staking_addr, ADDR2)
         );
 
         // Delegate votes
-        let info = mock_info(addr, &[]);
-        let _res = execute_delegate_votes(deps.as_mut(), env.clone(), info, delegatee.to_string())
-            .unwrap();
-        env.block.height += 1;
+        let info = mock_info(ADDR1, &[]);
+        let _res = delegate(&mut app, &staking_addr, info, ADDR2).unwrap();
+        app.update_block(next_block);
         assert_eq!(
             Uint128::zero(),
-            query_voting_power_at_height(deps.as_ref(), addr.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_voting_power(&app,&staking_addr, ADDR1)
         );
         assert_eq!(
             amount,
-            query_voting_power_at_height(deps.as_ref(), delegatee.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_voting_power(&app,&staking_addr, ADDR2)
         );
 
         // Partially unstake
-        let info = mock_info(addr, &[]);
-        let _res = execute_unstake(deps.as_mut(), env.clone(), info, Uint128::new(50)).unwrap();
-        env.block.height += 1;
+        let info = mock_info(ADDR1, &[]);
+        let amount2 = Uint128::new(10);
+        let _res = unstake_tokens(&mut app, &staking_addr, info, amount2).unwrap();
+        app.update_block(next_block);
         assert_eq!(
             Uint128::zero(),
-            query_voting_power_at_height(deps.as_ref(), addr.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_voting_power(&app,&staking_addr, ADDR1)
         );
         assert_eq!(
-            Uint128::new(50),
-            query_voting_power_at_height(deps.as_ref(), delegatee.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            Uint128::new(40),
+            query_voting_power(&app,&staking_addr, ADDR2)
         );
 
         // Fully unstake
-        let info = mock_info(addr, &[]);
-        let _res = execute_unstake(deps.as_mut(), env.clone(), info, Uint128::new(50)).unwrap();
-        env.block.height += 1;
+        let info = mock_info(ADDR1, &[]);
+        let amount3 = Uint128::new(40);
+        let _res = unstake_tokens(&mut app, &staking_addr, info, amount3).unwrap();
+        app.update_block(next_block);
         assert_eq!(
             Uint128::zero(),
-            query_voting_power_at_height(deps.as_ref(), addr.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_voting_power(&app,&staking_addr, ADDR1)
         );
         assert_eq!(
             Uint128::zero(),
-            query_voting_power_at_height(deps.as_ref(), delegatee.to_string(), env.block.height)
-                .unwrap()
-                .balance
+            query_voting_power(&app,&staking_addr, ADDR2)
         );
     }
 }
