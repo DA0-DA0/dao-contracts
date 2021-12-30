@@ -3,27 +3,6 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "Returns the current balance of the given address, 0 if unset. Return type: BalanceResponse.",
-      "type": "object",
-      "required": [
-        "balance"
-      ],
-      "properties": {
-        "balance": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Returns the balance of the given address at given height, 0 if unset. Return type: BalanceAtHeightResponse.",
       "type": "object",
       "required": [
@@ -33,15 +12,17 @@
         "voting_power_at_height": {
           "type": "object",
           "required": [
-            "address",
-            "height"
+            "address"
           ],
           "properties": {
             "address": {
               "type": "string"
             },
             "height": {
-              "type": "integer",
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             }
@@ -72,85 +53,27 @@
       "additionalProperties": false
     },
     {
-      "description": "Returns metadata on the contract - name, decimals, supply, etc. Return type: TokenInfoResponse.",
       "type": "object",
       "required": [
-        "token_info"
+        "staked_balance_at_height"
       ],
       "properties": {
-        "token_info": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Only with \"mintable\" extension. Returns who can mint and the hard cap on maximum tokens after minting. Return type: MinterResponse.",
-      "type": "object",
-      "required": [
-        "minter"
-      ],
-      "properties": {
-        "minter": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Only with \"allowance\" extension. Returns how much spender can use from owner account, 0 if unset. Return type: AllowanceResponse.",
-      "type": "object",
-      "required": [
-        "allowance"
-      ],
-      "properties": {
-        "allowance": {
+        "staked_balance_at_height": {
           "type": "object",
           "required": [
-            "owner",
-            "spender"
+            "address"
           ],
           "properties": {
-            "owner": {
+            "address": {
               "type": "string"
             },
-            "spender": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Only with \"enumerable\" extension (and \"allowances\") Returns all allowances this owner has approved. Supports pagination. Return type: AllAllowancesResponse.",
-      "type": "object",
-      "required": [
-        "all_allowances"
-      ],
-      "properties": {
-        "all_allowances": {
-          "type": "object",
-          "required": [
-            "owner"
-          ],
-          "properties": {
-            "limit": {
+            "height": {
               "type": [
                 "integer",
                 "null"
               ],
-              "format": "uint32",
+              "format": "uint64",
               "minimum": 0.0
-            },
-            "owner": {
-              "type": "string"
-            },
-            "start_after": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           }
         }
@@ -158,28 +81,22 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"enumerable\" extension Returns all accounts that have balances. Supports pagination. Return type: AllAccountsResponse.",
+      "description": "Returns the total staked amount of tokens at a given height, if no height is provided defaults to current block height.",
       "type": "object",
       "required": [
-        "all_accounts"
+        "total_staked_at_height"
       ],
       "properties": {
-        "all_accounts": {
+        "total_staked_at_height": {
           "type": "object",
           "properties": {
-            "limit": {
+            "height": {
               "type": [
                 "integer",
                 "null"
               ],
-              "format": "uint32",
+              "format": "uint64",
               "minimum": 0.0
-            },
-            "start_after": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           }
         }
@@ -187,27 +104,35 @@
       "additionalProperties": false
     },
     {
-      "description": "Only with \"marketing\" extension Returns more metadata on the contract to display in the client: - description, logo, project url, etc. Return type: MarketingInfoResponse",
+      "description": "Returns the unstaking duration for the contract.",
       "type": "object",
       "required": [
-        "marketing_info"
+        "unstaking_duration"
       ],
       "properties": {
-        "marketing_info": {
+        "unstaking_duration": {
           "type": "object"
         }
       },
       "additionalProperties": false
     },
     {
-      "description": "Only with \"marketing\" extension Downloads the mbeded logo data (if stored on chain). Errors if no logo data ftored for this contract. Return type: DownloadLogoResponse.",
+      "description": "Returns existing claims for tokens currently unstaking for a given address.",
       "type": "object",
       "required": [
-        "download_logo"
+        "claims"
       ],
       "properties": {
-        "download_logo": {
-          "type": "object"
+        "claims": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false
