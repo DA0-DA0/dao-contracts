@@ -220,19 +220,6 @@ mod tests {
         App::default()
     }
 
-    fn get_balance<T: Into<String>, U: Into<String>>(
-        app: &App,
-        contract_addr: T,
-        address: U,
-    ) -> Uint128 {
-        let msg = cw20::Cw20QueryMsg::Balance {
-            address: address.into(),
-        };
-        let result: cw20::BalanceResponse =
-            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-        result.balance
-    }
-
     fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
         let cw20_id = app.store_code(contract_cw20());
         let msg = cw20_base::msg::InstantiateMsg {
@@ -344,15 +331,6 @@ mod tests {
         amount: Uint128,
     ) -> AnyResult<AppResponse> {
         let msg = ExecuteMsg::Unstake { amount };
-        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
-    }
-
-    fn claim_tokens(
-        app: &mut App,
-        staking_addr: &Addr,
-        info: MessageInfo,
-    ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::Claim {};
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
