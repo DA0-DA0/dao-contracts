@@ -2,11 +2,12 @@
 
 **NOT PRODUCTION READY**
 
-| Contract                              | Description                                  |
-| :------------------------------------ | :------------------------------------------- |
-| [cw3-dao](contracts/cw3-dao)          | A governance token based DAO.                |
-| [stake-cw20](contract/stake-cw20)     | A cw20 staking contract for use with cw3-dao |
-| [cw3-multisig](contract/cw3-multisig) | A multisig contract                          |
+| Contract                                  | Description                                                     |
+| :---------------------------------------- | :-------------------------------------------------------------- |
+| [cw3-dao](contracts/cw3-dao)              | A governance token based DAO.                                   |
+| [cw3-multisig](contract/cw3-multisig)     | A multisig contract                                             |
+| [stake-cw20](contract/stake-cw20)         | A cw20 staking contract                                         |
+| [stake-cw20-gov](contract/stake-cw20-gov) | A cw20 staking contract, with vote delegation used be `cw3-dao` |
 
 ## Deploying in a development environment
 

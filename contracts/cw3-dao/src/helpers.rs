@@ -4,8 +4,9 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ExecuteMsg;
 
-use stake_cw20::msg::{
-    QueryMsg as StakingContractQueryMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
+use stake_cw20_gov::msg::{
+    QueryMsg as StakingContractQueryMsg, StakedBalanceAtHeightResponse,
+    TotalStakedAtHeightResponse, VotingPowerAtHeightResponse,
 };
 
 use crate::{
@@ -71,7 +72,8 @@ pub fn get_total_staked_supply(deps: Deps) -> StdResult<Uint128> {
 
 pub fn get_staked_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    // Get total supply
+
+    // Get current staked balance
     let res: StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
         &StakingContractQueryMsg::StakedBalanceAtHeight {
@@ -85,10 +87,10 @@ pub fn get_staked_balance(deps: Deps, address: Addr) -> StdResult<Uint128> {
 pub fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> StdResult<Uint128> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
 
-    // Get total supply
-    let balance: StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
+    // Get voting power at height
+    let balance: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
-        &StakingContractQueryMsg::StakedBalanceAtHeight {
+        &StakingContractQueryMsg::VotingPowerAtHeight {
             address: address.to_string(),
             height: Some(height),
         },
