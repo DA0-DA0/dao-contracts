@@ -21,7 +21,7 @@ use cw20::{
 use cw3::{Status, Vote};
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_utils::{Duration, Expiration};
-use stake_cw20::msg::ReceiveMsg;
+use stake_cw20_gov::msg::ReceiveMsg;
 use std::borrow::BorrowMut;
 
 const OWNER: &str = "admin0001";
@@ -55,9 +55,9 @@ pub fn contract_cw20_gov() -> Box<dyn Contract<Empty>> {
 
 pub fn contract_staking() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        stake_cw20::contract::execute,
-        stake_cw20::contract::instantiate,
-        stake_cw20::contract::query,
+        stake_cw20_gov::contract::execute,
+        stake_cw20_gov::contract::instantiate,
+        stake_cw20_gov::contract::query,
     );
     Box::new(contract)
 }
