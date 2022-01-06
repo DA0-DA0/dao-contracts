@@ -1,11 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, Uint128, Order, StdError};
-use cosmwasm_std::StdError::GenericErr;
+
+use cosmwasm_std::{
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    StdResult, Uint128,
+};
 
 use cw20::Cw20ReceiveMsg;
 
-use crate::msg::{ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse};
+use crate::msg::{
+    ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
+    StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse,
+};
 use crate::state::{Config, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
 pub use cw20_base::allowances::{
@@ -182,7 +188,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::UnstakingDuration {} => to_binary(&query_unstaking_duration(deps)?),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
-        QueryMsg::GetChangelog { address , start_height, end_height} => to_binary(&query_changelog(deps, address, start_height, end_height)?),
+        QueryMsg::GetChangelog {
+            address,
+            start_height,
+            end_height,
+        } => to_binary(&query_changelog(deps, address, start_height, end_height)?),
     }
 }
 
@@ -223,39 +233,55 @@ pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
 
-pub fn query_changelog(deps: Deps, address: String, start_height: u64, end_height: u64) -> StdResult<GetChangeLogResponse> {
+pub fn query_changelog(
+    deps: Deps,
+    address: String,
+    start_height: u64,
+    end_height: u64,
+) -> StdResult<GetChangeLogResponse> {
     let address = &deps.api.addr_validate(&address)?;
     let min_bound = Bound::inclusive_int(start_height);
     // This bound is exclusive as we manually add the first entry to ensure we always know the final value
     let max_bound = Bound::exclusive_int(end_height);
 
-    let final_balance  = STAKED_BALANCES
-        .may_load_at_height(deps.storage, &address, end_height)?.unwrap_or_default();
-    let mut result  = vec![(end_height,final_balance)];
+    let final_balance = STAKED_BALANCES
+        .may_load_at_height(deps.storage, address, end_height)?
+        .unwrap_or_default();
+    let mut result = vec![(end_height, final_balance)];
 
-    let changelog = STAKED_BALANCES.changelog().prefix(address)
-        .range(deps.storage,Some(min_bound),Some(max_bound), Order::Descending)
+    let changelog = STAKED_BALANCES
+        .changelog()
+        .prefix(address)
+        .range(
+            deps.storage,
+            Some(min_bound),
+            Some(max_bound),
+            Order::Descending,
+        )
         .collect::<StdResult<Vec<_>>>()?;
-    let mut changelog = changelog.into_iter().map(|(h,x)| -> (u64,Uint128) {
-        match x.old {
-            // The None entry represents the first balance of the account
-            None => (h,Uint128::zero()),
-            Some(old) => (h,old)
-        }
-    }).collect::<Vec<_>>();
+    let mut changelog = changelog
+        .into_iter()
+        .map(|(h, x)| -> (u64, Uint128) {
+            match x.old {
+                // The None entry represents the first balance of the account
+                None => (h, Uint128::zero()),
+                Some(old) => (h, old),
+            }
+        })
+        .collect::<Vec<_>>();
     result.append(&mut changelog);
 
-    Ok(GetChangeLogResponse{
-        changelog: result
-    })
-
+    Ok(GetChangeLogResponse { changelog: result })
 }
 
 #[cfg(test)]
 mod tests {
     use std::borrow::BorrowMut;
 
-    use crate::msg::{ExecuteMsg, GetChangeLogResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse};
+    use crate::msg::{
+        ExecuteMsg, GetChangeLogResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+        TotalStakedAtHeightResponse, UnstakingDurationResponse,
+    };
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
@@ -382,12 +408,12 @@ mod tests {
         contract_addr: T,
         address: U,
         start_height: u64,
-        end_height: u64
-    ) ->  Vec<(u64,Uint128)>{
+        end_height: u64,
+    ) -> Vec<(u64, Uint128)> {
         let msg = QueryMsg::GetChangelog {
             address: address.into(),
             start_height,
-            end_height
+            end_height,
         };
         let result: GetChangeLogResponse =
             app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
@@ -722,7 +748,6 @@ mod tests {
         assert_eq!(get_balance(&app, &cw20_addr, ADDR4), Uint128::zero());
     }
 
-
     #[test]
     fn test_get_changelog() {
         let mut app = mock_app();
@@ -746,7 +771,7 @@ mod tests {
             (start_height + 300, Uint128::new(100)),
         ];
         // Stake Tokens
-        for (h,a) in changes {
+        for (h, a) in changes {
             app.update_block(|b| b.height = h);
             stake_tokens(&mut app, &staking_addr, &cw20_addr, info.clone(), a).unwrap();
         }
@@ -758,7 +783,7 @@ mod tests {
             (start_height, Uint128::new(0)),
         ];
 
-        let result = query_changelog(&app,&staking_addr,ADDR1,start_height,start_height+300);
+        let result = query_changelog(&app, &staking_addr, ADDR1, start_height, start_height + 300);
         assert_eq!(result, expected);
 
         // Test new value is appended to end
@@ -770,7 +795,7 @@ mod tests {
             (start_height, Uint128::new(0)),
         ];
 
-        let result = query_changelog(&app,&staking_addr,ADDR1,start_height,start_height+350);
+        let result = query_changelog(&app, &staking_addr, ADDR1, start_height, start_height + 350);
         assert_eq!(result, expected);
 
         // Test partial change log
@@ -780,7 +805,13 @@ mod tests {
             (start_height + 200, Uint128::new(200)),
         ];
 
-        let result = query_changelog(&app,&staking_addr,ADDR1,start_height + 200,start_height+350);
+        let result = query_changelog(
+            &app,
+            &staking_addr,
+            ADDR1,
+            start_height + 200,
+            start_height + 350,
+        );
         assert_eq!(result, expected);
 
         let unstaking_height = 200000u64;
@@ -793,7 +824,7 @@ mod tests {
         ];
 
         // Unstake Tokens
-        for (h,a) in changes {
+        for (h, a) in changes {
             app.update_block(|b| b.height = h);
             unstake_tokens(&mut app, &staking_addr, info.clone(), a).unwrap();
         }
@@ -806,7 +837,13 @@ mod tests {
             (unstaking_height, Uint128::new(400)),
         ];
 
-        let result = query_changelog(&app,&staking_addr,ADDR1,unstaking_height,unstaking_height+350);
+        let result = query_changelog(
+            &app,
+            &staking_addr,
+            ADDR1,
+            unstaking_height,
+            unstaking_height + 350,
+        );
         assert_eq!(result, expected);
 
         // Query entire changelog
@@ -822,8 +859,13 @@ mod tests {
             (start_height, Uint128::new(0)),
         ];
 
-        let result = query_changelog(&app,&staking_addr,ADDR1,start_height,unstaking_height+350);
+        let result = query_changelog(
+            &app,
+            &staking_addr,
+            ADDR1,
+            start_height,
+            unstaking_height + 350,
+        );
         assert_eq!(result, expected);
     }
-
 }

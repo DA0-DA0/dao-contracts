@@ -43,7 +43,7 @@ pub enum QueryMsg {
     GetChangelog {
         address: String,
         start_height: u64,
-        end_height: u64
+        end_height: u64,
     },
 }
 
