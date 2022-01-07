@@ -40,6 +40,11 @@ pub enum QueryMsg {
     Claims {
         address: String,
     },
+    GetChangelog {
+        address: String,
+        start_height: u64,
+        end_height: u64,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -60,4 +65,10 @@ pub struct TotalStakedAtHeightResponse {
 #[serde(rename_all = "snake_case")]
 pub struct UnstakingDurationResponse {
     pub duration: Option<Duration>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GetChangeLogResponse {
+    pub changelog: Vec<(u64, Uint128)>,
 }
