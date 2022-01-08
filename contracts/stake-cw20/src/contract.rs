@@ -178,13 +178,13 @@ pub fn execute_claim(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::StakedBalanceAtHeight { address, height } => to_binary(
-            &query_staked_balance_at_height(deps, _env, address, height)?,
-        ),
+        QueryMsg::StakedBalanceAtHeight { address, height } => {
+            to_binary(&query_staked_balance_at_height(deps, env, address, height)?)
+        }
         QueryMsg::TotalStakedAtHeight { height } => {
-            to_binary(&query_total_staked_at_height(deps, _env, height)?)
+            to_binary(&query_total_staked_at_height(deps, env, height)?)
         }
         QueryMsg::UnstakingDuration {} => to_binary(&query_unstaking_duration(deps)?),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
@@ -192,7 +192,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             address,
             start_height,
             end_height,
-        } => to_binary(&query_changelog(deps, address, start_height, end_height)?),
+        } => to_binary(&query_changelog(
+            deps,
+            env,
+            address,
+            start_height,
+            end_height,
+        )?),
     }
 }
 
@@ -235,10 +241,13 @@ pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
 
 pub fn query_changelog(
     deps: Deps,
+    env: Env,
     address: String,
-    start_height: u64,
-    end_height: u64,
+    start_height: Option<u64>,
+    end_height: Option<u64>,
 ) -> StdResult<GetChangeLogResponse> {
+    let start_height = start_height.unwrap_or(0);
+    let end_height = end_height.unwrap_or(env.block.height);
     let address = &deps.api.addr_validate(&address)?;
     let min_bound = Bound::inclusive_int(start_height);
     // This bound is exclusive as we manually add the first entry to ensure we always know the final value
@@ -412,8 +421,8 @@ mod tests {
     ) -> Vec<(u64, Uint128)> {
         let msg = QueryMsg::GetChangelog {
             address: address.into(),
-            start_height,
-            end_height,
+            start_height: Some(start_height),
+            end_height: Some(end_height),
         };
         let result: GetChangeLogResponse =
             app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
