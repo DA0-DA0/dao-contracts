@@ -399,7 +399,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListVoters { start_after, limit } => {
             to_binary(&query_list_voters(deps, start_after, limit)?)
         }
-        QueryMsg::GetConfig => to_binary(&query_config(deps)?),
+        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::Tally { proposal_id } => {
             to_binary(&query_proposal_tally(deps, env, proposal_id)?)
         }

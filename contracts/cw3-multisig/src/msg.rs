@@ -200,7 +200,7 @@ pub enum QueryMsg {
     Tally { proposal_id: u64 },
     /// Get the multisig's current config. Returns type
     /// `ConfigResponse`.
-    GetConfig,
+    GetConfig {},
     /// Returns All DAO Cw20 Balances
     Cw20Balances {
         start_after: Option<String>,

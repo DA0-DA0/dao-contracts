@@ -307,7 +307,7 @@ fn test_instantiate_works() {
     // Verify contract config set properly.
     let config: ConfigResponse = app
         .wrap()
-        .query_wasm_smart(&multisig_addr, &QueryMsg::GetConfig)
+        .query_wasm_smart(&multisig_addr, &QueryMsg::GetConfig {})
         .unwrap();
 
     assert_eq!(
@@ -488,7 +488,7 @@ fn test_update_config() {
     // Verify contract config set properly.
     let config: ConfigResponse = app
         .wrap()
-        .query_wasm_smart(&multisig_addr, &QueryMsg::GetConfig)
+        .query_wasm_smart(&multisig_addr, &QueryMsg::GetConfig {})
         .unwrap();
 
     assert_eq!(
