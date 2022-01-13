@@ -3,12 +3,6 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "type": "string",
-      "enum": [
-        "get_config"
-      ]
-    },
-    {
       "description": "Return ThresholdResponse",
       "type": "object",
       "required": [
@@ -252,6 +246,19 @@
               "minimum": 0.0
             }
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get the multisig's current config. Returns type `ConfigResponse`.",
+      "type": "object",
+      "required": [
+        "get_config"
+      ],
+      "properties": {
+        "get_config": {
+          "type": "object"
         }
       },
       "additionalProperties": false
