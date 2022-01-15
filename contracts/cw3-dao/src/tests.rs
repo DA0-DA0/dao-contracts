@@ -300,6 +300,62 @@ fn test_instantiate_works() {
     );
 }
 
+fn test_instantiate_works_with_img_url_variations() {
+    let mut app = mock_app();
+
+    let dao_code_id = app.store_code(contract_dao());
+    let stake_contract_code_id = app.store_code(contract_staking());
+
+    let max_voting_period = Duration::Time(1234567);
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(51),
+        quorum: Decimal::percent(10),
+    };
+
+    // Setup test case instantiates all contracts
+    let (dao_addr, cw20_addr, _staking_addr) = setup_test_case(
+        &mut app,
+        threshold,
+        max_voting_period,
+        coins(100, NATIVE_TOKEN_DENOM),
+        None,
+        None,
+    );
+
+    // Total weight less than required weight not allowed
+    let instantiate_msg = InstantiateMsg {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        gov_token: GovTokenMsg::UseExistingCw20 {
+            addr: cw20_addr.to_string(),
+            stake_contract_code_id,
+            label: "dao-dao".to_string(),
+            unstaking_duration: None,
+        },
+        threshold: Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(101),
+        },
+        max_voting_period,
+        proposal_deposit_amount: Uint128::zero(),
+        refund_failed_proposals: None,
+        image_url: Some("https://omega-lul.com/virus.exe".to_string())
+    };
+    let err = app
+        .instantiate_contract(
+            dao_code_id,
+            Addr::unchecked(OWNER),
+            &instantiate_msg,
+            &[],
+            "high required weight",
+            None,
+        )
+        .unwrap_err();
+    assert_eq!(
+        ContractError::UnreachableThreshold {},
+        err.downcast().unwrap()
+    );
+}
+
 #[test]
 fn instantiate_new_gov_token() {
     let mut app = mock_app();

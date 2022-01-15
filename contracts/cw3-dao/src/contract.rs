@@ -42,7 +42,7 @@ const INSTANTIATE_GOV_TOKEN_REPLY_ID: u64 = 0;
 const INSTANTIATE_STAKING_CONTRACT_REPLY_ID: u64 = 1;
 
 
-fn validate_image_url(url: String) -> bool {
+fn validate_image_url(url: &String) -> bool {
     let re = Regex::new(r".(jpeg|jpg|gif|png)").unwrap();
     re.is_match(&url)
 }
@@ -58,12 +58,13 @@ pub fn instantiate(
 
     msg.threshold.validate()?;
 
-    msg.image_url.map(|img_url|
+    msg.image_url.as_ref().map(|img_url|
         return if !validate_image_url(img_url) {
             Err(ContractError::ConfigInvalidImgUrl {})
         } else {
             Ok(())
-        })?;
+        }
+    ).unwrap_or(Ok(()))?;
 
     let cfg = Config {
         name: msg.name,
@@ -389,12 +390,13 @@ pub fn execute_update_config(
     }
 
     update_config_msg.threshold.validate()?;
-    update_config_msg.image_url.map(|img_url|
+    update_config_msg.image_url.as_ref().map(|img_url|
         return if !validate_image_url(img_url) {
             Err(ContractError::ConfigInvalidImgUrl {})
         } else {
             Ok(())
-        })?;
+        }
+    ).unwrap_or(Ok(()))?;
 
     CONFIG.save(deps.storage, &update_config_msg)?;
 
