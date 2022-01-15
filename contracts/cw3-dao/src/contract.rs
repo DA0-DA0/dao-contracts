@@ -27,6 +27,7 @@ use cw_storage_plus::Bound;
 use cw_utils::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
+use regex::Regex;
 
 // Version info for migration info
 pub const CONTRACT_NAME: &str = "crates.io:sg_dao";
@@ -40,6 +41,12 @@ const DEFAULT_LIMIT: u32 = 10;
 const INSTANTIATE_GOV_TOKEN_REPLY_ID: u64 = 0;
 const INSTANTIATE_STAKING_CONTRACT_REPLY_ID: u64 = 1;
 
+
+fn validate_image_url(url: String) -> bool {
+    let re = Regex::new(r".(jpeg|jpg|gif|png)").unwrap();
+    re.is_match(&url)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -50,6 +57,13 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     msg.threshold.validate()?;
+
+    msg.image_url.map(|img_url|
+        return if !validate_image_url(img_url) {
+            Err(ContractError::InstantiateDAOInvalidUrl {})
+        } else {
+            Ok(())
+        })?;
 
     let cfg = Config {
         name: msg.name,
