@@ -9,8 +9,8 @@ pub enum ContractError {
     #[error("Failed to instantiate governance token")]
     InstantiateGovTokenError {},
 
-    #[error("Failed to instantiate, invalid URL provided for DAO, must be of type jpeg|jpg|gif|png")]
-    InstantiateDAOInvalidUrl {},
+    #[error("Failed to create or update config, invalid img URL provided, must be of type jpeg|jpg|gif|png")]
+    ConfigInvalidImgUrl {},
 
     #[error("Initial governance token balances must not be empty")]
     InitialBalancesError {},

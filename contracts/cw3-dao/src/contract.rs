@@ -60,7 +60,7 @@ pub fn instantiate(
 
     msg.image_url.map(|img_url|
         return if !validate_image_url(img_url) {
-            Err(ContractError::InstantiateDAOInvalidUrl {})
+            Err(ContractError::ConfigInvalidImgUrl {})
         } else {
             Ok(())
         })?;
@@ -389,6 +389,12 @@ pub fn execute_update_config(
     }
 
     update_config_msg.threshold.validate()?;
+    update_config_msg.image_url.map(|img_url|
+        return if !validate_image_url(img_url) {
+            Err(ContractError::ConfigInvalidImgUrl {})
+        } else {
+            Ok(())
+        })?;
 
     CONFIG.save(deps.storage, &update_config_msg)?;
 
