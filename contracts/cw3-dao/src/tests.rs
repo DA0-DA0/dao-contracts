@@ -1693,7 +1693,7 @@ fn test_update_config() {
         max_voting_period: new_voting_period,
         proposal_deposit: new_proposal_deposit_amount,
         refund_failed_proposals: None,
-        image_url: None,
+        image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
     });
     let res = app.execute_contract(
         Addr::unchecked(VOTER1),
@@ -1758,7 +1758,7 @@ fn test_update_config() {
                 max_voting_period: new_voting_period,
                 proposal_deposit: new_proposal_deposit_amount,
                 refund_failed_proposals: None,
-                image_url: None,
+                image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr
