@@ -58,6 +58,7 @@ pub fn instantiate(
         max_voting_period: msg.max_voting_period,
         proposal_deposit: msg.proposal_deposit_amount,
         refund_failed_proposals: msg.refund_failed_proposals,
+        image_url: msg.image_url,
     };
     CONFIG.save(deps.storage, &cfg)?;
 

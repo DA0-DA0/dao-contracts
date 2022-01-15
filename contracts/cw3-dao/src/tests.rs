@@ -1328,6 +1328,7 @@ fn test_close_works_with_refund() {
         max_voting_period: voting_period,
         proposal_deposit: proposal_deposit_amount,
         refund_failed_proposals: Some(false),
+        image_url: None,
     });
 
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
@@ -1692,6 +1693,7 @@ fn test_update_config() {
         max_voting_period: new_voting_period,
         proposal_deposit: new_proposal_deposit_amount,
         refund_failed_proposals: None,
+        image_url: None,
     });
     let res = app.execute_contract(
         Addr::unchecked(VOTER1),
@@ -1756,6 +1758,7 @@ fn test_update_config() {
                 max_voting_period: new_voting_period,
                 proposal_deposit: new_proposal_deposit_amount,
                 refund_failed_proposals: None,
+                image_url: None,
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr
@@ -1797,6 +1800,7 @@ fn test_config_query() {
                 max_voting_period: voting_period,
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
+                image_url: None
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr
@@ -1841,6 +1845,7 @@ fn test_proposal_deposit_works() {
         max_voting_period: voting_period,
         proposal_deposit: proposal_deposit_amount,
         refund_failed_proposals: None,
+        image_url: None,
     });
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
     assert!(res.is_ok());

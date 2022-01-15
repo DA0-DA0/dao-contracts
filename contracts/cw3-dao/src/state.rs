@@ -21,6 +21,7 @@ pub struct Config {
     pub max_voting_period: Duration,
     pub proposal_deposit: Uint128,
     pub refund_failed_proposals: Option<bool>,
+    pub image_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
