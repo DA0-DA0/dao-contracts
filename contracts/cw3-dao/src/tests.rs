@@ -112,6 +112,7 @@ fn instantiate_dao(
         max_voting_period,
         proposal_deposit_amount: proposal_deposit_amount.unwrap_or_else(Uint128::zero),
         refund_failed_proposals,
+        image_url : None,
     };
     app.instantiate_contract(
         dao_code_id,
@@ -271,6 +272,7 @@ fn test_instantiate_works() {
         max_voting_period,
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None
     };
     let err = app
         .instantiate_contract(
@@ -330,6 +332,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -388,6 +391,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -526,6 +530,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None
     };
     let res = app.instantiate_contract(
         dao_code_id,
