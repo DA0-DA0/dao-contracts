@@ -42,7 +42,7 @@ const INSTANTIATE_GOV_TOKEN_REPLY_ID: u64 = 0;
 const INSTANTIATE_STAKING_CONTRACT_REPLY_ID: u64 = 1;
 
 
-fn validate_image_url(url: &String) -> bool {
+pub fn validate_image_url(url: &String) -> bool {
     let re = Regex::new(r".(jpeg|jpg|gif|png)").unwrap();
     re.is_match(&url)
 }

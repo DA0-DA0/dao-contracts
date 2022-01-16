@@ -1,4 +1,4 @@
-use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION, validate_image_url};
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg,
@@ -346,7 +346,19 @@ fn test_instantiate_works_with_img_url_variations() {
     assert!(res.is_err());
     assert_eq!(ContractError::ConfigInvalidImgUrl {},
                res.unwrap_err().downcast().unwrap());
+}
 
+#[test]
+fn test_validate_image_url() {
+    assert_eq!(
+        validate_image_url(&"https://fefeqfq.com/imgur.jpg".to_string()),
+        true);
+    assert_eq!(
+        validate_image_url(&"https://fefeqfq.com/imgur.exe".to_string()),
+        false);
+    assert_eq!(
+        validate_image_url(&"ipfs://fefeqfq.com/imgur.jpg".to_string()),
+        false);
 }
 
 #[test]
