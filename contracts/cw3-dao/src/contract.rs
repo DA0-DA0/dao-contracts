@@ -393,7 +393,7 @@ pub fn execute_update_config(
     }
 
     update_config_msg.threshold.validate()?;
-    match &msg.image_url {
+    match &update_config_msg.image_url {
         None => { Ok(()) }
         Some(img_url) => {
             if !validate_image_url(&img_url) {
