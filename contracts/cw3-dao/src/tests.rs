@@ -1,4 +1,4 @@
-use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION, validate_image_url};
+use crate::contract::{validate_image_url, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg,
@@ -40,7 +40,7 @@ pub fn contract_dao() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-        .with_reply(crate::contract::reply);
+    .with_reply(crate::contract::reply);
     Box::new(contract)
 }
 
@@ -84,7 +84,7 @@ fn stake_balances(
             &msg,
             &[],
         )
-            .unwrap();
+        .unwrap();
     }
     app.update_block(next_block);
 }
@@ -122,7 +122,7 @@ fn instantiate_dao(
         "cw3-dao",
         None,
     )
-        .unwrap()
+    .unwrap()
 }
 
 fn setup_test_case(
@@ -191,7 +191,7 @@ fn setup_test_case(
                 amount: init_funds,
             }
         }))
-            .ok();
+        .ok();
     }
 
     // Get staking contract address
@@ -344,24 +344,27 @@ fn test_instantiate_fails_with_correct_error_for_invalid_img_url() {
     );
 
     assert!(res.is_err());
-    assert_eq!(ContractError::ConfigInvalidImgUrl {},
-               res.unwrap_err().downcast().unwrap());
+    assert_eq!(
+        ContractError::ConfigInvalidImgUrl {},
+        res.unwrap_err().downcast().unwrap()
+    );
 }
 
 #[test]
 fn test_validate_image_url() {
     assert_eq!(
         validate_image_url(&"https://fefeqfq.com/imgur.jpg".to_string()),
-        true);
+        true
+    );
     assert_eq!(
         validate_image_url(&"https://fefeqfq.com/imgur.exe".to_string()),
-        false);
+        false
+    );
     assert_eq!(
         validate_image_url(&"ipfs://fefeqfq.com/imgur.jpg".to_string()),
-        false);
-    assert_eq!(
-        validate_image_url(&"".to_string()),
-        false);
+        false
+    );
+    assert_eq!(validate_image_url(&"".to_string()), false);
 }
 
 #[test]
@@ -490,7 +493,7 @@ fn instantiate_new_gov_token() {
             recipient: dao_addr.clone().into(),
             amount: Uint128::new(1000),
         })
-            .unwrap(),
+        .unwrap(),
         funds: vec![],
     };
     let (_msgs, title, description) = proposal_info();
@@ -1498,7 +1501,7 @@ fn quorum_enforced_even_if_absolute_threshold_met() {
         &no_vote,
         &[],
     )
-        .unwrap();
+    .unwrap();
     assert_eq!(prop_status(&app), Status::Passed);
 }
 
@@ -1557,7 +1560,7 @@ fn test_burn_does_not_change_proposal_query_response_threshold() {
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     let query_prop = QueryMsg::Proposal { proposal_id };
     let prop: ProposalResponse = app.wrap().query_wasm_smart(&dao_addr, &query_prop).unwrap();
@@ -1789,15 +1792,14 @@ fn test_update_config() {
         image_url: Some("https://imghostingwebsite.com/fqfpw.exe".to_string()),
     });
 
-    let err_bad_config_msg = app.execute_contract(
-        dao_addr.clone(),
-        dao_addr.clone(),
-        &bad_config_msg,
-        &[],
-    ).unwrap_err();
+    let err_bad_config_msg = app
+        .execute_contract(dao_addr.clone(), dao_addr.clone(), &bad_config_msg, &[])
+        .unwrap_err();
 
-    assert_eq!(ContractError::ConfigInvalidImgUrl {},
-               err_bad_config_msg.downcast().unwrap());
+    assert_eq!(
+        ContractError::ConfigInvalidImgUrl {},
+        err_bad_config_msg.downcast().unwrap()
+    );
 
     let wasm_msg = WasmMsg::Execute {
         contract_addr: dao_addr.clone().into(),
