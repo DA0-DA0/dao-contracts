@@ -1774,6 +1774,28 @@ fn test_update_config() {
     );
     assert!(res.is_err());
 
+    // Bad Img URL throws an exception
+    let bad_config_msg = ExecuteMsg::UpdateConfig(Config {
+        name: "dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao".to_string(),
+        description: "a really great DAO with emojis 💫 and a name that is really long!"
+            .to_string(),
+        threshold: new_threshold.clone(),
+        max_voting_period: new_voting_period,
+        proposal_deposit: new_proposal_deposit_amount,
+        refund_failed_proposals: None,
+        image_url: Some("https://imghostingwebsite.com/fqfpw.exe".to_string()),
+    });
+
+    let err_bad_config_msg = app.execute_contract(
+        Addr::unchecked(VOTER1),
+        dao_addr.clone(),
+        &bad_config_msg,
+        &[],
+    ).unwrap_err();
+
+    assert_eq!(ContractError::ConfigInvalidImgUrl {},
+               err_bad_config_msg.downcast().unwrap());
+
     let wasm_msg = WasmMsg::Execute {
         contract_addr: dao_addr.clone().into(),
         msg: to_binary(&update_config_msg).unwrap(),
