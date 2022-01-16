@@ -58,13 +58,16 @@ pub fn instantiate(
 
     msg.threshold.validate()?;
 
-    msg.image_url.as_ref().map(|img_url|
-        return if !validate_image_url(img_url) {
-            Err(ContractError::ConfigInvalidImgUrl {})
-        } else {
-            Ok(())
+    match &msg.image_url {
+        None => { Ok(()) }
+        Some(img_url) => {
+            if !validate_image_url(&img_url) {
+                Err(ContractError::ConfigInvalidImgUrl {})
+            } else {
+                Ok(())
+            }
         }
-    ).unwrap_or(Ok(()))?;
+    }?;
 
     let cfg = Config {
         name: msg.name,
@@ -178,11 +181,11 @@ pub fn execute(
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::Propose(ProposeMsg {
-            title,
-            description,
-            msgs,
-            latest,
-        }) => execute_propose(deps, env, info, title, description, msgs, latest),
+                                title,
+                                description,
+                                msgs,
+                                latest,
+                            }) => execute_propose(deps, env, info, title, description, msgs, latest),
         ExecuteMsg::Vote(VoteMsg { proposal_id, vote }) => {
             execute_vote(deps, env, info, proposal_id, vote)
         }
@@ -390,13 +393,13 @@ pub fn execute_update_config(
     }
 
     update_config_msg.threshold.validate()?;
-    update_config_msg.image_url.as_ref().map(|img_url|
-        return if !validate_image_url(img_url) {
-            Err(ContractError::ConfigInvalidImgUrl {})
-        } else {
-            Ok(())
-        }
-    ).unwrap_or(Ok(()))?;
+    // update_config_msg.image_url.as_ref().map(|img_url|
+    //     return if !validate_image_url(img_url) {
+    //         Err(ContractError::ConfigInvalidImgUrl {})
+    //     } else {
+    //         Ok(())
+    //     }
+    // ).unwrap_or(Ok(()))?;
 
     CONFIG.save(deps.storage, &update_config_msg)?;
 

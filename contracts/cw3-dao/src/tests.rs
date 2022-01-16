@@ -40,7 +40,7 @@ pub fn contract_dao() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-    .with_reply(crate::contract::reply);
+        .with_reply(crate::contract::reply);
     Box::new(contract)
 }
 
@@ -84,7 +84,7 @@ fn stake_balances(
             &msg,
             &[],
         )
-        .unwrap();
+            .unwrap();
     }
     app.update_block(next_block);
 }
@@ -112,7 +112,7 @@ fn instantiate_dao(
         max_voting_period,
         proposal_deposit_amount: proposal_deposit_amount.unwrap_or_else(Uint128::zero),
         refund_failed_proposals,
-        image_url : None,
+        image_url: None,
     };
     app.instantiate_contract(
         dao_code_id,
@@ -122,7 +122,7 @@ fn instantiate_dao(
         "cw3-dao",
         None,
     )
-    .unwrap()
+        .unwrap()
 }
 
 fn setup_test_case(
@@ -191,7 +191,7 @@ fn setup_test_case(
                 amount: init_funds,
             }
         }))
-        .ok();
+            .ok();
     }
 
     // Get staking contract address
@@ -272,7 +272,7 @@ fn test_instantiate_works() {
         max_voting_period,
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
-        image_url: None
+        image_url: None,
     };
     let err = app
         .instantiate_contract(
@@ -300,60 +300,53 @@ fn test_instantiate_works() {
     );
 }
 
+#[test]
 fn test_instantiate_works_with_img_url_variations() {
     let mut app = mock_app();
-
+    let cw20_code_id = app.store_code(contract_cw20_gov());
     let dao_code_id = app.store_code(contract_dao());
     let stake_contract_code_id = app.store_code(contract_staking());
 
-    let max_voting_period = Duration::Time(1234567);
-    let threshold = Threshold::ThresholdQuorum {
-        threshold: Decimal::percent(51),
-        quorum: Decimal::percent(10),
-    };
-
-    // Setup test case instantiates all contracts
-    let (dao_addr, cw20_addr, _staking_addr) = setup_test_case(
-        &mut app,
-        threshold,
-        max_voting_period,
-        coins(100, NATIVE_TOKEN_DENOM),
-        None,
-        None,
-    );
-
-    // Total weight less than required weight not allowed
-    let instantiate_msg = InstantiateMsg {
+    let msg = crate::msg::InstantiateMsg {
         name: "dao-dao".to_string(),
         description: "a great DAO!".to_string(),
-        gov_token: GovTokenMsg::UseExistingCw20 {
-            addr: cw20_addr.to_string(),
+        gov_token: GovTokenMsg::InstantiateNewCw20 {
+            cw20_code_id,
             stake_contract_code_id,
-            label: "dao-dao".to_string(),
+            label: String::from("DAO DAO"),
+            initial_dao_balance: Some(Uint128::new(1000000)),
+            msg: GovTokenInstantiateMsg {
+                name: String::from("DAO DAO"),
+                symbol: String::from("DAO"),
+                decimals: 6,
+                initial_balances: vec![],
+                marketing: None,
+            },
             unstaking_duration: None,
         },
-        threshold: Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(101),
+        threshold: Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(51),
+            quorum: Decimal::percent(10),
         },
-        max_voting_period,
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
-        image_url: Some("https://omega-lul.com/virus.exe".to_string())
+        image_url: Some("https://fqwfwfqww.twtw/img/qwrqwr1.exe".to_string()),
+        max_voting_period: Duration::Time(2000000),
     };
-    let err = app
-        .instantiate_contract(
-            dao_code_id,
-            Addr::unchecked(OWNER),
-            &instantiate_msg,
-            &[],
-            "high required weight",
-            None,
-        )
-        .unwrap_err();
-    assert_eq!(
-        ContractError::UnreachableThreshold {},
-        err.downcast().unwrap()
+
+    let res = app.instantiate_contract(
+        dao_code_id,
+        Addr::unchecked(OWNER),
+        &msg,
+        &[],
+        "cw3-dao",
+        None,
     );
+
+    assert!(res.is_err());
+    assert_eq!(ContractError::ConfigInvalidImgUrl {},
+               res.unwrap_err().downcast().unwrap());
+
 }
 
 #[test]
@@ -388,7 +381,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
-        image_url: None
+        image_url: None,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -447,7 +440,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
-        image_url: None
+        image_url: None,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -482,7 +475,7 @@ fn instantiate_new_gov_token() {
             recipient: dao_addr.clone().into(),
             amount: Uint128::new(1000),
         })
-        .unwrap(),
+            .unwrap(),
         funds: vec![],
     };
     let (_msgs, title, description) = proposal_info();
@@ -586,7 +579,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
-        image_url: None
+        image_url: None,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -921,7 +914,7 @@ fn test_query_limited() {
         res.cw20_balances,
         vec![Cw20CoinVerified {
             address: Addr::unchecked("Contract #0"),
-            amount: Uint128::zero()
+            amount: Uint128::zero(),
         }]
     );
 }
@@ -1134,7 +1127,7 @@ fn test_vote_works() {
         VoteInfo {
             voter: OWNER.into(),
             vote: Vote::Yes,
-            weight: Uint128::new(2000000)
+            weight: Uint128::new(2000000),
         }
     );
 
@@ -1490,7 +1483,7 @@ fn quorum_enforced_even_if_absolute_threshold_met() {
         &no_vote,
         &[],
     )
-    .unwrap();
+        .unwrap();
     assert_eq!(prop_status(&app), Status::Passed);
 }
 
@@ -1549,7 +1542,7 @@ fn test_burn_does_not_change_proposal_query_response_threshold() {
         },
         &[],
     )
-    .unwrap();
+        .unwrap();
 
     let query_prop = QueryMsg::Proposal { proposal_id };
     let prop: ProposalResponse = app.wrap().query_wasm_smart(&dao_addr, &query_prop).unwrap();
@@ -1817,7 +1810,7 @@ fn test_update_config() {
                 image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
             },
             gov_token: cw20_addr,
-            staking_contract: staking_addr
+            staking_contract: staking_addr,
         }
     )
 }
@@ -1856,10 +1849,10 @@ fn test_config_query() {
                 max_voting_period: voting_period,
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
-                image_url: None
+                image_url: None,
             },
             gov_token: cw20_addr,
-            staking_contract: staking_addr
+            staking_contract: staking_addr,
         }
     )
 }
