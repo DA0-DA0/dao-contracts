@@ -1779,7 +1779,10 @@ fn test_update_config() {
         name: "dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao".to_string(),
         description: "a really great DAO with emojis 💫 and a name that is really long!"
             .to_string(),
-        threshold: new_threshold.clone(),
+        threshold: Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(20),
+            quorum: Decimal::percent(10),
+        },
         max_voting_period: new_voting_period,
         proposal_deposit: new_proposal_deposit_amount,
         refund_failed_proposals: None,
@@ -1787,7 +1790,7 @@ fn test_update_config() {
     });
 
     let err_bad_config_msg = app.execute_contract(
-        Addr::unchecked(VOTER1),
+        dao_addr.clone(),
         dao_addr.clone(),
         &bad_config_msg,
         &[],
