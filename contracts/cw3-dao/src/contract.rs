@@ -43,7 +43,7 @@ const INSTANTIATE_STAKING_CONTRACT_REPLY_ID: u64 = 1;
 
 
 pub fn validate_image_url(url: &String) -> bool {
-    let re = Regex::new(r".(jpeg|jpg|gif|png)").unwrap();
+    let re = Regex::new(r"(https:)([/|.|\w|\s|-])*\.(?:jpg|gif|png)").unwrap();
     re.is_match(&url)
 }
 

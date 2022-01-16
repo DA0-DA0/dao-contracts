@@ -301,7 +301,7 @@ fn test_instantiate_works() {
 }
 
 #[test]
-fn test_instantiate_works_with_img_url_variations() {
+fn test_instantiate_fails_with_correct_error_for_invalid_img_url() {
     let mut app = mock_app();
     let cw20_code_id = app.store_code(contract_cw20_gov());
     let dao_code_id = app.store_code(contract_dao());
@@ -358,6 +358,9 @@ fn test_validate_image_url() {
         false);
     assert_eq!(
         validate_image_url(&"ipfs://fefeqfq.com/imgur.jpg".to_string()),
+        false);
+    assert_eq!(
+        validate_image_url(&"".to_string()),
         false);
 }
 
