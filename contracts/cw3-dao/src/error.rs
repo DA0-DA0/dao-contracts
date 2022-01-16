@@ -9,7 +9,7 @@ pub enum ContractError {
     #[error("Failed to instantiate governance token")]
     InstantiateGovTokenError {},
 
-    #[error("Failed to create or update config, invalid img URL provided, must be of type jpeg|jpg|gif|png")]
+    #[error("Failed to create or update config, invalid img URL provided, must be https link and must be of type jpeg|jpg|gif|png")]
     ConfigInvalidImgUrl {},
 
     #[error("Initial governance token balances must not be empty")]
