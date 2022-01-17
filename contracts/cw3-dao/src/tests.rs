@@ -1,4 +1,4 @@
-use crate::contract::{validate_image_url, CONTRACT_NAME, CONTRACT_VERSION};
+use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg,
@@ -298,73 +298,6 @@ fn test_instantiate_works() {
         },
         version,
     );
-}
-
-#[test]
-fn test_instantiate_fails_with_correct_error_for_invalid_img_url() {
-    let mut app = mock_app();
-    let cw20_code_id = app.store_code(contract_cw20_gov());
-    let dao_code_id = app.store_code(contract_dao());
-    let stake_contract_code_id = app.store_code(contract_staking());
-
-    let msg = crate::msg::InstantiateMsg {
-        name: "dao-dao".to_string(),
-        description: "a great DAO!".to_string(),
-        gov_token: GovTokenMsg::InstantiateNewCw20 {
-            cw20_code_id,
-            stake_contract_code_id,
-            label: String::from("DAO DAO"),
-            initial_dao_balance: Some(Uint128::new(1000000)),
-            msg: GovTokenInstantiateMsg {
-                name: String::from("DAO DAO"),
-                symbol: String::from("DAO"),
-                decimals: 6,
-                initial_balances: vec![],
-                marketing: None,
-            },
-            unstaking_duration: None,
-        },
-        threshold: Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(51),
-            quorum: Decimal::percent(10),
-        },
-        proposal_deposit_amount: Uint128::zero(),
-        refund_failed_proposals: None,
-        image_url: Some("https://fqwfwfqww.twtw/img/qwrqwr1.exe".to_string()),
-        max_voting_period: Duration::Time(2000000),
-    };
-
-    let res = app.instantiate_contract(
-        dao_code_id,
-        Addr::unchecked(OWNER),
-        &msg,
-        &[],
-        "cw3-dao",
-        None,
-    );
-
-    assert!(res.is_err());
-    assert_eq!(
-        ContractError::ConfigInvalidImgUrl {},
-        res.unwrap_err().downcast().unwrap()
-    );
-}
-
-#[test]
-fn test_validate_image_url() {
-    assert_eq!(
-        validate_image_url(&"https://fefeqfq.com/imgur.jpg".to_string()),
-        true
-    );
-    assert_eq!(
-        validate_image_url(&"https://fefeqfq.com/imgur.exe".to_string()),
-        false
-    );
-    assert_eq!(
-        validate_image_url(&"ipfs://fefeqfq.com/imgur.jpg".to_string()),
-        false
-    );
-    assert_eq!(validate_image_url(&"".to_string()), false);
 }
 
 #[test]
@@ -1776,30 +1709,6 @@ fn test_update_config() {
         &[],
     );
     assert!(res.is_err());
-
-    // Bad Img URL throws an exception
-    let bad_config_msg = ExecuteMsg::UpdateConfig(Config {
-        name: "dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao-dao".to_string(),
-        description: "a really great DAO with emojis 💫 and a name that is really long!"
-            .to_string(),
-        threshold: Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(20),
-            quorum: Decimal::percent(10),
-        },
-        max_voting_period: new_voting_period,
-        proposal_deposit: new_proposal_deposit_amount,
-        refund_failed_proposals: None,
-        image_url: Some("https://imghostingwebsite.com/fqfpw.exe".to_string()),
-    });
-
-    let err_bad_config_msg = app
-        .execute_contract(dao_addr.clone(), dao_addr.clone(), &bad_config_msg, &[])
-        .unwrap_err();
-
-    assert_eq!(
-        ContractError::ConfigInvalidImgUrl {},
-        err_bad_config_msg.downcast().unwrap()
-    );
 
     let wasm_msg = WasmMsg::Execute {
         contract_addr: dao_addr.clone().into(),
