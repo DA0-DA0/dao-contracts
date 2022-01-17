@@ -17,6 +17,12 @@
     "group": {
       "$ref": "#/definitions/GroupMsg"
     },
+    "image_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "max_voting_period": {
       "$ref": "#/definitions/Duration"
     },

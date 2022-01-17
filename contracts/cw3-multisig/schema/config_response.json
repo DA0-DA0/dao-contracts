@@ -32,6 +32,13 @@
           "description": "A description of the multisig.",
           "type": "string"
         },
+        "image_url": {
+          "description": "Optional Image URL that is used by the contract",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "max_voting_period": {
           "description": "The amount of time a proposal can be voted on.",
           "allOf": [
