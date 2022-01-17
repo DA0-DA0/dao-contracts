@@ -25,6 +25,8 @@ pub struct Config {
     pub threshold: Threshold,
     /// The amount of time a proposal can be voted on.
     pub max_voting_period: Duration,
+    /// Optional Image URL that is used by the contract
+    pub image_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

@@ -25,6 +25,8 @@ pub struct InstantiateMsg {
     pub proposal_deposit_amount: Uint128,
     /// Refund a proposal if it is rejected
     pub refund_failed_proposals: Option<bool>,
+    /// Optional Image URL that is used by the contract
+    pub image_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

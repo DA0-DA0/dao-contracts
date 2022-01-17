@@ -53,6 +53,7 @@ pub fn instantiate(
         description: msg.description,
         threshold: msg.threshold.clone(),
         max_voting_period: msg.max_voting_period,
+        image_url: msg.image_url,
     };
     CONFIG.save(deps.storage, &cfg)?;
 

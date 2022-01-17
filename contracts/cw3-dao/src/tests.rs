@@ -112,6 +112,7 @@ fn instantiate_dao(
         max_voting_period,
         proposal_deposit_amount: proposal_deposit_amount.unwrap_or_else(Uint128::zero),
         refund_failed_proposals,
+        image_url: None,
     };
     app.instantiate_contract(
         dao_code_id,
@@ -271,6 +272,7 @@ fn test_instantiate_works() {
         max_voting_period,
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None,
     };
     let err = app
         .instantiate_contract(
@@ -330,6 +332,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -388,6 +391,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -526,6 +530,7 @@ fn instantiate_new_gov_token() {
         max_voting_period: Duration::Time(1234567),
         proposal_deposit_amount: Uint128::zero(),
         refund_failed_proposals: None,
+        image_url: None,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -860,7 +865,7 @@ fn test_query_limited() {
         res.cw20_balances,
         vec![Cw20CoinVerified {
             address: Addr::unchecked("Contract #0"),
-            amount: Uint128::zero()
+            amount: Uint128::zero(),
         }]
     );
 }
@@ -1073,7 +1078,7 @@ fn test_vote_works() {
         VoteInfo {
             voter: OWNER.into(),
             vote: Vote::Yes,
-            weight: Uint128::new(2000000)
+            weight: Uint128::new(2000000),
         }
     );
 
@@ -1323,6 +1328,7 @@ fn test_close_works_with_refund() {
         max_voting_period: voting_period,
         proposal_deposit: proposal_deposit_amount,
         refund_failed_proposals: Some(false),
+        image_url: None,
     });
 
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
@@ -1687,6 +1693,7 @@ fn test_update_config() {
         max_voting_period: new_voting_period,
         proposal_deposit: new_proposal_deposit_amount,
         refund_failed_proposals: None,
+        image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
     });
     let res = app.execute_contract(
         Addr::unchecked(VOTER1),
@@ -1751,9 +1758,10 @@ fn test_update_config() {
                 max_voting_period: new_voting_period,
                 proposal_deposit: new_proposal_deposit_amount,
                 refund_failed_proposals: None,
+                image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
             },
             gov_token: cw20_addr,
-            staking_contract: staking_addr
+            staking_contract: staking_addr,
         }
     )
 }
@@ -1792,9 +1800,10 @@ fn test_config_query() {
                 max_voting_period: voting_period,
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
+                image_url: None,
             },
             gov_token: cw20_addr,
-            staking_contract: staking_addr
+            staking_contract: staking_addr,
         }
     )
 }
@@ -1836,6 +1845,7 @@ fn test_proposal_deposit_works() {
         max_voting_period: voting_period,
         proposal_deposit: proposal_deposit_amount,
         refund_failed_proposals: None,
+        image_url: None,
     });
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
     assert!(res.is_ok());

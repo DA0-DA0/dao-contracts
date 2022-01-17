@@ -213,6 +213,12 @@
         "description": {
           "type": "string"
         },
+        "image_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "max_voting_period": {
           "$ref": "#/definitions/Duration"
         },
