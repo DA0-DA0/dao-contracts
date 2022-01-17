@@ -101,6 +101,7 @@ fn instantiate_multisig(
         },
         threshold,
         max_voting_period,
+        image_url: None,
     };
     app.instantiate_contract(
         multisig_id,
@@ -238,6 +239,7 @@ fn test_instantiate_works() {
             quorum: Decimal::percent(1),
         },
         max_voting_period,
+        image_url: None,
     };
     let err = app
         .instantiate_contract(
@@ -260,6 +262,7 @@ fn test_instantiate_works() {
         },
         threshold: Threshold::AbsoluteCount { weight: 100 },
         max_voting_period,
+        image_url: None,
     };
     let err = app
         .instantiate_contract(
@@ -282,6 +285,7 @@ fn test_instantiate_works() {
         },
         threshold: Threshold::AbsoluteCount { weight: 1 },
         max_voting_period,
+        image_url: None,
     };
     let multisig_addr = app
         .instantiate_contract(
@@ -318,6 +322,7 @@ fn test_instantiate_works() {
                 description: "🐟".to_string(),
                 threshold: Threshold::AbsoluteCount { weight: 1 },
                 max_voting_period,
+                image_url: None,
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -355,6 +360,7 @@ fn test_instantiate_works() {
         },
         threshold: Threshold::AbsoluteCount { weight: 1 },
         max_voting_period,
+        image_url: Some("https://imgur.com/someElmo.png".to_string()),
     };
     let res = app.instantiate_contract(
         multisig_id,
@@ -462,6 +468,7 @@ fn test_update_config() {
                 weight: required_weight,
             },
             max_voting_period: voting_period,
+            image_url: Some("https://someUrl.com/image.png".to_string()),
         },
         multisig_addr.to_string(),
     );
@@ -501,6 +508,7 @@ fn test_update_config() {
                     weight: required_weight,
                 },
                 max_voting_period: voting_period,
+                image_url: Some("https://someUrl.com/image.png".to_string()),
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -513,6 +521,7 @@ fn test_update_config() {
             description: "🐶".to_string(),
             threshold: Threshold::AbsoluteCount { weight: 10000 },
             max_voting_period: voting_period,
+            image_url: None,
         },
         multisig_addr.to_string(),
     );

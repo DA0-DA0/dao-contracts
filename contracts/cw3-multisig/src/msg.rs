@@ -17,6 +17,7 @@ pub struct InstantiateMsg {
     pub group: GroupMsg,
     pub threshold: Threshold,
     pub max_voting_period: Duration,
+    pub image_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
