@@ -1,12 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
-    StdResult, Uint128,
-};
+use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult, Uint128, StdError};
 
-use cw20::Cw20ReceiveMsg;
+use cw20::{Cw20QueryMsg, Cw20ReceiveMsg};
 
 use crate::msg::{
     ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
@@ -81,16 +78,25 @@ pub fn execute_stake(
     sender: &Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(config.token_address, &Cw20QueryMsg::Balance { address: env.contract.address.into() })?;
+    let balance = balance.balance.checked_sub(amount).map_err(StdError::overflow)?;
+    let staked_total = STAKED_TOTAL.load(deps.storage).unwrap_or_default();
+    let amount_to_stake = if staked_total == Uint128::zero() || balance == Uint128::zero() {
+       amount
+    } else {
+        staked_total.checked_mul(amount).map_err(StdError::overflow)?.checked_div(balance).map_err(StdError::divide_by_zero)?
+    };
     STAKED_BALANCES.update(
         deps.storage,
         sender,
         env.block.height,
-        |bal| -> StdResult<Uint128> { Ok(bal.unwrap_or_default().checked_add(amount)?) },
+        |bal| -> StdResult<Uint128> { Ok(bal.unwrap_or_default().checked_add(amount_to_stake)?) },
     )?;
     STAKED_TOTAL.update(
         deps.storage,
         env.block.height,
-        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount)?) },
+        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_add(amount_to_stake)?) },
     )?;
 
     Ok(Response::new()
@@ -101,27 +107,30 @@ pub fn execute_stake(
 
 pub fn execute_unstake(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(&config.token_address,&Cw20QueryMsg::Balance {address: env.contract.address.to_string()})?;
+    let staked_total = STAKED_TOTAL.load(deps.storage)?;
+    let amount_to_claim = amount.checked_mul(balance.balance).map_err(StdError::overflow)?.checked_div(staked_total).map_err(StdError::divide_by_zero)?;
     STAKED_BALANCES.update(
         deps.storage,
         &info.sender,
-        _env.block.height,
+        env.block.height,
         |bal| -> StdResult<Uint128> { Ok(bal.unwrap_or_default().checked_sub(amount)?) },
     )?;
     STAKED_TOTAL.update(
         deps.storage,
-        _env.block.height,
+        env.block.height,
         |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_sub(amount)?) },
     )?;
     match config.unstaking_duration {
         None => {
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
                 recipient: info.sender.to_string(),
-                amount,
+                amount: amount_to_claim,
             };
             let wasm_msg = cosmwasm_std::WasmMsg::Execute {
                 contract_addr: config.token_address.to_string(),
@@ -139,8 +148,8 @@ pub fn execute_unstake(
             CLAIMS.create_claim(
                 deps.storage,
                 &info.sender,
-                amount,
-                duration.after(&_env.block),
+                amount_to_claim,
+                duration.after(&env.block),
             )?;
             Ok(Response::new()
                 .add_attribute("action", "unstake")
