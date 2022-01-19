@@ -169,6 +169,7 @@ pub fn execute_propose(
 
     // create a proposal
     let mut prop = Proposal {
+        proposer: info.sender.clone(),
         title,
         description,
         start_height: env.block.height,
