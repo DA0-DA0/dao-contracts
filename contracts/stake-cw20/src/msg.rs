@@ -36,6 +36,10 @@ pub enum QueryMsg {
     TotalStakedAtHeight {
         height: Option<u64>,
     },
+    StakedValue {
+        address: String,
+    },
+    TotalValue {},
     UnstakingDuration {},
     Claims {
         address: String,
@@ -59,6 +63,18 @@ pub struct StakedBalanceAtHeightResponse {
 pub struct TotalStakedAtHeightResponse {
     pub total: Uint128,
     pub height: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct StakedValueResponse {
+    pub value: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct TotalValueResponse {
+    pub total: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

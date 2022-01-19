@@ -10,7 +10,8 @@ use cw20::{Cw20QueryMsg, Cw20ReceiveMsg};
 
 use crate::msg::{
     ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse,
+    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+    TotalValueResponse, UnstakingDurationResponse,
 };
 use crate::state::{Config, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
@@ -221,6 +222,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalStakedAtHeight { height } => {
             to_binary(&query_total_staked_at_height(deps, env, height)?)
         }
+        QueryMsg::StakedValue { address } => to_binary(&query_staked_value(deps, env, address)?),
+        QueryMsg::TotalValue {} => to_binary(&query_total_value(deps, env)?),
         QueryMsg::UnstakingDuration {} => to_binary(&query_unstaking_duration(deps)?),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetChangelog {
@@ -261,6 +264,47 @@ pub fn query_total_staked_at_height(
         .may_load_at_height(deps.storage, height)?
         .unwrap_or_default();
     Ok(TotalStakedAtHeightResponse { total, height })
+}
+
+pub fn query_staked_value(deps: Deps, env: Env, address: String) -> StdResult<StakedValueResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    let address = deps.api.addr_validate(&address)?;
+    let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+        &config.token_address,
+        &Cw20QueryMsg::Balance {
+            address: env.contract.address.to_string(),
+        },
+    )?;
+    let balance = balance.balance;
+    let staked = STAKED_BALANCES
+        .load(deps.storage, &address)
+        .unwrap_or_default();
+    let total = STAKED_TOTAL.load(deps.storage).unwrap_or_default();
+    if balance == Uint128::zero() || staked == Uint128::zero() || total == Uint128::zero() {
+        Ok(StakedValueResponse {
+            value: Uint128::zero(),
+        })
+    } else {
+        let value = staked
+            .checked_mul(balance)
+            .map_err(StdError::overflow)?
+            .checked_div(total)
+            .map_err(StdError::divide_by_zero)?;
+        Ok(StakedValueResponse { value })
+    }
+}
+
+pub fn query_total_value(deps: Deps, env: Env) -> StdResult<TotalValueResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+        &config.token_address,
+        &Cw20QueryMsg::Balance {
+            address: env.contract.address.to_string(),
+        },
+    )?;
+    Ok(TotalValueResponse {
+        total: balance.balance,
+    })
 }
 
 pub fn query_unstaking_duration(deps: Deps) -> StdResult<UnstakingDurationResponse> {
@@ -324,7 +368,8 @@ mod tests {
 
     use crate::msg::{
         ExecuteMsg, GetChangeLogResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-        TotalStakedAtHeightResponse, UnstakingDurationResponse,
+        StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+        UnstakingDurationResponse,
     };
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -444,6 +489,24 @@ mod tests {
         let msg = QueryMsg::TotalStakedAtHeight { height: None };
         let result: TotalStakedAtHeightResponse =
             app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.total
+    }
+
+    fn query_staked_value<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = QueryMsg::StakedValue {
+            address: address.into(),
+        };
+        let result: StakedValueResponse = app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.value
+    }
+
+    fn query_total_value<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
+        let msg = QueryMsg::TotalValue {};
+        let result: TotalValueResponse = app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.total
     }
 
@@ -911,5 +974,172 @@ mod tests {
             unstaking_height + 350,
         );
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_auto_compounding_staking() {
+        let _deps = mock_dependencies();
+
+        let mut app = mock_app();
+        let amount1 = Uint128::from(1000u128);
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, None);
+
+        let info = mock_info(ADDR1, &[]);
+        let _env = mock_env();
+
+        // Successful bond
+        let amount = Uint128::new(100);
+        stake_tokens(&mut app, &staking_addr, &cw20_addr, info, amount).unwrap();
+        app.update_block(next_block);
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            query_staked_value(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            query_total_value(&app, &staking_addr),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            get_balance(&app, &cw20_addr, ADDR1.to_string()),
+            Uint128::from(900u128)
+        );
+
+        // Add compounding rewards
+        let msg = cw20::Cw20ExecuteMsg::Transfer {
+            recipient: staking_addr.to_string(),
+            amount: Uint128::from(100u128),
+        };
+        let _res = app
+            .borrow_mut()
+            .execute_contract(Addr::unchecked(ADDR1), cw20_addr.clone(), &msg, &[])
+            .unwrap();
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            query_staked_value(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::from(200u128)
+        );
+        assert_eq!(
+            query_total_value(&app, &staking_addr),
+            Uint128::from(200u128)
+        );
+        assert_eq!(
+            get_balance(&app, &cw20_addr, ADDR1.to_string()),
+            Uint128::from(800u128)
+        );
+
+        // Sucessful transfer of unbonded amount
+        let msg = cw20::Cw20ExecuteMsg::Transfer {
+            recipient: ADDR2.to_string(),
+            amount: Uint128::from(100u128),
+        };
+        let _res = app
+            .borrow_mut()
+            .execute_contract(Addr::unchecked(ADDR1), cw20_addr.clone(), &msg, &[])
+            .unwrap();
+
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(700u128));
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::from(100u128));
+
+        // Addr 2 successful bond
+        let info = mock_info(ADDR2, &[]);
+        stake_tokens(&mut app, &staking_addr, &cw20_addr, info, Uint128::new(100)).unwrap();
+
+        app.update_block(next_block);
+
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR2),
+            Uint128::from(50u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(150u128)
+        );
+        assert_eq!(
+            query_staked_value(&app, &staking_addr, ADDR2.to_string()),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            query_total_value(&app, &staking_addr),
+            Uint128::from(300u128)
+        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::zero());
+
+        // Can't unstake more than you have staked
+        let info = mock_info(ADDR2, &[]);
+        let _err = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(51)).unwrap_err();
+
+        // Add compounding rewards
+        let msg = cw20::Cw20ExecuteMsg::Transfer {
+            recipient: staking_addr.to_string(),
+            amount: Uint128::from(90u128),
+        };
+        let _res = app
+            .borrow_mut()
+            .execute_contract(Addr::unchecked(ADDR1), cw20_addr.clone(), &msg, &[])
+            .unwrap();
+
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::from(100u128)
+        );
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR2),
+            Uint128::from(50u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(150u128)
+        );
+        assert_eq!(
+            query_staked_value(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::from(260u128)
+        );
+        assert_eq!(
+            query_staked_value(&app, &staking_addr, ADDR2.to_string()),
+            Uint128::from(130u128)
+        );
+        assert_eq!(
+            query_total_value(&app, &staking_addr),
+            Uint128::from(390u128)
+        );
+        assert_eq!(
+            get_balance(&app, &cw20_addr, ADDR1.to_string()),
+            Uint128::from(610u128)
+        );
+
+        // Successful unstake
+        let info = mock_info(ADDR2, &[]);
+        let _res = unstake_tokens(&mut app, &staking_addr, info, Uint128::new(25)).unwrap();
+        app.update_block(next_block);
+
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR2),
+            Uint128::from(25u128)
+        );
+        assert_eq!(
+            query_total_staked(&app, &staking_addr),
+            Uint128::from(125u128)
+        );
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::from(65u128));
     }
 }
