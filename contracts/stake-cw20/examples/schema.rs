@@ -9,7 +9,8 @@ use cw20::{
 };
 use stake_cw20::msg::{
     ClaimsResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakedBalanceAtHeightResponse,
-    TotalStakedAtHeightResponse, UnstakingDurationResponse, StakedValueResponse, TotalValueResponse
+    StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+    UnstakingDurationResponse,
 };
 
 fn main() {
