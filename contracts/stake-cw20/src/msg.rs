@@ -24,6 +24,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ReceiveMsg {
     Stake {},
+    Fund {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

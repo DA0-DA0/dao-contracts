@@ -29,3 +29,5 @@ pub const STAKED_TOTAL: SnapshotItem<Uint128> = SnapshotItem::new(
 );
 
 pub const CLAIMS: Claims = Claims::new("claims");
+
+pub const BALANCE: Item<Uint128> = Item::new("balance");
