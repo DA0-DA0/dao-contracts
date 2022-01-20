@@ -1,5 +1,8 @@
 use crate::msg::{ExecuteMsg, GroupMsg, InstantiateMsg, QueryMsg, Threshold};
-use crate::query::{ConfigResponse, Cw20BalancesResponse, TokenListResponse, VoteTallyResponse};
+use crate::query::{
+    ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
+    TokenListResponse, VoteTallyResponse,
+};
 use crate::state::{Config, Votes};
 use crate::ContractError;
 use cosmwasm_std::{
@@ -9,8 +12,8 @@ use cosmwasm_std::{
 use cw2::{query_contract_info, ContractVersion};
 use cw20::Cw20Coin;
 use cw3::{
-    ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
-    VoterDetail, VoterListResponse, VoterResponse,
+    Status, Vote, VoteInfo, VoteListResponse, VoteResponse, VoterDetail, VoterListResponse,
+    VoterResponse,
 };
 use cw4::{Cw4Contract, Cw4ExecuteMsg, Member, MemberChangedHookMsg, MemberDiff};
 use cw4_group::helpers::Cw4GroupContract;
@@ -666,6 +669,7 @@ fn test_proposal_queries() {
         id: proposal_id3,
         title,
         description,
+        proposer: Addr::unchecked(VOTER2),
         msgs,
         expires: voting_period.after(&proposed_at),
         status: Status::Open,

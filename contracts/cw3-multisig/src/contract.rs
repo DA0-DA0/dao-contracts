@@ -11,8 +11,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::{BalanceResponse, Cw20CoinVerified, Cw20QueryMsg};
 use cw3::{
-    ProposalListResponse, ProposalResponse, Status, Vote, VoteInfo, VoteListResponse, VoteResponse,
-    VoterDetail, VoterListResponse, VoterResponse,
+    Status, Vote, VoteInfo, VoteListResponse, VoteResponse, VoterDetail, VoterListResponse,
+    VoterResponse,
 };
 use cw4::{Cw4Contract, MemberChangedHookMsg, MemberDiff};
 use cw4_group::msg::InstantiateMsg as Cw4InstantiateMsg;
@@ -22,7 +22,10 @@ use cw_utils::{maybe_addr, parse_reply_instantiate_data, Expiration, ThresholdRe
 use crate::error::ContractError;
 use crate::helpers::{get_and_check_limit, map_proposal};
 use crate::msg::{ExecuteMsg, GroupMsg, InstantiateMsg, QueryMsg};
-use crate::query::{ConfigResponse, Cw20BalancesResponse, TokenListResponse, VoteTallyResponse};
+use crate::query::{
+    ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
+    TokenListResponse, VoteTallyResponse,
+};
 use crate::state::{
     next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GROUP_ADDRESS, PROPOSALS,
     TREASURY_TOKENS,
@@ -427,6 +430,7 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
         id,
         title: prop.title,
         description: prop.description,
+        proposer: prop.proposer,
         msgs: prop.msgs,
         status,
         expires: prop.expires,
