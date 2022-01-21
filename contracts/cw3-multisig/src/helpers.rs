@@ -1,9 +1,9 @@
+use crate::query::ProposalResponse;
 use crate::{
     state::{parse_id, Proposal},
     ContractError,
 };
 use cosmwasm_std::{BlockInfo, StdError, StdResult};
-use cw3::ProposalResponse;
 
 pub fn map_proposal(
     block: &BlockInfo,
@@ -16,6 +16,7 @@ pub fn map_proposal(
         id: parse_id(&key)?,
         title: prop.title,
         description: prop.description,
+        proposer: prop.proposer,
         msgs: prop.msgs,
         status,
         expires: prop.expires,

@@ -31,6 +31,7 @@ pub struct Config {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Proposal {
+    pub proposer: Addr,
     pub title: String,
     pub description: String,
     pub start_height: u64,
@@ -259,6 +260,7 @@ mod test {
             false => Expiration::AtHeight(block.height + 100),
         };
         let prop = Proposal {
+            proposer: Addr::unchecked("Proposer"),
             title: "Demo".to_string(),
             description: "Info".to_string(),
             start_height: 100,
