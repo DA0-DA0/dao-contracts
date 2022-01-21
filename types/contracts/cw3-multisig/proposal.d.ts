@@ -1,9 +1,10 @@
-import { CosmosMsgFor_Empty, Expiration, Status, Threshold, Votes } from "./shared-types";
+import { Addr, CosmosMsgFor_Empty, Expiration, Status, Threshold, Votes } from "./shared-types";
 
 export interface Proposal {
 description: string
 expires: Expiration
 msgs: CosmosMsgFor_Empty[]
+proposer: Addr
 start_height: number
 status: Status
 /**

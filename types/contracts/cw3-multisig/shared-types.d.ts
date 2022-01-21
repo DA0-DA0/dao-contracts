@@ -51,6 +51,10 @@ export interface Config {
      */
     description: string;
     /**
+     * Optional Image URL that is used by the contract
+     */
+    image_url?: (string | null);
+    /**
      * The amount of time a proposal can be voted on.
      */
     max_voting_period: Duration;

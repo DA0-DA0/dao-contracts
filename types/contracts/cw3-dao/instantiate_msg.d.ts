@@ -43,6 +43,10 @@ description: string
  */
 gov_token: GovTokenMsg
 /**
+ * Optional Image URL that is used by the contract
+ */
+image_url?: (string | null)
+/**
  * The amount of time a proposal can be voted on before expiring
  */
 max_voting_period: Duration

@@ -56,6 +56,7 @@ export type Addr = string;
 export interface Config {
     [k: string]: unknown;
     description: string;
+    image_url?: (string | null);
     max_voting_period: Duration;
     name: string;
     proposal_deposit: Uint128;

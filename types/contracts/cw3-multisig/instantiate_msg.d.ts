@@ -20,6 +20,7 @@ export interface InstantiateMsg {
  */
 description: string
 group: GroupMsg
+image_url?: (string | null)
 max_voting_period: Duration
 /**
  * The name of the multisig.
