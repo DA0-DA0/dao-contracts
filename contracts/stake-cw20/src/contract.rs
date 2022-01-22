@@ -6,7 +6,7 @@ use cosmwasm_std::{
     StdError, StdResult, Uint128,
 };
 
-use cw20::{Cw20QueryMsg, Cw20ReceiveMsg};
+use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
     ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
@@ -278,7 +278,11 @@ pub fn query_total_staked_at_height(
     Ok(TotalStakedAtHeightResponse { total, height })
 }
 
-pub fn query_staked_value(deps: Deps, env: Env, address: String) -> StdResult<StakedValueResponse> {
+pub fn query_staked_value(
+    deps: Deps,
+    _env: Env,
+    address: String,
+) -> StdResult<StakedValueResponse> {
     let address = deps.api.addr_validate(&address)?;
     let balance = BALANCE.load(deps.storage).unwrap_or_default();
     let staked = STAKED_BALANCES
@@ -299,11 +303,9 @@ pub fn query_staked_value(deps: Deps, env: Env, address: String) -> StdResult<St
     }
 }
 
-pub fn query_total_value(deps: Deps, env: Env) -> StdResult<TotalValueResponse> {
+pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse> {
     let balance = BALANCE.load(deps.storage).unwrap_or_default();
-    Ok(TotalValueResponse {
-        total: balance,
-    })
+    Ok(TotalValueResponse { total: balance })
 }
 
 pub fn query_unstaking_duration(deps: Deps) -> StdResult<UnstakingDurationResponse> {
@@ -363,7 +365,7 @@ pub fn query_changelog(
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::{BorrowMut};
+    use std::borrow::BorrowMut;
 
     use crate::msg::{
         ExecuteMsg, GetChangeLogResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
@@ -378,7 +380,6 @@ mod tests {
 
     use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 
-    
     use anyhow::Result as AnyResult;
     use cw_controllers::{Claim, ClaimsResponse};
     use cw_utils::Expiration::AtHeight;
