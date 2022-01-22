@@ -279,15 +279,8 @@ pub fn query_total_staked_at_height(
 }
 
 pub fn query_staked_value(deps: Deps, env: Env, address: String) -> StdResult<StakedValueResponse> {
-    let config = CONFIG.load(deps.storage)?;
     let address = deps.api.addr_validate(&address)?;
-    let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(
-        &config.token_address,
-        &Cw20QueryMsg::Balance {
-            address: env.contract.address.to_string(),
-        },
-    )?;
-    let balance = balance.balance;
+    let balance = BALANCE.load(deps.storage).unwrap_or_default();
     let staked = STAKED_BALANCES
         .load(deps.storage, &address)
         .unwrap_or_default();
@@ -307,15 +300,9 @@ pub fn query_staked_value(deps: Deps, env: Env, address: String) -> StdResult<St
 }
 
 pub fn query_total_value(deps: Deps, env: Env) -> StdResult<TotalValueResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(
-        &config.token_address,
-        &Cw20QueryMsg::Balance {
-            address: env.contract.address.to_string(),
-        },
-    )?;
+    let balance = BALANCE.load(deps.storage).unwrap_or_default();
     Ok(TotalValueResponse {
-        total: balance.balance,
+        total: balance,
     })
 }
 
@@ -1232,7 +1219,7 @@ mod tests {
             Uint128::from(0u128)
         );
         assert_eq!(
-            query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+            query_staked_balance(&app, &staking_addr, ADDR2.to_string()),
             Uint128::from(0u128)
         );
 
