@@ -12,5 +12,5 @@ pub enum ContractError {
     #[error("Invalid token")]
     InvalidToken { received: Addr, expected: Addr },
     #[error("Unauthorized")]
-    Unauthorized { received: Addr, expected: Addr }
+    Unauthorized { received: Addr, expected: Addr },
 }

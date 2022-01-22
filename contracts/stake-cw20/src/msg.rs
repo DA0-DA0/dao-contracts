@@ -21,7 +21,7 @@ pub enum ExecuteMsg {
     Unstake { amount: Uint128 },
     Claim {},
     UpdateAdmin { admin: Addr },
-    UpdateUnstakingDuration { duration: Duration }
+    UpdateUnstakingDuration { duration: Duration },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
