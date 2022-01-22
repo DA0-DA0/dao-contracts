@@ -1,5 +1,6 @@
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 pub use stake_cw20::msg::{
@@ -13,6 +14,8 @@ pub enum ExecuteMsg {
     Unstake { amount: Uint128 },
     Claim {},
     DelegateVotes { recipient: String },
+    UpdateAdmin { admin: Addr },
+    UpdateUnstakingDuration { duration: Option<Duration> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

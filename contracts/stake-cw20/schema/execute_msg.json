@@ -74,12 +74,16 @@
       "properties": {
         "update_unstaking_duration": {
           "type": "object",
-          "required": [
-            "duration"
-          ],
           "properties": {
             "duration": {
-              "$ref": "#/definitions/Duration"
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }

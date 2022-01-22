@@ -86,7 +86,7 @@ pub fn execute_update_admin(
 pub fn execute_update_unstaking_duration(
     info: MessageInfo,
     deps: DepsMut,
-    duration: Duration,
+    duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
     if info.sender != config.admin {
@@ -96,10 +96,10 @@ pub fn execute_update_unstaking_duration(
         });
     }
 
-    config.unstaking_duration = Some(duration);
+    config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("unstaking_duration", duration.to_string()))
+    Ok(Response::new())
 }
 
 pub fn execute_receive(

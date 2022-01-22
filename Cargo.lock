@@ -781,6 +781,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 0.11.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-utils",
  "cw2",
  "cw20",
  "cw20-base",
