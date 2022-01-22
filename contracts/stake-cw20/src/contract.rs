@@ -26,6 +26,7 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
+use cw_utils::Duration;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -34,7 +35,10 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
+    let admin = deps.api.addr_validate(msg.admin.as_str())?;
+
     let config = Config {
+        admin,
         token_address: msg.token_address,
         unstaking_duration: msg.unstaking_duration,
     };
@@ -53,8 +57,44 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
+        ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(info, deps, admin),
+        ExecuteMsg::UpdateUnstakingDuration { duration } => execute_update_unstaking_duration(info, deps, duration),
+
     }
 }
+
+pub fn execute_update_admin(
+    info: MessageInfo,
+    deps: DepsMut,
+    admin: Addr,
+) -> Result<Response, ContractError> {
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized { expected: config.admin, received: info.sender });
+    }
+
+    config.admin = admin.clone();
+
+    CONFIG.save(deps.storage, &config)?;
+    Ok(Response::new().add_attribute("owner", admin.to_string()))
+}
+
+pub fn execute_update_unstaking_duration(
+    info: MessageInfo,
+    deps: DepsMut,
+    duration: Duration,
+) -> Result<Response, ContractError> {
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized { expected: config.admin, received: info.sender });
+    }
+
+    config.unstaking_duration = Some(duration);
+
+    CONFIG.save(deps.storage, &config)?;
+    Ok(Response::new().add_attribute("unstaking_duration", duration.to_string()))
+}
+
 pub fn execute_receive(
     deps: DepsMut,
     env: Env,
@@ -363,6 +403,7 @@ mod tests {
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
+            admin: Addr::unchecked("owner"),
             token_address: cw20,
             unstaking_duration,
         };
@@ -404,6 +445,32 @@ mod tests {
             app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.balance
     }
+
+    // fn query_admin<T: Into<String>, U: Into<String>>(
+    //     app: &App,
+    //     contract_addr: T,
+    //     address: U,
+    // ) -> Uint128 {
+    //     let msg = QueryMsg::StakedBalanceAtHeight {
+    //         address: address.into(),
+    //         height: None,
+    //     };
+    //     let result: StakedBalanceAtHeightResponse =
+    //         app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+    //     result.balance
+    // }
+
+    fn query_unstaking_duration<T: Into<String>, U: Into<Option<Duration>>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = QueryMsg::UnstakingDuration {};
+        let result: UnstakingDurationResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.duration
+    }
+
 
     fn query_total_staked<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
         let msg = QueryMsg::TotalStakedAtHeight { height: None };
@@ -462,6 +529,34 @@ mod tests {
         let msg = ExecuteMsg::Claim {};
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
+
+    #[test]
+    fn test_update_admin() {
+        let _deps = mock_dependencies();
+
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, None);
+
+        let info = mock_info("owner", &[]);
+        let _env = mock_env();
+
+        let msg = ExecuteMsg::UpdateAdmin {
+            admin: Addr::unchecked("owner2")
+        };
+        let _res = app
+            .borrow_mut()
+            .execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+            .unwrap();
+
+    
+    }
+
 
     #[test]
     fn test_staking() {

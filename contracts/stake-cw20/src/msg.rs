@@ -9,6 +9,7 @@ pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
+    pub admin: Addr,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }
@@ -19,6 +20,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Unstake { amount: Uint128 },
     Claim {},
+    UpdateAdmin { admin: Addr },
+    UpdateUnstakingDuration { duration: Duration }
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
