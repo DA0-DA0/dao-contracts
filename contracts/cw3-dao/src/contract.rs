@@ -140,6 +140,7 @@ pub fn instantiate(
                 admin: Some(env.contract.address.to_string()),
                 label,
                 msg: to_binary(&stake_cw20_gov::msg::InstantiateMsg {
+                    admin: env.contract.address,
                     unstaking_duration,
                     token_address: cw20_addr.addr(),
                 })?,
@@ -665,6 +666,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         admin: Some(env.contract.address.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20_gov::msg::InstantiateMsg {
+                            admin: env.contract.address,
                             unstaking_duration,
                             token_address: cw20_addr,
                         })?,
