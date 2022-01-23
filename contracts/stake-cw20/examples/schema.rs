@@ -9,7 +9,8 @@ use cw20::{
 };
 use stake_cw20::msg::{
     ClaimsResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakedBalanceAtHeightResponse,
-    TotalStakedAtHeightResponse, UnstakingDurationResponse,
+    StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+    UnstakingDurationResponse,
 };
 
 fn main() {
@@ -23,6 +24,8 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(StakedBalanceAtHeightResponse), &out_dir);
     export_schema(&schema_for!(TotalStakedAtHeightResponse), &out_dir);
+    export_schema(&schema_for!(StakedValueResponse), &out_dir);
+    export_schema(&schema_for!(TotalValueResponse), &out_dir);
     export_schema(&schema_for!(UnstakingDurationResponse), &out_dir);
     export_schema(&schema_for!(ClaimsResponse), &out_dir);
     export_schema(&schema_for!(AllowanceResponse), &out_dir);
