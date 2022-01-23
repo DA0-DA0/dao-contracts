@@ -35,8 +35,8 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => stake_cw20::contract::execute_claim(deps, env, info),
-        ExecuteMsg::UpdateAdmin { admin } => {
-            stake_cw20::contract::execute_update_admin(info, deps, admin)
+        ExecuteMsg::UpdateConfig { admin } => {
+            stake_cw20::contract::execute_update_config(info, deps, admin)
         }
         ExecuteMsg::UpdateUnstakingDuration { duration } => {
             stake_cw20::contract::execute_update_unstaking_duration(info, deps, duration)

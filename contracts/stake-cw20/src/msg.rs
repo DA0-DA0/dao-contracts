@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Unstake { amount: Uint128 },
     Claim {},
-    UpdateAdmin { admin: Addr },
+    UpdateConfig { admin: Addr },
     UpdateUnstakingDuration { duration: Option<Duration> },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

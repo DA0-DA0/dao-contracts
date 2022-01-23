@@ -14,7 +14,7 @@ pub enum ExecuteMsg {
     Unstake { amount: Uint128 },
     Claim {},
     DelegateVotes { recipient: String },
-    UpdateAdmin { admin: Addr },
+    UpdateConfig { admin: Addr },
     UpdateUnstakingDuration { duration: Option<Duration> },
 }
 
