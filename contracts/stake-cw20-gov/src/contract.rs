@@ -5,6 +5,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use cw20::Cw20ReceiveMsg;
+use cw2::set_contract_version;
 
 use crate::msg::{
     DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg,
@@ -14,14 +15,21 @@ use crate::state::{DELEGATIONS, VOTING_POWER};
 use stake_cw20::state::{CONFIG, STAKED_BALANCES};
 use stake_cw20::ContractError;
 
+const CONTRACT_NAME: &str = "crates.io:stake_cw20";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    stake_cw20::contract::instantiate(deps, _env, _info, msg)
+    let res = stake_cw20::contract::instantiate(deps.branch(), _env, _info, msg)?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION).map_err(ContractError::Std)?;
+
+    Ok(res)
+
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

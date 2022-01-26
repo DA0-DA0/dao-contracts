@@ -25,8 +25,12 @@ pub use cw20_base::contract::{
     query_token_info,
 };
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
+use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
+
+const CONTRACT_NAME: &str = "crates.io:stake_cw20";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -40,6 +44,8 @@ pub fn instantiate(
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     Ok(Response::new())
 }
 
