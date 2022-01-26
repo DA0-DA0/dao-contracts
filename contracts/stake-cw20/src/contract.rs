@@ -10,7 +10,8 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
     ExecuteMsg, GetChangeLogResponse, GetConfigResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalValueResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse,
+    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+    TotalValueResponse, UnstakingDurationResponse,
 };
 use crate::state::{Config, BALANCE, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
@@ -422,9 +423,9 @@ mod tests {
     use std::borrow::BorrowMut;
 
     use crate::msg::{
-        ExecuteMsg, GetChangeLogResponse, GetConfigResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-        StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
-        UnstakingDurationResponse,
+        ExecuteMsg, GetChangeLogResponse, GetConfigResponse, QueryMsg, ReceiveMsg,
+        StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+        TotalValueResponse, UnstakingDurationResponse,
     };
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
