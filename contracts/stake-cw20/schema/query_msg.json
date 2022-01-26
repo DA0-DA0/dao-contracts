@@ -55,6 +55,38 @@
     {
       "type": "object",
       "required": [
+        "staked_value"
+      ],
+      "properties": {
+        "staked_value": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "total_value"
+      ],
+      "properties": {
+        "total_value": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "unstaking_duration"
       ],
       "properties": {
