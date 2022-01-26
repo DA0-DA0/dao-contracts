@@ -4,8 +4,8 @@ use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
     Uint128,
 };
-use cw20::Cw20ReceiveMsg;
 use cw2::set_contract_version;
+use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
     DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg,
@@ -26,10 +26,10 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let res = stake_cw20::contract::instantiate(deps.branch(), _env, _info, msg)?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION).map_err(ContractError::Std)?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)
+        .map_err(ContractError::Std)?;
 
     Ok(res)
-
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

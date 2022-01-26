@@ -15,6 +15,7 @@ use crate::msg::{
 };
 use crate::state::{Config, BALANCE, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
+use cw2::set_contract_version;
 pub use cw20_base::allowances::{
     execute_burn_from, execute_decrease_allowance, execute_increase_allowance, execute_send_from,
     execute_transfer_from, query_allowance,
@@ -25,7 +26,6 @@ pub use cw20_base::contract::{
     query_token_info,
 };
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
-use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_storage_plus::Bound;
 
