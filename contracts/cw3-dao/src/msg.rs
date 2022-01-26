@@ -38,7 +38,7 @@ pub enum GovTokenMsg {
         stake_contract_code_id: u64,
         label: String,
         initial_dao_balance: Option<Uint128>,
-        msg: GovTokenInstantiateMsg,
+        msg: Box<GovTokenInstantiateMsg>,
         unstaking_duration: Option<Duration>,
     },
     /// Use an existing cw20 token

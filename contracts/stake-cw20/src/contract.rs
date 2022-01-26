@@ -9,7 +9,7 @@ use cosmwasm_std::{
 use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
-    ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
+    ExecuteMsg, GetChangeLogResponse, GetConfigResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
     StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse,
 };
 use crate::state::{Config, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
@@ -227,6 +227,7 @@ pub fn execute_claim(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
         QueryMsg::StakedBalanceAtHeight { address, height } => {
             to_binary(&query_staked_balance_at_height(deps, env, address, height)?)
         }
@@ -279,6 +280,13 @@ pub fn query_unstaking_duration(deps: Deps) -> StdResult<UnstakingDurationRespon
     let config = CONFIG.load(deps.storage)?;
     Ok(UnstakingDurationResponse {
         duration: config.unstaking_duration,
+    })
+}
+
+pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    Ok(GetConfigResponse {
+        admin: config.admin,
     })
 }
 
@@ -335,8 +343,8 @@ mod tests {
     use std::borrow::BorrowMut;
 
     use crate::msg::{
-        ExecuteMsg, GetChangeLogResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-        TotalStakedAtHeightResponse, UnstakingDurationResponse,
+        ExecuteMsg, GetChangeLogResponse, GetConfigResponse, QueryMsg, ReceiveMsg,
+        StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse, UnstakingDurationResponse,
     };
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -453,6 +461,18 @@ mod tests {
         result.balance
     }
 
+    fn query_config<T: Into<String>>(app: &App, contract_addr: T) -> GetConfigResponse {
+        let msg = QueryMsg::GetConfig {};
+        app.wrap().query_wasm_smart(contract_addr, &msg).unwrap()
+    }
+
+    fn query_unstaking_duration<T: Into<String>>(app: &App, contract_addr: T) -> Option<Duration> {
+        let msg = QueryMsg::UnstakingDuration {};
+        let result: UnstakingDurationResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.duration
+    }
+
     fn query_total_staked<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
         let msg = QueryMsg::TotalStakedAtHeight { height: None };
         let result: TotalStakedAtHeightResponse =
@@ -492,6 +512,26 @@ mod tests {
         app.execute_contract(info.sender, cw20_addr.clone(), &msg, &[])
     }
 
+    fn update_config(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+        admin: Addr,
+    ) -> AnyResult<AppResponse> {
+        let msg = ExecuteMsg::UpdateConfig { admin };
+        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+    }
+
+    fn update_unstaking_duration(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+        duration: Option<Duration>,
+    ) -> AnyResult<AppResponse> {
+        let msg = ExecuteMsg::UpdateUnstakingDuration { duration };
+        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+    }
+
     fn unstake_tokens(
         app: &mut App,
         staking_addr: &Addr,
@@ -509,6 +549,62 @@ mod tests {
     ) -> AnyResult<AppResponse> {
         let msg = ExecuteMsg::Claim {};
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+    }
+
+    #[test]
+    fn test_update_config() {
+        let _deps = mock_dependencies();
+
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, _cw20_addr) = setup_test_case(&mut app, initial_balances, None);
+
+        let info = mock_info("owner", &[]);
+        let _env = mock_env();
+
+        update_config(&mut app, &staking_addr, info, Addr::unchecked("owner2")).unwrap();
+
+        let config = query_config(&app, &staking_addr);
+        assert_eq!(config.admin, Addr::unchecked("owner2"));
+
+        // Try updating admin with original owner, which is now invalid
+        let info = mock_info("owner", &[]);
+        let _err =
+            update_config(&mut app, &staking_addr, info, Addr::unchecked("owner3")).unwrap_err();
+    }
+
+    #[test]
+    fn test_update_unstaking_duration() {
+        let _deps = mock_dependencies();
+
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, _cw20_addr) = setup_test_case(&mut app, initial_balances, None);
+
+        let info = mock_info("owner", &[]);
+        let _env = mock_env();
+
+        update_unstaking_duration(&mut app, &staking_addr, info, Some(Duration::Height(100)))
+            .unwrap();
+
+        let duration = query_unstaking_duration(&app, &staking_addr);
+        assert_eq!(duration, Some(Duration::Height(100)));
+
+        // Try updating staking duration with invalid admin
+        let info = mock_info("owner2", &[]);
+        let _err =
+            update_unstaking_duration(&mut app, &staking_addr, info, Some(Duration::Height(200)))
+                .unwrap_err();
     }
 
     #[test]

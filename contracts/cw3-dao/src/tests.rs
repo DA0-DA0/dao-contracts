@@ -316,13 +316,13 @@ fn instantiate_new_gov_token() {
             stake_contract_code_id,
             label: String::from("DAO DAO"),
             initial_dao_balance: Some(Uint128::new(1000000)),
-            msg: GovTokenInstantiateMsg {
+            msg: Box::new(GovTokenInstantiateMsg {
                 name: String::from("DAO DAO"),
                 symbol: String::from("DAO"),
                 decimals: 6,
                 initial_balances: vec![],
                 marketing: None,
-            },
+            }),
             unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {
@@ -375,13 +375,13 @@ fn instantiate_new_gov_token() {
             stake_contract_code_id,
             label: String::from("DAO DAO"),
             initial_dao_balance: None,
-            msg: GovTokenInstantiateMsg {
+            msg: Box::new(GovTokenInstantiateMsg {
                 name: String::from("DAO DAO"),
                 symbol: String::from("DAO"),
                 decimals: 6,
                 initial_balances: initial_balances.clone(),
                 marketing: None,
-            },
+            }),
             unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {
@@ -514,13 +514,13 @@ fn instantiate_new_gov_token() {
             stake_contract_code_id,
             label: String::from("DAO DAO"),
             initial_dao_balance: Some(Uint128::new(1000)),
-            msg: GovTokenInstantiateMsg {
+            msg: Box::new(GovTokenInstantiateMsg {
                 name: String::from("DAO DAO"),
                 symbol: String::from("DAO"),
                 decimals: 6,
                 initial_balances,
                 marketing: None,
-            },
+            }),
             unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {

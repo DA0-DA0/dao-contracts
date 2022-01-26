@@ -40,6 +40,7 @@ pub enum QueryMsg {
         height: Option<u64>,
     },
     UnstakingDuration {},
+    GetConfig {},
     Claims {
         address: String,
     },
@@ -68,6 +69,12 @@ pub struct TotalStakedAtHeightResponse {
 #[serde(rename_all = "snake_case")]
 pub struct UnstakingDurationResponse {
     pub duration: Option<Duration>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GetConfigResponse {
+    pub admin: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
