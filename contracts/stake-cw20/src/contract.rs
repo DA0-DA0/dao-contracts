@@ -78,10 +78,10 @@ pub fn execute_update_config(
         });
     }
 
-    config.admin = admin.clone();
+    config.admin = admin;
 
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("owner", admin.to_string()))
+    Ok(Response::new().add_attribute("owner", config.admin.to_string()))
 }
 
 pub fn execute_update_unstaking_duration(
