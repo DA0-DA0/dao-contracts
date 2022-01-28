@@ -2,16 +2,16 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 
 use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
-    ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse, UnstakingDurationResponse,
+    ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+    StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+    UnstakingDurationResponse,
 };
 use crate::state::{Config, BALANCE, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
@@ -26,7 +26,6 @@ pub use cw20_base::contract::{
 };
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
-use cw_storage_plus::Bound;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -238,17 +237,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalValue {} => to_binary(&query_total_value(deps, env)?),
         QueryMsg::UnstakingDuration {} => to_binary(&query_unstaking_duration(deps)?),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
-        QueryMsg::GetChangelog {
-            address,
-            start_height,
-            end_height,
-        } => to_binary(&query_changelog(
-            deps,
-            env,
-            address,
-            start_height,
-            end_height,
-        )?),
     }
 }
 
@@ -319,58 +307,13 @@ pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
 
-pub fn query_changelog(
-    deps: Deps,
-    env: Env,
-    address: String,
-    start_height: Option<u64>,
-    end_height: Option<u64>,
-) -> StdResult<GetChangeLogResponse> {
-    let start_height = start_height.unwrap_or(0);
-    let end_height = end_height.unwrap_or(env.block.height);
-    let address = &deps.api.addr_validate(&address)?;
-    let min_bound = Bound::inclusive_int(start_height);
-    // This bound is exclusive as we manually add the first entry to ensure we always know the final value
-    let max_bound = Bound::exclusive_int(end_height);
-
-    let final_balance = STAKED_BALANCES
-        .may_load_at_height(deps.storage, address, end_height)?
-        .unwrap_or_default();
-    let mut result = vec![(end_height, final_balance)];
-
-    let changelog = STAKED_BALANCES
-        .changelog()
-        .prefix(address)
-        .range(
-            deps.storage,
-            Some(min_bound),
-            Some(max_bound),
-            Order::Descending,
-        )
-        .collect::<StdResult<Vec<_>>>()?;
-    let mut changelog = changelog
-        .into_iter()
-        .map(|(h, x)| -> (u64, Uint128) {
-            match x.old {
-                // The None entry represents the first balance of the account
-                None => (h, Uint128::zero()),
-                Some(old) => (h, old),
-            }
-        })
-        .collect::<Vec<_>>();
-    result.append(&mut changelog);
-
-    Ok(GetChangeLogResponse { changelog: result })
-}
-
 #[cfg(test)]
 mod tests {
     use std::borrow::BorrowMut;
 
     use crate::msg::{
-        ExecuteMsg, GetChangeLogResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-        StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
-        UnstakingDurationResponse,
+        ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse,
+        TotalStakedAtHeightResponse, TotalValueResponse, UnstakingDurationResponse,
     };
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -523,23 +466,6 @@ mod tests {
         };
         let result: ClaimsResponse = app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.claims
-    }
-
-    fn query_changelog<T: Into<String>, U: Into<String>>(
-        app: &App,
-        contract_addr: T,
-        address: U,
-        start_height: u64,
-        end_height: u64,
-    ) -> Vec<(u64, Uint128)> {
-        let msg = QueryMsg::GetChangelog {
-            address: address.into(),
-            start_height: Some(start_height),
-            end_height: Some(end_height),
-        };
-        let result: GetChangeLogResponse =
-            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-        result.changelog
     }
 
     fn stake_tokens(
@@ -868,127 +794,6 @@ mod tests {
         assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::zero());
         assert_eq!(get_balance(&app, &cw20_addr, ADDR3), Uint128::zero());
         assert_eq!(get_balance(&app, &cw20_addr, ADDR4), Uint128::zero());
-    }
-
-    #[test]
-    fn test_get_changelog() {
-        let mut app = mock_app();
-        let amount1 = Uint128::new(10000);
-        let _token_address = Addr::unchecked("token_address}");
-        let initial_balances = vec![Cw20Coin {
-            address: ADDR1.to_string(),
-            amount: amount1,
-        }];
-        let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, None);
-
-        let info = mock_info(ADDR1, &[]);
-        let _env = mock_env();
-
-        let start_height = 100000u64;
-        app.update_block(|x| x.height = start_height);
-        let changes = vec![
-            (start_height, Uint128::new(100)),
-            (start_height + 100, Uint128::new(100)),
-            (start_height + 200, Uint128::new(100)),
-            (start_height + 300, Uint128::new(100)),
-        ];
-        // Stake Tokens
-        for (h, a) in changes {
-            app.update_block(|b| b.height = h);
-            stake_tokens(&mut app, &staking_addr, &cw20_addr, info.clone(), a).unwrap();
-        }
-
-        let expected = vec![
-            (start_height + 300, Uint128::new(300)),
-            (start_height + 200, Uint128::new(200)),
-            (start_height + 100, Uint128::new(100)),
-            (start_height, Uint128::new(0)),
-        ];
-
-        let result = query_changelog(&app, &staking_addr, ADDR1, start_height, start_height + 300);
-        assert_eq!(result, expected);
-
-        // Test new value is appended to end
-        let expected = vec![
-            (start_height + 350, Uint128::new(400)),
-            (start_height + 300, Uint128::new(300)),
-            (start_height + 200, Uint128::new(200)),
-            (start_height + 100, Uint128::new(100)),
-            (start_height, Uint128::new(0)),
-        ];
-
-        let result = query_changelog(&app, &staking_addr, ADDR1, start_height, start_height + 350);
-        assert_eq!(result, expected);
-
-        // Test partial change log
-        let expected = vec![
-            (start_height + 350, Uint128::new(400)),
-            (start_height + 300, Uint128::new(300)),
-            (start_height + 200, Uint128::new(200)),
-        ];
-
-        let result = query_changelog(
-            &app,
-            &staking_addr,
-            ADDR1,
-            start_height + 200,
-            start_height + 350,
-        );
-        assert_eq!(result, expected);
-
-        let unstaking_height = 200000u64;
-        app.update_block(|x| x.height = unstaking_height);
-        let changes = vec![
-            (unstaking_height, Uint128::new(100)),
-            (unstaking_height + 100, Uint128::new(100)),
-            (unstaking_height + 200, Uint128::new(100)),
-            (unstaking_height + 300, Uint128::new(100)),
-        ];
-
-        // Unstake Tokens
-        for (h, a) in changes {
-            app.update_block(|b| b.height = h);
-            unstake_tokens(&mut app, &staking_addr, info.clone(), a).unwrap();
-        }
-
-        let expected = vec![
-            (unstaking_height + 350, Uint128::new(0)),
-            (unstaking_height + 300, Uint128::new(100)),
-            (unstaking_height + 200, Uint128::new(200)),
-            (unstaking_height + 100, Uint128::new(300)),
-            (unstaking_height, Uint128::new(400)),
-        ];
-
-        let result = query_changelog(
-            &app,
-            &staking_addr,
-            ADDR1,
-            unstaking_height,
-            unstaking_height + 350,
-        );
-        assert_eq!(result, expected);
-
-        // Query entire changelog
-        let expected = vec![
-            (unstaking_height + 350, Uint128::new(0)),
-            (unstaking_height + 300, Uint128::new(100)),
-            (unstaking_height + 200, Uint128::new(200)),
-            (unstaking_height + 100, Uint128::new(300)),
-            (unstaking_height, Uint128::new(400)),
-            (start_height + 300, Uint128::new(300)),
-            (start_height + 200, Uint128::new(200)),
-            (start_height + 100, Uint128::new(100)),
-            (start_height, Uint128::new(0)),
-        ];
-
-        let result = query_changelog(
-            &app,
-            &staking_addr,
-            ADDR1,
-            start_height,
-            unstaking_height + 350,
-        );
-        assert_eq!(result, expected);
     }
 
     #[test]
