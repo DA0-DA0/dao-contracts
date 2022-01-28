@@ -2,16 +2,16 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 
 use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse, UnstakingDurationResponse,
+    ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+    StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+    UnstakingDurationResponse,
 };
 use crate::state::{Config, BALANCE, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
@@ -26,7 +26,6 @@ pub use cw20_base::contract::{
 };
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
-use cw_storage_plus::Bound;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -313,9 +312,8 @@ mod tests {
     use std::borrow::BorrowMut;
 
     use crate::msg::{
-        ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-        StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
-        UnstakingDurationResponse,
+        ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse,
+        TotalStakedAtHeightResponse, TotalValueResponse, UnstakingDurationResponse,
     };
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
