@@ -9,7 +9,7 @@ use cosmwasm_std::{
 use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
-    ExecuteMsg, GetChangeLogResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
+    ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg,
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse, UnstakingDurationResponse,
 };
@@ -313,7 +313,7 @@ mod tests {
     use std::borrow::BorrowMut;
 
     use crate::msg::{
-        ExecuteMsg, GetChangeLogResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+        ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
         StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
         UnstakingDurationResponse,
     };
