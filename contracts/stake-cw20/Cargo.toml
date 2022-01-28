@@ -18,7 +18,7 @@ library = []
 [dependencies]
 cosmwasm-std = { version = "1.0.0-beta4" }
 cosmwasm-storage = { version = "1.0.0-beta4" }
-cw-storage-plus = { git = "https://github.com/CosmWasm/cw-plus", ref="501efe8fb5151f658380a87c30091a2851e556e5"}
+cw-storage-plus = { version = "0.11" }
 cw-controllers = "0.11"
 cw20 = { version = "0.11" }
 cw-utils = { version = "0.11" }
