@@ -15,7 +15,7 @@ use crate::state::{DELEGATIONS, VOTING_POWER};
 use stake_cw20::state::{CONFIG, STAKED_BALANCES};
 use stake_cw20::ContractError;
 
-const CONTRACT_NAME: &str = "crates.io:stake_cw20";
+const CONTRACT_NAME: &str = "crates.io:stake_cw20_gov";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
