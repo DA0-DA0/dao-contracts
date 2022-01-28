@@ -1,5 +1,6 @@
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 pub use stake_cw20::msg::{
@@ -10,9 +11,17 @@ pub use stake_cw20::msg::{
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Unstake { amount: Uint128 },
+    Unstake {
+        amount: Uint128,
+    },
     Claim {},
-    DelegateVotes { recipient: String },
+    DelegateVotes {
+        recipient: String,
+    },
+    UpdateConfig {
+        admin: Addr,
+        duration: Option<Duration>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -40,8 +49,8 @@ pub enum QueryMsg {
     /// Returns the total staked amount of tokens at a given height, if no height is provided
     /// defaults to current block height.
     TotalStakedAtHeight { height: Option<u64> },
-    /// Returns the unstaking duration for the contract.
-    UnstakingDuration {},
+    /// Returns the config for the contract.
+    GetConfig {},
     /// Returns existing claims for tokens currently unstaking for a given address.
     Claims { address: String },
 }

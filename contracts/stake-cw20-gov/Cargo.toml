@@ -20,6 +20,7 @@ cw20 = { version = "0.11" }
 stake-cw20 = { path = "../stake-cw20", version = "0.2.0", features = ["library"]  }
 cw20-base = {  version = "0.11", features = ["library"] }
 cw-storage-plus = { version = "0.11" }
+cw-utils = { version = "0.11" }
 cosmwasm-std = { version = "1.0.0-beta" }
 schemars = "0.8.6"
 serde = { version = "1.0.130", default-features = false, features = ["derive"] }

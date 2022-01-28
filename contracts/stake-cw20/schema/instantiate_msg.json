@@ -3,9 +3,13 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "admin",
     "token_address"
   ],
   "properties": {
+    "admin": {
+      "$ref": "#/definitions/Addr"
+    },
     "token_address": {
       "$ref": "#/definitions/Addr"
     },

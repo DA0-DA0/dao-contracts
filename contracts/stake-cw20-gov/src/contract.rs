@@ -43,6 +43,9 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => stake_cw20::contract::execute_claim(deps, env, info),
+        ExecuteMsg::UpdateConfig { admin, duration } => {
+            stake_cw20::contract::execute_update_config(info, deps, admin, duration)
+        }
         ExecuteMsg::DelegateVotes { recipient } => {
             execute_delegate_votes(deps, env, info, recipient)
         }
@@ -156,9 +159,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::StakedBalanceAtHeight { address, height } => to_binary(
             &stake_cw20::contract::query_staked_balance_at_height(deps, env, address, height)?,
         ),
-        QueryMsg::UnstakingDuration {} => {
-            to_binary(&stake_cw20::contract::query_unstaking_duration(deps)?)
-        }
+        QueryMsg::GetConfig {} => to_binary(&stake_cw20::contract::query_config(deps)?),
         QueryMsg::Claims { address } => {
             to_binary(&stake_cw20::contract::query_claims(deps, address)?)
         }
@@ -246,6 +247,7 @@ mod tests {
     fn instantiate_staking(app: &mut App, cw20: Addr) -> Addr {
         let staking_code_id = app.store_code(contract_staking_gov());
         let msg = crate::msg::InstantiateMsg {
+            admin: Addr::unchecked("owner"),
             token_address: cw20,
             unstaking_duration: None,
         };

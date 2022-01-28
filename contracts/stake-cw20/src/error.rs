@@ -11,4 +11,6 @@ pub enum ContractError {
     NothingToClaim {},
     #[error("Invalid token")]
     InvalidToken { received: Addr, expected: Addr },
+    #[error("Unauthorized")]
+    Unauthorized { received: Addr, expected: Addr },
 }

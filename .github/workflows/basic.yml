@@ -12,17 +12,18 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Install stable toolchain
+      - name: Install latest nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.51.0
+          toolchain: nightly
           target: wasm32-unknown-unknown
           override: true
 
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly
           command: test
           args: --locked
         env:
@@ -31,6 +32,7 @@ jobs:
       - name: Compile WASM contract
         uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly
           command: wasm
           args: --locked
         env:
@@ -47,19 +49,21 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: 1.51.0
+          toolchain: nightly
           override: true
           components: rustfmt, clippy
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly
           command: fmt
           args: --all -- --check
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
+          toolchain: nightly
           command: clippy
           args: --all-targets -- -D warnings
 
