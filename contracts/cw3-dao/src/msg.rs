@@ -31,6 +31,7 @@ pub struct InstantiateMsg {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
 pub enum GovTokenMsg {
     // Instantiate a new cw20 token with the DAO as minter
     InstantiateNewCw20 {
@@ -38,7 +39,7 @@ pub enum GovTokenMsg {
         stake_contract_code_id: u64,
         label: String,
         initial_dao_balance: Option<Uint128>,
-        msg: Box<GovTokenInstantiateMsg>,
+        msg: GovTokenInstantiateMsg,
         unstaking_duration: Option<Duration>,
     },
     /// Use an existing cw20 token
