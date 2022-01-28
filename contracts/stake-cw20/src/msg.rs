@@ -18,10 +18,14 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Unstake { amount: Uint128 },
+    Unstake {
+        amount: Uint128,
+    },
     Claim {},
-    UpdateConfig { admin: Addr },
-    UpdateUnstakingDuration { duration: Option<Duration> },
+    UpdateConfig {
+        admin: Addr,
+        duration: Option<Duration>,
+    },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

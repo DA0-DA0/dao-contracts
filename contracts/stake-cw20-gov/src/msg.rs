@@ -11,11 +11,17 @@ pub use stake_cw20::msg::{
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Unstake { amount: Uint128 },
+    Unstake {
+        amount: Uint128,
+    },
     Claim {},
-    DelegateVotes { recipient: String },
-    UpdateConfig { admin: Addr },
-    UpdateUnstakingDuration { duration: Option<Duration> },
+    DelegateVotes {
+        recipient: String,
+    },
+    UpdateConfig {
+        admin: Addr,
+        duration: Option<Duration>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -58,9 +58,8 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
-        ExecuteMsg::UpdateConfig { admin } => execute_update_config(info, deps, admin),
-        ExecuteMsg::UpdateUnstakingDuration { duration } => {
-            execute_update_unstaking_duration(info, deps, duration)
+        ExecuteMsg::UpdateConfig { admin, duration } => {
+            execute_update_config(info, deps, admin, duration)
         }
     }
 }
@@ -69,24 +68,6 @@ pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
     admin: Addr,
-) -> Result<Response, ContractError> {
-    let mut config: Config = CONFIG.load(deps.storage)?;
-    if info.sender != config.admin {
-        return Err(ContractError::Unauthorized {
-            expected: config.admin,
-            received: info.sender,
-        });
-    }
-
-    config.admin = admin;
-
-    CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("owner", config.admin.to_string()))
-}
-
-pub fn execute_update_unstaking_duration(
-    info: MessageInfo,
-    deps: DepsMut,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
@@ -97,10 +78,11 @@ pub fn execute_update_unstaking_duration(
         });
     }
 
+    config.admin = admin;
     config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("owner", config.admin.to_string()))
 }
 
 pub fn execute_receive(
@@ -630,18 +612,9 @@ mod tests {
         staking_addr: &Addr,
         info: MessageInfo,
         admin: Addr,
-    ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::UpdateConfig { admin };
-        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
-    }
-
-    fn update_unstaking_duration(
-        app: &mut App,
-        staking_addr: &Addr,
-        info: MessageInfo,
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::UpdateUnstakingDuration { duration };
+        let msg = ExecuteMsg::UpdateConfig { admin, duration };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
@@ -679,45 +652,32 @@ mod tests {
 
         let info = mock_info("owner", &[]);
         let _env = mock_env();
-
-        update_config(&mut app, &staking_addr, info, Addr::unchecked("owner2")).unwrap();
+        // Test update admin
+        update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            Addr::unchecked("owner2"),
+            Some(Duration::Height(100)),
+        )
+        .unwrap();
 
         let config = query_config(&app, &staking_addr);
         assert_eq!(config.admin, Addr::unchecked("owner2"));
 
-        // Try updating admin with original owner, which is now invalid
-        let info = mock_info("owner", &[]);
-        let _err =
-            update_config(&mut app, &staking_addr, info, Addr::unchecked("owner3")).unwrap_err();
-    }
-
-    #[test]
-    fn test_update_unstaking_duration() {
-        let _deps = mock_dependencies();
-
-        let mut app = mock_app();
-        let amount1 = Uint128::from(100u128);
-        let _token_address = Addr::unchecked("token_address");
-        let initial_balances = vec![Cw20Coin {
-            address: ADDR1.to_string(),
-            amount: amount1,
-        }];
-        let (staking_addr, _cw20_addr) = setup_test_case(&mut app, initial_balances, None);
-
-        let info = mock_info("owner", &[]);
-        let _env = mock_env();
-
-        update_unstaking_duration(&mut app, &staking_addr, info, Some(Duration::Height(100)))
-            .unwrap();
-
         let duration = query_unstaking_duration(&app, &staking_addr);
         assert_eq!(duration, Some(Duration::Height(100)));
 
-        // Try updating staking duration with invalid admin
-        let info = mock_info("owner2", &[]);
-        let _err =
-            update_unstaking_duration(&mut app, &staking_addr, info, Some(Duration::Height(200)))
-                .unwrap_err();
+        // Try updating admin with original owner, which is now invalid
+        let info = mock_info("owner", &[]);
+        let _err = update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            Addr::unchecked("owner3"),
+            Some(Duration::Height(100)),
+        )
+        .unwrap_err();
     }
 
     #[test]

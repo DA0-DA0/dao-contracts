@@ -60,21 +60,7 @@
           "properties": {
             "admin": {
               "$ref": "#/definitions/Addr"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "update_unstaking_duration"
-      ],
-      "properties": {
-        "update_unstaking_duration": {
-          "type": "object",
-          "properties": {
+            },
             "duration": {
               "anyOf": [
                 {
