@@ -8,9 +8,9 @@ use cw20::{
     TokenInfoResponse,
 };
 use stake_cw20::msg::{
-    ClaimsResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakedBalanceAtHeightResponse,
-    StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
-    UnstakingDurationResponse,
+    ClaimsResponse, ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg,
+    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+    TotalValueResponse,
 };
 
 fn main() {
@@ -26,7 +26,7 @@ fn main() {
     export_schema(&schema_for!(TotalStakedAtHeightResponse), &out_dir);
     export_schema(&schema_for!(StakedValueResponse), &out_dir);
     export_schema(&schema_for!(TotalValueResponse), &out_dir);
-    export_schema(&schema_for!(UnstakingDurationResponse), &out_dir);
+    export_schema(&schema_for!(GetConfigResponse), &out_dir);
     export_schema(&schema_for!(ClaimsResponse), &out_dir);
     export_schema(&schema_for!(AllowanceResponse), &out_dir);
     export_schema(&schema_for!(BalanceResponse), &out_dir);

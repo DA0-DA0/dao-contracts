@@ -151,9 +151,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::StakedBalanceAtHeight { address, height } => to_binary(
             &stake_cw20::contract::query_staked_balance_at_height(deps, env, address, height)?,
         ),
-        QueryMsg::UnstakingDuration {} => {
-            to_binary(&stake_cw20::contract::query_unstaking_duration(deps)?)
-        }
+        QueryMsg::GetConfig {} => to_binary(&stake_cw20::contract::query_config(deps)?),
         QueryMsg::Claims { address } => {
             to_binary(&stake_cw20::contract::query_claims(deps, address)?)
         }

@@ -87,18 +87,6 @@
     {
       "type": "object",
       "required": [
-        "unstaking_duration"
-      ],
-      "properties": {
-        "unstaking_duration": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "get_config"
       ],
       "properties": {

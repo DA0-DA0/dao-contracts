@@ -48,7 +48,6 @@ pub enum QueryMsg {
         address: String,
     },
     TotalValue {},
-    UnstakingDuration {},
     GetConfig {},
     Claims {
         address: String,
@@ -83,11 +82,8 @@ pub struct TotalValueResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct UnstakingDurationResponse {
-    pub duration: Option<Duration>,
-}
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 pub struct GetConfigResponse {
     pub admin: Addr,
+    pub token_address: Addr,
+    pub unstaking_duration: Option<Duration>,
 }

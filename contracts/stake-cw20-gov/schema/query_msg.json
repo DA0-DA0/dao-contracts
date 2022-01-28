@@ -104,13 +104,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Returns the unstaking duration for the contract.",
+      "description": "Returns the config for the contract.",
       "type": "object",
       "required": [
-        "unstaking_duration"
+        "get_config"
       ],
       "properties": {
-        "unstaking_duration": {
+        "get_config": {
           "type": "object"
         }
       },

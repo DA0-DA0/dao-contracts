@@ -49,8 +49,8 @@ pub enum QueryMsg {
     /// Returns the total staked amount of tokens at a given height, if no height is provided
     /// defaults to current block height.
     TotalStakedAtHeight { height: Option<u64> },
-    /// Returns the unstaking duration for the contract.
-    UnstakingDuration {},
+    /// Returns the config for the contract.
+    GetConfig {},
     /// Returns existing claims for tokens currently unstaking for a given address.
     Claims { address: String },
 }
