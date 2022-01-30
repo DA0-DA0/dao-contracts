@@ -4,10 +4,10 @@ This is a DAO DAO fork of [cw3-flex-multisig](https://github.com/CosmWasm/cw-plu
 
 This provides 2 main advantages:
 
-* You can create two different multisigs with different voting thresholds
+- You can create two different multisigs with different voting thresholds
   backed by the same group. Thus, you can have a 50% vote, and a 67% vote
   that always use the same voter set, but can take other actions.
-* The multisig can be the admin of the group and can vote to add new members
+- The multisig can be the admin of the group and can vote to add new members
 
 In addition to the dynamic voting set, the main difference with the native Cosmos SDK multisig, is that it aggregates the signatures on chain, with visible proposals (like `x/gov` in the Cosmos SDK), rather than requiring signers to share signatures off chain.
 
@@ -20,10 +20,10 @@ with the desired member set. For now, this only is supported by
 If you create a `cw4-group` contract and want a multisig to be able
 to modify its own group, do the following in multiple transactions:
 
-  * instantiate cw4-group, with your personal key as admin
-  * instantiate a multisig pointing to the group
-  * `AddHook{multisig}` on the group contract
-  * `UpdateAdmin{multisig}` on the group contract
+- instantiate cw4-group, with your personal key as admin
+- instantiate a multisig pointing to the group
+- `AddHook{multisig}` on the group contract
+- `UpdateAdmin{multisig}` on the group contract
 
 This is the current practice to create such circular dependencies, and depends on an external driver (hard to impossible to script such a self-deploying contract on-chain).
 
@@ -43,7 +43,7 @@ TODO: this contract currently assumes the group membership is static during the 
 
 ## Running this contract
 
-You will need Rust 1.44.1+ with `wasm32-unknown-unknown` target installed.
+You will need Rust 1.58.1+ with `wasm32-unknown-unknown` target installed.
 
 You can run unit tests on this via:
 
