@@ -13,7 +13,7 @@ use crate::msg::{
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,
 };
-use crate::state::{Config, BALANCE, CLAIMS, CONFIG, STAKED_BALANCES, STAKED_TOTAL};
+use crate::state::{Config, BALANCE, CLAIMS, CONFIG, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 use crate::ContractError;
 use cw2::set_contract_version;
 pub use cw20_base::allowances::{
@@ -201,6 +201,11 @@ pub fn execute_unstake(
                 .add_attribute("claim_duration", "None"))
         }
         Some(duration) => {
+            let outstanding_claims = CLAIMS.query_claims(deps.as_ref(), &info.sender)?.claims;
+            if outstanding_claims.len() >= MAX_CLAIMS as usize {
+                return Err(ContractError::TooManyClaims {});
+            }
+
             CLAIMS.create_claim(
                 deps.storage,
                 &info.sender,
@@ -352,6 +357,7 @@ mod tests {
         ExecuteMsg, GetConfigResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
         StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
     };
+    use crate::state::MAX_CLAIMS;
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
@@ -693,6 +699,45 @@ mod tests {
             Uint128::from(50u128)
         );
         assert_eq!(get_balance(&app, &cw20_addr, ADDR1), Uint128::from(30u128));
+    }
+
+    #[test]
+    fn text_max_claims() {
+        let mut app = mock_app();
+        let amount1 = Uint128::from(MAX_CLAIMS + 1);
+        let unstaking_blocks = 1u64;
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, cw20_addr) = setup_test_case(
+            &mut app,
+            initial_balances,
+            Some(Duration::Height(unstaking_blocks)),
+        );
+
+        let info = mock_info(ADDR1, &[]);
+        stake_tokens(&mut app, &staking_addr, &cw20_addr, info.clone(), amount1).unwrap();
+
+        // Create the max number of claims
+        for _ in 0..MAX_CLAIMS {
+            unstake_tokens(&mut app, &staking_addr, info.clone(), Uint128::new(1)).unwrap();
+        }
+
+        // Additional unstaking attempts ought to fail.
+        unstake_tokens(&mut app, &staking_addr, info.clone(), Uint128::new(1)).unwrap_err();
+
+        // Clear out the claims list.
+        app.update_block(next_block);
+        claim_tokens(&mut app, &staking_addr, info.clone()).unwrap();
+
+        // Unstaking now allowed again.
+        unstake_tokens(&mut app, &staking_addr, info.clone(), Uint128::new(1)).unwrap();
+        app.update_block(next_block);
+        claim_tokens(&mut app, &staking_addr, info).unwrap();
+
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), amount1);
     }
 
     #[test]

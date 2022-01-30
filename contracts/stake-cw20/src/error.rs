@@ -13,4 +13,6 @@ pub enum ContractError {
     InvalidToken { received: Addr, expected: Addr },
     #[error("Unauthorized")]
     Unauthorized { received: Addr, expected: Addr },
+    #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
+    TooManyClaims {},
 }

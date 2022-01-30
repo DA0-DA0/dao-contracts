@@ -29,6 +29,9 @@ pub const STAKED_TOTAL: SnapshotItem<Uint128> = SnapshotItem::new(
     Strategy::EveryBlock,
 );
 
+/// The maximum number of claims that may be outstanding.
+pub const MAX_CLAIMS: u64 = 100;
+
 pub const CLAIMS: Claims = Claims::new("claims");
 
 pub const BALANCE: Item<Uint128> = Item::new("balance");
