@@ -9,6 +9,10 @@
 | [stake-cw20](contract/stake-cw20)         | A cw20 staking contract                                         |
 | [stake-cw20-gov](contract/stake-cw20-gov) | A cw20 staking contract, with vote delegation used be `cw3-dao` |
 
+## Contributing
+
+Interested in contributing to DAO DAO? Check out [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## Deploying in a development environment
 
 Deploy the contract to a local chain with:
