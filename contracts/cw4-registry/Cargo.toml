@@ -1,6 +1,6 @@
 [package]
 name = "cw4-registry"
-version = "0.1.0"
+version = "0.2.5"
 authors = ["Orkun Külçe <orkunkl@users.noreply.github.com>"]
 edition = "2018"
 

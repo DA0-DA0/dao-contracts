@@ -1,6 +1,6 @@
 [package]
 name = "stake-cw20-gov"
-version = "0.2.0"
+version = "0.2.5"
 authors = ["Ben2x4 <ben2x4@tutanota.com>"]
 edition = "2018"
 description = "CosmWasm-20 compliant token with checkpointing to enable DAOs"
