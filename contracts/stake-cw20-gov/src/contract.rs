@@ -194,6 +194,8 @@ pub fn query_delegation(deps: Deps, address: String) -> StdResult<DelegationResp
 mod tests {
     use super::*;
     use cw20::Cw20Coin;
+    use cw_utils::Duration;
+    use stake_cw20::state::MAX_CLAIMS;
 
     use crate::msg::{
         ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
@@ -244,12 +246,16 @@ mod tests {
             .unwrap()
     }
 
-    fn instantiate_staking(app: &mut App, cw20: Addr) -> Addr {
+    fn instantiate_staking(
+        app: &mut App,
+        cw20: Addr,
+        unstaking_duration: Option<Duration>,
+    ) -> Addr {
         let staking_code_id = app.store_code(contract_staking_gov());
         let msg = crate::msg::InstantiateMsg {
             admin: Addr::unchecked("owner"),
             token_address: cw20,
-            unstaking_duration: None,
+            unstaking_duration,
         };
         app.instantiate_contract(
             staking_code_id,
@@ -262,12 +268,16 @@ mod tests {
         .unwrap()
     }
 
-    fn setup_test_case(app: &mut App, initial_balances: Vec<Cw20Coin>) -> (Addr, Addr) {
+    fn setup_test_case(
+        app: &mut App,
+        initial_balances: Vec<Cw20Coin>,
+        unstaking_duration: Option<Duration>,
+    ) -> (Addr, Addr) {
         // Instantiate cw20 contract
         let cw20_addr = instantiate_cw20(app, initial_balances);
         app.update_block(next_block);
         // Instantiate staking contract
-        let staking_addr = instantiate_staking(app, cw20_addr.clone());
+        let staking_addr = instantiate_staking(app, cw20_addr.clone(), unstaking_duration);
         app.update_block(next_block);
         (staking_addr, cw20_addr)
     }
@@ -303,6 +313,19 @@ mod tests {
             height: None,
         };
         let result: VotingPowerAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.balance
+    }
+
+    fn get_balance<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = cw20::Cw20QueryMsg::Balance {
+            address: address.into(),
+        };
+        let result: cw20::BalanceResponse =
             app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.balance
     }
@@ -344,6 +367,15 @@ mod tests {
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
+    fn claim_tokens(
+        app: &mut App,
+        staking_addr: &Addr,
+        info: MessageInfo,
+    ) -> AnyResult<AppResponse> {
+        let msg = ExecuteMsg::Claim {};
+        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
+    }
+
     #[test]
     fn test_contract() {
         let mut app = mock_app();
@@ -352,7 +384,7 @@ mod tests {
             address: ADDR1.to_string(),
             amount: amount1,
         }];
-        let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances);
+        let (staking_addr, cw20_addr) = setup_test_case(&mut app, initial_balances, None);
 
         let _info = mock_info(ADDR1, &[]);
 
@@ -411,5 +443,44 @@ mod tests {
             Uint128::zero(),
             query_voting_power(&app, &staking_addr, ADDR2)
         );
+    }
+
+    #[test]
+    fn test_max_claims() {
+        let mut app = mock_app();
+        let amount1 = Uint128::from(MAX_CLAIMS + 1);
+        let unstaking_blocks = 1u64;
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (staking_addr, cw20_addr) = setup_test_case(
+            &mut app,
+            initial_balances,
+            Some(Duration::Height(unstaking_blocks)),
+        );
+
+        let info = mock_info(ADDR1, &[]);
+        stake_tokens(&mut app, &staking_addr, &cw20_addr, info.clone(), amount1).unwrap();
+
+        // Create the max number of claims
+        for _ in 0..MAX_CLAIMS {
+            unstake_tokens(&mut app, &staking_addr, info.clone(), Uint128::new(1)).unwrap();
+        }
+
+        // Additional unstaking attempts ought to fail.
+        unstake_tokens(&mut app, &staking_addr, info.clone(), Uint128::new(1)).unwrap_err();
+
+        // Clear out the claims list.
+        app.update_block(next_block);
+        claim_tokens(&mut app, &staking_addr, info.clone()).unwrap();
+
+        // Unstaking now allowed again.
+        unstake_tokens(&mut app, &staking_addr, info.clone(), Uint128::new(1)).unwrap();
+        app.update_block(next_block);
+        claim_tokens(&mut app, &staking_addr, info).unwrap();
+
+        assert_eq!(get_balance(&app, &cw20_addr, ADDR1), amount1);
     }
 }
