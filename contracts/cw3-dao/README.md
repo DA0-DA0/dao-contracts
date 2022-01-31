@@ -25,7 +25,7 @@ These contracts can be used in combination with the cw-dao contract to extend fu
 
 ## Testing
 
-You will need Rust 1.44.1+ with `wasm32-unknown-unknown` target installed.
+You will need Rust 1.58.1+ with `wasm32-unknown-unknown` target installed.
 
 You can run unit tests on this via:
 

@@ -177,7 +177,7 @@ dependencies = [
 
 [[package]]
 name = "cw-distribution"
-version = "0.2.0"
+version = "0.2.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -283,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "cw3-dao"
-version = "0.2.0"
+version = "0.2.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -302,7 +302,7 @@ dependencies = [
 
 [[package]]
 name = "cw3-multisig"
-version = "0.2.0"
+version = "0.2.5"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -351,7 +351,7 @@ dependencies = [
 
 [[package]]
 name = "cw4-registry"
-version = "0.1.0"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -744,7 +744,7 @@ dependencies = [
 
 [[package]]
 name = "stake-cw20"
-version = "0.2.0"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -764,7 +764,7 @@ dependencies = [
 
 [[package]]
 name = "stake-cw20-gov"
-version = "0.2.0"
+version = "0.2.5"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",

@@ -1,6 +1,6 @@
 [package]
 name = "cw3-multisig"
-version = "0.2.0"
+version = "0.2.5"
 authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2018"
 description = "Implementing cw3 with multiple voting patterns and dynamic groups"
