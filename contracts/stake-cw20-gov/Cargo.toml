@@ -17,7 +17,7 @@ library = []
 [dependencies]
 cw2 = { version = "0.11" }
 cw20 = { version = "0.11" }
-stake-cw20 = { path = "../stake-cw20", version = "0.2.0", features = ["library"]  }
+stake-cw20 = { path = "../stake-cw20", version = "0.2.5", features = ["library"]  }
 cw20-base = {  version = "0.11", features = ["library"] }
 cw-storage-plus = { version = "0.11" }
 cw-utils = { version = "0.11" }
