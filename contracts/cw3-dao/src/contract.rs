@@ -178,6 +178,9 @@ pub fn execute(
         ExecuteMsg::UpdateCw20TokenList { to_add, to_remove } => {
             execute_update_cw20_token_list(deps, env, info, to_add, to_remove)
         }
+        ExecuteMsg::UpdateStakingContract {
+            new_staking_contract,
+        } => execute_update_staking_contract(deps, env, info, new_staking_contract),
     }
 }
 
@@ -382,6 +385,26 @@ pub fn execute_update_config(
     Ok(Response::new()
         .add_attribute("action", "update_config")
         .add_attribute("sender", info.sender))
+}
+
+pub fn execute_update_staking_contract(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    new_staking_contract: Addr,
+) -> Result<Response<Empty>, ContractError> {
+    // Only contract can call this method
+    if env.contract.address != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    let new_staking_contract = deps.api.addr_validate(new_staking_contract.as_str())?;
+
+    // Replace the existing staking contract
+    STAKING_CONTRACT.save(deps.storage, &new_staking_contract)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_staking_contract")
+        .add_attribute("new_staking_contract", new_staking_contract))
 }
 
 pub fn execute_update_cw20_token_list(

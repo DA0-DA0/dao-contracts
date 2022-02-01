@@ -162,6 +162,9 @@ pub enum ExecuteMsg {
         to_add: Vec<Addr>,
         to_remove: Vec<Addr>,
     },
+    /// Update Staking Contract (can only be called by DAO contract)
+    /// WARNING: this changes the contract controlling voting
+    UpdateStakingContract { new_staking_contract: Addr },
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
