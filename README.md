@@ -1,13 +1,13 @@
 # DAO DAO Contracts
 
-| Contract                                     | Description                                                        |
-| :------------------------------------------- | :------------------------------------------------------------------|
-| [cw-distribution](contracts/cw-distribution) | A contract for distributing staking rewards.                       |
-| [cw3-dao](contracts/cw3-dao)                 | A DAO with voting power based on staked governance tokens.         |
-| [cw3-multisig](contracts/cw3-multisig)       | A multisig contract.                                               |
-| [cw4-registry](contracts/cw4-registry)       | A contract for indexing multisig group members.                    |
-| [stake-cw20](contracts/stake-cw20)           | A cw20 staking contract.                                           |
-| [stake-cw20-gov](contracts/stake-cw20-gov)   | A cw20 staking contract, with vote delegation (used by `cw3-dao`). |
+| Contract                                     | Description                                                |
+| :------------------------------------------- | :--------------------------------------------------------- |
+| [cw-distribution](contracts/cw-distribution) | A contract for distributing staking rewards.               |
+| [cw3-dao](contracts/cw3-dao)                 | A DAO with voting power based on staked governance tokens. |
+| [cw3-multisig](contracts/cw3-multisig)       | A multisig contract.                                       |
+| [cw4-registry](contracts/cw4-registry)       | A contract for indexing multisig group members.            |
+| [stake-cw20](contracts/stake-cw20)           | A cw20 staking contract.                                   |
+| [stake-cw20-gov](contracts/stake-cw20-gov)   | A cw20 staking contract, with vote delegation.             |
 
 NOTE: _These contracts have yet to be audited. Please see the [disclaimer](#Disclaimer)._
 
