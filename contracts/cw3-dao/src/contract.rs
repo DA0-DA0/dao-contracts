@@ -397,6 +397,7 @@ pub fn execute_update_staking_contract(
     if env.contract.address != info.sender {
         return Err(ContractError::Unauthorized {});
     }
+    let new_staking_contract = deps.api.addr_validate(new_staking_contract.as_str())?;
 
     // Replace the existing staking contract
     STAKING_CONTRACT.save(deps.storage, &new_staking_contract)?;
