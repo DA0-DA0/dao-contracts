@@ -296,7 +296,7 @@ dependencies = [
  "cw3",
  "schemars",
  "serde",
- "stake-cw20-gov",
+ "stake-cw20",
  "thiserror",
 ]
 
@@ -759,25 +759,6 @@ dependencies = [
  "cw20-base",
  "schemars",
  "serde",
- "thiserror",
-]
-
-[[package]]
-name = "stake-cw20-gov"
-version = "0.2.5"
-dependencies = [
- "anyhow",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw-utils",
- "cw2",
- "cw20",
- "cw20-base",
- "schemars",
- "serde",
- "stake-cw20",
  "thiserror",
 ]
 

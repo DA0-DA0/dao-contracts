@@ -21,7 +21,7 @@ cw2 = { version = "0.11" }
 cw3 = { version = "0.11" }
 cw20 = "0.11"
 cw20-base = {  version = "0.11", features = ["library"] }
-stake-cw20-gov = { path = "../stake-cw20-gov" }
+stake-cw20 = { path = "../stake-cw20" }
 cw-storage-plus = {  version = "0.11" }
 cosmwasm-std = { version = "1.0.0-beta" }
 schemars = "0.8.8"

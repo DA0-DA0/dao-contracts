@@ -4,9 +4,8 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ExecuteMsg;
 
-use stake_cw20_gov::msg::{
-    QueryMsg as StakingContractQueryMsg, StakedBalanceAtHeightResponse,
-    TotalStakedAtHeightResponse, VotingPowerAtHeightResponse,
+use stake_cw20::msg::{
+    QueryMsg as StakingContractQueryMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 
 use crate::{
@@ -88,7 +87,7 @@ pub fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> Std
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
 
     // Get voting power at height
-    let balance: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+    let balance: StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
         &StakingContractQueryMsg::StakedBalanceAtHeight {
             address: address.to_string(),

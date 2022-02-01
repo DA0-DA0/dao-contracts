@@ -54,7 +54,7 @@ curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group
 # Copy wasm binaries to docker container
 docker cp artifacts/cw3_dao.wasm cosmwasm:/cw3_dao.wasm
 docker cp artifacts/cw3_multisig.wasm cosmwasm:/cw3_multisig.wasm
-docker cp artifacts/stake_cw20_gov.wasm cosmwasm:/stake_cw20_gov.wasm
+docker cp artifacts/stake_cw20.wasm cosmwasm:/stake_cw20.wasm
 docker cp cw20_base.wasm cosmwasm:/cw20_base.wasm
 docker cp cw4_group.wasm cosmwasm:/cw4_group.wasm
 
@@ -83,7 +83,7 @@ CW3_MULTISIG_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw3_multisig.wasm" 
 CW4_GROUP_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw4_group.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 
 ### STAKE-CW20 ###
-STAKE_CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/stake_cw20_gov.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+STAKE_CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/stake_cw20.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 
 
 ##### INSTANTIATE CONTRACTS #####
