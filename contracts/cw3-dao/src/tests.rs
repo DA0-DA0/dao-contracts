@@ -1678,7 +1678,7 @@ fn test_update_config() {
         None,
     );
 
-    // nobody can call call update contract method
+    // Nobody can call call update config method directly
     let new_threshold = Threshold::ThresholdQuorum {
         threshold: Decimal::percent(51),
         quorum: Decimal::percent(10),
@@ -1762,6 +1762,98 @@ fn test_update_config() {
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr,
+        }
+    )
+}
+
+#[test]
+fn test_update_staking_contract() {
+    let mut app = mock_app();
+
+    let voting_period = Duration::Time(2000000);
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(20),
+        quorum: Decimal::percent(10),
+    };
+    let (dao_addr, cw20_addr, _staking_addr) = setup_test_case(
+        &mut app,
+        threshold.clone(),
+        voting_period,
+        coins(100, NATIVE_TOKEN_DENOM),
+        None,
+        None,
+    );
+
+    // Nobody can call call update staking contract method directly
+    let update_staking_contract_msg = ExecuteMsg::UpdateStakingContract {
+        new_staking_contract: Addr::unchecked("Better_Staking_Contract"),
+    };
+    let res = app.execute_contract(
+        Addr::unchecked(VOTER1),
+        dao_addr.clone(),
+        &update_staking_contract_msg,
+        &[],
+    );
+    assert!(res.is_err());
+    let res = app.execute_contract(
+        Addr::unchecked(OWNER),
+        dao_addr.clone(),
+        &update_staking_contract_msg,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: dao_addr.clone().into(),
+        msg: to_binary(&update_staking_contract_msg).unwrap(),
+        funds: vec![],
+    };
+
+    // Update config proposal must be made
+    let proposal_msg = ExecuteMsg::Propose(ProposeMsg {
+        title: String::from("Change params"),
+        description: String::from("Updates threshold and max voting params"),
+        msgs: vec![wasm_msg.into()],
+        latest: None,
+    });
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
+        .unwrap();
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Imediately passes on yes vote
+    let yes_vote = ExecuteMsg::Vote(VoteMsg {
+        proposal_id,
+        vote: Vote::Yes,
+    });
+    let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
+    assert!(res.is_ok());
+
+    // Execute
+    let execution = ExecuteMsg::Execute { proposal_id };
+    let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[]);
+    assert!(res.is_ok());
+
+    // Check that config was updated
+    let res: ConfigResponse = app
+        .wrap()
+        .query_wasm_smart(&dao_addr, &QueryMsg::GetConfig {})
+        .unwrap();
+
+    assert_eq!(
+        res,
+        ConfigResponse {
+            config: Config {
+                name: "dao-dao".to_string(),
+                description: "a great DAO!".to_string(),
+                threshold,
+                max_voting_period: voting_period,
+                proposal_deposit: Uint128::zero(),
+                refund_failed_proposals: None,
+                image_url: None,
+            },
+            gov_token: cw20_addr,
+            staking_contract: Addr::unchecked("Better_Staking_Contract"),
         }
     )
 }
