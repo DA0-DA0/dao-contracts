@@ -155,6 +155,8 @@ pub enum ExecuteMsg {
     Execute { proposal_id: u64 },
     /// Close a failed proposal
     Close { proposal_id: u64 },
+    /// Pauses DAO governance (can only be called by DAO contract)
+    PauseDAO { expiration: Expiration },
     /// Update DAO config (can only be called by DAO contract)
     UpdateConfig(Config),
     /// Updates token list

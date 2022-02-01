@@ -1859,6 +1859,143 @@ fn test_update_staking_contract() {
 }
 
 #[test]
+fn test_pause_dao() {
+    let mut app = mock_app();
+
+    let voting_period = Duration::Time(2000000);
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(20),
+        quorum: Decimal::percent(10),
+    };
+    let (dao_addr, _cw20_addr, _staking_addr) = setup_test_case(
+        &mut app,
+        threshold.clone(),
+        voting_period,
+        coins(100, NATIVE_TOKEN_DENOM),
+        None,
+        None,
+    );
+
+    // Pause DAO until height
+    const PAUSE_HEIGHT: u64 = 100000000;
+    let pause_dao_msg = ExecuteMsg::PauseDAO {
+        expiration: Expiration::AtHeight(PAUSE_HEIGHT),
+    };
+
+    // Nobody can call call update staking contract method directly
+    let res = app.execute_contract(
+        Addr::unchecked(VOTER1),
+        dao_addr.clone(),
+        &pause_dao_msg,
+        &[],
+    );
+    assert!(res.is_err());
+    let res = app.execute_contract(
+        Addr::unchecked(OWNER),
+        dao_addr.clone(),
+        &pause_dao_msg,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: dao_addr.clone().into(),
+        msg: to_binary(&pause_dao_msg).unwrap(),
+        funds: vec![],
+    };
+
+    // Pause DAO proposal must be made
+    let proposal_msg = ExecuteMsg::Propose(ProposeMsg {
+        title: String::from("Change params"),
+        description: String::from("Updates threshold and max voting params"),
+        msgs: vec![wasm_msg.into()],
+        latest: None,
+    });
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
+        .unwrap();
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Imediately passes on yes vote
+    let yes_vote = ExecuteMsg::Vote(VoteMsg {
+        proposal_id,
+        vote: Vote::Yes,
+    });
+    let res = app.execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[]);
+    assert!(res.is_ok());
+
+    // Execute
+    let execution = ExecuteMsg::Execute { proposal_id };
+    let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[]);
+    assert!(res.is_ok());
+
+    // Check that DAO is paused, Propose should fail
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[])
+        .unwrap_err();
+    assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
+
+    // Vote should fail
+    let res = app
+        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[])
+        .unwrap_err();
+    assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
+
+    // Execute should fail
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[])
+        .unwrap_err();
+    assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
+
+    // Close should fail
+    let res = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            dao_addr.clone(),
+            &ExecuteMsg::Close { proposal_id },
+            &[],
+        )
+        .unwrap_err();
+    assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
+
+    // Pause expiration height is reached
+    app.update_block(|b| b.height = PAUSE_HEIGHT + 1);
+
+    // Propose succeeds
+    let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[]);
+    assert!(res.is_ok());
+
+    // Vote yields different error
+    let res = app
+        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[])
+        .unwrap_err();
+    assert_eq!(res.to_string(), ContractError::NotOpen {}.to_string());
+
+    // Expiration yields different error
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[])
+        .unwrap_err();
+    assert_eq!(
+        res.to_string(),
+        ContractError::WrongExecuteStatus {}.to_string()
+    );
+
+    // Close yields different error
+    let res = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            dao_addr.clone(),
+            &ExecuteMsg::Close { proposal_id },
+            &[],
+        )
+        .unwrap_err();
+    assert_eq!(
+        res.to_string(),
+        ContractError::WrongCloseStatus {}.to_string()
+    );
+}
+
+#[test]
 fn test_config_query() {
     let mut app = mock_app();
 

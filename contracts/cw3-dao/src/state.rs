@@ -150,6 +150,7 @@ pub struct Ballot {
 // Unique items
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
+pub const DAO_PAUSED: Item<Expiration> = Item::new("dao_paused");
 
 // Total weight and voters are queried from this contract
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
