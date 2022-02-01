@@ -10,7 +10,7 @@ use crate::query::{
     VoteTallyResponse, VoterResponse,
 };
 use crate::state::{
-    next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, GOV_TOKEN, PROPOSALS,
+    next_id, Ballot, Config, Proposal, Votes, BALLOTS, CONFIG, DAO_PAUSED, GOV_TOKEN, PROPOSALS,
     STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_UNSTAKING_DURATION,
     TREASURY_TOKENS,
 };
@@ -174,6 +174,7 @@ pub fn execute(
         }
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
+        ExecuteMsg::PauseDAO { expiration } => execute_pause_dao(deps, env, info, expiration),
         ExecuteMsg::UpdateConfig(config) => execute_update_config(deps, env, info, config),
         ExecuteMsg::UpdateCw20TokenList { to_add, to_remove } => {
             execute_update_cw20_token_list(deps, env, info, to_add, to_remove)
@@ -194,6 +195,14 @@ pub fn execute_propose(
     // we ignore earliest
     latest: Option<Expiration>,
 ) -> Result<Response<Empty>, ContractError> {
+    // Check if DAO is Paused
+    let paused = DAO_PAUSED.may_load(deps.storage)?;
+    if let Some(expiration) = paused {
+        if !expiration.is_expired(&env.block) {
+            return Err(ContractError::Paused {});
+        }
+    }
+
     let cfg = CONFIG.load(deps.storage)?;
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
@@ -256,6 +265,14 @@ pub fn execute_vote(
     proposal_id: u64,
     vote: Vote,
 ) -> Result<Response<Empty>, ContractError> {
+    // Check if DAO is Paused
+    let paused = DAO_PAUSED.may_load(deps.storage)?;
+    if let Some(expiration) = paused {
+        if !expiration.is_expired(&env.block) {
+            return Err(ContractError::Paused {});
+        }
+    }
+
     // Ensure proposal exists and can be voted on
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     if prop.status != Status::Open {
@@ -296,10 +313,18 @@ pub fn execute_vote(
 
 pub fn execute_execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
+    // Check if DAO is Paused
+    let paused = DAO_PAUSED.may_load(deps.storage)?;
+    if let Some(expiration) = paused {
+        if !expiration.is_expired(&env.block) {
+            return Err(ContractError::Paused {});
+        }
+    }
+
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Anyone can trigger this if the vote passed
@@ -332,6 +357,14 @@ pub fn execute_close(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response<Empty>, ContractError> {
+    // Check if DAO is Paused
+    let paused = DAO_PAUSED.may_load(deps.storage)?;
+    if let Some(expiration) = paused {
+        if !expiration.is_expired(&env.block) {
+            return Err(ContractError::Paused {});
+        }
+    }
+
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Anyone can trigger this if the vote passed
@@ -365,6 +398,24 @@ pub fn execute_close(
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
+}
+
+pub fn execute_pause_dao(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    expiration: Expiration,
+) -> Result<Response<Empty>, ContractError> {
+    // Only contract can call this method
+    if env.contract.address != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    DAO_PAUSED.save(deps.storage, &expiration)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "pause_dao")
+        .add_attribute("expiration", expiration.to_string()))
 }
 
 pub fn execute_update_config(

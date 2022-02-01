@@ -21,7 +21,7 @@ height?: (number | null)
 [k: string]: unknown
 }
 } | {
-unstaking_duration: {
+get_config: {
 [k: string]: unknown
 }
 } | {

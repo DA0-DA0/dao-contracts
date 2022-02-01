@@ -39,7 +39,7 @@ pub enum ContractError {
     #[error("Already voted on this proposal")]
     AlreadyVoted {},
 
-    #[error("Proposal must have passed and not yet been executed")]
+    #[error("Cannot execute completed or unpassed proposals")]
     WrongExecuteStatus {},
 
     #[error("Cannot close completed or passed proposals")]
@@ -50,4 +50,7 @@ pub enum ContractError {
 
     #[error("Request size ({size}) is above limit of ({max})")]
     OversizedRequest { size: u64, max: u64 },
+
+    #[error("DAO is paused")]
+    Paused {},
 }

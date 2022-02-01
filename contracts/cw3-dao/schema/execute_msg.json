@@ -75,6 +75,27 @@
       "additionalProperties": false
     },
     {
+      "description": "Pauses DAO governance (can only be called by DAO contract)",
+      "type": "object",
+      "required": [
+        "pause_d_a_o"
+      ],
+      "properties": {
+        "pause_d_a_o": {
+          "type": "object",
+          "required": [
+            "expiration"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Expiration"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Update DAO config (can only be called by DAO contract)",
       "type": "object",
       "required": [
@@ -112,6 +133,27 @@
               "items": {
                 "$ref": "#/definitions/Addr"
               }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update Staking Contract (can only be called by DAO contract) WARNING: this changes the contract controlling voting",
+      "type": "object",
+      "required": [
+        "update_staking_contract"
+      ],
+      "properties": {
+        "update_staking_contract": {
+          "type": "object",
+          "required": [
+            "new_staking_contract"
+          ],
+          "properties": {
+            "new_staking_contract": {
+              "$ref": "#/definitions/Addr"
             }
           }
         }

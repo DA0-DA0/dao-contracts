@@ -90,7 +90,7 @@ pub fn get_voting_power_at_height(deps: Deps, address: Addr, height: u64) -> Std
     // Get voting power at height
     let balance: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
-        &StakingContractQueryMsg::VotingPowerAtHeight {
+        &StakingContractQueryMsg::StakedBalanceAtHeight {
             address: address.to_string(),
             height: Some(height),
         },
