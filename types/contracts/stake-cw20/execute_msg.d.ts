@@ -1,78 +1,7 @@
-import { Binary, Expiration, Logo, Uint128 } from "./shared-types";
+import { Addr, Duration, Uint128 } from "./shared-types";
 
 export type ExecuteMsg = ({
-transfer: {
-amount: Uint128
-recipient: string
-[k: string]: unknown
-}
-} | {
-burn: {
-amount: Uint128
-[k: string]: unknown
-}
-} | {
-send: {
-amount: Uint128
-contract: string
-msg: Binary
-[k: string]: unknown
-}
-} | {
-increase_allowance: {
-amount: Uint128
-expires?: (Expiration | null)
-spender: string
-[k: string]: unknown
-}
-} | {
-decrease_allowance: {
-amount: Uint128
-expires?: (Expiration | null)
-spender: string
-[k: string]: unknown
-}
-} | {
-transfer_from: {
-amount: Uint128
-owner: string
-recipient: string
-[k: string]: unknown
-}
-} | {
-send_from: {
-amount: Uint128
-contract: string
-msg: Binary
-owner: string
-[k: string]: unknown
-}
-} | {
-burn_from: {
-amount: Uint128
-owner: string
-[k: string]: unknown
-}
-} | {
-mint: {
-amount: Uint128
-recipient: string
-[k: string]: unknown
-}
-} | {
-update_marketing: {
-description?: (string | null)
-marketing?: (string | null)
-project?: (string | null)
-[k: string]: unknown
-}
-} | {
-upload_logo: Logo
-} | {
-stake: {
-amount: Uint128
-[k: string]: unknown
-}
+receive: Cw20ReceiveMsg
 } | {
 unstake: {
 amount: Uint128
@@ -82,4 +11,26 @@ amount: Uint128
 claim: {
 [k: string]: unknown
 }
+} | {
+update_config: {
+admin: Addr
+duration?: (Duration | null)
+[k: string]: unknown
+}
 })
+/**
+ * Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.
+ * 
+ * This is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>
+ */
+export type Binary = string
+
+/**
+ * Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg
+ */
+export interface Cw20ReceiveMsg {
+amount: Uint128
+msg: Binary
+sender: string
+[k: string]: unknown
+}

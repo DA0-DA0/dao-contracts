@@ -15,11 +15,21 @@ proposal_id: number
 [k: string]: unknown
 }
 } | {
+pause_d_a_o: {
+expiration: Expiration
+[k: string]: unknown
+}
+} | {
 update_config: Config
 } | {
 update_cw20_token_list: {
 to_add: Addr[]
 to_remove: Addr[]
+[k: string]: unknown
+}
+} | {
+update_staking_contract: {
+new_staking_contract: Addr
 [k: string]: unknown
 }
 })

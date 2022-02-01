@@ -1,6 +1,6 @@
 import { Addr, Duration } from "./shared-types";
 
-export interface InstantiateMsg {
+export interface GetConfigResponse {
 admin: Addr
 token_address: Addr
 unstaking_duration?: (Duration | null)
