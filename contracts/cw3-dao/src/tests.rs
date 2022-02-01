@@ -1869,7 +1869,7 @@ fn test_pause_dao() {
     };
     let (dao_addr, _cw20_addr, _staking_addr) = setup_test_case(
         &mut app,
-        threshold.clone(),
+        threshold,
         voting_period,
         coins(100, NATIVE_TOKEN_DENOM),
         None,
@@ -1935,64 +1935,12 @@ fn test_pause_dao() {
         .unwrap_err();
     assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
 
-    // Vote should fail
-    let res = app
-        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[])
-        .unwrap_err();
-    assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
-
-    // Execute should fail
-    let res = app
-        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[])
-        .unwrap_err();
-    assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
-
-    // Close should fail
-    let res = app
-        .execute_contract(
-            Addr::unchecked(OWNER),
-            dao_addr.clone(),
-            &ExecuteMsg::Close { proposal_id },
-            &[],
-        )
-        .unwrap_err();
-    assert_eq!(res.to_string(), ContractError::Paused {}.to_string());
-
     // Pause expiration height is reached
     app.update_block(|b| b.height = PAUSE_HEIGHT + 1);
 
     // Propose succeeds
-    let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal_msg, &[]);
+    let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr, &proposal_msg, &[]);
     assert!(res.is_ok());
-
-    // Vote yields different error
-    let res = app
-        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &yes_vote, &[])
-        .unwrap_err();
-    assert_eq!(res.to_string(), ContractError::NotOpen {}.to_string());
-
-    // Expiration yields different error
-    let res = app
-        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &execution, &[])
-        .unwrap_err();
-    assert_eq!(
-        res.to_string(),
-        ContractError::WrongExecuteStatus {}.to_string()
-    );
-
-    // Close yields different error
-    let res = app
-        .execute_contract(
-            Addr::unchecked(OWNER),
-            dao_addr.clone(),
-            &ExecuteMsg::Close { proposal_id },
-            &[],
-        )
-        .unwrap_err();
-    assert_eq!(
-        res.to_string(),
-        ContractError::WrongCloseStatus {}.to_string()
-    );
 }
 
 #[test]
