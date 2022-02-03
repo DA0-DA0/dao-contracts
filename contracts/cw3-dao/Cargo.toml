@@ -1,6 +1,6 @@
 [package]
 name = "cw3-dao"
-version = "0.2.5"
+version = "0.2.6"
 authors = ["Jake Hartnell <jake@stargaze.zone>", "Ben2x4 <Ben2x4@tutanota.com>", "Ethan Frey <ethanfrey@users.noreply.github.com>"]
 edition = "2018"
 description = "Implements a cw20 token governed DAO with multiple voting patterns."

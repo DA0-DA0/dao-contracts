@@ -283,7 +283,7 @@ dependencies = [
 
 [[package]]
 name = "cw3-dao"
-version = "0.2.5"
+version = "0.2.6"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
