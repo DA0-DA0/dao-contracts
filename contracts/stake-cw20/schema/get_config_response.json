@@ -3,12 +3,18 @@
   "title": "GetConfigResponse",
   "type": "object",
   "required": [
-    "admin",
     "token_address"
   ],
   "properties": {
     "admin": {
-      "$ref": "#/definitions/Addr"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "token_address": {
       "$ref": "#/definitions/Addr"

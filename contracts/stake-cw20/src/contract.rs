@@ -41,7 +41,7 @@ pub fn instantiate(
 ) -> Result<Response<Empty>, ContractError> {
     let admin = match msg.admin {
         Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
-        None => None
+        None => None,
     };
 
     let config = Config {
@@ -93,7 +93,13 @@ pub fn execute_update_config(
             config.unstaking_duration = duration;
 
             CONFIG.save(deps.storage, &config)?;
-            Ok(Response::new().add_attribute("admin", config.admin.map(|a|a.to_string()).unwrap_or("None".to_string())))
+            Ok(Response::new().add_attribute(
+                "admin",
+                config
+                    .admin
+                    .map(|a| a.to_string())
+                    .unwrap_or_else(|| "None".to_string()),
+            ))
         }
     }
 }
@@ -547,7 +553,10 @@ mod tests {
         admin: Option<Addr>,
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::UpdateConfig { admin: admin, duration };
+        let msg = ExecuteMsg::UpdateConfig {
+            admin,
+            duration,
+        };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
@@ -620,7 +629,8 @@ mod tests {
             info,
             None,
             Some(Duration::Height(100)),
-        ).unwrap();
+        )
+        .unwrap();
 
         // Assert no further updates can be made
         let info = mock_info("owner2", &[]);
@@ -632,9 +642,11 @@ mod tests {
             info,
             None,
             Some(Duration::Height(100)),
-        ).unwrap_err().downcast().unwrap();
-        assert_eq!(err,ContractError::NoAdminConfigured {})
-
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+        assert_eq!(err, ContractError::NoAdminConfigured {})
     }
 
     #[test]
