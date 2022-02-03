@@ -1,24 +1,20 @@
-use std::cmp::min;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+use std::cmp::min;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    from_binary, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError,
+    StdResult, Uint128,
 };
 
 use cw20::Cw20ReceiveMsg;
 
-use crate::msg::{
-    ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-};
-use crate::state::{CONFIG, Config, LAST_CLAIM};
+use crate::msg::{ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg, ReceiveMsg};
+use crate::state::{Config, CONFIG, LAST_CLAIM};
 use crate::ContractError;
 use cw2::set_contract_version;
 
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
-use cw_controllers::ClaimsResponse;
-use cw_utils::Duration;
 
 const CONTRACT_NAME: &str = "crates.io:stake_cw20_rewards";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -31,10 +27,13 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
     // Validate config
-    let blocks = Uint128::from(msg.end_block-msg.start_block);
-    let calculated_total = msg.payment_per_block.checked_mul(blocks).map_err(StdError::overflow)?;
+    let blocks = Uint128::from(msg.end_block - msg.start_block);
+    let calculated_total = msg
+        .payment_per_block
+        .checked_mul(blocks)
+        .map_err(StdError::overflow)?;
     if calculated_total != msg.total_payment {
-        return Err(ContractError::ConfigInvalid {})
+        return Err(ContractError::ConfigInvalid {});
     };
 
     let config = Config {
@@ -44,7 +43,7 @@ pub fn instantiate(
         total_payment: msg.total_payment,
         start_block: msg.start_block,
         end_block: msg.end_block,
-        funded: false
+        funded: false,
     };
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -84,17 +83,19 @@ pub fn execute_receive(
     }
 }
 
-pub fn execute_fund(deps: DepsMut, env: Env, amount: Uint128) -> Result<Response, ContractError> {
+pub fn execute_fund(deps: DepsMut, _env: Env, amount: Uint128) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
     if config.funded {
-        return Err(ContractError::AlreadyFunded {})
+        return Err(ContractError::AlreadyFunded {});
     };
     if config.total_payment != amount {
-        return Err(ContractError::IncorrectFundingAmount {})
+        return Err(ContractError::IncorrectFundingAmount {});
     };
     config.funded = true;
-    CONFIG.save(deps.storage, &config);
-    return Ok(Response::new().add_attribute("action", "funded").add_attribute("amount", amount))
+    CONFIG.save(deps.storage, &config)?;
+    Ok(Response::new()
+        .add_attribute("action", "funded")
+        .add_attribute("amount", amount))
 }
 
 pub fn execute_claim(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
@@ -102,42 +103,46 @@ pub fn execute_claim(deps: DepsMut, env: Env) -> Result<Response, ContractError>
     let last_claim = LAST_CLAIM.load(deps.storage).unwrap_or(config.start_block);
 
     if env.block.height < config.start_block {
-        return Err(ContractError::RewardsNotStarted {})
+        return Err(ContractError::RewardsNotStarted {});
     };
     if last_claim >= config.end_block {
-        return Err(ContractError::RewardsFinished {})
+        return Err(ContractError::RewardsFinished {});
     };
     if last_claim == env.block.height {
-        return Err(ContractError::RewardsAlreadyClaimed {})
+        return Err(ContractError::RewardsAlreadyClaimed {});
     };
     if !config.funded {
-        return Err(ContractError::RewardsNotFunded {})
+        return Err(ContractError::RewardsNotFunded {});
     };
 
     let blocks = Uint128::from(min(&env.block.height, &config.end_block) - last_claim);
-    let reward_to_disburse = blocks.checked_mul(config.payment_per_block).map_err(StdError::overflow)?;
+    let reward_to_disburse = blocks
+        .checked_mul(config.payment_per_block)
+        .map_err(StdError::overflow)?;
 
     let sub_msg = to_binary(&stake_cw20::msg::ReceiveMsg::Fund {})?;
     let payment_msg = cw20::Cw20ExecuteMsg::Send {
         contract: config.staking_contract.to_string(),
         amount: reward_to_disburse,
-        msg: sub_msg
+        msg: sub_msg,
     };
 
     let cosmos_msg = cosmwasm_std::WasmMsg::Execute {
         contract_addr: config.token_address.to_string(),
         msg: to_binary(&payment_msg)?,
-        funds: vec![]
+        funds: vec![],
     };
 
     LAST_CLAIM.save(deps.storage, &min(env.block.height, config.end_block))?;
 
-    Ok(Response::new().add_message(cosmos_msg).add_attribute("action", "claim").add_attribute("amount",reward_to_disburse))
+    Ok(Response::new()
+        .add_message(cosmos_msg)
+        .add_attribute("action", "claim")
+        .add_attribute("amount", reward_to_disburse))
 }
 
-
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
     }
@@ -152,10 +157,9 @@ pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
         total_payment: config.total_payment,
         start_block: config.start_block,
         end_block: config.end_block,
-        funded: config.funded
+        funded: config.funded,
     })
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

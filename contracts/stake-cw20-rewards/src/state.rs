@@ -2,9 +2,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Uint128};
-use cw_controllers::Claims;
-use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
-use cw_utils::Duration;
+
+use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {

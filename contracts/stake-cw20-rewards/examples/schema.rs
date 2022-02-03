@@ -3,13 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use cw20::{
-    AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
-    TokenInfoResponse,
-};
-use stake_cw20_rewards::msg::{
-    ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg,
-};
+use stake_cw20_rewards::msg::{ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
