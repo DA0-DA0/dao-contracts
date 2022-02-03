@@ -553,10 +553,7 @@ mod tests {
         admin: Option<Addr>,
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::UpdateConfig {
-            admin,
-            duration,
-        };
+        let msg = ExecuteMsg::UpdateConfig { admin, duration };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
