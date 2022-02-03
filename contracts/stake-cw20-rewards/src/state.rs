@@ -19,4 +19,4 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const LAST_CLAIM: Item<u64> = Iten::new("last_claim");
+pub const LAST_CLAIM: Item<u64> = Item::new("last_claim");

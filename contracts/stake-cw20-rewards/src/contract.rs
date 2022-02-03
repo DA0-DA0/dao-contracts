@@ -1,5 +1,4 @@
 use std::cmp::min;
-use std::intrinsics::caller_location;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -12,10 +11,8 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::msg::{
     ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse,
 };
-use crate::state::{Config, BALANCE, CLAIMS, CONFIG, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL, LAST_CLAIM};
+use crate::state::{CONFIG, Config, LAST_CLAIM};
 use crate::ContractError;
 use cw2::set_contract_version;
 
@@ -35,7 +32,7 @@ pub fn instantiate(
 ) -> Result<Response<Empty>, ContractError> {
     // Validate config
     let blocks = Uint128::from(msg.end_block-msg.start_block);
-    let calculated_total = msg.payment_per_block.checked_mul(blocks)?;
+    let calculated_total = msg.payment_per_block.checked_mul(blocks).map_err(StdError::overflow)?;
     if calculated_total != msg.total_payment {
         return Err(ContractError::ConfigInvalid {})
     };
@@ -118,18 +115,24 @@ pub fn execute_claim(deps: DepsMut, env: Env) -> Result<Response, ContractError>
     };
 
     let blocks = Uint128::from(min(&env.block.height, &config.end_block) - last_claim);
-    let reward_to_disburse = blocks.checked_mul(config.payment_per_block)?;
+    let reward_to_disburse = blocks.checked_mul(config.payment_per_block).map_err(StdError::overflow)?;
 
     let sub_msg = to_binary(&stake_cw20::msg::ReceiveMsg::Fund {})?;
     let payment_msg = cw20::Cw20ExecuteMsg::Send {
-        contract: config.token_address.to_string(),
+        contract: config.staking_contract.to_string(),
         amount: reward_to_disburse,
         msg: sub_msg
     };
 
+    let cosmos_msg = cosmwasm_std::WasmMsg::Execute {
+        contract_addr: config.token_address.to_string(),
+        msg: to_binary(&payment_msg)?,
+        funds: vec![]
+    };
+
     LAST_CLAIM.save(deps.storage, &min(env.block.height, config.end_block))?;
 
-    Ok(Response::new().add_message(payment_msg).add_attribute("action", "claim").add_attribute("amount",reward_to_disburse))
+    Ok(Response::new().add_message(cosmos_msg).add_attribute("action", "claim").add_attribute("amount",reward_to_disburse))
 }
 
 
