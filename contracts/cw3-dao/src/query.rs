@@ -99,6 +99,10 @@ where
     /// that the generic `Threshold{}` query does not provide valid information for existing proposals.
     pub threshold: ThresholdResponse,
     pub deposit_amount: Uint128,
+    /// The block height the proposal was created at. This can be
+    /// cross referenced with staked_balance_at_height queries to
+    /// determine an addresses's voting power for this proposal.
+    pub start_height: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
