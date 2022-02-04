@@ -1202,10 +1202,21 @@ fn test_execute_works() {
         .unwrap_err();
     assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
 
-    // Execute works. Anybody can execute Passed proposals
-    let res = app
+    // Rejects if non-member attempts to execute
+    let err = app
         .execute_contract(
             Addr::unchecked(SOMEBODY),
+            multisig_addr.clone(),
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+        .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+
+    // Execute works. Members can execute Passed proposals
+    let res = app
+        .execute_contract(
+            Addr::unchecked(VOTER3),
             multisig_addr.clone(),
             &execution,
             &[],
@@ -1215,7 +1226,7 @@ fn test_execute_works() {
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str()),
         ],
     );
@@ -1234,7 +1245,7 @@ fn test_execute_works() {
 
     // Trying to execute something that was already executed fails
     let err = app
-        .execute_contract(Addr::unchecked(SOMEBODY), multisig_addr, &execution, &[])
+        .execute_contract(Addr::unchecked(VOTER3), multisig_addr, &execution, &[])
         .unwrap_err();
     assert_eq!(
         ContractError::WrongExecuteStatus {},
@@ -1303,10 +1314,10 @@ fn proposal_pass_on_expiration() {
         .unwrap();
     assert_eq!(prop.status, Status::Passed);
 
-    // Now execute
+    // Now execute from member address
     let res = app
         .execute_contract(
-            Addr::unchecked(SOMEBODY),
+            Addr::unchecked(VOTER3),
             multsig_addr,
             &ExecuteMsg::Execute { proposal_id },
             &[],
@@ -1316,7 +1327,7 @@ fn proposal_pass_on_expiration() {
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str())
         ]
     );
