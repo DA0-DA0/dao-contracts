@@ -477,13 +477,13 @@ fn instantiate_new_gov_token() {
     let execution = ExecuteMsg::Execute { proposal_id };
     // Execute works. Anybody can execute Passed proposals
     let res = app
-        .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &execution, &[])
+        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &execution, &[])
         .unwrap();
     assert_eq!(
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str()),
         ],
     );
@@ -608,7 +608,7 @@ fn test_propose_works() {
         )
         .unwrap_err();
     assert_eq!(ContractError::WrongExpiration {}, err.downcast().unwrap());
-
+        
     // Proposal from voter works
     let res = app
         .execute_contract(Addr::unchecked(VOTER3), dao_addr, &proposal, &[])
@@ -1175,15 +1175,23 @@ fn test_execute_works() {
         .unwrap_err();
     assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
 
-    // Execute works. Anybody can execute Passed proposals
-    let res = app
+    // Accounts without tokens can't execute
+
+    let closing = ExecuteMsg::Close { proposal_id };
+    let err = app
         .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &execution, &[])
+        .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+
+    // Execute works. Token holder can execute Passed proposals
+    let res = app
+        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &execution, &[])
         .unwrap();
     assert_eq!(
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str()),
         ],
     );
@@ -1208,7 +1216,7 @@ fn test_execute_works() {
 
     // Trying to execute something that was already executed fails
     let err = app
-        .execute_contract(Addr::unchecked(SOMEBODY), dao_addr, &execution, &[])
+        .execute_contract(Addr::unchecked(OWNER), dao_addr, &execution, &[])
         .unwrap_err();
     assert_eq!(
         ContractError::WrongExecuteStatus {},
@@ -1283,7 +1291,7 @@ fn proposal_pass_on_expiration() {
     // Now execute
     let res = app
         .execute_contract(
-            Addr::unchecked(SOMEBODY),
+            Addr::unchecked(VOTER3),
             dao_addr,
             &ExecuteMsg::Execute { proposal_id },
             &[],
@@ -1293,7 +1301,7 @@ fn proposal_pass_on_expiration() {
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str())
         ]
     );
@@ -2226,13 +2234,13 @@ fn test_proposal_deposit_works() {
 
     // Execute works. Anybody can execute Passed proposals
     let res = app
-        .execute_contract(Addr::unchecked(SOMEBODY), dao_addr, &execution, &[])
+        .execute_contract(Addr::unchecked(VOTER3), dao_addr, &execution, &[])
         .unwrap();
     assert_eq!(
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str()),
         ],
     );

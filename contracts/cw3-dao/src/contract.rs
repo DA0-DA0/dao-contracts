@@ -325,6 +325,11 @@ pub fn execute_execute(
         }
     }
 
+    let balance = get_staked_balance(deps.as_ref(), info.sender.clone())?;
+    if balance == Uint128::zero() {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Anyone can trigger this if the vote passed
