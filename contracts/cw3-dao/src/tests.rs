@@ -607,8 +607,9 @@ fn test_propose_works() {
             &[],
         )
         .unwrap_err();
+
     assert_eq!(ContractError::WrongExpiration {}, err.downcast().unwrap());
-        
+
     // Proposal from voter works
     let res = app
         .execute_contract(Addr::unchecked(VOTER3), dao_addr, &proposal, &[])
