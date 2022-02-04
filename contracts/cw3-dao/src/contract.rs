@@ -542,6 +542,7 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
         expires: prop.expires,
         threshold,
         deposit_amount: prop.deposit,
+        start_height: prop.start_height,
     })
 }
 
