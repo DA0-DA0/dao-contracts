@@ -1177,8 +1177,6 @@ fn test_execute_works() {
     assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
 
     // Accounts without tokens can't execute
-
-    let closing = ExecuteMsg::Close { proposal_id };
     let err = app
         .execute_contract(Addr::unchecked(SOMEBODY), dao_addr.clone(), &execution, &[])
         .unwrap_err();
