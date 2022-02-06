@@ -4,7 +4,7 @@
 
 ## CONFIG
 # NOTE: you will need to update these to deploy on different network
-IMAGE_TAG="pr-135" # moneta
+IMAGE_TAG="v2.1.0" # moneta
 BINARY='docker exec -i cosmwasm junod'
 DENOM='ujunox'
 CHAIN_ID='testing'
@@ -44,6 +44,7 @@ docker run --rm -d --name cosmwasm -p 26657:26657 -p 26656:26656 -p 1317:1317 \
 docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  --platform linux/amd64 \
   cosmwasm/rust-optimizer:0.12.5
 
 # Download cw20_base.wasm
