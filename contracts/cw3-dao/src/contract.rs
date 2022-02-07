@@ -29,7 +29,7 @@ use std::cmp::Ordering;
 use std::string::FromUtf8Error;
 
 // Version info for migration info
-pub const CONTRACT_NAME: &str = "crates.io:sg_dao";
+pub const CONTRACT_NAME: &str = "crates.io:cw3_dao";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Settings for pagination
