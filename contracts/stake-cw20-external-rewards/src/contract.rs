@@ -504,8 +504,7 @@ mod tests {
         };
         app.borrow_mut().update_block(next_block);
 
-        let reward =
-            instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
+        let reward = instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
 
         let res: stake_cw20::msg::StakedBalanceAtHeightResponse = app
             .wrap()
@@ -808,8 +807,7 @@ mod tests {
         };
         app.borrow_mut().update_block(next_block);
 
-        let reward =
-            instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
+        let reward = instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
 
         let res: stake_cw20::msg::StakedBalanceAtHeightResponse = app
             .wrap()
@@ -1106,9 +1104,7 @@ mod tests {
         };
         app.borrow_mut().update_block(next_block);
 
-        let reward =
-            instantiate_rewards(&mut app, instantiate_msg.clone(), &init_funds)
-                .unwrap();
+        let reward = instantiate_rewards(&mut app, instantiate_msg.clone(), &init_funds).unwrap();
 
         let expected_response = InfoResponse {
             start_block: instantiate_msg.start_block,
@@ -1165,8 +1161,7 @@ mod tests {
         };
         app.borrow_mut().update_block(next_block);
 
-        let reward =
-            instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
+        let reward = instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
 
         let res: stake_cw20::msg::StakedBalanceAtHeightResponse = app
             .wrap()
