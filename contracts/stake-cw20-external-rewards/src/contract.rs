@@ -492,7 +492,7 @@ mod tests {
                 .unwrap()
                 .amount
         );
-        let stakeable_token = instantiate_cw20(&mut app.borrow_mut());
+        let stakeable_token = instantiate_cw20(&mut app);
         let instantiate_msg = InstantiateMsg {
             start_block: 1000,
             end_block: 4000,
@@ -505,7 +505,7 @@ mod tests {
         app.borrow_mut().update_block(next_block);
 
         let reward =
-            instantiate_rewards(&mut app.borrow_mut(), instantiate_msg, &init_funds).unwrap();
+            instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
 
         let res: stake_cw20::msg::StakedBalanceAtHeightResponse = app
             .wrap()
@@ -769,7 +769,7 @@ mod tests {
             "native balance: {}",
             app.wrap().query_balance(owner, denom).unwrap().amount
         );
-        let stakeable_token = instantiate_cw20(&mut app.borrow_mut());
+        let stakeable_token = instantiate_cw20(&mut app);
 
         // Instantiate reward token
         let cw20_id = app.store_code(contract_cw20());
@@ -809,7 +809,7 @@ mod tests {
         app.borrow_mut().update_block(next_block);
 
         let reward =
-            instantiate_rewards(&mut app.borrow_mut(), instantiate_msg, &init_funds).unwrap();
+            instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
 
         let res: stake_cw20::msg::StakedBalanceAtHeightResponse = app
             .wrap()
@@ -1094,7 +1094,7 @@ mod tests {
                 .unwrap()
                 .amount
         );
-        let stakeable_token = instantiate_cw20(&mut app.borrow_mut());
+        let stakeable_token = instantiate_cw20(&mut app);
         let instantiate_msg = InstantiateMsg {
             start_block: 1000,
             end_block: 4000,
@@ -1107,7 +1107,7 @@ mod tests {
         app.borrow_mut().update_block(next_block);
 
         let reward =
-            instantiate_rewards(&mut app.borrow_mut(), instantiate_msg.clone(), &init_funds)
+            instantiate_rewards(&mut app, instantiate_msg.clone(), &init_funds)
                 .unwrap();
 
         let expected_response = InfoResponse {
@@ -1153,7 +1153,7 @@ mod tests {
                 .unwrap()
                 .amount
         );
-        let stakeable_token = instantiate_cw20(&mut app.borrow_mut());
+        let stakeable_token = instantiate_cw20(&mut app);
         let instantiate_msg = InstantiateMsg {
             start_block: 1000,
             end_block: 4000,
@@ -1166,7 +1166,7 @@ mod tests {
         app.borrow_mut().update_block(next_block);
 
         let reward =
-            instantiate_rewards(&mut app.borrow_mut(), instantiate_msg, &init_funds).unwrap();
+            instantiate_rewards(&mut app, instantiate_msg, &init_funds).unwrap();
 
         let res: stake_cw20::msg::StakedBalanceAtHeightResponse = app
             .wrap()
