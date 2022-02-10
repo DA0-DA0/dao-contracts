@@ -72,7 +72,7 @@ fn test_update_admin() {
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked(CREATOR),
-            contract.clone(),
+            contract,
             &ExecuteMsg::UpdateAdmin {
                 new_admin: Addr::unchecked(ADMIN1),
             },
@@ -98,10 +98,10 @@ fn get_items_and_count(app: &App, contract: Addr) -> (u32, Vec<AddressItem>) {
         .unwrap();
     let items: Vec<AddressItem> = app
         .wrap()
-        .query_wasm_smart(contract.clone(), &QueryMsg::GetAddresses {})
+        .query_wasm_smart(contract, &QueryMsg::GetAddresses {})
         .unwrap();
 
-    return (count, items);
+    (count, items)
 }
 
 #[test]
@@ -164,10 +164,10 @@ fn test_add_remove() {
         .unwrap();
     }
 
-    let mut expected: Vec<AddressItem> = test_items[250..499].into_iter().cloned().collect();
+    let mut expected: Vec<AddressItem> = test_items[250..499].iter().cloned().collect();
     expected.sort();
 
-    let (count, items) = get_items_and_count(&app, contract.clone());
+    let (count, items) = get_items_and_count(&app, contract);
     assert_eq!(count, 249);
     assert_eq!(items, expected.into_iter().rev().collect::<Vec<_>>());
 }
