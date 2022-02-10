@@ -4,6 +4,7 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
+use cw_storage_plus::Bound;
 
 use crate::error::ContractError;
 use crate::msg::{AddressItem, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -81,7 +82,7 @@ pub fn execute_update_admin(deps: DepsMut, new_admin: Addr) -> Result<Response, 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetAddresses {} => query_get_addresses(deps),
+        QueryMsg::GetAddresses {start, end} => query_get_addresses(deps, start, end),
         QueryMsg::GetAdmin {} => query_get_admin(deps),
         QueryMsg::GetAddressCount {} => query_get_address_count(deps),
     }
@@ -92,9 +93,12 @@ pub fn query_get_admin(deps: Deps) -> StdResult<Binary> {
     to_binary(&admin)
 }
 
-pub fn query_get_addresses(deps: Deps) -> StdResult<Binary> {
+pub fn query_get_addresses(deps: Deps, start: Option<u32>, end: Option<u32>) -> StdResult<Binary> {
+    let start = start.map(|s| Bound::inclusive_int(s));
+    let end = end.map(|e| Bound::exclusive_int(e));
+
     let items = ITEMS
-        .range(deps.storage, None, None, cosmwasm_std::Order::Descending)
+        .range(deps.storage, start, end, cosmwasm_std::Order::Descending)
         .collect::<Result<Vec<(u32, Addr)>, _>>()?;
 
     let items = items

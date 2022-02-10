@@ -98,7 +98,13 @@ fn get_items_and_count(app: &App, contract: Addr) -> (u32, Vec<AddressItem>) {
         .unwrap();
     let items: Vec<AddressItem> = app
         .wrap()
-        .query_wasm_smart(contract, &QueryMsg::GetAddresses {})
+        .query_wasm_smart(
+            contract,
+            &QueryMsg::GetAddresses {
+                start: None,
+                end: None,
+            },
+        )
         .unwrap();
 
     (count, items)
@@ -110,15 +116,15 @@ fn test_add_remove_edge_cases() {
     let contract = setup_test_case(&mut app, CREATOR);
 
     app.execute_contract(
-            Addr::unchecked(CREATOR),
-            contract.clone(),
-            &ExecuteMsg::UpdateAddresses {
-                to_add: vec![generate_item(10), generate_item(11)],
-                to_remove: vec![generate_item(10)],
-            },
-            &[],
-        )
-        .unwrap();
+        Addr::unchecked(CREATOR),
+        contract.clone(),
+        &ExecuteMsg::UpdateAddresses {
+            to_add: vec![generate_item(10), generate_item(11)],
+            to_remove: vec![generate_item(10)],
+        },
+        &[],
+    )
+    .unwrap();
 
     // Remove happens after add.
     let (count, items) = get_items_and_count(&app, contract.clone());
@@ -133,7 +139,8 @@ fn test_add_remove_edge_cases() {
             to_remove: vec![generate_item(10)],
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     // Removing an item that doesn't exist isn't an issue.
     let (count, items) = get_items_and_count(&app, contract.clone());
@@ -148,7 +155,8 @@ fn test_add_remove_edge_cases() {
             to_remove: vec![generate_item(13), generate_item(10)],
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     let (count, items) = get_items_and_count(&app, contract.clone());
     assert_eq!(count, 2);
@@ -221,4 +229,81 @@ fn test_add_remove() {
     let (count, items) = get_items_and_count(&app, contract);
     assert_eq!(count, 249);
     assert_eq!(items, expected.into_iter().rev().collect::<Vec<_>>());
+}
+
+#[test]
+fn test_get_range() {
+    let mut app = App::default();
+    let contract = setup_test_case(&mut app, CREATOR);
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR),
+        contract.clone(),
+        &ExecuteMsg::UpdateAddresses {
+            to_add: vec![
+                generate_item(10),
+                generate_item(11),
+                generate_item(15),
+                generate_item(17),
+            ],
+            to_remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let items: Vec<AddressItem> = app
+        .wrap()
+        .query_wasm_smart(
+            contract.clone(),
+            &QueryMsg::GetAddresses {
+                start: Some(10),
+                end: Some(17),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        items,
+        vec![generate_item(15), generate_item(11), generate_item(10)]
+    );
+
+    let items: Vec<AddressItem> = app
+        .wrap()
+        .query_wasm_smart(
+            contract.clone(),
+            &QueryMsg::GetAddresses {
+                start: Some(10),
+                end: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        items,
+        vec![
+            generate_item(17),
+            generate_item(15),
+            generate_item(11),
+            generate_item(10)
+        ]
+    );
+
+    let items: Vec<AddressItem> = app
+        .wrap()
+        .query_wasm_smart(
+            contract,
+            &QueryMsg::GetAddresses {
+                start: None,
+                end: Some(11),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        items,
+        vec![
+            generate_item(10),
+        ]
+    );
 }

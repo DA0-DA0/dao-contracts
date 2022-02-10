@@ -38,7 +38,12 @@ pub enum QueryMsg {
     /// Gets the address list from the contract. Items are returned in
     /// order of their priority. Items with higher priorities are
     /// returned first. Returns Vec<AddressItem>.
-    GetAddresses {},
+    GetAddresses {
+	/// The lowest priority to include in results. Inclusive.
+	start: Option<u32>,
+	/// The highest priority to include in results. Exclusive.
+	end: Option<u32>,
+    },
     /// Gets the admin of the contract. Returns Addr.
     GetAdmin {},
     /// Gets the number of addresses in the contract. Returns usize
