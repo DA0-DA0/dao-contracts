@@ -3,16 +3,21 @@
   "title": "Config",
   "type": "object",
   "required": [
+    "blocks_between_payments",
     "denom",
     "end_block",
     "funded",
-    "payment_block_delta",
     "payment_per_block",
     "staking_contract",
     "start_block",
     "total_amount"
   ],
   "properties": {
+    "blocks_between_payments": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "denom": {
       "$ref": "#/definitions/Denom"
     },
@@ -23,11 +28,6 @@
     },
     "funded": {
       "type": "boolean"
-    },
-    "payment_block_delta": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
     },
     "payment_per_block": {
       "$ref": "#/definitions/Uint128"
