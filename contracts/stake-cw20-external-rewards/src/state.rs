@@ -14,7 +14,7 @@ pub struct Config {
     pub denom: Denom,
     pub staking_contract: Addr,
     pub funded: bool,
-    pub payment_block_delta: u64,
+    pub blocks_between_payments: u64,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

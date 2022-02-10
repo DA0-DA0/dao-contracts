@@ -47,7 +47,8 @@ pub struct InfoResponse {
     pub total_amount: Uint128,
     pub denom: Denom,
     pub staking_contract: String,
-    pub payment_block_delta: u64,
+    pub blocks_between_payments: u64,
+    pub funded: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -35,10 +35,8 @@ pub enum ContractError {
     StartBlockAlreadyOccurred {},
     #[error("Start block later then end block")]
     StartBlockAfterEndBlock {},
-    #[error("Start block is not divisible by payment delta")]
-    StartBlockNotDivisibleByPaymentDelta {},
-    #[error("End block is not divisible by payment delta")]
-    EndBlockNotDivisibleByPaymentDelta {},
+    #[error("Start block is not divisible by blocks between payments")]
+    StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {},
     #[error("Total amount is not equal to total payments")]
     InvalidTotalAmount {},
 }

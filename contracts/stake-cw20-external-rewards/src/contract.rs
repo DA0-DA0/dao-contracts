@@ -33,7 +33,7 @@ pub fn instantiate(
             Denom::Native(_) => true,
             Denom::Cw20(_) => false,
         },
-        payment_block_delta: msg.payment_block_delta,
+        blocks_between_payments: msg.payment_block_delta,
     };
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::default())
@@ -46,19 +46,15 @@ pub fn validate_instantiate_msg(env: &Env, msg: &InstantiateMsg) -> Result<(), C
     if msg.start_block > msg.end_block {
         return Err(ContractError::StartBlockAfterEndBlock {});
     }
-    if msg.start_block % msg.payment_block_delta != 0 {
-        return Err(ContractError::StartBlockNotDivisibleByPaymentDelta {});
+    if (msg.end_block - msg.start_block) % msg.payment_block_delta != 0 {
+        return Err(ContractError::StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {});
     }
-    if msg.end_block % msg.payment_block_delta != 0 {
-        return Err(ContractError::EndBlockNotDivisibleByPaymentDelta {});
-    }
-    let duration = Uint128::from(((msg.end_block - msg.start_block) / msg.payment_block_delta) + 1);
+    let duration = Uint128::from((msg.end_block - msg.start_block) + msg.payment_block_delta);
     let calculated_total = duration
         .checked_mul(msg.payment_per_block)
-        .map_err(cosmwasm_std::StdError::overflow)?
-        .checked_mul(Uint128::from(msg.payment_block_delta))
         .map_err(cosmwasm_std::StdError::overflow)?;
     if calculated_total != msg.total_amount {
+        println!("{}, {}", calculated_total, msg.total_amount);
         return Err(ContractError::InvalidTotalAmount {});
     }
     Ok(())
@@ -174,7 +170,7 @@ fn get_amount_owed(
     last_claimed: u64,
     up_to_block: u64,
 ) -> StdResult<(Uint128, u64)> {
-    let delta = config.payment_block_delta;
+    let delta = config.blocks_between_payments;
     let mut current_block = last_claimed;
     let mut amount = Uint128::zero();
     while current_block <= min(up_to_block, config.end_block) {
@@ -261,7 +257,8 @@ pub fn query_info(deps: Deps) -> StdResult<InfoResponse> {
         total_amount: config.total_amount,
         denom: config.denom,
         staking_contract: config.staking_contract.to_string(),
-        payment_block_delta: config.payment_block_delta,
+        blocks_between_payments: config.blocks_between_payments,
+        funded: config.funded
     })
 }
 
@@ -1113,7 +1110,8 @@ mod tests {
             total_amount: instantiate_msg.total_amount,
             denom: instantiate_msg.denom,
             staking_contract: instantiate_msg.distribution_token,
-            payment_block_delta: 1000,
+            blocks_between_payments: 1000,
+            funded: true,
         };
 
         let res: InfoResponse = app
@@ -1285,7 +1283,7 @@ mod tests {
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::StartBlockNotDivisibleByPaymentDelta {});
+        assert_eq!(err, ContractError::StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {});
 
         app.borrow_mut().update_block(|b| b.height = 0);
         let stakeable_token = instantiate_cw20(&mut app);
@@ -1302,7 +1300,7 @@ mod tests {
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::EndBlockNotDivisibleByPaymentDelta {});
+        assert_eq!(err, ContractError::StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {});
 
         app.borrow_mut().update_block(|b| b.height = 0);
         let stakeable_token = instantiate_cw20(&mut app);
