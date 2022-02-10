@@ -1,0 +1,124 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Change the admin",
+      "type": "object",
+      "required": [
+        "update_admin"
+      ],
+      "properties": {
+        "update_admin": {
+          "type": "object",
+          "properties": {
+            "admin": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Applys a diff to the existing members. Remove is applied after add, so if an address is in both, it is removed",
+      "type": "object",
+      "required": [
+        "update_members"
+      ],
+      "properties": {
+        "update_members": {
+          "type": "object",
+          "required": [
+            "add",
+            "remove"
+          ],
+          "properties": {
+            "add": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Member"
+              }
+            },
+            "remove": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Add a new hook to be informed of all membership changes. Must be called by Admin",
+      "type": "object",
+      "required": [
+        "add_hook"
+      ],
+      "properties": {
+        "add_hook": {
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove a hook. Must be called by Admin",
+      "type": "object",
+      "required": [
+        "remove_hook"
+      ],
+      "properties": {
+        "remove_hook": {
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "Member": {
+      "description": "An address and its weight. Items are ordered first by their priority and compared based on their addresses.",
+      "type": "object",
+      "required": [
+        "addr",
+        "weight"
+      ],
+      "properties": {
+        "addr": {
+          "$ref": "#/definitions/Addr"
+        },
+        "weight": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}
