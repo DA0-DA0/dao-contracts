@@ -1,9 +1,6 @@
-use std::collections::BTreeSet;
-
 use cosmwasm_std::Addr;
-use cw_storage_plus::Item;
-
-use crate::msg::AddressItem;
+use cw_storage_plus::{Item, Map};
 
 pub const ADMIN: Item<Addr> = Item::new("admin");
-pub const ITEMS: Item<BTreeSet<AddressItem>> = Item::new("items");
+/// Maps priorities to addresses.
+pub const ITEMS: Map<u32, Addr> = Map::new("items");

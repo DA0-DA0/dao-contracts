@@ -1,8 +1,8 @@
-use std::collections::BTreeSet;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
@@ -25,7 +25,6 @@ pub fn instantiate(
     let admin = deps.api.addr_validate(msg.admin.as_str())?;
 
     ADMIN.save(deps.storage, &admin)?;
-    ITEMS.save(deps.storage, &BTreeSet::default())?;
 
     Ok(Response::default()
         .add_attribute("method", "instantiate")
@@ -60,17 +59,13 @@ pub fn execute_update_addresses(
     to_add: Vec<AddressItem>,
     to_remove: Vec<AddressItem>,
 ) -> Result<Response, ContractError> {
-    let mut items = ITEMS.load(deps.storage)?;
-
-    // O(n * log(N))
-    items.extend(to_add.into_iter());
-
-    // O(n * log(N))
-    for item in to_remove.into_iter() {
-        items.remove(&item);
+    for item in to_add.into_iter() {
+        ITEMS.save(deps.storage, item.priority, &item.addr)?;
     }
 
-    ITEMS.save(deps.storage, &items)?;
+    for item in to_remove.into_iter() {
+        ITEMS.remove(deps.storage, item.priority);
+    }
 
     Ok(Response::default().add_attribute("method", "update_addresses"))
 }
@@ -98,12 +93,21 @@ pub fn query_get_admin(deps: Deps) -> StdResult<Binary> {
 }
 
 pub fn query_get_addresses(deps: Deps) -> StdResult<Binary> {
-    let items = ITEMS.load(deps.storage)?;
-    let items: Vec<_> = items.into_iter().rev().collect();
+    let items = ITEMS
+        .range(deps.storage, None, None, cosmwasm_std::Order::Descending)
+        .collect::<Result<Vec<(u32, Addr)>, _>>()?;
+
+    let items = items
+        .into_iter()
+        .map(|(priority, addr)| AddressItem { priority, addr })
+        .collect::<Vec<_>>();
+
     to_binary(&items)
 }
 
 pub fn query_get_address_count(deps: Deps) -> StdResult<Binary> {
-    let items = ITEMS.load(deps.storage)?;
-    to_binary(&items.len())
+    let keys: Vec<_> = ITEMS
+        .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .collect();
+    to_binary(&keys.len())
 }

@@ -105,6 +105,57 @@ fn get_items_and_count(app: &App, contract: Addr) -> (u32, Vec<AddressItem>) {
 }
 
 #[test]
+fn test_add_remove_edge_cases() {
+    let mut app = App::default();
+    let contract = setup_test_case(&mut app, CREATOR);
+
+    app.execute_contract(
+            Addr::unchecked(CREATOR),
+            contract.clone(),
+            &ExecuteMsg::UpdateAddresses {
+                to_add: vec![generate_item(10), generate_item(11)],
+                to_remove: vec![generate_item(10)],
+            },
+            &[],
+        )
+        .unwrap();
+
+    // Remove happens after add.
+    let (count, items) = get_items_and_count(&app, contract.clone());
+    assert_eq!(count, 1);
+    assert_eq!(items, vec![generate_item(11)]);
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR),
+        contract.clone(),
+        &ExecuteMsg::UpdateAddresses {
+            to_add: vec![],
+            to_remove: vec![generate_item(10)],
+        },
+        &[],
+    ).unwrap();
+
+    // Removing an item that doesn't exist isn't an issue.
+    let (count, items) = get_items_and_count(&app, contract.clone());
+    assert_eq!(count, 1);
+    assert_eq!(items, vec![generate_item(11)]);
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR),
+        contract.clone(),
+        &ExecuteMsg::UpdateAddresses {
+            to_add: vec![generate_item(10), generate_item(11), generate_item(10_000)],
+            to_remove: vec![generate_item(13), generate_item(10)],
+        },
+        &[],
+    ).unwrap();
+
+    let (count, items) = get_items_and_count(&app, contract.clone());
+    assert_eq!(count, 2);
+    assert_eq!(items, vec![generate_item(10_000), generate_item(11)]);
+}
+
+#[test]
 fn test_add_remove() {
     let mut app = App::default();
     let contract = setup_test_case(&mut app, CREATOR);
