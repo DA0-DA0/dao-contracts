@@ -63,14 +63,14 @@ pub fn validate_instantiate_msg(env: &Env, msg: &InstantiateMsg) -> Result<(), C
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Claim {} => try_claim(deps, _env.clone(), info, _env.block.height),
-        ExecuteMsg::Receive(msg) => try_receive(deps, _env, info, msg),
-        ExecuteMsg::ClaimUpToBlock { block } => try_claim(deps, _env, info, block),
+        ExecuteMsg::Claim {} => try_claim(deps, env.clone(), info, env.block.height),
+        ExecuteMsg::Receive(msg) => try_receive(deps, env, info, msg),
+        ExecuteMsg::ClaimUpToBlock { block } => try_claim(deps, env, info, block),
     }
 }
 
