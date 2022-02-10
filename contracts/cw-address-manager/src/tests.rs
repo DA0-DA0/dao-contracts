@@ -263,10 +263,29 @@ fn test_get_range() {
         )
         .unwrap();
 
-    assert_eq!(
-        items,
-        vec![generate_item(15), generate_item(11), generate_item(10)]
-    );
+    let expected = vec![generate_item(15), generate_item(11), generate_item(10)];
+
+    assert_eq!(items, expected);
+    for item in expected.into_iter() {
+        let contained: bool = app
+            .wrap()
+            .query_wasm_smart(
+                contract.clone(),
+                &QueryMsg::CheckAddress { addr: item.addr },
+            )
+            .unwrap();
+        assert!(contained)
+    }
+    let contained: bool = app
+        .wrap()
+        .query_wasm_smart(
+            contract.clone(),
+            &QueryMsg::CheckAddress {
+                addr: Addr::unchecked("notinset"),
+            },
+        )
+        .unwrap();
+    assert!(!contained);
 
     let items: Vec<AddressItem> = app
         .wrap()
@@ -300,10 +319,5 @@ fn test_get_range() {
         )
         .unwrap();
 
-    assert_eq!(
-        items,
-        vec![
-            generate_item(10),
-        ]
-    );
+    assert_eq!(items, vec![generate_item(10),]);
 }

@@ -1,8 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 
@@ -82,9 +80,10 @@ pub fn execute_update_admin(deps: DepsMut, new_admin: Addr) -> Result<Response, 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetAddresses {start, end} => query_get_addresses(deps, start, end),
+        QueryMsg::GetAddresses { start, end } => query_get_addresses(deps, start, end),
         QueryMsg::GetAdmin {} => query_get_admin(deps),
         QueryMsg::GetAddressCount {} => query_get_address_count(deps),
+        QueryMsg::CheckAddress { addr } => query_check_addr(deps, addr),
     }
 }
 
@@ -94,8 +93,8 @@ pub fn query_get_admin(deps: Deps) -> StdResult<Binary> {
 }
 
 pub fn query_get_addresses(deps: Deps, start: Option<u32>, end: Option<u32>) -> StdResult<Binary> {
-    let start = start.map(|s| Bound::inclusive_int(s));
-    let end = end.map(|e| Bound::exclusive_int(e));
+    let start = start.map(Bound::inclusive_int);
+    let end = end.map(Bound::exclusive_int);
 
     let items = ITEMS
         .range(deps.storage, start, end, cosmwasm_std::Order::Descending)
@@ -110,8 +109,15 @@ pub fn query_get_addresses(deps: Deps, start: Option<u32>, end: Option<u32>) -> 
 }
 
 pub fn query_get_address_count(deps: Deps) -> StdResult<Binary> {
-    let keys: Vec<_> = ITEMS
-        .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .collect();
-    to_binary(&keys.len())
+    let keys = ITEMS
+        .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending);
+    to_binary(&keys.count())
+}
+
+pub fn query_check_addr(deps: Deps, addr: Addr) -> StdResult<Binary> {
+    let items = ITEMS
+        .range(deps.storage, None, None, cosmwasm_std::Order::Descending)
+        .collect::<Result<Vec<(u32, Addr)>, _>>()?;
+    let contained = items.into_iter().any(|(_, a)| addr == a);
+    to_binary(&contained)
 }
