@@ -258,7 +258,7 @@ pub fn query_info(deps: Deps) -> StdResult<InfoResponse> {
         denom: config.denom,
         staking_contract: config.staking_contract.to_string(),
         blocks_between_payments: config.blocks_between_payments,
-        funded: config.funded
+        funded: config.funded,
     })
 }
 
@@ -1283,7 +1283,10 @@ mod tests {
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {});
+        assert_eq!(
+            err,
+            ContractError::StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {}
+        );
 
         app.borrow_mut().update_block(|b| b.height = 0);
         let stakeable_token = instantiate_cw20(&mut app);
@@ -1300,7 +1303,10 @@ mod tests {
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {});
+        assert_eq!(
+            err,
+            ContractError::StartAndEndBlocksNotDivisibleByBlocksBetweenPayments {}
+        );
 
         app.borrow_mut().update_block(|b| b.height = 0);
         let stakeable_token = instantiate_cw20(&mut app);
