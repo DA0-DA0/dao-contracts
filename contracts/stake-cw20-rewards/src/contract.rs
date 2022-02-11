@@ -424,15 +424,15 @@ mod tests {
     fn test_query_config() {
         let mut app = mock_app();
         let total_payment = Uint128::from(TOTAL_PAYMENT);
-        let start_block = (&mut app).block_info().height + 2; // We need to add 2 due to setup contract advancing the block twice
-        let end_block = (&mut app).block_info().height + 2 + TOTAL_REWARDS_DURATION;
+        let start_block = app.block_info().height + 2; // We need to add 2 due to setup contract advancing the block twice
+        let end_block = app.block_info().height + 2 + TOTAL_REWARDS_DURATION;
         let (rewards, stake, token) =
             setup_test_case(&mut app, vec![], total_payment, start_block, end_block);
-        let resp = query_config(&app, rewards.clone());
+        let resp = query_config(&app, rewards);
         assert_eq!(
             GetConfigResponse {
-                token_address: token.clone(),
-                staking_contract: stake.clone(),
+                token_address: token,
+                staking_contract: stake,
                 payment_per_block: total_payment
                     .checked_div(Uint128::from(end_block - start_block))
                     .unwrap_or_default(),
@@ -485,7 +485,7 @@ mod tests {
         assert_eq!(addr1_bal, Uint128::from(2000u64));
 
         let config = query_config(&app, rewards.clone());
-        assert_eq!(config.funded, true);
+        assert!(config.funded);
 
         // Fund again, now fails
         let _err = fund_rewards(&mut app, &rewards, &token, total_payment).unwrap_err();
@@ -495,8 +495,8 @@ mod tests {
     fn test_query_pending_rewards() {
         let mut app = mock_app();
         let total_payment = Uint128::from(TOTAL_PAYMENT);
-        let start_block = (&mut app).block_info().height;
-        let end_block = (&mut app).block_info().height + TOTAL_REWARDS_DURATION;
+        let start_block = app.block_info().height;
+        let end_block = app.block_info().height + TOTAL_REWARDS_DURATION;
         let rewards_per_block = total_payment
             .checked_div(Uint128::from(TOTAL_REWARDS_DURATION))
             .unwrap();
@@ -542,8 +542,8 @@ mod tests {
     fn test_claim() {
         let mut app = mock_app();
         let total_payment = Uint128::from(TOTAL_PAYMENT);
-        let start_block = (&mut app).block_info().height + 1; // We add 1 to make sure rewards do not start instantly so we can check for the error : )
-        let end_block = (&mut app).block_info().height + 1 + TOTAL_REWARDS_DURATION;
+        let start_block = app.block_info().height + 1; // We add 1 to make sure rewards do not start instantly so we can check for the error : )
+        let end_block = app.block_info().height + 1 + TOTAL_REWARDS_DURATION;
         let rewards_per_block = total_payment
             .checked_div(Uint128::from(TOTAL_REWARDS_DURATION))
             .unwrap();
