@@ -1228,9 +1228,98 @@ fn test_execute_works() {
 
     // In passing: Try to close Executed fails
     let err = app
-        .execute_contract(Addr::unchecked(OWNER), multisig_addr, &closing, &[])
+        .execute_contract(Addr::unchecked(OWNER), multisig_addr.clone(), &closing, &[])
         .unwrap_err();
     assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
+
+    // Trying to execute something that was already executed fails
+    let err = app
+        .execute_contract(Addr::unchecked(SOMEBODY), multisig_addr, &execution, &[])
+        .unwrap_err();
+    assert_eq!(
+        ContractError::WrongExecuteStatus {},
+        err.downcast().unwrap()
+    )
+}
+
+#[test]
+fn proposal_pass_on_expiration() {
+    let init_funds = coins(10, "BTC");
+    let mut app = mock_app(&init_funds);
+
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(51),
+        quorum: Decimal::percent(1),
+    };
+    let voting_period = 2000000;
+    let (multsig_addr, _) = setup_test_case(
+        &mut app,
+        threshold,
+        Duration::Time(voting_period),
+        init_funds,
+        true,
+    );
+
+    // Check balance to ensure we can prop
+    let contract_bal = app.wrap().query_balance(&multsig_addr, "BTC").unwrap();
+    assert_eq!(contract_bal, coin(10, "BTC"));
+
+    let prop = pay_somebody_proposal();
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), multsig_addr.clone(), &prop, &[])
+        .unwrap();
+
+    // Get prop id
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Vote it, so it passes after voting period is over
+    let vote = ExecuteMsg::Vote {
+        proposal_id,
+        vote: Vote::Yes,
+    };
+    let res = app
+        .execute_contract(Addr::unchecked(VOTER3), multsig_addr.clone(), &vote, &[])
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "vote"),
+            ("sender", VOTER3),
+            ("proposal_id", proposal_id.to_string().as_str()),
+            ("status", "Open")
+        ]
+    );
+
+    // Wait until proposal period is done
+    app.update_block(|block| {
+        block.time = block.time.plus_seconds(voting_period);
+        block.height = std::cmp::max(1, voting_period / 5);
+    });
+
+    // Proposal should now be passed
+    let prop: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(&multsig_addr, &QueryMsg::Proposal { proposal_id })
+        .unwrap();
+    assert_eq!(prop.status, Status::Passed);
+
+    // Now execute
+    let res = app
+        .execute_contract(
+            Addr::unchecked(SOMEBODY),
+            multsig_addr,
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "execute"),
+            ("sender", SOMEBODY),
+            ("proposal_id", proposal_id.to_string().as_str())
+        ]
+    );
 }
 
 #[test]

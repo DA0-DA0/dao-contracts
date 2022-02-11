@@ -15,4 +15,6 @@ pub enum ContractError {
     Unauthorized { received: Addr, expected: Addr },
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
+    #[error("No admin configured")]
+    NoAdminConfigured {},
 }

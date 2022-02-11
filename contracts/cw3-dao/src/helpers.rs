@@ -114,6 +114,7 @@ pub fn map_proposal(
         expires: prop.expires,
         threshold,
         deposit_amount: prop.deposit,
+        start_height: prop.start_height,
     })
 }
 

@@ -39,7 +39,10 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let admin = deps.api.addr_validate(msg.admin.as_str())?;
+    let admin = match msg.admin {
+        Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
+        None => None,
+    };
 
     let config = Config {
         admin,
@@ -72,22 +75,33 @@ pub fn execute(
 pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
-    admin: Addr,
+    new_admin: Option<Addr>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
-    if info.sender != config.admin {
-        return Err(ContractError::Unauthorized {
-            expected: config.admin,
-            received: info.sender,
-        });
+    match config.admin {
+        None => Err(ContractError::NoAdminConfigured {}),
+        Some(current_admin) => {
+            if info.sender != current_admin {
+                return Err(ContractError::Unauthorized {
+                    expected: current_admin,
+                    received: info.sender,
+                });
+            }
+
+            config.admin = new_admin;
+            config.unstaking_duration = duration;
+
+            CONFIG.save(deps.storage, &config)?;
+            Ok(Response::new().add_attribute(
+                "admin",
+                config
+                    .admin
+                    .map(|a| a.to_string())
+                    .unwrap_or_else(|| "None".to_string()),
+            ))
+        }
     }
-
-    config.admin = admin;
-    config.unstaking_duration = duration;
-
-    CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("owner", config.admin.to_string()))
 }
 
 pub fn execute_receive(
@@ -432,7 +446,7 @@ mod tests {
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
-            admin: Addr::unchecked("owner"),
+            admin: Some(Addr::unchecked("owner")),
             token_address: cw20,
             unstaking_duration,
         };
@@ -536,7 +550,7 @@ mod tests {
         app: &mut App,
         staking_addr: &Addr,
         info: MessageInfo,
-        admin: Addr,
+        admin: Option<Addr>,
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
         let msg = ExecuteMsg::UpdateConfig { admin, duration };
@@ -582,13 +596,13 @@ mod tests {
             &mut app,
             &staking_addr,
             info,
-            Addr::unchecked("owner2"),
+            Some(Addr::unchecked("owner2")),
             Some(Duration::Height(100)),
         )
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.admin, Addr::unchecked("owner2"));
+        assert_eq!(config.admin, Some(Addr::unchecked("owner2")));
         assert_eq!(config.unstaking_duration, Some(Duration::Height(100)));
 
         // Try updating admin with original owner, which is now invalid
@@ -597,10 +611,39 @@ mod tests {
             &mut app,
             &staking_addr,
             info,
-            Addr::unchecked("owner3"),
+            Some(Addr::unchecked("owner3")),
             Some(Duration::Height(100)),
         )
         .unwrap_err();
+
+        // Remove admin
+        let info = mock_info("owner2", &[]);
+        let _env = mock_env();
+        // Test update admin
+        update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            None,
+            Some(Duration::Height(100)),
+        )
+        .unwrap();
+
+        // Assert no further updates can be made
+        let info = mock_info("owner2", &[]);
+        let _env = mock_env();
+        // Test update admin
+        let err: ContractError = update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            None,
+            Some(Duration::Height(100)),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+        assert_eq!(err, ContractError::NoAdminConfigured {})
     }
 
     #[test]
