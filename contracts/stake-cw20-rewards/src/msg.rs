@@ -31,6 +31,7 @@ pub enum ReceiveMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetConfig {},
+    GetPendingRewards {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -43,4 +44,10 @@ pub struct GetConfigResponse {
     pub start_block: u64,
     pub end_block: u64,
     pub funded: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GetPendingRewardsResponse {
+    pub amount: Uint128,
 }
