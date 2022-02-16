@@ -1,24 +1,273 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ListProposalsResponse",
-  "description": "A list of proposals returned by `ListProposals` and `ReverseProposals`.",
-  "type": "object",
-  "required": [
-    "proposals"
-  ],
-  "properties": {
-    "proposals": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ProposalResponse"
-      }
-    }
-  },
-  "definitions": {
-    "Addr": {
-      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-      "type": "string"
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "description": "Creates a proposal in the governance module.",
+      "type": "object",
+      "required": [
+        "propose"
+      ],
+      "properties": {
+        "propose": {
+          "type": "object",
+          "required": [
+            "choices",
+            "description",
+            "title"
+          ],
+          "properties": {
+            "choices": {
+              "description": "The multiple choices.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/MultipleChoiceOptions"
+                }
+              ]
+            },
+            "description": {
+              "description": "A description of the proposal.",
+              "type": "string"
+            },
+            "title": {
+              "description": "The title of the proposal.",
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     },
+    {
+      "description": "Votes on a proposal. Voting power is determined by the DAO's voting power module.",
+      "type": "object",
+      "required": [
+        "vote"
+      ],
+      "properties": {
+        "vote": {
+          "type": "object",
+          "required": [
+            "proposal_id",
+            "vote"
+          ],
+          "properties": {
+            "proposal_id": {
+              "description": "The ID of the proposal to vote on.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "vote": {
+              "description": "The senders position on the proposal.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/MultipleChoiceVote"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Causes the messages associated with a passed proposal to be executed by the DAO.",
+      "type": "object",
+      "required": [
+        "execute"
+      ],
+      "properties": {
+        "execute": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "description": "The ID of the proposal to execute.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Closes a proposal that has failed (either not passed or timed out). If applicable this will cause the proposal deposit associated wth said proposal to be returned.",
+      "type": "object",
+      "required": [
+        "close"
+      ],
+      "properties": {
+        "close": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "description": "The ID of the proposal to close.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Updates the governance module's config.",
+      "type": "object",
+      "required": [
+        "update_config"
+      ],
+      "properties": {
+        "update_config": {
+          "type": "object",
+          "required": [
+            "dao",
+            "max_voting_period",
+            "only_members_execute",
+            "voting_strategy"
+          ],
+          "properties": {
+            "dao": {
+              "description": "The address if tge DAO that this governance module is associated with.",
+              "type": "string"
+            },
+            "deposit_info": {
+              "description": "Information about the deposit required to make a proposal. None if no deposit, Some otherwise.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/DepositInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "max_voting_period": {
+              "description": "The default maximum amount of time a proposal may be voted on before expiring. This will only apply to proposals created after the config update.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                }
+              ]
+            },
+            "min_voting_period": {
+              "description": "The minimum amount of time a proposal must be open before passing. A proposal may fail before this amount of time has elapsed, but it will not pass. This can be useful for preventing governance attacks wherein an attacker aquires a large number of tokens and forces a proposal through.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "only_members_execute": {
+              "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal. Applies to all outstanding and future proposals.",
+              "type": "boolean"
+            },
+            "voting_strategy": {
+              "description": "The new proposal voting strategy. This will only apply to proposals created after the config update.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/VotingStrategy"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "add_proposal_hook"
+      ],
+      "properties": {
+        "add_proposal_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_proposal_hook"
+      ],
+      "properties": {
+        "remove_proposal_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "add_vote_hook"
+      ],
+      "properties": {
+        "add_vote_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_vote_hook"
+      ],
+      "properties": {
+        "remove_vote_hook": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
     "BankMsg": {
       "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
       "oneOf": [
@@ -79,37 +328,6 @@
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
       "type": "string"
-    },
-    "CheckedDepositInfo": {
-      "description": "Counterpart to the `DepositInfo` struct which has been processed.",
-      "type": "object",
-      "required": [
-        "deposit",
-        "refund_failed_proposals",
-        "token"
-      ],
-      "properties": {
-        "deposit": {
-          "description": "The number of tokens that must be deposited to create a proposal.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            }
-          ]
-        },
-        "refund_failed_proposals": {
-          "description": "If failed proposals should have their deposits refunded.",
-          "type": "boolean"
-        },
-        "token": {
-          "description": "The address of the cw20 token to be used for proposal deposits.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            }
-          ]
-        }
-      }
     },
     "Coin": {
       "type": "object",
@@ -243,6 +461,76 @@
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
     },
+    "DepositInfo": {
+      "description": "Information about the deposit required to create a proposal.",
+      "type": "object",
+      "required": [
+        "deposit",
+        "refund_failed_proposals",
+        "token"
+      ],
+      "properties": {
+        "deposit": {
+          "description": "The number of tokens that must be deposited to create a proposal.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "refund_failed_proposals": {
+          "description": "If failed proposals should have their deposits refunded.",
+          "type": "boolean"
+        },
+        "token": {
+          "description": "The address of the cw20 token to be used for proposal deposits.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DepositToken"
+            }
+          ]
+        }
+      }
+    },
+    "DepositToken": {
+      "description": "Information about the token to use for proposal deposits.",
+      "oneOf": [
+        {
+          "description": "Use a specific token address as the deposit token.",
+          "type": "object",
+          "required": [
+            "token"
+          ],
+          "properties": {
+            "token": {
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "properties": {
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `cw_core_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+          "type": "object",
+          "required": [
+            "voting_module_token"
+          ],
+          "properties": {
+            "voting_module_token": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "DistributionMsg": {
       "description": "The message types of the distribution module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto",
       "oneOf": [
@@ -292,21 +580,16 @@
         }
       ]
     },
-    "Empty": {
-      "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
-      "type": "object"
-    },
-    "Expiration": {
-      "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
+    "Duration": {
+      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
       "oneOf": [
         {
-          "description": "AtHeight will expire when `env.block.height` >= height",
           "type": "object",
           "required": [
-            "at_height"
+            "height"
           ],
           "properties": {
-            "at_height": {
+            "height": {
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
@@ -315,32 +598,25 @@
           "additionalProperties": false
         },
         {
-          "description": "AtTime will expire when `env.block.time` >= time",
+          "description": "Time in seconds",
           "type": "object",
           "required": [
-            "at_time"
+            "time"
           ],
           "properties": {
-            "at_time": {
-              "$ref": "#/definitions/Timestamp"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Never will never expire. Used to express the empty variant",
-          "type": "object",
-          "required": [
-            "never"
-          ],
-          "properties": {
-            "never": {
-              "type": "object"
+            "time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false
         }
       ]
+    },
+    "Empty": {
+      "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+      "type": "object"
     },
     "GovMsg": {
       "oneOf": [
@@ -526,6 +802,53 @@
         }
       }
     },
+    "MultipleChoiceOption": {
+      "type": "object",
+      "required": [
+        "description"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "msgs": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/CosmosMsg_for_Empty"
+          }
+        }
+      }
+    },
+    "MultipleChoiceOptions": {
+      "type": "object",
+      "required": [
+        "options"
+      ],
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MultipleChoiceOption"
+          }
+        }
+      }
+    },
+    "MultipleChoiceVote": {
+      "type": "object",
+      "required": [
+        "option_id"
+      ],
+      "properties": {
+        "option_id": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
     "PercentageThreshold": {
       "description": "A percentage of voting power that must vote yes for a proposal to pass. An example of why this is needed:\n\nIf a user specifies a 60% passing threshold, and there are 10 voters they likely expect that proposal to pass when there are 6 yes votes. This implies that the condition for passing should be `yes_votes >= total_votes * threshold`.\n\nWith this in mind, how should a user specify that they would like proposals to pass if the majority of voters choose yes? Selecting a 50% passing threshold with those rules doesn't properly cover that case as 5 voters voting yes out of 10 would pass the proposal. Selecting 50.0001% or or some variation of that also does not work as a very small yes vote which technically makes the majority yes may not reach that threshold.\n\nTo handle these cases we provide both a majority and percent option for all percentages. If majority is selected passing will be determined by `yes > total_votes * 0.5`. If percent is selected passing is determined by `yes >= total_votes * percent`.\n\nIn both of these cases a proposal with only abstain votes must fail. This requires a special case passing logic.",
       "oneOf": [
@@ -556,143 +879,6 @@
           "additionalProperties": false
         }
       ]
-    },
-    "ProposalResponse": {
-      "description": "Information about a proposal returned by proposal queries.",
-      "type": "object",
-      "required": [
-        "id",
-        "proposal"
-      ],
-      "properties": {
-        "id": {
-          "description": "The ID of the proposal being returned.",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "proposal": {
-          "$ref": "#/definitions/SingleChoiceProposal"
-        }
-      }
-    },
-    "SingleChoiceProposal": {
-      "type": "object",
-      "required": [
-        "allow_revoting",
-        "created",
-        "description",
-        "expiration",
-        "last_updated",
-        "msgs",
-        "proposer",
-        "start_height",
-        "status",
-        "threshold",
-        "title",
-        "total_power",
-        "votes"
-      ],
-      "properties": {
-        "allow_revoting": {
-          "type": "boolean"
-        },
-        "created": {
-          "description": "The timestamp at which this proposal was created.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Timestamp"
-            }
-          ]
-        },
-        "deposit_info": {
-          "description": "Information about the deposit that was sent as part of this proposal. None if no deposit.",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/CheckedDepositInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "description": {
-          "type": "string"
-        },
-        "expiration": {
-          "description": "The the time at which this proposal will expire and close for additional votes.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            }
-          ]
-        },
-        "last_updated": {
-          "description": "The timestamp at which this proposal's status last changed (e.g. Passed, Executed).",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Timestamp"
-            }
-          ]
-        },
-        "min_voting_period": {
-          "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "msgs": {
-          "description": "The messages that will be executed should this proposal pass.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CosmosMsg_for_Empty"
-          }
-        },
-        "proposer": {
-          "description": "The address that created this proposal.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            }
-          ]
-        },
-        "start_height": {
-          "description": "The block height at which this proposal was created. Voting power queries should query for voting power at this block height.",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "status": {
-          "$ref": "#/definitions/Status"
-        },
-        "threshold": {
-          "description": "The threshold at which this proposal will pass.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Threshold"
-            }
-          ]
-        },
-        "title": {
-          "type": "string"
-        },
-        "total_power": {
-          "description": "The total amount of voting power at the time of this proposal's creation.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            }
-          ]
-        },
-        "votes": {
-          "$ref": "#/definitions/Votes"
-        }
-      }
     },
     "StakingMsg": {
       "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -778,88 +964,6 @@
         }
       ]
     },
-    "Status": {
-      "type": "string",
-      "enum": [
-        "open",
-        "rejected",
-        "passed",
-        "executed",
-        "closed"
-      ]
-    },
-    "Threshold": {
-      "description": "The ways a proposal may reach its passing / failing threshold.",
-      "oneOf": [
-        {
-          "description": "Declares a percentage of the total weight that must cast Yes votes in order for a proposal to pass.  See `ThresholdResponse::AbsolutePercentage` in the cw3 spec for details.",
-          "type": "object",
-          "required": [
-            "absolute_percentage"
-          ],
-          "properties": {
-            "absolute_percentage": {
-              "type": "object",
-              "required": [
-                "percentage"
-              ],
-              "properties": {
-                "percentage": {
-                  "$ref": "#/definitions/PercentageThreshold"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Declares a `quorum` of the total votes that must participate in the election in order for the vote to be considered at all. See `ThresholdResponse::ThresholdQuorum` in the cw3 spec for details.",
-          "type": "object",
-          "required": [
-            "threshold_quorum"
-          ],
-          "properties": {
-            "threshold_quorum": {
-              "type": "object",
-              "required": [
-                "quorum",
-                "threshold"
-              ],
-              "properties": {
-                "quorum": {
-                  "$ref": "#/definitions/PercentageThreshold"
-                },
-                "threshold": {
-                  "$ref": "#/definitions/PercentageThreshold"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "An absolute number of votes needed for something to cross the threshold. Useful for multisig style voting.",
-          "type": "object",
-          "required": [
-            "absolute_count"
-          ],
-          "properties": {
-            "absolute_count": {
-              "type": "object",
-              "required": [
-                "threshold"
-              ],
-              "properties": {
-                "threshold": {
-                  "$ref": "#/definitions/Uint128"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
       "allOf": [
@@ -885,24 +989,30 @@
         "no_with_veto"
       ]
     },
-    "Votes": {
-      "type": "object",
-      "required": [
-        "abstain",
-        "no",
-        "yes"
-      ],
-      "properties": {
-        "abstain": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "no": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "yes": {
-          "$ref": "#/definitions/Uint128"
+    "VotingStrategy": {
+      "description": "Determines the way votes are counted.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "single_choice"
+          ],
+          "properties": {
+            "single_choice": {
+              "type": "object",
+              "required": [
+                "quorum"
+              ],
+              "properties": {
+                "quorum": {
+                  "$ref": "#/definitions/PercentageThreshold"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
         }
-      }
+      ]
     },
     "WasmMsg": {
       "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",

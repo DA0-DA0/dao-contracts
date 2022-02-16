@@ -13,20 +13,9 @@ export type Duration = {
 } | {
   time: number;
 };
-export type Threshold = {
-  absolute_percentage: {
-    percentage: PercentageThreshold;
-    [k: string]: unknown;
-  };
-} | {
-  threshold_quorum: {
+export type VotingStrategy = {
+  single_choice: {
     quorum: PercentageThreshold;
-    threshold: PercentageThreshold;
-    [k: string]: unknown;
-  };
-} | {
-  absolute_count: {
-    threshold: Uint128;
     [k: string]: unknown;
   };
 };
@@ -39,13 +28,12 @@ export type PercentageThreshold = {
 };
 export type Decimal = string;
 export interface ConfigResponse {
-  allow_revoting: boolean;
   dao: Addr;
   deposit_info?: CheckedDepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
-  threshold: Threshold;
+  voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
 export interface CheckedDepositInfo {
@@ -56,15 +44,15 @@ export interface CheckedDepositInfo {
 }
 export type ExecuteMsg = {
   propose: {
+    choices: MultipleChoiceOptions;
     description: string;
-    msgs: CosmosMsgForEmpty[];
     title: string;
     [k: string]: unknown;
   };
 } | {
   vote: {
     proposal_id: number;
-    vote: Vote;
+    vote: MultipleChoiceVote;
     [k: string]: unknown;
   };
 } | {
@@ -79,13 +67,12 @@ export type ExecuteMsg = {
   };
 } | {
   update_config: {
-    allow_revoting: boolean;
     dao: string;
     deposit_info?: DepositInfo | null;
     max_voting_period: Duration;
     min_voting_period?: Duration | null;
     only_members_execute: boolean;
-    threshold: Threshold;
+    voting_strategy: VotingStrategy;
     [k: string]: unknown;
   };
 } | {
@@ -240,7 +227,6 @@ export type GovMsg = {
   };
 };
 export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
-export type Vote = "yes" | "no" | "abstain";
 export type DepositToken = {
   token: {
     address: string;
@@ -251,6 +237,15 @@ export type DepositToken = {
     [k: string]: unknown;
   };
 };
+export interface MultipleChoiceOptions {
+  options: MultipleChoiceOption[];
+  [k: string]: unknown;
+}
+export interface MultipleChoiceOption {
+  description: string;
+  msgs?: CosmosMsgForEmpty[] | null;
+  [k: string]: unknown;
+}
 export interface Coin {
   amount: Uint128;
   denom: string;
@@ -269,6 +264,10 @@ export interface IbcTimeoutBlock {
   revision: number;
   [k: string]: unknown;
 }
+export interface MultipleChoiceVote {
+  option_id: number;
+  [k: string]: unknown;
+}
 export interface DepositInfo {
   deposit: Uint128;
   refund_failed_proposals: boolean;
@@ -281,7 +280,7 @@ export interface GetVoteResponse {
 }
 export interface VoteInfo {
   power: Uint128;
-  vote: Vote;
+  vote: MultipleChoiceVote;
   voter: Addr;
   [k: string]: unknown;
 }
@@ -296,14 +295,14 @@ export interface ContractVersion {
   [k: string]: unknown;
 }
 export interface InstantiateMsg {
-  allow_revoting: boolean;
   deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
-  threshold: Threshold;
+  voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
+export type MultipleChoiceOptionType = "None" | "Standard";
 export type Expiration = {
   at_height: number;
 } | {
@@ -320,31 +319,34 @@ export interface ListProposalsResponse {
 }
 export interface ProposalResponse {
   id: number;
-  proposal: SingleChoiceProposal;
+  proposal: MultipleChoiceProposal;
   [k: string]: unknown;
 }
-export interface SingleChoiceProposal {
-  allow_revoting: boolean;
-  created: Timestamp;
+export interface MultipleChoiceProposal {
+  choices: CheckedMultipleChoiceOption[];
   deposit_info?: CheckedDepositInfo | null;
   description: string;
   expiration: Expiration;
-  last_updated: Timestamp;
   min_voting_period?: Expiration | null;
-  msgs: CosmosMsgForEmpty[];
   proposer: Addr;
   start_height: number;
   status: Status;
-  threshold: Threshold;
   title: string;
   total_power: Uint128;
-  votes: Votes;
+  votes: MultipleChoiceVotes;
+  voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
-export interface Votes {
-  abstain: Uint128;
-  no: Uint128;
-  yes: Uint128;
+export interface CheckedMultipleChoiceOption {
+  description: string;
+  index: number;
+  msgs?: CosmosMsgForEmpty[] | null;
+  option_type: MultipleChoiceOptionType;
+  vote_count: Uint128;
+  [k: string]: unknown;
+}
+export interface MultipleChoiceVotes {
+  vote_weights: Uint128[];
   [k: string]: unknown;
 }
 export interface ListVotesResponse {
@@ -422,7 +424,7 @@ export interface VoteResponse {
   vote?: VoteInfo | null;
   [k: string]: unknown;
 }
-export interface CwProposalSingleReadOnlyInterface {
+export interface CwProposalMultipleReadOnlyInterface {
   contractAddress: string;
   config: () => Promise<ConfigResponse>;
   proposal: ({
@@ -465,7 +467,7 @@ export interface CwProposalSingleReadOnlyInterface {
   voteHooks: () => Promise<VoteHooksResponse>;
   info: () => Promise<InfoResponse>;
 }
-export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInterface {
+export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -580,16 +582,16 @@ export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInte
     });
   };
 }
-export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInterface {
+export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyInterface {
   contractAddress: string;
   sender: string;
   propose: ({
+    choices,
     description,
-    msgs,
     title
   }: {
+    choices: MultipleChoiceOptions;
     description: string;
-    msgs: CosmosMsgForEmpty[];
     title: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   vote: ({
@@ -597,7 +599,7 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     vote
   }: {
     proposalId: number;
-    vote: Vote;
+    vote: MultipleChoiceVote;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   execute: ({
     proposalId
@@ -610,21 +612,19 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     proposalId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
-    allowRevoting,
     dao,
     depositInfo,
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    threshold
+    votingStrategy
   }: {
-    allowRevoting: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    threshold: Threshold;
+    votingStrategy: VotingStrategy;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   addProposalHook: ({
     address
@@ -647,7 +647,7 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     address: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class CwProposalSingleClient extends CwProposalSingleQueryClient implements CwProposalSingleInterface {
+export class CwProposalMultipleClient extends CwProposalMultipleQueryClient implements CwProposalMultipleInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;
@@ -669,18 +669,18 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
   }
 
   propose = async ({
+    choices,
     description,
-    msgs,
     title
   }: {
+    choices: MultipleChoiceOptions;
     description: string;
-    msgs: CosmosMsgForEmpty[];
     title: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       propose: {
+        choices,
         description,
-        msgs,
         title
       }
     }, fee, memo, funds);
@@ -690,7 +690,7 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
     vote
   }: {
     proposalId: number;
-    vote: Vote;
+    vote: MultipleChoiceVote;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       vote: {
@@ -722,31 +722,28 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
     }, fee, memo, funds);
   };
   updateConfig = async ({
-    allowRevoting,
     dao,
     depositInfo,
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    threshold
+    votingStrategy
   }: {
-    allowRevoting: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    threshold: Threshold;
+    votingStrategy: VotingStrategy;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
-        allow_revoting: allowRevoting,
         dao,
         deposit_info: depositInfo,
         max_voting_period: maxVotingPeriod,
         min_voting_period: minVotingPeriod,
         only_members_execute: onlyMembersExecute,
-        threshold
+        voting_strategy: votingStrategy
       }
     }, fee, memo, funds);
   };

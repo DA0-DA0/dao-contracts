@@ -18,7 +18,7 @@
 | [proposal-hooks-counter](contracts/proposal-hooks-counter)               | TESTING ONLY - a contract for testing proposal hooks.      |
 | [stake-external-rewards](contracts/cw20-stake-external-rewards)          | A contract for providing external stakinig rewards.        |
 | [cw20-stake-reward-distributor](contracts/cw20-stake-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
-
+| [cw-proposal-multiple](contracts/cw-proposal-multiple)                   | A proposal module for multiple choice proposals.           |
 Audited contracts have completed [an
 audit](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
 by security DAO. A second audit is forthcoming.
