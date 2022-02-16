@@ -56,6 +56,7 @@ curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group
 docker cp artifacts/cw3_dao.wasm cosmwasm:/cw3_dao.wasm
 docker cp artifacts/cw3_multisig.wasm cosmwasm:/cw3_multisig.wasm
 docker cp artifacts/stake_cw20.wasm cosmwasm:/stake_cw20.wasm
+docker cp artifacts/cw3_multiple_choice.wasm cosmwasm:/cw3_multiple_choice.wasm
 docker cp cw20_base.wasm cosmwasm:/cw20_base.wasm
 docker cp cw4_group.wasm cosmwasm:/cw4_group.wasm
 
@@ -86,6 +87,8 @@ CW4_GROUP_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw4_group.wasm" --from
 ### STAKE-CW20 ###
 STAKE_CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/stake_cw20.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 
+### CW3-MULTIPLE-CHOICE ###
+CW3_MULTIPLE_CHOICE_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw3_multiple_choice.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 
 ##### INSTANTIATE CONTRACTS #####
 
@@ -115,10 +118,10 @@ CW3_DAO_INIT='{
   "max_voting_period": {
     "height": 100
   },
-  "proposal_deposit_amount": "0"
+  "proposal_deposit_amount": "0",
+  "only_members_execute": false
 }'
 echo $CW3_DAO_INIT | jq .
-
 echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "DAO DAO" $TXFLAG --output json
 
 CW3_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW3_DAO_CODE --output json | jq -r '.contracts[-1]')

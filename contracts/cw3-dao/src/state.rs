@@ -5,6 +5,7 @@ use cosmwasm_std::{
 use cw3::{Status, Vote};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
+use packages::constants::DAO_PAUSED_KEY;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
@@ -171,7 +172,7 @@ pub struct Ballot {
 // Unique items
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
-pub const DAO_PAUSED: Item<Expiration> = Item::new("dao_paused");
+pub const DAO_PAUSED: Item<Expiration> = Item::new(DAO_PAUSED_KEY);
 
 // Total weight and voters are queried from this contract
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
