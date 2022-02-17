@@ -5,11 +5,7 @@ use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, E
 
 use cw20::Cw20ReceiveMsg;
 
-use crate::msg::{
-    ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse,
-};
+use crate::msg::{ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse};
 use crate::state::{Config, BALANCE, CLAIMS, CONFIG, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL, HOOKS};
 use crate::ContractError;
 use cw2::set_contract_version;
@@ -322,6 +318,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::StakedValue { address } => to_binary(&query_staked_value(deps, env, address)?),
         QueryMsg::TotalValue {} => to_binary(&query_total_value(deps, env)?),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
+        QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
     }
 }
 
@@ -392,6 +389,10 @@ pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
 
 pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
+}
+
+pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
+    Ok(GetHooksResponse{hooks: HOOKS.query_hooks(deps)?.hooks})
 }
 
 #[cfg(test)]
