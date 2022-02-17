@@ -1228,6 +1228,81 @@ fn test_execute_works() {
 }
 
 #[test]
+fn test_execute_works_for_anyone() {
+    let mut app = mock_app();
+
+    let voting_period = Duration::Time(2000000);
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(10),
+        quorum: Decimal::percent(10),
+    };
+    let (dao_addr, _cw20_addr, _) = setup_test_case(
+        &mut app,
+        threshold.clone(),
+        voting_period,
+        coins(10, NATIVE_TOKEN_DENOM),
+        None,
+        None,
+    );
+
+    // ensure we have cash to cover the proposal
+    let contract_bal = app
+        .wrap()
+        .query_balance(&dao_addr, NATIVE_TOKEN_DENOM)
+        .unwrap();
+    assert_eq!(contract_bal, coin(10, NATIVE_TOKEN_DENOM));
+
+    // create proposal with 0 vote power
+    let proposal = pay_somebody_proposal();
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
+        .unwrap();
+
+    // Get the proposal id from the logs
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Only Passed can be executed
+    let execution = ExecuteMsg::Execute { proposal_id };
+
+    // Vote it, so it passes
+    let vote = ExecuteMsg::Vote(VoteMsg {
+        proposal_id,
+        vote: Vote::Yes,
+    });
+    let _res = app
+        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &vote, &[])
+        .unwrap();
+
+    // Update config to allow anyone to execute
+    let update_config_msg = ExecuteMsg::UpdateConfig(Config {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        threshold,
+        max_voting_period: voting_period,
+        proposal_deposit: Uint128::zero(),
+        refund_failed_proposals: Some(false),
+        image_url: None,
+        only_members_execute: false,
+    });
+
+    let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
+    assert!(res.is_ok());
+
+    // Execute from account that's not a member
+    let res = app
+        .execute_contract(Addr::unchecked(SOMEBODY), dao_addr, &execution, &[])
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "execute"),
+            ("sender", SOMEBODY),
+            ("proposal_id", proposal_id.to_string().as_str()),
+        ],
+    );
+}
+
+#[test]
 fn proposal_pass_on_expiration() {
     let mut app = mock_app();
 
@@ -1432,6 +1507,7 @@ fn test_close_works_with_refund() {
         proposal_deposit: proposal_deposit_amount,
         refund_failed_proposals: Some(false),
         image_url: None,
+        only_members_execute: true,
     });
 
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
@@ -1797,6 +1873,7 @@ fn test_update_config() {
         proposal_deposit: new_proposal_deposit_amount,
         refund_failed_proposals: None,
         image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
+        only_members_execute: true,
     });
     let res = app.execute_contract(
         Addr::unchecked(VOTER1),
@@ -1862,6 +1939,7 @@ fn test_update_config() {
                 proposal_deposit: new_proposal_deposit_amount,
                 refund_failed_proposals: None,
                 image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
+                only_members_execute: true
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr,
@@ -1954,6 +2032,7 @@ fn test_update_staking_contract() {
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
                 image_url: None,
+                only_members_execute: true
             },
             gov_token: cw20_addr,
             staking_contract: Addr::unchecked("Better_Staking_Contract"),
@@ -2133,6 +2212,7 @@ fn test_config_query() {
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
                 image_url: None,
+                only_members_execute: true
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr,
@@ -2178,6 +2258,7 @@ fn test_proposal_deposit_works() {
         proposal_deposit: proposal_deposit_amount,
         refund_failed_proposals: None,
         image_url: None,
+        only_members_execute: true,
     });
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
     assert!(res.is_ok());

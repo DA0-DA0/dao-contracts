@@ -22,6 +22,7 @@ pub struct Config {
     pub proposal_deposit: Uint128,
     pub refund_failed_proposals: Option<bool>,
     pub image_url: Option<String>,
+    pub only_members_execute: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

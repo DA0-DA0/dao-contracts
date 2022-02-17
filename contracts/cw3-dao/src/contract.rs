@@ -59,6 +59,7 @@ pub fn instantiate(
         proposal_deposit: msg.proposal_deposit_amount,
         refund_failed_proposals: msg.refund_failed_proposals,
         image_url: msg.image_url,
+        only_members_execute: true,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -325,9 +326,12 @@ pub fn execute_execute(
         }
     }
 
-    let balance = get_staked_balance(deps.as_ref(), info.sender.clone())?;
-    if balance == Uint128::zero() {
-        return Err(ContractError::Unauthorized {});
+    let cfg = CONFIG.load(deps.storage)?;
+    if cfg.only_members_execute {
+        let balance = get_staked_balance(deps.as_ref(), info.sender.clone())?;
+        if balance == Uint128::zero() {
+            return Err(ContractError::Unauthorized {});
+        }
     }
 
     let gov_token = GOV_TOKEN.load(deps.storage)?;
