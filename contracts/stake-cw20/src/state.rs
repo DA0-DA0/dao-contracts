@@ -9,7 +9,7 @@ use cw_controllers::{Hooks};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {
-    pub admin: Option<Addr>,
+    pub owner: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }

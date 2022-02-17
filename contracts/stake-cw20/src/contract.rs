@@ -33,13 +33,13 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let admin = match msg.admin {
+    let admin = match msg.owner {
         Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
         None => None,
     };
 
     let config = Config {
-        admin,
+        owner: admin,
         token_address: msg.token_address,
         unstaking_duration: msg.unstaking_duration,
     };
@@ -75,7 +75,7 @@ pub fn execute_update_config(
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
-    match config.admin {
+    match config.owner {
         None => Err(ContractError::NoAdminConfigured {}),
         Some(current_admin) => {
             if info.sender != current_admin {
@@ -83,14 +83,14 @@ pub fn execute_update_config(
                 });
             }
 
-            config.admin = new_admin;
+            config.owner = new_admin;
             config.unstaking_duration = duration;
 
             CONFIG.save(deps.storage, &config)?;
             Ok(Response::new().add_attribute(
                 "admin",
                 config
-                    .admin
+                    .owner
                     .map(|a| a.to_string())
                     .unwrap_or_else(|| "None".to_string()),
             ))
@@ -284,7 +284,7 @@ pub fn execute_add_hook(
     addr: Addr
 ) -> Result<Response, ContractError>{
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.admin != Some(info.sender) {
+    if config.owner != Some(info.sender) {
         return Err(ContractError::Unauthorized {})
     };
     HOOKS.add_hook(deps.storage, addr.clone())?;
@@ -298,7 +298,7 @@ pub fn execute_remove_hook(
     addr: Addr
 ) -> Result<Response, ContractError>{
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.admin != Some(info.sender) {
+    if config.owner != Some(info.sender) {
         return Err(ContractError::Unauthorized {})
     };
     HOOKS.remove_hook(deps.storage, addr.clone())?;
@@ -381,7 +381,7 @@ pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse>
 pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(GetConfigResponse {
-        admin: config.admin,
+        admin: config.owner,
         unstaking_duration: config.unstaking_duration,
         token_address: config.token_address,
     })
@@ -478,7 +478,7 @@ mod tests {
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
-            admin: Some(Addr::unchecked("owner")),
+            owner: Some(Addr::unchecked("owner")),
             token_address: cw20,
             unstaking_duration,
         };

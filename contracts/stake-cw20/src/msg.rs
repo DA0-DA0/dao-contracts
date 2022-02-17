@@ -9,7 +9,7 @@ pub use cw_controllers::{ClaimsResponse};
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
-    pub admin: Option<Addr>,
+    pub owner: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }
