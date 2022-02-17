@@ -699,6 +699,9 @@ fn test_proposal_queries() {
         .unwrap();
     assert_eq!(prop_count, 1);
 
+    // Proposal is open on the next block.
+    let first_proposal_start_block = app.block_info().height + 1;
+
     // another proposal
     app.update_block(next_block);
     let proposal = pay_somebody_proposal();
@@ -781,6 +784,7 @@ fn test_proposal_queries() {
             total_weight: Uint128::new(20000000),
         },
         deposit_amount: Uint128::zero(),
+        start_height: first_proposal_start_block,
     };
     assert_eq!(&expected, &res.proposals[0]);
 }
