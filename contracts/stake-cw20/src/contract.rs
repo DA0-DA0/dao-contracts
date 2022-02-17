@@ -33,13 +33,19 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let admin = match msg.owner {
+    let owner = match msg.owner {
+        Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
+        None => None,
+    };
+
+    let manager = match msg.manager {
         Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
         None => None,
     };
 
     let config = Config {
-        owner: admin,
+        owner,
+        manager,
         token_address: msg.token_address,
         unstaking_duration: msg.unstaking_duration,
     };
@@ -60,8 +66,8 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
-        ExecuteMsg::UpdateConfig { admin, duration } => {
-            execute_update_config(info, deps, admin, duration)
+        ExecuteMsg::UpdateConfig { owner, manager, duration } => {
+            execute_update_config(info, deps, owner, manager, duration)
         },
         ExecuteMsg::AddHook {addr} => execute_add_hook(deps, env, info, addr),
         ExecuteMsg::RemoveHook {addr} => execute_remove_hook(deps, env, info, addr)
@@ -71,31 +77,40 @@ pub fn execute(
 pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
-    new_admin: Option<Addr>,
+    new_owner: Option<Addr>,
+    new_manager: Option<Addr>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
-    match config.owner {
-        None => Err(ContractError::NoAdminConfigured {}),
-        Some(current_admin) => {
-            if info.sender != current_admin {
-                return Err(ContractError::Unauthorized {
-                });
-            }
+    println!("{}",config.owner.clone().unwrap_or(Addr::unchecked("asdf")));
+    println!("{}",info.sender.clone());
+    println!("{}", new_owner.clone().unwrap_or(Addr::unchecked("asdf")));
+    println!("{}", Some(info.sender.clone()) != config.owner || Some(info.sender.clone()) != config.manager);
+    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+        return Err(ContractError::Unauthorized {})
+    };
+    if Some(info.sender.clone()) != config.owner && new_owner != config.owner {
+        return Err(ContractError::OnlyOwnerCanChangeOwner {})
+    };
 
-            config.owner = new_admin;
-            config.unstaking_duration = duration;
+    config.owner = new_owner;
+    config.manager = new_manager;
+    config.unstaking_duration = duration;
 
-            CONFIG.save(deps.storage, &config)?;
-            Ok(Response::new().add_attribute(
-                "admin",
-                config
-                    .owner
-                    .map(|a| a.to_string())
-                    .unwrap_or_else(|| "None".to_string()),
-            ))
-        }
-    }
+    CONFIG.save(deps.storage, &config)?;
+    Ok(Response::new().add_attribute("action", "update_config").add_attribute(
+        "owner",
+        config
+            .owner
+            .map(|a| a.to_string())
+            .unwrap_or_else(|| "None".to_string()),
+    ).add_attribute(
+        "manager",
+        config
+            .manager
+            .map(|a| a.to_string())
+            .unwrap_or_else(|| "None".to_string()),
+    ))
 }
 
 pub fn execute_receive(
@@ -381,7 +396,8 @@ pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse>
 pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(GetConfigResponse {
-        admin: config.owner,
+        owner: config.owner,
+        manager: config.manager,
         unstaking_duration: config.unstaking_duration,
         token_address: config.token_address,
     })
@@ -413,6 +429,7 @@ mod tests {
     use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 
     use anyhow::Result as AnyResult;
+    use cosmwasm_std::OverflowOperation::Add;
     use cw_controllers::{Claim, ClaimsResponse};
     use cw_utils::Expiration::AtHeight;
 
@@ -479,6 +496,7 @@ mod tests {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
             owner: Some(Addr::unchecked("owner")),
+            manager: Some(Addr::unchecked("manager")),
             token_address: cw20,
             unstaking_duration,
         };
@@ -582,10 +600,11 @@ mod tests {
         app: &mut App,
         staking_addr: &Addr,
         info: MessageInfo,
-        admin: Option<Addr>,
+        owner: Option<Addr>,
+        manager: Option<Addr>,
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::UpdateConfig { admin, duration };
+        let msg = ExecuteMsg::UpdateConfig { owner, manager, duration };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
@@ -629,33 +648,95 @@ mod tests {
             &staking_addr,
             info,
             Some(Addr::unchecked("owner2")),
+            None,
             Some(Duration::Height(100)),
         )
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.admin, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
         assert_eq!(config.unstaking_duration, Some(Duration::Height(100)));
 
-        // Try updating admin with original owner, which is now invalid
+        // Try updating owner with original owner, which is now invalid
         let info = mock_info("owner", &[]);
         let _err = update_config(
             &mut app,
             &staking_addr,
             info,
             Some(Addr::unchecked("owner3")),
+            None,
             Some(Duration::Height(100)),
         )
         .unwrap_err();
 
-        // Remove admin
+        // Add manager
         let info = mock_info("owner2", &[]);
         let _env = mock_env();
-        // Test update admin
         update_config(
             &mut app,
             &staking_addr,
             info,
+            Some(Addr::unchecked("owner2")),
+            Some(Addr::unchecked("manager")),
+            Some(Duration::Height(100)),
+        ).unwrap();
+
+        let config = query_config(&app, &staking_addr);
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.manager, Some(Addr::unchecked("manager")));
+
+        // Manager can update unstaking duration
+        let info = mock_info("manager", &[]);
+        let _env = mock_env();
+        update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            Some(Addr::unchecked("owner2")),
+            Some(Addr::unchecked("manager")),
+            Some(Duration::Height(50)),
+        ).unwrap();
+        let config = query_config(&app, &staking_addr);
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.unstaking_duration, Some(Duration::Height(50)));
+
+        // Manager cannot update owner
+        let info = mock_info("manager", &[]);
+        let _env = mock_env();
+        update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            Some(Addr::unchecked("manager")),
+            Some(Addr::unchecked("manager")),
+            Some(Duration::Height(50)),
+        ).unwrap_err();
+
+        // Manager can update manager
+        let info = mock_info("owner2", &[]);
+        let _env = mock_env();
+        update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            Some(Addr::unchecked("owner2")),
+            None,
+            Some(Duration::Height(50)),
+        ).unwrap();
+
+        let config = query_config(&app, &staking_addr);
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.manager, None);
+
+
+        // Remove owner
+        let info = mock_info("owner2", &[]);
+        let _env = mock_env();
+        update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            None,
             None,
             Some(Duration::Height(100)),
         )
@@ -664,18 +745,33 @@ mod tests {
         // Assert no further updates can be made
         let info = mock_info("owner2", &[]);
         let _env = mock_env();
-        // Test update admin
         let err: ContractError = update_config(
             &mut app,
             &staking_addr,
             info,
+            None,
             None,
             Some(Duration::Height(100)),
         )
         .unwrap_err()
         .downcast()
         .unwrap();
-        assert_eq!(err, ContractError::NoAdminConfigured {})
+        assert_eq!(err, ContractError::Unauthorized {});
+
+        let info = mock_info("manager", &[]);
+        let _env = mock_env();
+        let err: ContractError = update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            None,
+            None,
+            Some(Duration::Height(100)),
+        )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, ContractError::Unauthorized {})
     }
 
     #[test]

@@ -10,6 +10,7 @@ pub use cw_controllers::{ClaimsResponse};
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
     pub owner: Option<Addr>,
+    pub manager: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }
@@ -23,7 +24,8 @@ pub enum ExecuteMsg {
     },
     Claim {},
     UpdateConfig {
-        admin: Option<Addr>,
+        owner: Option<Addr>,
+        manager: Option<Addr>,
         duration: Option<Duration>,
     },
     AddHook {
@@ -90,7 +92,8 @@ pub struct TotalValueResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetConfigResponse {
-    pub admin: Option<Addr>,
+    pub owner: Option<Addr>,
+    pub manager: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }

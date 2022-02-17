@@ -19,4 +19,6 @@ pub enum ContractError {
     NoAdminConfigured {},
     #[error("{0}")]
     HookError(#[from] cw_controllers::HookError),
+    #[error("Only owner can change owner")]
+    OnlyOwnerCanChangeOwner { },
 }
