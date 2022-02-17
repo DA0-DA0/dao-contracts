@@ -326,6 +326,7 @@ fn test_instantiate_works() {
                 threshold: Threshold::AbsoluteCount { weight: 1 },
                 max_voting_period,
                 image_url: None,
+                only_members_execute: true
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -472,6 +473,7 @@ fn test_update_config() {
             },
             max_voting_period: voting_period,
             image_url: Some("https://someUrl.com/image.png".to_string()),
+            only_members_execute: true,
         },
         multisig_addr.to_string(),
     );
@@ -512,6 +514,7 @@ fn test_update_config() {
                 },
                 max_voting_period: voting_period,
                 image_url: Some("https://someUrl.com/image.png".to_string()),
+                only_members_execute: true
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -525,6 +528,7 @@ fn test_update_config() {
             threshold: Threshold::AbsoluteCount { weight: 10000 },
             max_voting_period: voting_period,
             image_url: None,
+            only_members_execute: true,
         },
         multisig_addr.to_string(),
     );
@@ -1251,6 +1255,94 @@ fn test_execute_works() {
         ContractError::WrongExecuteStatus {},
         err.downcast().unwrap()
     )
+}
+
+#[test]
+fn test_execute_works_for_anyone() {
+    let init_funds = coins(10, "BTC");
+    let mut app = mock_app(&init_funds);
+
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(51),
+        quorum: Decimal::percent(1),
+    };
+    let voting_period = Duration::Time(2000000);
+    let (multisig_addr, _) =
+        setup_test_case(&mut app, threshold.clone(), voting_period, init_funds, true);
+
+    // ensure we have cash to cover the proposal
+    let contract_bal = app.wrap().query_balance(&multisig_addr, "BTC").unwrap();
+    assert_eq!(contract_bal, coin(10, "BTC"));
+
+    // Update config so that anyone can execute
+
+    let proposal = update_config_proposal(
+        Config {
+            name: "dogsig".to_string(),
+            description: "🐶".to_string(),
+            threshold,
+            max_voting_period: voting_period,
+            image_url: Some("https://someUrl.com/image.png".to_string()),
+            only_members_execute: false,
+        },
+        multisig_addr.to_string(),
+    );
+
+    let res = app
+        .execute_contract(
+            Addr::unchecked(VOTER4),
+            multisig_addr.clone(),
+            &proposal,
+            &[],
+        )
+        .unwrap();
+
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(VOTER4),
+        multisig_addr.clone(),
+        &ExecuteMsg::Execute { proposal_id },
+        &[],
+    )
+    .unwrap();
+
+    // create new proposal with 0 vote power
+    let proposal = pay_somebody_proposal();
+    let res = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            multisig_addr.clone(),
+            &proposal,
+            &[],
+        )
+        .unwrap();
+
+    // Get the proposal id from the logs
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Vote it, so it passes
+    let vote = ExecuteMsg::Vote {
+        proposal_id,
+        vote: Vote::Yes,
+    };
+    let _res = app
+        .execute_contract(Addr::unchecked(VOTER4), multisig_addr.clone(), &vote, &[])
+        .unwrap();
+
+    // Execute proposal from account that's not a member
+    let execution = ExecuteMsg::Execute { proposal_id };
+    let res = app
+        .execute_contract(Addr::unchecked(SOMEBODY), multisig_addr, &execution, &[])
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "execute"),
+            ("sender", SOMEBODY),
+            ("proposal_id", proposal_id.to_string().as_str()),
+        ],
+    );
 }
 
 #[test]

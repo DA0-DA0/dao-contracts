@@ -1252,26 +1252,6 @@ fn test_execute_works_for_anyone() {
         .unwrap();
     assert_eq!(contract_bal, coin(10, NATIVE_TOKEN_DENOM));
 
-    // create proposal with 0 vote power
-    let proposal = pay_somebody_proposal();
-    let res = app
-        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
-        .unwrap();
-
-    // Get the proposal id from the logs
-    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
-
-    // Only Passed can be executed
-    let execution = ExecuteMsg::Execute { proposal_id };
-
-    // Vote it, so it passes
-    let vote = ExecuteMsg::Vote(VoteMsg {
-        proposal_id,
-        vote: Vote::Yes,
-    });
-    let _res = app
-        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &vote, &[])
-        .unwrap();
 
     // Update config to allow anyone to execute
     let update_config_msg = ExecuteMsg::UpdateConfig(Config {
@@ -1287,6 +1267,28 @@ fn test_execute_works_for_anyone() {
 
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
     assert!(res.is_ok());
+
+    // create proposal with 0 vote power
+    let proposal = pay_somebody_proposal();
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
+        .unwrap();
+
+    // Get the proposal id from the logs
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Only Passed can be executed
+    let execution = ExecuteMsg::Execute { proposal_id };
+
+    // Vote sot hat it passes
+    let vote = ExecuteMsg::Vote(VoteMsg {
+        proposal_id,
+        vote: Vote::Yes,
+    });
+    let _res = app
+        .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &vote, &[])
+        .unwrap();
+
 
     // Execute from account that's not a member
     let res = app

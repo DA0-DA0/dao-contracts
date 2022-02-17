@@ -57,6 +57,7 @@ pub fn instantiate(
         threshold: msg.threshold.clone(),
         max_voting_period: msg.max_voting_period,
         image_url: msg.image_url,
+        only_members_execute: true,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -262,9 +263,13 @@ pub fn execute_execute(
 ) -> Result<Response, ContractError> {
     // only members can trigger this when the vote has passed
     let group_addr = GROUP_ADDRESS.load(deps.storage)?;
-    group_addr
-        .is_member(&deps.querier, &info.sender, None)?
-        .ok_or(ContractError::Unauthorized {})?;
+
+    let cfg = CONFIG.load(deps.storage)?;
+    if cfg.only_members_execute {
+        group_addr
+            .is_member(&deps.querier, &info.sender, None)?
+            .ok_or(ContractError::Unauthorized {})?;
+    }
 
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     // we allow execution even after the proposal "expiration" as long as all vote come in before

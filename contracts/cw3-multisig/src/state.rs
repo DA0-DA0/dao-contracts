@@ -27,6 +27,7 @@ pub struct Config {
     pub max_voting_period: Duration,
     /// Optional Image URL that is used by the contract
     pub image_url: Option<String>,
+    pub only_members_execute: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
