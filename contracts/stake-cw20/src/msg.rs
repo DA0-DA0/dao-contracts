@@ -26,6 +26,12 @@ pub enum ExecuteMsg {
         admin: Option<Addr>,
         duration: Option<Duration>,
     },
+    AddHook {
+        addr: Addr,
+    },
+    RemoveHook {
+        addr: Addr,
+    }
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

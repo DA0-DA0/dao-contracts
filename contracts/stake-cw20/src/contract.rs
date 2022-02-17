@@ -1,10 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
-};
+use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128, SubMsg, WasmMsg};
 
 use cw20::Cw20ReceiveMsg;
 
@@ -13,7 +10,7 @@ use crate::msg::{
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,
 };
-use crate::state::{Config, BALANCE, CLAIMS, CONFIG, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
+use crate::state::{Config, BALANCE, CLAIMS, CONFIG, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL, HOOKS};
 use crate::ContractError;
 use cw2::set_contract_version;
 pub use cw20_base::allowances::{
@@ -28,6 +25,7 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
+use crate::hooks::{stake_hook_msgs, StakeChangedExecuteMsg, unstake_hook_msgs};
 
 const CONTRACT_NAME: &str = "crates.io:stake_cw20";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -68,7 +66,9 @@ pub fn execute(
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
         ExecuteMsg::UpdateConfig { admin, duration } => {
             execute_update_config(info, deps, admin, duration)
-        }
+        },
+        ExecuteMsg::AddHook {addr} => execute_add_hook(deps, env, info, addr),
+        ExecuteMsg::RemoveHook {addr} => execute_remove_hook(deps, env, info, addr)
     }
 }
 
@@ -84,8 +84,6 @@ pub fn execute_update_config(
         Some(current_admin) => {
             if info.sender != current_admin {
                 return Err(ContractError::Unauthorized {
-                    expected: current_admin,
-                    received: info.sender,
                 });
             }
 
@@ -120,7 +118,7 @@ pub fn execute_receive(
     let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
     let sender = deps.api.addr_validate(&wrapper.sender)?;
     match msg {
-        ReceiveMsg::Stake {} => execute_stake(deps, env, &sender, wrapper.amount),
+        ReceiveMsg::Stake {} => execute_stake(deps, env, sender, wrapper.amount),
         ReceiveMsg::Fund {} => execute_fund(deps, env, &sender, wrapper.amount),
     }
 }
@@ -128,7 +126,7 @@ pub fn execute_receive(
 pub fn execute_stake(
     deps: DepsMut,
     env: Env,
-    sender: &Addr,
+    sender: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let balance = BALANCE.load(deps.storage).unwrap_or_default();
@@ -144,7 +142,7 @@ pub fn execute_stake(
     };
     STAKED_BALANCES.update(
         deps.storage,
-        sender,
+        &sender,
         env.block.height,
         |bal| -> StdResult<Uint128> { Ok(bal.unwrap_or_default().checked_add(amount_to_stake)?) },
     )?;
@@ -159,7 +157,9 @@ pub fn execute_stake(
         deps.storage,
         &balance.checked_add(amount).map_err(StdError::overflow)?,
     )?;
+    let hook_msgs = stake_hook_msgs(deps.storage, sender.clone(), amount_to_stake)?;
     Ok(Response::new()
+        .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
         .add_attribute("from", sender)
         .add_attribute("amount", amount))
@@ -196,6 +196,7 @@ pub fn execute_unstake(
             .checked_sub(amount_to_claim)
             .map_err(StdError::overflow)?,
     )?;
+    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
     match config.unstaking_duration {
         None => {
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
@@ -209,6 +210,7 @@ pub fn execute_unstake(
             };
             Ok(Response::new()
                 .add_message(wasm_msg)
+                .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
@@ -228,6 +230,7 @@ pub fn execute_unstake(
             )?;
             Ok(Response::new()
                 .add_attribute("action", "unstake")
+                .add_submessages(hook_msgs)
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
                 .add_attribute("claim_duration", format!("{}", duration)))
@@ -276,6 +279,34 @@ pub fn execute_fund(
         .add_attribute("action", "fund")
         .add_attribute("from", sender)
         .add_attribute("amount", amount))
+}
+
+pub fn execute_add_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    addr: Addr
+) -> Result<Response, ContractError>{
+    let config: Config = CONFIG.load(deps.storage)?;
+    if config.admin != Some(info.sender) {
+        return Err(ContractError::Unauthorized {})
+    };
+    HOOKS.add_hook(deps.storage, addr.clone())?;
+    Ok(Response::new().add_attribute("action", "add_hook").add_attribute("hook", addr))
+}
+
+pub fn execute_remove_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    addr: Addr
+) -> Result<Response, ContractError>{
+    let config: Config = CONFIG.load(deps.storage)?;
+    if config.admin != Some(info.sender) {
+        return Err(ContractError::Unauthorized {})
+    };
+    HOOKS.remove_hook(deps.storage, addr.clone())?;
+    Ok(Response::new().add_attribute("action", "remove_hook").add_attribute("hook", addr))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
