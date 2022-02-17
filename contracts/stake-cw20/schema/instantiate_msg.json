@@ -6,7 +6,17 @@
     "token_address"
   ],
   "properties": {
-    "admin": {
+    "manager": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "owner": {
       "anyOf": [
         {
           "$ref": "#/definitions/Addr"
