@@ -8,9 +8,9 @@ use cw20::{
     TokenInfoResponse,
 };
 use stake_cw20::msg::{
-    ClaimsResponse, ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg,
+    ClaimsResponse, ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse, GetHooksResponse
+    TotalValueResponse,
 };
 
 fn main() {
