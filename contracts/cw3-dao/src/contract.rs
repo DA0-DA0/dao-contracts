@@ -141,6 +141,7 @@ pub fn instantiate(
                 label,
                 msg: to_binary(&stake_cw20::msg::InstantiateMsg {
                     owner: Some(env.contract.address),
+                    manager: None,
                     unstaking_duration,
                     token_address: cw20_addr.addr(),
                 })?,
@@ -742,6 +743,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
                             owner: Some(env.contract.address),
+                            manager: None,
                             unstaking_duration,
                             token_address: cw20_addr,
                         })?,

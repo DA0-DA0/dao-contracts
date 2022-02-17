@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128, SubMsg, WasmMsg};
+use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128};
 
 use cw20::Cw20ReceiveMsg;
 
@@ -21,7 +21,7 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
-use crate::hooks::{stake_hook_msgs, StakeChangedExecuteMsg, unstake_hook_msgs};
+use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 
 const CONTRACT_NAME: &str = "crates.io:stake_cw20";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -82,14 +82,10 @@ pub fn execute_update_config(
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
-    println!("{}",config.owner.clone().unwrap_or(Addr::unchecked("asdf")));
-    println!("{}",info.sender.clone());
-    println!("{}", new_owner.clone().unwrap_or(Addr::unchecked("asdf")));
-    println!("{}", Some(info.sender.clone()) != config.owner || Some(info.sender.clone()) != config.manager);
     if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
         return Err(ContractError::Unauthorized {})
     };
-    if Some(info.sender.clone()) != config.owner && new_owner != config.owner {
+    if Some(info.sender) != config.owner && new_owner != config.owner {
         return Err(ContractError::OnlyOwnerCanChangeOwner {})
     };
 
@@ -429,7 +425,7 @@ mod tests {
     use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 
     use anyhow::Result as AnyResult;
-    use cosmwasm_std::OverflowOperation::Add;
+    
     use cw_controllers::{Claim, ClaimsResponse};
     use cw_utils::Expiration::AtHeight;
 

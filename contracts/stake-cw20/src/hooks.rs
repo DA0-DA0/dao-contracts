@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, CosmosMsg, DepsMut, StdResult, Storage, SubMsg, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{Addr, StdResult, Storage, SubMsg, to_binary, Uint128, WasmMsg};
 use crate::state::HOOKS;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
