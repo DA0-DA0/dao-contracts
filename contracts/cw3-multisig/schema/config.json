@@ -6,6 +6,7 @@
     "description",
     "max_voting_period",
     "name",
+    "only_members_execute",
     "threshold"
   ],
   "properties": {
@@ -31,6 +32,9 @@
     "name": {
       "description": "The name of the multisig.",
       "type": "string"
+    },
+    "only_members_execute": {
+      "type": "boolean"
     },
     "threshold": {
       "description": "The threshold for a proposal to pass.",

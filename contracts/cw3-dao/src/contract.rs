@@ -59,6 +59,7 @@ pub fn instantiate(
         proposal_deposit: msg.proposal_deposit_amount,
         refund_failed_proposals: msg.refund_failed_proposals,
         image_url: msg.image_url,
+        only_members_execute: msg.only_members_execute,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -322,6 +323,14 @@ pub fn execute_execute(
     if let Some(expiration) = paused {
         if !expiration.is_expired(&env.block) {
             return Err(ContractError::Paused {});
+        }
+    }
+
+    let cfg = CONFIG.load(deps.storage)?;
+    if cfg.only_members_execute {
+        let balance = get_staked_balance(deps.as_ref(), info.sender.clone())?;
+        if balance == Uint128::zero() {
+            return Err(ContractError::Unauthorized {});
         }
     }
 
