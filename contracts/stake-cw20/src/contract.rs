@@ -1,12 +1,22 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128};
+use cosmwasm_std::{
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128,
+};
 
 use cw20::Cw20ReceiveMsg;
 
-use crate::msg::{ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse};
-use crate::state::{Config, BALANCE, CLAIMS, CONFIG, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL, HOOKS};
+use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
+use crate::msg::{
+    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
+    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+    TotalValueResponse,
+};
+use crate::state::{
+    Config, BALANCE, CLAIMS, CONFIG, HOOKS, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
+};
 use crate::ContractError;
 use cw2::set_contract_version;
 pub use cw20_base::allowances::{
@@ -21,7 +31,6 @@ pub use cw20_base::contract::{
 pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
-use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 
 const CONTRACT_NAME: &str = "crates.io:stake_cw20";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -66,11 +75,13 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
-        ExecuteMsg::UpdateConfig { owner, manager, duration } => {
-            execute_update_config(info, deps, owner, manager, duration)
-        },
-        ExecuteMsg::AddHook {addr} => execute_add_hook(deps, env, info, addr),
-        ExecuteMsg::RemoveHook {addr} => execute_remove_hook(deps, env, info, addr)
+        ExecuteMsg::UpdateConfig {
+            owner,
+            manager,
+            duration,
+        } => execute_update_config(info, deps, owner, manager, duration),
+        ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
+        ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
     }
 }
 
@@ -83,10 +94,10 @@ pub fn execute_update_config(
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
     if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
-        return Err(ContractError::Unauthorized {})
+        return Err(ContractError::Unauthorized {});
     };
     if Some(info.sender) != config.owner && new_owner != config.owner {
-        return Err(ContractError::OnlyOwnerCanChangeOwner {})
+        return Err(ContractError::OnlyOwnerCanChangeOwner {});
     };
 
     config.owner = new_owner;
@@ -94,19 +105,22 @@ pub fn execute_update_config(
     config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("action", "update_config").add_attribute(
-        "owner",
-        config
-            .owner
-            .map(|a| a.to_string())
-            .unwrap_or_else(|| "None".to_string()),
-    ).add_attribute(
-        "manager",
-        config
-            .manager
-            .map(|a| a.to_string())
-            .unwrap_or_else(|| "None".to_string()),
-    ))
+    Ok(Response::new()
+        .add_attribute("action", "update_config")
+        .add_attribute(
+            "owner",
+            config
+                .owner
+                .map(|a| a.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+        )
+        .add_attribute(
+            "manager",
+            config
+                .manager
+                .map(|a| a.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+        ))
 }
 
 pub fn execute_receive(
@@ -292,28 +306,32 @@ pub fn execute_add_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addr: Addr
-) -> Result<Response, ContractError>{
+    addr: Addr,
+) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender)   {
-        return Err(ContractError::Unauthorized {})
+    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
+        return Err(ContractError::Unauthorized {});
     };
     HOOKS.add_hook(deps.storage, addr.clone())?;
-    Ok(Response::new().add_attribute("action", "add_hook").add_attribute("hook", addr))
+    Ok(Response::new()
+        .add_attribute("action", "add_hook")
+        .add_attribute("hook", addr))
 }
 
 pub fn execute_remove_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addr: Addr
-) -> Result<Response, ContractError>{
+    addr: Addr,
+) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender)   {
-        return Err(ContractError::Unauthorized {})
+    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
+        return Err(ContractError::Unauthorized {});
     };
     HOOKS.remove_hook(deps.storage, addr.clone())?;
-    Ok(Response::new().add_attribute("action", "remove_hook").add_attribute("hook", addr))
+    Ok(Response::new()
+        .add_attribute("action", "remove_hook")
+        .add_attribute("hook", addr))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -404,7 +422,9 @@ pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
 }
 
 pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
-    Ok(GetHooksResponse{hooks: HOOKS.query_hooks(deps)?.hooks})
+    Ok(GetHooksResponse {
+        hooks: HOOKS.query_hooks(deps)?.hooks,
+    })
 }
 
 #[cfg(test)]
@@ -425,7 +445,7 @@ mod tests {
     use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 
     use anyhow::Result as AnyResult;
-    
+
     use cw_controllers::{Claim, ClaimsResponse};
     use cw_utils::Expiration::AtHeight;
 
@@ -600,7 +620,11 @@ mod tests {
         manager: Option<Addr>,
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::UpdateConfig { owner, manager, duration };
+        let msg = ExecuteMsg::UpdateConfig {
+            owner,
+            manager,
+            duration,
+        };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
@@ -675,7 +699,8 @@ mod tests {
             Some(Addr::unchecked("owner2")),
             Some(Addr::unchecked("manager")),
             Some(Duration::Height(100)),
-        ).unwrap();
+        )
+        .unwrap();
 
         let config = query_config(&app, &staking_addr);
         assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
@@ -691,7 +716,8 @@ mod tests {
             Some(Addr::unchecked("owner2")),
             Some(Addr::unchecked("manager")),
             Some(Duration::Height(50)),
-        ).unwrap();
+        )
+        .unwrap();
         let config = query_config(&app, &staking_addr);
         assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
         assert_eq!(config.unstaking_duration, Some(Duration::Height(50)));
@@ -706,7 +732,8 @@ mod tests {
             Some(Addr::unchecked("manager")),
             Some(Addr::unchecked("manager")),
             Some(Duration::Height(50)),
-        ).unwrap_err();
+        )
+        .unwrap_err();
 
         // Manager can update manager
         let info = mock_info("owner2", &[]);
@@ -718,12 +745,12 @@ mod tests {
             Some(Addr::unchecked("owner2")),
             None,
             Some(Duration::Height(50)),
-        ).unwrap();
+        )
+        .unwrap();
 
         let config = query_config(&app, &staking_addr);
         assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
         assert_eq!(config.manager, None);
-
 
         // Remove owner
         let info = mock_info("owner2", &[]);
@@ -764,9 +791,9 @@ mod tests {
             None,
             Some(Duration::Height(100)),
         )
-            .unwrap_err()
-            .downcast()
-            .unwrap();
+        .unwrap_err()
+        .downcast()
+        .unwrap();
         assert_eq!(err, ContractError::Unauthorized {})
     }
 

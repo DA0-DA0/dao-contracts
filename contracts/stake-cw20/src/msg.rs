@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use cw_utils::Duration;
 
-pub use cw_controllers::{ClaimsResponse};
+pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
@@ -33,7 +33,7 @@ pub enum ExecuteMsg {
     },
     RemoveHook {
         addr: Addr,
-    }
+    },
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -60,7 +60,7 @@ pub enum QueryMsg {
     Claims {
         address: String,
     },
-    GetHooks{},
+    GetHooks {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -103,4 +103,3 @@ pub struct GetConfigResponse {
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
 }
-

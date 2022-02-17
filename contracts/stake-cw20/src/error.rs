@@ -12,7 +12,7 @@ pub enum ContractError {
     #[error("Invalid token")]
     InvalidToken { received: Addr, expected: Addr },
     #[error("Unauthorized")]
-    Unauthorized { },
+    Unauthorized {},
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
     #[error("No admin configured")]
@@ -20,5 +20,5 @@ pub enum ContractError {
     #[error("{0}")]
     HookError(#[from] cw_controllers::HookError),
     #[error("Only owner can change owner")]
-    OnlyOwnerCanChangeOwner { },
+    OnlyOwnerCanChangeOwner {},
 }
