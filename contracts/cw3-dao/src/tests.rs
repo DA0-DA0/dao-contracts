@@ -1252,7 +1252,6 @@ fn test_execute_works_for_anyone() {
         .unwrap();
     assert_eq!(contract_bal, coin(10, NATIVE_TOKEN_DENOM));
 
-
     // Update config to allow anyone to execute
     let update_config_msg = ExecuteMsg::UpdateConfig(Config {
         name: "dao-dao".to_string(),
@@ -1288,7 +1287,6 @@ fn test_execute_works_for_anyone() {
     let _res = app
         .execute_contract(Addr::unchecked(VOTER3), dao_addr.clone(), &vote, &[])
         .unwrap();
-
 
     // Execute from account that's not a member
     let res = app
