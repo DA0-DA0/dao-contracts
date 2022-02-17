@@ -88,6 +88,9 @@ impl Proposal {
         if status == Status::Open && self.is_passed(block) {
             status = Status::Passed;
         }
+        if status == Status::Open && self.is_rejected(block) {
+            status = Status::Rejected;
+        }
         if status == Status::Open && self.expires.is_expired(block) {
             status = Status::Rejected;
         }
@@ -125,6 +128,35 @@ impl Proposal {
                     // We compare threshold against the total weight (minus abstain).
                     let possible_opinions = self.total_weight - self.votes.abstain;
                     self.votes.yes >= votes_needed(possible_opinions, threshold)
+                }
+            }
+        }
+    }
+
+    /// As above for the rejected check, used to check if a proposal is
+    /// already rejected.
+    pub fn is_rejected(&self, block: &BlockInfo) -> bool {
+        match self.threshold {
+            Threshold::AbsolutePercentage {
+                percentage: percentage_needed,
+            } => {
+                self.votes.no
+                    >= votes_needed(self.total_weight - self.votes.abstain, percentage_needed)
+            }
+            Threshold::ThresholdQuorum { threshold, quorum } => {
+                // we always require the quorum
+                if self.votes.total() < votes_needed(self.total_weight, quorum) {
+                    return false;
+                }
+                if self.expires.is_expired(block) {
+                    // If expired, we compare No votes against the total number of votes (minus abstain).
+                    let opinions = self.votes.total() - self.votes.abstain;
+                    self.votes.no >= votes_needed(opinions, threshold)
+                } else {
+                    // If not expired, we must assume all non-votes will be cast as Yes.
+                    // We compare threshold against the total weight (minus abstain).
+                    let possible_opinions = self.total_weight - self.votes.abstain;
+                    self.votes.no >= votes_needed(possible_opinions, threshold)
                 }
             }
         }
@@ -232,12 +264,12 @@ mod test {
         );
     }
 
-    fn check_is_passed(
+    fn setup_prop(
         threshold: Threshold,
         votes: Votes,
         total_weight: Uint128,
         is_expired: bool,
-    ) -> bool {
+    ) -> (Proposal, BlockInfo) {
         let block = mock_env().block;
         let expires = match is_expired {
             true => Expiration::AtHeight(block.height - 5),
@@ -256,7 +288,27 @@ mod test {
             votes,
             deposit: Uint128::zero(),
         };
+        (prop, block)
+    }
+
+    fn check_is_passed(
+        threshold: Threshold,
+        votes: Votes,
+        total_weight: Uint128,
+        is_expired: bool,
+    ) -> bool {
+        let (prop, block) = setup_prop(threshold, votes, total_weight, is_expired);
         prop.is_passed(&block)
+    }
+
+    fn check_is_rejected(
+        threshold: Threshold,
+        votes: Votes,
+        total_weight: Uint128,
+        is_expired: bool,
+    ) -> bool {
+        let (prop, block) = setup_prop(threshold, votes, total_weight, is_expired);
+        prop.is_rejected(&block)
     }
 
     #[test]
@@ -297,6 +349,63 @@ mod test {
             false
         ));
         assert!(check_is_passed(percent, votes, Uint128::new(14), true));
+    }
+
+    #[test]
+    fn proposal_rejected_absolute_percentage() {
+        let percent = Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(50),
+        };
+
+        // 4 YES, 7 NO, 2 ABSTAIN
+        let mut votes = Votes::new(Uint128::new(4));
+        votes.add_vote(Vote::No, Uint128::new(7));
+        votes.add_vote(Vote::Abstain, Uint128::new(2));
+
+        // 15 total voting power
+        // 7 / (15 - 2) > 50%
+        // Expiry does not matter
+        assert!(check_is_rejected(
+            percent.clone(),
+            votes.clone(),
+            Uint128::new(15),
+            false
+        ));
+        assert!(check_is_rejected(
+            percent.clone(),
+            votes.clone(),
+            Uint128::new(15),
+            true
+        ));
+
+        // 17 total voting power
+        // 7 / (17 - 2) < 50%
+        assert!(!check_is_rejected(
+            percent.clone(),
+            votes.clone(),
+            Uint128::new(17),
+            false
+        ));
+        assert!(!check_is_rejected(
+            percent.clone(),
+            votes.clone(),
+            Uint128::new(17),
+            true
+        ));
+
+        // Rejected if total was lower
+        assert!(check_is_rejected(
+            percent.clone(),
+            votes.clone(),
+            Uint128::new(14),
+            false
+        ));
+        assert!(check_is_rejected(
+            percent,
+            votes.clone(),
+            Uint128::new(14),
+            true
+        ));
     }
 
     #[test]
@@ -389,6 +498,105 @@ mod test {
         ));
         // 3 votes uncast, if they all vote no, we have 7 yes, 7 no+veto, 2 abstain (out of 16)
         assert!(check_is_passed(quorum, passing, Uint128::new(16), false));
+    }
+
+    #[test]
+    fn proposal_rejected_quorum() {
+        let quorum = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(40),
+        };
+        // all non-yes votes are counted for quorum
+        let rejecting = Votes {
+            yes: Uint128::new(3),
+            no: Uint128::new(7),
+            abstain: Uint128::new(2),
+            veto: Uint128::new(1),
+        };
+        // abstain votes are not counted for threshold => yes / (yes + no + veto)
+        let rejected_ignoring_abstain = Votes {
+            yes: Uint128::new(4),
+            no: Uint128::new(6),
+            abstain: Uint128::new(5),
+            veto: Uint128::new(2),
+        };
+        // fails any way you look at it
+        let failing = Votes {
+            yes: Uint128::new(5),
+            no: Uint128::new(6),
+            abstain: Uint128::new(2),
+            veto: Uint128::new(2),
+        };
+
+        // first, expired (voting period over)
+        // over quorum (40% of 30 = 12), over threshold (7/11 > 50%)
+        assert!(check_is_rejected(
+            quorum.clone(),
+            rejecting.clone(),
+            Uint128::new(30),
+            true
+        ));
+        // Under quorum means it cannot be rejected
+        assert!(!check_is_rejected(
+            quorum.clone(),
+            rejecting.clone(),
+            Uint128::new(33),
+            true
+        ));
+
+        // over quorum, threshold passes if we ignore abstain
+        // 17 total votes w/ abstain => 40% quorum of 40 total
+        // 6 no / (6 no + 4 yes + 2 votes) => 50% threshold
+        assert!(check_is_rejected(
+            quorum.clone(),
+            rejected_ignoring_abstain.clone(),
+            Uint128::new(40),
+            true
+        ));
+
+        // over quorum, but under threshold fails also
+        assert!(!check_is_rejected(
+            quorum.clone(),
+            failing,
+            Uint128::new(20),
+            true
+        ));
+
+        // Voting is still open so assume rest of votes are yes
+        // threshold not reached
+        assert!(!check_is_rejected(
+            quorum.clone(),
+            rejecting.clone(),
+            Uint128::new(30),
+            false
+        ));
+        assert!(!check_is_rejected(
+            quorum.clone(),
+            rejected_ignoring_abstain.clone(),
+            Uint128::new(40),
+            false
+        ));
+        // if we have threshold * total_weight as no votes this must reject
+        assert!(check_is_rejected(
+            quorum.clone(),
+            rejecting.clone(),
+            Uint128::new(14),
+            false
+        ));
+        // all votes have been cast, some abstain
+        assert!(check_is_rejected(
+            quorum.clone(),
+            rejected_ignoring_abstain,
+            Uint128::new(17),
+            false
+        ));
+        // 3 votes uncast, if they all vote yes, we have 7 no, 7 yes+veto, 2 abstain (out of 16)
+        assert!(check_is_rejected(
+            quorum,
+            rejecting,
+            Uint128::new(16),
+            false
+        ));
     }
 
     #[test]
