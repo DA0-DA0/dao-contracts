@@ -27,6 +27,7 @@ pub struct InstantiateMsg {
     pub refund_failed_proposals: Option<bool>,
     /// Optional Image URL that is used by the contract
     pub image_url: Option<String>,
+    pub only_members_execute: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

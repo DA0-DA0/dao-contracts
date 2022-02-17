@@ -59,7 +59,7 @@ pub fn instantiate(
         proposal_deposit: msg.proposal_deposit_amount,
         refund_failed_proposals: msg.refund_failed_proposals,
         image_url: msg.image_url,
-        only_members_execute: true,
+        only_members_execute: msg.only_members_execute,
     };
     CONFIG.save(deps.storage, &cfg)?;
 

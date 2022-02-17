@@ -18,6 +18,7 @@ pub struct InstantiateMsg {
     pub threshold: Threshold,
     pub max_voting_period: Duration,
     pub image_url: Option<String>,
+    pub only_members_execute: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

@@ -105,6 +105,7 @@ fn instantiate_multisig(
         threshold,
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
     };
     app.instantiate_contract(
         multisig_id,
@@ -243,6 +244,7 @@ fn test_instantiate_works() {
         },
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
     };
     let err = app
         .instantiate_contract(
@@ -266,6 +268,7 @@ fn test_instantiate_works() {
         threshold: Threshold::AbsoluteCount { weight: 100 },
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
     };
     let err = app
         .instantiate_contract(
@@ -289,6 +292,7 @@ fn test_instantiate_works() {
         threshold: Threshold::AbsoluteCount { weight: 1 },
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
     };
     let multisig_addr = app
         .instantiate_contract(
@@ -365,6 +369,7 @@ fn test_instantiate_works() {
         threshold: Threshold::AbsoluteCount { weight: 1 },
         max_voting_period,
         image_url: Some("https://imgur.com/someElmo.png".to_string()),
+        only_members_execute: true,
     };
     let res = app.instantiate_contract(
         multisig_id,

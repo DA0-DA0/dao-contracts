@@ -57,7 +57,7 @@ pub fn instantiate(
         threshold: msg.threshold.clone(),
         max_voting_period: msg.max_voting_period,
         image_url: msg.image_url,
-        only_members_execute: true,
+        only_members_execute: msg.only_members_execute,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
