@@ -299,7 +299,7 @@ pub fn execute_add_hook(
     addr: Addr
 ) -> Result<Response, ContractError>{
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender) {
+    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender)   {
         return Err(ContractError::Unauthorized {})
     };
     HOOKS.add_hook(deps.storage, addr.clone())?;
@@ -313,7 +313,7 @@ pub fn execute_remove_hook(
     addr: Addr
 ) -> Result<Response, ContractError>{
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender) {
+    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender)   {
         return Err(ContractError::Unauthorized {})
     };
     HOOKS.remove_hook(deps.storage, addr.clone())?;
