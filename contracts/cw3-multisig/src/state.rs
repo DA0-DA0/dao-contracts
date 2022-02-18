@@ -107,17 +107,17 @@ impl Proposal {
         self.status = self.current_status(block);
     }
 
-    // returns true iff this proposal is sure to pass (even before expiration if no future
-    // sequence of possible votes can cause it to fail)
-    pub fn is_passed(&self, block: &BlockInfo) -> bool {
+    /// Helper function to check if a certain vote count has reached threshold.
+    /// Only called from is_rejected and is_passed for no and yes votes
+    fn does_vote_count_reach_threshold(&self, vote_count: u64, block: &BlockInfo) -> bool {
         match self.threshold {
             Threshold::AbsoluteCount {
                 weight: weight_needed,
-            } => self.votes.yes >= weight_needed,
+            } => vote_count >= weight_needed,
             Threshold::AbsolutePercentage {
                 percentage: percentage_needed,
             } => {
-                self.votes.yes
+                vote_count
                     >= votes_needed(self.total_weight - self.votes.abstain, percentage_needed)
             }
             Threshold::ThresholdQuorum { threshold, quorum } => {
@@ -128,47 +128,27 @@ impl Proposal {
                 if self.expires.is_expired(block) {
                     // If expired, we compare Yes votes against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
-                    self.votes.yes >= votes_needed(opinions, threshold)
+                    vote_count >= votes_needed(opinions, threshold)
                 } else {
                     // If not expired, we must assume all non-votes will be cast as No.
                     // We compare threshold against the total weight (minus abstain).
                     let possible_opinions = self.total_weight - self.votes.abstain;
-                    self.votes.yes >= votes_needed(possible_opinions, threshold)
+                    vote_count >= votes_needed(possible_opinions, threshold)
                 }
             }
         }
     }
 
+    // returns true iff this proposal is sure to pass (even before expiration if no future
+    // sequence of possible votes can cause it to fail)
+    pub fn is_passed(&self, block: &BlockInfo) -> bool {
+        self.does_vote_count_reach_threshold(self.votes.yes, block)
+    }
+
     /// As above for the rejected check, used to check if a proposal is
     /// already rejected.
     pub fn is_rejected(&self, block: &BlockInfo) -> bool {
-        match self.threshold {
-            Threshold::AbsoluteCount {
-                weight: weight_needed,
-            } => self.votes.no >= weight_needed,
-            Threshold::AbsolutePercentage {
-                percentage: percentage_needed,
-            } => {
-                self.votes.no
-                    >= votes_needed(self.total_weight - self.votes.abstain, percentage_needed)
-            }
-            Threshold::ThresholdQuorum { threshold, quorum } => {
-                // we always require the quorum
-                if self.votes.total() < votes_needed(self.total_weight, quorum) {
-                    return false;
-                }
-                if self.expires.is_expired(block) {
-                    // If expired, we compare No votes against the total number of votes (minus abstain).
-                    let opinions = self.votes.total() - self.votes.abstain;
-                    self.votes.no >= votes_needed(opinions, threshold)
-                } else {
-                    // If not expired, we must assume all non-votes will be cast as Yes.
-                    // We compare threshold against the total weight (minus abstain).
-                    let possible_opinions = self.total_weight - self.votes.abstain;
-                    self.votes.no >= votes_needed(possible_opinions, threshold)
-                }
-            }
-        }
+        self.does_vote_count_reach_threshold(self.votes.no, block)
     }
 
     /// Validates that the thresholds proposed in `UpdateConfig`
