@@ -16,9 +16,9 @@ pub fn stake_hook_msgs(
     addr: Addr,
     amount: Uint128,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(
-        &StakeChangedExecuteMsg::StakeChangeHook(StakeChangedHookMsg::Stake { addr, amount })
-    )?;
+    let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
+        StakeChangedHookMsg::Stake { addr, amount },
+    ))?;
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.to_string(),
@@ -34,7 +34,9 @@ pub fn unstake_hook_msgs(
     addr: Addr,
     amount: Uint128,
 ) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(StakeChangedHookMsg::Unstake { addr, amount }))?;
+    let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
+        StakeChangedHookMsg::Unstake { addr, amount },
+    ))?;
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.to_string(),
