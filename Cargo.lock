@@ -278,10 +278,10 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus",
  "cw-utils",
- "cw2",
  "cw20",
  "cw20-base",
  "cw3",
+ "cw7-schema",
  "schemars",
  "serde",
  "stake-cw20",
@@ -352,6 +352,24 @@ dependencies = [
  "cw2",
  "cw4",
  "cw4-group",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw7-schema"
+version = "0.2.5"
+dependencies = [
+ "anyhow",
+ "assert_matches",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
  "schemars",
  "serde",
  "thiserror",

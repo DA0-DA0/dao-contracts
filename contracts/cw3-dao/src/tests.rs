@@ -1,4 +1,4 @@
-use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::contract::{CONTRACT_NAME, CONTRACT_QUERY_SCHEMA, CONTRACT_VERSION};
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg,
@@ -14,7 +14,6 @@ use cosmwasm_std::{
     coin, coins, to_binary, Addr, BankMsg, BlockInfo, Coin, CosmosMsg, Decimal, Empty, Timestamp,
     Uint128, WasmMsg,
 };
-use cw2::{query_contract_info, ContractVersion};
 use cw20::{
     BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20QueryMsg,
 };
@@ -292,11 +291,12 @@ fn test_instantiate_works() {
     );
 
     // Verify contract version set properly
-    let version = query_contract_info(&app, dao_addr).unwrap();
+    let version = cw7_schema::query_contract_info(&app, dao_addr).unwrap();
     assert_eq!(
-        ContractVersion {
+        cw7_schema::ContractVersion {
             contract: CONTRACT_NAME.to_string(),
             version: CONTRACT_VERSION.to_string(),
+            query_ipfs: CONTRACT_QUERY_SCHEMA.to_string(),
         },
         version,
     );

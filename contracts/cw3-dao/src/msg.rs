@@ -173,6 +173,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    ContractInfo {},
     /// Return ThresholdResponse
     Threshold {},
     /// Returns ProposalResponse
