@@ -177,7 +177,9 @@ pub enum QueryMsg {
     /// Return ThresholdResponse
     Threshold {},
     /// Returns ProposalResponse
-    Proposal { proposal_id: u64 },
+    Proposal {
+        proposal_id: u64,
+    },
     /// Returns ProposalListResponse
     ListProposals {
         start_after: Option<u64>,
@@ -191,7 +193,10 @@ pub enum QueryMsg {
     /// Returns the number of proposals in the DAO (u64)
     ProposalCount {},
     /// Returns VoteResponse
-    Vote { proposal_id: u64, voter: String },
+    Vote {
+        proposal_id: u64,
+        voter: String,
+    },
     /// Returns VoteListResponse
     ListVotes {
         proposal_id: u64,
@@ -200,9 +205,13 @@ pub enum QueryMsg {
     },
     /// Returns information about current tallys for a
     /// proposal. Returns type `VoteTallyResponse`.
-    Tally { proposal_id: u64 },
+    Tally {
+        proposal_id: u64,
+    },
     /// Returns VoterInfo
-    Voter { address: String },
+    Voter {
+        address: String,
+    },
     /// Returns Config
     GetConfig {},
     /// Returns All DAO Cw20 Balances

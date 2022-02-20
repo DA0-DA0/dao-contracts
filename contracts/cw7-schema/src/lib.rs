@@ -32,12 +32,12 @@ pub fn set_contract_version<T: Into<String>, U: Into<String>, V: Into<String>>(
     store: &mut dyn Storage,
     name: T,
     version: U,
-    query_ipfs: V
+    query_ipfs: V,
 ) -> StdResult<()> {
     let val = ContractVersion {
         contract: name.into(),
         version: version.into(),
-        query_ipfs: query_ipfs.into()
+        query_ipfs: query_ipfs.into(),
     };
     CONTRACT.save(store, &val)
 }
@@ -73,14 +73,21 @@ mod tests {
         // set and get
         let contract_name = "crate:cw20-base";
         let contract_version = "0.2.0";
-        let contract_query_ipfs = "https://gateway.pinata.cloud/ipfs/QmWac4BCRNMEZyqr5xuC7GmQp3kbeip2MxS9zj2QDuG2vz";
-        set_contract_version(&mut store, contract_name, contract_version, contract_query_ipfs).unwrap();
+        let contract_query_ipfs =
+            "https://gateway.pinata.cloud/ipfs/QmWac4BCRNMEZyqr5xuC7GmQp3kbeip2MxS9zj2QDuG2vz";
+        set_contract_version(
+            &mut store,
+            contract_name,
+            contract_version,
+            contract_query_ipfs,
+        )
+        .unwrap();
 
         let loaded = get_contract_version(&store).unwrap();
         let expected = ContractVersion {
             contract: contract_name.to_string(),
             version: contract_version.to_string(),
-            query_ipfs: contract_query_ipfs.to_string()
+            query_ipfs: contract_query_ipfs.to_string(),
         };
         assert_eq!(expected, loaded);
     }

@@ -22,17 +22,17 @@ use cw20::{
     BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse,
 };
 use cw3::{Status, Vote};
+use cw7_schema::{get_contract_version, set_contract_version};
 use cw_storage_plus::Bound;
 use cw_utils::{maybe_addr, parse_reply_instantiate_data, Expiration};
 use std::cmp::Ordering;
 use std::string::FromUtf8Error;
-use cw7_schema::{get_contract_version, set_contract_version};
 
 // Version info for migration info
 pub const CONTRACT_NAME: &str = "crates.io:cw3_dao";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-pub const CONTRACT_QUERY_SCHEMA: &str = "https://gateway.pinata.cloud/ipfs/QmWac4BCRNMEZyqr5xuC7GmQp3kbeip2MxS9zj2QDuG2vz";
-
+pub const CONTRACT_QUERY_SCHEMA: &str =
+    "https://gateway.pinata.cloud/ipfs/QmWac4BCRNMEZyqr5xuC7GmQp3kbeip2MxS9zj2QDuG2vz";
 
 // Settings for pagination
 const MAX_LIMIT: u32 = 30;
@@ -49,7 +49,12 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION, CONTRACT_QUERY_SCHEMA)?;
+    set_contract_version(
+        deps.storage,
+        CONTRACT_NAME,
+        CONTRACT_VERSION,
+        CONTRACT_QUERY_SCHEMA,
+    )?;
 
     msg.threshold.validate()?;
 
@@ -167,11 +172,11 @@ pub fn execute(
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::Propose(ProposeMsg {
-                                title,
-                                description,
-                                msgs,
-                                latest,
-                            }) => execute_propose(deps, env, info, title, description, msgs, latest),
+            title,
+            description,
+            msgs,
+            latest,
+        }) => execute_propose(deps, env, info, title, description, msgs, latest),
         ExecuteMsg::Vote(VoteMsg { proposal_id, vote }) => {
             execute_vote(deps, env, info, proposal_id, vote)
         }
@@ -500,7 +505,6 @@ pub fn execute_update_cw20_token_list(
 
     Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
 }
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
