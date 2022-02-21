@@ -115,7 +115,8 @@ CW3_DAO_INIT='{
   "max_voting_period": {
     "height": 100
   },
-  "proposal_deposit_amount": "0"
+  "proposal_deposit_amount": "0",
+  "only_members_execute": false
 }'
 echo $CW3_DAO_INIT | jq .
 
