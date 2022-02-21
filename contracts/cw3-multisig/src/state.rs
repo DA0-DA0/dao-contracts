@@ -109,6 +109,13 @@ impl Proposal {
 
     /// Helper function to check if a certain vote count has reached threshold.
     /// Only called from is_rejected and is_passed for no and yes votes
+    /// Handles the different threshold types accordingly.
+    /// This function returns true if and only if vote_count is greater than the threshold which
+    /// is calculated.
+    /// In the case where we use yes votes, this function will return true if and only if the
+    /// proposal will pass.
+    /// In the case where we use no votes, this function will return true if and only if the
+    /// proposal will be rejected regardless of other votes.
     fn does_vote_count_reach_threshold(&self, vote_count: u64, block: &BlockInfo) -> bool {
         match self.threshold {
             Threshold::AbsoluteCount {
@@ -126,12 +133,12 @@ impl Proposal {
                     return false;
                 }
                 if self.expires.is_expired(block) {
-                    // If expired, we compare Yes votes against the total number of votes (minus abstain).
+                    // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
                     vote_count >= votes_needed(opinions, threshold)
                 } else {
-                    // If not expired, we must assume all non-votes will be cast as No.
-                    // We compare threshold against the total weight (minus abstain).
+                    // If not expired, we must assume all non-votes will be cast against
+                    // vote_count
                     let possible_opinions = self.total_weight - self.votes.abstain;
                     vote_count >= votes_needed(possible_opinions, threshold)
                 }
@@ -139,8 +146,8 @@ impl Proposal {
         }
     }
 
-    // returns true iff this proposal is sure to pass (even before expiration if no future
-    // sequence of possible votes can cause it to fail)
+    /// returns true iff this proposal is sure to pass (even before expiration if no future
+    /// sequence of possible votes can cause it to fail)
     pub fn is_passed(&self, block: &BlockInfo) -> bool {
         self.does_vote_count_reach_threshold(self.votes.yes, block)
     }
