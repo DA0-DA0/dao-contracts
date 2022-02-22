@@ -91,10 +91,7 @@ impl Proposal {
         if status == Status::Open && self.is_passed(block) {
             status = Status::Passed;
         }
-        if status == Status::Open && self.expires.is_expired(block) {
-            status = Status::Rejected;
-        }
-        if status == Status::Open && self.is_rejected(block) {
+        if status == Status::Open && (self.expires.is_expired(block) || self.is_rejected(block)) {
             status = Status::Rejected;
         }
 
