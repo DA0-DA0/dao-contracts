@@ -9,15 +9,15 @@ use crate::ContractError;
 use crate::ContractError::{NoRewardsClaimable, Unauthorized};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::OverflowOperation::Add;
+
 use cosmwasm_std::{
     from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
+    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
 use stake_cw20::hooks::StakeChangedHookMsg;
-use std::borrow::Borrow;
+
 use std::cmp::{max, min};
 
 const CONTRACT_NAME: &str = "crates.io:stake_cw20";
@@ -259,12 +259,12 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> S
 
 pub fn get_rewards_earned(
     deps: Deps,
-    env: &Env,
+    _env: &Env,
     addr: &Addr,
     reward_per_token: Uint128,
     staking_contract: &Addr,
 ) -> StdResult<Uint128> {
-    let config = CONFIG.load(deps.storage)?;
+    let _config = CONFIG.load(deps.storage)?;
     let staked_balance = get_staked_balance(deps, staking_contract, addr)?;
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
@@ -300,7 +300,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_info(deps: Deps, env: Env) -> StdResult<InfoResponse> {
+pub fn query_info(deps: Deps, _env: Env) -> StdResult<InfoResponse> {
     let config = CONFIG.load(deps.storage)?;
     let reward = REWARD_CONFIG.load(deps.storage)?;
     Ok(InfoResponse { config, reward })
