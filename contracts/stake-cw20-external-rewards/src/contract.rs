@@ -114,7 +114,7 @@ pub fn execute_fund(
     sender: Addr,
     amount: Uint128,
 ) -> Result<Response<Empty>, ContractError> {
-    update_rewards(&mut deps, &env, &sender);
+    update_rewards(&mut deps, &env, &sender)?;
 
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
     let new_reward_config = if reward_config.periodFinish < env.block.height {
@@ -178,7 +178,7 @@ pub fn execute_claim(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response<Empty>, ContractError> {
-    update_rewards(&mut deps, &env, &info.sender);
+    update_rewards(&mut deps, &env, &info.sender)?;
     let rewards = PENDING_REWARDS
         .load(deps.storage, info.sender.clone())
         .map_err(|_| NoRewardsClaimable {})?;
