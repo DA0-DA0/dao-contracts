@@ -11,4 +11,6 @@ pub enum ContractError {
     Unauthorized {},
     #[error("No rewards claimable")]
     NoRewardsClaimable {},
+    #[error("Reward period not finished")]
+    RewardPeriodNotFinished {},
 }

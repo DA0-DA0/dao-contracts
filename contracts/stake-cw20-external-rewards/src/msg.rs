@@ -9,7 +9,8 @@ pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
-    pub admin: Option<Addr>,
+    pub owner: Option<Addr>,
+    pub manager: Option<Addr>,
     pub staking_contract: Addr,
     pub reward_token: Denom,
 }
@@ -21,6 +22,9 @@ pub enum ExecuteMsg {
     Claim {},
     Receive(Cw20ReceiveMsg),
     Fund {},
+    UpdateRewardDuration { new_duration: u64 },
+    UpdateOwner { new_owner: Option<Addr> },
+    UpdateManager { new_manager: Option<Addr> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
