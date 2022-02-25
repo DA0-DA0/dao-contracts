@@ -4,8 +4,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use stake_cw20::hooks::StakeChangedHookMsg;
 
-
-
 use crate::state::{Config, RewardConfig};
 pub use cw_controllers::ClaimsResponse;
 
