@@ -1139,6 +1139,66 @@ fn test_vote_works() {
         .query_wasm_smart(&multisig_addr, &QueryMsg::Vote { proposal_id, voter })
         .unwrap();
     assert!(vote.vote.is_none());
+
+    // member(OWNER, 0),
+    // member(VOTER1, 1),
+    // member(VOTER2, 2),
+    // member(VOTER3, 3),
+    // member(VOTER4, 12), // so that he alone can pass a 50 / 52% threshold proposal
+    // member(VOTER5, 5),
+
+    // Testing for rejecting when threshold reached
+    // create proposal with 0 vote power
+    let proposal = pay_somebody_proposal();
+    let res = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            multisig_addr.clone(),
+            &proposal,
+            &[],
+        )
+        .unwrap();
+
+    // Get the proposal id from the logs
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Cast a No vote, no has not reached threshold, still open
+    let no_vote = ExecuteMsg::Vote {
+        proposal_id,
+        vote: Vote::No,
+    };
+    let res = app
+        .execute_contract(
+            Addr::unchecked(VOTER2),
+            multisig_addr.clone(),
+            &no_vote,
+            &[],
+        )
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "vote"),
+            ("sender", VOTER2),
+            ("proposal_id", proposal_id.to_string().as_str()),
+            ("status", "Open"),
+        ],
+    );
+
+    // Cast a No vote, as threshold is 51 we have reached threshold and it will now be rejected
+    let res = app
+        .execute_contract(Addr::unchecked(VOTER4), multisig_addr, &no_vote, &[])
+        .unwrap();
+
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "vote"),
+            ("sender", VOTER4),
+            ("proposal_id", proposal_id.to_string().as_str()),
+            ("status", "Rejected"),
+        ],
+    );
 }
 
 #[test]

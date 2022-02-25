@@ -1114,6 +1114,57 @@ fn test_vote_works() {
         .query_wasm_smart(&dao_addr, &QueryMsg::Vote { proposal_id, voter })
         .unwrap();
     assert!(vote.vote.is_none());
+
+    // Testing for rejecting when threshold reached
+    // create proposal with 0 vote power
+    let proposal = pay_somebody_proposal();
+    let res = app
+        .execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &proposal, &[])
+        .unwrap();
+
+    // Get the proposal id from the logs
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Owner votes, yes has not reached threshold, still open
+    let yes_vote = ExecuteMsg::Vote(VoteMsg {
+        proposal_id,
+        vote: Vote::Yes,
+    });
+    let res = app.execute_contract(Addr::unchecked(OWNER), dao_addr.clone(), &yes_vote, &[]);
+    assert!(res.is_ok());
+
+    // Cast a No vote, no has not reached threshold, still open
+    let no_vote = ExecuteMsg::Vote(VoteMsg {
+        proposal_id,
+        vote: Vote::No,
+    });
+    let res = app
+        .execute_contract(Addr::unchecked(VOTER2), dao_addr.clone(), &no_vote, &[])
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "vote"),
+            ("sender", VOTER2),
+            ("proposal_id", proposal_id.to_string().as_str()),
+            ("status", "Open"),
+        ],
+    );
+
+    // Power voter votes no, no reaches threshold + quorum reached, proposal rejected
+    let res = app
+        .execute_contract(Addr::unchecked(POWER_VOTER), dao_addr, &no_vote, &[])
+        .unwrap();
+
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "vote"),
+            ("sender", POWER_VOTER),
+            ("proposal_id", proposal_id.to_string().as_str()),
+            ("status", "Rejected"),
+        ],
+    );
 }
 
 #[test]
