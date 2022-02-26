@@ -13,4 +13,9 @@ pub enum ContractError {
     NoRewardsClaimable {},
     #[error("Reward period not finished")]
     RewardPeriodNotFinished {},
+    #[error("Invalid funds")]
+    InvalidFunds {},
+    #[error("Invalid CW20")]
+    InvalidCW20{}
+
 }

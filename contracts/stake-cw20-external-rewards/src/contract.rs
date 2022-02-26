@@ -6,7 +6,7 @@ use crate::state::{
     REWARD_PER_TOKEN, USER_REWARD_PER_TOKEN,
 };
 use crate::ContractError;
-use crate::ContractError::{NoRewardsClaimable, Unauthorized};
+use crate::ContractError::{InvalidCW20, InvalidFunds, NoRewardsClaimable, Unauthorized};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -91,7 +91,7 @@ pub fn execute_receive(
     let config = CONFIG.load(deps.storage)?;
     let sender = deps.api.addr_validate(&*wrapper.sender)?;
     if config.reward_token != Denom::Cw20(info.sender) {
-        return Err(Unauthorized {});
+        return Err(InvalidCW20 {});
     };
     match msg {
         ReceiveMsg::Fund { .. } => execute_fund(deps, env, sender, wrapper.amount),
@@ -105,12 +105,11 @@ pub fn execute_fund_native(
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    // TODO: Better error handling here
-    let coin = info.funds.first().unwrap();
+    let coin = info.funds.clone().pop().ok_or(ContractError::InvalidFunds {})?;
     let amount = coin.clone().amount;
     let denom = coin.clone().denom;
     if config.reward_token != Denom::Native(denom) {
-        return Err(Unauthorized {});
+        return Err(InvalidFunds {});
     };
     execute_fund(deps, env, info.sender, amount)
 }
@@ -919,8 +918,6 @@ mod tests {
         let mut app = mock_app();
         let admin = Addr::unchecked(OWNER);
         app.borrow_mut().update_block(|b| b.height = 0);
-        let amount1 = Uint128::from(100u128);
-        let _token_address = Addr::unchecked("token_address");
         let initial_balances = vec![
             Cw20Coin {
                 address: ADDR1.to_string(),
@@ -1722,7 +1719,172 @@ mod tests {
         assert_eq!(res.reward.rewardRate, Uint128::new(10));
         assert_eq!(res.reward.periodFinish, 100010);
         assert_eq!(res.reward.rewardDuration, 100000);
+    }
 
+    #[test]
+    fn test_cannot_fund_with_wrong_coin_native(){
+        let mut app = mock_app();
+        let owner = Addr::unchecked(OWNER);
+        let manager = Addr::unchecked(MANAGER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Native(denom.clone()),
+            owner.clone(),
+            manager.clone()
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        // No funding
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                owner.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &[],
+            )
+            .unwrap_err().downcast().unwrap();
+        assert_eq!(err, ContractError::InvalidFunds {});
+
+        // Invalid funding
+        let invalid_funding = vec![coin(100, "invalid")];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: owner.to_string(),
+                amount: invalid_funding.clone(),
+            }
+        }))
+            .unwrap();
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                owner.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &*invalid_funding,
+            )
+            .unwrap_err().downcast().unwrap();
+        assert_eq!(err, ContractError::InvalidFunds {});
+
+        // Cw20 funding fails
+        let cw20_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+        let fund_sub_msg = to_binary(&ReceiveMsg::Fund {}).unwrap();
+        let fund_msg = Cw20ExecuteMsg::Send {
+            contract: reward_addr.clone().into_string(),
+            amount: Uint128::new(100),
+            msg: fund_sub_msg,
+        };
+        let err : ContractError = app
+            .borrow_mut()
+            .execute_contract(owner.clone(), cw20_token.clone(), &fund_msg, &[])
+            .unwrap_err().downcast().unwrap();
+        assert_eq!(err, ContractError::InvalidCW20 {});
+    }
+
+    #[test]
+    fn test_cannot_fund_with_wrong_coin_cw20(){
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Cw20(Addr::unchecked("dummy_cw20")),
+            admin.clone(),
+            Addr::unchecked(MANAGER)
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        // Test with invalid token
+        let fund_sub_msg = to_binary(&ReceiveMsg::Fund {}).unwrap();
+        let fund_msg = Cw20ExecuteMsg::Send {
+            contract: reward_addr.clone().into_string(),
+            amount: Uint128::new(100),
+            msg: fund_sub_msg,
+        };
+        let err : ContractError = app
+            .borrow_mut()
+            .execute_contract(admin.clone(), reward_token.clone(), &fund_msg, &[])
+            .unwrap_err().downcast().unwrap();
+        assert_eq!(err, ContractError::InvalidCW20 {});
+
+        // Test does not work when funded with native
+        let invalid_funding = vec![coin(100, "invalid")];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: admin.to_string(),
+                amount: invalid_funding.clone(),
+            }
+        }))
+            .unwrap();
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                admin.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &*invalid_funding,
+            )
+            .unwrap_err().downcast().unwrap();
+        assert_eq!(err, ContractError::InvalidFunds {})
     }
 
 }
