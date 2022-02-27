@@ -43,12 +43,12 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
     let owner = match msg.owner {
-        Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
+        Some(owner) => Some(deps.api.addr_validate(owner.as_str())?),
         None => None,
     };
 
     let manager = match msg.manager {
-        Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
+        Some(manager) => Some(deps.api.addr_validate(manager.as_str())?),
         None => None,
     };
 
