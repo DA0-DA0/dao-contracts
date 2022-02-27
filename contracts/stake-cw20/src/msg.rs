@@ -9,7 +9,9 @@ pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
+    // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<Addr>,
+    // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
     pub manager: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
