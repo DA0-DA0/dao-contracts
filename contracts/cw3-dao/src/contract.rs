@@ -20,7 +20,8 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::{
-    BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse,
+    BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, Cw20ReceiveMsg,
+    MinterResponse,
 };
 use cw3::{Status, Vote};
 use cw_storage_plus::Bound;
@@ -60,6 +61,7 @@ pub fn instantiate(
         refund_failed_proposals: msg.refund_failed_proposals,
         image_url: msg.image_url,
         only_members_execute: msg.only_members_execute,
+        automatically_add_cw20s: msg.automatically_add_cw20s,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -183,6 +185,7 @@ pub fn execute(
         ExecuteMsg::UpdateStakingContract {
             new_staking_contract,
         } => execute_update_staking_contract(deps, env, info, new_staking_contract),
+        ExecuteMsg::Receive(rec) => execute_receive(deps, env, info, rec),
     }
 }
 
@@ -497,6 +500,24 @@ pub fn execute_update_cw20_token_list(
     }
 
     Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
+}
+
+pub fn execute_receive(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    _wrapped: Cw20ReceiveMsg,
+) -> Result<Response<Empty>, ContractError> {
+    let cfg = CONFIG.load(deps.storage)?;
+    if !cfg.automatically_add_cw20s {
+        return Ok(Response::new());
+    }
+
+    TREASURY_TOKENS.save(deps.storage, &info.sender, &Empty {})?;
+
+    Ok(Response::new()
+        .add_attribute("action", "receive")
+        .add_attribute("token", info.sender.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

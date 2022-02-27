@@ -114,6 +114,7 @@ fn instantiate_dao(
         refund_failed_proposals,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     app.instantiate_contract(
         dao_code_id,
@@ -275,6 +276,7 @@ fn test_instantiate_works() {
         refund_failed_proposals: None,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let err = app
         .instantiate_contract(
@@ -336,6 +338,7 @@ fn instantiate_new_gov_token() {
         refund_failed_proposals: None,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -396,6 +399,7 @@ fn instantiate_new_gov_token() {
         refund_failed_proposals: None,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -536,6 +540,7 @@ fn instantiate_new_gov_token() {
         refund_failed_proposals: None,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let res = app.instantiate_contract(
         dao_code_id,
@@ -1318,6 +1323,7 @@ fn test_execute_works_for_anyone() {
         refund_failed_proposals: Some(false),
         image_url: None,
         only_members_execute: false,
+        automatically_add_cw20s: true,
     });
 
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
@@ -1564,6 +1570,7 @@ fn test_close_works_with_refund() {
         refund_failed_proposals: Some(false),
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     });
 
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
@@ -1930,6 +1937,7 @@ fn test_update_config() {
         refund_failed_proposals: None,
         image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
         only_members_execute: true,
+        automatically_add_cw20s: true,
     });
     let res = app.execute_contract(
         Addr::unchecked(VOTER1),
@@ -1995,7 +2003,8 @@ fn test_update_config() {
                 proposal_deposit: new_proposal_deposit_amount,
                 refund_failed_proposals: None,
                 image_url: Some("https://imghostingwebsite.com/fqfpw.jpg".to_string()),
-                only_members_execute: true
+                only_members_execute: true,
+                automatically_add_cw20s: true,
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr,
@@ -2088,7 +2097,8 @@ fn test_update_staking_contract() {
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
                 image_url: None,
-                only_members_execute: true
+                only_members_execute: true,
+                automatically_add_cw20s: true,
             },
             gov_token: cw20_addr,
             staking_contract: Addr::unchecked("Better_Staking_Contract"),
@@ -2268,7 +2278,8 @@ fn test_config_query() {
                 proposal_deposit: Uint128::zero(),
                 refund_failed_proposals: None,
                 image_url: None,
-                only_members_execute: true
+                only_members_execute: true,
+                automatically_add_cw20s: true,
             },
             gov_token: cw20_addr,
             staking_contract: staking_addr,
@@ -2315,6 +2326,7 @@ fn test_proposal_deposit_works() {
         refund_failed_proposals: None,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     });
     let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
     assert!(res.is_ok());
@@ -2388,6 +2400,148 @@ fn test_proposal_deposit_works() {
     // Check deposit has been refunded
     let balance = cw20.balance(&app, Addr::unchecked(OWNER)).unwrap();
     assert_eq!(balance, initial_owner_cw20_balance);
+}
+
+#[test]
+fn test_receive() {
+    let mut app = mock_app();
+    let voting_period = Duration::Time(2000000);
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: Decimal::percent(20),
+    };
+    let (dao_addr, cw20_addr, _) = setup_test_case(
+        &mut app,
+        threshold.clone(),
+        voting_period,
+        coins(10, NATIVE_TOKEN_DENOM),
+        None,
+        None,
+    );
+
+    // Make a new token to send to the DAO
+    let cw20_id = app.store_code(contract_cw20_gov());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NewCoin"),
+        symbol: String::from("COIN"),
+        decimals: 6,
+        initial_balances: vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ],
+        mint: None,
+        marketing: None,
+    };
+    let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
+    assert!(res.is_ok());
+    let other_cw20_addr = res.unwrap();
+
+    let msg = Cw20ExecuteMsg::Send {
+        contract: dao_addr.to_string(),
+        amount: Uint128::new(200u128),
+        msg: Default::default(),
+    };
+    let res = app.execute_contract(Addr::unchecked(VOTER1), other_cw20_addr.clone(), &msg, &[]);
+    assert!(res.is_ok());
+
+    // Query balances, expecting to see the other cw20 already added
+    let cw20_token_balances_msg = QueryMsg::Cw20Balances {
+        start_after: None,
+        limit: None,
+    };
+    let all_balances: Cw20BalancesResponse = app
+        .wrap()
+        .query_wasm_smart(&dao_addr, &cw20_token_balances_msg)
+        .unwrap();
+    assert_eq!(
+        all_balances.cw20_balances,
+        vec![
+            Cw20CoinVerified {
+                address: cw20_addr.clone(),
+                amount: Uint128::zero(),
+            },
+            Cw20CoinVerified {
+                address: other_cw20_addr.clone(),
+                amount: Uint128::new(200u128)
+            }
+        ]
+    );
+
+    // Update to stop auto adding cw20s
+    let update_config_msg = ExecuteMsg::UpdateConfig(Config {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        threshold,
+        max_voting_period: voting_period,
+        proposal_deposit: Uint128::new(0),
+        refund_failed_proposals: None,
+        image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: false,
+    });
+    let res = app.execute_contract(dao_addr.clone(), dao_addr.clone(), &update_config_msg, &[]);
+    assert!(res.is_ok());
+
+    // Make another new token with initial balance, this time it won't be added automatically when sent
+    let cw20_id = app.store_code(contract_cw20_gov());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NotAdded"),
+        symbol: String::from("NOT"),
+        decimals: 6,
+        initial_balances: vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ],
+        mint: None,
+        marketing: None,
+    };
+    let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
+    assert!(res.is_ok());
+    let not_added_cw20_addr = res.unwrap();
+
+    // Send some cw20s that will not be automatically tracked
+    let msg = Cw20ExecuteMsg::Send {
+        contract: dao_addr.to_string(),
+        amount: Uint128::new(200u128),
+        msg: Default::default(),
+    };
+    let res = app.execute_contract(Addr::unchecked(VOTER1), not_added_cw20_addr, &msg, &[]);
+    assert!(res.is_ok());
+
+    // Query all balances, this time will still only have 2
+    // As we have disabled automatic listing of cw20s
+    let cw20_token_balances_msg = QueryMsg::Cw20Balances {
+        start_after: None,
+        limit: None,
+    };
+    let all_balances: Cw20BalancesResponse = app
+        .wrap()
+        .query_wasm_smart(&dao_addr, &cw20_token_balances_msg)
+        .unwrap();
+    assert_eq!(
+        all_balances.cw20_balances,
+        vec![
+            Cw20CoinVerified {
+                address: cw20_addr,
+                amount: Uint128::zero(),
+            },
+            Cw20CoinVerified {
+                address: other_cw20_addr,
+                amount: Uint128::new(200u128)
+            }
+        ]
+    );
 }
 
 #[test]

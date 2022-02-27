@@ -10,7 +10,7 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 use cw2::{query_contract_info, ContractVersion};
-use cw20::Cw20Coin;
+use cw20::{Cw20Coin, Cw20CoinVerified, Cw20ExecuteMsg};
 use cw3::{
     Status, Vote, VoteInfo, VoteListResponse, VoteResponse, VoterDetail, VoterListResponse,
     VoterResponse,
@@ -106,6 +106,7 @@ fn instantiate_multisig(
         max_voting_period,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     app.instantiate_contract(
         multisig_id,
@@ -245,6 +246,7 @@ fn test_instantiate_works() {
         max_voting_period,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let err = app
         .instantiate_contract(
@@ -269,6 +271,7 @@ fn test_instantiate_works() {
         max_voting_period,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let err = app
         .instantiate_contract(
@@ -293,6 +296,7 @@ fn test_instantiate_works() {
         max_voting_period,
         image_url: None,
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let multisig_addr = app
         .instantiate_contract(
@@ -330,7 +334,8 @@ fn test_instantiate_works() {
                 threshold: Threshold::AbsoluteCount { weight: 1 },
                 max_voting_period,
                 image_url: None,
-                only_members_execute: true
+                only_members_execute: true,
+                automatically_add_cw20s: true,
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -370,6 +375,7 @@ fn test_instantiate_works() {
         max_voting_period,
         image_url: Some("https://imgur.com/someElmo.png".to_string()),
         only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let res = app.instantiate_contract(
         multisig_id,
@@ -479,6 +485,7 @@ fn test_update_config() {
             max_voting_period: voting_period,
             image_url: Some("https://someUrl.com/image.png".to_string()),
             only_members_execute: true,
+            automatically_add_cw20s: true,
         },
         multisig_addr.to_string(),
     );
@@ -519,7 +526,8 @@ fn test_update_config() {
                 },
                 max_voting_period: voting_period,
                 image_url: Some("https://someUrl.com/image.png".to_string()),
-                only_members_execute: true
+                only_members_execute: true,
+                automatically_add_cw20s: true,
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -534,6 +542,7 @@ fn test_update_config() {
             max_voting_period: voting_period,
             image_url: None,
             only_members_execute: true,
+            automatically_add_cw20s: true,
         },
         multisig_addr.to_string(),
     );
@@ -1349,6 +1358,7 @@ fn test_execute_works_for_anyone() {
             max_voting_period: voting_period,
             image_url: Some("https://someUrl.com/image.png".to_string()),
             only_members_execute: false,
+            automatically_add_cw20s: true,
         },
         multisig_addr.to_string(),
     );
@@ -2094,6 +2104,138 @@ fn quorum_enforced_even_if_absolute_threshold_met() {
     )
     .unwrap();
     assert_eq!(prop_status(&app), Status::Passed);
+}
+
+#[test]
+fn test_receive() {
+    let init_funds = coins(10, "BTC");
+    let mut app = mock_app(&init_funds);
+
+    let voting_period = Duration::Time(2000000);
+    let threshold = Threshold::AbsoluteCount { weight: 1 };
+    let (multisig_addr, _) = setup_test_case(
+        &mut app,
+        threshold.clone(),
+        voting_period,
+        init_funds,
+        false,
+    );
+
+    // Make a new token to send to the multisig
+    let cw20_id = app.store_code(contract_cw20_gov());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NewCoin"),
+        symbol: String::from("COIN"),
+        decimals: 6,
+        initial_balances: vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ],
+        mint: None,
+        marketing: None,
+    };
+    let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
+    assert!(res.is_ok());
+    let other_cw20_addr = res.unwrap();
+
+    let msg = Cw20ExecuteMsg::Send {
+        contract: multisig_addr.to_string(),
+        amount: Uint128::new(200u128),
+        msg: Default::default(),
+    };
+    let res = app.execute_contract(Addr::unchecked(VOTER1), other_cw20_addr.clone(), &msg, &[]);
+    assert!(res.is_ok());
+
+    // Query balances, expecting to see the other cw20 already added
+    let cw20_token_balances_msg = QueryMsg::Cw20Balances {
+        start_after: None,
+        limit: None,
+    };
+    let all_balances: Cw20BalancesResponse = app
+        .wrap()
+        .query_wasm_smart(&multisig_addr, &cw20_token_balances_msg)
+        .unwrap();
+    assert_eq!(
+        all_balances.cw20_balances,
+        vec![Cw20CoinVerified {
+            address: other_cw20_addr.clone(),
+            amount: Uint128::new(200u128)
+        }]
+    );
+
+    // Update to stop auto adding cw20s
+    let update_config_msg = ExecuteMsg::UpdateConfig(Config {
+        name: "some-multisig".to_string(),
+        description: "multisig".to_string(),
+        threshold,
+        max_voting_period: voting_period,
+        image_url: None,
+        only_members_execute: false,
+        automatically_add_cw20s: false,
+    });
+    let res = app.execute_contract(
+        multisig_addr.clone(),
+        multisig_addr.clone(),
+        &update_config_msg,
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // Make another new token with initial balance, this time it won't be added automatically when sent
+    let cw20_id = app.store_code(contract_cw20_gov());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NotAdded"),
+        symbol: String::from("NOT"),
+        decimals: 6,
+        initial_balances: vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ],
+        mint: None,
+        marketing: None,
+    };
+    let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
+    assert!(res.is_ok());
+    let not_added_cw20_addr = res.unwrap();
+
+    // Send some cw20s that will not be automatically tracked
+    let msg = Cw20ExecuteMsg::Send {
+        contract: multisig_addr.to_string(),
+        amount: Uint128::new(200u128),
+        msg: Default::default(),
+    };
+    let res = app.execute_contract(Addr::unchecked(VOTER1), not_added_cw20_addr, &msg, &[]);
+    assert!(res.is_ok());
+
+    // Query all balances, this time will still only have 1
+    // As we have disabled automatic listing of cw20s
+    let cw20_token_balances_msg = QueryMsg::Cw20Balances {
+        start_after: None,
+        limit: None,
+    };
+    let all_balances: Cw20BalancesResponse = app
+        .wrap()
+        .query_wasm_smart(&multisig_addr, &cw20_token_balances_msg)
+        .unwrap();
+    assert_eq!(
+        all_balances.cw20_balances,
+        vec![Cw20CoinVerified {
+            address: other_cw20_addr,
+            amount: Uint128::new(200u128)
+        }]
+    );
 }
 
 #[test]
