@@ -1887,4 +1887,96 @@ mod tests {
         assert_eq!(err, ContractError::InvalidFunds {})
     }
 
+    #[test]
+    fn test_rewards_with_zero_staked(){
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        // Instantiate cw20 contract
+        let cw20_addr = instantiate_cw20(&mut app, initial_balances.clone());
+        app.update_block(next_block);
+        // Instantiate staking contract
+        let staking_addr = instantiate_staking(&mut app, cw20_addr.clone(), None);
+        app.update_block(next_block);
+        let reward_funding = vec![coin(100000000, denom.clone())];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: admin.to_string(),
+                amount: reward_funding.clone(),
+            }
+        }))
+            .unwrap();
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Native(denom.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER)
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let _res = app
+            .borrow_mut()
+            .execute_contract(
+                admin.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &*reward_funding,
+            )
+            .unwrap();
+
+        let res: InfoResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+            .unwrap();
+
+        assert_eq!(res.reward.rewardRate, Uint128::new(1000));
+        assert_eq!(res.reward.periodFinish, 101000);
+        assert_eq!(res.reward.rewardDuration, 100000);
+
+        app.borrow_mut().update_block(next_block);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+        for coin in initial_balances {
+            stake_tokens(
+                &mut app,
+                &staking_addr,
+                &cw20_addr,
+                coin.address,
+                coin.amount.u128(),
+            );
+        }
+
+        app.borrow_mut().update_block(next_block);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 500);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR2, 250);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR3, 250);
+
+        app.borrow_mut().update_block(next_block);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 1000);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR2, 500);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR3, 500);
+    }
+
 }
