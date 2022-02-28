@@ -410,9 +410,12 @@ pub fn query_pending_rewards(
         .unwrap_or_default();
     let pending_rewards = earned_rewards + existing_rewards;
     Ok(PendingRewardsResponse {
-        address: addr,
+        address: addr.clone(),
         pending_rewards,
         denom: config.reward_token,
+        last_update_block: LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default(),
+        reward_per_token,
+        user_reward_per_token: USER_REWARD_PER_TOKEN.load(deps.storage, addr).unwrap_or_default(),
     })
 }
 
@@ -1717,8 +1720,8 @@ mod tests {
             .unwrap();
 
         assert_eq!(res.reward.rewardRate, Uint128::new(10));
-        assert_eq!(res.reward.periodFinish, 100010);
-        assert_eq!(res.reward.rewardDuration, 100000);
+        assert_eq!(res.reward.periodFinish, 1010);
+        assert_eq!(res.reward.rewardDuration, 10);
     }
 
     #[test]
