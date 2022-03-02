@@ -192,6 +192,9 @@ pub fn execute_claim(
     let rewards = PENDING_REWARDS
         .load(deps.storage, info.sender.clone())
         .map_err(|_| NoRewardsClaimable {})?;
+    if rewards == Uint128::zero() {
+        return Err(ContractError::NoRewardsClaimable {})
+    }
     PENDING_REWARDS.save(deps.storage, info.sender.clone(), &Uint128::zero());
     let config = CONFIG.load(deps.storage)?;
     let transfer_msg = get_transfer_msg(info.sender, rewards, config.reward_token)?;
