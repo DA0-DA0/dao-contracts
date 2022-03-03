@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Gets the contract's config. Returns Config.",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the contract's voting module. Returns Addr.",
+      "type": "object",
+      "required": [
+        "voting_module"
+      ],
+      "properties": {
+        "voting_module": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the governance modules assocaited with the contract. Returns Vec<Addr>.",
+      "type": "object",
+      "required": [
+        "governance_modules"
+      ],
+      "properties": {
+        "governance_modules": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Dumps all of the governance contract's state in a single query. Useful for frontends as performance for queries is more limited by network times than compute times. Returns `DumpStateResponse`.",
+      "type": "object",
+      "required": [
+        "dump_state"
+      ],
+      "properties": {
+        "dump_state": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DumpStateResponse",
+  "description": "Relevant state for the governance module.",
+  "type": "object",
+  "required": [
+    "config",
+    "governance_modules",
+    "version",
+    "voting_module"
+  ],
+  "properties": {
+    "config": {
+      "description": "The governance contract's config.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Config"
+        }
+      ]
+    },
+    "governance_modules": {
+      "description": "The governance modules associated with the governance contract.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Addr"
+      }
+    },
+    "version": {
+      "description": "The governance contract's version.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ContractVersion"
+        }
+      ]
+    },
+    "voting_module": {
+      "description": "The voting module associated with the governance contract.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "Config": {
+      "type": "object",
+      "required": [
+        "description",
+        "name"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "image_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "ContractVersion": {
+      "type": "object",
+      "required": [
+        "contract",
+        "version"
+      ],
+      "properties": {
+        "contract": {
+          "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
+          "type": "string"
+        },
+        "version": {
+          "description": "version is any string that this implementation knows. It may be simple counter \"1\", \"2\". or semantic version on release tags \"v0.7.0\", or some custom feature flag list. the only code that needs to understand the version parsing is code that knows how to migrate from the given contract (and is tied to it's implementation somehow)",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

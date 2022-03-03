@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "description",
+    "governance_modules_instantiate_info",
+    "name",
+    "voting_module_instantiate_info"
+  ],
+  "properties": {
+    "description": {
+      "description": "A description of the governance contract.",
+      "type": "string"
+    },
+    "governance_modules_instantiate_info": {
+      "description": "Instantiate information for the governance contract's governance modules.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ModuleInstantiateInfo"
+      }
+    },
+    "image_url": {
+      "description": "An image URL to describe the governance module contract.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "name": {
+      "description": "The name of the governance contract.",
+      "type": "string"
+    },
+    "voting_module_instantiate_info": {
+      "description": "Instantiate information for the governance contract's voting power module.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ModuleInstantiateInfo"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Admin": {
+      "description": "Information about the admin of a contract.",
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "none"
+          ]
+        },
+        {
+          "description": "A specific address.",
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The governance contract itself. The contract will fill this in while instantiation takes place.",
+          "type": "object",
+          "required": [
+            "governance_contract"
+          ],
+          "properties": {
+            "governance_contract": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "ModuleInstantiateInfo": {
+      "description": "Information needed to instantiate a governance or voting module.",
+      "type": "object",
+      "required": [
+        "admin",
+        "code_id",
+        "label",
+        "msg"
+      ],
+      "properties": {
+        "admin": {
+          "description": "Admin of the instantiated contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Admin"
+            }
+          ]
+        },
+        "code_id": {
+          "description": "Code ID of the contract to be instantiated.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "label": {
+          "description": "Label for the instantiated contract.",
+          "type": "string"
+        },
+        "msg": {
+          "description": "Instantiate message to be used to create the contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
