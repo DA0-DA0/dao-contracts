@@ -143,9 +143,9 @@ pub fn instantiate(
                 admin: Some(env.contract.address.to_string()),
                 label,
                 msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                    admin: Some(env.contract.address),
+                    admin: Some(env.contract.address.to_string()),
                     unstaking_duration,
-                    token_address: cw20_addr.addr(),
+                    token_address: cw20_addr.addr().to_string(),
                 })?,
             };
 
@@ -454,13 +454,13 @@ pub fn execute_update_staking_contract(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    new_staking_contract: Addr,
+    new_staking_contract: String,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    let new_staking_contract = deps.api.addr_validate(new_staking_contract.as_str())?;
+    let new_staking_contract = deps.api.addr_validate(&new_staking_contract)?;
 
     // Replace the existing staking contract
     STAKING_CONTRACT.save(deps.storage, &new_staking_contract)?;
@@ -474,8 +474,8 @@ pub fn execute_update_cw20_token_list(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    to_add: Vec<Addr>,
-    to_remove: Vec<Addr>,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
@@ -491,12 +491,14 @@ pub fn execute_update_cw20_token_list(
         });
     }
 
-    for token in &to_add {
-        TREASURY_TOKENS.save(deps.storage, token, &Empty {})?;
+    for token in to_add {
+        let token = deps.api.addr_validate(&token)?;
+        TREASURY_TOKENS.save(deps.storage, &token, &Empty {})?;
     }
 
-    for token in &to_remove {
-        TREASURY_TOKENS.remove(deps.storage, token);
+    for token in to_remove {
+        let token = deps.api.addr_validate(&token)?;
+        TREASURY_TOKENS.remove(deps.storage, &token);
     }
 
     Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
@@ -771,9 +773,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         admin: Some(env.contract.address.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: Some(env.contract.address),
+                            admin: Some(env.contract.address.to_string()),
                             unstaking_duration,
-                            token_address: cw20_addr,
+                            token_address: cw20_addr.to_string(),
                         })?,
                     };
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_CONTRACT_REPLY_ID);

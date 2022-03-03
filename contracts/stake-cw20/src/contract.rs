@@ -44,9 +44,10 @@ pub fn instantiate(
         None => None,
     };
 
+    let token_address = deps.api.addr_validate(&msg.token_address)?;
     let config = Config {
         admin,
-        token_address: msg.token_address,
+        token_address,
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -75,7 +76,7 @@ pub fn execute(
 pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
-    new_admin: Option<Addr>,
+    new_admin: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
@@ -89,7 +90,7 @@ pub fn execute_update_config(
                 });
             }
 
-            config.admin = new_admin;
+            config.admin = new_admin.map(|a| deps.api.addr_validate(&a)).transpose()?;
             config.unstaking_duration = duration;
 
             CONFIG.save(deps.storage, &config)?;
@@ -446,8 +447,8 @@ mod tests {
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
-            admin: Some(Addr::unchecked("owner")),
-            token_address: cw20,
+            admin: Some("owner".to_string()),
+            token_address: cw20.to_string(),
             unstaking_duration,
         };
         app.instantiate_contract(
@@ -553,7 +554,10 @@ mod tests {
         admin: Option<Addr>,
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::UpdateConfig { admin, duration };
+        let msg = ExecuteMsg::UpdateConfig {
+            admin: admin.map(|a| a.to_string()),
+            duration,
+        };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
