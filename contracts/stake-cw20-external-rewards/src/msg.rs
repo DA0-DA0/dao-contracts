@@ -52,6 +52,4 @@ pub struct PendingRewardsResponse {
     pub pending_rewards: Uint128,
     pub denom: Denom,
     pub last_update_block: u64,
-    pub reward_per_token: Uint128,
-    pub user_reward_per_token: Uint128
 }

@@ -10,18 +10,17 @@ use crate::ContractError::{InvalidCW20, InvalidFunds, NoRewardsClaimable, Unauth
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use cosmwasm_std::{
-    from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
-};
+use cosmwasm_std::{from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg, Uint256};
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
 use stake_cw20::hooks::StakeChangedHookMsg;
 
 use std::cmp::{max, min};
+use std::convert::TryInto;
 
 const CONTRACT_NAME: &str = "crates.io:stake_cw20";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -247,21 +246,18 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
     Ok({})
 }
 
-pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> StdResult<Uint128> {
+pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> StdResult<Uint256> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
     let total_staked = get_total_staked(deps, staking_contract)?;
     let current_block = min(env.block.height, reward_config.periodFinish);
     let last_update_block = LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default();
     let prev_reward_per_token = REWARD_PER_TOKEN.load(deps.storage).unwrap_or_default();
     let additional_reward_per_token = if total_staked == Uint128::zero() {
-        Uint128::zero()
+        Uint256::zero()
     } else {
-        (reward_config.rewardRate
-            * max(
-                Uint128::from(current_block - last_update_block),
-                Uint128::zero(),
-            ))
-            / total_staked
+        let numerator = Uint256::from(reward_config.rewardRate.checked_mul(Uint128::from(current_block - last_update_block))?).checked_mul(scale_factor())?;
+        let denominator = Uint256::from(total_staked);
+        numerator.checked_div(denominator)?
     };
 
     Ok(prev_reward_per_token + additional_reward_per_token)
@@ -271,7 +267,7 @@ pub fn get_rewards_earned(
     deps: Deps,
     _env: &Env,
     addr: &Addr,
-    reward_per_token: Uint128,
+    reward_per_token: Uint256,
     staking_contract: &Addr,
 ) -> StdResult<Uint128> {
     let _config = CONFIG.load(deps.storage)?;
@@ -279,8 +275,8 @@ pub fn get_rewards_earned(
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
-
-    Ok((reward_per_token - user_reward_per_token) * staked_balance)
+    let reward_factor = reward_per_token.checked_sub(user_reward_per_token)?.checked_div(scale_factor())?;
+    Ok(staked_balance.checked_mul(reward_factor.try_into()?)?)
 }
 
 fn get_total_staked(deps: Deps, contract_addr: &Addr) -> StdResult<Uint128> {
@@ -315,7 +311,6 @@ pub fn execute_update_reward_duration(
     if reward_config.periodFinish > env.block.height {
         return Err(ContractError::RewardPeriodNotFinished {});
     };
-    println!("{}", new_duration);
     let old_duration = reward_config.rewardDuration.clone();
     reward_config.rewardDuration = new_duration;
     REWARD_CONFIG.save(deps.storage, &reward_config)?;
@@ -377,6 +372,9 @@ pub fn execute_update_manager(
         ))
 }
 
+fn scale_factor() -> Uint256 {
+    Uint256::from(10u8).pow(39)
+}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -417,20 +415,17 @@ pub fn query_pending_rewards(
         pending_rewards,
         denom: config.reward_token,
         last_update_block: LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default(),
-        reward_per_token,
-        user_reward_per_token: USER_REWARD_PER_TOKEN.load(deps.storage, addr).unwrap_or_default(),
     })
 }
 
 #[cfg(test)]
 mod tests {
     use std::borrow::{Borrow, BorrowMut};
+    use std::thread::sleep;
 
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{
-        coin, to_binary, Addr, Coin, CosmosMsg, Empty, MessageInfo, Uint128, WasmMsg,
-    };
+    use cosmwasm_std::{coin, to_binary, Addr, Coin, CosmosMsg, Empty, MessageInfo, Uint128, WasmMsg, Uint256};
     use cw20::{Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Denom};
     use cw_utils::Duration;
 
@@ -1985,4 +1980,25 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 500);
     }
 
+    #[test]
+    fn test_math() {
+        let max_u128 = Uint256::from(Uint128::MAX);
+        let scale = Uint256::MAX.checked_div(max_u128).unwrap();
+        println!("max u256 / max u128 {}", scale);
+
+        println!("max u128 {}", Uint128::MAX);
+        println!("max u128 {}", Uint128::MAX.to_string().len());
+        let scale_factor = Uint256::from(10u8).checked_pow(39).unwrap();
+        let min_128 = Uint128::new(1);
+        let scaled_min = Uint256::from(min_128).checked_mul(scale_factor).unwrap();
+        println!("scaled {}", scaled_min);
+        println!("scaled {}", scaled_min.to_string().len());
+        assert_eq!(scaled_min>Uint256::from(Uint128::MAX), true);
+
+        let max = Uint256::from(Uint128::MAX).checked_mul(scale_factor).unwrap_err();
+
+        let possible_max = Uint256::MAX.checked_div(scale_factor).unwrap();
+        println!("possible max: {}", possible_max);
+        println!("possible max {}", possible_max.to_string().len());
+    }
 }
