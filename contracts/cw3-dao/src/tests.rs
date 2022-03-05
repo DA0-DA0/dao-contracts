@@ -904,14 +904,8 @@ fn test_token_add_limited() {
 
     // Attempt to add a bunch of nonesense tokens
     let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
-        to_add: (0..20)
-            .into_iter()
-            .map(|i| Addr::unchecked(i.to_string()))
-            .collect(),
-        to_remove: (20..31)
-            .into_iter()
-            .map(|i| Addr::unchecked(i.to_string()))
-            .collect(),
+        to_add: (0..20).into_iter().map(|i| i.to_string()).collect(),
+        to_remove: (20..31).into_iter().map(|i| i.to_string()).collect(),
     };
     let wasm_msg = WasmMsg::Execute {
         contract_addr: dao_addr.clone().into(),
@@ -2032,7 +2026,7 @@ fn test_update_staking_contract() {
 
     // Nobody can call call update staking contract method directly
     let update_staking_contract_msg = ExecuteMsg::UpdateStakingContract {
-        new_staking_contract: Addr::unchecked("Better_Staking_Contract"),
+        new_staking_contract: "Better_Staking_Contract".to_string(),
     };
     let res = app.execute_contract(
         Addr::unchecked(VOTER1),
@@ -2604,8 +2598,8 @@ fn treasury_queries() {
 
     // Manually add token to list by voting
     let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
-        to_add: vec![Addr::unchecked("NEW"), Addr::unchecked("NEWNEW")],
-        to_remove: vec![other_cw20_addr],
+        to_add: vec!["NEW".to_string(), "NEWNEW".to_string()],
+        to_remove: vec![other_cw20_addr.to_string()],
     };
     let wasm_msg = WasmMsg::Execute {
         contract_addr: dao_addr.clone().into(),

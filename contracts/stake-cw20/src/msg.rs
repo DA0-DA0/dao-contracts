@@ -9,8 +9,8 @@ pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
-    pub admin: Option<Addr>,
-    pub token_address: Addr,
+    pub admin: Option<String>,
+    pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
 
@@ -23,7 +23,7 @@ pub enum ExecuteMsg {
     },
     Claim {},
     UpdateConfig {
-        admin: Option<Addr>,
+        admin: Option<String>,
         duration: Option<Duration>,
     },
 }
