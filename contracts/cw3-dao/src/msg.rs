@@ -17,6 +17,8 @@ pub struct InstantiateMsg {
     pub description: String,
     /// Set an existing governance token or launch a new one
     pub gov_token: GovTokenMsg,
+    /// Set an existing staking contract or instantiate an new one
+    pub staking_contract: StakingContractMsg,
     /// Voting params configuration
     pub threshold: Threshold,
     /// The amount of time a proposal can be voted on before expiring
@@ -38,19 +40,25 @@ pub enum GovTokenMsg {
     // Instantiate a new cw20 token with the DAO as minter
     InstantiateNewCw20 {
         cw20_code_id: u64,
-        stake_contract_code_id: u64,
         label: String,
         initial_dao_balance: Option<Uint128>,
         msg: GovTokenInstantiateMsg,
-        unstaking_duration: Option<Duration>,
     },
     /// Use an existing cw20 token
-    UseExistingCw20 {
-        addr: String,
-        label: String,
-        stake_contract_code_id: u64,
+    UseExistingCw20 { addr: String, label: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
+pub enum StakingContractMsg {
+    /// Create a new staking contract
+    InstantiateNewStakingContract {
+        staking_contract_code_id: u64,
         unstaking_duration: Option<Duration>,
     },
+    /// Use an existing already instantiated staking contract
+    UseExistingStakingContract { addr: String },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
