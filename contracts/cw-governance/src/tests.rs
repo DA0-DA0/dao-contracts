@@ -5,7 +5,7 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use crate::{
     msg::{Admin, ExecuteMsg, InstantiateMsg, ModuleInstantiateInfo, QueryMsg},
-    query::DumpStateResponse,
+    query::{DumpStateResponse, GetItemResponse},
     state::Config,
     ContractError,
 };
@@ -482,7 +482,7 @@ fn test_swap_voting_module() {
 
     let new_voting_addr: Addr = app
         .wrap()
-        .query_wasm_smart(gov_addr.clone(), &QueryMsg::VotingModule {})
+        .query_wasm_smart(gov_addr, &QueryMsg::VotingModule {})
         .unwrap();
 
     assert_ne!(new_voting_addr, voting_addr);
@@ -490,7 +490,7 @@ fn test_swap_voting_module() {
 
 fn test_unauthorized(app: &mut App, gov_addr: Addr, msg: ExecuteMsg) {
     let err: ContractError = app
-        .execute_contract(Addr::unchecked(CREATOR_ADDR), gov_addr.clone(), &msg, &[])
+        .execute_contract(Addr::unchecked(CREATOR_ADDR), gov_addr, &msg, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -645,4 +645,201 @@ fn test_passthrough_voting_queries() {
             height: app.block_info().height,
         }
     );
+}
+
+fn set_item(app: &mut App, gov_addr: Addr, key: String, addr: String) {
+    app.execute_contract(
+        gov_addr.clone(),
+        gov_addr,
+        &ExecuteMsg::SetItem { key, addr },
+        &[],
+    )
+    .unwrap();
+}
+
+fn remove_item(app: &mut App, gov_addr: Addr, key: String) {
+    app.execute_contract(
+        gov_addr.clone(),
+        gov_addr,
+        &ExecuteMsg::RemoveItem { key },
+        &[],
+    )
+    .unwrap();
+}
+
+fn get_item(app: &mut App, gov_addr: Addr, key: String) -> GetItemResponse {
+    app.wrap()
+        .query_wasm_smart(gov_addr, &QueryMsg::GetItem { key })
+        .unwrap()
+}
+
+fn list_items(
+    app: &mut App,
+    gov_addr: Addr,
+    start_at: Option<String>,
+    limit: Option<u64>,
+) -> Vec<Addr> {
+    app.wrap()
+        .query_wasm_smart(gov_addr, &QueryMsg::ListItems { start_at, limit })
+        .unwrap()
+}
+
+#[test]
+fn test_add_remove_get() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_govmod_contract());
+    let voting_id = app.store_code(cw20_balances_voting());
+    let gov_id = app.store_code(cw_gov_contract());
+    let cw20_id = app.store_code(cw20_contract());
+
+    let govmod_instantiate = cw_govmod_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
+        token_info: cw20_balance_voting::msg::TokenInfo::New {
+            code_id: cw20_id,
+            label: "DAO DAO voting".to_string(),
+            name: "DAO DAO".to_string(),
+            symbol: "DAO".to_string(),
+            decimals: 6,
+            initial_balances: vec![cw20::Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::from(2u64),
+            }],
+            marketing: None,
+        },
+    };
+
+    let gov_instantiate = InstantiateMsg {
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: voting_id,
+            msg: to_binary(&voting_instantiate).unwrap(),
+            admin: Admin::GovernanceContract {},
+            label: "voting module".to_string(),
+        },
+        governance_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::GovernanceContract {},
+            label: "governance module".to_string(),
+        }],
+    };
+
+    let gov_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            None,
+        )
+        .unwrap();
+    let a = get_item(&mut app, gov_addr.clone(), "aaaaa".to_string());
+    assert_eq!(a, GetItemResponse { item: None });
+
+    set_item(
+        &mut app,
+        gov_addr.clone(),
+        "aaaaa".to_string(),
+        "aaaaa".to_string(),
+    );
+    let a = get_item(&mut app, gov_addr.clone(), "aaaaa".to_string());
+    assert_eq!(
+        a,
+        GetItemResponse {
+            item: Some(Addr::unchecked("aaaaa"))
+        }
+    );
+
+    remove_item(&mut app, gov_addr.clone(), "a".to_string());
+    let a = get_item(&mut app, gov_addr.clone(), "a".to_string());
+    assert_eq!(a, GetItemResponse { item: None });
+
+    remove_item(&mut app, gov_addr, "b".to_string());
+}
+
+#[test]
+fn test_list_items() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_govmod_contract());
+    let voting_id = app.store_code(cw20_balances_voting());
+    let gov_id = app.store_code(cw_gov_contract());
+    let cw20_id = app.store_code(cw20_contract());
+
+    let govmod_instantiate = cw_govmod_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
+        token_info: cw20_balance_voting::msg::TokenInfo::New {
+            code_id: cw20_id,
+            label: "DAO DAO voting".to_string(),
+            name: "DAO DAO".to_string(),
+            symbol: "DAO".to_string(),
+            decimals: 6,
+            initial_balances: vec![cw20::Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::from(2u64),
+            }],
+            marketing: None,
+        },
+    };
+
+    let gov_instantiate = InstantiateMsg {
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: voting_id,
+            msg: to_binary(&voting_instantiate).unwrap(),
+            admin: Admin::GovernanceContract {},
+            label: "voting module".to_string(),
+        },
+        governance_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::GovernanceContract {},
+            label: "governance module".to_string(),
+        }],
+    };
+
+    let gov_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            None,
+        )
+        .unwrap();
+
+    set_item(
+        &mut app,
+        gov_addr.clone(),
+        "foo".to_string(),
+        "foo".to_string(),
+    );
+    set_item(
+        &mut app,
+        gov_addr.clone(),
+        "bar".to_string(),
+        "bar".to_string(),
+    );
+
+    let first_item = list_items(&mut app, gov_addr.clone(), None, Some(1));
+    assert_eq!(first_item.len(), 1);
+    assert_eq!(first_item[0], "foo".to_string());
+
+    let no_items = list_items(&mut app, gov_addr.clone(), None, Some(0));
+    assert_eq!(no_items.len(), 0);
+
+    // Items are retreived in decending order so asking for foo with
+    // no limit ought to give us a single item.
+    let second_item = list_items(&mut app, gov_addr, Some("foo".to_string()), None);
+    assert_eq!(second_item.len(), 1);
+    assert_eq!(second_item[0], "foo".to_string());
 }

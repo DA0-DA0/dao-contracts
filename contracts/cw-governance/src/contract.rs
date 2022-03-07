@@ -14,8 +14,10 @@ use cw_governance_interface::voting;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
-use crate::query::DumpStateResponse;
-use crate::state::{Config, CONFIG, GOVERNANCE_MODULES, GOVERNANCE_MODULE_COUNT, VOTING_MODULE};
+use crate::query::{DumpStateResponse, GetItemResponse};
+use crate::state::{
+    Config, CONFIG, GOVERNANCE_MODULES, GOVERNANCE_MODULE_COUNT, ITEMS, VOTING_MODULE,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-governance";
@@ -79,9 +81,7 @@ pub fn execute(
                 return Err(ContractError::Unauthorized {});
             }
         }
-        ExecuteMsg::UpdateConfig { .. }
-        | ExecuteMsg::UpdateVotingModule { .. }
-        | ExecuteMsg::UpdateGovernanceModules { .. } => {
+        _ => {
             if info.sender != env.contract.address {
                 return Err(ContractError::Unauthorized {});
             }
@@ -95,6 +95,8 @@ pub fn execute(
         ExecuteMsg::UpdateGovernanceModules { to_add, to_remove } => {
             execute_update_governance_modules(deps, env, to_add, to_remove)
         }
+        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, key, addr),
+        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, key),
     }?;
 
     Ok(response.add_attribute("sender", info.sender))
@@ -170,6 +172,26 @@ pub fn execute_update_governance_modules(
         .add_submessages(to_add))
 }
 
+pub fn execute_set_item(
+    deps: DepsMut,
+    key: String,
+    addr: String,
+) -> Result<Response, ContractError> {
+    let addr = deps.api.addr_validate(&addr)?;
+    ITEMS.save(deps.storage, key.clone(), &addr)?;
+    Ok(Response::default()
+        .add_attribute("action", "execute_set_item")
+        .add_attribute("key", key)
+        .add_attribute("addr", addr))
+}
+
+pub fn execute_remove_item(deps: DepsMut, key: String) -> Result<Response, ContractError> {
+    ITEMS.remove(deps.storage, key.clone());
+    Ok(Response::default()
+        .add_attribute("action", "execute_remove_item")
+        .add_attribute("key", key))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -183,6 +205,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_voting_power_at_height(deps, address, height)
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
+        QueryMsg::GetItem { key } => query_get_item(deps, key),
+        QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
     }
 }
 
@@ -264,6 +288,31 @@ pub fn query_total_power_at_height(deps: Deps, height: Option<u64>) -> StdResult
         .querier
         .query_wasm_smart(voting_module, &voting::Query::TotalPowerAtHeight { height })?;
     to_binary(&total_power)
+}
+
+pub fn query_get_item(deps: Deps, item: String) -> StdResult<Binary> {
+    let item = ITEMS.may_load(deps.storage, item)?;
+    to_binary(&GetItemResponse { item })
+}
+
+pub fn query_list_items(
+    deps: Deps,
+    start_at: Option<String>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    let items = ITEMS.keys(
+        deps.storage,
+        start_at.map(Bound::inclusive),
+        None,
+        cosmwasm_std::Order::Descending,
+    );
+    let items: Vec<String> = match limit {
+        Some(limit) => items
+            .take(limit as usize)
+            .collect::<Result<Vec<String>, _>>()?,
+        None => items.collect::<Result<Vec<String>, _>>()?,
+    };
+    to_binary(&items)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

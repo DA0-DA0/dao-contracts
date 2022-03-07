@@ -14,11 +14,13 @@ pub struct Config {
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 pub const GOVERNANCE_MODULES: Map<Addr, Empty> = Map::new("governance_modules");
+pub const ITEMS: Map<String, Addr> = Map::new("items");
 
 /// Stores the number of governance modules present in the governance
 /// contract. This information is avaliable from the governance
 /// modules map but finding it requires a full traversal of the
 /// keys. This means that we can't us that value when adding and
-/// removing modules as it could cause the contract to lock due to gas
-/// issues if too many modules are present.
+/// removing modules to check that at least one is present as it could
+/// cause the contract to lock due to gas issues if too many modules
+/// are present.
 pub const GOVERNANCE_MODULE_COUNT: Item<u64> = Item::new("governance_module_count");
