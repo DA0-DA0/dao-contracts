@@ -2,6 +2,8 @@ use cosmwasm_std::{Binary, CosmosMsg, Empty};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use cw_governance_macros::cw_governance_voting_query;
+
 use crate::state::Config;
 
 /// Information about the admin of a contract.
@@ -69,6 +71,7 @@ pub enum ExecuteMsg {
     },
 }
 
+#[cw_governance_voting_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
