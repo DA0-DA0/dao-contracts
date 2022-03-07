@@ -19,8 +19,8 @@ use syn::{parse_macro_input, AttributeArgs, DataEnum, DeriveInput, Variant};
 /// ```
 /// enum QueryMsg {
 ///     VotingPowerAtHeight {
-/// 	  address: String,
-/// 	  height: Option<u64>
+///       address: String,
+///       height: Option<u64>
 ///     },
 ///     TotalPowerAtHeight {
 ///       height: Option<u64>
@@ -49,13 +49,10 @@ use syn::{parse_macro_input, AttributeArgs, DataEnum, DeriveInput, Variant};
 pub fn cw_governance_voting_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     // Make sure that no arguments were passed in.
     let args = parse_macro_input!(metadata as AttributeArgs);
-    if !args.is_empty() {
-        return syn::Error::new_spanned(
-            args.into_iter().nth(0),
-            "voting query macro takes no arguments",
-        )
-        .to_compile_error()
-        .into();
+    if let Some(first_arg) = args.first() {
+        return syn::Error::new_spanned(first_arg, "voting query macro takes no arguments")
+            .to_compile_error()
+            .into();
     }
 
     let mut ast: DeriveInput = parse_macro_input!(input);

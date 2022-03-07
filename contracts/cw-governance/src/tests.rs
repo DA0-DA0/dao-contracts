@@ -1,5 +1,6 @@
-use cosmwasm_std::{to_binary, Addr, Empty, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Empty, Uint128, WasmMsg};
 use cw2::ContractVersion;
+use cw_governance_interface::voting::VotingPowerAtHeightResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use crate::{
@@ -26,6 +27,16 @@ fn sudo_govmod_contract() -> Box<dyn Contract<Empty>> {
         cw_govmod_sudo::contract::instantiate,
         cw_govmod_sudo::contract::query,
     );
+    Box::new(contract)
+}
+
+fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw20_balance_voting::contract::execute,
+        cw20_balance_voting::contract::instantiate,
+        cw20_balance_voting::contract::query,
+    )
+    .with_reply(cw20_balance_voting::contract::reply);
     Box::new(contract)
 }
 
@@ -550,18 +561,6 @@ fn test_permissions() {
 
     test_unauthorized(
         &mut app,
-        gov_addr.clone(),
-        ExecuteMsg::UpdateConfig {
-            config: Config {
-                name: "Evil config.".to_string(),
-                description: "👿".to_string(),
-                image_url: None,
-            },
-        },
-    );
-
-    test_unauthorized(
-        &mut app,
         gov_addr,
         ExecuteMsg::UpdateConfig {
             config: Config {
@@ -570,5 +569,80 @@ fn test_permissions() {
                 image_url: None,
             },
         },
+    );
+}
+
+#[test]
+fn test_passthrough_voting_queries() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_govmod_contract());
+    let voting_id = app.store_code(cw20_balances_voting());
+    let gov_id = app.store_code(cw_gov_contract());
+    let cw20_id = app.store_code(cw20_contract());
+
+    let govmod_instantiate = cw_govmod_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
+        token_info: cw20_balance_voting::msg::TokenInfo::New {
+            code_id: cw20_id,
+            label: "DAO DAO voting".to_string(),
+            name: "DAO DAO".to_string(),
+            symbol: "DAO".to_string(),
+            decimals: 6,
+            initial_balances: vec![cw20::Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::from(2u64),
+            }],
+            marketing: None,
+        },
+    };
+
+    let gov_instantiate = InstantiateMsg {
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: voting_id,
+            msg: to_binary(&voting_instantiate).unwrap(),
+            admin: Admin::GovernanceContract {},
+            label: "voting module".to_string(),
+        },
+        governance_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::GovernanceContract {},
+            label: "governance module".to_string(),
+        }],
+    };
+
+    let gov_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            None,
+        )
+        .unwrap();
+
+    let creator_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::VotingPowerAtHeight {
+                address: CREATOR_ADDR.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        creator_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::from(2u64),
+            height: app.block_info().height,
+        }
     );
 }
