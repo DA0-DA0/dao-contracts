@@ -204,6 +204,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-governance-macros",
+ "cw2 0.12.1",
  "schemars",
  "serde",
 ]
@@ -228,6 +229,8 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-governance",
+ "cw-governance-interface",
+ "cw-governance-macros",
  "cw-multi-test 0.12.1",
  "cw-storage-plus 0.12.1",
  "cw2 0.12.1",

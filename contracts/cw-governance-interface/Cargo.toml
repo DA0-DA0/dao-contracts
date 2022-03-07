@@ -10,6 +10,7 @@ cosmwasm-std = { version = "1.0.0-beta5" }
 cw-governance-macros = { version = "0.1.0", path = "../cw-governance-macros"}
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 schemars = "0.8"
+cw2 = "0.12"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }

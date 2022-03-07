@@ -1,9 +1,9 @@
-use cw_governance_macros::cw_governance_voting_query;
+use cw_governance_macros::voting_query;
 
 /// enum for testing. Important that this derives things / has other
 /// attributes so we can be sure we aren't messing with other macros
 /// with ours.
-#[cw_governance_voting_query]
+#[voting_query]
 #[derive(Clone)]
 #[allow(dead_code)]
 enum Test {
@@ -13,7 +13,7 @@ enum Test {
 }
 
 #[test]
-fn it_works() {
+fn voting_query_derive() {
     let _test = Test::VotingPowerAtHeight {
         address: "foo".to_string(),
         height: Some(10),
@@ -30,6 +30,7 @@ fn it_works() {
         | Test::VotingPowerAtHeight {
             height: _,
             address: _,
-        } => "yay",
+        }
+        | Test::Info {} => "yay",
     };
 }
