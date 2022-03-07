@@ -1,6 +1,6 @@
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
-use cw_governance_macros::cw_governance_voting_query;
+use cw_governance_macros::voting_query;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +31,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {}
 
-#[cw_governance_voting_query]
+#[voting_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {

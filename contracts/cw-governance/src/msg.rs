@@ -2,7 +2,7 @@ use cosmwasm_std::{Binary, CosmosMsg, Empty};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_governance_macros::cw_governance_voting_query;
+use cw_governance_macros::voting_query;
 
 use crate::state::Config;
 
@@ -77,7 +77,7 @@ pub enum ExecuteMsg {
     RemoveItem { key: String },
 }
 
-#[cw_governance_voting_query]
+#[voting_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {

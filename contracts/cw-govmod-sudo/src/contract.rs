@@ -73,6 +73,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Admin {} => query_admin(deps),
         QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::Info {} => query_info(deps),
     }
 }
 
@@ -82,4 +83,9 @@ pub fn query_admin(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     to_binary(&DAO.load(deps.storage)?)
+}
+
+pub fn query_info(deps: Deps) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(deps.storage)?;
+    to_binary(&cw_governance_interface::voting::InfoResponse { info })
 }

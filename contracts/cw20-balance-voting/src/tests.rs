@@ -1,6 +1,7 @@
 use cosmwasm_std::{Addr, Empty, Uint128};
+use cw2::ContractVersion;
 use cw20::{Cw20Coin, MinterResponse, TokenInfoResponse};
-use cw_governance_interface::voting::VotingPowerAtHeightResponse;
+use cw_governance_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use crate::msg::{InstantiateMsg, QueryMsg};
@@ -86,6 +87,46 @@ fn test_instantiate_no_balances() {
             },
         },
     );
+}
+
+#[test]
+fn test_contract_info() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(balance_voting_contract());
+
+    let voting_addr = instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(2u64),
+                }],
+                marketing: None,
+            },
+        },
+    );
+
+    let info: InfoResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::Info {})
+        .unwrap();
+    assert_eq!(
+        info,
+        InfoResponse {
+            info: ContractVersion {
+                contract: "crates.io:cw20-balance-voting".to_string(),
+                version: env!("CARGO_PKG_VERSION").to_string()
+            }
+        }
+    )
 }
 
 #[test]

@@ -207,6 +207,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
         QueryMsg::GetItem { key } => query_get_item(deps, key),
         QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
+        QueryMsg::Info {} => query_info(deps),
     }
 }
 
@@ -313,6 +314,11 @@ pub fn query_list_items(
         None => items.collect::<Result<Vec<String>, _>>()?,
     };
     to_binary(&items)
+}
+
+pub fn query_info(deps: Deps) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(deps.storage)?;
+    to_binary(&cw_governance_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

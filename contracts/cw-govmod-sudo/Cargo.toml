@@ -37,6 +37,8 @@ schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 cw-governance = { path = "../cw-governance", version = "0.1.0", features = ["library"] }
+cw-governance-macros = { path = "../cw-governance-macros", version = "0.1.0" }
+cw-governance-interface = { version = "0.1.0", path = "../cw-governance-interface" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }
