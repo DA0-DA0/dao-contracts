@@ -22,7 +22,7 @@ fn it_works() {
     let test = Test::TotalPowerAtHeight { height: Some(10) };
 
     // If this compiles we have won.
-    match test.clone() {
+    match test {
         Test::Foo
         | Test::Bar(_)
         | Test::Baz { .. }
@@ -30,6 +30,6 @@ fn it_works() {
         | Test::VotingPowerAtHeight {
             height: _,
             address: _,
-        } => "yay".to_string(),
+        } => "yay",
     };
 }

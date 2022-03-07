@@ -69,6 +69,12 @@ pub enum ExecuteMsg {
         to_add: Vec<ModuleInstantiateInfo>,
         to_remove: Vec<String>,
     },
+    /// Adds an item to the governance contract's item map. If the
+    /// item already exists the existing value is overriden. If the
+    /// item does not exist a new item is added.
+    SetItem { key: String, addr: String },
+    /// Removes an item from the governance contract's item map.
+    RemoveItem { key: String },
 }
 
 #[cw_governance_voting_query]
@@ -90,4 +96,11 @@ pub enum QueryMsg {
     /// limited by network times than compute times. Returns
     /// `DumpStateResponse`.
     DumpState {},
+    GetItem {
+        key: String,
+    },
+    ListItems {
+        start_at: Option<String>,
+        limit: Option<u64>,
+    },
 }
