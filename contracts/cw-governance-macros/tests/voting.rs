@@ -1,4 +1,4 @@
-use cw_governance_interface::cw_governance_voting_query;
+use cw_governance_macros::cw_governance_voting_query;
 
 /// enum for testing. Important that this derives things / has other
 /// attributes so we can be sure we aren't messing with other macros

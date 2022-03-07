@@ -10,6 +10,8 @@ use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Bound;
 use cw_utils::parse_reply_instantiate_data;
 
+use cw_governance_interface::voting;
+
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
 use crate::query::DumpStateResponse;
@@ -177,6 +179,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_governance_modules(deps, start_at, limit)
         }
         QueryMsg::DumpState {} => query_dump_state(deps),
+        QueryMsg::VotingPowerAtHeight { address, height } => {
+            query_voting_power_at_height(deps, address, height)
+        }
+        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
     }
 }
 
@@ -208,7 +214,7 @@ pub fn query_governance_modules(
     // case we are only paying for what we need here.
     //
     // Even if this does lock up one can determine the existing
-    // governance modules by looking at past transactions onchain.
+    // governance modules by looking at past transactions on chain.
     let modules = GOVERNANCE_MODULES.keys(
         deps.storage,
         start_at.map(Bound::inclusive),
@@ -237,6 +243,27 @@ pub fn query_dump_state(deps: Deps) -> StdResult<Binary> {
         governance_modules,
         voting_module,
     })
+}
+
+pub fn query_voting_power_at_height(
+    deps: Deps,
+    address: String,
+    height: Option<u64>,
+) -> StdResult<Binary> {
+    let voting_module = VOTING_MODULE.load(deps.storage)?;
+    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        voting_module,
+        &voting::Query::VotingPowerAtHeight { height, address },
+    )?;
+    to_binary(&voting_power)
+}
+
+pub fn query_total_power_at_height(deps: Deps, height: Option<u64>) -> StdResult<Binary> {
+    let voting_module = VOTING_MODULE.load(deps.storage)?;
+    let total_power: voting::TotalPowerAtHeightResponse = deps
+        .querier
+        .query_wasm_smart(voting_module, &voting::Query::TotalPowerAtHeight { height })?;
+    to_binary(&total_power)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
