@@ -10,10 +10,10 @@ pub use cw_controllers::ClaimsResponse;
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This will generally be a DAO.
-    pub owner: Option<Addr>,
+    pub owner: Option<String>,
     // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
-    pub manager: Option<Addr>,
-    pub token_address: Addr,
+    pub manager: Option<String>,
+    pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
 
@@ -26,8 +26,8 @@ pub enum ExecuteMsg {
     },
     Claim {},
     UpdateConfig {
-        owner: Option<Addr>,
-        manager: Option<Addr>,
+        owner: Option<String>,
+        manager: Option<String>,
         duration: Option<Duration>,
     },
     AddHook {
@@ -94,9 +94,9 @@ pub struct TotalValueResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetConfigResponse {
-    pub owner: Option<Addr>,
-    pub manager: Option<Addr>,
-    pub token_address: Addr,
+    pub owner: Option<String>,
+    pub manager: Option<String>,
+    pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
 
