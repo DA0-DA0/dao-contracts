@@ -100,8 +100,14 @@ pub fn execute_update_config(
         return Err(ContractError::OnlyOwnerCanChangeOwner {});
     };
 
-    config.owner = new_owner;
-    config.manager = new_manager;
+    config.owner = match new_owner {
+        Some(a) => Some(deps.api.addr_validate(&a.to_string())?),
+        None => None
+    };
+    config.manager = match new_manager {
+        Some(a) => Some(deps.api.addr_validate(&a.to_string())?),
+        None => None
+    };
     config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
@@ -308,6 +314,7 @@ pub fn execute_add_hook(
     info: MessageInfo,
     addr: Addr,
 ) -> Result<Response, ContractError> {
+    let addr = deps.api.addr_validate(&addr.to_string())?;
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
         return Err(ContractError::Unauthorized {});
@@ -324,6 +331,7 @@ pub fn execute_remove_hook(
     info: MessageInfo,
     addr: Addr,
 ) -> Result<Response, ContractError> {
+    let addr = deps.api.addr_validate(&addr.to_string())?;
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
         return Err(ContractError::Unauthorized {});
