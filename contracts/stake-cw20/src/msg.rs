@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -31,12 +31,13 @@ pub enum ExecuteMsg {
         duration: Option<Duration>,
     },
     AddHook {
-        addr: Addr,
+        addr: String,
     },
     RemoveHook {
-        addr: Addr,
+        addr: String,
     },
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReceiveMsg {

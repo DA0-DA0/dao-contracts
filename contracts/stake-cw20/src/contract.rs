@@ -315,9 +315,9 @@ pub fn execute_add_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addr: Addr,
+    addr: String,
 ) -> Result<Response, ContractError> {
-    let addr = deps.api.addr_validate(&addr.to_string())?;
+    let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
         return Err(ContractError::Unauthorized {});
@@ -332,9 +332,9 @@ pub fn execute_remove_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addr: Addr,
+    addr: String,
 ) -> Result<Response, ContractError> {
-    let addr = deps.api.addr_validate(&addr.to_string())?;
+    let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
         return Err(ContractError::Unauthorized {});
