@@ -52,6 +52,7 @@ pub fn instantiate(
         None => None,
     };
 
+    let token_address = deps.api.addr_validate(&msg.token_address)?;
     let config = Config {
         owner,
         manager,

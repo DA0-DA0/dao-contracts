@@ -20,7 +20,8 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::{
-    BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, MinterResponse,
+    BalanceResponse, Cw20Coin, Cw20CoinVerified, Cw20Contract, Cw20QueryMsg, Cw20ReceiveMsg,
+    MinterResponse,
 };
 use cw3::{Status, Vote};
 use cw_storage_plus::Bound;
@@ -59,6 +60,8 @@ pub fn instantiate(
         proposal_deposit: msg.proposal_deposit_amount,
         refund_failed_proposals: msg.refund_failed_proposals,
         image_url: msg.image_url,
+        only_members_execute: msg.only_members_execute,
+        automatically_add_cw20s: msg.automatically_add_cw20s,
     };
     CONFIG.save(deps.storage, &cfg)?;
 
@@ -183,6 +186,7 @@ pub fn execute(
         ExecuteMsg::UpdateStakingContract {
             new_staking_contract,
         } => execute_update_staking_contract(deps, env, info, new_staking_contract),
+        ExecuteMsg::Receive(rec) => execute_receive(deps, env, info, rec),
     }
 }
 
@@ -326,6 +330,14 @@ pub fn execute_execute(
         }
     }
 
+    let cfg = CONFIG.load(deps.storage)?;
+    if cfg.only_members_execute {
+        let balance = get_staked_balance(deps.as_ref(), info.sender.clone())?;
+        if balance == Uint128::zero() {
+            return Err(ContractError::Unauthorized {});
+        }
+    }
+
     let gov_token = GOV_TOKEN.load(deps.storage)?;
 
     // Anyone can trigger this if the vote passed
@@ -443,13 +455,13 @@ pub fn execute_update_staking_contract(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    new_staking_contract: Addr,
+    new_staking_contract: String,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    let new_staking_contract = deps.api.addr_validate(new_staking_contract.as_str())?;
+    let new_staking_contract = deps.api.addr_validate(&new_staking_contract)?;
 
     // Replace the existing staking contract
     STAKING_CONTRACT.save(deps.storage, &new_staking_contract)?;
@@ -463,8 +475,8 @@ pub fn execute_update_cw20_token_list(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    to_add: Vec<Addr>,
-    to_remove: Vec<Addr>,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
 ) -> Result<Response<Empty>, ContractError> {
     // Only contract can call this method
     if env.contract.address != info.sender {
@@ -480,15 +492,35 @@ pub fn execute_update_cw20_token_list(
         });
     }
 
-    for token in &to_add {
-        TREASURY_TOKENS.save(deps.storage, token, &Empty {})?;
+    for token in to_add {
+        let token = deps.api.addr_validate(&token)?;
+        TREASURY_TOKENS.save(deps.storage, &token, &Empty {})?;
     }
 
-    for token in &to_remove {
-        TREASURY_TOKENS.remove(deps.storage, token);
+    for token in to_remove {
+        let token = deps.api.addr_validate(&token)?;
+        TREASURY_TOKENS.remove(deps.storage, &token);
     }
 
     Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
+}
+
+pub fn execute_receive(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    _wrapped: Cw20ReceiveMsg,
+) -> Result<Response<Empty>, ContractError> {
+    let cfg = CONFIG.load(deps.storage)?;
+    if !cfg.automatically_add_cw20s {
+        return Ok(Response::new());
+    }
+
+    TREASURY_TOKENS.save(deps.storage, &info.sender, &Empty {})?;
+
+    Ok(Response::new()
+        .add_attribute("action", "receive")
+        .add_attribute("token", info.sender.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

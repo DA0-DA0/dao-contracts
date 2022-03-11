@@ -2,7 +2,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{error::ContractError, state::Config};
-use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty};
+use cosmwasm_std::{CosmosMsg, Decimal, Empty};
+use cw20::Cw20ReceiveMsg;
 use cw3::Vote;
 use cw4::{Member, MemberChangedHookMsg};
 use cw_utils::{Duration, Expiration, ThresholdResponse};
@@ -18,6 +19,8 @@ pub struct InstantiateMsg {
     pub threshold: Threshold,
     pub max_voting_period: Duration,
     pub image_url: Option<String>,
+    pub only_members_execute: bool,
+    pub automatically_add_cw20s: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -156,9 +159,12 @@ pub enum ExecuteMsg {
     UpdateConfig(Config),
     /// Updates token list
     UpdateCw20TokenList {
-        to_add: Vec<Addr>,
-        to_remove: Vec<Addr>,
+        to_add: Vec<String>,
+        to_remove: Vec<String>,
     },
+    /// Wrapper called for automatically adding cw20s
+    /// to our tracked balances
+    Receive(Cw20ReceiveMsg),
 }
 
 // We can also add this as a cw3 extension

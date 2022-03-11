@@ -10,7 +10,7 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 use cw2::{query_contract_info, ContractVersion};
-use cw20::Cw20Coin;
+use cw20::{Cw20Coin, Cw20CoinVerified, Cw20ExecuteMsg};
 use cw3::{
     Status, Vote, VoteInfo, VoteListResponse, VoteResponse, VoterDetail, VoterListResponse,
     VoterResponse,
@@ -105,6 +105,8 @@ fn instantiate_multisig(
         threshold,
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     app.instantiate_contract(
         multisig_id,
@@ -243,6 +245,8 @@ fn test_instantiate_works() {
         },
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let err = app
         .instantiate_contract(
@@ -266,6 +270,8 @@ fn test_instantiate_works() {
         threshold: Threshold::AbsoluteCount { weight: 100 },
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let err = app
         .instantiate_contract(
@@ -289,6 +295,8 @@ fn test_instantiate_works() {
         threshold: Threshold::AbsoluteCount { weight: 1 },
         max_voting_period,
         image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let multisig_addr = app
         .instantiate_contract(
@@ -326,6 +334,8 @@ fn test_instantiate_works() {
                 threshold: Threshold::AbsoluteCount { weight: 1 },
                 max_voting_period,
                 image_url: None,
+                only_members_execute: true,
+                automatically_add_cw20s: true,
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -364,6 +374,8 @@ fn test_instantiate_works() {
         threshold: Threshold::AbsoluteCount { weight: 1 },
         max_voting_period,
         image_url: Some("https://imgur.com/someElmo.png".to_string()),
+        only_members_execute: true,
+        automatically_add_cw20s: true,
     };
     let res = app.instantiate_contract(
         multisig_id,
@@ -472,6 +484,8 @@ fn test_update_config() {
             },
             max_voting_period: voting_period,
             image_url: Some("https://someUrl.com/image.png".to_string()),
+            only_members_execute: true,
+            automatically_add_cw20s: true,
         },
         multisig_addr.to_string(),
     );
@@ -512,6 +526,8 @@ fn test_update_config() {
                 },
                 max_voting_period: voting_period,
                 image_url: Some("https://someUrl.com/image.png".to_string()),
+                only_members_execute: true,
+                automatically_add_cw20s: true,
             },
             group_address: Cw4Contract::new(Addr::unchecked(group_addr)),
         }
@@ -525,6 +541,8 @@ fn test_update_config() {
             threshold: Threshold::AbsoluteCount { weight: 10000 },
             max_voting_period: voting_period,
             image_url: None,
+            only_members_execute: true,
+            automatically_add_cw20s: true,
         },
         multisig_addr.to_string(),
     );
@@ -849,14 +867,8 @@ fn test_token_add_limited() {
 
     // Attempt to add a bunch of nonesense tokens
     let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
-        to_add: (0..20)
-            .into_iter()
-            .map(|i| Addr::unchecked(i.to_string()))
-            .collect(),
-        to_remove: (20..31)
-            .into_iter()
-            .map(|i| Addr::unchecked(i.to_string()))
-            .collect(),
+        to_add: (0..20).into_iter().map(|i| i.to_string()).collect(),
+        to_remove: (20..31).into_iter().map(|i| i.to_string()).collect(),
     };
     let wasm_msg = WasmMsg::Execute {
         contract_addr: multisig_addr.clone().into(),
@@ -1130,6 +1142,66 @@ fn test_vote_works() {
         .query_wasm_smart(&multisig_addr, &QueryMsg::Vote { proposal_id, voter })
         .unwrap();
     assert!(vote.vote.is_none());
+
+    // member(OWNER, 0),
+    // member(VOTER1, 1),
+    // member(VOTER2, 2),
+    // member(VOTER3, 3),
+    // member(VOTER4, 12), // so that he alone can pass a 50 / 52% threshold proposal
+    // member(VOTER5, 5),
+
+    // Testing for rejecting when threshold reached
+    // create proposal with 0 vote power
+    let proposal = pay_somebody_proposal();
+    let res = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            multisig_addr.clone(),
+            &proposal,
+            &[],
+        )
+        .unwrap();
+
+    // Get the proposal id from the logs
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Cast a No vote, no has not reached threshold, still open
+    let no_vote = ExecuteMsg::Vote {
+        proposal_id,
+        vote: Vote::No,
+    };
+    let res = app
+        .execute_contract(
+            Addr::unchecked(VOTER2),
+            multisig_addr.clone(),
+            &no_vote,
+            &[],
+        )
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "vote"),
+            ("sender", VOTER2),
+            ("proposal_id", proposal_id.to_string().as_str()),
+            ("status", "Open"),
+        ],
+    );
+
+    // Cast a No vote, as threshold is 51 we have reached threshold and it will now be rejected
+    let res = app
+        .execute_contract(Addr::unchecked(VOTER4), multisig_addr, &no_vote, &[])
+        .unwrap();
+
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "vote"),
+            ("sender", VOTER4),
+            ("proposal_id", proposal_id.to_string().as_str()),
+            ("status", "Rejected"),
+        ],
+    );
 }
 
 #[test]
@@ -1202,10 +1274,21 @@ fn test_execute_works() {
         .unwrap_err();
     assert_eq!(ContractError::WrongCloseStatus {}, err.downcast().unwrap());
 
-    // Execute works. Anybody can execute Passed proposals
-    let res = app
+    // Rejects if non-member attempts to execute
+    let err = app
         .execute_contract(
             Addr::unchecked(SOMEBODY),
+            multisig_addr.clone(),
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+        .unwrap_err();
+    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+
+    // Execute works. Members can execute Passed proposals
+    let res = app
+        .execute_contract(
+            Addr::unchecked(VOTER3),
             multisig_addr.clone(),
             &execution,
             &[],
@@ -1215,7 +1298,7 @@ fn test_execute_works() {
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str()),
         ],
     );
@@ -1234,12 +1317,101 @@ fn test_execute_works() {
 
     // Trying to execute something that was already executed fails
     let err = app
-        .execute_contract(Addr::unchecked(SOMEBODY), multisig_addr, &execution, &[])
+        .execute_contract(Addr::unchecked(VOTER3), multisig_addr, &execution, &[])
         .unwrap_err();
     assert_eq!(
         ContractError::WrongExecuteStatus {},
         err.downcast().unwrap()
     )
+}
+
+#[test]
+fn test_execute_works_for_anyone() {
+    let init_funds = coins(10, "BTC");
+    let mut app = mock_app(&init_funds);
+
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(51),
+        quorum: Decimal::percent(1),
+    };
+    let voting_period = Duration::Time(2000000);
+    let (multisig_addr, _) =
+        setup_test_case(&mut app, threshold.clone(), voting_period, init_funds, true);
+
+    // ensure we have cash to cover the proposal
+    let contract_bal = app.wrap().query_balance(&multisig_addr, "BTC").unwrap();
+    assert_eq!(contract_bal, coin(10, "BTC"));
+
+    // Update config so that anyone can execute
+
+    let proposal = update_config_proposal(
+        Config {
+            name: "dogsig".to_string(),
+            description: "🐶".to_string(),
+            threshold,
+            max_voting_period: voting_period,
+            image_url: Some("https://someUrl.com/image.png".to_string()),
+            only_members_execute: false,
+            automatically_add_cw20s: true,
+        },
+        multisig_addr.to_string(),
+    );
+
+    let res = app
+        .execute_contract(
+            Addr::unchecked(VOTER4),
+            multisig_addr.clone(),
+            &proposal,
+            &[],
+        )
+        .unwrap();
+
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(VOTER4),
+        multisig_addr.clone(),
+        &ExecuteMsg::Execute { proposal_id },
+        &[],
+    )
+    .unwrap();
+
+    // create new proposal with 0 vote power
+    let proposal = pay_somebody_proposal();
+    let res = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            multisig_addr.clone(),
+            &proposal,
+            &[],
+        )
+        .unwrap();
+
+    // Get the proposal id from the logs
+    let proposal_id: u64 = res.custom_attrs(1)[2].value.parse().unwrap();
+
+    // Vote it, so it passes
+    let vote = ExecuteMsg::Vote {
+        proposal_id,
+        vote: Vote::Yes,
+    };
+    let _res = app
+        .execute_contract(Addr::unchecked(VOTER4), multisig_addr.clone(), &vote, &[])
+        .unwrap();
+
+    // Execute proposal from account that's not a member
+    let execution = ExecuteMsg::Execute { proposal_id };
+    let res = app
+        .execute_contract(Addr::unchecked(SOMEBODY), multisig_addr, &execution, &[])
+        .unwrap();
+    assert_eq!(
+        res.custom_attrs(1),
+        [
+            ("action", "execute"),
+            ("sender", SOMEBODY),
+            ("proposal_id", proposal_id.to_string().as_str()),
+        ],
+    );
 }
 
 #[test]
@@ -1303,10 +1475,10 @@ fn proposal_pass_on_expiration() {
         .unwrap();
     assert_eq!(prop.status, Status::Passed);
 
-    // Now execute
+    // Now execute from member address
     let res = app
         .execute_contract(
-            Addr::unchecked(SOMEBODY),
+            Addr::unchecked(VOTER3),
             multsig_addr,
             &ExecuteMsg::Execute { proposal_id },
             &[],
@@ -1316,7 +1488,7 @@ fn proposal_pass_on_expiration() {
         res.custom_attrs(1),
         [
             ("action", "execute"),
-            ("sender", SOMEBODY),
+            ("sender", VOTER3),
             ("proposal_id", proposal_id.to_string().as_str())
         ]
     );
@@ -1929,6 +2101,138 @@ fn quorum_enforced_even_if_absolute_threshold_met() {
 }
 
 #[test]
+fn test_receive() {
+    let init_funds = coins(10, "BTC");
+    let mut app = mock_app(&init_funds);
+
+    let voting_period = Duration::Time(2000000);
+    let threshold = Threshold::AbsoluteCount { weight: 1 };
+    let (multisig_addr, _) = setup_test_case(
+        &mut app,
+        threshold.clone(),
+        voting_period,
+        init_funds,
+        false,
+    );
+
+    // Make a new token to send to the multisig
+    let cw20_id = app.store_code(contract_cw20_gov());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NewCoin"),
+        symbol: String::from("COIN"),
+        decimals: 6,
+        initial_balances: vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ],
+        mint: None,
+        marketing: None,
+    };
+    let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
+    assert!(res.is_ok());
+    let other_cw20_addr = res.unwrap();
+
+    let msg = Cw20ExecuteMsg::Send {
+        contract: multisig_addr.to_string(),
+        amount: Uint128::new(200u128),
+        msg: Default::default(),
+    };
+    let res = app.execute_contract(Addr::unchecked(VOTER1), other_cw20_addr.clone(), &msg, &[]);
+    assert!(res.is_ok());
+
+    // Query balances, expecting to see the other cw20 already added
+    let cw20_token_balances_msg = QueryMsg::Cw20Balances {
+        start_after: None,
+        limit: None,
+    };
+    let all_balances: Cw20BalancesResponse = app
+        .wrap()
+        .query_wasm_smart(&multisig_addr, &cw20_token_balances_msg)
+        .unwrap();
+    assert_eq!(
+        all_balances.cw20_balances,
+        vec![Cw20CoinVerified {
+            address: other_cw20_addr.clone(),
+            amount: Uint128::new(200u128)
+        }]
+    );
+
+    // Update to stop auto adding cw20s
+    let update_config_msg = ExecuteMsg::UpdateConfig(Config {
+        name: "some-multisig".to_string(),
+        description: "multisig".to_string(),
+        threshold,
+        max_voting_period: voting_period,
+        image_url: None,
+        only_members_execute: false,
+        automatically_add_cw20s: false,
+    });
+    let res = app.execute_contract(
+        multisig_addr.clone(),
+        multisig_addr.clone(),
+        &update_config_msg,
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // Make another new token with initial balance, this time it won't be added automatically when sent
+    let cw20_id = app.store_code(contract_cw20_gov());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("NotAdded"),
+        symbol: String::from("NOT"),
+        decimals: 6,
+        initial_balances: vec![
+            Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+            Cw20Coin {
+                address: VOTER1.to_string(),
+                amount: Uint128::new(INITIAL_BALANCE * 5),
+            },
+        ],
+        mint: None,
+        marketing: None,
+    };
+    let res = app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None);
+    assert!(res.is_ok());
+    let not_added_cw20_addr = res.unwrap();
+
+    // Send some cw20s that will not be automatically tracked
+    let msg = Cw20ExecuteMsg::Send {
+        contract: multisig_addr.to_string(),
+        amount: Uint128::new(200u128),
+        msg: Default::default(),
+    };
+    let res = app.execute_contract(Addr::unchecked(VOTER1), not_added_cw20_addr, &msg, &[]);
+    assert!(res.is_ok());
+
+    // Query all balances, this time will still only have 1
+    // As we have disabled automatic listing of cw20s
+    let cw20_token_balances_msg = QueryMsg::Cw20Balances {
+        start_after: None,
+        limit: None,
+    };
+    let all_balances: Cw20BalancesResponse = app
+        .wrap()
+        .query_wasm_smart(&multisig_addr, &cw20_token_balances_msg)
+        .unwrap();
+    assert_eq!(
+        all_balances.cw20_balances,
+        vec![Cw20CoinVerified {
+            address: other_cw20_addr,
+            amount: Uint128::new(200u128)
+        }]
+    );
+}
+
+#[test]
 fn treasury_queries() {
     let init_funds = coins(10, "BTC");
     let mut app = mock_app(&init_funds);
@@ -1974,8 +2278,8 @@ fn treasury_queries() {
 
     // Manually add token to list by voting
     let update_token_list_msg = ExecuteMsg::UpdateCw20TokenList {
-        to_add: vec![Addr::unchecked("NEW"), Addr::unchecked("NEWNEW")],
-        to_remove: vec![other_cw20_addr],
+        to_add: vec!["NEW".to_string(), "NEWNEW".to_string()],
+        to_remove: vec![other_cw20_addr.to_string()],
     };
     let wasm_msg = WasmMsg::Execute {
         contract_addr: multisig_addr.clone().into(),
