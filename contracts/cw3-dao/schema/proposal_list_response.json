@@ -271,6 +271,7 @@
         "id",
         "msgs",
         "proposer",
+        "start_height",
         "status",
         "threshold",
         "title"
@@ -298,6 +299,12 @@
         },
         "proposer": {
           "$ref": "#/definitions/Addr"
+        },
+        "start_height": {
+          "description": "The block height the proposal was created at. This can be cross referenced with staked_balance_at_height queries to determine an addresses's voting power for this proposal.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
         "status": {
           "$ref": "#/definitions/Status"
