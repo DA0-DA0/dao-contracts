@@ -102,11 +102,11 @@ pub fn execute_update_config(
 
     config.owner = match new_owner {
         Some(a) => Some(deps.api.addr_validate(&a.to_string())?),
-        None => None
+        None => None,
     };
     config.manager = match new_manager {
         Some(a) => Some(deps.api.addr_validate(&a.to_string())?),
-        None => None
+        None => None,
     };
     config.unstaking_duration = duration;
 
