@@ -222,6 +222,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-govmod-single"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-governance",
+ "cw-governance-interface",
+ "cw-governance-macros",
+ "cw-multi-test 0.12.1",
+ "cw-storage-plus 0.12.1",
+ "cw-utils 0.12.1",
+ "cw2 0.12.1",
+ "cw3 0.12.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-govmod-sudo"
 version = "0.1.0"
 dependencies = [
@@ -457,6 +477,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw3"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "017b6263414c58081cea97626f4d8da2dc8f7267337bba0eb5770260d26251e0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-utils 0.12.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw3-dao"
 version = "0.2.6"
 dependencies = [
@@ -468,7 +500,7 @@ dependencies = [
  "cw2 0.11.1",
  "cw20 0.11.1",
  "cw20-base 0.11.1",
- "cw3",
+ "cw3 0.11.1",
  "schemars",
  "serde",
  "stake-cw20",
@@ -487,7 +519,7 @@ dependencies = [
  "cw2 0.11.1",
  "cw20 0.11.1",
  "cw20-base 0.11.1",
- "cw3",
+ "cw3 0.11.1",
  "cw4",
  "cw4-group",
  "schemars",
