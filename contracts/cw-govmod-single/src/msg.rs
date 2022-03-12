@@ -80,8 +80,10 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    /// Gets the governance module's config.
+    /// Gets the governance module's config. Returns `state::Config`.
     Config {},
+    /// Gets information about a proposal. Returns
+    /// `proposals::Proposal`.
     Proposal {
         proposal_id: u64,
     },

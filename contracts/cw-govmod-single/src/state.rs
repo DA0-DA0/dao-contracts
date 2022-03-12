@@ -5,7 +5,7 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::threshold::Threshold;
+use crate::{proposal::Proposal, threshold::Threshold};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -25,4 +25,4 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
-pub const PROPOSALS: Map<u64, Addr> = Map::new("proposals");
+pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
