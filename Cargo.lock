@@ -235,6 +235,8 @@ dependencies = [
  "cw-storage-plus 0.12.1",
  "cw-utils 0.12.1",
  "cw2 0.12.1",
+ "cw20-balance-voting",
+ "cw20-base 0.12.1",
  "cw3 0.12.1",
  "schemars",
  "serde",

@@ -1,16 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use cw_utils::{Duration, Expiration};
+use cw_utils::Expiration;
 
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::{Proposal, Status, Votes},
-    state::{Config, CONFIG},
+    proposal::{advance_proposal_id, Proposal, Status, Votes},
+    state::{Config, CONFIG, PROPOSALS},
     utils::{get_total_power, get_voting_power},
 };
 
@@ -106,26 +106,39 @@ pub fn execute_propose(
 
     let total_power = get_total_power(deps.as_ref(), config.dao, Some(env.block.height))?;
 
-    let proposal = Proposal {
-        title,
-        description,
-        proposer: sender,
-        start_height: env.block.height,
-        expiration,
-        threshold: config.threshold,
-        total_power,
-        msgs,
-        status: Status::Open,
-        votes: Votes::zero(),
+    let proposal = {
+        // Limit mutability to this block.
+        let mut proposal = Proposal {
+            title,
+            description,
+            proposer: sender.clone(),
+            start_height: env.block.height,
+            expiration,
+            threshold: config.threshold,
+            total_power,
+            msgs,
+            status: Status::Open,
+            votes: Votes::zero(),
+        };
+        // Update the proposal's status. Addresses case where proposal
+        // expires on the same block as it is created.
+        proposal.update_status(&env.block);
+        proposal
     };
+    let id = advance_proposal_id(deps.storage)?;
+    PROPOSALS.save(deps.storage, id, &proposal)?;
 
-    todo!()
+    Ok(Response::default()
+        .add_attribute("action", "propose")
+        .add_attribute("sender", sender)
+        .add_attribute("proposal_id", id.to_string())
+        .add_attribute("status", proposal.status.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => todo!(),
+        QueryMsg::Config {} => query_config(deps),
         QueryMsg::Proposal { proposal_id } => todo!(),
         QueryMsg::ListProposals { start_after, limit } => todo!(),
         QueryMsg::ProposalCount {} => todo!(),
@@ -138,4 +151,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Tally { proposal_id } => todo!(),
         QueryMsg::Info {} => todo!(),
     }
+}
+
+pub fn query_config(deps: Deps) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
+    to_binary(&config)
+}
+
+pub fn query_proposal(deps: Deps, id: u64) -> StdResult<Binary> {
+    let proposal = PROPOSALS.load(deps.storage, id)?;
+    to_binary(&proposal)
 }
