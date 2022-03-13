@@ -16,6 +16,5 @@ pub enum ContractError {
     #[error("Invalid funds")]
     InvalidFunds {},
     #[error("Invalid CW20")]
-    InvalidCW20{}
-
+    InvalidCW20 {},
 }
