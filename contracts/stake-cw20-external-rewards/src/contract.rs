@@ -21,7 +21,7 @@ use stake_cw20::hooks::StakeChangedHookMsg;
 use std::cmp::min;
 use std::convert::TryInto;
 
-const CONTRACT_NAME: &str = "crates.io:stake_cw20";
+const CONTRACT_NAME: &str = "crates.io:stake-cw20-external-rewards";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
