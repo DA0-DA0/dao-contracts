@@ -5,19 +5,24 @@ use cosmwasm_std::{
     StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_storage_plus::Bound;
 use cw_utils::{Duration, Expiration};
 
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::{advance_proposal_id, Proposal, Status, Vote, Votes},
-    state::{Ballot, Config, BALLOTS, CONFIG, PROPOSALS},
+    query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
+    state::{Ballot, Config, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT},
     threshold::Threshold,
     utils::{get_total_power, get_voting_power},
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Default limit for proposal pagination.
+const DEFAULT_LIMIT: u64 = 30;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -308,20 +313,21 @@ pub fn execute_update_config(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Proposal { proposal_id } => query_proposal(deps, proposal_id),
-        QueryMsg::ListProposals { start_after, limit } => todo!(),
-        QueryMsg::ProposalCount {} => todo!(),
-        QueryMsg::Vote { proposal_id, voter } => todo!(),
+        QueryMsg::Proposal { proposal_id } => query_proposal(deps, env, proposal_id),
+        QueryMsg::ListProposals { start_after, limit } => {
+            query_list_proposals(deps, env, start_after, limit)
+        }
+        QueryMsg::ProposalCount {} => query_proposal_count(deps),
+        QueryMsg::Vote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
             limit,
-        } => todo!(),
-        QueryMsg::Tally { proposal_id } => todo!(),
-        QueryMsg::Info {} => todo!(),
+        } => query_list_votes(deps, proposal_id, start_after, limit),
+        QueryMsg::Info {} => query_info(deps),
     }
 }
 
@@ -330,7 +336,76 @@ pub fn query_config(deps: Deps) -> StdResult<Binary> {
     to_binary(&config)
 }
 
-pub fn query_proposal(deps: Deps, id: u64) -> StdResult<Binary> {
+pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
     let proposal = PROPOSALS.load(deps.storage, id)?;
-    to_binary(&proposal)
+    to_binary(&proposal.into_response(&env.block, id))
+}
+
+pub fn query_list_proposals(
+    deps: Deps,
+    env: Env,
+    start_after: Option<u64>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    let min = start_after.map(Bound::exclusive);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let props: Vec<ProposalResponse> = PROPOSALS
+        .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
+        .take(limit as usize)
+        .collect::<Result<Vec<(u64, Proposal)>, _>>()?
+        .into_iter()
+        .map(|(id, proposal)| proposal.into_response(&env.block, id))
+        .collect();
+
+    to_binary(&props)
+}
+
+pub fn query_proposal_count(deps: Deps) -> StdResult<Binary> {
+    let proposal_count = PROPOSAL_COUNT.load(deps.storage)?;
+    to_binary(&proposal_count)
+}
+
+pub fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<Binary> {
+    let voter = deps.api.addr_validate(&voter)?;
+    let ballot = BALLOTS.may_load(deps.storage, (proposal_id, voter.clone()))?;
+    let vote = ballot.map(|ballot| VoteInfo {
+        voter,
+        vote: ballot.vote,
+        power: ballot.power,
+    });
+    to_binary(&VoteResponse { vote })
+}
+
+pub fn query_list_votes(
+    deps: Deps,
+    proposal_id: u64,
+    start_after: Option<String>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let start_after = start_after
+        .map(|addr| deps.api.addr_validate(&addr))
+        .transpose()?;
+    let min = start_after.map(Bound::<Addr>::exclusive);
+
+    let votes = BALLOTS
+        .prefix(proposal_id)
+        .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
+        .take(limit as usize)
+        .map(|item| {
+            let (voter, ballot) = item?;
+            Ok(VoteInfo {
+                voter,
+                vote: ballot.vote,
+                power: ballot.power,
+            })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+
+    to_binary(&VoteListResponse { votes })
+}
+
+pub fn query_info(deps: Deps) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(deps.storage)?;
+    to_binary(&cw_governance_interface::voting::InfoResponse { info })
 }
