@@ -76,10 +76,12 @@ fn instantiate_with_default_governance(
     let governance_id = app.store_code(cw_gov_contract());
     let votemod_id = app.store_code(cw20_balances_voting());
 
-    let initial_balances = initial_balances.unwrap_or(vec![Cw20Coin {
-        address: CREATOR_ADDR.to_string(),
-        amount: Uint128::new(100_000_000),
-    }]);
+    let initial_balances = initial_balances.unwrap_or_else(|| {
+        vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100_000_000),
+        }]
+    });
 
     let governance_instantiate = cw_governance::msg::InstantiateMsg {
         name: "DAO DAO".to_string(),
@@ -124,7 +126,7 @@ fn test_propose() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         threshold: threshold.clone(),
-        max_voting_period: max_voting_period.clone(),
+        max_voting_period,
         only_members_execute: false,
     };
 
@@ -142,7 +144,7 @@ fn test_propose() {
         .unwrap();
 
     assert_eq!(governance_modules.len(), 1);
-    let govmod_single = governance_modules.into_iter().nth(0).unwrap();
+    let govmod_single = governance_modules.into_iter().next().unwrap();
 
     // Check that the governance module has been configured correctly.
     let config: Config = app
@@ -151,9 +153,9 @@ fn test_propose() {
         .unwrap();
     let expected = Config {
         threshold: threshold.clone(),
-        max_voting_period: max_voting_period.clone(),
+        max_voting_period,
         only_members_execute: false,
-        dao: governance_addr.clone(),
+        dao: governance_addr,
     };
     assert_eq!(config, expected);
 
@@ -173,10 +175,7 @@ fn test_propose() {
 
     let created: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::Proposal { proposal_id: 1 },
-        )
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
     let current_block = app.block_info();
     let expected = Proposal {
@@ -185,7 +184,7 @@ fn test_propose() {
         proposer: Addr::unchecked(CREATOR_ADDR),
         start_height: current_block.height,
         expiration: max_voting_period.after(&current_block),
-        threshold: threshold.clone(),
+        threshold,
         total_power: Uint128::new(100_000_000),
         msgs: vec![],
         status: crate::proposal::Status::Open,
@@ -241,7 +240,7 @@ fn do_test_votes(votes: Vec<TestVote>, threshold: Threshold, expected_status: St
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr.clone(),
+            governance_addr,
             &cw_governance::msg::QueryMsg::GovernanceModules {
                 start_at: None,
                 limit: None,
@@ -250,7 +249,7 @@ fn do_test_votes(votes: Vec<TestVote>, threshold: Threshold, expected_status: St
         .unwrap();
 
     assert_eq!(governance_modules.len(), 1);
-    let govmod_single = governance_modules.into_iter().nth(0).unwrap();
+    let govmod_single = governance_modules.into_iter().next().unwrap();
     app.execute_contract(
         Addr::unchecked(proposer),
         govmod_single.clone(),
