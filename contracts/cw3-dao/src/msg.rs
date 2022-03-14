@@ -71,6 +71,27 @@ pub struct GovTokenInstantiateMsg {
     pub marketing: Option<InstantiateMarketingInfo>,
 }
 
+/// This defines the different ways tallies can happen.
+///
+/// The total_weight used for calculating success as well as the weights of each
+/// individual voter used in tallying should be snapshotted at the beginning of
+/// the block at which the proposal starts (this is likely the responsibility of a
+/// correct cw4 implementation).
+/// See also `ThresholdResponse` in the cw3 spec.
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum Threshold {
+    /// Declares a percentage of the total weight that must cast Yes votes in order for
+    /// a proposal to pass.
+    /// See `ThresholdResponse.AbsolutePercentage` in the cw3 spec for details.
+    AbsolutePercentage { percentage: Decimal },
+
+    /// Declares a `quorum` of the total votes that must participate in the election in order
+    /// for the vote to be considered at all.
+    /// See `ThresholdResponse.ThresholdQuorum` in the cw3 spec for details.
+    ThresholdQuorum { threshold: Decimal, quorum: Decimal },
+}
+
 impl Threshold {
     /// returns error if this is an unreachable value,
     /// given a total weight of all members in the group
