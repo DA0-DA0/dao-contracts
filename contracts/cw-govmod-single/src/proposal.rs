@@ -7,7 +7,7 @@ use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{state::PROPOSAL_COUNT, threshold::Threshold};
+use crate::{query::ProposalResponse, state::PROPOSAL_COUNT, threshold::Threshold};
 
 // We multiply by this when calculating needed_votes in order to round
 // up properly.
@@ -68,10 +68,27 @@ pub struct Proposal {
     pub votes: Votes,
 }
 
+/// Information about the number of votes needed to pass a proposal.
+#[derive(PartialEq, Clone, Debug)]
+enum VotesNeeded {
+    /// A finite number of votes.
+    Finite(Uint128),
+    /// An unrechable number of votes. Caused by zero total voting
+    /// power.
+    Unreachable,
+}
+
 /// Computes the number of votes needed for a proposal to pass. This
 /// must round up. For example, with a 50% passing percentage and 15
 /// total votes 8 votes are required, not 7.
-fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> Uint128 {
+///
+/// Note that it is possible, though unlikely, that no number of votes
+/// will ever meet the threshold. This happens if the total power is
+/// zero. For example, this may happen if all votes are abstain.
+fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> VotesNeeded {
+    if total_power.is_zero() {
+        return VotesNeeded::Unreachable;
+    }
     // Voting power is counted with a Uint128. In order to avoid an
     // overflow while multiplying by the percision factor we need to
     // do a full mul which results in a Uint256.
@@ -106,7 +123,14 @@ fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> Uint128 {
     // integer. Note: if we didn't floor here this would not be the
     // case, happily unsigned integer division does indeed do that.
     let truncated: Uint128 = rounded.try_into().unwrap();
-    truncated
+    VotesNeeded::Finite(truncated)
+}
+
+fn votes_meet_threshold(votes: Uint128, total_power: Uint128, passing_percentage: Decimal) -> bool {
+    match votes_needed(total_power, passing_percentage) {
+        VotesNeeded::Finite(needed) => votes >= needed,
+        VotesNeeded::Unreachable => false,
+    }
 }
 
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
@@ -150,13 +174,26 @@ impl Votes {
     /// NOTE: The total number of votes avaliable from a voting module
     /// is a `Uint128`. As it is not possible to vote twice we know
     /// that the sum of votes must be <= 2^128 and can safely return a
-    /// `Uint128` from this function.
+    /// `Uint128` from this function. A missbehaving voting power
+    /// module may break this invariant.
     pub fn total(&self) -> Uint128 {
         self.yes + self.no + self.abstain
     }
 }
 
 impl Proposal {
+    /// Consumes the proposal and returns a version which may be used
+    /// in a query response. The difference being that proposal
+    /// statuses are only updated on vote, execute, and close
+    /// events. It is possible though that since a vote has occured
+    /// the proposal expiring has changed its status. This method
+    /// recomputes the status so that queries get accurate
+    /// information.
+    pub fn into_response(mut self, block: &BlockInfo, id: u64) -> ProposalResponse {
+        self.update_status(block);
+        ProposalResponse { id, proposal: self }
+    }
+
     /// Gets the current status of the proposal.
     pub fn current_status(&self, block: &BlockInfo) -> Status {
         if self.status == Status::Open && self.is_passed(block) {
@@ -182,8 +219,8 @@ impl Proposal {
         self.does_vote_count_reach_threshold(self.votes.yes, block)
     }
 
-    /// As above for the rejected check, used to check if a proposal
-    /// is already rejected.
+    /// As above for the passed check, used to check if a proposal is
+    /// already rejected.
     pub fn is_rejected(&self, block: &BlockInfo) -> bool {
         self.does_vote_count_reach_threshold(self.votes.no, block)
     }
@@ -196,11 +233,13 @@ impl Proposal {
     /// pass the proposal.
     fn does_vote_count_reach_threshold(&self, vote_count: Uint128, block: &BlockInfo) -> bool {
         match self.threshold {
-            Threshold::AbsolutePercentage { percentage } => {
-                vote_count >= votes_needed(self.total_power - self.votes.abstain, percentage)
-            }
+            Threshold::AbsolutePercentage { percentage } => votes_meet_threshold(
+                vote_count,
+                self.total_power - self.votes.abstain,
+                percentage,
+            ),
             Threshold::ThresholdQuorum { threshold, quorum } => {
-                if self.votes.total() < votes_needed(self.total_power, quorum) {
+                if !votes_meet_threshold(self.votes.total(), self.total_power, quorum) {
                     return false;
                 }
                 if self.expiration.is_expired(block) {
@@ -217,10 +256,10 @@ impl Proposal {
                     // `token_price * quorum` as opposed to the
                     // 'desired' `token_price * threshold`.
                     let options = self.votes.total() - self.votes.abstain;
-                    vote_count >= votes_needed(options, threshold)
+                    votes_meet_threshold(vote_count, options, threshold)
                 } else {
                     let options = self.total_power - self.votes.abstain;
-                    vote_count >= votes_needed(options, threshold)
+                    votes_meet_threshold(vote_count, options, threshold)
                 }
             }
         }
@@ -234,6 +273,7 @@ impl std::fmt::Display for Status {
             Status::Rejected => write!(f, "rejected"),
             Status::Passed => write!(f, "passed"),
             Status::Executed => write!(f, "executed"),
+            Status::Closed => write!(f, "closed"),
         }
     }
 }
@@ -270,32 +310,37 @@ mod test {
     fn votes_needed_rounds_properly() {
         // round up right below 1
         assert_eq!(
-            Uint128::new(1),
+            VotesNeeded::Finite(Uint128::new(1)),
             votes_needed(Uint128::new(3), Decimal::permille(333))
         );
         // round up right over 1
         assert_eq!(
-            Uint128::new(2),
+            VotesNeeded::Finite(Uint128::new(2)),
             votes_needed(Uint128::new(3), Decimal::permille(334))
         );
         assert_eq!(
-            Uint128::new(11),
+            VotesNeeded::Finite(Uint128::new(11)),
             votes_needed(Uint128::new(30), Decimal::permille(334))
         );
 
         // exact matches don't round
         assert_eq!(
-            Uint128::new(17),
+            VotesNeeded::Finite(Uint128::new(17)),
             votes_needed(Uint128::new(34), Decimal::percent(50))
         );
         assert_eq!(
-            Uint128::new(12),
+            VotesNeeded::Finite(Uint128::new(12)),
             votes_needed(Uint128::new(48), Decimal::percent(25))
         );
 
         assert_eq!(
-            Uint128::new(7),
+            VotesNeeded::Finite(Uint128::new(7)),
             votes_needed(Uint128::new(13), Decimal::percent(50))
+        );
+
+        assert_eq!(
+            VotesNeeded::Unreachable,
+            votes_needed(Uint128::zero(), Decimal::percent(50))
         )
     }
 

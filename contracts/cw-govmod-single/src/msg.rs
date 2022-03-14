@@ -103,7 +103,4 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u64>,
     },
-    Tally {
-        proposal_id: u64,
-    },
 }
