@@ -85,22 +85,22 @@
     "RewardConfig": {
       "type": "object",
       "required": [
-        "periodFinish",
-        "rewardDuration",
-        "rewardRate"
+        "period_finish",
+        "reward_duration",
+        "reward_rate"
       ],
       "properties": {
-        "periodFinish": {
+        "period_finish": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "rewardDuration": {
+        "reward_duration": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "rewardRate": {
+        "reward_rate": {
           "$ref": "#/definitions/Uint128"
         }
       }

@@ -6,7 +6,7 @@ use crate::state::{
     REWARD_PER_TOKEN, USER_REWARD_PER_TOKEN,
 };
 use crate::ContractError;
-use crate::ContractError::{InvalidCW20, InvalidFunds, NoRewardsClaimable, Unauthorized};
+use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable, Unauthorized};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -92,7 +92,7 @@ pub fn execute_receive(
     let config = CONFIG.load(deps.storage)?;
     let sender = deps.api.addr_validate(&*wrapper.sender)?;
     if config.reward_token != Denom::Cw20(info.sender) {
-        return Err(InvalidCW20 {});
+        return Err(InvalidCw20 {});
     };
     match msg {
         ReceiveMsg::Fund { .. } => execute_fund(deps, env, sender, wrapper.amount),
@@ -490,19 +490,6 @@ mod tests {
         App::default()
     }
 
-    fn get_balance<T: Into<String>, U: Into<String>>(
-        app: &App,
-        contract_addr: T,
-        address: U,
-    ) -> Uint128 {
-        let msg = cw20::Cw20QueryMsg::Balance {
-            address: address.into(),
-        };
-        let result: cw20::BalanceResponse =
-            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-        result.balance
-    }
-
     fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
         let cw20_id = app.store_code(contract_cw20());
         let msg = cw20_base::msg::InstantiateMsg {
@@ -604,7 +591,7 @@ mod tests {
         let msg = stake_cw20::msg::ExecuteMsg::AddHook {
             addr: reward_addr.clone(),
         };
-        app.execute_contract(Addr::unchecked(OWNER), staking_contract, &msg, &[])?;
+        let _result = app.execute_contract(Addr::unchecked(OWNER), staking_contract, &msg, &[]);
         reward_addr
     }
 
@@ -750,12 +737,9 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 1000);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 1000);
 
-        assert_eq!(get_balance_native(&mut app, ADDR1, &denom), Uint128::zero());
+        assert_eq!(get_balance_native(&app, ADDR1, &denom), Uint128::zero());
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
-        assert_eq!(
-            get_balance_native(&mut app, ADDR1, &denom),
-            Uint128::new(2000)
-        );
+        assert_eq!(get_balance_native(&app, ADDR1, &denom), Uint128::new(2000));
         assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
 
         app.borrow_mut().update_block(|b| b.height += 10);
@@ -772,16 +756,10 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 3500);
 
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
-        assert_eq!(
-            get_balance_native(&mut app, ADDR1, &denom),
-            Uint128::new(17000)
-        );
+        assert_eq!(get_balance_native(&app, ADDR1, &denom), Uint128::new(17000));
 
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
-        assert_eq!(
-            get_balance_native(&mut app, ADDR2, &denom),
-            Uint128::new(3500)
-        );
+        assert_eq!(get_balance_native(&app, ADDR2, &denom), Uint128::new(3500));
 
         stake_tokens(&mut app, &staking_addr, &cw20_addr, ADDR2, 50);
         stake_tokens(&mut app, &staking_addr, &cw20_addr, ADDR3, 50);
@@ -800,16 +778,16 @@ mod tests {
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
         assert_eq!(
-            get_balance_native(&mut app, ADDR1, &denom),
+            get_balance_native(&app, ADDR1, &denom),
             Uint128::new(50005000)
         );
         assert_eq!(
-            get_balance_native(&mut app, ADDR2, &denom),
+            get_balance_native(&app, ADDR2, &denom),
             Uint128::new(24997500)
         );
-        assert_eq!(get_balance_native(&mut app, ADDR3, &denom), Uint128::new(0));
+        assert_eq!(get_balance_native(&app, ADDR3, &denom), Uint128::new(0));
         assert_eq!(
-            get_balance_native(&mut app, &reward_addr, &denom),
+            get_balance_native(&app, &reward_addr, &denom),
             Uint128::new(24997500)
         );
 
@@ -844,16 +822,16 @@ mod tests {
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
         assert_eq!(
-            get_balance_native(&mut app, ADDR1, &denom),
+            get_balance_native(&app, ADDR1, &denom),
             Uint128::new(150005000)
         );
         assert_eq!(
-            get_balance_native(&mut app, ADDR2, &denom),
+            get_balance_native(&app, ADDR2, &denom),
             Uint128::new(74997500)
         );
-        assert_eq!(get_balance_native(&mut app, ADDR3, &denom), Uint128::zero());
+        assert_eq!(get_balance_native(&app, ADDR3, &denom), Uint128::zero());
         assert_eq!(
-            get_balance_native(&mut app, &reward_addr, &denom),
+            get_balance_native(&app, &reward_addr, &denom),
             Uint128::new(74997500)
         );
 
@@ -900,19 +878,19 @@ mod tests {
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
         claim_rewards(&mut app, reward_addr.clone(), ADDR3);
         assert_eq!(
-            get_balance_native(&mut app, ADDR1, &denom),
+            get_balance_native(&app, ADDR1, &denom),
             Uint128::new(250005000)
         );
         assert_eq!(
-            get_balance_native(&mut app, ADDR2, &denom),
+            get_balance_native(&app, ADDR2, &denom),
             Uint128::new(124997500)
         );
         assert_eq!(
-            get_balance_native(&mut app, ADDR3, &denom),
+            get_balance_native(&app, ADDR3, &denom),
             Uint128::new(124997500)
         );
         assert_eq!(
-            get_balance_native(&mut app, &reward_addr, &denom),
+            get_balance_native(&app, &reward_addr, &denom),
             Uint128::zero()
         );
     }
@@ -994,12 +972,12 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 1000);
 
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR1),
+            get_balance_cw20(&app, &reward_token, ADDR1),
             Uint128::zero()
         );
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR1),
+            get_balance_cw20(&app, &reward_token, ADDR1),
             Uint128::new(2000)
         );
         assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
@@ -1019,13 +997,13 @@ mod tests {
 
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR1),
+            get_balance_cw20(&app, &reward_token, ADDR1),
             Uint128::new(17000)
         );
 
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR2),
+            get_balance_cw20(&app, &reward_token, ADDR2),
             Uint128::new(3500)
         );
 
@@ -1038,7 +1016,6 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 6000);
 
         app.borrow_mut().update_block(|b| b.height = 101000);
-        // TODO: check these expected number are correct
         assert_pending_rewards(&mut app, &reward_addr, ADDR1, 49988000);
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 24994000);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 24997500);
@@ -1046,26 +1023,25 @@ mod tests {
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR1),
+            get_balance_cw20(&app, &reward_token, ADDR1),
             Uint128::new(50005000)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR2),
+            get_balance_cw20(&app, &reward_token, ADDR2),
             Uint128::new(24997500)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR3),
+            get_balance_cw20(&app, &reward_token, ADDR3),
             Uint128::new(0)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, &reward_addr),
+            get_balance_cw20(&app, &reward_token, &reward_addr),
             Uint128::new(24997500)
         );
 
         app.borrow_mut().update_block(|b| b.height = 200000);
         let _fund_msg = ExecuteMsg::Fund {};
 
-        // Add more rewards
         let reward_funding = vec![coin(200000000, denom)];
         app.sudo(SudoMsg::Bank({
             BankSudo::Mint {
@@ -1091,19 +1067,19 @@ mod tests {
         claim_rewards(&mut app, reward_addr.clone(), ADDR1);
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR1),
+            get_balance_cw20(&app, &reward_token, ADDR1),
             Uint128::new(150005000)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR2),
+            get_balance_cw20(&app, &reward_token, ADDR2),
             Uint128::new(74997500)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR3),
+            get_balance_cw20(&app, &reward_token, ADDR3),
             Uint128::zero()
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, &reward_addr),
+            get_balance_cw20(&app, &reward_token, &reward_addr),
             Uint128::new(74997500)
         );
 
@@ -1115,6 +1091,7 @@ mod tests {
             &reward_addr,
             100000000,
         );
+
         fund_rewards_cw20(
             &mut app,
             &admin,
@@ -1132,19 +1109,19 @@ mod tests {
         claim_rewards(&mut app, reward_addr.clone(), ADDR2);
         claim_rewards(&mut app, reward_addr.clone(), ADDR3);
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR1),
+            get_balance_cw20(&app, &reward_token, ADDR1),
             Uint128::new(250005000)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR2),
+            get_balance_cw20(&app, &reward_token, ADDR2),
             Uint128::new(124997500)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, ADDR3),
+            get_balance_cw20(&app, &reward_token, ADDR3),
             Uint128::new(124997500)
         );
         assert_eq!(
-            get_balance_cw20(&mut app, &reward_token, &reward_addr),
+            get_balance_cw20(&app, &reward_token, &reward_addr),
             Uint128::zero()
         );
     }
@@ -1198,7 +1175,7 @@ mod tests {
 
         let fund_msg = ExecuteMsg::Fund {};
 
-        // None admin cannot updat rewards
+        // None admin cannot update rewards
         let err: ContractError = app
             .borrow_mut()
             .execute_contract(
@@ -1240,7 +1217,8 @@ mod tests {
                 to_address: admin.to_string(),
                 amount: reward_funding.clone(),
             }
-        }));
+        }))
+        .unwrap();
         let _res = app
             .borrow_mut()
             .execute_contract(
@@ -1270,7 +1248,8 @@ mod tests {
                 to_address: admin.to_string(),
                 amount: reward_funding.clone(),
             }
-        }));
+        }))
+        .unwrap();
         let _res = app
             .borrow_mut()
             .execute_contract(
@@ -1300,7 +1279,8 @@ mod tests {
                 to_address: admin.to_string(),
                 amount: reward_funding.clone(),
             }
-        }));
+        }))
+        .unwrap();
         let _res = app
             .borrow_mut()
             .execute_contract(admin, reward_addr.clone(), &fund_msg, &*reward_funding)
@@ -1821,7 +1801,7 @@ mod tests {
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::InvalidCW20 {});
+        assert_eq!(err, ContractError::InvalidCw20 {});
     }
 
     #[test]
@@ -1875,7 +1855,7 @@ mod tests {
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::InvalidCW20 {});
+        assert_eq!(err, ContractError::InvalidCw20 {});
 
         // Test does not work when funded with native
         let invalid_funding = vec![coin(100, "invalid")];
@@ -1998,7 +1978,7 @@ mod tests {
         let scaled_min = Uint256::from(min_128).checked_mul(scale_factor).unwrap();
         println!("scaled {}", scaled_min);
         println!("scaled {}", scaled_min.to_string().len());
-        assert_eq!(scaled_min > Uint256::from(Uint128::MAX), true);
+        assert!(scaled_min > Uint256::from(Uint128::MAX));
 
         let _max = Uint256::from(Uint128::MAX)
             .checked_mul(scale_factor)
