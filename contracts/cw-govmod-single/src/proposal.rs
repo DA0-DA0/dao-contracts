@@ -418,12 +418,7 @@ mod test {
         ));
 
         // More votes == higher threshold => not passed.
-        assert!(!check_is_passed(
-            threshold.clone(),
-            votes.clone(),
-            Uint128::new(17),
-            false
-        ));
+        assert!(!check_is_passed(threshold, votes, Uint128::new(17), false));
     }
 
     #[test]
@@ -477,12 +472,7 @@ mod test {
             Uint128::new(14),
             false
         ));
-        assert!(check_is_rejected(
-            percent,
-            votes.clone(),
-            Uint128::new(14),
-            true
-        ));
+        assert!(check_is_rejected(percent, votes, Uint128::new(14), true));
     }
 
     #[test]
