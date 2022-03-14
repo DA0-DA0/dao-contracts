@@ -17,10 +17,17 @@ const PRECISION_FACTOR: u128 = 10u128.pow(9);
 #[serde(rename_all = "snake_case")]
 #[repr(u8)]
 pub enum Status {
+    /// The proposal is open for voting.
     Open,
+    /// The proposal has been rejected.
     Rejected,
+    /// The proposal has been passed but has not been executed.
     Passed,
+    /// The proposal has been passed and executed.
     Executed,
+    /// The proposal has failed or expired and has been closed. A
+    /// proposal deposit refund has been issued if applicable.
+    Closed,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -32,6 +39,7 @@ pub struct Votes {
 
 #[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "lowercase")]
+#[repr(u8)]
 pub enum Vote {
     /// Marks support for the proposal.
     Yes,
@@ -226,6 +234,16 @@ impl std::fmt::Display for Status {
             Status::Rejected => write!(f, "rejected"),
             Status::Passed => write!(f, "passed"),
             Status::Executed => write!(f, "executed"),
+        }
+    }
+}
+
+impl std::fmt::Display for Vote {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Vote::Yes => write!(f, "yes"),
+            Vote::No => write!(f, "no"),
+            Vote::Abstain => write!(f, "abstain"),
         }
     }
 }

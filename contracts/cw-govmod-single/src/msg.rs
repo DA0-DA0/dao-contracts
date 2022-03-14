@@ -1,10 +1,9 @@
-use cosmwasm_std::{CosmosMsg, Decimal, Empty, Uint128};
-use cw3::Vote;
+use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::{Duration, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::threshold::Threshold;
+use crate::{proposal::Vote, threshold::Threshold};
 use cw_governance_macros::govmod_query;
 
 // TODO(zeke): How do we support proposal deposits?
@@ -73,6 +72,9 @@ pub enum ExecuteMsg {
         /// proposals. Otherwise, any address may execute a passed
         /// proposal. Applies to all outstanding and future proposals.
         only_members_execute: bool,
+        /// The address if tge DAO that this governance module is
+        /// associated with.
+        dao: String,
     },
 }
 
