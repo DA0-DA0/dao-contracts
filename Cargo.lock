@@ -424,6 +424,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw20-staked-balance-voting"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-governance-interface",
+ "cw-governance-macros",
+ "cw-multi-test 0.12.1",
+ "cw-storage-plus 0.12.1",
+ "cw-utils 0.11.1",
+ "cw2 0.12.1",
+ "cw20 0.12.1",
+ "cw20-base 0.12.1",
+ "schemars",
+ "serde",
+ "stake-cw20",
+ "thiserror",
+]
+
+[[package]]
 name = "cw3"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
