@@ -82,6 +82,10 @@ pub enum Threshold {
     /// for the vote to be considered at all.
     /// See `ThresholdResponse.ThresholdQuorum` in the cw3 spec for details.
     ThresholdQuorum { threshold: Decimal, quorum: Decimal },
+
+    /// An absolute number of votes that must be cast for a proposal
+    /// to pass.
+    AbsoluteCount { count: Uint128 },
 }
 
 impl Threshold {
@@ -99,6 +103,7 @@ impl Threshold {
                 valid_percentage(threshold)?;
                 valid_percentage(quroum)
             }
+            Threshold::AbsoluteCount { count: _ } => Ok(()),
         }
     }
 
@@ -116,6 +121,10 @@ impl Threshold {
                     total_weight,
                 }
             }
+            Threshold::AbsoluteCount { count } => ThresholdResponse::AbsoluteCount {
+                weight: count,
+                total_weight,
+            },
         }
     }
 }

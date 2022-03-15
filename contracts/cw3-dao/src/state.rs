@@ -136,6 +136,7 @@ impl Proposal {
                     vote_count >= votes_needed(possible_opinions, threshold)
                 }
             }
+            Threshold::AbsoluteCount { count } => vote_count >= count,
         }
     }
 
