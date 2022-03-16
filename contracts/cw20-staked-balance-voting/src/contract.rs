@@ -10,7 +10,7 @@ use cw_utils::parse_reply_instantiate_data;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo, TokenInfo};
 use crate::state::{
-    STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
+    DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw20-staked-balance-voting";
@@ -27,6 +27,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    DAO.save(deps.storage, &info.sender)?;
 
     match msg.token_info {
         TokenInfo::Existing {
@@ -65,10 +66,10 @@ pub fn instantiate(
                     let msg = WasmMsg::Instantiate {
                         code_id: staking_code_id,
                         funds: vec![],
-                        admin: Some(env.contract.address.to_string()),
+                        admin: Some(info.sender.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: Some(env.contract.address.to_string()),
+                            admin: Some(info.sender.to_string()),
                             unstaking_duration,
                             token_address: address.to_string(),
                         })?,
@@ -176,7 +177,7 @@ pub fn query_voting_power_at_height(deps: Deps, env: Env, address: String) -> St
     to_binary(
         &cw_governance_interface::voting::VotingPowerAtHeightResponse {
             power: res.balance,
-            height: env.block.height,
+            height: res.height,
         },
     )
 }
@@ -192,7 +193,7 @@ pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
     to_binary(
         &cw_governance_interface::voting::TotalPowerAtHeightResponse {
             power: res.total,
-            height: env.block.height,
+            height: res.height,
         },
     )
 }
@@ -218,13 +219,14 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     let staking_contract_code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
                     let unstaking_duration =
                         STAKING_CONTRACT_UNSTAKING_DURATION.load(deps.storage)?;
+                    let dao = DAO.load(deps.storage)?;
                     let msg = WasmMsg::Instantiate {
                         code_id: staking_contract_code_id,
                         funds: vec![],
-                        admin: Some(env.contract.address.to_string()),
+                        admin: Some(dao.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: Some(env.contract.address.to_string()),
+                            admin: Some(dao.to_string()),
                             unstaking_duration,
                             token_address: token.to_string(),
                         })?,
@@ -243,6 +245,12 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 Ok(res) => {
                     // Validate contract address
                     let staking_contract_addr = deps.api.addr_validate(&res.contract_address)?;
+
+                    // Check if we have a duplicate
+                    let staking = STAKING_CONTRACT.may_load(deps.storage)?;
+                    if staking.is_some() {
+                        return Err(ContractError::DuplicateStakingContract {});
+                    }
 
                     // Save staking contract addr
                     STAKING_CONTRACT.save(deps.storage, &staking_contract_addr)?;
