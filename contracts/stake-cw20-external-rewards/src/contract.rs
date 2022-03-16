@@ -593,7 +593,7 @@ mod tests {
         let msg = stake_cw20::msg::ExecuteMsg::AddHook {
             addr: reward_addr.clone(),
         };
-        let _result = app.execute_contract(Addr::unchecked(OWNER), staking_contract, &msg, &[]);
+        let _result = app.execute_contract(Addr::unchecked(OWNER), staking_contract, &msg, &[]).unwrap();
         reward_addr
     }
 
