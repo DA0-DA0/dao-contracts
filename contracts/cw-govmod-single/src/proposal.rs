@@ -86,6 +86,8 @@ enum VotesNeeded {
 /// will ever meet the threshold. This happens if the total power is
 /// zero. For example, this may happen if all votes are abstain.
 fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> VotesNeeded {
+    // If there are no votes possible then no threshold will ever be
+    // reachable.
     if total_power.is_zero() {
         return VotesNeeded::Unreachable;
     }
@@ -110,8 +112,18 @@ fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> VotesNeede
         passing_percentage.atomics(),
         Uint256::from(10u64).pow(passing_percentage.decimal_places()),
     );
-    let rounded =
-        (applied - Uint256::from(1u128)) / Uint256::from(PRECISION_FACTOR) + Uint256::from(1u128);
+    // The maximum possible value for applied occurs if `total_power`
+    // is 2^128. Given a percision factor of 10^9 we confirm that the
+    // numerator value will not overflow as:
+    //
+    // 2^128 * 10^9 + 10^9 < 2^256
+    //
+    // In the interest of being percise, this will not overflow so
+    // long as our percision factor is less than `3.4*10^38`. We don't
+    // have to worry about this because that value won't even fit into
+    // a u128 (the type of PERCISION_FACTOR).
+    let rounded = (applied + Uint256::from(PRECISION_FACTOR) - Uint256::from(1u128))
+        / Uint256::from(PRECISION_FACTOR);
     // Truncated should be strictly <= than the largest possible
     // Uint128. Imagine the pathalogical case where the passing
     // threshold is 100% and there are 2^128 total votes. In this case
@@ -341,7 +353,17 @@ mod test {
         assert_eq!(
             VotesNeeded::Unreachable,
             votes_needed(Uint128::zero(), Decimal::percent(50))
-        )
+        );
+
+        assert_eq!(
+            VotesNeeded::Finite(Uint128::new(1)),
+            votes_needed(Uint128::new(1), Decimal::percent(1))
+        );
+
+        assert_eq!(
+            VotesNeeded::Finite(Uint128::new(0)),
+            votes_needed(Uint128::new(1), Decimal::percent(0))
+        );
     }
 
     fn setup_prop(
