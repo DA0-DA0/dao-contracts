@@ -1,3 +1,5 @@
+use rand::{prelude::SliceRandom, Rng};
+
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -195,6 +197,17 @@ fn test_propose() {
     assert_eq!(created.id, 1u64);
 }
 
+/// If a test vote should execute. Used for fuzzing and checking that
+/// votes after a proposal has completed aren't allowed.
+pub enum ShouldExecute {
+    /// This should execute.
+    Yes,
+    /// This should not execute.
+    No,
+    /// Doesn't matter.
+    Meh,
+}
+
 struct TestVote {
     /// The address casting the vote.
     voter: String,
@@ -203,20 +216,33 @@ struct TestVote {
     /// Voting power of the address.
     weight: Uint128,
     /// If this vote is expected to execute.
-    should_execute: bool,
+    should_execute: ShouldExecute,
 }
 
-fn do_test_votes(votes: Vec<TestVote>, threshold: Threshold, expected_status: Status) {
+fn do_test_votes(
+    votes: Vec<TestVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+) {
     let mut app = App::default();
     let govmod_id = app.store_code(single_govmod_contract());
 
-    let initial_balances = votes
+    let mut initial_balances = votes
         .iter()
         .map(|TestVote { voter, weight, .. }| Cw20Coin {
             address: voter.to_string(),
             amount: *weight,
         })
-        .collect();
+        .collect::<Vec<Cw20Coin>>();
+    let initial_balances_supply = votes.iter().fold(Uint128::zero(), |p, n| p + n.weight);
+    let to_fill = total_supply.map(|total_supply| total_supply - initial_balances_supply);
+    if let Some(fill) = to_fill {
+        initial_balances.push(Cw20Coin {
+            address: "filler".to_string(),
+            amount: fill,
+        })
+    }
 
     let proposer = match votes.first() {
         Some(vote) => vote.voter.clone(),
@@ -281,29 +307,31 @@ fn do_test_votes(votes: Vec<TestVote>, threshold: Threshold, expected_status: St
             },
             &[],
         );
-        if should_execute {
-            assert!(res.is_ok());
-            // Check that the vote was recorded correctly.
-            let vote: VoteResponse = app
-                .wrap()
-                .query_wasm_smart(
-                    govmod_single.clone(),
-                    &QueryMsg::Vote {
-                        proposal_id: 1,
-                        voter: voter.clone(),
-                    },
-                )
-                .unwrap();
-            let expected = VoteResponse {
-                vote: Some(VoteInfo {
-                    voter: Addr::unchecked(voter),
-                    vote: position,
-                    power: weight,
-                }),
-            };
-            assert_eq!(vote, expected)
-        } else {
-            assert!(res.is_err())
+        match should_execute {
+            ShouldExecute::Yes => {
+                assert!(res.is_ok());
+                // Check that the vote was recorded correctly.
+                let vote: VoteResponse = app
+                    .wrap()
+                    .query_wasm_smart(
+                        govmod_single.clone(),
+                        &QueryMsg::Vote {
+                            proposal_id: 1,
+                            voter: voter.clone(),
+                        },
+                    )
+                    .unwrap();
+                let expected = VoteResponse {
+                    vote: Some(VoteInfo {
+                        voter: Addr::unchecked(voter),
+                        vote: position,
+                        power: weight,
+                    }),
+                };
+                assert_eq!(vote, expected)
+            }
+            ShouldExecute::No => assert!(res.is_err()),
+            ShouldExecute::Meh => (),
         }
     }
 
@@ -322,12 +350,13 @@ fn test_vote_simple() {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(10),
-            should_execute: true,
+            should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(100),
         },
         Status::Passed,
+        None,
     );
 
     do_test_votes(
@@ -335,12 +364,13 @@ fn test_vote_simple() {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(10),
-            should_execute: true,
+            should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(100),
         },
         Status::Rejected,
+        None,
     )
 }
 
@@ -353,12 +383,13 @@ fn test_vote_no_overflow() {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(u128::max_value()),
-            should_execute: true,
+            should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(100),
         },
         Status::Passed,
+        None,
     );
 }
 
@@ -369,12 +400,38 @@ fn test_vote_abstain_only() {
             voter: "ekez".to_string(),
             position: Vote::Abstain,
             weight: Uint128::new(u128::max_value()),
-            should_execute: true,
+            should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(100),
         },
         Status::Open,
+        None,
+    );
+}
+
+#[test]
+fn test_no_double_votes() {
+    do_test_votes(
+        vec![
+            TestVote {
+                voter: "ekez".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(2),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestVote {
+                voter: "ekez".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(2),
+                should_execute: ShouldExecute::No,
+            },
+        ],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(100),
+        },
+        Status::Open,
+        None,
     );
 }
 
@@ -393,25 +450,26 @@ fn test_close_votes() {
                 voter: "ekez".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(10),
-                should_execute: true,
+                should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(5),
-                should_execute: true,
+                should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ezek".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
-                should_execute: false,
+                should_execute: ShouldExecute::No,
             },
         ],
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(50),
         },
         Status::Rejected,
+        None,
     );
 
     do_test_votes(
@@ -420,25 +478,26 @@ fn test_close_votes() {
                 voter: "ekez".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(10),
-                should_execute: true,
+                should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
-                should_execute: true,
+                should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ezek".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(5),
-                should_execute: false,
+                should_execute: ShouldExecute::No,
             },
         ],
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(50),
         },
         Status::Passed,
+        None,
     );
 }
 
@@ -458,19 +517,19 @@ fn test_close_votes_quorum() {
                 voter: "ekez".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
-                should_execute: true,
+                should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
-                should_execute: true,
+                should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ezek".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
-                should_execute: false,
+                should_execute: ShouldExecute::No,
             },
         ],
         Threshold::ThresholdQuorum {
@@ -478,5 +537,144 @@ fn test_close_votes_quorum() {
             quorum: Decimal::percent(50),
         },
         Status::Passed,
+        None,
     );
+}
+
+#[test]
+fn test_pass_threshold_not_quorum() {
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Yes,
+            weight: Uint128::new(59),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(60),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+    );
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(59),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(60),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+    )
+}
+
+#[test]
+fn test_pass_threshold_exactly_quorum() {
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Yes,
+            weight: Uint128::new(60),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(60),
+        },
+        Status::Passed,
+        Some(Uint128::new(100)),
+    );
+    do_test_votes(
+        vec![
+            TestVote {
+                voter: "ekez".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(59),
+                should_execute: ShouldExecute::Yes,
+            },
+            // This is an intersting one because in this case the no
+            // voter is actually incentivised not to vote. By voting
+            // they move the quorum over the threshold and pass the
+            // vote. In a DAO with sufficently involved stakeholders
+            // no voters should effectively never vote if there is a
+            // quorum higher than the threshold as it makes the
+            // passing threshold the quorum threshold.
+            TestVote {
+                voter: "keze".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
+        Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(60),
+        },
+        Status::Passed,
+        Some(Uint128::new(100)),
+    );
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(60),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(50),
+            quorum: Decimal::percent(60),
+        },
+        Status::Rejected,
+        Some(Uint128::new(100)),
+    )
+}
+
+/// Generate some random voting selections and make sure they behave
+/// as expected.
+#[test]
+fn fuzz_voting() {
+    let mut rng = rand::thread_rng();
+    let dist = rand::distributions::Uniform::<u64>::new(1, 200);
+    for _ in 0..25 {
+        let yes: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
+        let no: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
+
+        let yes_sum: u64 = yes.iter().sum();
+        let no_sum: u64 = no.iter().sum();
+        let expected_status = match yes_sum.cmp(&no_sum) {
+            std::cmp::Ordering::Less => Status::Rejected,
+            // Depends on which reaches the threshold first. Ignore for now.
+            std::cmp::Ordering::Equal => continue,
+            std::cmp::Ordering::Greater => Status::Passed,
+        };
+
+        let yes = yes.into_iter().enumerate().map(|(idx, weight)| TestVote {
+            voter: format!("yes_{}", idx),
+            position: Vote::Yes,
+            weight: Uint128::new(weight as u128),
+            should_execute: ShouldExecute::Meh,
+        });
+        let no = no.into_iter().enumerate().map(|(idx, weight)| TestVote {
+            voter: format!("no_{}", idx),
+            position: Vote::No,
+            weight: Uint128::new(weight as u128),
+            should_execute: ShouldExecute::Meh,
+        });
+        let mut votes = yes.chain(no).collect::<Vec<_>>();
+        votes.shuffle(&mut rng);
+
+        do_test_votes(
+            votes,
+            Threshold::AbsolutePercentage {
+                percentage: Decimal::percent(50),
+            },
+            expected_status,
+            None,
+        );
+    }
 }

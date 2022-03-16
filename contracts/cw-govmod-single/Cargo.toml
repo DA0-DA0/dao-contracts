@@ -48,3 +48,4 @@ cw-multi-test = "0.12"
 cw20-balance-voting = { path = "../cw20-balance-voting", version = "0.1.0" }
 cw20-base = "0.12"
 cw20 = "0.12"
+rand = "0.8"
