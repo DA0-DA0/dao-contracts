@@ -12,7 +12,7 @@ use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
     from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
+    MessageInfo, Response, StdError, StdResult, Uint128, Uint256, Uint512, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
@@ -261,14 +261,18 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> S
     let additional_reward_per_token = if total_staked == Uint128::zero() {
         Uint256::zero()
     } else {
-        let numerator = Uint256::from(
-            reward_config
-                .reward_rate
-                .checked_mul(Uint128::from(current_block - last_update_block))?,
-        )
-        .checked_mul(scale_factor())?;
-        let denominator = Uint256::from(total_staked);
-        numerator.checked_div(denominator)?
+        let numerator = reward_config
+            .reward_rate
+            .full_mul(Uint128::from(current_block - last_update_block))
+            .full_mul(scale_factor());
+        let denominator = Uint512::from(total_staked);
+        let result = numerator.checked_div(denominator)?;
+
+        // try_into() shouldn't cause problems here because final results fits into Uint256
+        result
+            .checked_div(Uint512::from(scale_factor()))?
+            .try_into()
+            .unwrap()
     };
 
     Ok(prev_reward_per_token + additional_reward_per_token)
@@ -286,9 +290,7 @@ pub fn get_rewards_earned(
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
-    let reward_factor = reward_per_token
-        .checked_sub(user_reward_per_token)?
-        .checked_div(scale_factor())?;
+    let reward_factor = reward_per_token.checked_sub(user_reward_per_token)?;
     Ok(staked_balance.checked_mul(reward_factor.try_into()?)?)
 }
 
@@ -703,7 +705,7 @@ mod tests {
                 admin.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap();
 
@@ -810,7 +812,7 @@ mod tests {
                 admin.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap();
 
@@ -851,7 +853,7 @@ mod tests {
                 admin.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap();
 
@@ -866,7 +868,7 @@ mod tests {
 
         let _res = app
             .borrow_mut()
-            .execute_contract(admin, reward_addr.clone(), &fund_msg, &*reward_funding)
+            .execute_contract(admin, reward_addr.clone(), &fund_msg, &reward_funding)
             .unwrap();
 
         app.borrow_mut().update_block(|b| b.height = 400000);
@@ -1040,7 +1042,6 @@ mod tests {
         );
 
         app.borrow_mut().update_block(|b| b.height = 200000);
-        let _fund_msg = ExecuteMsg::Fund {};
 
         let reward_funding = vec![coin(200000000, denom)];
         app.sudo(SudoMsg::Bank({
@@ -1182,7 +1183,7 @@ mod tests {
                 Addr::unchecked(ADDR1),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap_err()
             .downcast()
@@ -1196,7 +1197,7 @@ mod tests {
                 admin.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap();
 
@@ -1225,7 +1226,7 @@ mod tests {
                 admin.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap();
 
@@ -1256,7 +1257,7 @@ mod tests {
                 admin.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap();
 
@@ -1283,7 +1284,7 @@ mod tests {
         .unwrap();
         let _res = app
             .borrow_mut()
-            .execute_contract(admin, reward_addr.clone(), &fund_msg, &*reward_funding)
+            .execute_contract(admin, reward_addr.clone(), &fund_msg, &reward_funding)
             .unwrap();
 
         let res: InfoResponse = app
@@ -1390,7 +1391,7 @@ mod tests {
                 admin.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*reward_funding,
+                &reward_funding,
             )
             .unwrap();
 
@@ -1698,7 +1699,7 @@ mod tests {
 
         let _res = app
             .borrow_mut()
-            .execute_contract(manager, reward_addr.clone(), &fund_msg, &*reward_funding)
+            .execute_contract(manager, reward_addr.clone(), &fund_msg, &reward_funding)
             .unwrap();
 
         let res: InfoResponse = app
@@ -1926,7 +1927,7 @@ mod tests {
 
         let _res = app
             .borrow_mut()
-            .execute_contract(admin, reward_addr.clone(), &fund_msg, &*reward_funding)
+            .execute_contract(admin, reward_addr.clone(), &fund_msg, &reward_funding)
             .unwrap();
 
         let res: InfoResponse = app
@@ -1986,6 +1987,6 @@ mod tests {
 
         let possible_max = Uint256::MAX.checked_div(scale_factor).unwrap();
         println!("possible max: {}", possible_max);
-        println!("possible max {}", possible_max.to_string().len());
+        println!("possible max: {}", possible_max.to_string().len());
     }
 }
