@@ -23,4 +23,7 @@ pub enum ContractError {
 
     #[error("Staking contract token address does not match provided token address")]
     StakingContractMismatch {},
+
+    #[error("Can not change the contract's staking contract after it has been set")]
+    DuplicateStakingContract {},
 }
