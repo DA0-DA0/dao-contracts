@@ -5,10 +5,10 @@ use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::{Proposal, Status, Vote, Votes},
     query::{ProposalResponse, VoteInfo, VoteResponse},
-    state::Config,
+    state::{CheckedDepositInfo, Config},
     threshold::Threshold,
 };
 
@@ -130,6 +130,7 @@ fn test_propose() {
         threshold: threshold.clone(),
         max_voting_period,
         only_members_execute: false,
+        deposit_info: None,
     };
 
     let governance_addr =
@@ -158,6 +159,7 @@ fn test_propose() {
         max_voting_period,
         only_members_execute: false,
         dao: governance_addr,
+        deposit_info: None,
     };
     assert_eq!(config, expected);
 
@@ -191,6 +193,7 @@ fn test_propose() {
         msgs: vec![],
         status: crate::proposal::Status::Open,
         votes: Votes::zero(),
+        deposit_info: None,
     };
 
     assert_eq!(created.proposal, expected);
@@ -219,12 +222,18 @@ struct TestVote {
     should_execute: ShouldExecute,
 }
 
+// Creates a proposal and then executes a series of votes on those
+// proposals. Asserts both that those votes execute as expected and
+// that the final status of the proposal is what is expected. Returns
+// the address of the governance contract that it has created so that
+// callers may do additional inspection of the contract's state.
 fn do_test_votes(
     votes: Vec<TestVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
-) {
+    deposit_info: Option<DepositInfo>,
+) -> (App, Addr) {
     let mut app = App::default();
     let govmod_id = app.store_code(single_govmod_contract());
 
@@ -254,6 +263,7 @@ fn do_test_votes(
         threshold,
         max_voting_period,
         only_members_execute: false,
+        deposit_info,
     };
 
     let governance_addr = instantiate_with_default_governance(
@@ -266,7 +276,7 @@ fn do_test_votes(
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr,
+            governance_addr.clone(),
             &cw_governance::msg::QueryMsg::GovernanceModules {
                 start_at: None,
                 limit: None,
@@ -276,8 +286,31 @@ fn do_test_votes(
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // Allow a proposal deposit as needed.
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    if let Some(CheckedDepositInfo {
+        ref token, deposit, ..
+    }) = config.deposit_info
+    {
+        app.execute_contract(
+            Addr::unchecked(&proposer),
+            token.clone(),
+            &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+                spender: govmod_single.to_string(),
+                amount: deposit,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
     app.execute_contract(
-        Addr::unchecked(proposer),
+        Addr::unchecked(&proposer),
         govmod_single.clone(),
         &ExecuteMsg::Propose {
             title: "A simple text proposal".to_string(),
@@ -323,9 +356,18 @@ fn do_test_votes(
                     .unwrap();
                 let expected = VoteResponse {
                     vote: Some(VoteInfo {
-                        voter: Addr::unchecked(voter),
+                        voter: Addr::unchecked(&voter),
                         vote: position,
-                        power: weight,
+                        power: match config.deposit_info {
+                            Some(CheckedDepositInfo { deposit, .. }) => {
+                                if proposer == voter {
+                                    weight - deposit
+                                } else {
+                                    weight
+                                }
+                            }
+                            None => weight,
+                        },
                     }),
                 };
                 assert_eq!(vote, expected)
@@ -340,7 +382,9 @@ fn do_test_votes(
         .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
 
-    assert_eq!(proposal.proposal.status, expected_status)
+    assert_eq!(proposal.proposal.status, expected_status);
+
+    (app, governance_addr)
 }
 
 #[test]
@@ -357,6 +401,7 @@ fn test_vote_simple() {
         },
         Status::Passed,
         None,
+        None,
     );
 
     do_test_votes(
@@ -371,7 +416,8 @@ fn test_vote_simple() {
         },
         Status::Rejected,
         None,
-    )
+        None,
+    );
 }
 
 #[test]
@@ -390,6 +436,7 @@ fn test_vote_no_overflow() {
         },
         Status::Passed,
         None,
+        None,
     );
 }
 
@@ -406,6 +453,7 @@ fn test_vote_abstain_only() {
             percentage: Decimal::percent(100),
         },
         Status::Open,
+        None,
         None,
     );
 }
@@ -431,6 +479,7 @@ fn test_no_double_votes() {
             percentage: Decimal::percent(100),
         },
         Status::Open,
+        None,
         None,
     );
 }
@@ -470,6 +519,7 @@ fn test_close_votes() {
         },
         Status::Rejected,
         None,
+        None,
     );
 
     do_test_votes(
@@ -497,6 +547,7 @@ fn test_close_votes() {
             percentage: Decimal::percent(50),
         },
         Status::Passed,
+        None,
         None,
     );
 }
@@ -538,6 +589,7 @@ fn test_close_votes_quorum() {
         },
         Status::Passed,
         None,
+        None,
     );
 }
 
@@ -556,6 +608,7 @@ fn test_pass_threshold_not_quorum() {
         },
         Status::Open,
         Some(Uint128::new(100)),
+        None,
     );
     do_test_votes(
         vec![TestVote {
@@ -570,7 +623,8 @@ fn test_pass_threshold_not_quorum() {
         },
         Status::Open,
         Some(Uint128::new(100)),
-    )
+        None,
+    );
 }
 
 #[test]
@@ -588,6 +642,7 @@ fn test_pass_threshold_exactly_quorum() {
         },
         Status::Passed,
         Some(Uint128::new(100)),
+        None,
     );
     do_test_votes(
         vec![
@@ -617,6 +672,7 @@ fn test_pass_threshold_exactly_quorum() {
         },
         Status::Passed,
         Some(Uint128::new(100)),
+        None,
     );
     do_test_votes(
         vec![TestVote {
@@ -631,7 +687,8 @@ fn test_pass_threshold_exactly_quorum() {
         },
         Status::Rejected,
         Some(Uint128::new(100)),
-    )
+        None,
+    );
 }
 
 /// Generate some random voting selections and make sure they behave
@@ -675,6 +732,425 @@ fn fuzz_voting() {
             },
             expected_status,
             None,
+            None,
         );
     }
+}
+
+/// Instantiate the contract and use the voting module's token
+/// contract as the proposal deposit token.
+#[test]
+fn test_voting_module_token_proposal_deposit_instantiate() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: Decimal::percent(50),
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold: threshold.clone(),
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: Some(DepositInfo {
+            token: DepositToken::VotingModuleToken,
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+    };
+
+    let governance_addr =
+        instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+
+    let gov_state: cw_governance::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_governance::msg::QueryMsg::DumpState {},
+        )
+        .unwrap();
+    let governance_modules = gov_state.governance_modules;
+    let voting_module = gov_state.voting_module;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let expected_token: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_governance_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    assert_eq!(
+        config.deposit_info,
+        Some(CheckedDepositInfo {
+            token: expected_token,
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true
+        })
+    )
+}
+
+/// Instantiate the contract and use a cw20 unrealated to the voting
+/// module for the proposal deposit.
+#[test]
+fn test_different_token_proposal_deposit() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+    let cw20_id = app.store_code(cw20_contract());
+    let cw20_addr = app
+        .instantiate_contract(
+            cw20_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw20_base::msg::InstantiateMsg {
+                name: "OAD OAD".to_string(),
+                symbol: "OAD".to_string(),
+                decimals: 6,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "random-cw20",
+            None,
+        )
+        .unwrap();
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: Decimal::percent(50),
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold: threshold.clone(),
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: Some(DepositInfo {
+            token: DepositToken::Token(cw20_addr.to_string()),
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+    };
+
+    instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+}
+
+/// Try to instantiate the governance module with a non-cw20 as its
+/// proposal deposit token. This should error as the `TokenInfo {}`
+/// query ought to fail.
+#[test]
+#[should_panic(expected = "Error parsing into type cw20_balance_voting::msg::QueryMsg")]
+fn test_bad_token_proposal_deposit() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+    let cw20_id = app.store_code(cw20_contract());
+    let votemod_id = app.store_code(cw20_balances_voting());
+
+    let votemod_addr = app
+        .instantiate_contract(
+            votemod_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw20_balance_voting::msg::InstantiateMsg {
+                token_info: cw20_balance_voting::msg::TokenInfo::New {
+                    code_id: cw20_id,
+                    label: "DAO DAO governance token".to_string(),
+                    name: "DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances: vec![Cw20Coin {
+                        address: CREATOR_ADDR.to_string(),
+                        amount: Uint128::new(1),
+                    }],
+                    marketing: None,
+                },
+            },
+            &[],
+            "random-vote-module",
+            None,
+        )
+        .unwrap();
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: Decimal::percent(50),
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold: threshold.clone(),
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: Some(DepositInfo {
+            token: DepositToken::Token(votemod_addr.to_string()),
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+    };
+
+    instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+}
+
+#[test]
+fn test_take_proposal_deposit() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: Decimal::percent(50),
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold: threshold.clone(),
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: Some(DepositInfo {
+            token: DepositToken::VotingModuleToken,
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+    };
+
+    let governance_addr = instantiate_with_default_governance(
+        &mut app,
+        govmod_id,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(2),
+        }]),
+    );
+
+    let gov_state: cw_governance::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_governance::msg::QueryMsg::DumpState {},
+        )
+        .unwrap();
+    let governance_modules = gov_state.governance_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo {
+        token,
+        deposit,
+        refund_failed_proposals,
+    } = govmod_config.deposit_info.unwrap();
+    assert!(refund_failed_proposals);
+    assert_eq!(deposit, Uint128::new(1));
+
+    // This should fail because we have not created an allowance for
+    // the proposal deposit.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+            latest: None,
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    // Allow a proposal deposit.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        token.clone(),
+        &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+            spender: govmod_single.to_string(),
+            amount: Uint128::new(1),
+            expires: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Now we can create a proposal.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+            latest: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Check that our balance was deducted.
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(balance.balance, Uint128::new(1))
+}
+
+#[test]
+fn test_deposit_return_on_execute() {
+    // Will create a proposal and execute it, one token will be
+    // deposited to create said proposal, expectation is that the
+    // token is then returned once the proposal is executed.
+    let (mut app, governance_addr) = do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Yes,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(90),
+        },
+        Status::Passed,
+        None,
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken,
+            deposit: Uint128::new(1),
+            refund_failed_proposals: false,
+        }),
+    );
+    let gov_state: cw_governance::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_governance::msg::QueryMsg::DumpState {},
+        )
+        .unwrap();
+    let governance_modules = gov_state.governance_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token.clone(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has not been executed so deposit has not been
+    // refunded.
+    assert_eq!(balance.balance, Uint128::new(9));
+
+    // Execute the proposal, this should cause the deposit to be
+    // refunded.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has been executed so deposit has been refunded.
+    assert_eq!(balance.balance, Uint128::new(10));
+}
+
+#[test]
+fn test_deposit_return_on_close() {
+    let (mut app, governance_addr) = do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(90),
+        },
+        Status::Rejected,
+        None,
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken,
+            deposit: Uint128::new(1),
+            refund_failed_proposals: false,
+        }),
+    );
+    let gov_state: cw_governance::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_governance::msg::QueryMsg::DumpState {},
+        )
+        .unwrap();
+    let governance_modules = gov_state.governance_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token.clone(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has not been closed so deposit has not been
+    // refunded.
+    assert_eq!(balance.balance, Uint128::new(9));
+
+    // Close the proposal, this should cause the deposit to be
+    // refunded.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has been closed so deposit has been refunded.
+    assert_eq!(balance.balance, Uint128::new(10));
 }

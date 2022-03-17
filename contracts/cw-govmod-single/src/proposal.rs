@@ -7,7 +7,11 @@ use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{query::ProposalResponse, state::PROPOSAL_COUNT, threshold::Threshold};
+use crate::{
+    query::ProposalResponse,
+    state::{CheckedDepositInfo, PROPOSAL_COUNT},
+    threshold::Threshold,
+};
 
 // We multiply by this when calculating needed_votes in order to round
 // up properly.
@@ -66,6 +70,10 @@ pub struct Proposal {
 
     pub status: Status,
     pub votes: Votes,
+
+    /// Information about the deposit that was sent as part of this
+    /// proposal. None if no deposit.
+    pub deposit_info: Option<CheckedDepositInfo>,
 }
 
 /// Information about the number of votes needed to pass a proposal.
@@ -77,7 +85,6 @@ enum VotesNeeded {
     /// power.
     Unreachable,
 }
-
 /// Computes the number of votes needed for a proposal to pass. This
 /// must round up. For example, with a 50% passing percentage and 15
 /// total votes 8 votes are required, not 7.
@@ -388,6 +395,7 @@ mod test {
             threshold,
             total_power,
             votes,
+            deposit_info: None,
         };
         (prop, block)
     }

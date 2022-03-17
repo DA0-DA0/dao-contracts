@@ -10,10 +10,13 @@ use cw_utils::{Duration, Expiration};
 
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::{advance_proposal_id, Proposal, Status, Vote, Votes},
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
-    state::{Ballot, Config, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT},
+    state::{
+        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
+        PROPOSAL_COUNT,
+    },
     threshold::Threshold,
     utils::{get_total_power, get_voting_power},
 };
@@ -36,12 +39,17 @@ pub fn instantiate(
     msg.threshold.validate()?;
 
     let dao = info.sender;
+    let deposit_info = msg
+        .deposit_info
+        .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
+        .transpose()?;
 
     let config = Config {
         threshold: msg.threshold,
         max_voting_period: msg.max_voting_period,
         only_members_execute: msg.only_members_execute,
         dao: dao.clone(),
+        deposit_info,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -73,6 +81,7 @@ pub fn execute(
             max_voting_period,
             only_members_execute,
             dao,
+            deposit_info,
         } => execute_update_config(
             deps,
             info,
@@ -80,6 +89,7 @@ pub fn execute(
             max_voting_period,
             only_members_execute,
             dao,
+            deposit_info,
         ),
     }
 }
@@ -134,6 +144,7 @@ pub fn execute_propose(
             msgs,
             status: Status::Open,
             votes: Votes::zero(),
+            deposit_info: config.deposit_info.clone(),
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -143,7 +154,10 @@ pub fn execute_propose(
     let id = advance_proposal_id(deps.storage)?;
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
+    let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
+
     Ok(Response::default()
+        .add_messages(deposit_msg)
         .add_attribute("action", "propose")
         .add_attribute("sender", sender)
         .add_attribute("proposal_id", id.to_string())
@@ -176,11 +190,13 @@ pub fn execute_execute(
     // Check here that the proposal is passed. Allow it to be
     // executed even if it is expired so long as it passed during its
     // voting period.
-    if prop.is_passed(&env.block) {
+    if !prop.is_passed(&env.block) {
         return Err(ContractError::NotPassed {});
     }
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+    let return_deposit = get_return_deposit_msg(&prop)?;
 
     let response = if !prop.msgs.is_empty() {
         let execute_message = WasmMsg::Execute {
@@ -196,6 +212,7 @@ pub fn execute_execute(
     };
 
     Ok(response
+        .add_messages(return_deposit)
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
@@ -273,9 +290,12 @@ pub fn execute_close(
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
+    let refund_message = get_return_deposit_msg(&prop)?;
+
     Ok(Response::default()
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
+        .add_messages(refund_message)
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
 
@@ -286,16 +306,20 @@ pub fn execute_update_config(
     max_voting_period: Duration,
     only_members_execute: bool,
     dao: String,
+    deposit_info: Option<DepositInfo>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-
-    threshold.validate()?;
-    let dao = deps.api.addr_validate(&dao)?;
 
     // Only the DAO may call this method.
     if info.sender != config.dao {
         return Err(ContractError::Unauthorized {});
     }
+
+    threshold.validate()?;
+    let dao = deps.api.addr_validate(&dao)?;
+    let deposit_info = deposit_info
+        .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
+        .transpose()?;
 
     CONFIG.save(
         deps.storage,
@@ -304,6 +328,7 @@ pub fn execute_update_config(
             max_voting_period,
             only_members_execute,
             dao,
+            deposit_info,
         },
     )?;
 
