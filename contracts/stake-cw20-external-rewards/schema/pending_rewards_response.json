@@ -5,6 +5,7 @@
   "required": [
     "address",
     "denom",
+    "last_update_block",
     "pending_rewards"
   ],
   "properties": {
@@ -13,6 +14,11 @@
     },
     "denom": {
       "$ref": "#/definitions/Denom"
+    },
+    "last_update_block": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "pending_rewards": {
       "$ref": "#/definitions/Uint128"

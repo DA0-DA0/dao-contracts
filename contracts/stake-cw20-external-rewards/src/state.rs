@@ -17,9 +17,9 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct RewardConfig {
-    pub periodFinish: u64,
-    pub rewardRate: Uint128,
-    pub rewardDuration: u64,
+    pub period_finish: u64,
+    pub reward_rate: Uint128,
+    pub reward_duration: u64,
 }
 pub const REWARD_CONFIG: Item<RewardConfig> = Item::new("reward_config");
 
