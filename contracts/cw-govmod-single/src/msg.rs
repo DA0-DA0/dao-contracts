@@ -1,12 +1,10 @@
-use cosmwasm_std::{CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty, Uint128};
 use cw_utils::{Duration, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::{proposal::Vote, threshold::Threshold};
 use cw_governance_macros::govmod_query;
-
-// TODO(zeke): How do we support proposal deposits?
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -19,6 +17,38 @@ pub struct InstantiateMsg {
     /// proposals. Otherwise, any address may execute a passed
     /// proposal.
     pub only_members_execute: bool,
+    /// Information about the deposit required to create a
+    /// proposal. None if there is no deposit requirement, Some
+    /// otherwise.
+    pub deposit_info: Option<DepositInfo>,
+}
+
+/// Information about the token to use for proposal deposits.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DepositToken {
+    /// Use a specific token address as the deposit token.
+    Token(String),
+    /// Use the token address of the associated DAO's voting
+    /// module. NOTE: in order to use the token address of the voting
+    /// module the voting module must (1) use a cw20 token and (2)
+    /// implement the `TokenContract {}` query type defined by
+    /// `cw_governance_macros::token_query`. Failing to implement that
+    /// and using this option will cause instantiation to fail.
+    VotingModuleToken,
+}
+
+/// Information about the deposit required to create a proposal.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DepositInfo {
+    /// The address of the cw20 token to be used for proposal
+    /// deposits.
+    pub token: DepositToken,
+    /// The number of tokens that must be deposited to create a
+    /// proposal.
+    pub deposit: Uint128,
+    /// If failed proposals should have their deposits refunded.
+    pub refund_failed_proposals: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -75,6 +105,9 @@ pub enum ExecuteMsg {
         /// The address if tge DAO that this governance module is
         /// associated with.
         dao: String,
+        /// Information about the deposit required to make a
+        /// proposal. None if no deposit, Some otherwise.
+        deposit_info: Option<DepositInfo>,
     },
 }
 
