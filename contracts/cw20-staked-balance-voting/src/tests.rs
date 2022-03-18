@@ -646,3 +646,202 @@ fn test_existing_cw20_existing_staking() {
     )
     .unwrap_err();
 }
+
+#[test]
+fn test_different_heights() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_id = app.store_code(staking_contract());
+
+    let token_addr = app
+        .instantiate_contract(
+            cw20_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw20_base::msg::InstantiateMsg {
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 3,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(2u64),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "voting token",
+            None,
+        )
+        .unwrap();
+
+    let voting_addr = instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::Existing {
+                address: token_addr.to_string(),
+                staking_contract: StakingInfo::New {
+                    staking_code_id: staking_id,
+                    unstaking_duration: None,
+                },
+            },
+        },
+    );
+
+    let token_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::TokenContract {})
+        .unwrap();
+    let staking_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::StakingContract {})
+        .unwrap();
+
+    // Expect 0 as creator has not staked
+    let creator_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: CREATOR_ADDR.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        creator_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::zero(),
+            height: app.block_info().height,
+        }
+    );
+
+    // Stake 1 token as creator
+    stake_tokens(
+        &mut app,
+        staking_addr.clone(),
+        token_addr.clone(),
+        CREATOR_ADDR,
+        1,
+    );
+    app.update_block(next_block);
+
+    // Expect 1 as creator has now staked 1
+    let creator_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: CREATOR_ADDR.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        creator_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::new(1u128),
+            height: app.block_info().height,
+        }
+    );
+
+    // Expect 1 as only one token staked to make up whole voting power
+    let total_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::TotalPowerAtHeight { height: None },
+        )
+        .unwrap();
+
+    assert_eq!(
+        total_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::new(1u128),
+            height: app.block_info().height,
+        }
+    );
+
+    // Stake another 1 token as creator
+    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 1);
+    app.update_block(next_block);
+
+    // Expect 2 as creator has now staked 2
+    let creator_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: CREATOR_ADDR.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        creator_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::new(2u128),
+            height: app.block_info().height,
+        }
+    );
+
+    // Expect 2 as we have now staked 2
+    let total_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::TotalPowerAtHeight { height: None },
+        )
+        .unwrap();
+
+    assert_eq!(
+        total_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::new(2u128),
+            height: app.block_info().height,
+        }
+    );
+
+    // Check we can query history
+    let creator_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: CREATOR_ADDR.to_string(),
+                height: Some(app.block_info().height - 1),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        creator_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::new(1u128),
+            height: app.block_info().height - 1,
+        }
+    );
+
+    // Expect 1 at the old height prior to second stake
+    let total_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr,
+            &QueryMsg::TotalPowerAtHeight {
+                height: Some(app.block_info().height - 1),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(
+        total_voting_power,
+        VotingPowerAtHeightResponse {
+            power: Uint128::new(1u128),
+            height: app.block_info().height - 1,
+        }
+    );
+}

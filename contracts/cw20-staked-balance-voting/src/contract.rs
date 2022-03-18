@@ -146,10 +146,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::TokenContract {} => query_token_contract(deps),
         QueryMsg::StakingContract {} => query_staking_contract(deps),
-        QueryMsg::VotingPowerAtHeight { address, height: _ } => {
-            query_voting_power_at_height(deps, env, address)
+        QueryMsg::VotingPowerAtHeight { address, height } => {
+            query_voting_power_at_height(deps, env, address, height)
         }
-        QueryMsg::TotalPowerAtHeight { height: _ } => query_total_power_at_height(deps, env),
+        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::Info {} => query_info(deps),
     }
 }
@@ -164,14 +164,19 @@ pub fn query_staking_contract(deps: Deps) -> StdResult<Binary> {
     to_binary(&staking_contract)
 }
 
-pub fn query_voting_power_at_height(deps: Deps, env: Env, address: String) -> StdResult<Binary> {
+pub fn query_voting_power_at_height(
+    deps: Deps,
+    _env: Env,
+    address: String,
+    height: Option<u64>,
+) -> StdResult<Binary> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let address = deps.api.addr_validate(&address)?;
     let res: stake_cw20::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
         &stake_cw20::msg::QueryMsg::StakedBalanceAtHeight {
             address: address.to_string(),
-            height: Some(env.block.height),
+            height,
         },
     )?;
     to_binary(
@@ -182,13 +187,15 @@ pub fn query_voting_power_at_height(deps: Deps, env: Env, address: String) -> St
     )
 }
 
-pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
+pub fn query_total_power_at_height(
+    deps: Deps,
+    _env: Env,
+    height: Option<u64>,
+) -> StdResult<Binary> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let res: stake_cw20::msg::TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
-        &stake_cw20::msg::QueryMsg::TotalStakedAtHeight {
-            height: Some(env.block.height),
-        },
+        &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height },
     )?;
     to_binary(
         &cw_governance_interface::voting::TotalPowerAtHeightResponse {
