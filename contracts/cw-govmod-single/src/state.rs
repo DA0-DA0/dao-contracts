@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     msg::{DepositInfo, DepositToken},
-    proposal::{Proposal, Vote},
+    proposal::{Proposal, Status, Vote},
     threshold::Threshold,
 };
 
@@ -123,6 +123,13 @@ pub fn get_deposit_msg(
 pub fn get_return_deposit_msg(proposal: &Proposal) -> StdResult<Vec<CosmosMsg>> {
     match &proposal.deposit_info {
         Some(info) => {
+            // If it is closed only issue a refund if we are refunding
+            // failed proposals. Otherwise, the proposal is open and
+            // expired.
+            if proposal.status == Status::Rejected && !info.refund_failed_proposals {
+                return Ok(vec![]);
+            }
+
             let transfer_msg = WasmMsg::Execute {
                 contract_addr: info.token.to_string(),
                 funds: vec![],
