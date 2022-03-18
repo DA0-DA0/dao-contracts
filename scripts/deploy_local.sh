@@ -4,12 +4,17 @@
 
 ## CONFIG
 # NOTE: you will need to update these to deploy on different network
-IMAGE_TAG="v2.1.0" # moneta
-BINARY='docker exec -i cosmwasm junod'
+IMAGE_TAG=${2:-"v2.3.0-beta.1"} # lupercalia beta - this allows you to pass in an image, e.g. pr-156 as arg 2
+CONTAINER_NAME="cosmwasm"
+BINARY="docker exec -i $CONTAINER_NAME junod"
 DENOM='ujunox'
 CHAIN_ID='testing'
 RPC='http://localhost:26657/'
 TXFLAG="--gas-prices 0.1$DENOM --gas auto --gas-adjustment 1.5 -y -b block --chain-id $CHAIN_ID --node $RPC"
+BLOCK_GAS_LIMIT=${GAS_LIMIT:-100000000} # should mirror mainnet
+
+echo "Building $IMAGE_TAG"
+echo "Configured Block Gas Limit: $BLOCK_GAS_LIMIT"
 
 if [ "$1" = "" ]
 then
@@ -17,28 +22,19 @@ then
   exit
 fi
 
-# Deploy junod in Docker
-docker kill cosmwasm
-
+# kill any orphans
+docker kill $CONTAINER_NAME
 docker volume rm -f junod_data
 
 # Run junod setup script
-docker run --rm -it \
-    -e STAKE_TOKEN=$DENOM \
+docker run --rm -d --name $CONTAINER_NAME \
     -e PASSWORD=xxxxxxxxx \
+    -e STAKE_TOKEN=$DENOM \
+    -e GAS_LIMIT="$GAS_LIMIT" \
+    -e UNSAFE_CORS=true \
+    -p 1317:1317 -p 26656:26656 -p 26657:26657 \
     --mount type=volume,source=junod_data,target=/root \
-    ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/setup_junod.sh $1
-
-# Add custom app.toml to junod_data volume
-docker run -v junod_data:/root --name helper busybox true
-docker cp docker/app.toml helper:/root/.juno/config/app.toml
-docker cp docker/config.toml helper:/root/.juno/config/config.toml
-docker rm helper
-
-# Start junod
-docker run --rm -d --name cosmwasm -p 26657:26657 -p 26656:26656 -p 1317:1317 \
-    --mount type=volume,source=junod_data,target=/root \
-    ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/run_junod.sh
+    ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/setup_and_run.sh $1
 
 # Compile code
 docker run --rm -v "$(pwd)":/code \
