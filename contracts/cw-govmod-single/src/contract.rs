@@ -287,10 +287,10 @@ pub fn execute_close(
         _ => return Err(ContractError::WrongCloseStatus {}),
     }
 
+    let refund_message = get_return_deposit_msg(&prop)?;
+
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
-    let refund_message = get_return_deposit_msg(&prop)?;
 
     Ok(Response::default()
         .add_attribute("action", "close")

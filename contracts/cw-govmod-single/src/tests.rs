@@ -749,7 +749,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
-        threshold: threshold.clone(),
+        threshold,
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
@@ -764,10 +764,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 
     let gov_state: cw_governance::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(
-            governance_addr.clone(),
-            &cw_governance::msg::QueryMsg::DumpState {},
-        )
+        .query_wasm_smart(governance_addr, &cw_governance::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.governance_modules;
     let voting_module = gov_state.voting_module;
@@ -777,7 +774,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 
     let config: Config = app
         .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
         .unwrap();
     let expected_token: Addr = app
         .wrap()
@@ -827,7 +824,7 @@ fn test_different_token_proposal_deposit() {
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
-        threshold: threshold.clone(),
+        threshold,
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
@@ -880,7 +877,7 @@ fn test_bad_token_proposal_deposit() {
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
-        threshold: threshold.clone(),
+        threshold,
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
@@ -903,7 +900,7 @@ fn test_take_proposal_deposit() {
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
-        threshold: threshold.clone(),
+        threshold,
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
@@ -925,10 +922,7 @@ fn test_take_proposal_deposit() {
 
     let gov_state: cw_governance::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(
-            governance_addr.clone(),
-            &cw_governance::msg::QueryMsg::DumpState {},
-        )
+        .query_wasm_smart(governance_addr, &cw_governance::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.governance_modules;
 
@@ -978,7 +972,7 @@ fn test_take_proposal_deposit() {
     // Now we can create a proposal.
     app.execute_contract(
         Addr::unchecked("ekez"),
-        govmod_single.clone(),
+        govmod_single,
         &ExecuteMsg::Propose {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
@@ -1027,10 +1021,7 @@ fn test_deposit_return_on_execute() {
     );
     let gov_state: cw_governance::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(
-            governance_addr.clone(),
-            &cw_governance::msg::QueryMsg::DumpState {},
-        )
+        .query_wasm_smart(governance_addr, &cw_governance::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.governance_modules;
 
@@ -1060,7 +1051,7 @@ fn test_deposit_return_on_execute() {
     // refunded.
     app.execute_contract(
         Addr::unchecked("ekez"),
-        govmod_single.clone(),
+        govmod_single,
         &ExecuteMsg::Execute { proposal_id: 1 },
         &[],
     )
@@ -1081,6 +1072,80 @@ fn test_deposit_return_on_execute() {
 }
 
 #[test]
+fn test_close_open_proposal() {
+    let (mut app, governance_addr) = do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(90),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken,
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+    );
+
+    let gov_state: cw_governance::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr, &cw_governance::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.governance_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // Close the proposal, this should error as the proposal is still
+    // open and not expired.
+    app.execute_contract(
+        Addr::unchecked("keze"),
+        govmod_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
+    // Make the proposal expire.
+    app.update_block(|block| block.height += 10);
+
+    // Close the proposal, this should work as the proposal is now
+    // open and expired.
+    app.execute_contract(
+        Addr::unchecked("keze"),
+        govmod_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    // Check that a refund was issued.
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has not been closed so deposit has not been
+    // refunded.
+    assert_eq!(balance.balance, Uint128::new(10));
+}
+
+#[test]
 fn test_deposit_return_on_close() {
     let (mut app, governance_addr) = do_test_votes(
         vec![TestVote {
@@ -1097,15 +1162,12 @@ fn test_deposit_return_on_close() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken,
             deposit: Uint128::new(1),
-            refund_failed_proposals: false,
+            refund_failed_proposals: true,
         }),
     );
     let gov_state: cw_governance::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(
-            governance_addr.clone(),
-            &cw_governance::msg::QueryMsg::DumpState {},
-        )
+        .query_wasm_smart(governance_addr, &cw_governance::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.governance_modules;
 
@@ -1135,7 +1197,7 @@ fn test_deposit_return_on_close() {
     // refunded.
     app.execute_contract(
         Addr::unchecked("ekez"),
-        govmod_single.clone(),
+        govmod_single,
         &ExecuteMsg::Close { proposal_id: 1 },
         &[],
     )
@@ -1153,4 +1215,63 @@ fn test_deposit_return_on_close() {
 
     // Proposal has been closed so deposit has been refunded.
     assert_eq!(balance.balance, Uint128::new(10));
+}
+
+#[test]
+fn test_no_return_if_no_refunds() {
+    let (mut app, governance_addr) = do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(90),
+        },
+        Status::Rejected,
+        None,
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken,
+            deposit: Uint128::new(1),
+            refund_failed_proposals: false,
+        }),
+    );
+    let gov_state: cw_governance::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr, &cw_governance::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.governance_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+
+    // Close the proposal, this should cause the deposit to be
+    // refunded.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single,
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has been closed but deposit has not been refunded.
+    assert_eq!(balance.balance, Uint128::new(9));
 }
