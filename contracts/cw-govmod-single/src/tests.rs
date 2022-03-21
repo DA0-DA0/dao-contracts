@@ -4,9 +4,11 @@ use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
+use voting::{Vote, Votes};
+
 use crate::{
     msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::{Proposal, Status, Vote, Votes},
+    proposal::{Proposal, Status},
     query::{ProposalResponse, VoteInfo, VoteResponse},
     state::{CheckedDepositInfo, Config},
     threshold::Threshold,

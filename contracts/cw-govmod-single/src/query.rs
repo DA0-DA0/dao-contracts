@@ -2,7 +2,9 @@ use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::proposal::{Proposal, Vote};
+use voting::Vote;
+
+use crate::proposal::Proposal;
 
 /// Information about a proposal returned by proposal queries.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

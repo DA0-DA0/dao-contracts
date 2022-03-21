@@ -8,10 +8,12 @@ use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::{Duration, Expiration};
 
+use voting::{Vote, Votes};
+
 use crate::{
     error::ContractError,
     msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::{advance_proposal_id, Proposal, Status, Vote, Votes},
+    proposal::{advance_proposal_id, Proposal, Status},
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
         get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
