@@ -1,6 +1,6 @@
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
-use cw_governance_macros::voting_query;
+use cw_governance_macros::{token_query, voting_query};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -48,9 +48,10 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {}
 
 #[voting_query]
+#[token_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    TokenContract {},
     StakingContract {},
+    Dao {},
 }

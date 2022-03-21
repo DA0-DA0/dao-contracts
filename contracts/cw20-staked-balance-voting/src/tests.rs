@@ -144,7 +144,7 @@ fn test_contract_info() {
 
     let info: InfoResponse = app
         .wrap()
-        .query_wasm_smart(voting_addr, &QueryMsg::Info {})
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::Info {})
         .unwrap();
     assert_eq!(
         info,
@@ -154,7 +154,13 @@ fn test_contract_info() {
                 version: env!("CARGO_PKG_VERSION").to_string()
             }
         }
-    )
+    );
+
+    let dao: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::Dao {})
+        .unwrap();
+    assert_eq!(dao, Addr::unchecked(DAO_ADDR));
 }
 
 #[test]
