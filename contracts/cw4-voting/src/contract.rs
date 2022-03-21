@@ -41,6 +41,7 @@ pub fn instantiate(
     }
     TOTAL_WEIGHT.save(deps.storage, &total_weight, env.block.height)?;
 
+    // We need to set ourself as the CW4 admin it is then transferred to the DAO in the reply
     let msg = WasmMsg::Instantiate {
         admin: Some(info.sender.to_string()),
         code_id: msg.cw4_group_code_id,
@@ -181,6 +182,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         })?,
                         funds: vec![],
                     };
+                    // Transfer admin status to the DAO
                     let msg2 = WasmMsg::Execute {
                         contract_addr: group_contract.to_string(),
                         msg: to_binary(&cw4_group::msg::ExecuteMsg::UpdateAdmin {
