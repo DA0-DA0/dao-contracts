@@ -151,6 +151,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Dao {} => query_dao(deps),
     }
 }
 
@@ -208,6 +209,11 @@ pub fn query_total_power_at_height(
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&cw_governance_interface::voting::InfoResponse { info })
+}
+
+pub fn query_dao(deps: Deps) -> StdResult<Binary> {
+    let dao = DAO.load(deps.storage)?;
+    to_binary(&dao)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
