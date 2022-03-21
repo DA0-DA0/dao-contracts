@@ -18,6 +18,9 @@ pub enum ContractError {
     #[error("Cannot instantiate a group contract with no initial members")]
     NoMembers {},
 
+    #[error("Total weight of the CW4 contract cannot be zero")]
+    ZeroTotalWeight {},
+
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
 }
