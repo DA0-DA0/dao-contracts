@@ -581,6 +581,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw4-voting"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-governance-interface",
+ "cw-governance-macros",
+ "cw-multi-test 0.12.1",
+ "cw-storage-plus 0.12.1",
+ "cw-utils 0.12.1",
+ "cw2 0.12.1",
+ "cw4",
+ "cw4-group",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "der"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
