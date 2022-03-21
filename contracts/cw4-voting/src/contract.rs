@@ -83,18 +83,18 @@ pub fn execute_member_changed_hook(
 
     let total_weight = TOTAL_WEIGHT.load(deps.storage)?;
     // As difference can be negative we need to keep track of both
+    // In seperate counters to apply at once and prevent underflow
     let mut positive_difference: u64 = 0;
     let mut negative_difference: u64 = 0;
     for diff in diffs {
         let user_address = deps.api.addr_validate(&diff.key)?;
         let weight = diff.new.unwrap_or_default();
         let old = diff.old.unwrap_or_default();
-        let delta = weight - old;
-        // Do we add to positve diff or negative diff
+        // Do we need to add to positive difference or negative difference
         if weight > old {
-            positive_difference += delta;
+            positive_difference += weight - old;
         } else {
-            negative_difference += delta;
+            negative_difference += old - weight;
         }
         USER_WEIGHTS.save(
             deps.storage,

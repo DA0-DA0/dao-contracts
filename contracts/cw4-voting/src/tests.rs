@@ -128,7 +128,7 @@ fn test_power_at_height() {
     let voting_addr = setup_test_case(&mut app);
     app.update_block(next_block);
 
-    let cw4_addr = app
+    let cw4_addr: Addr = app
         .wrap()
         .query_wasm_smart(voting_addr.clone(), &QueryMsg::GroupContract {})
         .unwrap();
@@ -165,7 +165,7 @@ fn test_power_at_height() {
         }],
     };
 
-    app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr, &msg, &[])
+    app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
         .unwrap();
     app.update_block(next_block);
 
@@ -212,12 +212,162 @@ fn test_power_at_height() {
     let total_voting_power: TotalPowerAtHeightResponse = app
         .wrap()
         .query_wasm_smart(
-            voting_addr,
+            voting_addr.clone(),
             &QueryMsg::TotalPowerAtHeight {
                 height: Some(app.block_info().height - 1),
             },
         )
         .unwrap();
     assert_eq!(total_voting_power.power, Uint128::new(3u128));
+    assert_eq!(total_voting_power.height, app.block_info().height - 1);
+
+    // Update ADDR1's weight back to 1
+    let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
+        remove: vec![],
+        add: vec![cw4::Member {
+            addr: ADDR1.to_string(),
+            weight: 1,
+        }],
+    };
+
+    app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // Should now be 1 again
+    let addr1_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
+    assert_eq!(addr1_voting_power.height, app.block_info().height);
+
+    // Check total power for current block is now 3
+    let total_voting_power: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::TotalPowerAtHeight { height: None },
+        )
+        .unwrap();
+    assert_eq!(total_voting_power.power, Uint128::new(3u128));
+    assert_eq!(total_voting_power.height, app.block_info().height);
+
+    // Check total power for last block is 4
+    let total_voting_power: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::TotalPowerAtHeight {
+                height: Some(app.block_info().height - 1),
+            },
+        )
+        .unwrap();
+    assert_eq!(total_voting_power.power, Uint128::new(4u128));
+    assert_eq!(total_voting_power.height, app.block_info().height - 1);
+
+    // Remove address 2 completely
+    let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
+        remove: vec![ADDR2.to_string()],
+        add: vec![],
+    };
+
+    app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // ADDR2 power is now 0
+    let addr2_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR2.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(addr2_voting_power.power, Uint128::zero());
+    assert_eq!(addr2_voting_power.height, app.block_info().height);
+
+    // Check total power for current block is now 2
+    let total_voting_power: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::TotalPowerAtHeight { height: None },
+        )
+        .unwrap();
+    assert_eq!(total_voting_power.power, Uint128::new(2u128));
+    assert_eq!(total_voting_power.height, app.block_info().height);
+
+    // Check total power for last block is 3
+    let total_voting_power: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::TotalPowerAtHeight {
+                height: Some(app.block_info().height - 1),
+            },
+        )
+        .unwrap();
+    assert_eq!(total_voting_power.power, Uint128::new(3u128));
+    assert_eq!(total_voting_power.height, app.block_info().height - 1);
+
+    // Readd ADDR2 with 10 power
+    let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
+        remove: vec![],
+        add: vec![cw4::Member {
+            addr: ADDR2.to_string(),
+            weight: 10,
+        }],
+    };
+
+    app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr, &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // ADDR2 power is now 10
+    let addr2_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR2.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(addr2_voting_power.power, Uint128::new(10u128));
+    assert_eq!(addr2_voting_power.height, app.block_info().height);
+
+    // Check total power for current block is now 12
+    let total_voting_power: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::TotalPowerAtHeight { height: None },
+        )
+        .unwrap();
+    assert_eq!(total_voting_power.power, Uint128::new(12u128));
+    assert_eq!(total_voting_power.height, app.block_info().height);
+
+    // Check total power for last block is 2
+    let total_voting_power: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr,
+            &QueryMsg::TotalPowerAtHeight {
+                height: Some(app.block_info().height - 1),
+            },
+        )
+        .unwrap();
+    assert_eq!(total_voting_power.power, Uint128::new(2u128));
     assert_eq!(total_voting_power.height, app.block_info().height - 1);
 }
