@@ -35,6 +35,10 @@ pub fn instantiate(
         USER_WEIGHTS.save(deps.storage, &member_addr, &weight, env.block.height)?;
         total_weight += weight;
     }
+
+    if total_weight.is_zero() {
+        return Err(ContractError::ZeroTotalWeight {});
+    }
     TOTAL_WEIGHT.save(deps.storage, &total_weight, env.block.height)?;
 
     let msg = WasmMsg::Instantiate {
@@ -84,17 +88,17 @@ pub fn execute_member_changed_hook(
     let total_weight = TOTAL_WEIGHT.load(deps.storage)?;
     // As difference can be negative we need to keep track of both
     // In seperate counters to apply at once and prevent underflow
-    let mut positive_difference: u64 = 0;
-    let mut negative_difference: u64 = 0;
+    let mut positive_difference: Uint128 = Uint128::zero();
+    let mut negative_difference: Uint128 = Uint128::zero();
     for diff in diffs {
         let user_address = deps.api.addr_validate(&diff.key)?;
         let weight = diff.new.unwrap_or_default();
         let old = diff.old.unwrap_or_default();
         // Do we need to add to positive difference or negative difference
         if weight > old {
-            positive_difference += weight - old;
+            positive_difference += Uint128::from(weight - old);
         } else {
-            negative_difference += old - weight;
+            negative_difference += Uint128::from(old - weight);
         }
         USER_WEIGHTS.save(
             deps.storage,
@@ -104,13 +108,15 @@ pub fn execute_member_changed_hook(
         )?;
     }
     let new_total_weight = total_weight
-        .checked_add(Uint128::from(positive_difference))
+        .checked_add(positive_difference)
         .map_err(StdError::overflow)?
-        .checked_sub(Uint128::from(negative_difference))
+        .checked_sub(negative_difference)
         .map_err(StdError::overflow)?;
     TOTAL_WEIGHT.save(deps.storage, &new_total_weight, env.block.height)?;
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("action", "member_changed_hook")
+        .add_attribute("total_weight", new_total_weight.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -122,6 +128,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::GroupContract {} => to_binary(&GROUP_CONTRACT.load(deps.storage)?),
+        QueryMsg::Dao {} => to_binary(&DAO_ADDRESS.load(deps.storage)?),
     }
 }
 

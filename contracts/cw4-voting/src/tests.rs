@@ -94,6 +94,35 @@ fn test_instantiate() {
             None,
         )
         .unwrap_err();
+
+    // Instantiate with members but no weight
+    let msg = InstantiateMsg {
+        cw4_group_code_id: cw4_id,
+        initial_members: vec![
+            cw4::Member {
+                addr: ADDR1.to_string(),
+                weight: 0,
+            },
+            cw4::Member {
+                addr: ADDR2.to_string(),
+                weight: 0,
+            },
+            cw4::Member {
+                addr: ADDR3.to_string(),
+                weight: 0,
+            },
+        ],
+    };
+    let _err = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &msg,
+            &[],
+            "voting module",
+            None,
+        )
+        .unwrap_err();
 }
 
 #[test]
@@ -118,8 +147,14 @@ fn test_contract_info() {
     // Ensure group contract is set
     let _group_contract: Addr = app
         .wrap()
-        .query_wasm_smart(voting_addr, &QueryMsg::GroupContract {})
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::GroupContract {})
         .unwrap();
+
+    let dao_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::Dao {})
+        .unwrap();
+    assert_eq!(dao_contract, Addr::unchecked(DAO_ADDR));
 }
 
 #[test]
