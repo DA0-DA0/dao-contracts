@@ -39,7 +39,7 @@ schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 cw-governance-macros = { version = "0.1.0", path = "../../packages/cw-governance-macros" }
-cw-governance-interface = { version = "0.1.0", path = "../../packages/cw-governance-interface" } 
+cw-governance-interface = { version = "0.1.0", path = "../../packages/cw-governance-interface" }
 cw20-base = {  version = "0.12", features = ["library"] }
 
 [dev-dependencies]
