@@ -67,8 +67,8 @@ impl DepositInfo {
             refund_failed_proposals,
         } = self;
         let token = match token {
-            DepositToken::Token(token) => deps.api.addr_validate(&token)?,
-            DepositToken::VotingModuleToken => {
+            DepositToken::Token { address } => deps.api.addr_validate(&address)?,
+            DepositToken::VotingModuleToken {} => {
                 let voting_module: Addr = deps
                     .querier
                     .query_wasm_smart(dao, &cw_governance::msg::QueryMsg::VotingModule {})?;
