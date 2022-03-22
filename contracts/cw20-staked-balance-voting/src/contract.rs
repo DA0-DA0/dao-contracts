@@ -5,6 +5,7 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw20::Cw20Coin;
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
@@ -89,11 +90,21 @@ pub fn instantiate(
             name,
             symbol,
             decimals,
-            initial_balances,
+            mut initial_balances,
             marketing,
             staking_code_id,
             unstaking_duration,
         } => {
+            // Add DAO initial balance to initial_balances vector if defined.
+            if let Some(initial_dao_balance) = msg.initial_dao_balance {
+                if initial_dao_balance > Uint128::zero() {
+                    initial_balances.push(Cw20Coin {
+                        address: info.sender.to_string(),
+                        amount: initial_dao_balance,
+                    });
+                }
+            }
+
             let initial_supply = initial_balances
                 .iter()
                 .fold(Uint128::zero(), |p, n| p + n.amount);
