@@ -92,7 +92,6 @@ CW3_DAO_INIT='{
   "gov_token": {
     "instantiate_new_cw20": {
       "cw20_code_id": '$CW20_CODE',
-      "stake_contract_code_id": '$STAKE_CW20_CODE',
       "label": "DAO DAO v0.1.1",
       "initial_dao_balance": "1000000000",
       "msg": {
@@ -103,6 +102,11 @@ CW3_DAO_INIT='{
       }
     }
   },
+  "staking_contract": {
+    "instantiate_new_staking_contract": {
+      "staking_contract_code_id": '$STAKE_CW20_CODE'
+    }
+  },
   "threshold": {
     "absolute_percentage": {
         "percentage": "0.5"
@@ -111,11 +115,13 @@ CW3_DAO_INIT='{
   "max_voting_period": {
     "height": 100
   },
-  "proposal_deposit_amount": "0"
+  "proposal_deposit_amount": "0",
+  "only_members_execute": false,
+  "automatically_add_cw20s": true
 }'
 echo $CW3_DAO_INIT | jq .
 
-echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "DAO DAO" $TXFLAG --output json
+echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "DAO DAO" $TXFLAG --output json --no-admin
 
 CW3_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW3_DAO_CODE --output json | jq -r '.contracts[-1]')
 
