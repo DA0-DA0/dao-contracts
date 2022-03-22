@@ -28,14 +28,14 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum DepositToken {
     /// Use a specific token address as the deposit token.
-    Token(String),
+    Token { address: String },
     /// Use the token address of the associated DAO's voting
     /// module. NOTE: in order to use the token address of the voting
     /// module the voting module must (1) use a cw20 token and (2)
     /// implement the `TokenContract {}` query type defined by
     /// `cw_governance_macros::token_query`. Failing to implement that
     /// and using this option will cause instantiation to fail.
-    VotingModuleToken,
+    VotingModuleToken {},
 }
 
 /// Information about the deposit required to create a proposal.

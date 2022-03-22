@@ -753,7 +753,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
-            token: DepositToken::VotingModuleToken,
+            token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
@@ -828,7 +828,9 @@ fn test_different_token_proposal_deposit() {
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
-            token: DepositToken::Token(cw20_addr.to_string()),
+            token: DepositToken::Token {
+                address: cw20_addr.to_string(),
+            },
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
@@ -881,7 +883,9 @@ fn test_bad_token_proposal_deposit() {
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
-            token: DepositToken::Token(votemod_addr.to_string()),
+            token: DepositToken::Token {
+                address: votemod_addr.to_string(),
+            },
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
@@ -904,7 +908,7 @@ fn test_take_proposal_deposit() {
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
-            token: DepositToken::VotingModuleToken,
+            token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
@@ -1014,7 +1018,7 @@ fn test_deposit_return_on_execute() {
         Status::Passed,
         None,
         Some(DepositInfo {
-            token: DepositToken::VotingModuleToken,
+            token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
             refund_failed_proposals: false,
         }),
@@ -1086,7 +1090,7 @@ fn test_close_open_proposal() {
         Status::Open,
         Some(Uint128::new(100)),
         Some(DepositInfo {
-            token: DepositToken::VotingModuleToken,
+            token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
@@ -1160,7 +1164,7 @@ fn test_deposit_return_on_close() {
         Status::Rejected,
         None,
         Some(DepositInfo {
-            token: DepositToken::VotingModuleToken,
+            token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
@@ -1232,7 +1236,7 @@ fn test_no_return_if_no_refunds() {
         Status::Rejected,
         None,
         Some(DepositInfo {
-            token: DepositToken::VotingModuleToken,
+            token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
             refund_failed_proposals: false,
         }),
