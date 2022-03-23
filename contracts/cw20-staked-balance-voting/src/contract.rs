@@ -95,6 +95,14 @@ pub fn instantiate(
             staking_code_id,
             unstaking_duration,
         } => {
+            let initial_supply = initial_balances
+                .iter()
+                .fold(Uint128::zero(), |p, n| p + n.amount);
+            // Cannot instantiate with no initial token owners because it would immediately lock the DAO.
+            if initial_supply.is_zero() {
+                return Err(ContractError::InitialBalancesError {});
+            }
+
             // Add DAO initial balance to initial_balances vector if defined.
             if let Some(initial_dao_balance) = msg.initial_dao_balance {
                 if initial_dao_balance > Uint128::zero() {
@@ -103,13 +111,6 @@ pub fn instantiate(
                         amount: initial_dao_balance,
                     });
                 }
-            }
-
-            let initial_supply = initial_balances
-                .iter()
-                .fold(Uint128::zero(), |p, n| p + n.amount);
-            if initial_supply.is_zero() {
-                return Err(ContractError::InitialBalancesError {});
             }
 
             STAKING_CONTRACT_CODE_ID.save(deps.storage, &staking_code_id)?;
