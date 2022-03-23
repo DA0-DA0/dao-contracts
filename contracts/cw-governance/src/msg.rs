@@ -16,7 +16,7 @@ pub enum Admin {
     /// while instantiation takes place.
     GovernanceContract {},
     /// No admin.
-    None,
+    None {},
 }
 
 /// Information needed to instantiate a governance or voting module.
