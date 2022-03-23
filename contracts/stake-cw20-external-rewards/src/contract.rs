@@ -514,9 +514,9 @@ mod tests {
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
         let msg = stake_cw20::msg::InstantiateMsg {
-            owner: Some(Addr::unchecked(OWNER)),
-            manager: Some(Addr::unchecked("manager")),
-            token_address: cw20,
+            owner: Some(OWNER.to_string()),
+            manager: Some("manager".to_string()),
+            token_address: cw20.to_string(),
             unstaking_duration,
         };
         app.instantiate_contract(
@@ -591,7 +591,7 @@ mod tests {
             .instantiate_contract(reward_code_id, owner, &msg, &[], "reward", None)
             .unwrap();
         let msg = stake_cw20::msg::ExecuteMsg::AddHook {
-            addr: reward_addr.clone(),
+            addr: reward_addr.to_string(),
         };
         let _result = app
             .execute_contract(Addr::unchecked(OWNER), staking_contract, &msg, &[])
