@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InstantiateMsg",
+  "title": "DumpResponse",
   "type": "object",
+  "required": [
+    "groups"
+  ],
   "properties": {
     "groups": {
-      "type": [
-        "array",
-        "null"
-      ],
+      "type": "array",
       "items": {
         "$ref": "#/definitions/Group"
       }
