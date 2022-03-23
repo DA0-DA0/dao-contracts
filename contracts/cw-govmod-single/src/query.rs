@@ -36,3 +36,10 @@ pub struct VoteResponse {
 pub struct VoteListResponse {
     pub votes: Vec<VoteInfo>,
 }
+
+/// A list of proposals returned by `ListProposals` and
+/// `ReverseProposals`.
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ProposalListResponse {
+    pub proposals: Vec<ProposalResponse>,
+}
