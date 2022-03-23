@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use crate::query::ThresholdResponse;
 use crate::state::Config;
-use cosmwasm_std::{Addr, CosmosMsg, Decimal, Empty, Uint128};
-use cw20::Cw20Coin;
+use cosmwasm_std::{CosmosMsg, Decimal, Empty, Uint128};
+use cw20::{Cw20Coin, Cw20ReceiveMsg};
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw3::Vote;
 use cw_utils::{Duration, Expiration};
@@ -17,6 +17,8 @@ pub struct InstantiateMsg {
     pub description: String,
     /// Set an existing governance token or launch a new one
     pub gov_token: GovTokenMsg,
+    /// Set an existing staking contract or instantiate an new one
+    pub staking_contract: StakingContractMsg,
     /// Voting params configuration
     pub threshold: Threshold,
     /// The amount of time a proposal can be voted on before expiring
@@ -27,6 +29,8 @@ pub struct InstantiateMsg {
     pub refund_failed_proposals: Option<bool>,
     /// Optional Image URL that is used by the contract
     pub image_url: Option<String>,
+    pub only_members_execute: bool,
+    pub automatically_add_cw20s: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -36,19 +40,25 @@ pub enum GovTokenMsg {
     // Instantiate a new cw20 token with the DAO as minter
     InstantiateNewCw20 {
         cw20_code_id: u64,
-        stake_contract_code_id: u64,
         label: String,
         initial_dao_balance: Option<Uint128>,
         msg: GovTokenInstantiateMsg,
-        unstaking_duration: Option<Duration>,
     },
     /// Use an existing cw20 token
-    UseExistingCw20 {
-        addr: String,
-        label: String,
-        stake_contract_code_id: u64,
+    UseExistingCw20 { addr: String, label: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
+pub enum StakingContractMsg {
+    /// Create a new staking contract
+    InstantiateNewStakingContract {
+        staking_contract_code_id: u64,
         unstaking_duration: Option<Duration>,
     },
+    /// Use an existing already instantiated staking contract
+    UseExistingStakingContract { addr: String },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -161,12 +171,15 @@ pub enum ExecuteMsg {
     UpdateConfig(Config),
     /// Updates token list
     UpdateCw20TokenList {
-        to_add: Vec<Addr>,
-        to_remove: Vec<Addr>,
+        to_add: Vec<String>,
+        to_remove: Vec<String>,
     },
     /// Update Staking Contract (can only be called by DAO contract)
     /// WARNING: this changes the contract controlling voting
-    UpdateStakingContract { new_staking_contract: Addr },
+    UpdateStakingContract { new_staking_contract: String },
+    /// Wrapper called for automatically adding cw20s
+    /// to our tracked balances
+    Receive(Cw20ReceiveMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

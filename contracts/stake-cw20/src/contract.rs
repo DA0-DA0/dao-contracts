@@ -43,19 +43,19 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
     let owner = match msg.owner {
-        Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
+        Some(owner) => Some(deps.api.addr_validate(owner.as_str())?),
         None => None,
     };
 
     let manager = match msg.manager {
-        Some(admin) => Some(deps.api.addr_validate(admin.as_str())?),
+        Some(manager) => Some(deps.api.addr_validate(manager.as_str())?),
         None => None,
     };
 
     let config = Config {
         owner,
         manager,
-        token_address: msg.token_address,
+        token_address: deps.api.addr_validate(&*msg.token_address)?,
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -88,10 +88,16 @@ pub fn execute(
 pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
-    new_owner: Option<Addr>,
-    new_manager: Option<Addr>,
+    new_owner: Option<String>,
+    new_manager: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
+    let new_owner = new_owner
+        .map(|new_owner| deps.api.addr_validate(&*new_owner))
+        .transpose()?;
+    let new_manager = new_manager
+        .map(|new_manager| deps.api.addr_validate(&*new_manager))
+        .transpose()?;
     let mut config: Config = CONFIG.load(deps.storage)?;
     if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
         return Err(ContractError::Unauthorized {});
@@ -102,6 +108,7 @@ pub fn execute_update_config(
 
     config.owner = new_owner;
     config.manager = new_manager;
+
     config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
@@ -306,8 +313,9 @@ pub fn execute_add_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addr: Addr,
+    addr: String,
 ) -> Result<Response, ContractError> {
+    let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
         return Err(ContractError::Unauthorized {});
@@ -322,8 +330,9 @@ pub fn execute_remove_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    addr: Addr,
+    addr: String,
 ) -> Result<Response, ContractError> {
+    let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
         return Err(ContractError::Unauthorized {});
@@ -410,10 +419,10 @@ pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse>
 pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(GetConfigResponse {
-        owner: config.owner,
-        manager: config.manager,
+        owner: config.owner.map(|a| a.to_string()),
+        manager: config.manager.map(|a| a.to_string()),
         unstaking_duration: config.unstaking_duration,
-        token_address: config.token_address,
+        token_address: config.token_address.to_string(),
     })
 }
 
@@ -511,9 +520,9 @@ mod tests {
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
-            owner: Some(Addr::unchecked("owner")),
-            manager: Some(Addr::unchecked("manager")),
-            token_address: cw20,
+            owner: Some("owner".to_string()),
+            manager: Some("manager".to_string()),
+            token_address: cw20.to_string(),
             unstaking_duration,
         };
         app.instantiate_contract(
@@ -621,8 +630,8 @@ mod tests {
         duration: Option<Duration>,
     ) -> AnyResult<AppResponse> {
         let msg = ExecuteMsg::UpdateConfig {
-            owner,
-            manager,
+            owner: owner.map(|a| a.to_string()),
+            manager: manager.map(|a| a.to_string()),
             duration,
         };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
@@ -674,7 +683,7 @@ mod tests {
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.owner, Some("owner2".to_string()));
         assert_eq!(config.unstaking_duration, Some(Duration::Height(100)));
 
         // Try updating owner with original owner, which is now invalid
@@ -703,8 +712,8 @@ mod tests {
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
-        assert_eq!(config.manager, Some(Addr::unchecked("manager")));
+        assert_eq!(config.owner, Some("owner2".to_string()));
+        assert_eq!(config.manager, Some("manager".to_string()));
 
         // Manager can update unstaking duration
         let info = mock_info("manager", &[]);
@@ -719,7 +728,7 @@ mod tests {
         )
         .unwrap();
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.owner, Some("owner2".to_string()));
         assert_eq!(config.unstaking_duration, Some(Duration::Height(50)));
 
         // Manager cannot update owner
@@ -749,7 +758,7 @@ mod tests {
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.owner, Some("owner2".to_string()));
         assert_eq!(config.manager, None);
 
         // Remove owner

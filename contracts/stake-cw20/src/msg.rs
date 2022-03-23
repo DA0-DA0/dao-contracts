@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -9,9 +9,11 @@ pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
-    pub owner: Option<Addr>,
-    pub manager: Option<Addr>,
-    pub token_address: Addr,
+    // Owner can update all configs including changing the owner. This will generally be a DAO.
+    pub owner: Option<String>,
+    // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
+    pub manager: Option<String>,
+    pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
 
@@ -24,17 +26,18 @@ pub enum ExecuteMsg {
     },
     Claim {},
     UpdateConfig {
-        owner: Option<Addr>,
-        manager: Option<Addr>,
+        owner: Option<String>,
+        manager: Option<String>,
         duration: Option<Duration>,
     },
     AddHook {
-        addr: Addr,
+        addr: String,
     },
     RemoveHook {
-        addr: Addr,
+        addr: String,
     },
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReceiveMsg {
@@ -92,9 +95,9 @@ pub struct TotalValueResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetConfigResponse {
-    pub owner: Option<Addr>,
-    pub manager: Option<Addr>,
-    pub token_address: Addr,
+    pub owner: Option<String>,
+    pub manager: Option<String>,
+    pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
 
