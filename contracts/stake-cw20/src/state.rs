@@ -3,12 +3,14 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Claims;
+use cw_controllers::Hooks;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {
-    pub admin: Option<Addr>,
+    pub owner: Option<Addr>,
+    pub manager: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }
@@ -35,3 +37,6 @@ pub const MAX_CLAIMS: u64 = 100;
 pub const CLAIMS: Claims = Claims::new("claims");
 
 pub const BALANCE: Item<Uint128> = Item::new("balance");
+
+// Hooks to contracts that will receive staking and unstaking messages
+pub const HOOKS: Hooks = Hooks::new("hooks");
