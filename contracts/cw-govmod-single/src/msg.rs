@@ -126,6 +126,10 @@ pub enum QueryMsg {
         start_after: Option<u64>,
         limit: Option<u64>,
     },
+    ReverseProposals {
+        start_before: Option<u64>,
+        limit: Option<u64>,
+    },
     ProposalCount {},
     Vote {
         proposal_id: u64,
