@@ -92,8 +92,8 @@ pub fn execute_update_config(
     new_manager: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
-    let new_owner = new_owner.map(|new_owner| deps.api.addr_validate(new_owner)).transpose()?;
-    let new_manager = new_manager.map(|new_manager| deps.api.addr_validate(new_manager)).transpose()?;
+    let new_owner = new_owner.map(|new_owner| deps.api.addr_validate(&*new_owner)).transpose()?;
+    let new_manager = new_manager.map(|new_manager| deps.api.addr_validate(&*new_manager)).transpose()?;
     let mut config: Config = CONFIG.load(deps.storage)?;
     if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
         return Err(ContractError::Unauthorized {});
