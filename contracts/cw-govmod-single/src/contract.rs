@@ -14,6 +14,7 @@ use crate::{
     error::ContractError,
     msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::{advance_proposal_id, Proposal, Status},
+    query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
         get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
@@ -355,6 +356,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => query_list_votes(deps, proposal_id, start_after, limit),
         QueryMsg::Info {} => query_info(deps),
+        QueryMsg::ReverseProposals {
+            start_before,
+            limit,
+        } => query_reverse_proposals(deps, env, start_before, limit),
     }
 }
 
@@ -384,7 +389,26 @@ pub fn query_list_proposals(
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
         .collect();
 
-    to_binary(&props)
+    to_binary(&ProposalListResponse { proposals: props })
+}
+
+pub fn query_reverse_proposals(
+    deps: Deps,
+    env: Env,
+    start_before: Option<u64>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let max = start_before.map(Bound::exclusive);
+    let props: Vec<ProposalResponse> = PROPOSALS
+        .range(deps.storage, None, max, cosmwasm_std::Order::Descending)
+        .take(limit as usize)
+        .collect::<Result<Vec<(u64, Proposal)>, _>>()?
+        .into_iter()
+        .map(|(id, proposal)| proposal.into_response(&env.block, id))
+        .collect();
+
+    to_binary(&ProposalListResponse { proposals: props })
 }
 
 pub fn query_proposal_count(deps: Deps) -> StdResult<Binary> {

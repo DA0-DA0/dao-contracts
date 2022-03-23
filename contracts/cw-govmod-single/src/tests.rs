@@ -9,7 +9,7 @@ use voting::{Vote, Votes};
 use crate::{
     msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::{Proposal, Status},
-    query::{ProposalResponse, VoteInfo, VoteResponse},
+    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
     state::{CheckedDepositInfo, Config},
     threshold::Threshold,
 };
@@ -1280,4 +1280,149 @@ fn test_no_return_if_no_refunds() {
 
     // Proposal has been closed but deposit has not been refunded.
     assert_eq!(balance.balance, Uint128::new(9));
+}
+
+#[test]
+fn test_query_list_proposals() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+    let gov_addr = instantiate_with_default_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(0),
+            },
+            max_voting_period: cw_utils::Duration::Height(100),
+            only_members_execute: true,
+            deposit_info: None,
+        },
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100),
+        }]),
+    );
+
+    let gov_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &cw_governance::msg::QueryMsg::GovernanceModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(gov_modules.len(), 1);
+
+    let govmod = gov_modules.into_iter().next().unwrap();
+
+    for i in 1..10 {
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod.clone(),
+            &ExecuteMsg::Propose {
+                title: format!("Text proposal {}.", i),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+                latest: None,
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    let proposals_forward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::ListProposals {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let mut proposals_backward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::ReverseProposals {
+                start_before: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    proposals_backward.proposals.reverse();
+
+    assert_eq!(proposals_forward.proposals, proposals_backward.proposals);
+
+    let expected = ProposalResponse {
+        id: 1,
+        proposal: Proposal {
+            title: "Text proposal 1.".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            proposer: Addr::unchecked(CREATOR_ADDR),
+            start_height: app.block_info().height,
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + 100),
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(0),
+            },
+            total_power: Uint128::new(100),
+            msgs: vec![],
+            status: Status::Open,
+            votes: Votes::zero(),
+            deposit_info: None,
+        },
+    };
+    assert_eq!(proposals_forward.proposals[0], expected);
+
+    // Get proposals (3, 5]
+    let proposals_forward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::ListProposals {
+                start_after: Some(3),
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+    let mut proposals_backward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod,
+            &QueryMsg::ReverseProposals {
+                start_before: Some(6),
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+
+    let expected = ProposalResponse {
+        id: 4,
+        proposal: Proposal {
+            title: "Text proposal 4.".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            proposer: Addr::unchecked(CREATOR_ADDR),
+            start_height: app.block_info().height,
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + 100),
+            threshold: Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(50),
+                quorum: Decimal::percent(0),
+            },
+            total_power: Uint128::new(100),
+            msgs: vec![],
+            status: Status::Open,
+            votes: Votes::zero(),
+            deposit_info: None,
+        },
+    };
+    assert_eq!(proposals_forward.proposals[0], expected);
+    assert_eq!(proposals_backward.proposals[1], expected);
+
+    proposals_backward.proposals.reverse();
+    assert_eq!(proposals_forward.proposals, proposals_backward.proposals);
 }

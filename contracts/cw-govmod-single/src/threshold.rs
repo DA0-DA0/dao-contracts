@@ -32,6 +32,15 @@ fn validate_percentage(percent: &Decimal) -> Result<(), ContractError> {
     }
 }
 
+/// Asserts that a quorum <= 1. Quorums may be zero.
+fn validate_quorum(quorum: &Decimal) -> Result<(), ContractError> {
+    if *quorum > Decimal::one() {
+        Err(ContractError::UnreachableThreshold {})
+    } else {
+        Ok(())
+    }
+}
+
 impl Threshold {
     /// returns error if this is an unreachable value,
     /// given a total weight of all members in the group
@@ -42,7 +51,7 @@ impl Threshold {
             } => validate_percentage(percentage_needed),
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 validate_percentage(threshold)?;
-                validate_percentage(quorum)
+                validate_quorum(quorum)
             }
         }
     }
