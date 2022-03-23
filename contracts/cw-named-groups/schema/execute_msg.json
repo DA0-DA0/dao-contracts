@@ -1,15 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ExecuteMsg",
-  "anyOf": [
+  "oneOf": [
     {
       "type": "object",
       "required": [
-        "increment"
+        "add"
       ],
       "properties": {
-        "increment": {
-          "type": "object"
+        "add": {
+          "type": "object",
+          "required": [
+            "addresses",
+            "group"
+          ],
+          "properties": {
+            "addresses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "group": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -17,18 +32,26 @@
     {
       "type": "object",
       "required": [
-        "reset"
+        "remove"
       ],
       "properties": {
-        "reset": {
+        "remove": {
           "type": "object",
           "required": [
-            "count"
+            "group"
           ],
           "properties": {
-            "count": {
-              "type": "integer",
-              "format": "int32"
+            "addresses": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "group": {
+              "type": "string"
             }
           }
         }
