@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -13,14 +15,17 @@ use crate::state::{GROUPS, OWNER};
 const CONTRACT_NAME: &str = "crates.io:named-groups";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn validate_addresses(deps: &DepsMut, addresses: Vec<String>) -> Result<Vec<Addr>, ContractError> {
-    let mut validated: Vec<Addr> = Vec::new();
+fn validate_addresses(
+    deps: &DepsMut,
+    addresses: impl IntoIterator<Item = String>,
+) -> Result<HashSet<Addr>, ContractError> {
+    let mut validated: HashSet<Addr> = HashSet::new();
     for address in addresses {
         let addr = deps
             .api
             .addr_validate(&address)
             .map_err(|_| ContractError::InvalidAddress(address.clone()))?;
-        validated.push(addr);
+        validated.insert(addr);
     }
     Ok(validated)
 }
@@ -40,8 +45,7 @@ pub fn instantiate(
     // Validate and save initial groups.
     if let Some(groups) = msg.groups.clone() {
         for group in groups {
-            let mut addrs = validate_addresses(&deps, group.addresses)?;
-            addrs.sort();
+            let addrs = validate_addresses(&deps, group.addresses)?;
             GROUPS.save(deps.storage, &group.name, &addrs)?;
         }
     }
@@ -88,9 +92,6 @@ fn execute_add(
                 let mut group = existing_group.unwrap_or_default();
                 // Add new addresses.
                 group.extend(addrs);
-                // Remove duplicates.
-                group.sort();
-                group.dedup();
 
                 Ok(group)
             })
@@ -134,7 +135,10 @@ fn execute_remove(
             let addrs = validate_addresses(&deps, addresses)?;
 
             // Remove addresses from group.
-            group_addresses.retain(|addr| !addrs.contains(addr));
+            addrs.iter().for_each(|addr| {
+                group_addresses.remove(addr);
+            });
+            // Remove group entirely if empty.
             if group_addresses.is_empty() {
                 GROUPS.remove(deps.storage, &group);
             } else {
@@ -147,16 +151,10 @@ fn execute_remove(
         GROUPS.remove(deps.storage, &group);
     }
 
-    let addresses_in_group = GROUPS
-        .load(deps.storage, &group)
-        .unwrap_or_default()
-        .len()
-        .to_string();
-
     Ok(Response::default()
         .add_attribute("method", "remove")
         .add_attribute("group", group)
-        .add_attribute("addresses_in_group", addresses_in_group))
+        .add_attribute("addresses_in_group", group_addresses.len().to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
