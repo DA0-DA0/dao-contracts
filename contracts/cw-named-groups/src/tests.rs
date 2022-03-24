@@ -1,3 +1,5 @@
+use std::{collections::HashSet, iter::FromIterator};
+
 use crate::{
     msg::{DumpResponse, Group, InstantiateMsg, QueryMsg},
     ContractError,
@@ -21,7 +23,7 @@ const USER2: &str = "USER2";
 fn group_factory(id: u8) -> Group {
     Group {
         name: format!("GROUP{}_NAME", id),
-        addresses: vec![format!("USER{}", id)],
+        addresses: HashSet::from_iter(vec![format!("USER{}", id)]),
     }
 }
 
@@ -117,7 +119,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group1.name.clone(),
-                addresses: group1.addresses.clone(),
+                addresses: group1.addresses.iter().cloned().collect(),
             },
             &[],
         )
@@ -167,7 +169,7 @@ mod add {
             dump_result.groups[0],
             Group {
                 name: group_name,
-                addresses,
+                addresses: addresses.iter().cloned().collect(),
             }
         );
     }
@@ -185,7 +187,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group1.name.clone(),
-                addresses: group1.addresses.clone(),
+                addresses: group1.addresses.iter().cloned().collect(),
             },
             &[],
         )
@@ -197,7 +199,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group2.name.clone(),
-                addresses: group2.addresses.clone(),
+                addresses: group2.addresses.iter().cloned().collect(),
             },
             &[],
         )
@@ -232,7 +234,7 @@ mod remove {
                 contract_addr.clone(),
                 &ExecuteMsg::Remove {
                     group: group1.name.clone(),
-                    addresses: Some(group1.addresses.clone()),
+                    addresses: Some(group1.addresses.iter().cloned().collect()),
                 },
                 &[],
             )
@@ -278,7 +280,7 @@ mod remove {
                 contract_addr,
                 &ExecuteMsg::Remove {
                     group: group1.name.clone(),
-                    addresses: Some(group1.addresses.clone()),
+                    addresses: Some(group1.addresses.iter().cloned().collect()),
                 },
                 &[],
             )
@@ -294,7 +296,9 @@ mod remove {
         let group1 = group_factory(1);
 
         let mut group1_with_two_addresses = group_factory(1);
-        group1_with_two_addresses.addresses.push(USER2.to_string());
+        group1_with_two_addresses
+            .addresses
+            .insert(USER2.to_string());
 
         // Instantiate with one group containing two addresses.
         let (mut app, contract_addr) =
@@ -323,7 +327,7 @@ mod remove {
             contract_addr.clone(),
             &ExecuteMsg::Remove {
                 group: group1.name,
-                addresses: Some(group1.addresses),
+                addresses: Some(group1.addresses.iter().cloned().collect()),
             },
             &[],
         )
@@ -337,7 +341,9 @@ mod remove {
     #[test]
     fn remove_entire_group() {
         let mut group1_with_two_addresses = group_factory(1);
-        group1_with_two_addresses.addresses.push(USER2.to_string());
+        group1_with_two_addresses
+            .addresses
+            .insert(USER2.to_string());
 
         // Instantiate with one group containing two addresses.
         let (mut app, contract_addr) =
