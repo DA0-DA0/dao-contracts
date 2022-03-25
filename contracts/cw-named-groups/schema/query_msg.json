@@ -13,6 +13,70 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "list_groups"
+      ],
+      "properties": {
+        "list_groups": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "list_addresses"
+      ],
+      "properties": {
+        "list_addresses": {
+          "type": "object",
+          "required": [
+            "group"
+          ],
+          "properties": {
+            "group": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_address_in_group"
+      ],
+      "properties": {
+        "is_address_in_group": {
+          "type": "object",
+          "required": [
+            "address",
+            "group"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "group": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

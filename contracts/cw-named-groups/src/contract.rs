@@ -14,8 +14,8 @@ use serde::Serialize;
 
 use crate::error::ContractError;
 use crate::msg::{
-    DumpResponse, ExecuteMsg, Group, InstantiateMsg, ListAddressesResponse, ListGroupsResponse,
-    QueryMsg,
+    DumpResponse, ExecuteMsg, Group, InstantiateMsg, IsAddressInGroupResponse,
+    ListAddressesResponse, ListGroupsResponse, QueryMsg,
 };
 use crate::state::{ADDRESSES, GROUPS, OWNER};
 
@@ -177,30 +177,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Dump {} => to_binary(&query_dump(deps)?),
         QueryMsg::ListAddresses { group } => to_binary(&query_list_addresses(deps, group)?),
         QueryMsg::ListGroups { address } => to_binary(&query_list_groups(deps, address)?),
+        QueryMsg::IsAddressInGroup { address, group } => {
+            to_binary(&query_is_address_in_group(deps, address, group)?)
+        }
     }
-}
-
-fn query_list_addresses(deps: Deps, group: String) -> StdResult<ListAddressesResponse> {
-    let addresses = GROUPS
-        .load(deps.storage, &group)
-        .map_err(|_| StdError::not_found("group"))?;
-    Ok(ListAddressesResponse {
-        addresses: addresses.into_iter().collect(),
-    })
-}
-
-fn query_list_groups(deps: Deps, address: String) -> StdResult<ListGroupsResponse> {
-    // Validate address.
-    let addr = deps.api.addr_validate(&address)?;
-    // Return groups, or an empty set if failed to load (address probably doesn't exist).
-    // It doesn't make sense to ask for the addresses in a group if the group doesn't exist, which is why
-    // we don't return an error in query_list_addresses; however, here in query_list_groups, it makes sense
-    // to return an empty list when an address is not in any groups since conceptually the structure
-    // is One Group to Many Addresses.
-    let groups = ADDRESSES.load(deps.storage, addr).unwrap_or_default();
-    Ok(ListGroupsResponse {
-        groups: groups.into_iter().collect(),
-    })
 }
 
 fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
@@ -217,6 +197,48 @@ fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
     }
 
     Ok(DumpResponse { groups: dump })
+}
+
+fn query_list_addresses(deps: Deps, group: String) -> StdResult<ListAddressesResponse> {
+    let addrs = GROUPS
+        .load(deps.storage, &group)
+        .map_err(|_| StdError::not_found("group"))?;
+
+    Ok(ListAddressesResponse {
+        addresses: addrs.into_iter().collect(),
+    })
+}
+
+fn query_list_groups(deps: Deps, address: String) -> StdResult<ListGroupsResponse> {
+    // Validate address.
+    let addr = deps.api.addr_validate(&address)?;
+    // Return groups, or an empty set if failed to load (address probably doesn't exist).
+    // It doesn't make sense to ask for the addresses in a group if the group doesn't exist, which is why
+    // we don't return an error in query_list_addresses; however, here in query_list_groups, it makes sense
+    // to return an empty list when an address is not in any groups since conceptually the structure
+    // is One Group to Many Addresses.
+    let groups = ADDRESSES.load(deps.storage, addr).unwrap_or_default();
+
+    Ok(ListGroupsResponse {
+        groups: groups.into_iter().collect(),
+    })
+}
+
+fn query_is_address_in_group(
+    deps: Deps,
+    address: String,
+    group: String,
+) -> StdResult<IsAddressInGroupResponse> {
+    // Validate address.
+    let addr = deps.api.addr_validate(&address)?;
+    // Verify group exists and get addresses for group.
+    let addrs = GROUPS
+        .load(deps.storage, &group)
+        .map_err(|_| StdError::not_found("group"))?;
+
+    Ok(IsAddressInGroupResponse {
+        is_in_group: addrs.contains(&addr),
+    })
 }
 
 fn add_to_map<'a, K, V>(
