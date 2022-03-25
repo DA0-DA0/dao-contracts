@@ -42,17 +42,7 @@ pub enum VotesNeeded {
 /// Note that it is possible, though unlikely, that no number of votes
 /// will ever meet the threshold. This happens if the total power is
 /// zero. For example, this may happen if all votes are abstain.
-pub fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> VotesNeeded {
-    // If there are no votes possible then no threshold will ever be
-    // reachable except for the case where there is a zero percent
-    // passing percentage in which case all vote counts should pass.
-    //
-    // A zero percent passing threshold is not actually allowed in the
-    // `validate_percentage` function so we should really never hit
-    // that case.
-    if total_power.is_zero() && !passing_percentage.is_zero() {
-        return VotesNeeded::Unreachable;
-    }
+pub fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> Uint128 {
     // Voting power is counted with a Uint128. In order to avoid an
     // overflow while multiplying by the percision factor we need to
     // do a full mul which results in a Uint256.
@@ -96,8 +86,7 @@ pub fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> VotesN
     // This number is 2^128 which will fit into a 128 bit
     // integer. Note: if we didn't floor here this would not be the
     // case, happily unsigned integer division does indeed do that.
-    let truncated: Uint128 = rounded.try_into().unwrap();
-    VotesNeeded::Finite(truncated)
+    rounded.try_into().unwrap()
 }
 
 /// Determines if a number of votes meets the provided threshold given
@@ -107,10 +96,7 @@ pub fn votes_meet_threshold(
     total_power: Uint128,
     passing_percentage: Decimal,
 ) -> bool {
-    match votes_needed(total_power, passing_percentage) {
-        VotesNeeded::Finite(needed) => votes >= needed,
-        VotesNeeded::Unreachable => false,
-    }
+    votes >= votes_needed(total_power, passing_percentage)
 }
 
 impl Votes {
@@ -186,47 +172,52 @@ mod test {
     fn votes_needed_rounds_properly() {
         // round up right below 1
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(1)),
+            Uint128::new(1),
             votes_needed(Uint128::new(3), Decimal::permille(333))
         );
         // round up right over 1
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(2)),
+            Uint128::new(2),
             votes_needed(Uint128::new(3), Decimal::permille(334))
         );
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(11)),
+            Uint128::new(11),
             votes_needed(Uint128::new(30), Decimal::permille(334))
         );
 
         // exact matches don't round
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(17)),
+            Uint128::new(17),
             votes_needed(Uint128::new(34), Decimal::percent(50))
         );
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(12)),
+            Uint128::new(12),
             votes_needed(Uint128::new(48), Decimal::percent(25))
         );
 
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(7)),
+            Uint128::new(7),
             votes_needed(Uint128::new(13), Decimal::percent(50))
         );
 
         assert_eq!(
-            VotesNeeded::Unreachable,
+            Uint128::zero(),
             votes_needed(Uint128::zero(), Decimal::percent(50))
         );
 
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(1)),
+            Uint128::new(1),
             votes_needed(Uint128::new(1), Decimal::percent(1))
         );
 
         assert_eq!(
-            VotesNeeded::Finite(Uint128::new(0)),
+            Uint128::new(0),
             votes_needed(Uint128::new(1), Decimal::percent(0))
+        );
+
+        assert_eq!(
+            Uint128::zero(),
+            votes_needed(Uint128::zero(), Decimal::percent(99))
         );
     }
 
@@ -240,7 +231,8 @@ mod test {
                 threshold
             ))
         }
-        assert!(!votes_meet_threshold(
+        // Zero votes out of zero total power meet any threshold.
+        assert!(votes_meet_threshold(
             Uint128::new(0),
             Uint128::new(0),
             threshold
