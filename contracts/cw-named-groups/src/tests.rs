@@ -333,9 +333,10 @@ mod remove {
         )
         .unwrap();
 
-        // Ensure there are no groups.
+        // Ensure there is still 1 group but it is empty.
         let dump_result = dump(&app, &contract_addr);
-        assert_eq!(dump_result.groups.len(), 0);
+        assert_eq!(dump_result.groups.len(), 1);
+        assert_eq!(dump_result.groups[0].addresses.len(), 0);
     }
 
     #[test]
