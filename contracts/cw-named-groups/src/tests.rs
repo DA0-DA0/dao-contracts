@@ -523,7 +523,7 @@ mod list_groups {
         let groups = list_groups(
             &app,
             &contract_addr,
-            group1.addresses.iter().cloned().next().unwrap(),
+            group1.addresses.iter().next().cloned().unwrap(),
         )
         .unwrap()
         .groups;
@@ -618,7 +618,7 @@ mod is_address_in_group {
         let is_in_group = is_address_in_group(
             &app,
             &contract_addr,
-            group1.addresses.iter().cloned().next().unwrap(),
+            group1.addresses.iter().next().cloned().unwrap(),
             group1.name,
         )
         .unwrap()
