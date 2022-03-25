@@ -26,15 +26,32 @@ pub enum Vote {
     Abstain,
 }
 
-/// Information about the number of votes needed to pass a proposal.
-#[derive(PartialEq, Clone, Debug)]
-pub enum VotesNeeded {
-    /// A finite number of votes.
-    Finite(Uint128),
-    /// An unrechable number of votes. Caused by zero total voting
-    /// power.
-    Unreachable,
+pub enum VoteCmp {
+    Greater,
+    Geq,
 }
+
+/// Compares `votes` with `total_power * passing_percentage`. The
+/// comparason function used depends on the `VoteCmp` variation
+/// selected.
+pub fn compare_vote_count(
+    votes: Uint128,
+    cmp: VoteCmp,
+    total_power: Uint128,
+    passing_percentage: Decimal,
+) -> bool {
+    let votes = votes.full_mul(PRECISION_FACTOR);
+    let total_power = total_power.full_mul(PRECISION_FACTOR);
+    let threshold = total_power.multiply_ratio(
+        passing_percentage.atomics(),
+        Uint256::from(10u64).pow(passing_percentage.decimal_places()),
+    );
+    match cmp {
+        VoteCmp::Greater => votes > threshold,
+        VoteCmp::Geq => votes >= threshold,
+    }
+}
+
 /// Computes the number of votes needed for a proposal to pass. This
 /// must round up. For example, with a 50% passing percentage and 15
 /// total votes 8 votes are required, not 7.
@@ -87,16 +104,6 @@ pub fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> Uint12
     // integer. Note: if we didn't floor here this would not be the
     // case, happily unsigned integer division does indeed do that.
     rounded.try_into().unwrap()
-}
-
-/// Determines if a number of votes meets the provided threshold given
-/// the total number of votes outstanding.
-pub fn votes_meet_threshold(
-    votes: Uint128,
-    total_power: Uint128,
-    passing_percentage: Decimal,
-) -> bool {
-    votes >= votes_needed(total_power, passing_percentage)
 }
 
 impl Votes {
@@ -154,6 +161,16 @@ impl std::fmt::Display for Vote {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    /// Determines if a number of votes meets the provided threshold given
+    /// the total number of votes outstanding.
+    fn votes_meet_threshold(
+        votes: Uint128,
+        total_power: Uint128,
+        passing_percentage: Decimal,
+    ) -> bool {
+        votes >= votes_needed(total_power, passing_percentage)
+    }
 
     #[test]
     fn count_votes() {
@@ -231,7 +248,9 @@ mod test {
                 threshold
             ))
         }
-        // Zero votes out of zero total power meet any threshold.
+        /*
+        Zero votes out of zero total power meet any threshold.
+        */
         assert!(votes_meet_threshold(
             Uint128::new(0),
             Uint128::new(0),
