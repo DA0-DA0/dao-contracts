@@ -9,4 +9,4 @@ pub const OWNER: Item<Addr> = Item::new("owner");
 pub const GROUPS: Map<&str, HashSet<Addr>> = Map::new("groups");
 
 // address --> groups
-pub const ADDRESSES: Map<&str, HashSet<String>> = Map::new("addresses");
+pub const ADDRESSES: Map<Addr, HashSet<String>> = Map::new("addresses");
