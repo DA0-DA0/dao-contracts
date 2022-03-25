@@ -1,4 +1,4 @@
-use crate::msg::Threshold;
+use crate::msg::{StakingContractMsg, Threshold};
 use cosmwasm_std::{
     Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdError, StdResult, Storage, Uint128,
 };
@@ -180,9 +180,8 @@ pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");
 pub const GOV_TOKEN: Item<Addr> = Item::new("gov_token");
 
 // Stores staking contract CODE ID and Unbonding time for use in a reply
-pub const STAKING_CONTRACT_CODE_ID: Item<u64> = Item::new("staking_contract_code_id");
-pub const STAKING_CONTRACT_UNSTAKING_DURATION: Item<Option<Duration>> =
-    Item::new("staking_contract_unstaking_duration");
+pub const STAKING_CONTRACT_DETAILS: Item<StakingContractMsg> =
+    Item::new("staking_contract_details");
 
 // Multiple-item map
 pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("votes");

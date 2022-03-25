@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,10 @@ pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
-    pub admin: Option<String>,
+    // Owner can update all configs including changing the owner. This will generally be a DAO.
+    pub owner: Option<String>,
+    // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
+    pub manager: Option<String>,
     pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
@@ -23,10 +26,18 @@ pub enum ExecuteMsg {
     },
     Claim {},
     UpdateConfig {
-        admin: Option<String>,
+        owner: Option<String>,
+        manager: Option<String>,
         duration: Option<Duration>,
     },
+    AddHook {
+        addr: String,
+    },
+    RemoveHook {
+        addr: String,
+    },
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReceiveMsg {
@@ -52,6 +63,7 @@ pub enum QueryMsg {
     Claims {
         address: String,
     },
+    GetHooks {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -83,7 +95,14 @@ pub struct TotalValueResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetConfigResponse {
-    pub admin: Option<Addr>,
-    pub token_address: Addr,
+    pub owner: Option<String>,
+    pub manager: Option<String>,
+    pub token_address: String,
     pub unstaking_duration: Option<Duration>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct GetHooksResponse {
+    pub hooks: Vec<String>,
 }
