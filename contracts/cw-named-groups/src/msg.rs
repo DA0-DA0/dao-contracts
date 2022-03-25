@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +20,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Add {
         group: String,
-        addresses: Vec<String>,
+        addresses: Option<Vec<String>>,
     },
     Remove {
         group: String,
@@ -31,8 +32,8 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Dump {},
-    // GetGroups { address: String },
-    // ListAddresses { group: String },
+    ListGroups { address: String },
+    ListAddresses { group: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -41,11 +42,11 @@ pub struct DumpResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct GetGroupsResponse {
+pub struct ListGroupsResponse {
     pub groups: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ListAddressesResponse {
-    pub addresses: Vec<String>,
+    pub addresses: Vec<Addr>,
 }

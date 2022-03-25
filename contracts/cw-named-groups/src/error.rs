@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("Invalid address: {0}")]
     InvalidAddress(String),
+
+    #[error("Error updating storage")]
+    StorageUpdateError {},
 }
