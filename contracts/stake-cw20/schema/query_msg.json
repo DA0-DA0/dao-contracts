@@ -115,6 +115,18 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "get_hooks"
+      ],
+      "properties": {
+        "get_hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

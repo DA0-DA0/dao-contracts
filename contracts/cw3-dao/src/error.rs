@@ -53,4 +53,10 @@ pub enum ContractError {
 
     #[error("DAO is paused")]
     Paused {},
+
+    #[error("Cannot use an existing staking contract with a new CW20")]
+    CannotUseExistingStakingContract {},
+
+    #[error("Staking contract CW20 and DAO CW20 do not match")]
+    StakingContractMismatch {},
 }

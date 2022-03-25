@@ -2,7 +2,7 @@ use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
 use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, GovTokenInstantiateMsg, GovTokenMsg, InstantiateMsg, ProposeMsg, QueryMsg,
-    Threshold, VoteMsg,
+    StakingContractMsg, Threshold, VoteMsg,
 };
 use crate::query::{
     ConfigResponse, Cw20BalancesResponse, ProposalListResponse, ProposalResponse,
@@ -104,8 +104,10 @@ fn instantiate_dao(
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::UseExistingCw20 {
             addr: cw20.to_string(),
-            stake_contract_code_id: staking_code_id,
             label: "dao-dao".to_string(),
+        },
+        staking_contract: StakingContractMsg::InstantiateNewStakingContract {
+            staking_contract_code_id: staking_code_id,
             unstaking_duration: None,
         },
         threshold,
@@ -264,8 +266,10 @@ fn test_instantiate_works() {
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::UseExistingCw20 {
             addr: cw20_addr.to_string(),
-            stake_contract_code_id,
             label: "dao-dao".to_string(),
+        },
+        staking_contract: StakingContractMsg::InstantiateNewStakingContract {
+            staking_contract_code_id: stake_contract_code_id,
             unstaking_duration: None,
         },
         threshold: Threshold::AbsolutePercentage {
@@ -317,7 +321,6 @@ fn instantiate_new_gov_token() {
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::InstantiateNewCw20 {
             cw20_code_id,
-            stake_contract_code_id,
             label: String::from("DAO DAO"),
             initial_dao_balance: Some(Uint128::new(1000000)),
             msg: GovTokenInstantiateMsg {
@@ -327,6 +330,9 @@ fn instantiate_new_gov_token() {
                 initial_balances: vec![],
                 marketing: None,
             },
+        },
+        staking_contract: StakingContractMsg::InstantiateNewStakingContract {
+            staking_contract_code_id: stake_contract_code_id,
             unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {
@@ -378,7 +384,6 @@ fn instantiate_new_gov_token() {
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::InstantiateNewCw20 {
             cw20_code_id,
-            stake_contract_code_id,
             label: String::from("DAO DAO"),
             initial_dao_balance: None,
             msg: GovTokenInstantiateMsg {
@@ -388,6 +393,9 @@ fn instantiate_new_gov_token() {
                 initial_balances: initial_balances.clone(),
                 marketing: None,
             },
+        },
+        staking_contract: StakingContractMsg::InstantiateNewStakingContract {
+            staking_contract_code_id: stake_contract_code_id,
             unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {
@@ -519,7 +527,6 @@ fn instantiate_new_gov_token() {
         description: "a great DAO!".to_string(),
         gov_token: GovTokenMsg::InstantiateNewCw20 {
             cw20_code_id,
-            stake_contract_code_id,
             label: String::from("DAO DAO"),
             initial_dao_balance: Some(Uint128::new(1000)),
             msg: GovTokenInstantiateMsg {
@@ -529,6 +536,9 @@ fn instantiate_new_gov_token() {
                 initial_balances,
                 marketing: None,
             },
+        },
+        staking_contract: StakingContractMsg::InstantiateNewStakingContract {
+            staking_contract_code_id: stake_contract_code_id,
             unstaking_duration: None,
         },
         threshold: Threshold::ThresholdQuorum {
@@ -571,6 +581,221 @@ fn instantiate_new_gov_token() {
             balance: Uint128::new(1000)
         }
     );
+}
+
+#[test]
+fn instantiate_staking_contract() {
+    let mut app = mock_app();
+    let dao_code_id = app.store_code(contract_dao());
+    let cw20_code_id = app.store_code(contract_cw20_gov());
+    let staking_code_id = app.store_code(contract_staking());
+
+    let max_voting_period = Duration::Time(1234567);
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: Decimal::percent(51),
+        quorum: Decimal::percent(10),
+    };
+
+    // Setup test case, we want to use the cw20_addr and
+    // staking_addr in later tests.
+    // This also tests the case of using an existing cw20
+    // and instantiating a new staking contract
+    let (_dao_addr, cw20_addr, staking_addr) = setup_test_case(
+        &mut app,
+        threshold,
+        max_voting_period,
+        coins(100, NATIVE_TOKEN_DENOM),
+        None,
+        None,
+    );
+
+    // Instantiate with a new staking contract, with a new CW20
+    let initial_balances = vec![
+        Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE),
+        },
+        Cw20Coin {
+            address: VOTER1.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE),
+        },
+        Cw20Coin {
+            address: VOTER2.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE),
+        },
+        Cw20Coin {
+            address: VOTER3.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE * 2),
+        },
+        Cw20Coin {
+            address: POWER_VOTER.to_string(),
+            amount: Uint128::new(INITIAL_BALANCE * 5),
+        },
+    ];
+    let msg = InstantiateMsg {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        gov_token: GovTokenMsg::InstantiateNewCw20 {
+            cw20_code_id,
+            label: String::from("DAO DAO"),
+            initial_dao_balance: Some(Uint128::new(1000000)),
+            msg: GovTokenInstantiateMsg {
+                name: String::from("DAO DAO"),
+                symbol: String::from("DAO"),
+                decimals: 6,
+                initial_balances: initial_balances.clone(),
+                marketing: None,
+            },
+        },
+        staking_contract: StakingContractMsg::InstantiateNewStakingContract {
+            staking_contract_code_id: staking_code_id,
+            unstaking_duration: None,
+        },
+        threshold: Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(51),
+        },
+        max_voting_period,
+        proposal_deposit_amount: Uint128::zero(),
+        refund_failed_proposals: None,
+        image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
+    };
+    app.instantiate_contract(
+        dao_code_id,
+        Addr::unchecked(OWNER),
+        &msg,
+        &[],
+        "cw3-dao",
+        None,
+    )
+    .unwrap();
+
+    // Instantiate with an existing staking contract, with a new CW20
+    // Expect an error as this is an invalid combination
+    let msg = InstantiateMsg {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        gov_token: GovTokenMsg::InstantiateNewCw20 {
+            cw20_code_id,
+            label: String::from("DAO DAO"),
+            initial_dao_balance: Some(Uint128::new(1000000)),
+            msg: GovTokenInstantiateMsg {
+                name: String::from("DAO DAO"),
+                symbol: String::from("DAO"),
+                decimals: 6,
+                initial_balances: initial_balances.clone(),
+                marketing: None,
+            },
+        },
+        staking_contract: StakingContractMsg::UseExistingStakingContract {
+            addr: staking_addr.to_string(),
+        },
+        threshold: Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(51),
+        },
+        max_voting_period,
+        proposal_deposit_amount: Uint128::zero(),
+        refund_failed_proposals: None,
+        image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
+    };
+    app.instantiate_contract(
+        dao_code_id,
+        Addr::unchecked(OWNER),
+        &msg,
+        &[],
+        "cw3-dao",
+        None,
+    )
+    .unwrap_err();
+
+    // Create another CW20 to use to test for staking contract
+    // mismatch error
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("Other"),
+        symbol: String::from("OTHER"),
+        decimals: 6,
+        initial_balances,
+        mint: None,
+        marketing: None,
+    };
+    let other_cw20_addr = app
+        .instantiate_contract(
+            cw20_code_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &[],
+            "cw20",
+            None,
+        )
+        .unwrap();
+
+    // Instantiate a DAO with an existing CW20 (other_cw20_addr) and an existing staking contract
+    // (staking_addr). We expect this to error as the CW20 address does not match the CW20
+    // address in the staking contract (queried by the GetConfig route)
+    let msg = InstantiateMsg {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        gov_token: GovTokenMsg::UseExistingCw20 {
+            addr: other_cw20_addr.to_string(),
+            label: "dao-dao".to_string(),
+        },
+        staking_contract: StakingContractMsg::UseExistingStakingContract {
+            addr: staking_addr.to_string(),
+        },
+        threshold: Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(51),
+        },
+        max_voting_period,
+        proposal_deposit_amount: Uint128::zero(),
+        refund_failed_proposals: None,
+        image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
+    };
+    let _err = app
+        .instantiate_contract(
+            dao_code_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &[],
+            "cw3-dao",
+            None,
+        )
+        .unwrap_err();
+
+    // Now lets use an existing staking contract, using an existing CW20
+    let msg = InstantiateMsg {
+        name: "dao-dao".to_string(),
+        description: "a great DAO!".to_string(),
+        gov_token: GovTokenMsg::UseExistingCw20 {
+            addr: cw20_addr.to_string(),
+            label: "dao-dao".to_string(),
+        },
+        staking_contract: StakingContractMsg::UseExistingStakingContract {
+            addr: staking_addr.to_string(),
+        },
+        threshold: Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(51),
+        },
+        max_voting_period,
+        proposal_deposit_amount: Uint128::zero(),
+        refund_failed_proposals: None,
+        image_url: None,
+        only_members_execute: true,
+        automatically_add_cw20s: true,
+    };
+    app.instantiate_contract(
+        dao_code_id,
+        Addr::unchecked(OWNER),
+        &msg,
+        &[],
+        "cw3-dao",
+        None,
+    )
+    .unwrap();
 }
 
 #[test]
