@@ -70,9 +70,10 @@ pub fn instantiate(
                         admin: Some(info.sender.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: Some(info.sender.to_string()),
+                            owner: Some(info.sender.to_string()),
                             unstaking_duration,
                             token_address: address.to_string(),
+                            manager: None,
                         })?,
                     };
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);
@@ -251,9 +252,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         admin: Some(dao.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: Some(dao.to_string()),
+                            owner: Some(dao.to_string()),
                             unstaking_duration,
                             token_address: token.to_string(),
+                            manager: None,
                         })?,
                     };
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);
