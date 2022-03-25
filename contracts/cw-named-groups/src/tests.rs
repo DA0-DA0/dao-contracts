@@ -92,7 +92,7 @@ mod add {
                 contract_addr.clone(),
                 &ExecuteMsg::Add {
                     group: "group1".to_string(),
-                    addresses: vec![USER1.to_string()],
+                    addresses: Some(vec![USER1.to_string()]),
                 },
                 &[],
             )
@@ -119,7 +119,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group1.name.clone(),
-                addresses: group1.addresses.iter().cloned().collect(),
+                addresses: Some(group1.addresses.iter().cloned().collect()),
             },
             &[],
         )
@@ -144,7 +144,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group_name.clone(),
-                addresses: addresses[..1].to_vec(),
+                addresses: Some(addresses[..1].to_vec()),
             },
             &[],
         )
@@ -156,7 +156,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group_name.clone(),
-                addresses: addresses[1..].to_vec(),
+                addresses: Some(addresses[1..].to_vec()),
             },
             &[],
         )
@@ -187,7 +187,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group1.name.clone(),
-                addresses: group1.addresses.iter().cloned().collect(),
+                addresses: Some(group1.addresses.iter().cloned().collect()),
             },
             &[],
         )
@@ -199,7 +199,7 @@ mod add {
             contract_addr.clone(),
             &ExecuteMsg::Add {
                 group: group2.name.clone(),
-                addresses: group2.addresses.iter().cloned().collect(),
+                addresses: Some(group2.addresses.iter().cloned().collect()),
             },
             &[],
         )
