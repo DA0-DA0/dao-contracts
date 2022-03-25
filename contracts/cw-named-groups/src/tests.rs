@@ -1,10 +1,7 @@
 use std::{collections::HashSet, iter::FromIterator};
 
 use crate::{
-    msg::{
-        DumpResponse, ExecuteMsg, Group, InstantiateMsg, ListAddressesResponse, ListGroupsResponse,
-        QueryMsg,
-    },
+    msg::{DumpResponse, ExecuteMsg, Group, InstantiateMsg, QueryMsg},
     ContractError,
 };
 use cosmwasm_std::{Addr, Empty, StdError, StdResult};
@@ -47,20 +44,6 @@ fn instantiate(groups: Option<Vec<Group>>) -> Result<(App, Addr), ContractError>
     } else {
         Err(instantiation_result.unwrap_err().downcast().unwrap())
     }
-}
-
-fn list_addresses(
-    app: &App,
-    contract_addr: &Addr,
-    group: String,
-) -> StdResult<ListAddressesResponse> {
-    app.wrap()
-        .query_wasm_smart(contract_addr, &QueryMsg::ListAddresses { group })
-}
-
-fn list_groups(app: &App, contract_addr: &Addr, address: String) -> StdResult<ListGroupsResponse> {
-    app.wrap()
-        .query_wasm_smart(contract_addr, &QueryMsg::ListGroups { address })
 }
 
 fn dump(app: &App, contract_addr: &Addr) -> DumpResponse {
@@ -383,6 +366,16 @@ mod remove {
 
 mod list_addresses {
     use super::*;
+    use crate::msg::ListAddressesResponse;
+
+    fn list_addresses(
+        app: &App,
+        contract_addr: &Addr,
+        group: String,
+    ) -> StdResult<ListAddressesResponse> {
+        app.wrap()
+            .query_wasm_smart(contract_addr, &QueryMsg::ListAddresses { group })
+    }
 
     #[test]
     fn group_not_found() {
@@ -459,12 +452,22 @@ mod list_addresses {
 
 mod list_groups {
     use super::*;
+    use crate::msg::ListGroupsResponse;
+
+    fn list_groups(
+        app: &App,
+        contract_addr: &Addr,
+        address: String,
+    ) -> StdResult<ListGroupsResponse> {
+        app.wrap()
+            .query_wasm_smart(contract_addr, &QueryMsg::ListGroups { address })
+    }
 
     #[test]
     fn address_not_found() {
         let (app, contract_addr) = instantiate(None).unwrap();
 
-        // Try to list groups from a non-existent address.
+        // List groups from a non-existent address.
         let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string())
             .unwrap()
             .groups;
@@ -490,7 +493,7 @@ mod list_groups {
         )
         .unwrap();
 
-        // Try to list groups from a non-existent address.
+        // List groups from a non-existent address.
         let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string())
             .unwrap()
             .groups;
@@ -517,14 +520,111 @@ mod list_groups {
         .unwrap();
 
         // List groups for address in group.
-        let groups = list_groups(&app, &contract_addr, group1.addresses.iter().cloned().next().unwrap())
-            .unwrap()
-            .groups;
+        let groups = list_groups(
+            &app,
+            &contract_addr,
+            group1.addresses.iter().cloned().next().unwrap(),
+        )
+        .unwrap()
+        .groups;
 
         // Expect address groups to be the added group.
+        assert_eq!(groups, vec![group1.name]);
+    }
+}
+
+mod is_address_in_group {
+    use super::*;
+    use crate::msg::IsAddressInGroupResponse;
+
+    fn is_address_in_group(
+        app: &App,
+        contract_addr: &Addr,
+        address: String,
+        group: String,
+    ) -> StdResult<IsAddressInGroupResponse> {
+        app.wrap().query_wasm_smart(
+            contract_addr,
+            &QueryMsg::IsAddressInGroup { address, group },
+        )
+    }
+
+    #[test]
+    fn group_not_found() {
+        let (app, contract_addr) = instantiate(None).unwrap();
+
+        // Check if address is in non-existent group.
+        let err = is_address_in_group(
+            &app,
+            &contract_addr,
+            "ADDRESS".to_string(),
+            "GROUP".to_string(),
+        )
+        .unwrap_err();
+
+        // Expect group not found.
+        // Not sure why this becomes a generic error and not the StdError::NotFound enum but whatever.
         assert_eq!(
-            groups,
-            vec![group1.name]
+            err,
+            StdError::generic_err("Querier contract error: group not found")
         );
+    }
+
+    #[test]
+    fn empty_group() {
+        let (mut app, contract_addr) = instantiate(None).unwrap();
+
+        let group1 = group_factory(1);
+        // Add empty group.
+        app.execute_contract(
+            Addr::unchecked(ADMIN),
+            contract_addr.clone(),
+            &ExecuteMsg::Add {
+                group: group1.name.clone(),
+                addresses: None,
+            },
+            &[],
+        )
+        .unwrap();
+
+        // Check if address is in group.
+        let is_in_group =
+            is_address_in_group(&app, &contract_addr, "ADDRESS".to_string(), group1.name)
+                .unwrap()
+                .is_in_group;
+
+        // Expect not in group.
+        assert!(!is_in_group);
+    }
+
+    #[test]
+    fn populated_group() {
+        let (mut app, contract_addr) = instantiate(None).unwrap();
+
+        let group1 = group_factory(1);
+        // Add group.
+        app.execute_contract(
+            Addr::unchecked(ADMIN),
+            contract_addr.clone(),
+            &ExecuteMsg::Add {
+                group: group1.name.clone(),
+                addresses: Some(group1.addresses.iter().cloned().collect()),
+            },
+            &[],
+        )
+        .unwrap();
+
+        // Check if address is in group.
+        let is_in_group = is_address_in_group(
+            &app,
+            &contract_addr,
+            group1.addresses.iter().cloned().next().unwrap(),
+            group1.name,
+        )
+        .unwrap()
+        .is_in_group;
+
+        // Expect in group.
+        assert!(is_in_group);
     }
 }

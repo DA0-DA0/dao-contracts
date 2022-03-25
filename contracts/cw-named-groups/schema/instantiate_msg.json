@@ -25,7 +25,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "uniqueItems": true
         },
         "name": {
           "type": "string"

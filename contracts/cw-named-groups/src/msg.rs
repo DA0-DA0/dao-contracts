@@ -34,6 +34,7 @@ pub enum QueryMsg {
     Dump {},
     ListGroups { address: String },
     ListAddresses { group: String },
+    IsAddressInGroup { address: String, group: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -49,4 +50,9 @@ pub struct ListGroupsResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ListAddressesResponse {
     pub addresses: Vec<Addr>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IsAddressInGroupResponse {
+    pub is_in_group: bool,
 }

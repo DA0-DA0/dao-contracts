@@ -11,12 +11,14 @@
         "add": {
           "type": "object",
           "required": [
-            "addresses",
             "group"
           ],
           "properties": {
             "addresses": {
-              "type": "array",
+              "type": [
+                "array",
+                "null"
+              ],
               "items": {
                 "type": "string"
               }
