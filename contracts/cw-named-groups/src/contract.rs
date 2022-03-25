@@ -183,9 +183,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_list_addresses(deps: Deps, group: String) -> StdResult<ListAddressesResponse> {
     let addresses = GROUPS
         .load(deps.storage, &group)
-        .map_err(|_| StdError::NotFound {
-            kind: "group".to_string(),
-        })?;
+        .map_err(|_| StdError::not_found("group"))?;
     Ok(ListAddressesResponse {
         addresses: addresses.into_iter().collect(),
     })
@@ -194,12 +192,12 @@ fn query_list_addresses(deps: Deps, group: String) -> StdResult<ListAddressesRes
 fn query_list_groups(deps: Deps, address: String) -> StdResult<ListGroupsResponse> {
     // Validate address.
     let addr = deps.api.addr_validate(&address)?;
-    // Return groups.
-    let groups = ADDRESSES
-        .load(deps.storage, addr)
-        .map_err(|_| StdError::NotFound {
-            kind: "address".to_string(),
-        })?;
+    // Return groups, or an empty set if failed to load (address probably doesn't exist).
+    // It doesn't make sense to ask for the addresses in a group if the group doesn't exist, which is why
+    // we don't return an error in query_list_addresses; however, here in query_list_groups, it makes sense
+    // to return an empty list when an address is not in any groups since conceptually the structure
+    // is One Group to Many Addresses.
+    let groups = ADDRESSES.load(deps.storage, addr).unwrap_or_default();
     Ok(ListGroupsResponse {
         groups: groups.into_iter().collect(),
     })
