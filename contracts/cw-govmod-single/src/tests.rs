@@ -454,7 +454,82 @@ fn test_vote_abstain_only() {
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(100),
         },
-        Status::Open,
+        Status::Passed,
+        None,
+        None,
+    );
+
+    // The quorum shouldn't matter here in determining if the vote is
+    // rejected.
+    for i in 0..101 {
+        do_test_votes(
+            vec![TestVote {
+                voter: "ekez".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(u128::max_value()),
+                should_execute: ShouldExecute::Yes,
+            }],
+            Threshold::ThresholdQuorum {
+                threshold: Decimal::percent(100),
+                quorum: Decimal::percent(i),
+            },
+            Status::Passed,
+            None,
+            None,
+        );
+    }
+}
+
+#[test]
+fn test_single_no() {
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(1),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(100),
+        },
+        Status::Rejected,
+        Some(Uint128::from(u128::max_value())),
+        None,
+    );
+}
+
+#[test]
+fn test_tricky_rounding() {
+    // This tests the smallest possible round up for passing
+    // thresholds we can have. Specifically, a 1% passing threshold
+    // and 1 total vote. This should round up and only pass if there
+    // are more than 1 yes votes.
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Yes,
+            weight: Uint128::new(1),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(1),
+        },
+        Status::Passed,
+        None,
+        None,
+    );
+
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Abstain,
+            weight: Uint128::new(1),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: Decimal::percent(1),
+        },
+        Status::Passed,
         None,
         None,
     );
@@ -480,6 +555,13 @@ fn test_no_double_votes() {
         Threshold::AbsolutePercentage {
             percentage: Decimal::percent(100),
         },
+        // NOTE: Updating our cw20-base version will cause this to
+        // fail. In versions of cw20-base before Feb 15 2022 (the one
+        // we use at the time of writing) it was allowed to have an
+        // initial balance that repeats for a given address but it
+        // would cause miscalculation of the total supply. In this
+        // case the total supply is miscumputed to be 4 so this is
+        // assumed to have 2 abstain votes out of 4 possible votes.
         Status::Open,
         None,
         None,
@@ -623,7 +705,9 @@ fn test_pass_threshold_not_quorum() {
             threshold: Decimal::percent(50),
             quorum: Decimal::percent(60),
         },
-        Status::Open,
+        // As the threshold is 50% and 59% of voters have voted no
+        // this is unable to pass.
+        Status::Rejected,
         Some(Uint128::new(100)),
         None,
     );
