@@ -27,14 +27,16 @@ fn validate_addresses(
     api: &dyn Api,
     addresses: impl IntoIterator<Item = String>,
 ) -> Result<HashSet<Addr>, ContractError> {
-    let mut validated: HashSet<Addr> = HashSet::new();
-    for address in addresses {
-        let addr = api
-            .addr_validate(&address)
-            .map_err(|_| ContractError::InvalidAddress(address.clone()))?;
-        validated.insert(addr);
-    }
-    Ok(validated)
+    let addrs = addresses
+        .into_iter()
+        .map(|address| {
+            let addr = api
+                .addr_validate(&address)
+                .map_err(|_| ContractError::InvalidAddress(address.clone()))?;
+            Ok(addr)
+        })
+        .collect::<Result<HashSet<Addr>, ContractError>>()?;
+    Ok(addrs)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -50,9 +52,9 @@ pub fn instantiate(
     OWNER.save(deps.storage, &info.sender)?;
 
     // Validate and save initial groups.
-    if let Some(groups) = msg.groups.clone() {
+    if let Some(ref groups) = msg.groups {
         for group in groups {
-            let addrs = validate_addresses(deps.api, group.addresses)?;
+            let addrs = validate_addresses(deps.api, group.addresses.clone())?;
             GROUPS.save(deps.storage, &group.name, &addrs)?;
         }
     }
@@ -88,13 +90,12 @@ fn execute_add(
         return Err(ContractError::Unauthorized {});
     }
 
-    let mut addresses_added = 0;
     // If provided addresses, add them to the group.
-    if let Some(addresses) = addresses {
+    if let Some(ref addresses) = addresses {
         // Only attempt to add if addresses are provided.
         if !addresses.is_empty() {
             // Validate addresses.
-            let addrs = validate_addresses(deps.api, addresses)?;
+            let addrs = validate_addresses(deps.api, addresses.clone())?;
 
             // Add group to each address's group list.
             for addr in addrs.iter() {
@@ -102,15 +103,15 @@ fn execute_add(
             }
 
             // Add addresses to group map.
-            add_to_map(deps.storage, GROUPS, &group, addrs.clone())?;
-
-            addresses_added = addrs.len();
+            add_to_map(deps.storage, GROUPS, &group, addrs)?;
         }
     }
     // Otherwise add an empty group.
     else {
         GROUPS.save(deps.storage, &group, &HashSet::new())?;
     }
+
+    let addresses_added = addresses.map(|a| a.len()).unwrap_or_default();
 
     Ok(Response::default()
         .add_attribute("method", "add")
@@ -136,12 +137,11 @@ fn execute_remove(
         .map_err(|_| ContractError::InvalidGroup(group.clone()))?;
 
     // If provided addresses, remove them from the group.
-    let mut addresses_removed = 0;
-    if let Some(addresses) = addresses {
+    if let Some(ref addresses) = addresses {
         // Only attempt to remove if addresses are provided.
         if !addresses.is_empty() {
             // Validate addresses.
-            let addrs = validate_addresses(deps.api, addresses)?;
+            let addrs = validate_addresses(deps.api, addresses.clone())?;
 
             // Remove group from each address's group list.
             let group_set_to_remove = vec![group.clone()];
@@ -156,14 +156,14 @@ fn execute_remove(
 
             // Remove addresses from group map.
             remove_from_map(deps.storage, GROUPS, &group, addrs.iter())?;
-
-            addresses_removed = addrs.len();
         }
     }
     // Otherwise remove the group.
     else {
         GROUPS.remove(deps.storage, &group);
     }
+
+    let addresses_removed = addresses.map(|a| a.len()).unwrap_or_default();
 
     Ok(Response::default()
         .add_attribute("method", "remove")
@@ -184,17 +184,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
-    let mut dump: Vec<Group> = vec![];
-
-    // Load groups into dump.
-    let groups = GROUPS.keys(deps.storage, None, None, Order::Ascending);
-    for group in groups.flatten() {
-        let addresses = GROUPS.load(deps.storage, &group)?;
-        dump.push(Group {
-            name: group,
-            addresses: addresses.into_iter().map(|addr| addr.to_string()).collect(),
-        });
-    }
+    // Create dump of all groups.
+    let dump = GROUPS
+        .keys(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<String>>>()?
+        .into_iter()
+        .map(|group| {
+            let addresses = GROUPS.load(deps.storage, &group)?;
+            Ok(Group {
+                name: group,
+                addresses: addresses.into_iter().map(|addr| addr.to_string()).collect(),
+            })
+        })
+        .collect::<StdResult<Vec<Group>>>()?;
 
     Ok(DumpResponse { groups: dump })
 }
@@ -214,7 +216,7 @@ fn query_list_groups(deps: Deps, address: String) -> StdResult<ListGroupsRespons
     let addr = deps.api.addr_validate(&address)?;
     // Return groups, or an empty set if failed to load (address probably doesn't exist).
     // It doesn't make sense to ask for the addresses in a group if the group doesn't exist, which is why
-    // we don't return an error in query_list_addresses; however, here in query_list_groups, it makes sense
+    // we return an error in query_list_addresses; however, here in query_list_groups, it makes sense
     // to return an empty list when an address is not in any groups since conceptually the structure
     // is One Group to Many Addresses.
     let groups = ADDRESSES.load(deps.storage, addr).unwrap_or_default();
