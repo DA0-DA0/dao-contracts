@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -11,10 +13,11 @@ use cw_utils::parse_reply_instantiate_data;
 use cw_governance_interface::voting;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
+use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
 use crate::query::{DumpStateResponse, GetItemResponse};
 use crate::state::{
-    Config, CONFIG, GOVERNANCE_MODULES, GOVERNANCE_MODULE_COUNT, ITEMS, VOTING_MODULE,
+    Config, CONFIG, GOVERNANCE_MODULES, GOVERNANCE_MODULE_COUNT, ITEMS,
+    PENDING_ITEM_INSTANTIATION_NAMES, VOTING_MODULE,
 };
 
 // version info for migration info
@@ -24,6 +27,15 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const GOV_MODULE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 const VOTE_MODULE_UPDATE_REPLY_ID: u64 = 2;
+
+// Start at this ID since the items to instantiate on the instantiation
+// of this contract can be arbitrarily long. Everything with a reply ID
+// greater than or equal to this value will be considered an instantiated
+// item to store in the items map.
+const PENDING_ITEM_REPLY_ID_START: u64 = 100;
+// The maximum number of items that can be instantiated when this
+// contract is instantiated.
+const MAX_ITEM_INSTANTIATIONS_ON_INSTANTIATE: u64 = u64::MAX - PENDING_ITEM_REPLY_ID_START;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -59,7 +71,48 @@ pub fn instantiate(
 
     GOVERNANCE_MODULE_COUNT.save(deps.storage, &(gov_module_msgs.len() as u64))?;
 
-    Ok(Response::new()
+    let mut response = Response::new();
+
+    // Instantiate items if any are present.
+    if let Some(items) = msg.initial_items {
+        if !items.is_empty() {
+            if items.len() > MAX_ITEM_INSTANTIATIONS_ON_INSTANTIATE.try_into().unwrap() {
+                return Err(ContractError::TooManyItems(
+                    MAX_ITEM_INSTANTIATIONS_ON_INSTANTIATE,
+                    items.len(),
+                ));
+            }
+
+            for (idx, item) in items.into_iter().enumerate() {
+                match item.info {
+                    // Use existing address.
+                    InitialItemInfo::Existing { address } => {
+                        let addr = deps.api.addr_validate(&address)?;
+                        ITEMS.save(deps.storage, item.name, &addr)?;
+                    }
+                    // Instantiate new contract and capture address on successful reply.
+                    InitialItemInfo::Instantiate { info } => {
+                        // Offset reply ID with index.
+                        let reply_id = PENDING_ITEM_REPLY_ID_START + idx as u64;
+
+                        // Create and add submessage.
+                        let item_msg = info.into_wasm_msg(env.contract.address.clone());
+                        let item_msg: SubMsg<Empty> = SubMsg::reply_on_success(item_msg, reply_id);
+                        response = response.add_submessage(item_msg);
+
+                        // Store name in map for later retrieval if the contract instantiation succeeds.
+                        PENDING_ITEM_INSTANTIATION_NAMES.save(
+                            deps.storage,
+                            reply_id,
+                            &item.name,
+                        )?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(response
         .add_attribute("action", "instantiate")
         .add_attribute("sender", info.sender)
         .add_submessage(vote_module_msg)
@@ -351,6 +404,20 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             VOTING_MODULE.save(deps.storage, &vote_module_addr)?;
 
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
+        }
+        reply_id if reply_id >= PENDING_ITEM_REPLY_ID_START => {
+            // Retrieve the name using the ID. If it doesn't exist,
+            // we didn't expect this reply or it was a redundant execution.
+            let item_name = PENDING_ITEM_INSTANTIATION_NAMES.load(deps.storage, reply_id)?;
+
+            let res = parse_reply_instantiate_data(msg)?;
+            let item_addr = deps.api.addr_validate(&res.contract_address)?;
+
+            ITEMS.save(deps.storage, item_name, &item_addr)?;
+            // Remove from pending map since we now have the contract address.
+            PENDING_ITEM_INSTANTIATION_NAMES.remove(deps.storage, reply_id);
+
+            Ok(Response::default().add_attribute("item", item_addr))
         }
         _ => Err(ContractError::UnknownReplyID {}),
     }

@@ -27,6 +27,16 @@
         "null"
       ]
     },
+    "initial_items": {
+      "description": "Initial information for arbitrary contract addresses to be added to the items map. The key is the name of the item in the items map. The value is an enum that either uses an existing address or instantiates a new contract.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/InitialItem"
+      }
+    },
     "name": {
       "description": "The name of the governance contract.",
       "type": "string"
@@ -44,12 +54,6 @@
     "Admin": {
       "description": "Information about the admin of a contract.",
       "oneOf": [
-        {
-          "type": "string",
-          "enum": [
-            "none"
-          ]
-        },
         {
           "description": "A specific address.",
           "type": "object",
@@ -83,12 +87,92 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "description": "No admin.",
+          "type": "object",
+          "required": [
+            "none"
+          ],
+          "properties": {
+            "none": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
       "type": "string"
+    },
+    "InitialItem": {
+      "type": "object",
+      "required": [
+        "info",
+        "name"
+      ],
+      "properties": {
+        "info": {
+          "description": "The info from which to derive the address.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/InitialItemInfo"
+            }
+          ]
+        },
+        "name": {
+          "description": "The name of the item.",
+          "type": "string"
+        }
+      }
+    },
+    "InitialItemInfo": {
+      "oneOf": [
+        {
+          "description": "An existing contract address.",
+          "type": "object",
+          "required": [
+            "Existing"
+          ],
+          "properties": {
+            "Existing": {
+              "type": "object",
+              "required": [
+                "address"
+              ],
+              "properties": {
+                "address": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Info for instantiating a new contract.",
+          "type": "object",
+          "required": [
+            "Instantiate"
+          ],
+          "properties": {
+            "Instantiate": {
+              "type": "object",
+              "required": [
+                "info"
+              ],
+              "properties": {
+                "info": {
+                  "$ref": "#/definitions/ModuleInstantiateInfo"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "ModuleInstantiateInfo": {
       "description": "Information needed to instantiate a governance or voting module.",
