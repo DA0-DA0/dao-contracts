@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DumpStateResponse",
-  "description": "Relevant state for the governance module.",
+  "description": "Relevant state for the governance module. Returned by the `DumpState` query.",
   "type": "object",
   "required": [
     "config",

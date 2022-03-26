@@ -15,6 +15,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 pub const GOVERNANCE_MODULES: Map<Addr, Empty> = Map::new("governance_modules");
 pub const ITEMS: Map<String, Addr> = Map::new("items");
+pub const PENDING_ITEM_INSTANTIATION_NAMES: Map<u64, String> = Map::new("pending_item_instantiations");
 
 /// Stores the number of governance modules present in the governance
 /// contract. This information is avaliable from the governance

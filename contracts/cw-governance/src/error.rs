@@ -27,4 +27,7 @@ pub enum ContractError {
 
     #[error("Unsigned integer overflow.")]
     Overflow {},
+
+    #[error("You can only instantiate {0} items during instantiation, but you tried to instantiate {1}.")]
+    TooManyItems(u64, usize),
 }
