@@ -1,5 +1,8 @@
 use crate::{
-    msg::{DumpResponse, ExecuteMsg, Group, InstantiateMsg, QueryMsg},
+    msg::{
+        DumpResponse, ExecuteMsg, Group, InstantiateMsg, ListAddressesResponse, ListGroupsResponse,
+        QueryMsg,
+    },
     ContractError,
 };
 use cosmwasm_std::{Addr, Empty, StdError, StdResult};
@@ -51,6 +54,40 @@ fn dump(app: &App, contract_addr: &Addr) -> DumpResponse {
         .unwrap()
 }
 
+fn list_addresses(
+    app: &App,
+    contract_addr: &Addr,
+    group: String,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> StdResult<ListAddressesResponse> {
+    app.wrap().query_wasm_smart(
+        contract_addr,
+        &QueryMsg::ListAddresses {
+            group,
+            offset,
+            limit,
+        },
+    )
+}
+
+fn list_groups(
+    app: &App,
+    contract_addr: &Addr,
+    address: String,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> StdResult<ListGroupsResponse> {
+    app.wrap().query_wasm_smart(
+        contract_addr,
+        &QueryMsg::ListGroups {
+            address,
+            offset,
+            limit,
+        },
+    )
+}
+
 mod instantiate {
     use super::*;
 
@@ -65,13 +102,32 @@ mod instantiate {
 
     #[test]
     fn instantiate_with_groups() {
-        let groups = vec![group_factory(1), group_factory(2), group_factory(3)];
+        let group1 = group_factory(1);
+        let groups = vec![group1.clone(), group_factory(2), group_factory(3)];
 
         let (app, contract_addr) = instantiate(Some(groups.clone())).unwrap();
 
-        // Ensure there are the expected groups.
+        // Ensure there are the expected groups in dump.
         let dump_result = dump(&app, &contract_addr);
         assert_eq!(dump_result.groups, groups);
+
+        // Ensure there are the expected addresses for a group.
+        let addresses = list_addresses(&app, &contract_addr, group1.name.clone(), None, None)
+            .unwrap()
+            .addresses;
+        assert_eq!(addresses, group1.addresses);
+
+        // Ensure there are the expected groups for an address.
+        let groups = list_groups(
+            &app,
+            &contract_addr,
+            group1.addresses.get(0).unwrap().clone(),
+            None,
+            None,
+        )
+        .unwrap()
+        .groups;
+        assert_eq!(groups, vec![group1.name]);
     }
 }
 
@@ -466,24 +522,6 @@ mod change_owner {
 
 mod list_addresses {
     use super::*;
-    use crate::msg::ListAddressesResponse;
-
-    fn list_addresses(
-        app: &App,
-        contract_addr: &Addr,
-        group: String,
-        offset: Option<usize>,
-        limit: Option<usize>,
-    ) -> StdResult<ListAddressesResponse> {
-        app.wrap().query_wasm_smart(
-            contract_addr,
-            &QueryMsg::ListAddresses {
-                group,
-                offset,
-                limit,
-            },
-        )
-    }
 
     #[test]
     fn group_not_found() {
@@ -623,24 +661,6 @@ mod list_addresses {
 
 mod list_groups {
     use super::*;
-    use crate::msg::ListGroupsResponse;
-
-    fn list_groups(
-        app: &App,
-        contract_addr: &Addr,
-        address: String,
-        offset: Option<usize>,
-        limit: Option<usize>,
-    ) -> StdResult<ListGroupsResponse> {
-        app.wrap().query_wasm_smart(
-            contract_addr,
-            &QueryMsg::ListGroups {
-                address,
-                offset,
-                limit,
-            },
-        )
-    }
 
     #[test]
     fn address_not_found() {
