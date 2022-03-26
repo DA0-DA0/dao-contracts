@@ -17,6 +17,7 @@ fn named_group_contract() -> Box<dyn Contract<Empty>> {
 const ADMIN: &str = "DAO";
 const USER1: &str = "USER1";
 const USER2: &str = "USER2";
+const USER3: &str = "USER3";
 
 fn group_factory(id: u8) -> Group {
     Group {
@@ -75,7 +76,7 @@ mod instantiate {
 }
 
 mod add {
-    use std::{collections::HashSet};
+    use std::collections::HashSet;
 
     use super::*;
 
@@ -362,6 +363,107 @@ mod remove {
     }
 }
 
+mod change_owner {
+    use super::*;
+
+    #[test]
+    fn change_owner_unauthorized() {
+        let (mut app, contract_addr) = instantiate(None).unwrap();
+
+        // Try to change the owner.
+        let err: ContractError = app
+            .execute_contract(
+                // not the owner
+                Addr::unchecked(USER1),
+                contract_addr.clone(),
+                &ExecuteMsg::ChangeOwner {
+                    owner: USER1.to_string(),
+                },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        // Expect unauthorized.
+        assert_eq!(err, ContractError::Unauthorized {});
+
+        // Ensure the attempted new owner cannot do anything by
+        // trying to add a new group and expecting failure.
+        let group1 = group_factory(1);
+        let err: ContractError = app
+            .execute_contract(
+                // not the owner
+                Addr::unchecked(USER1),
+                contract_addr,
+                &ExecuteMsg::Add {
+                    group: group1.name.clone(),
+                    addresses: Some(group1.addresses.to_vec()),
+                },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        // Expect unauthorized.
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn change_owner_success() {
+        let (mut app, contract_addr) = instantiate(None).unwrap();
+
+        // Change the owner.
+        app.execute_contract(
+            // the current owner
+            Addr::unchecked(ADMIN),
+            contract_addr.clone(),
+            &ExecuteMsg::ChangeOwner {
+                owner: USER1.to_string(),
+            },
+            &[],
+        )
+        .unwrap();
+
+        let group1 = group_factory(1);
+
+        // Ensure the old owner cannot do anything by
+        // trying to add a new group and expecting failure.
+        let err: ContractError = app
+            .execute_contract(
+                // the old owner
+                Addr::unchecked(ADMIN),
+                contract_addr.clone(),
+                &ExecuteMsg::Add {
+                    group: group1.name.clone(),
+                    addresses: Some(group1.addresses.to_vec()),
+                },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        // Expect unauthorized.
+        assert_eq!(err, ContractError::Unauthorized {});
+
+        // Ensure the new owner is authorized.
+        app.execute_contract(
+            // the new owner
+            Addr::unchecked(USER1),
+            contract_addr.clone(),
+            &ExecuteMsg::Add {
+                group: group1.name.clone(),
+                addresses: Some(group1.addresses.to_vec()),
+            },
+            &[],
+        )
+        .unwrap();
+        // Ensure there is one group with the expected contents.
+        let dump_result = dump(&app, &contract_addr);
+        assert_eq!(dump_result.groups.len(), 1);
+        assert_eq!(dump_result.groups[0], group1);
+    }
+}
+
 mod list_addresses {
     use super::*;
     use crate::msg::ListAddressesResponse;
@@ -370,9 +472,17 @@ mod list_addresses {
         app: &App,
         contract_addr: &Addr,
         group: String,
+        offset: Option<usize>,
+        limit: Option<usize>,
     ) -> StdResult<ListAddressesResponse> {
-        app.wrap()
-            .query_wasm_smart(contract_addr, &QueryMsg::ListAddresses { group })
+        app.wrap().query_wasm_smart(
+            contract_addr,
+            &QueryMsg::ListAddresses {
+                group,
+                offset,
+                limit,
+            },
+        )
     }
 
     #[test]
@@ -382,7 +492,7 @@ mod list_addresses {
         let group1 = group_factory(1);
 
         // Try to list addresses from a non-existent group.
-        let err = list_addresses(&app, &contract_addr, group1.name).unwrap_err();
+        let err = list_addresses(&app, &contract_addr, group1.name, None, None).unwrap_err();
 
         // Expect group not found.
         // Not sure why this becomes a generic error and not the StdError::NotFound enum but whatever.
@@ -410,7 +520,7 @@ mod list_addresses {
         .unwrap();
 
         // List addresses from the group.
-        let addresses = list_addresses(&app, &contract_addr, group1.name)
+        let addresses = list_addresses(&app, &contract_addr, group1.name, None, None)
             .unwrap()
             .addresses;
 
@@ -436,12 +546,78 @@ mod list_addresses {
         .unwrap();
 
         // List addresses from the group.
-        let addresses = list_addresses(&app, &contract_addr, group1.name)
+        let addresses = list_addresses(&app, &contract_addr, group1.name, None, None)
             .unwrap()
             .addresses;
 
         // Expect group addresses.
         assert_eq!(addresses, group1.addresses.to_vec());
+    }
+
+    #[test]
+    fn paginate_populated_group() {
+        let mut group1 = group_factory(1);
+        group1
+            .addresses
+            .extend(vec![USER2.to_string(), USER3.to_string()]);
+
+        let (app, contract_addr) = instantiate(Some(vec![group1.clone()])).unwrap();
+
+        // No pagination.
+        let addresses = list_addresses(&app, &contract_addr, group1.name.clone(), None, None)
+            .unwrap()
+            .addresses;
+        // Expect all addresses.
+        assert_eq!(addresses.len(), group1.addresses.len());
+
+        // Pagination, get all.
+        let addresses = list_addresses(
+            &app,
+            &contract_addr,
+            group1.name.clone(),
+            Some(0),
+            Some(group1.addresses.len()),
+        )
+        .unwrap()
+        .addresses;
+        // Expect all addresses.
+        assert_eq!(addresses.len(), group1.addresses.len());
+
+        // Pagination, get 1.
+        let addresses = list_addresses(&app, &contract_addr, group1.name.clone(), Some(1), Some(1))
+            .unwrap()
+            .addresses;
+        // Expect 1 address.
+        assert_eq!(addresses.len(), 1);
+
+        // Pagination, get 2.
+        let addresses = list_addresses(&app, &contract_addr, group1.name.clone(), None, Some(2))
+            .unwrap()
+            .addresses;
+        // Expect 2 addresses.
+        assert_eq!(addresses.len(), 2);
+
+        // Pagination, get 2.
+        let addresses = list_addresses(&app, &contract_addr, group1.name.clone(), Some(1), Some(2))
+            .unwrap()
+            .addresses;
+        // Expect 2 addresses.
+        assert_eq!(addresses.len(), 2);
+
+        // Pagination, high limit, get 1 since offset is 1 from end.
+        let addresses =
+            list_addresses(&app, &contract_addr, group1.name.clone(), Some(2), Some(10))
+                .unwrap()
+                .addresses;
+        // Expect 1 address.
+        assert_eq!(addresses.len(), 1);
+
+        // Pagination, get none when limit is 0.
+        let addresses = list_addresses(&app, &contract_addr, group1.name, Some(1), Some(0))
+            .unwrap()
+            .addresses;
+        // Expect 0 addresses.
+        assert_eq!(addresses.len(), 0);
     }
 }
 
@@ -453,9 +629,17 @@ mod list_groups {
         app: &App,
         contract_addr: &Addr,
         address: String,
+        offset: Option<usize>,
+        limit: Option<usize>,
     ) -> StdResult<ListGroupsResponse> {
-        app.wrap()
-            .query_wasm_smart(contract_addr, &QueryMsg::ListGroups { address })
+        app.wrap().query_wasm_smart(
+            contract_addr,
+            &QueryMsg::ListGroups {
+                address,
+                offset,
+                limit,
+            },
+        )
     }
 
     #[test]
@@ -463,7 +647,7 @@ mod list_groups {
         let (app, contract_addr) = instantiate(None).unwrap();
 
         // List groups from a non-existent address.
-        let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string())
+        let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string(), None, None)
             .unwrap()
             .groups;
 
@@ -489,7 +673,7 @@ mod list_groups {
         .unwrap();
 
         // List groups from a non-existent address.
-        let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string())
+        let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string(), None, None)
             .unwrap()
             .groups;
 
@@ -519,12 +703,85 @@ mod list_groups {
             &app,
             &contract_addr,
             group1.addresses.get(0).unwrap().to_string(),
+            None,
+            None,
         )
         .unwrap()
         .groups;
 
         // Expect address groups to be the added group.
         assert_eq!(groups, vec![group1.name]);
+    }
+
+    #[test]
+    fn paginate_populated_group() {
+        // Three groups with the same address in each one.
+        let group1 = group_factory(1);
+        let mut group2 = group_factory(2);
+        let mut group3 = group_factory(3);
+        group2.addresses = group1.addresses.clone();
+        group3.addresses = group1.addresses.clone();
+
+        let all_groups = vec![group1.clone(), group2, group3];
+        let groups_count = all_groups.len();
+        let address = group1.addresses.get(0).unwrap();
+
+        let (app, contract_addr) = instantiate(Some(all_groups)).unwrap();
+
+        // No pagination.
+        let groups = list_groups(&app, &contract_addr, address.clone(), None, None)
+            .unwrap()
+            .groups;
+        // Expect all groups.
+        assert_eq!(groups.len(), groups_count);
+
+        // Pagination, get all.
+        let groups = list_groups(
+            &app,
+            &contract_addr,
+            address.clone(),
+            Some(0),
+            Some(groups_count),
+        )
+        .unwrap()
+        .groups;
+        // Expect all groups.
+        assert_eq!(groups.len(), groups_count);
+
+        // Pagination, get 1.
+        let groups = list_groups(&app, &contract_addr, address.clone(), Some(1), Some(1))
+            .unwrap()
+            .groups;
+        // Expect 1 group.
+        assert_eq!(groups.len(), 1);
+
+        // Pagination, get 2.
+        let groups = list_groups(&app, &contract_addr, address.clone(), None, Some(2))
+            .unwrap()
+            .groups;
+        // Expect 2 groups.
+        assert_eq!(groups.len(), 2);
+
+        // Pagination, get 2.
+        let groups = list_groups(&app, &contract_addr, address.clone(), Some(1), Some(2))
+            .unwrap()
+            .groups;
+        // Expect 2 groups.
+        assert_eq!(groups.len(), 2);
+
+        // Pagination, high limit, get 1 since offset is 1 from end.
+        let groups = list_groups(&app, &contract_addr, address.clone(), Some(2), Some(1000))
+            .unwrap()
+            .groups;
+        // Expect 1 group.
+        assert_eq!(groups.len(), 1);
+
+        // Pagination, get none when limit is 0.
+        let groups = list_groups(&app, &contract_addr, address.clone(), Some(1), Some(0))
+            .unwrap()
+            .groups;
+        // Expect 0 groups.
+        assert_eq!(groups.len(), 0);
     }
 }
 

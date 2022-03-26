@@ -56,6 +56,16 @@ pub fn instantiate(
         for group in groups {
             let addrs = validate_addresses(deps.api, group.addresses.clone())?;
             GROUPS.save(deps.storage, &group.name, &addrs)?;
+
+            // Add group to each address's group list.
+            for addr in addrs.iter() {
+                add_to_map(
+                    deps.storage,
+                    ADDRESSES,
+                    addr.clone(),
+                    vec![group.name.clone()],
+                )?;
+            }
         }
     }
 
@@ -75,6 +85,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Add { group, addresses } => execute_add(deps, info, group, addresses),
         ExecuteMsg::Remove { group, addresses } => execute_remove(deps, info, group, addresses),
+        ExecuteMsg::ChangeOwner { owner } => execute_change_owner(deps, info, owner),
     }
 }
 
@@ -171,12 +182,39 @@ fn execute_remove(
         .add_attribute("addresses_removed", addresses_removed.to_string()))
 }
 
+fn execute_change_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_owner: String,
+) -> Result<Response, ContractError> {
+    let curr_owner = OWNER.load(deps.storage)?;
+    // Verify sender has permission.
+    if info.sender != curr_owner {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let new_owner = deps.api.addr_validate(&new_owner)?;
+    OWNER.save(deps.storage, &new_owner)?;
+
+    Ok(Response::default()
+        .add_attribute("method", "change_owner")
+        .add_attribute("owner", new_owner))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Dump {} => to_binary(&query_dump(deps)?),
-        QueryMsg::ListAddresses { group } => to_binary(&query_list_addresses(deps, group)?),
-        QueryMsg::ListGroups { address } => to_binary(&query_list_groups(deps, address)?),
+        QueryMsg::ListAddresses {
+            group,
+            offset,
+            limit,
+        } => to_binary(&query_list_addresses(deps, group, offset, limit)?),
+        QueryMsg::ListGroups {
+            address,
+            offset,
+            limit,
+        } => to_binary(&query_list_groups(deps, address, offset, limit)?),
         QueryMsg::IsAddressInGroup { address, group } => {
             to_binary(&query_is_address_in_group(deps, address, group)?)
         }
@@ -201,17 +239,33 @@ fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
     Ok(DumpResponse { groups: dump })
 }
 
-fn query_list_addresses(deps: Deps, group: String) -> StdResult<ListAddressesResponse> {
-    let addrs = GROUPS
+fn query_list_addresses(
+    deps: Deps,
+    group: String,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> StdResult<ListAddressesResponse> {
+    let addresses = GROUPS
         .load(deps.storage, &group)
         .map_err(|_| StdError::not_found("group"))?;
 
-    Ok(ListAddressesResponse {
-        addresses: addrs.into_iter().collect(),
-    })
+    // Paginate.
+    let default_take_all = addresses.len();
+    let addresses = addresses
+        .into_iter()
+        .skip(offset.unwrap_or_default())
+        .take(limit.unwrap_or(default_take_all))
+        .collect();
+
+    Ok(ListAddressesResponse { addresses })
 }
 
-fn query_list_groups(deps: Deps, address: String) -> StdResult<ListGroupsResponse> {
+fn query_list_groups(
+    deps: Deps,
+    address: String,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> StdResult<ListGroupsResponse> {
     // Validate address.
     let addr = deps.api.addr_validate(&address)?;
     // Return groups, or an empty set if failed to load (address probably doesn't exist).
@@ -221,9 +275,15 @@ fn query_list_groups(deps: Deps, address: String) -> StdResult<ListGroupsRespons
     // is One Group to Many Addresses.
     let groups = ADDRESSES.load(deps.storage, addr).unwrap_or_default();
 
-    Ok(ListGroupsResponse {
-        groups: groups.into_iter().collect(),
-    })
+    // Paginate.
+    let default_take_all = groups.len();
+    let groups = groups
+        .into_iter()
+        .skip(offset.unwrap_or_default())
+        .take(limit.unwrap_or(default_take_all))
+        .collect();
+
+    Ok(ListGroupsResponse { groups })
 }
 
 fn query_is_address_in_group(
