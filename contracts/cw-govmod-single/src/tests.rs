@@ -114,6 +114,7 @@ fn instantiate_with_default_governance(
             admin: cw_governance::msg::Admin::GovernanceContract {},
             label: "DAO DAO governance module".to_string(),
         }],
+        initial_items: None,
     };
 
     instantiate_governance(app, governance_id, governance_instantiate)
