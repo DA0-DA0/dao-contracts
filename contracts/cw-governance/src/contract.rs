@@ -127,39 +127,46 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::ExecuteProposalHook { .. } => {
-            if !GOVERNANCE_MODULES.has(deps.storage, info.sender.clone()) {
-                return Err(ContractError::Unauthorized {});
-            }
+        ExecuteMsg::ExecuteProposalHook { msgs } => {
+            execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
-        _ => {
-            if info.sender != env.contract.address {
-                return Err(ContractError::Unauthorized {});
-            }
+        ExecuteMsg::UpdateConfig { config } => {
+            execute_update_config(deps, env, info.sender, config)
         }
-    }
-
-    let response = match msg {
-        ExecuteMsg::ExecuteProposalHook { msgs } => execute_proposal_hook(msgs),
-        ExecuteMsg::UpdateConfig { config } => execute_update_config(deps, config),
-        ExecuteMsg::UpdateVotingModule { module } => execute_update_voting_module(env, module),
+        ExecuteMsg::UpdateVotingModule { module } => {
+            execute_update_voting_module(env, info.sender, module)
+        }
         ExecuteMsg::UpdateGovernanceModules { to_add, to_remove } => {
-            execute_update_governance_modules(deps, env, to_add, to_remove)
+            execute_update_governance_modules(deps, env, info.sender, to_add, to_remove)
         }
-        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, key, addr),
-        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, key),
-    }?;
-
-    Ok(response.add_attribute("sender", info.sender))
+        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
+        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
+    }
 }
 
-pub fn execute_proposal_hook(msgs: Vec<CosmosMsg<Empty>>) -> Result<Response, ContractError> {
+pub fn execute_proposal_hook(
+    deps: Deps,
+    sender: Addr,
+    msgs: Vec<CosmosMsg<Empty>>,
+) -> Result<Response, ContractError> {
+    if !GOVERNANCE_MODULES.has(deps.storage, sender) {
+        return Err(ContractError::Unauthorized {});
+    }
     Ok(Response::default()
         .add_attribute("action", "execute_proposal_hook")
         .add_messages(msgs))
 }
 
-pub fn execute_update_config(deps: DepsMut, config: Config) -> Result<Response, ContractError> {
+pub fn execute_update_config(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    config: Config,
+) -> Result<Response, ContractError> {
+    if sender != env.contract.address {
+        return Err(ContractError::Unauthorized {});
+    }
+
     CONFIG.save(deps.storage, &config)?;
     // We incur some gas costs by having the config's fields in the
     // response. This has the benefit that it makes it reasonably
@@ -178,8 +185,13 @@ pub fn execute_update_config(deps: DepsMut, config: Config) -> Result<Response, 
 
 pub fn execute_update_voting_module(
     env: Env,
+    sender: Addr,
     module: ModuleInstantiateInfo,
 ) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let wasm = module.into_wasm_msg(env.contract.address);
     let submessage = SubMsg::reply_on_success(wasm, VOTE_MODULE_UPDATE_REPLY_ID);
 
@@ -191,9 +203,14 @@ pub fn execute_update_voting_module(
 pub fn execute_update_governance_modules(
     deps: DepsMut,
     env: Env,
+    sender: Addr,
     to_add: Vec<ModuleInstantiateInfo>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let module_count = GOVERNANCE_MODULE_COUNT.load(deps.storage)?;
 
     // Some safe maths.
@@ -225,9 +242,15 @@ pub fn execute_update_governance_modules(
 
 pub fn execute_set_item(
     deps: DepsMut,
+    env: Env,
+    sender: Addr,
     key: String,
     addr: String,
 ) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let addr = deps.api.addr_validate(&addr)?;
     ITEMS.save(deps.storage, key.clone(), &addr)?;
     Ok(Response::default()
@@ -236,7 +259,16 @@ pub fn execute_set_item(
         .add_attribute("addr", addr))
 }
 
-pub fn execute_remove_item(deps: DepsMut, key: String) -> Result<Response, ContractError> {
+pub fn execute_remove_item(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    key: String,
+) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     ITEMS.remove(deps.storage, key.clone());
     Ok(Response::default()
         .add_attribute("action", "execute_remove_item")
