@@ -91,6 +91,8 @@ fn instantiate_with_default_governance(
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: cw_governance::msg::ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&cw20_balance_voting::msg::InstantiateMsg {

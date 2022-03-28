@@ -8,7 +8,7 @@ use crate::{
         Admin, ExecuteMsg, InitialItem, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo,
         QueryMsg,
     },
-    query::{DumpStateResponse, GetItemResponse},
+    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse},
     state::Config,
     ContractError,
 };
@@ -20,6 +20,15 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
         cw20_base::contract::query,
+    );
+    Box::new(contract)
+}
+
+fn cw721_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw721_base::entry::execute,
+        cw721_base::entry::instantiate,
+        cw721_base::entry::query,
     );
     Box::new(contract)
 }
@@ -82,6 +91,8 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
@@ -111,6 +122,8 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
             name: "DAO DAO".to_string(),
             description: "A DAO that builds DAOs.".to_string(),
             image_url: None,
+            automatically_add_cw20s: true,
+            automatically_add_cw721s: true,
         }
     );
 
@@ -183,6 +196,8 @@ makes wickedness."
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
@@ -209,6 +224,8 @@ fn test_update_config() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
@@ -252,6 +269,8 @@ fn test_update_config() {
         name: "Root DAO".to_string(),
         description: "We love trees and sudo.".to_string(),
         image_url: Some("https://moonphase.is/image.svg".to_string()),
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: true,
     };
 
     app.execute_contract(
@@ -293,6 +312,8 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
@@ -421,6 +442,8 @@ fn test_swap_voting_module() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
@@ -533,6 +556,8 @@ fn test_permissions() {
             label: "governance module".to_string(),
         }],
         initial_items: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
     };
 
     let gov_addr = app
@@ -576,13 +601,14 @@ fn test_permissions() {
                 name: "Evil config.".to_string(),
                 description: "👿".to_string(),
                 image_url: None,
+                automatically_add_cw20s: true,
+                automatically_add_cw721s: true,
             },
         },
     );
 }
 
-#[test]
-fn test_passthrough_voting_queries() {
+fn do_standard_instantiate(auto_add: bool) -> (Addr, App) {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_govmod_contract());
     let voting_id = app.store_code(cw20_balances_voting());
@@ -611,6 +637,8 @@ fn test_passthrough_voting_queries() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: auto_add,
+        automatically_add_cw721s: auto_add,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
@@ -636,6 +664,13 @@ fn test_passthrough_voting_queries() {
             None,
         )
         .unwrap();
+
+    (gov_addr, app)
+}
+
+#[test]
+fn test_passthrough_voting_queries() {
+    let (gov_addr, app) = do_standard_instantiate(true);
 
     let creator_voting_power: VotingPowerAtHeightResponse = app
         .wrap()
@@ -696,59 +731,8 @@ fn list_items(
 
 #[test]
 fn test_add_remove_get() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_gov_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let (gov_addr, mut app) = do_standard_instantiate(true);
 
-    let govmod_instantiate = cw_govmod_sudo::msg::InstantiateMsg {
-        root: CREATOR_ADDR.to_string(),
-    };
-    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
-        token_info: cw20_balance_voting::msg::TokenInfo::New {
-            code_id: cw20_id,
-            label: "DAO DAO voting".to_string(),
-            name: "DAO DAO".to_string(),
-            symbol: "DAO".to_string(),
-            decimals: 6,
-            initial_balances: vec![cw20::Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::from(2u64),
-            }],
-            marketing: None,
-        },
-    };
-
-    let gov_instantiate = InstantiateMsg {
-        name: "DAO DAO".to_string(),
-        description: "A DAO that builds DAOs.".to_string(),
-        image_url: None,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::GovernanceContract {},
-            label: "voting module".to_string(),
-        },
-        governance_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::GovernanceContract {},
-            label: "governance module".to_string(),
-        }],
-        initial_items: None,
-    };
-
-    let gov_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            None,
-        )
-        .unwrap();
     let a = get_item(&mut app, gov_addr.clone(), "aaaaa".to_string());
     assert_eq!(a, GetItemResponse { item: None });
 
@@ -803,6 +787,8 @@ fn test_list_items() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
@@ -886,6 +872,8 @@ fn test_instantiate_with_items() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
@@ -961,4 +949,337 @@ fn test_instantiate_with_items() {
         .unwrap();
     // Tests instantiate contracts with addresses in the form "Contract #{index}"
     assert!(item1.to_string().starts_with("Contract #"));
+}
+
+#[test]
+fn test_cw20_receive_auto_add() {
+    let (gov_addr, mut app) = do_standard_instantiate(true);
+
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(gov_addr.clone(), &QueryMsg::VotingModule {})
+        .unwrap();
+    let gov_token: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_governance_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Check that the balances query works with no tokens.
+    let cw20_balances: Vec<Cw20BalanceResponse> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw20Balances {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_balances, vec![]);
+
+    // Send a gov token to the governance contract.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        gov_token.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: gov_addr.to_string(),
+            amount: Uint128::new(1),
+            msg: to_binary(&"").unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw20_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw20TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_list, vec![gov_token.clone()]);
+
+    let cw20_balances: Vec<Cw20BalanceResponse> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw20Balances {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        cw20_balances,
+        vec![Cw20BalanceResponse {
+            addr: gov_token.clone(),
+            balance: Uint128::new(1),
+        }]
+    );
+
+    // Test removing and adding some new ones.
+    app.execute_contract(
+        Addr::unchecked(gov_addr.clone()),
+        gov_addr.clone(),
+        &ExecuteMsg::UpdateCw20List {
+            to_add: vec!["new".to_string()],
+            to_remove: vec![gov_token.to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw20_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::Cw20TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_list, vec![Addr::unchecked("new")]);
+}
+
+#[test]
+fn test_cw20_receive_no_auto_add() {
+    let (gov_addr, mut app) = do_standard_instantiate(false);
+
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(gov_addr.clone(), &QueryMsg::VotingModule {})
+        .unwrap();
+    let gov_token: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_governance_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Send a gov token to the governance contract. Should not be
+    // added becasue auto add is turned off.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        gov_token.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: gov_addr.to_string(),
+            amount: Uint128::new(1),
+            msg: to_binary(&"").unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw20_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw20TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_list, Vec::<Addr>::new());
+
+    app.execute_contract(
+        Addr::unchecked(gov_addr.clone()),
+        gov_addr.clone(),
+        &ExecuteMsg::UpdateCw20List {
+            to_add: vec!["new".to_string(), gov_token.to_string()],
+            to_remove: vec!["ok to remove non existent".to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw20_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::Cw20TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_list, vec![Addr::unchecked("new"), gov_token]);
+}
+
+#[test]
+fn test_cw721_receive() {
+    let (gov_addr, mut app) = do_standard_instantiate(true);
+
+    let cw721_id = app.store_code(cw721_contract());
+
+    let cw721_addr = app
+        .instantiate_contract(
+            cw721_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: CREATOR_ADDR.to_string(),
+            },
+            &[],
+            "cw721",
+            None,
+        )
+        .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        cw721_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+            token_id: "ekez".to_string(),
+            owner: CREATOR_ADDR.to_string(),
+            token_uri: None,
+            extension: None,
+        }),
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        cw721_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
+            contract: gov_addr.to_string(),
+            token_id: "ekez".to_string(),
+            msg: to_binary("").unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw721_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw721TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw721_list, vec![cw721_addr.clone()]);
+
+    // OK to add already added. Remove happens after add.
+    app.execute_contract(
+        Addr::unchecked(gov_addr.clone()),
+        gov_addr.clone(),
+        &ExecuteMsg::UpdateCw721List {
+            to_add: vec!["new".to_string(), cw721_addr.to_string()],
+            to_remove: vec![cw721_addr.to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw20_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::Cw721TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_list, vec![Addr::unchecked("new")]);
+}
+
+#[test]
+fn test_cw721_receive_no_auto_add() {
+    let (gov_addr, mut app) = do_standard_instantiate(false);
+
+    let cw721_id = app.store_code(cw721_contract());
+
+    let cw721_addr = app
+        .instantiate_contract(
+            cw721_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: CREATOR_ADDR.to_string(),
+            },
+            &[],
+            "cw721",
+            None,
+        )
+        .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        cw721_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+            token_id: "ekez".to_string(),
+            owner: CREATOR_ADDR.to_string(),
+            token_uri: None,
+            extension: None,
+        }),
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        cw721_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
+            contract: gov_addr.to_string(),
+            token_id: "ekez".to_string(),
+            msg: to_binary("").unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw721_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw721TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw721_list, Vec::<Addr>::new());
+
+    // Duplicates OK. Just adds one.
+    app.execute_contract(
+        Addr::unchecked(gov_addr.clone()),
+        gov_addr.clone(),
+        &ExecuteMsg::UpdateCw721List {
+            to_add: vec![
+                "new".to_string(),
+                cw721_addr.to_string(),
+                cw721_addr.to_string(),
+            ],
+            to_remove: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw20_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::Cw721TokenList {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_list, vec![Addr::unchecked("new"), cw721_addr]);
 }
