@@ -7,16 +7,16 @@ use cosmwasm_std::{
     StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_storage_plus::Bound;
+use cw_storage_plus::{Bound, Map};
 use cw_utils::parse_reply_instantiate_data;
 
 use cw_governance_interface::voting;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
-use crate::query::{DumpStateResponse, GetItemResponse};
+use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse};
 use crate::state::{
-    Config, CONFIG, GOVERNANCE_MODULES, GOVERNANCE_MODULE_COUNT, ITEMS,
+    Config, CONFIG, CW20_LIST, CW721_LIST, GOVERNANCE_MODULES, GOVERNANCE_MODULE_COUNT, ITEMS,
     PENDING_ITEM_INSTANTIATION_NAMES, VOTING_MODULE,
 };
 
@@ -50,6 +50,8 @@ pub fn instantiate(
         name: msg.name,
         description: msg.description,
         image_url: msg.image_url,
+        automatically_add_cw20s: msg.automatically_add_cw20s,
+        automatically_add_cw721s: msg.automatically_add_cw721s,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -127,39 +129,54 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::ExecuteProposalHook { .. } => {
-            if !GOVERNANCE_MODULES.has(deps.storage, info.sender.clone()) {
-                return Err(ContractError::Unauthorized {});
-            }
+        ExecuteMsg::ExecuteProposalHook { msgs } => {
+            execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
-        _ => {
-            if info.sender != env.contract.address {
-                return Err(ContractError::Unauthorized {});
-            }
+        ExecuteMsg::UpdateConfig { config } => {
+            execute_update_config(deps, env, info.sender, config)
+        }
+        ExecuteMsg::UpdateVotingModule { module } => {
+            execute_update_voting_module(env, info.sender, module)
+        }
+        ExecuteMsg::UpdateGovernanceModules { to_add, to_remove } => {
+            execute_update_governance_modules(deps, env, info.sender, to_add, to_remove)
+        }
+        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
+        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
+        ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
+        ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
+        ExecuteMsg::UpdateCw20List { to_add, to_remove } => {
+            execute_update_cw20_list(deps, env, info.sender, to_add, to_remove)
+        }
+        ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
+            execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
         }
     }
-
-    let response = match msg {
-        ExecuteMsg::ExecuteProposalHook { msgs } => execute_proposal_hook(msgs),
-        ExecuteMsg::UpdateConfig { config } => execute_update_config(deps, config),
-        ExecuteMsg::UpdateVotingModule { module } => execute_update_voting_module(env, module),
-        ExecuteMsg::UpdateGovernanceModules { to_add, to_remove } => {
-            execute_update_governance_modules(deps, env, to_add, to_remove)
-        }
-        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, key, addr),
-        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, key),
-    }?;
-
-    Ok(response.add_attribute("sender", info.sender))
 }
 
-pub fn execute_proposal_hook(msgs: Vec<CosmosMsg<Empty>>) -> Result<Response, ContractError> {
+pub fn execute_proposal_hook(
+    deps: Deps,
+    sender: Addr,
+    msgs: Vec<CosmosMsg<Empty>>,
+) -> Result<Response, ContractError> {
+    if !GOVERNANCE_MODULES.has(deps.storage, sender) {
+        return Err(ContractError::Unauthorized {});
+    }
     Ok(Response::default()
         .add_attribute("action", "execute_proposal_hook")
         .add_messages(msgs))
 }
 
-pub fn execute_update_config(deps: DepsMut, config: Config) -> Result<Response, ContractError> {
+pub fn execute_update_config(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    config: Config,
+) -> Result<Response, ContractError> {
+    if sender != env.contract.address {
+        return Err(ContractError::Unauthorized {});
+    }
+
     CONFIG.save(deps.storage, &config)?;
     // We incur some gas costs by having the config's fields in the
     // response. This has the benefit that it makes it reasonably
@@ -178,8 +195,13 @@ pub fn execute_update_config(deps: DepsMut, config: Config) -> Result<Response, 
 
 pub fn execute_update_voting_module(
     env: Env,
+    sender: Addr,
     module: ModuleInstantiateInfo,
 ) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let wasm = module.into_wasm_msg(env.contract.address);
     let submessage = SubMsg::reply_on_success(wasm, VOTE_MODULE_UPDATE_REPLY_ID);
 
@@ -191,9 +213,14 @@ pub fn execute_update_voting_module(
 pub fn execute_update_governance_modules(
     deps: DepsMut,
     env: Env,
+    sender: Addr,
     to_add: Vec<ModuleInstantiateInfo>,
     to_remove: Vec<String>,
 ) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let module_count = GOVERNANCE_MODULE_COUNT.load(deps.storage)?;
 
     // Some safe maths.
@@ -223,11 +250,71 @@ pub fn execute_update_governance_modules(
         .add_submessages(to_add))
 }
 
+fn do_update_addr_list(
+    deps: DepsMut,
+    map: Map<Addr, Empty>,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
+) -> Result<(), ContractError> {
+    let to_add = to_add
+        .into_iter()
+        .map(|a| deps.api.addr_validate(&a))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let to_remove = to_remove
+        .into_iter()
+        .map(|a| deps.api.addr_validate(&a))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    for addr in to_add {
+        map.save(deps.storage, addr, &Empty {})?;
+    }
+    for addr in to_remove {
+        map.remove(deps.storage, addr);
+    }
+
+    Ok(())
+}
+
+pub fn execute_update_cw20_list(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
+) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    do_update_addr_list(deps, CW20_LIST, to_add, to_remove)?;
+    Ok(Response::default().add_attribute("action", "update_cw20_list"))
+}
+
+pub fn execute_update_cw721_list(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
+) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    do_update_addr_list(deps, CW721_LIST, to_add, to_remove)?;
+    Ok(Response::default().add_attribute("action", "update_cw721_list"))
+}
+
 pub fn execute_set_item(
     deps: DepsMut,
+    env: Env,
+    sender: Addr,
     key: String,
     addr: String,
 ) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let addr = deps.api.addr_validate(&addr)?;
     ITEMS.save(deps.storage, key.clone(), &addr)?;
     Ok(Response::default()
@@ -236,15 +323,48 @@ pub fn execute_set_item(
         .add_attribute("addr", addr))
 }
 
-pub fn execute_remove_item(deps: DepsMut, key: String) -> Result<Response, ContractError> {
+pub fn execute_remove_item(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    key: String,
+) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
     ITEMS.remove(deps.storage, key.clone());
     Ok(Response::default()
         .add_attribute("action", "execute_remove_item")
         .add_attribute("key", key))
 }
 
+pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if !config.automatically_add_cw20s {
+        Ok(Response::new())
+    } else {
+        CW20_LIST.save(deps.storage, sender.clone(), &Empty {})?;
+        Ok(Response::new()
+            .add_attribute("action", "receive_cw20")
+            .add_attribute("token", sender))
+    }
+}
+
+pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if !config.automatically_add_cw721s {
+        Ok(Response::new())
+    } else {
+        CW721_LIST.save(deps.storage, sender.clone(), &Empty {})?;
+        Ok(Response::new()
+            .add_attribute("action", "receive_cw721")
+            .add_attribute("token", sender))
+    }
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::VotingModule {} => query_voting_module(deps),
@@ -259,6 +379,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetItem { key } => query_get_item(deps, key),
         QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
         QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Cw20TokenList { start_at, limit } => query_cw20_list(deps, start_at, limit),
+        QueryMsg::Cw721TokenList { start_at, limit } => query_cw721_list(deps, start_at, limit),
+        QueryMsg::Cw20Balances { start_at, limit } => {
+            query_cw20_balances(deps, env, start_at, limit)
+        }
     }
 }
 
@@ -347,6 +472,11 @@ pub fn query_get_item(deps: Deps, item: String) -> StdResult<Binary> {
     to_binary(&GetItemResponse { item })
 }
 
+pub fn query_info(deps: Deps) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(deps.storage)?;
+    to_binary(&cw_governance_interface::voting::InfoResponse { info })
+}
+
 pub fn query_list_items(
     deps: Deps,
     start_at: Option<String>,
@@ -358,18 +488,96 @@ pub fn query_list_items(
         None,
         cosmwasm_std::Order::Descending,
     );
-    let items: Vec<String> = match limit {
+    let items = match limit {
         Some(limit) => items
             .take(limit as usize)
             .collect::<Result<Vec<String>, _>>()?,
         None => items.collect::<Result<Vec<String>, _>>()?,
     };
+
     to_binary(&items)
 }
 
-pub fn query_info(deps: Deps) -> StdResult<Binary> {
-    let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&cw_governance_interface::voting::InfoResponse { info })
+// Can't be generic over key type. Otherwise, we could use this in
+// `query_list_items` as well.
+// <https://github.com/CosmWasm/cw-plus/issues/691>
+fn list_addr_keys<V>(
+    deps: Deps,
+    map: Map<Addr, V>,
+    start_at: Option<Addr>,
+    limit: Option<u64>,
+) -> StdResult<Vec<Addr>>
+where
+    V: serde::de::DeserializeOwned + serde::Serialize,
+{
+    let items = map.keys(
+        deps.storage,
+        start_at.map(Bound::inclusive),
+        None,
+        cosmwasm_std::Order::Descending,
+    );
+    match limit {
+        Some(limit) => Ok(items
+            .take(limit as usize)
+            .collect::<Result<Vec<Addr>, _>>()?),
+        None => Ok(items.collect::<Result<Vec<Addr>, _>>()?),
+    }
+}
+
+pub fn query_cw20_list(
+    deps: Deps,
+    start_at: Option<String>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    to_binary(&list_addr_keys(
+        deps,
+        CW20_LIST,
+        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        limit,
+    )?)
+}
+
+pub fn query_cw721_list(
+    deps: Deps,
+    start_at: Option<String>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    to_binary(&list_addr_keys(
+        deps,
+        CW721_LIST,
+        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        limit,
+    )?)
+}
+
+pub fn query_cw20_balances(
+    deps: Deps,
+    env: Env,
+    start_at: Option<String>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    let addrs = list_addr_keys(
+        deps,
+        CW20_LIST,
+        start_at.map(|a| deps.api.addr_validate(&a)).transpose()?,
+        limit,
+    )?;
+    let balances = addrs
+        .into_iter()
+        .map(|addr| {
+            let balance: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+                addr.clone(),
+                &cw20::Cw20QueryMsg::Balance {
+                    address: env.contract.address.to_string(),
+                },
+            )?;
+            Ok(Cw20BalanceResponse {
+                addr,
+                balance: balance.balance,
+            })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+    to_binary(&balances)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

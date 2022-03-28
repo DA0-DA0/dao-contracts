@@ -1,4 +1,4 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use cw2::ContractVersion;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,4 +26,13 @@ pub struct GetItemResponse {
     /// `None` if no item with the provided key was found, `Some`
     /// otherwise.
     pub item: Option<Addr>,
+}
+
+/// Returned by Cw20Balances query.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Cw20BalanceResponse {
+    /// The address of the token.
+    pub addr: Addr,
+    /// The contract's balance.
+    pub balance: Uint128,
 }
