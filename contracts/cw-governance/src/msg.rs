@@ -33,6 +33,22 @@ pub struct ModuleInstantiateInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum InitialItemInfo {
+    /// An existing contract address.
+    Existing { address: String },
+    /// Info for instantiating a new contract.
+    Instantiate { info: ModuleInstantiateInfo },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct InitialItem {
+    /// The name of the item.
+    pub name: String,
+    /// The info from which to derive the address.
+    pub info: InitialItemInfo,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     /// The name of the governance contract.
     pub name: String,
@@ -47,6 +63,12 @@ pub struct InstantiateMsg {
     /// Instantiate information for the governance contract's
     /// governance modules.
     pub governance_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
+
+    /// Initial information for arbitrary contract addresses to be
+    /// added to the items map. The key is the name of the item in the
+    /// items map. The value is an enum that either uses an existing
+    /// address or instantiates a new contract.
+    pub initial_items: Option<Vec<InitialItem>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
