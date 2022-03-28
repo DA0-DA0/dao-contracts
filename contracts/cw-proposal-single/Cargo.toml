@@ -1,7 +1,7 @@
 [package]
-name = "cw4-voting"
+name = "cw-proposal-single"
 version = "0.1.0"
-authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+authors = ["Zeke Medley <zekemedley@gmail.com>"]
 edition = "2018"
 
 exclude = [
@@ -32,16 +32,21 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 cosmwasm-std = { version = "1.0.0-beta5" }
 cosmwasm-storage = { version = "1.0.0-beta5" }
 cw-storage-plus = "0.12"
-cw2 = "0.12"
 cw-utils = "0.12"
+cw2 = "0.12"
+cw20 = "0.12"
+cw3 = "0.12"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
+cw-core = { path = "../cw-core", version = "0.1.0", features = ["library"] }
+cw-core-macros = { path = "../../packages/cw-core-macros", version = "0.1.0" }
 cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" } 
-cw4-group = "0.11"
-cw4 = "0.11"
+voting = { version = "0.1.0", path = "../../packages/voting" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }
 cw-multi-test = "0.12"
+cw20-balance-voting = { path = "../cw20-balance-voting", version = "0.1.0" }
+cw20-base = "0.12"
+rand = "0.8"

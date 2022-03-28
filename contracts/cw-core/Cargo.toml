@@ -1,16 +1,16 @@
 [package]
-name = "cw4-voting"
+name = "cw-core"
 version = "0.1.0"
-authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+authors = ["Zeke Medley <zekemedley@gmail.com>"]
 edition = "2018"
 
 exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  # Those files are rust-optimizer artifacts. You might want to commit
+  # them for convenience but they should not be part of the source
+  # code publication.
   "contract.wasm",
   "hash.txt",
 ]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -34,14 +34,18 @@ cosmwasm-storage = { version = "1.0.0-beta5" }
 cw-storage-plus = "0.12"
 cw2 = "0.12"
 cw-utils = "0.12"
+cw20 = "0.12"
+cw721 = "0.12"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
 cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" } 
-cw4-group = "0.11"
-cw4 = "0.11"
+cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }
 cw-multi-test = "0.12"
+cw20-base = "0.12"
+cw721-base = "0.12"
+cw-proposal-sudo = { version = "0.1.0", path = "../cw-proposal-sudo"}
+cw20-balance-voting = { version = "0.1.0", path = "../cw20-balance-voting"}

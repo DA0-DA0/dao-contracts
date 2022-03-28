@@ -176,16 +176,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-governance"
+name = "cw-core"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-governance-interface",
- "cw-governance-macros",
- "cw-govmod-sudo",
+ "cw-core-interface",
+ "cw-core-macros",
  "cw-multi-test 0.12.1",
+ "cw-proposal-sudo",
  "cw-storage-plus 0.12.1",
  "cw-utils 0.12.1",
  "cw2 0.12.1",
@@ -200,19 +200,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-governance-interface"
+name = "cw-core-interface"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-governance-macros",
+ "cw-core-macros",
  "cw2 0.12.1",
  "schemars",
  "serde",
 ]
 
 [[package]]
-name = "cw-governance-macros"
+name = "cw-core-macros"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
@@ -221,49 +221,6 @@ dependencies = [
  "schemars",
  "serde",
  "syn",
-]
-
-[[package]]
-name = "cw-govmod-single"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-governance",
- "cw-governance-interface",
- "cw-governance-macros",
- "cw-multi-test 0.12.1",
- "cw-storage-plus 0.12.1",
- "cw-utils 0.12.1",
- "cw2 0.12.1",
- "cw20 0.12.1",
- "cw20-balance-voting",
- "cw20-base 0.12.1",
- "cw3 0.12.1",
- "rand",
- "schemars",
- "serde",
- "thiserror",
- "voting",
-]
-
-[[package]]
-name = "cw-govmod-sudo"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-governance",
- "cw-governance-interface",
- "cw-governance-macros",
- "cw-multi-test 0.12.1",
- "cw-storage-plus 0.12.1",
- "cw2 0.12.1",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -299,6 +256,49 @@ dependencies = [
  "derivative",
  "itertools",
  "prost",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-proposal-single"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core",
+ "cw-core-interface",
+ "cw-core-macros",
+ "cw-multi-test 0.12.1",
+ "cw-storage-plus 0.12.1",
+ "cw-utils 0.12.1",
+ "cw2 0.12.1",
+ "cw20 0.12.1",
+ "cw20-balance-voting",
+ "cw20-base 0.12.1",
+ "cw3 0.12.1",
+ "rand",
+ "schemars",
+ "serde",
+ "thiserror",
+ "voting",
+]
+
+[[package]]
+name = "cw-proposal-sudo"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core",
+ "cw-core-interface",
+ "cw-core-macros",
+ "cw-multi-test 0.12.1",
+ "cw-storage-plus 0.12.1",
+ "cw2 0.12.1",
  "schemars",
  "serde",
  "thiserror",
@@ -405,8 +405,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-governance-interface",
- "cw-governance-macros",
+ "cw-core-interface",
+ "cw-core-macros",
  "cw-multi-test 0.12.1",
  "cw-storage-plus 0.12.1",
  "cw-utils 0.12.1",
@@ -457,8 +457,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-governance-interface",
- "cw-governance-macros",
+ "cw-core-interface",
+ "cw-core-macros",
  "cw-multi-test 0.12.1",
  "cw-storage-plus 0.12.1",
  "cw-utils 0.11.1",
@@ -590,8 +590,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-governance-interface",
- "cw-governance-macros",
+ "cw-core-interface",
+ "cw-core-macros",
  "cw-multi-test 0.12.1",
  "cw-storage-plus 0.12.1",
  "cw-utils 0.12.1",
