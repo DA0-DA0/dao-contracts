@@ -5,9 +5,11 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use voting::Vote;
+
 use crate::{
     msg::{DepositInfo, DepositToken},
-    proposal::{Proposal, Status, Vote},
+    proposal::{Proposal, Status},
     threshold::Threshold,
 };
 

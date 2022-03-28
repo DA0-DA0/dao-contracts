@@ -1,6 +1,6 @@
 use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw2::ContractVersion;
-use cw20::{Cw20Coin, MinterResponse, TokenInfoResponse};
+use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
 use cw_governance_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
@@ -84,6 +84,7 @@ fn test_instantiate_zero_supply() {
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
             },
+            initial_dao_balance: Some(Uint128::zero()),
         },
     );
 }
@@ -110,6 +111,7 @@ fn test_instantiate_no_balances() {
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
             },
+            initial_dao_balance: Some(Uint128::zero()),
         },
     );
 }
@@ -139,6 +141,7 @@ fn test_contract_info() {
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
             },
+            initial_dao_balance: Some(Uint128::zero()),
         },
     );
 
@@ -188,6 +191,7 @@ fn test_new_cw20() {
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
             },
+            initial_dao_balance: Some(Uint128::from(10u64)),
         },
     );
 
@@ -210,7 +214,7 @@ fn test_new_cw20() {
             name: "DAO DAO".to_string(),
             symbol: "DAO".to_string(),
             decimals: 6,
-            total_supply: Uint128::from(2u64)
+            total_supply: Uint128::from(12u64)
         }
     );
 
@@ -224,6 +228,23 @@ fn test_new_cw20() {
             minter: DAO_ADDR.to_string(),
             cap: None,
         })
+    );
+
+    // Expect DAO (sender address) to have initial balance.
+    let token_info: BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token_addr.clone(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: DAO_ADDR.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        token_info,
+        BalanceResponse {
+            balance: Uint128::from(10u64)
+        }
     );
 
     // Expect 0 as they have not staked
@@ -344,6 +365,7 @@ fn test_existing_cw20_new_staking() {
                     unstaking_duration: None,
                 },
             },
+            initial_dao_balance: None,
         },
     );
 
@@ -494,6 +516,7 @@ fn test_existing_cw20_existing_staking() {
                     unstaking_duration: None,
                 },
             },
+            initial_dao_balance: None,
         },
     );
 
@@ -531,6 +554,7 @@ fn test_existing_cw20_existing_staking() {
                     staking_contract_address: staking_addr.to_string(),
                 },
             },
+            initial_dao_balance: None,
         },
     );
 
@@ -645,6 +669,7 @@ fn test_existing_cw20_existing_staking() {
                     staking_contract_address: staking_addr.to_string(),
                 },
             },
+            initial_dao_balance: None,
         },
         &[],
         "voting module",
@@ -692,6 +717,7 @@ fn test_different_heights() {
                     unstaking_duration: None,
                 },
             },
+            initial_dao_balance: None,
         },
     );
 

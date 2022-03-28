@@ -98,18 +98,58 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overriden. If the item does not exist a new item is added.",
+      "type": "object",
+      "required": [
+        "set_item"
+      ],
+      "properties": {
+        "set_item": {
+          "type": "object",
+          "required": [
+            "addr",
+            "key"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Removes an item from the governance contract's item map.",
+      "type": "object",
+      "required": [
+        "remove_item"
+      ],
+      "properties": {
+        "remove_item": {
+          "type": "object",
+          "required": [
+            "key"
+          ],
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
     "Admin": {
       "description": "Information about the admin of a contract.",
       "oneOf": [
-        {
-          "type": "string",
-          "enum": [
-            "none"
-          ]
-        },
         {
           "description": "A specific address.",
           "type": "object",
@@ -139,6 +179,19 @@
           ],
           "properties": {
             "governance_contract": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "No admin.",
+          "type": "object",
+          "required": [
+            "none"
+          ],
+          "properties": {
+            "none": {
               "type": "object"
             }
           },

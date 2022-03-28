@@ -1,21 +1,14 @@
-use std::convert::TryInto;
-
-use cosmwasm_std::{
-    Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Uint128, Uint256,
-};
+use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Uint128};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use voting::{compare_vote_count, VoteCmp, Votes};
 
 use crate::{
     query::ProposalResponse,
     state::{CheckedDepositInfo, PROPOSAL_COUNT},
-    threshold::Threshold,
+    threshold::{PercentageThreshold, Threshold},
 };
-
-// We multiply by this when calculating needed_votes in order to round
-// up properly.
-const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Copy)]
 #[serde(rename_all = "snake_case")]
@@ -32,26 +25,6 @@ pub enum Status {
     /// The proposal has failed or expired and has been closed. A
     /// proposal deposit refund has been issued if applicable.
     Closed,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct Votes {
-    pub yes: Uint128,
-    pub no: Uint128,
-    pub abstain: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "lowercase")]
-#[repr(u8)]
-pub enum Vote {
-    /// Marks support for the proposal.
-    Yes,
-    /// Marks opposition to the proposal.
-    No,
-    /// Marks participation but does not count towards the ratio of
-    /// support / opposed.
-    Abstain,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -76,127 +49,51 @@ pub struct Proposal {
     pub deposit_info: Option<CheckedDepositInfo>,
 }
 
-/// Information about the number of votes needed to pass a proposal.
-#[derive(PartialEq, Clone, Debug)]
-enum VotesNeeded {
-    /// A finite number of votes.
-    Finite(Uint128),
-    /// An unrechable number of votes. Caused by zero total voting
-    /// power.
-    Unreachable,
-}
-/// Computes the number of votes needed for a proposal to pass. This
-/// must round up. For example, with a 50% passing percentage and 15
-/// total votes 8 votes are required, not 7.
-///
-/// Note that it is possible, though unlikely, that no number of votes
-/// will ever meet the threshold. This happens if the total power is
-/// zero. For example, this may happen if all votes are abstain.
-fn votes_needed(total_power: Uint128, passing_percentage: Decimal) -> VotesNeeded {
-    // If there are no votes possible then no threshold will ever be
-    // reachable.
-    if total_power.is_zero() {
-        return VotesNeeded::Unreachable;
-    }
-    // Voting power is counted with a Uint128. In order to avoid an
-    // overflow while multiplying by the percision factor we need to
-    // do a full mul which results in a Uint256.
-    //
-    // Percision factor here ensures that any rounding down here that
-    // happens in the VM happens in the 9th decimal place. This makes
-    // it reasonably likely that we successfully round up.
-    let total_power = total_power.full_mul(PRECISION_FACTOR);
-    // Multiplication of a Uint256 and a Decimal is not implemented so
-    // we first multiply by the decimal's raw form and then divide by
-    // the number of decimal places in the decimal. This is the same
-    // thing that happens under the hood when a Uint128 is multiplied
-    // by Decimal.
-    //
-    // This multiplication will round down but because we have
-    // multiplied by `PERCISION_FACTOR` above that rounding ought to
-    // occur in the 9th decimal place.
-    let applied = total_power.multiply_ratio(
-        passing_percentage.atomics(),
-        Uint256::from(10u64).pow(passing_percentage.decimal_places()),
-    );
-    // The maximum possible value for applied occurs if `total_power`
-    // is 2^128. Given a percision factor of 10^9 we confirm that the
-    // numerator value will not overflow as:
-    //
-    // 2^128 * 10^9 + 10^9 < 2^256
-    //
-    // In the interest of being percise, this will not overflow so
-    // long as our percision factor is less than `3.4*10^38`. We don't
-    // have to worry about this because that value won't even fit into
-    // a u128 (the type of PERCISION_FACTOR).
-    let rounded = (applied + Uint256::from(PRECISION_FACTOR) - Uint256::from(1u128))
-        / Uint256::from(PRECISION_FACTOR);
-    // Truncated should be strictly <= than the largest possible
-    // Uint128. Imagine the pathalogical case where the passing
-    // threshold is 100% and there are 2^128 total votes. In this case
-    // rounded is:
-    //
-    // Floor[(2^128 * 10^9 - 1) / 10^9 + 1]
-    //
-    // This number is 2^128 which will fit into a 128 bit
-    // integer. Note: if we didn't floor here this would not be the
-    // case, happily unsigned integer division does indeed do that.
-    let truncated: Uint128 = rounded.try_into().unwrap();
-    VotesNeeded::Finite(truncated)
-}
-
-fn votes_meet_threshold(votes: Uint128, total_power: Uint128, passing_percentage: Decimal) -> bool {
-    match votes_needed(total_power, passing_percentage) {
-        VotesNeeded::Finite(needed) => votes >= needed,
-        VotesNeeded::Unreachable => false,
-    }
-}
-
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
     let id: u64 = PROPOSAL_COUNT.may_load(store)?.unwrap_or_default() + 1;
     PROPOSAL_COUNT.save(store, &id)?;
     Ok(id)
 }
 
-impl Votes {
-    /// Constructs an zero'd out votes struct.
-    pub fn zero() -> Self {
-        Self {
-            yes: Uint128::zero(),
-            no: Uint128::zero(),
-            abstain: Uint128::zero(),
+pub fn does_vote_count_pass(
+    yes_votes: Uint128,
+    options: Uint128,
+    percent: PercentageThreshold,
+) -> bool {
+    // Don't pass proposals if all the votes are abstain.
+    if options.is_zero() {
+        return false;
+    }
+    match percent {
+        PercentageThreshold::Majority {} => {
+            compare_vote_count(yes_votes, VoteCmp::Greater, options, Decimal::percent(50))
+        }
+        PercentageThreshold::Percent(percent) => {
+            compare_vote_count(yes_votes, VoteCmp::Geq, options, percent)
         }
     }
+}
 
-    /// Constructs a vote with a specified number of yes votes. Used
-    /// for testing.
-    #[cfg(test)]
-    pub fn with_yes(yes: Uint128) -> Self {
-        Self {
-            yes,
-            no: Uint128::zero(),
-            abstain: Uint128::zero(),
-        }
+pub fn does_vote_count_fail(
+    no_votes: Uint128,
+    options: Uint128,
+    percent: PercentageThreshold,
+) -> bool {
+    // All abstain votes should result in a rejected proposal.
+    if options.is_zero() {
+        return true;
     }
-
-    /// Adds a vote to the votes.
-    pub fn add_vote(&mut self, vote: Vote, power: Uint128) {
-        match vote {
-            Vote::Yes => self.yes += power,
-            Vote::No => self.no += power,
-            Vote::Abstain => self.abstain += power,
+    match percent {
+        PercentageThreshold::Majority {} => {
+            // Fails if no votes have >= half of all votes.
+            compare_vote_count(no_votes, VoteCmp::Geq, options, Decimal::percent(50))
         }
-    }
-
-    /// Computes the total number of votes cast.
-    ///
-    /// NOTE: The total number of votes avaliable from a voting module
-    /// is a `Uint128`. As it is not possible to vote twice we know
-    /// that the sum of votes must be <= 2^128 and can safely return a
-    /// `Uint128` from this function. A missbehaving voting power
-    /// module may break this invariant.
-    pub fn total(&self) -> Uint128 {
-        self.yes + self.no + self.abstain
+        PercentageThreshold::Percent(percent) => compare_vote_count(
+            no_votes,
+            VoteCmp::Greater,
+            options,
+            Decimal::one() - percent,
+        ),
     }
 }
 
@@ -228,39 +125,23 @@ impl Proposal {
 
     /// Sets a proposals status to its current status.
     pub fn update_status(&mut self, block: &BlockInfo) {
-        self.status = self.current_status(block)
+        self.status = self.current_status(block);
     }
 
     /// Returns true iff this proposal is sure to pass (even before
     /// expiration if no future sequence of possible votes can cause
     /// it to fail)
     pub fn is_passed(&self, block: &BlockInfo) -> bool {
-        self.does_vote_count_reach_threshold(self.votes.yes, block)
-    }
-
-    /// As above for the passed check, used to check if a proposal is
-    /// already rejected.
-    pub fn is_rejected(&self, block: &BlockInfo) -> bool {
-        self.does_vote_count_reach_threshold(self.votes.no, block)
-    }
-
-    /// Helper function to determine if a vote count has reached the
-    /// proposal's threshold. Useful for determining if a particular
-    /// outcome has been reached, for example
-    /// `does_vote_count_meet_threshold(self.votes.yes, block)` will
-    /// return true if there are a sufficent number of yes votes to
-    /// pass the proposal.
-    fn does_vote_count_reach_threshold(&self, vote_count: Uint128, block: &BlockInfo) -> bool {
         match self.threshold {
-            Threshold::AbsolutePercentage { percentage } => votes_meet_threshold(
-                vote_count,
-                self.total_power - self.votes.abstain,
-                percentage,
-            ),
+            Threshold::AbsolutePercentage { percentage } => {
+                let options = self.total_power - self.votes.abstain;
+                does_vote_count_pass(self.votes.yes, options, percentage)
+            }
             Threshold::ThresholdQuorum { threshold, quorum } => {
-                if !votes_meet_threshold(self.votes.total(), self.total_power, quorum) {
+                if !does_vote_count_pass(self.votes.total(), self.total_power, quorum) {
                     return false;
                 }
+
                 if self.expiration.is_expired(block) {
                     // If the quorum is met and the proposal is
                     // expired the number of votes needed to pass a
@@ -275,10 +156,111 @@ impl Proposal {
                     // `token_price * quorum` as opposed to the
                     // 'desired' `token_price * threshold`.
                     let options = self.votes.total() - self.votes.abstain;
-                    votes_meet_threshold(vote_count, options, threshold)
+                    does_vote_count_pass(self.votes.yes, options, threshold)
                 } else {
                     let options = self.total_power - self.votes.abstain;
-                    votes_meet_threshold(vote_count, options, threshold)
+                    does_vote_count_pass(self.votes.yes, options, threshold)
+                }
+            }
+        }
+    }
+
+    /// As above for the passed check, used to check if a proposal is
+    /// already rejected.
+    pub fn is_rejected(&self, block: &BlockInfo) -> bool {
+        match self.threshold {
+            Threshold::AbsolutePercentage {
+                percentage: percentage_needed,
+            } => {
+                let options = self.total_power - self.votes.abstain;
+
+                // If there is a 100% passing threshold..
+                if percentage_needed == PercentageThreshold::Percent(Decimal::percent(100)) {
+                    if options == Uint128::zero() {
+                        // and there are no possible votes (zero
+                        // voting power or all abstain), then this
+                        // proposal has been rejected.
+                        return true;
+                    } else {
+                        // and there are possible votes, then this is
+                        // rejected if there is a single no vote.
+                        //
+                        // We need this check becuase otherwise when
+                        // we invert the threshold (`Decimal::one() -
+                        // threshold`) we get a 0% requirement for no
+                        // votes. Zero no votes do indeed meet a 0%
+                        // threshold.
+                        return self.votes.no >= Uint128::new(1);
+                    }
+                }
+
+                does_vote_count_fail(self.votes.no, options, percentage_needed)
+            }
+            Threshold::ThresholdQuorum { threshold, quorum } => {
+                match (
+                    does_vote_count_pass(self.votes.total(), self.total_power, quorum),
+                    self.expiration.is_expired(block),
+                ) {
+                    // Has met quorum and is expired.
+                    (true, true) => {
+                        // => consider only votes cast and see if no
+                        //    votes meet threshold.
+                        let options = self.votes.total() - self.votes.abstain;
+
+                        // If there is a 100% passing threshold..
+                        if threshold == PercentageThreshold::Percent(Decimal::percent(100)) {
+                            if options == Uint128::zero() {
+                                // and there are no possible votes (zero
+                                // voting power or all abstain), then this
+                                // proposal has been rejected.
+                                return true;
+                            } else {
+                                // and there are possible votes, then this is
+                                // rejected if there is a single no vote.
+                                //
+                                // We need this check becuase
+                                // otherwise when we invert the
+                                // threshold (`Decimal::one() -
+                                // threshold`) we get a 0% requirement
+                                // for no votes. Zero no votes do
+                                // indeed meet a 0% threshold.
+                                return self.votes.no >= Uint128::new(1);
+                            }
+                        }
+                        does_vote_count_fail(self.votes.no, options, threshold)
+                    }
+                    // Has met quorum and is not expired.
+                    // | Hasn't met quorum and is not expired.
+                    (true, false) | (false, false) => {
+                        // => consider all possible votes and see if
+                        //    no votes meet threshold.
+                        let options = self.total_power - self.votes.abstain;
+
+                        // If there is a 100% passing threshold..
+                        if threshold == PercentageThreshold::Percent(Decimal::percent(100)) {
+                            if options == Uint128::zero() {
+                                // and there are no possible votes (zero
+                                // voting power or all abstain), then this
+                                // proposal has been rejected.
+                                return true;
+                            } else {
+                                // and there are possible votes, then this is
+                                // rejected if there is a single no vote.
+                                //
+                                // We need this check becuase otherwise
+                                // when we invert the threshold
+                                // (`Decimal::one() - threshold`) we
+                                // get a 0% requirement for no
+                                // votes. Zero no votes do indeed meet
+                                // a 0% threshold.
+                                return self.votes.no >= Uint128::new(1);
+                            }
+                        }
+
+                        does_vote_count_fail(self.votes.no, options, threshold)
+                    }
+                    // Hasn't met quorum requirement and voting has closed => rejected.
+                    (false, true) => true,
                 }
             }
         }
@@ -297,81 +279,10 @@ impl std::fmt::Display for Status {
     }
 }
 
-impl std::fmt::Display for Vote {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Vote::Yes => write!(f, "yes"),
-            Vote::No => write!(f, "no"),
-            Vote::Abstain => write!(f, "abstain"),
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use cosmwasm_std::testing::mock_env;
-
-    #[test]
-    fn count_votes() {
-        let mut votes = Votes::with_yes(Uint128::new(5));
-        votes.add_vote(Vote::No, Uint128::new(10));
-        votes.add_vote(Vote::Yes, Uint128::new(30));
-        votes.add_vote(Vote::Abstain, Uint128::new(40));
-
-        assert_eq!(votes.total(), Uint128::new(5 + 10 + 30 + 40));
-        assert_eq!(votes.yes, Uint128::new(35));
-        assert_eq!(votes.no, Uint128::new(10));
-        assert_eq!(votes.abstain, Uint128::new(40));
-    }
-
-    #[test]
-    fn votes_needed_rounds_properly() {
-        // round up right below 1
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(1)),
-            votes_needed(Uint128::new(3), Decimal::permille(333))
-        );
-        // round up right over 1
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(2)),
-            votes_needed(Uint128::new(3), Decimal::permille(334))
-        );
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(11)),
-            votes_needed(Uint128::new(30), Decimal::permille(334))
-        );
-
-        // exact matches don't round
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(17)),
-            votes_needed(Uint128::new(34), Decimal::percent(50))
-        );
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(12)),
-            votes_needed(Uint128::new(48), Decimal::percent(25))
-        );
-
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(7)),
-            votes_needed(Uint128::new(13), Decimal::percent(50))
-        );
-
-        assert_eq!(
-            VotesNeeded::Unreachable,
-            votes_needed(Uint128::zero(), Decimal::percent(50))
-        );
-
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(1)),
-            votes_needed(Uint128::new(1), Decimal::percent(1))
-        );
-
-        assert_eq!(
-            VotesNeeded::Finite(Uint128::new(0)),
-            votes_needed(Uint128::new(1), Decimal::percent(0))
-        );
-    }
+    use cosmwasm_std::{testing::mock_env, Decimal};
 
     fn setup_prop(
         threshold: Threshold,
@@ -423,7 +334,7 @@ mod test {
     #[test]
     fn test_pass_absolute_percentage() {
         let threshold = Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(50),
+            percentage: PercentageThreshold::Majority {},
         };
         let votes = Votes {
             yes: Uint128::new(7),
@@ -431,8 +342,8 @@ mod test {
             abstain: Uint128::new(2),
         };
 
-        // 15 total votes. 7 yes and 2 abstain. 50% threshold. Should
-        // be passed.
+        // 15 total votes. 7 yes and 2 abstain. 50% threshold. This
+        // should pass.
         assert!(check_is_passed(
             threshold.clone(),
             votes.clone(),
@@ -454,7 +365,7 @@ mod test {
     #[test]
     fn test_reject_absolute_percentage() {
         let percent = Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(50),
+            percentage: PercentageThreshold::Majority {},
         };
 
         // 4 YES, 7 NO, 2 ABSTAIN
@@ -508,8 +419,8 @@ mod test {
     #[test]
     fn proposal_passed_quorum() {
         let quorum = Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(40),
+            threshold: PercentageThreshold::Percent(Decimal::percent(50)),
+            quorum: PercentageThreshold::Percent(Decimal::percent(40)),
         };
         // all non-yes votes are counted for quorum
         let passing = Votes {
@@ -597,8 +508,8 @@ mod test {
     #[test]
     fn proposal_rejected_quorum() {
         let quorum = Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(40),
+            threshold: PercentageThreshold::Majority {},
+            quorum: PercentageThreshold::Percent(Decimal::percent(40)),
         };
         // all non-yes votes are counted for quorum
         let rejecting = Votes {
@@ -627,8 +538,11 @@ mod test {
             Uint128::new(30),
             true
         ));
-        // Under quorum means it cannot be rejected
-        assert!(!check_is_rejected(
+        // Total power of 33. 13 total votes. 8 no votes, 3 yes, 2
+        // abstain. 39.3% turnout. Expired. As it is expired we see if
+        // the 8 no votes excede the 50% failing threshold, which they
+        // do.
+        assert!(check_is_rejected(
             quorum.clone(),
             rejecting.clone(),
             Uint128::new(33),
@@ -704,8 +618,8 @@ mod test {
         // When we pass absolute threshold (everyone else voting no,
         // we pass), but still don't hit quorum.
         let quorum = Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(60),
-            quorum: Decimal::percent(80),
+            threshold: PercentageThreshold::Percent(Decimal::percent(60)),
+            quorum: PercentageThreshold::Percent(Decimal::percent(80)),
         };
 
         // Try 9 yes, 1 no (out of 15) -> 90% voter threshold, 60%

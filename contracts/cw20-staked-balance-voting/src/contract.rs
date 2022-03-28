@@ -5,6 +5,7 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw20::Cw20Coin;
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
@@ -69,9 +70,10 @@ pub fn instantiate(
                         admin: Some(info.sender.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: Some(info.sender.to_string()),
+                            owner: Some(info.sender.to_string()),
                             unstaking_duration,
                             token_address: address.to_string(),
+                            manager: None,
                         })?,
                     };
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);
@@ -89,7 +91,7 @@ pub fn instantiate(
             name,
             symbol,
             decimals,
-            initial_balances,
+            mut initial_balances,
             marketing,
             staking_code_id,
             unstaking_duration,
@@ -97,8 +99,19 @@ pub fn instantiate(
             let initial_supply = initial_balances
                 .iter()
                 .fold(Uint128::zero(), |p, n| p + n.amount);
+            // Cannot instantiate with no initial token owners because it would immediately lock the DAO.
             if initial_supply.is_zero() {
                 return Err(ContractError::InitialBalancesError {});
+            }
+
+            // Add DAO initial balance to initial_balances vector if defined.
+            if let Some(initial_dao_balance) = msg.initial_dao_balance {
+                if initial_dao_balance > Uint128::zero() {
+                    initial_balances.push(Cw20Coin {
+                        address: info.sender.to_string(),
+                        amount: initial_dao_balance,
+                    });
+                }
             }
 
             STAKING_CONTRACT_CODE_ID.save(deps.storage, &staking_code_id)?;
@@ -239,9 +252,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         admin: Some(dao.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: Some(dao.to_string()),
+                            owner: Some(dao.to_string()),
                             unstaking_duration,
                             token_address: token.to_string(),
+                            manager: None,
                         })?,
                     };
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);

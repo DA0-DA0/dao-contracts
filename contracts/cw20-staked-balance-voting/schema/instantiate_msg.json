@@ -6,6 +6,16 @@
     "token_info"
   ],
   "properties": {
+    "initial_dao_balance": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "token_info": {
       "$ref": "#/definitions/TokenInfo"
     }

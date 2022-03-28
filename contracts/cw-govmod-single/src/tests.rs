@@ -4,12 +4,14 @@ use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
+use voting::{Vote, Votes};
+
 use crate::{
     msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::{Proposal, Status, Vote, Votes},
-    query::{ProposalResponse, VoteInfo, VoteResponse},
+    proposal::{Proposal, Status},
+    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
     state::{CheckedDepositInfo, Config},
-    threshold::Threshold,
+    threshold::{PercentageThreshold, Threshold},
 };
 
 const CREATOR_ADDR: &str = "creator";
@@ -112,6 +114,7 @@ fn instantiate_with_default_governance(
             admin: cw_governance::msg::Admin::GovernanceContract {},
             label: "DAO DAO governance module".to_string(),
         }],
+        initial_items: None,
     };
 
     instantiate_governance(app, governance_id, governance_instantiate)
@@ -123,7 +126,7 @@ fn test_propose() {
     let govmod_id = app.store_code(single_govmod_contract());
 
     let threshold = Threshold::AbsolutePercentage {
-        percentage: Decimal::percent(50),
+        percentage: PercentageThreshold::Majority {},
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
@@ -397,7 +400,7 @@ fn test_vote_simple() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(100),
+            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
         Status::Passed,
         None,
@@ -412,7 +415,7 @@ fn test_vote_simple() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(100),
+            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
         Status::Rejected,
         None,
@@ -432,7 +435,7 @@ fn test_vote_no_overflow() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(100),
+            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
         Status::Passed,
         None,
@@ -450,9 +453,84 @@ fn test_vote_abstain_only() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(100),
+            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
-        Status::Open,
+        Status::Rejected,
+        None,
+        None,
+    );
+
+    // The quorum shouldn't matter here in determining if the vote is
+    // rejected.
+    for i in 0..101 {
+        do_test_votes(
+            vec![TestVote {
+                voter: "ekez".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(u128::max_value()),
+                should_execute: ShouldExecute::Yes,
+            }],
+            Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Percent(Decimal::percent(100)),
+                quorum: PercentageThreshold::Percent(Decimal::percent(i)),
+            },
+            Status::Rejected,
+            None,
+            None,
+        );
+    }
+}
+
+#[test]
+fn test_single_no() {
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(1),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
+        },
+        Status::Rejected,
+        Some(Uint128::from(u128::max_value())),
+        None,
+    );
+}
+
+#[test]
+fn test_tricky_rounding() {
+    // This tests the smallest possible round up for passing
+    // thresholds we can have. Specifically, a 1% passing threshold
+    // and 1 total vote. This should round up and only pass if there
+    // are more than 1 yes votes.
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Yes,
+            weight: Uint128::new(1),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(1)),
+        },
+        Status::Passed,
+        None,
+        None,
+    );
+
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Abstain,
+            weight: Uint128::new(1),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(1)),
+        },
+        Status::Rejected,
         None,
         None,
     );
@@ -476,8 +554,15 @@ fn test_no_double_votes() {
             },
         ],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(100),
+            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
+        // NOTE: Updating our cw20-base version will cause this to
+        // fail. In versions of cw20-base before Feb 15 2022 (the one
+        // we use at the time of writing) it was allowed to have an
+        // initial balance that repeats for a given address but it
+        // would cause miscalculation of the total supply. In this
+        // case the total supply is miscumputed to be 4 so this is
+        // assumed to have 2 abstain votes out of 4 possible votes.
         Status::Open,
         None,
         None,
@@ -511,13 +596,13 @@ fn test_close_votes() {
                 voter: "ezek".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
-                should_execute: ShouldExecute::No,
+                should_execute: ShouldExecute::Yes,
             },
         ],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(50),
+            percentage: PercentageThreshold::Percent(Decimal::percent(50)),
         },
-        Status::Rejected,
+        Status::Passed,
         None,
         None,
     );
@@ -544,7 +629,7 @@ fn test_close_votes() {
             },
         ],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(50),
+            percentage: PercentageThreshold::Percent(Decimal::percent(50)),
         },
         Status::Passed,
         None,
@@ -584,10 +669,61 @@ fn test_close_votes_quorum() {
             },
         ],
         Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(10),
-            quorum: Decimal::percent(50),
+            threshold: PercentageThreshold::Percent(Decimal::percent(10)),
+            quorum: PercentageThreshold::Majority {},
         },
         Status::Passed,
+        None,
+        None,
+    );
+}
+
+#[test]
+fn test_majority_vs_half() {
+    do_test_votes(
+        vec![
+            TestVote {
+                voter: "ekez".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestVote {
+                voter: "keze".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
+        Threshold::ThresholdQuorum {
+            threshold: PercentageThreshold::Percent(Decimal::percent(50)),
+            quorum: PercentageThreshold::Majority {},
+        },
+        Status::Passed,
+        None,
+        None,
+    );
+
+    do_test_votes(
+        vec![
+            TestVote {
+                voter: "ekez".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestVote {
+                voter: "keze".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::No,
+            },
+        ],
+        Threshold::ThresholdQuorum {
+            threshold: PercentageThreshold::Majority {},
+            quorum: PercentageThreshold::Majority {},
+        },
+        Status::Rejected,
         None,
         None,
     );
@@ -603,8 +739,8 @@ fn test_pass_threshold_not_quorum() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(60),
+            threshold: PercentageThreshold::Majority {},
+            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         },
         Status::Open,
         Some(Uint128::new(100)),
@@ -618,10 +754,12 @@ fn test_pass_threshold_not_quorum() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(60),
+            threshold: PercentageThreshold::Majority {},
+            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         },
-        Status::Open,
+        // As the threshold is 50% and 59% of voters have voted no
+        // this is unable to pass.
+        Status::Rejected,
         Some(Uint128::new(100)),
         None,
     );
@@ -637,8 +775,8 @@ fn test_pass_threshold_exactly_quorum() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(60),
+            threshold: PercentageThreshold::Majority {},
+            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         },
         Status::Passed,
         Some(Uint128::new(100)),
@@ -667,8 +805,8 @@ fn test_pass_threshold_exactly_quorum() {
             },
         ],
         Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(60),
+            threshold: PercentageThreshold::Majority {},
+            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         },
         Status::Passed,
         Some(Uint128::new(100)),
@@ -682,8 +820,8 @@ fn test_pass_threshold_exactly_quorum() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
-            quorum: Decimal::percent(60),
+            threshold: PercentageThreshold::Majority {},
+            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         },
         Status::Rejected,
         Some(Uint128::new(100)),
@@ -706,7 +844,7 @@ fn fuzz_voting() {
         let expected_status = match yes_sum.cmp(&no_sum) {
             std::cmp::Ordering::Less => Status::Rejected,
             // Depends on which reaches the threshold first. Ignore for now.
-            std::cmp::Ordering::Equal => continue,
+            std::cmp::Ordering::Equal => Status::Rejected,
             std::cmp::Ordering::Greater => Status::Passed,
         };
 
@@ -728,7 +866,7 @@ fn fuzz_voting() {
         do_test_votes(
             votes,
             Threshold::AbsolutePercentage {
-                percentage: Decimal::percent(50),
+                percentage: PercentageThreshold::Majority {},
             },
             expected_status,
             None,
@@ -745,7 +883,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     let govmod_id = app.store_code(single_govmod_contract());
 
     let threshold = Threshold::AbsolutePercentage {
-        percentage: Decimal::percent(50),
+        percentage: PercentageThreshold::Majority {},
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
@@ -820,7 +958,7 @@ fn test_different_token_proposal_deposit() {
         .unwrap();
 
     let threshold = Threshold::AbsolutePercentage {
-        percentage: Decimal::percent(50),
+        percentage: PercentageThreshold::Majority {},
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
@@ -875,7 +1013,7 @@ fn test_bad_token_proposal_deposit() {
         .unwrap();
 
     let threshold = Threshold::AbsolutePercentage {
-        percentage: Decimal::percent(50),
+        percentage: PercentageThreshold::Majority {},
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
@@ -900,7 +1038,7 @@ fn test_take_proposal_deposit() {
     let govmod_id = app.store_code(single_govmod_contract());
 
     let threshold = Threshold::AbsolutePercentage {
-        percentage: Decimal::percent(50),
+        percentage: PercentageThreshold::Majority {},
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
@@ -1013,7 +1151,7 @@ fn test_deposit_return_on_execute() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(90),
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
         },
         Status::Passed,
         None,
@@ -1085,7 +1223,7 @@ fn test_close_open_proposal() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(90),
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
         },
         Status::Open,
         Some(Uint128::new(100)),
@@ -1159,7 +1297,7 @@ fn test_deposit_return_on_close() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(90),
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
         },
         Status::Rejected,
         None,
@@ -1222,6 +1360,120 @@ fn test_deposit_return_on_close() {
 }
 
 #[test]
+fn test_update_config() {
+    let (mut app, governance_addr) = do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Rejected,
+        None,
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: false,
+        }),
+    );
+
+    let gov_state: cw_governance::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr, &cw_governance::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.governance_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(
+        govmod_config.threshold,
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        }
+    );
+
+    let dao = govmod_config.dao;
+
+    // Attempt to update the config from a non-dao address. This
+    // should fail as it is unauthorized.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::UpdateConfig {
+            threshold: Threshold::AbsolutePercentage {
+                percentage: PercentageThreshold::Majority {},
+            },
+            max_voting_period: cw_utils::Duration::Height(10),
+            only_members_execute: false,
+            dao: CREATOR_ADDR.to_string(),
+            deposit_info: None,
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    // Update the config from the DAO address. This should succede.
+    app.execute_contract(
+        dao.clone(),
+        govmod_single.clone(),
+        &ExecuteMsg::UpdateConfig {
+            threshold: Threshold::AbsolutePercentage {
+                percentage: PercentageThreshold::Majority {},
+            },
+            max_voting_period: cw_utils::Duration::Height(10),
+            only_members_execute: false,
+            dao: CREATOR_ADDR.to_string(),
+            deposit_info: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    let expected = Config {
+        threshold: Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Majority {},
+        },
+        max_voting_period: cw_utils::Duration::Height(10),
+        only_members_execute: false,
+        dao: Addr::unchecked(CREATOR_ADDR),
+        deposit_info: None,
+    };
+    assert_eq!(govmod_config, expected);
+
+    // As we have changed the DAO address updating the config using
+    // the original one should now fail.
+    app.execute_contract(
+        dao,
+        govmod_single,
+        &ExecuteMsg::UpdateConfig {
+            threshold: Threshold::AbsolutePercentage {
+                percentage: PercentageThreshold::Majority {},
+            },
+            max_voting_period: cw_utils::Duration::Height(10),
+            only_members_execute: false,
+            dao: CREATOR_ADDR.to_string(),
+            deposit_info: None,
+        },
+        &[],
+    )
+    .unwrap_err();
+}
+
+#[test]
 fn test_no_return_if_no_refunds() {
     let (mut app, governance_addr) = do_test_votes(
         vec![TestVote {
@@ -1231,7 +1483,7 @@ fn test_no_return_if_no_refunds() {
             should_execute: ShouldExecute::Yes,
         }],
         Threshold::AbsolutePercentage {
-            percentage: Decimal::percent(90),
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
         },
         Status::Rejected,
         None,
@@ -1278,4 +1530,149 @@ fn test_no_return_if_no_refunds() {
 
     // Proposal has been closed but deposit has not been refunded.
     assert_eq!(balance.balance, Uint128::new(9));
+}
+
+#[test]
+fn test_query_list_proposals() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+    let gov_addr = instantiate_with_default_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(0)),
+            },
+            max_voting_period: cw_utils::Duration::Height(100),
+            only_members_execute: true,
+            deposit_info: None,
+        },
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100),
+        }]),
+    );
+
+    let gov_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &cw_governance::msg::QueryMsg::GovernanceModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(gov_modules.len(), 1);
+
+    let govmod = gov_modules.into_iter().next().unwrap();
+
+    for i in 1..10 {
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod.clone(),
+            &ExecuteMsg::Propose {
+                title: format!("Text proposal {}.", i),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+                latest: None,
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    let proposals_forward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::ListProposals {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let mut proposals_backward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::ReverseProposals {
+                start_before: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    proposals_backward.proposals.reverse();
+
+    assert_eq!(proposals_forward.proposals, proposals_backward.proposals);
+
+    let expected = ProposalResponse {
+        id: 1,
+        proposal: Proposal {
+            title: "Text proposal 1.".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            proposer: Addr::unchecked(CREATOR_ADDR),
+            start_height: app.block_info().height,
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + 100),
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(0)),
+            },
+            total_power: Uint128::new(100),
+            msgs: vec![],
+            status: Status::Open,
+            votes: Votes::zero(),
+            deposit_info: None,
+        },
+    };
+    assert_eq!(proposals_forward.proposals[0], expected);
+
+    // Get proposals (3, 5]
+    let proposals_forward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::ListProposals {
+                start_after: Some(3),
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+    let mut proposals_backward: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod,
+            &QueryMsg::ReverseProposals {
+                start_before: Some(6),
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+
+    let expected = ProposalResponse {
+        id: 4,
+        proposal: Proposal {
+            title: "Text proposal 4.".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            proposer: Addr::unchecked(CREATOR_ADDR),
+            start_height: app.block_info().height,
+            expiration: cw_utils::Expiration::AtHeight(app.block_info().height + 100),
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(0)),
+            },
+            total_power: Uint128::new(100),
+            msgs: vec![],
+            status: Status::Open,
+            votes: Votes::zero(),
+            deposit_info: None,
+        },
+    };
+    assert_eq!(proposals_forward.proposals[0], expected);
+    assert_eq!(proposals_backward.proposals[1], expected);
+
+    proposals_backward.proposals.reverse();
+    assert_eq!(proposals_forward.proposals, proposals_backward.proposals);
 }

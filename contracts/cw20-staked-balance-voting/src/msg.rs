@@ -1,3 +1,4 @@
+use cosmwasm_std::Uint128;
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_governance_macros::{token_query, voting_query};
@@ -41,6 +42,7 @@ pub enum TokenInfo {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub token_info: TokenInfo,
+    pub initial_dao_balance: Option<Uint128>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
