@@ -71,9 +71,8 @@ pub fn instantiate(
 
     GOVERNANCE_MODULE_COUNT.save(deps.storage, &(gov_module_msgs.len() as u64))?;
 
-    let mut response = Response::new();
-
-    // Instantiate items if any are present.
+    // Add or instantiate items if any are present.
+    let mut instantiate_item_msgs: Vec<SubMsg<Empty>> = vec![];
     if let Some(items) = msg.initial_items {
         if !items.is_empty() {
             if items.len() > MAX_ITEM_INSTANTIATIONS_ON_INSTANTIATE.try_into().unwrap() {
@@ -98,7 +97,7 @@ pub fn instantiate(
                         // Create and add submessage.
                         let item_msg = info.into_wasm_msg(env.contract.address.clone());
                         let item_msg: SubMsg<Empty> = SubMsg::reply_on_success(item_msg, reply_id);
-                        response = response.add_submessage(item_msg);
+                        instantiate_item_msgs.push(item_msg);
 
                         // Store name in map for later retrieval if the contract instantiation succeeds.
                         PENDING_ITEM_INSTANTIATION_NAMES.save(
@@ -112,11 +111,12 @@ pub fn instantiate(
         }
     }
 
-    Ok(response
+    Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("sender", info.sender)
         .add_submessage(vote_module_msg)
-        .add_submessages(gov_module_msgs))
+        .add_submessages(gov_module_msgs)
+        .add_submessages(instantiate_item_msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
