@@ -192,6 +192,8 @@ dependencies = [
  "cw20 0.12.1",
  "cw20-balance-voting",
  "cw20-base 0.12.1",
+ "cw721",
+ "cw721-base",
  "schemars",
  "serde",
  "thiserror",
@@ -596,6 +598,34 @@ dependencies = [
  "cw2 0.12.1",
  "cw4",
  "cw4-group",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw721"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc5bb00baf493fc48bf05831edc3ed074731da7c1944c8521ead3df4ff08d9c7"
+dependencies = [
+ "cosmwasm-std",
+ "cw-utils 0.12.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw721-base"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da773ac93cae5a01a052772d65a2f377dd22933f583ef8f739d67f32ffce1b6b"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.12.1",
+ "cw-utils 0.12.1",
+ "cw2 0.12.1",
+ "cw721",
  "schemars",
  "serde",
  "thiserror",

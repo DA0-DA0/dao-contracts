@@ -57,6 +57,13 @@ pub struct InstantiateMsg {
     /// An image URL to describe the governance module contract.
     pub image_url: Option<String>,
 
+    /// If true the contract will automatically add received cw20
+    /// tokens to its treasury.
+    pub automatically_add_cw20s: bool,
+    /// If true the contract will automatically add received cw721
+    /// tokens to its treasury.
+    pub automatically_add_cw721s: bool,
+
     /// Instantiate information for the governance contract's voting
     /// power module.
     pub voting_module_instantiate_info: ModuleInstantiateInfo,
@@ -97,6 +104,24 @@ pub enum ExecuteMsg {
     SetItem { key: String, addr: String },
     /// Removes an item from the governance contract's item map.
     RemoveItem { key: String },
+    /// Executed when the contract receives a cw20 token. Depending on
+    /// the contract's configuration the contract will automatically
+    /// add the token to its treasury.
+    Receive(cw20::Cw20ReceiveMsg),
+    /// Executed when the contract receives a cw721 token. Depending
+    /// on the contract's configuration the contract will
+    /// automatically add the token to its treasury.
+    ReceiveNft(cw721::Cw721ReceiveMsg),
+    /// Updates the list of cw20 tokens this contract has registered.
+    UpdateCw20List {
+        to_add: Vec<String>,
+        to_remove: Vec<String>,
+    },
+    /// Updates the list of cw721 tokens this contract has registered.
+    UpdateCw721List {
+        to_add: Vec<String>,
+        to_remove: Vec<String>,
+    },
 }
 
 #[voting_query]
@@ -118,10 +143,30 @@ pub enum QueryMsg {
     /// limited by network times than compute times. Returns
     /// `DumpStateResponse`.
     DumpState {},
-    GetItem {
-        key: String,
-    },
+    /// Gets the address associated with an item key.
+    GetItem { key: String },
+    /// Lists all of the item keys associted with the contract. For
+    /// example, given the items `{ "group": "...", "subdao": "..."}`
+    /// this query would return `["group", "subdao"]`.
     ListItems {
+        start_at: Option<String>,
+        limit: Option<u64>,
+    },
+    /// Lists the addresses of the cw20 tokens in this contract's
+    /// treasury.
+    Cw20TokenList {
+        start_at: Option<String>,
+        limit: Option<u64>,
+    },
+    /// Lists the addresses of the cw721 tokens in this contract's
+    /// treasury.
+    Cw721TokenList {
+        start_at: Option<String>,
+        limit: Option<u64>,
+    },
+    /// Gets the token balance for each cw20 registered with the
+    /// contract.
+    Cw20Balances {
         start_at: Option<String>,
         limit: Option<u64>,
     },
