@@ -35,13 +35,13 @@ pub enum QueryMsg {
     Dump {},
     ListGroups {
         address: String,
-        offset: Option<usize>,
-        limit: Option<usize>,
+        offset: Option<u32>,
+        limit: Option<u32>,
     },
     ListAddresses {
         group: String,
-        offset: Option<usize>,
-        limit: Option<usize>,
+        offset: Option<u32>,
+        limit: Option<u32>,
     },
     IsAddressInGroup {
         address: String,

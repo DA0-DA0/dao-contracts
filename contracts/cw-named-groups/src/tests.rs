@@ -58,8 +58,8 @@ fn list_addresses(
     app: &App,
     contract_addr: &Addr,
     group: String,
-    offset: Option<usize>,
-    limit: Option<usize>,
+    offset: Option<u32>,
+    limit: Option<u32>,
 ) -> StdResult<ListAddressesResponse> {
     app.wrap().query_wasm_smart(
         contract_addr,
@@ -75,8 +75,8 @@ fn list_groups(
     app: &App,
     contract_addr: &Addr,
     address: String,
-    offset: Option<usize>,
-    limit: Option<usize>,
+    offset: Option<u32>,
+    limit: Option<u32>,
 ) -> StdResult<ListGroupsResponse> {
     app.wrap().query_wasm_smart(
         contract_addr,
@@ -614,7 +614,7 @@ mod list_addresses {
             &contract_addr,
             group1.name.clone(),
             Some(0),
-            Some(group1.addresses.len()),
+            Some(group1.addresses.len() as u32),
         )
         .unwrap()
         .addresses;
@@ -761,7 +761,7 @@ mod list_groups {
             &contract_addr,
             address.clone(),
             Some(0),
-            Some(groups_count),
+            Some(groups_count as u32),
         )
         .unwrap()
         .groups;
