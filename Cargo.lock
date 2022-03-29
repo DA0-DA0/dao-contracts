@@ -303,6 +303,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-named-groups"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-multi-test 0.12.1",
+ "cw-storage-plus 0.12.1",
+ "cw2 0.12.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-storage-plus"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -786,21 +801,6 @@ name = "libc"
 version = "0.2.121"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "efaa7b300f3b5fe8eb6bf21ce3895e1751d9665086af2d64b42f19701015ff4f"
-
-[[package]]
-name = "named-groups"
-version = "0.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-multi-test 0.12.1",
- "cw-storage-plus 0.12.1",
- "cw2 0.12.1",
- "schemars",
- "serde",
- "thiserror",
-]
 
 [[package]]
 name = "opaque-debug"

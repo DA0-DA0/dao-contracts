@@ -242,19 +242,19 @@ fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
 fn query_list_addresses(
     deps: Deps,
     group: String,
-    offset: Option<usize>,
-    limit: Option<usize>,
+    offset: Option<u32>,
+    limit: Option<u32>,
 ) -> StdResult<ListAddressesResponse> {
     let addresses = GROUPS
         .load(deps.storage, &group)
         .map_err(|_| StdError::not_found("group"))?;
 
     // Paginate.
-    let default_take_all = addresses.len();
+    let default_take_all = addresses.len() as u32;
     let addresses = addresses
         .into_iter()
-        .skip(offset.unwrap_or_default())
-        .take(limit.unwrap_or(default_take_all))
+        .skip(offset.unwrap_or_default() as usize)
+        .take(limit.unwrap_or(default_take_all) as usize)
         .collect();
 
     Ok(ListAddressesResponse { addresses })
@@ -263,8 +263,8 @@ fn query_list_addresses(
 fn query_list_groups(
     deps: Deps,
     address: String,
-    offset: Option<usize>,
-    limit: Option<usize>,
+    offset: Option<u32>,
+    limit: Option<u32>,
 ) -> StdResult<ListGroupsResponse> {
     // Validate address.
     let addr = deps.api.addr_validate(&address)?;
@@ -276,11 +276,11 @@ fn query_list_groups(
     let groups = ADDRESSES.load(deps.storage, addr).unwrap_or_default();
 
     // Paginate.
-    let default_take_all = groups.len();
+    let default_take_all = groups.len() as u32;
     let groups = groups
         .into_iter()
-        .skip(offset.unwrap_or_default())
-        .take(limit.unwrap_or(default_take_all))
+        .skip(offset.unwrap_or_default() as usize)
+        .take(limit.unwrap_or(default_take_all) as usize)
         .collect();
 
     Ok(ListGroupsResponse { groups })
