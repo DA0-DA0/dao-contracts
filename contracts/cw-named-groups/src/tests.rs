@@ -287,7 +287,7 @@ mod remove {
             .execute_contract(
                 Addr::unchecked(USER1),
                 contract_addr.clone(),
-                &ExecuteMsg::Remove {
+                &ExecuteMsg::RemoveGroup {
                     group: group1.name.clone(),
                     addresses: Some(group1.addresses.to_vec()),
                 },
@@ -316,7 +316,7 @@ mod remove {
             .execute_contract(
                 Addr::unchecked(ADMIN),
                 contract_addr.clone(),
-                &ExecuteMsg::Remove {
+                &ExecuteMsg::RemoveGroup {
                     group: group1.name.clone(),
                     addresses: None,
                 },
@@ -333,7 +333,7 @@ mod remove {
             .execute_contract(
                 Addr::unchecked(ADMIN),
                 contract_addr,
-                &ExecuteMsg::Remove {
+                &ExecuteMsg::RemoveGroup {
                     group: group1.name.clone(),
                     addresses: Some(group1.addresses.to_vec()),
                 },
@@ -361,7 +361,7 @@ mod remove {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Remove {
+            &ExecuteMsg::RemoveGroup {
                 group: group1.name.clone(),
                 addresses: Some(vec![USER2.to_string()]),
             },
@@ -378,7 +378,7 @@ mod remove {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Remove {
+            &ExecuteMsg::RemoveGroup {
                 group: group1.name,
                 addresses: Some(group1.addresses.to_vec()),
             },
@@ -405,7 +405,7 @@ mod remove {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Remove {
+            &ExecuteMsg::RemoveGroup {
                 group: group1_with_two_addresses.name.clone(),
                 addresses: None,
             },
