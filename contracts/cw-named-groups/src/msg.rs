@@ -16,15 +16,15 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Add {
+    Update {
         group: String,
-        addresses: Option<Vec<String>>,
+        addresses_to_add: Option<Vec<String>>,
+        addresses_to_remove: Option<Vec<String>>,
     },
-    Remove {
+    RemoveGroup {
         group: String,
-        addresses: Option<Vec<String>>,
     },
-    ChangeOwner {
+    UpdateOwner {
         owner: String,
     },
 }
