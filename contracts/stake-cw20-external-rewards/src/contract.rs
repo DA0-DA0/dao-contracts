@@ -897,6 +897,15 @@ mod tests {
             get_balance_native(&app, &reward_addr, &denom),
             Uint128::zero()
         );
+
+        app.borrow_mut().update_block(|b| b.height = 500000);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+        app.borrow_mut().update_block(|b| b.height = 1000000);
+        unstake_tokens(&mut app, &staking_addr, ADDR3, 1);
+        stake_tokens(&mut app, &staking_addr, &cw20_addr, ADDR3, 1);
     }
 
     #[test]
@@ -1127,6 +1136,15 @@ mod tests {
             get_balance_cw20(&app, &reward_token, &reward_addr),
             Uint128::zero()
         );
+
+        app.borrow_mut().update_block(|b| b.height = 500000);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+
+        app.borrow_mut().update_block(|b| b.height = 1000000);
+        unstake_tokens(&mut app, &staking_addr, ADDR3, 1);
+        stake_tokens(&mut app, &staking_addr, &cw20_addr, ADDR3, 1);
     }
 
     #[test]
