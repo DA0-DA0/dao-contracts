@@ -150,10 +150,10 @@ impl Proposal {
             Threshold::AbsolutePercentage {
                 percentage: percentage_needed,
             } => {
-                let options = self.total_weight - self.votes.abstain;
+                let opinions = self.total_weight - self.votes.abstain;
                 // If there is a 100% passing threshold
                 if percentage_needed == Decimal::percent(100) {
-                    if options == Uint128::zero() {
+                    if opinions == Uint128::zero() {
                         // and there are no possible votes (zero
                         // voting power or all abstain), then we
                         // can reject
@@ -168,7 +168,7 @@ impl Proposal {
                     }
                 }
                 // We can now safely invert the threshold for the other cases
-                self.votes.no > votes_needed(options, Decimal::one() - percentage_needed)
+                self.votes.no > votes_needed(opinions, Decimal::one() - percentage_needed)
             }
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 match (
@@ -179,11 +179,11 @@ impl Proposal {
                     (true, true) => {
                         // consider only votes cast and see if no
                         // votes meet threshold.
-                        let options = self.votes.total() - self.votes.abstain;
+                        let opinions = self.votes.total() - self.votes.abstain;
 
                         // If there is a 100% passing threshold..
                         if threshold == Decimal::percent(100) {
-                            if options == Uint128::zero() {
+                            if opinions == Uint128::zero() {
                                 // and there are no possible votes (zero
                                 // voting power or all abstain), then this
                                 // proposal has been rejected.
@@ -202,18 +202,18 @@ impl Proposal {
                             }
                         }
 
-                        self.votes.no > votes_needed(options, Decimal::one() - threshold)
+                        self.votes.no > votes_needed(opinions, Decimal::one() - threshold)
                     }
                     // Has met quorum and is not expired.
                     // | Hasn't met quorum and is not expired.
                     (true, false) | (false, false) => {
                         // => consider all possible votes and see if
                         //    no votes meet threshold.
-                        let options = self.total_weight - self.votes.abstain;
+                        let opinions = self.total_weight - self.votes.abstain;
 
                         // If there is a 100% passing threshold..
                         if threshold == Decimal::percent(100) {
-                            if options == Uint128::zero() {
+                            if opinions == Uint128::zero() {
                                 // and there are no possible votes (zero
                                 // voting power or all abstain), then this
                                 // proposal has been rejected.
@@ -232,7 +232,7 @@ impl Proposal {
                             }
                         }
 
-                        self.votes.no > votes_needed(options, Decimal::one() - threshold)
+                        self.votes.no > votes_needed(opinions, Decimal::one() - threshold)
                     }
                     // Hasn't met quorum requirement and voting has closed => rejected.
                     (false, true) => true,
