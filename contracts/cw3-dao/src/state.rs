@@ -103,22 +103,20 @@ impl Proposal {
         self.status = self.current_status(block);
     }
 
-    /// Helper function to check if a certain vote count has reached threshold.
-    /// Only called from is_rejected and is_passed for no and yes votes
-    /// Handles the different threshold types accordingly.
-    /// This function returns true if and only if vote_count is greater than the threshold which
-    /// is calculated.
-    /// In the case where we use yes votes, this function will return true if and only if the
-    /// proposal will pass.
-    /// In the case where we use no votes, this function will return true if and only if the
-    /// proposal will be rejected regardless of other votes.
-    fn does_vote_count_reach_threshold(&self, vote_count: Uint128, block: &BlockInfo) -> bool {
+    /// Returns true if this proposal is sure to pass (even before expiration, if no future
+    /// sequence of possible votes could cause it to fail).
+    pub fn is_passed(&self, block: &BlockInfo) -> bool {
         match self.threshold {
             Threshold::AbsolutePercentage {
                 percentage: percentage_needed,
             } => {
-                vote_count
-                    >= votes_needed(self.total_weight - self.votes.abstain, percentage_needed)
+                let opinions = self.total_weight - self.votes.abstain;
+                // If all abstain we cannot pass the proposal
+                if opinions.is_zero() {
+                    false
+                } else {
+                    self.votes.yes >= votes_needed(opinions, percentage_needed)
+                }
             }
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 // we always require the quorum
@@ -128,27 +126,122 @@ impl Proposal {
                 if self.expires.is_expired(block) {
                     // If expired, we compare vote_count against the total number of votes (minus abstain).
                     let opinions = self.votes.total() - self.votes.abstain;
-                    vote_count >= votes_needed(opinions, threshold)
+                    // If they are all abstains the proposal does not pass
+                    if opinions.is_zero() {
+                        false
+                    } else {
+                        self.votes.yes >= votes_needed(opinions, threshold)
+                    }
                 } else {
                     // If not expired, we must assume all non-votes will be cast against
-                    // vote_count
                     let possible_opinions = self.total_weight - self.votes.abstain;
-                    vote_count >= votes_needed(possible_opinions, threshold)
+                    // If all abstains the proposal does not pass
+                    if possible_opinions.is_zero() {
+                        false
+                    } else {
+                        self.votes.yes >= votes_needed(possible_opinions, threshold)
+                    }
                 }
             }
         }
     }
 
-    /// returns true iff this proposal is sure to pass (even before expiration if no future
-    /// sequence of possible votes can cause it to fail)
-    pub fn is_passed(&self, block: &BlockInfo) -> bool {
-        self.does_vote_count_reach_threshold(self.votes.yes, block)
-    }
-
-    /// As above for the rejected check, used to check if a proposal is
-    /// already rejected.
+    /// Returns true if this proposal is sure to be rejected (even before expiration, if
+    /// no future sequence of possible votes could cause it to pass).
     pub fn is_rejected(&self, block: &BlockInfo) -> bool {
-        self.does_vote_count_reach_threshold(self.votes.no, block)
+        match self.threshold {
+            Threshold::AbsolutePercentage {
+                percentage: percentage_needed,
+            } => {
+                let opinions = self.total_weight - self.votes.abstain;
+                // If there is a 100% passing threshold
+                if percentage_needed == Decimal::percent(100) {
+                    if opinions == Uint128::zero() {
+                        // and there are no possible votes (zero
+                        // voting power or all abstain), then we
+                        // can reject
+                        return true;
+                    } else {
+                        // there are possible votes, then this is rejected
+                        // if there is a single no vote.
+                        //
+                        // this is needed as inverting the threshold can break
+                        // the rejected check.
+                        return self.votes.no >= Uint128::new(1);
+                    }
+                }
+                // We can now safely invert the threshold for the other cases
+                self.votes.no > votes_needed(opinions, Decimal::one() - percentage_needed)
+            }
+            Threshold::ThresholdQuorum { threshold, quorum } => {
+                match (
+                    self.votes.total() >= votes_needed(self.total_weight, quorum),
+                    self.expires.is_expired(block),
+                ) {
+                    // Quorum and expired
+                    (true, true) => {
+                        // consider only votes cast and see if no
+                        // votes meet threshold.
+                        let opinions = self.votes.total() - self.votes.abstain;
+
+                        // If there is a 100% passing threshold..
+                        if threshold == Decimal::percent(100) {
+                            if opinions == Uint128::zero() {
+                                // and there are no possible votes (zero
+                                // voting power or all abstain), then this
+                                // proposal has been rejected.
+                                return true;
+                            } else {
+                                // and there are possible votes, then this is
+                                // rejected if there is a single no vote.
+                                //
+                                // We need this check becuase
+                                // otherwise when we invert the
+                                // threshold (`Decimal::one() -
+                                // threshold`) we get a 0% requirement
+                                // for no votes. Zero no votes do
+                                // indeed meet a 0% threshold.
+                                return self.votes.no >= Uint128::new(1);
+                            }
+                        }
+
+                        self.votes.no > votes_needed(opinions, Decimal::one() - threshold)
+                    }
+                    // Has met quorum and is not expired.
+                    // | Hasn't met quorum and is not expired.
+                    (true, false) | (false, false) => {
+                        // => consider all possible votes and see if
+                        //    no votes meet threshold.
+                        let opinions = self.total_weight - self.votes.abstain;
+
+                        // If there is a 100% passing threshold..
+                        if threshold == Decimal::percent(100) {
+                            if opinions == Uint128::zero() {
+                                // and there are no possible votes (zero
+                                // voting power or all abstain), then this
+                                // proposal has been rejected.
+                                return true;
+                            } else {
+                                // and there are possible votes, then this is
+                                // rejected if there is a single no vote.
+                                //
+                                // We need this check becuase otherwise
+                                // when we invert the threshold
+                                // (`Decimal::one() - threshold`) we
+                                // get a 0% requirement for no
+                                // votes. Zero no votes do indeed meet
+                                // a 0% threshold.
+                                return self.votes.no >= Uint128::new(1);
+                            }
+                        }
+
+                        self.votes.no > votes_needed(opinions, Decimal::one() - threshold)
+                    }
+                    // Hasn't met quorum requirement and voting has closed => rejected.
+                    (false, true) => true,
+                }
+            }
+        }
     }
 }
 
@@ -345,13 +438,13 @@ mod test {
             percentage: Decimal::percent(50),
         };
 
-        // 4 YES, 7 NO, 2 ABSTAIN
+        // 4 YES, 8 NO, 2 ABSTAIN
         let mut votes = Votes::new(Uint128::new(4));
-        votes.add_vote(Vote::No, Uint128::new(7));
+        votes.add_vote(Vote::No, Uint128::new(8));
         votes.add_vote(Vote::Abstain, Uint128::new(2));
 
         // 15 total voting power
-        // 7 / (15 - 2) > 50%
+        // 8 / (15 - 2) > 50%
         // Expiry does not matter
         assert!(check_is_rejected(
             percent.clone(),
@@ -367,7 +460,7 @@ mod test {
         ));
 
         // 17 total voting power
-        // 7 / (17 - 2) < 50%
+        // 8 / (17 - 2) < 50%
         assert!(!check_is_rejected(
             percent.clone(),
             votes.clone(),
@@ -491,7 +584,7 @@ mod test {
     #[test]
     fn proposal_rejected_quorum() {
         let quorum = Threshold::ThresholdQuorum {
-            threshold: Decimal::percent(50),
+            threshold: Decimal::percent(60),
             quorum: Decimal::percent(40),
         };
         // all non-yes votes are counted for quorum
@@ -511,30 +604,61 @@ mod test {
         // fails any way you look at it
         let failing = Votes {
             yes: Uint128::new(5),
-            no: Uint128::new(6),
+            no: Uint128::new(5),
             abstain: Uint128::new(2),
-            veto: Uint128::new(2),
+            veto: Uint128::new(3),
         };
 
         // first, expired (voting period over)
-        // over quorum (40% of 30 = 12), over threshold (7/11 > 50%)
+        // over quorum (40% of 30 = 12, 13 votes casted)
+        // 13 - 2 abstains = 11
+        // we need no votes > 0.4 * 11, no votes > 4.4
+        // We can reject this
         assert!(check_is_rejected(
             quorum.clone(),
             rejecting.clone(),
             Uint128::new(30),
             true
         ));
-        // Under quorum means it cannot be rejected
+
+        // Under quorum and cannot reject as it is not expired
         assert!(!check_is_rejected(
             quorum.clone(),
             rejecting.clone(),
-            Uint128::new(33),
+            Uint128::new(50),
+            false
+        ));
+        // Can reject when expired
+        assert!(check_is_rejected(
+            quorum.clone(),
+            rejecting.clone(),
+            Uint128::new(50),
+            true
+        ));
+
+        // Check edgecase where quorum is not met but we can reject
+        // 35% vote no
+        let quorum_edgecase = Threshold::ThresholdQuorum {
+            threshold: Decimal::percent(67),
+            quorum: Decimal::percent(40),
+        };
+        assert!(check_is_rejected(
+            quorum_edgecase,
+            Votes {
+                yes: Uint128::new(15),
+                no: Uint128::new(35),
+                abstain: Uint128::zero(),
+                veto: Uint128::new(10)
+            },
+            Uint128::new(100),
             true
         ));
 
         // over quorum, threshold passes if we ignore abstain
-        // 17 total votes w/ abstain => 40% quorum of 40 total
-        // 6 no / (6 no + 4 yes + 2 votes) => 50% threshold
+        // 17 total votes > 40% quorum
+        // 6 no > 0.4 * (6 no + 4 yes + 2 votes)
+        // 6 > 4.8
+        // we can reject
         assert!(check_is_rejected(
             quorum.clone(),
             rejected_ignoring_abstain.clone(),
@@ -542,7 +666,9 @@ mod test {
             true
         ));
 
-        // over quorum, but under threshold fails also
+        // over quorum
+        // total opinions due to abstains: 13
+        // no votes > 0.4 * 13, no votes > 5 to reject, we have 5 exactly so cannot reject
         assert!(!check_is_rejected(
             quorum.clone(),
             failing,
@@ -550,21 +676,11 @@ mod test {
             true
         ));
 
-        // Voting is still open so assume rest of votes are yes
-        // threshold not reached
-        assert!(!check_is_rejected(
-            quorum.clone(),
-            rejecting.clone(),
-            Uint128::new(30),
-            false
-        ));
-        assert!(!check_is_rejected(
-            quorum.clone(),
-            rejected_ignoring_abstain.clone(),
-            Uint128::new(40),
-            false
-        ));
-        // if we have threshold * total_weight as no votes this must reject
+        // voting period on going
+        // over quorum (40% of 14 = 5, 13 votes casted)
+        // 13 - 2 abstains = 11
+        // we need no votes > 0.4 * 11, no votes > 4.4
+        // We can reject this even when it hasn't expired
         assert!(check_is_rejected(
             quorum.clone(),
             rejecting.clone(),
@@ -572,12 +688,18 @@ mod test {
             false
         ));
         // all votes have been cast, some abstain
+        // voting period on going
+        // over quorum (40% of 17 = 7, 17 casted_
+        // 17 - 5 = 12 total opinions
+        // we need no votes > 0.4 * 12, no votes > 4.8
+        // We can reject this even when it hasn't expired
         assert!(check_is_rejected(
             quorum.clone(),
             rejected_ignoring_abstain,
             Uint128::new(17),
             false
         ));
+
         // 3 votes uncast, if they all vote yes, we have 7 no, 7 yes+veto, 2 abstain (out of 16)
         assert!(check_is_rejected(
             quorum,
