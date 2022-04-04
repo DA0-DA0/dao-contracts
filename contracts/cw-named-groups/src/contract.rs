@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -12,6 +10,8 @@ use crate::msg::{
     DumpResponse, ExecuteMsg, Group, InstantiateMsg, IsAddressInGroupResponse,
     ListAddressesResponse, ListGroupsResponse, QueryMsg,
 };
+
+use crate::ContractError::Std;
 use crate::state::{GROUPS, OWNER};
 
 // version info for migration info
@@ -43,7 +43,7 @@ pub fn instantiate(
                         .map_err(|_| ContractError::InvalidAddress(address.clone()))?;
                     Ok(addr)
                 })
-                .collect::<Result<Vec<Addr>, ContractError>>()?;
+                .collect::<Result<_, ContractError>>()?;
 
             GROUPS.update(deps.storage, &group.name, Some(addrs), None)?;
         }
@@ -193,36 +193,26 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
-    let mut groups_map: HashMap<String, Vec<String>> = HashMap::new();
-
     // Map groups to contained addresses.
-    GROUPS
+    let groups = GROUPS
         .groups_to_addresses
         .keys(deps.storage, None, None, Order::Ascending)
-        .try_for_each::<_, StdResult<()>>(|element| {
-            let element = element?;
-            let group_name = element.0;
-            let address = element.1;
-            let mut addresses = Vec::new();
-            if groups_map.contains_key(&group_name) {
-                addresses = groups_map.get(&group_name).unwrap().to_vec();
-            }
-            addresses.push(address.to_string());
-            groups_map.insert(group_name.to_string(), addresses);
-            Ok(())
-        })?;
+        .collect::<StdResult<Vec<(String, Addr)>>>()?;
 
-    // Convert groups map to dump response.
-    let mut dump: Vec<Group> = Vec::new();
-    groups_map.into_iter().for_each(|element| {
-        let group: Group = Group {
-            name: element.0,
-            addresses: element.1,
-        };
-        dump.push(group);
-    });
+    let (latest_name, _) = groups.first().ok_or(StdError::generic_err("not found"))?;
 
-    Ok(DumpResponse { groups: dump })
+    let mut dump: Vec<Group> = vec![];
+    let mut tmp: Vec<String> = vec![];
+    for (name, addr) in groups {
+        if name == *latest_name {
+            tmp.push(addr.to_string());
+        }
+        else {
+            dump.push(Group{ name, addresses: tmp })
+        }
+   }
+
+    Ok(DumpResponse{ groups:  dump})
 }
 
 fn query_list_addresses(
