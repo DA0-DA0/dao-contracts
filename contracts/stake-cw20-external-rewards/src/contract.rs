@@ -148,6 +148,7 @@ pub fn execute_fund(
     };
 
     REWARD_CONFIG.save(deps.storage, &new_reward_config)?;
+    LAST_UPDATE_BLOCK.save(deps.storage, &env.block.height)?;
 
     Ok(Response::new()
         .add_attribute("action", "fund")
@@ -248,14 +249,15 @@ pub fn update_rewards(deps: &mut DepsMut, env: &Env, addr: &Addr) -> StdResult<(
     })?;
 
     USER_REWARD_PER_TOKEN.save(deps.storage, addr.clone(), &reward_per_token)?;
-    LAST_UPDATE_BLOCK.save(deps.storage, &env.block.height)?;
+    let last_time_reward_applicable = get_last_time_reward_applicable(deps.as_ref(), env)?;
+    LAST_UPDATE_BLOCK.save(deps.storage, &last_time_reward_applicable)?;
     Ok(())
 }
 
 pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> StdResult<Uint256> {
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
     let total_staked = get_total_staked(deps, staking_contract)?;
-    let current_block = min(env.block.height, reward_config.period_finish);
+    let last_time_reward_applicable = get_last_time_reward_applicable(deps, env)?;
     let last_update_block = LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default();
     let prev_reward_per_token = REWARD_PER_TOKEN.load(deps.storage).unwrap_or_default();
     let additional_reward_per_token = if total_staked == Uint128::zero() {
@@ -263,7 +265,7 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> S
     } else {
         let numerator = reward_config
             .reward_rate
-            .full_mul(Uint128::from(current_block - last_update_block))
+            .full_mul(Uint128::from(last_time_reward_applicable - last_update_block))
             .full_mul(scale_factor());
         let denominator = Uint512::from(total_staked);
         let result = numerator.checked_div(denominator)?;
@@ -292,6 +294,11 @@ pub fn get_rewards_earned(
         .unwrap_or_default();
     let reward_factor = reward_per_token.checked_sub(user_reward_per_token)?;
     Ok(staked_balance.checked_mul(reward_factor.try_into()?)?)
+}
+
+fn get_last_time_reward_applicable(deps: Deps, env: &Env) -> StdResult<u64> {
+    let reward_config = REWARD_CONFIG.load(deps.storage)?;
+    Ok(min(env.block.height, reward_config.period_finish))
 }
 
 fn get_total_staked(deps: Deps, contract_addr: &Addr) -> StdResult<Uint128> {
