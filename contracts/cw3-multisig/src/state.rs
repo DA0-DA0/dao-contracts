@@ -119,9 +119,10 @@ impl Proposal {
                 let opinions = self.total_weight - self.votes.abstain;
                 // If all abstains we cannot pass the propsal
                 if opinions == 0 {
-                    return false;
+                    false
+                } else {
+                    self.votes.yes >= votes_needed(opinions, percentage_needed)
                 }
-                self.votes.yes >= votes_needed(opinions, percentage_needed)
             }
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 // we always require the quorum
@@ -133,17 +134,19 @@ impl Proposal {
                     let opinions = self.votes.total() - self.votes.abstain;
                     // If all abstains the proposal does not pass
                     if opinions == 0 {
-                        return false;
+                        false
+                    } else {
+                        self.votes.yes >= votes_needed(opinions, threshold)
                     }
-                    self.votes.yes >= votes_needed(opinions, threshold)
                 } else {
                     // If not expired, we must assume all non-votes will be cast against
                     let possible_opinions = self.total_weight - self.votes.abstain;
                     // If all abstains the proposal does not pass
                     if possible_opinions == 0 {
-                        return false;
+                        false
+                    } else {
+                        self.votes.yes >= votes_needed(possible_opinions, threshold)
                     }
-                    self.votes.yes >= votes_needed(possible_opinions, threshold)
                 }
             }
         }
