@@ -20,6 +20,7 @@ use stake_cw20::hooks::StakeChangedHookMsg;
 
 use std::cmp::min;
 use std::convert::TryInto;
+use cw20::Denom::Cw20;
 
 const CONTRACT_NAME: &str = "crates.io:stake-cw20-external-rewards";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -33,19 +34,13 @@ pub fn instantiate(
 ) -> Result<Response<Empty>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = match msg.owner {
-        Some(owner) => Some(deps.api.addr_validate(owner.as_str())?),
-        None => None,
-    };
-    let manager = match msg.manager {
-        Some(manager) => Some(deps.api.addr_validate(manager.as_str())?),
-        None => None,
-    };
+    let owner = msg.owner.map(|a| deps.api.addr_validate(&a)).transpose()?;
+    let manager = msg.manager.map(|a| deps.api.addr_validate(&a)).transpose()?;
 
     let config = Config {
         owner,
         manager,
-        staking_contract: msg.staking_contract,
+        staking_contract: deps.api.addr_validate(&msg.staking_contract)?,
         reward_token: msg.reward_token,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -61,10 +56,11 @@ pub fn instantiate(
         .add_attribute("owner", config.owner.map(|a| a.into_string()).unwrap_or("".to_string()))
         .add_attribute("manager", config.manager.map(|a| a.into_string()).unwrap_or("".to_string()))
         .add_attribute("staking_contract", config.staking_contract)
-        .add_attribute("reward_token", config.reward_token)
+        .add_attribute("reward_token", match config.reward_token{
+            Denom::Native(denom) => denom,
+            Cw20(addr) => addr.into_string(),
+        })
         .add_attribute("reward_rate", reward_config.reward_rate)
-        .add_attribute("reward_duration", reward_config.reward_duration)
-        .add_attribute("period_finish", reward_config.period_finish)
     )
 }
 
@@ -355,8 +351,10 @@ pub fn execute_update_owner(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    new_owner: Option<Addr>,
+    new_owner: Option<String>,
 ) -> Result<Response<Empty>, ContractError> {
+    let new_owner = new_owner.map(|a| deps.api.addr_validate(&a)).transpose()?;
+
     let mut config = CONFIG.load(deps.storage)?;
     if Some(info.sender) != config.owner {
         return Err(ContractError::Unauthorized {});
@@ -384,8 +382,10 @@ pub fn execute_update_manager(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    new_manager: Option<Addr>,
+    new_manager: Option<String>,
 ) -> Result<Response<Empty>, ContractError> {
+    let new_manager = new_manager.map(|a| deps.api.addr_validate(&a)).transpose()?;
+
     let mut config = CONFIG.load(deps.storage)?;
     if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
         return Err(ContractError::Unauthorized {});
@@ -432,8 +432,9 @@ pub fn query_info(deps: Deps, _env: Env) -> StdResult<InfoResponse> {
 pub fn query_pending_rewards(
     deps: Deps,
     env: Env,
-    addr: Addr,
+    addr: String,
 ) -> StdResult<PendingRewardsResponse> {
+    let addr = deps.api.addr_validate(&addr)?;
     let config = CONFIG.load(deps.storage)?;
     let reward_per_token = get_reward_per_token(deps, &env, &config.staking_contract)?;
     let earned_rewards = get_rewards_earned(
@@ -449,7 +450,7 @@ pub fn query_pending_rewards(
         .unwrap_or_default();
     let pending_rewards = earned_rewards + existing_rewards;
     Ok(PendingRewardsResponse {
-        address: addr,
+        address: addr.to_string(),
         pending_rewards,
         denom: config.reward_token,
         last_update_block: LAST_UPDATE_BLOCK.load(deps.storage).unwrap_or_default(),
@@ -597,9 +598,9 @@ mod tests {
     ) -> Addr {
         let reward_code_id = app.store_code(contract_rewards());
         let msg = crate::msg::InstantiateMsg {
-            owner: Some(owner.clone()),
-            manager: Some(manager),
-            staking_contract: staking_contract.clone(),
+            owner: Some(owner.clone().into_string()),
+            manager: Some(manager.into_string()),
+            staking_contract: staking_contract.clone().into_string(),
             reward_token,
         };
         let reward_addr = app
@@ -642,7 +643,7 @@ mod tests {
             .query_wasm_smart(
                 reward_addr,
                 &QueryMsg::GetPendingRewards {
-                    address: Addr::unchecked(address),
+                    address: address.to_string(),
                 },
             )
             .unwrap();
@@ -1512,7 +1513,7 @@ mod tests {
 
         // manager cannot update owner
         let msg = ExecuteMsg::UpdateOwner {
-            new_owner: Some(Addr::unchecked(ADDR1)),
+            new_owner: Some(ADDR1.to_string()),
         };
         let err: ContractError = app
             .borrow_mut()
@@ -1524,7 +1525,7 @@ mod tests {
 
         // random addr cannot update owner
         let msg = ExecuteMsg::UpdateOwner {
-            new_owner: Some(Addr::unchecked(ADDR1)),
+            new_owner: Some(ADDR1.to_string()),
         };
         let err: ContractError = app
             .borrow_mut()
@@ -1536,7 +1537,7 @@ mod tests {
 
         // Update owner
         let msg = ExecuteMsg::UpdateOwner {
-            new_owner: Some(Addr::unchecked(ADDR1)),
+            new_owner: Some(ADDR1.to_string()),
         };
         let _resp = app
             .borrow_mut()
@@ -1609,7 +1610,7 @@ mod tests {
 
         // random addr cannot update manager
         let msg = ExecuteMsg::UpdateManager {
-            new_manager: Some(Addr::unchecked(ADDR2)),
+            new_manager: Some(ADDR2.to_string()),
         };
         let err: ContractError = app
             .borrow_mut()
@@ -1621,7 +1622,7 @@ mod tests {
 
         // Owner can update manager
         let msg = ExecuteMsg::UpdateManager {
-            new_manager: Some(Addr::unchecked(ADDR1)),
+            new_manager: Some(ADDR1.to_string()),
         };
         let _resp = app
             .borrow_mut()
@@ -1638,7 +1639,7 @@ mod tests {
 
         // Manager can update manager
         let msg = ExecuteMsg::UpdateManager {
-            new_manager: Some(manager.clone()),
+            new_manager: Some(manager.clone().into_string()),
         };
         let _resp = app
             .borrow_mut()

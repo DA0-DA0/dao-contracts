@@ -9,9 +9,9 @@ pub use cw_controllers::ClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
-    pub owner: Option<Addr>,
-    pub manager: Option<Addr>,
-    pub staking_contract: Addr,
+    pub owner: Option<String>,
+    pub manager: Option<String>,
+    pub staking_contract: String,
     pub reward_token: Denom,
 }
 
@@ -23,8 +23,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Fund {},
     UpdateRewardDuration { new_duration: u64 },
-    UpdateOwner { new_owner: Option<Addr> },
-    UpdateManager { new_manager: Option<Addr> },
+    UpdateOwner { new_owner: Option<String> },
+    UpdateManager { new_manager: Option<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -37,7 +37,7 @@ pub enum ReceiveMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Info {},
-    GetPendingRewards { address: Addr },
+    GetPendingRewards { address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -48,7 +48,7 @@ pub struct InfoResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PendingRewardsResponse {
-    pub address: Addr,
+    pub address: String,
     pub pending_rewards: Uint128,
     pub denom: Denom,
     pub last_update_block: u64,
