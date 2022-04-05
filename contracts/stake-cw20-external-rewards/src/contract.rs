@@ -2042,15 +2042,10 @@ mod tests {
     fn test_math() {
         let max_u128 = Uint256::from(Uint128::MAX);
         let scale = Uint256::MAX.checked_div(max_u128).unwrap();
-        println!("max u256 / max u128 {}", scale);
 
-        println!("max u128 {}", Uint128::MAX);
-        println!("max u128 {}", Uint128::MAX.to_string().len());
         let scale_factor = Uint256::from(10u8).checked_pow(39).unwrap();
         let min_128 = Uint128::new(1);
         let scaled_min = Uint256::from(min_128).checked_mul(scale_factor).unwrap();
-        println!("scaled {}", scaled_min);
-        println!("scaled {}", scaled_min.to_string().len());
         assert!(scaled_min > Uint256::from(Uint128::MAX));
 
         let _max = Uint256::from(Uint128::MAX)
@@ -2058,7 +2053,5 @@ mod tests {
             .unwrap_err();
 
         let possible_max = Uint256::MAX.checked_div(scale_factor).unwrap();
-        println!("possible max: {}", possible_max);
-        println!("possible max: {}", possible_max.to_string().len());
     }
 }
