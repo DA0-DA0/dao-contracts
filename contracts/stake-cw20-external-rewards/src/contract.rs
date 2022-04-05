@@ -104,7 +104,7 @@ pub fn execute_receive(
         return Err(InvalidCw20 {});
     };
     match msg {
-        ReceiveMsg::Fund { .. } => execute_fund(deps, env, sender, wrapper.amount),
+        ReceiveMsg::Fund {} => execute_fund(deps, env, sender, wrapper.amount),
     }
 }
 
@@ -115,11 +115,8 @@ pub fn execute_fund_native(
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    let coin = info
-        .funds
-        .clone()
-        .pop()
-        .ok_or(ContractError::InvalidFunds {})?;
+    let coin = info.funds.into_iter().next().ok_or(ContractError::InvalidFunds {})?;
+
     let amount = coin.amount;
     let denom = coin.denom;
     if config.reward_token != Denom::Native(denom) {
