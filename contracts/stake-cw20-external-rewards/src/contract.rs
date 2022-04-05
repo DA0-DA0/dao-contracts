@@ -37,11 +37,16 @@ pub fn instantiate(
     let owner = msg.owner.map(|a| deps.api.addr_validate(&a)).transpose()?;
     let manager = msg.manager.map(|a| deps.api.addr_validate(&a)).transpose()?;
 
+    let reward_token = match msg.reward_token {
+        Denom::Native(denom) => {Denom::Native(denom)}
+        Cw20(addr) => {Cw20(deps.api.addr_validate(&addr.to_string())?)}
+    };
+
     let config = Config {
         owner,
         manager,
         staking_contract: deps.api.addr_validate(&msg.staking_contract)?,
-        reward_token: msg.reward_token,
+        reward_token,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -94,7 +99,7 @@ pub fn execute_receive(
 ) -> Result<Response<Empty>, ContractError> {
     let msg: ReceiveMsg = from_binary(&wrapper.msg)?;
     let config = CONFIG.load(deps.storage)?;
-    let sender = deps.api.addr_validate(&*wrapper.sender)?;
+    let sender = deps.api.addr_validate(&wrapper.sender)?;
     if config.reward_token != Denom::Cw20(info.sender) {
         return Err(InvalidCw20 {});
     };
