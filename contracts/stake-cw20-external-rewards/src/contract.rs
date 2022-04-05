@@ -47,7 +47,7 @@ pub fn instantiate(
 
     let reward_config = RewardConfig {
         period_finish: 0,
-        reward_rate: Default::default(),
+        reward_rate: Uint128::zero(),
         reward_duration: 100000,
     };
     REWARD_CONFIG.save(deps.storage, &reward_config)?;
