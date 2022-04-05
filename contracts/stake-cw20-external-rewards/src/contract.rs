@@ -10,15 +10,17 @@ use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable, Unauth
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use cosmwasm_std::{from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128, Uint256, Uint512, WasmMsg, DivideByZeroError};
+use cosmwasm_std::{
+    from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Response, StdError, StdResult, Uint128, Uint256, Uint512, WasmMsg,
+};
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
 use stake_cw20::hooks::StakeChangedHookMsg;
 
+use cw20::Denom::Cw20;
 use std::cmp::min;
 use std::convert::TryInto;
-use cosmwasm_std::StdError::DivideByZero;
-use cw20::Denom::Cw20;
 
 const CONTRACT_NAME: &str = "crates.io:stake-cw20-external-rewards";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -33,11 +35,14 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = msg.owner.map(|a| deps.api.addr_validate(&a)).transpose()?;
-    let manager = msg.manager.map(|a| deps.api.addr_validate(&a)).transpose()?;
+    let manager = msg
+        .manager
+        .map(|a| deps.api.addr_validate(&a))
+        .transpose()?;
 
     let reward_token = match msg.reward_token {
-        Denom::Native(denom) => {Denom::Native(denom)}
-        Cw20(addr) => {Cw20(deps.api.addr_validate(&addr.to_string())?)}
+        Denom::Native(denom) => Denom::Native(denom),
+        Cw20(addr) => Cw20(deps.api.addr_validate(&addr.to_string())?),
     };
 
     let config = Config {
@@ -56,17 +61,31 @@ pub fn instantiate(
     REWARD_CONFIG.save(deps.storage, &reward_config)?;
 
     Ok(Response::new()
-        .add_attribute("owner", config.owner.map(|a| a.into_string()).unwrap_or("".to_string()))
-        .add_attribute("manager", config.manager.map(|a| a.into_string()).unwrap_or("".to_string()))
+        .add_attribute(
+            "owner",
+            config
+                .owner
+                .map(|a| a.into_string())
+                .unwrap_or_else(|| "".to_string()),
+        )
+        .add_attribute(
+            "manager",
+            config
+                .manager
+                .map(|a| a.into_string())
+                .unwrap_or_else(|| "".to_string()),
+        )
         .add_attribute("staking_contract", config.staking_contract)
-        .add_attribute("reward_token", match config.reward_token{
-            Denom::Native(denom) => denom,
-            Cw20(addr) => addr.into_string(),
-        })
+        .add_attribute(
+            "reward_token",
+            match config.reward_token {
+                Denom::Native(denom) => denom,
+                Cw20(addr) => addr.into_string(),
+            },
+        )
         .add_attribute("reward_rate", reward_config.reward_rate)
         .add_attribute("period_finish", reward_config.period_finish.to_string())
-        .add_attribute("reward_duration", reward_config.reward_duration.to_string())
-    )
+        .add_attribute("reward_duration", reward_config.reward_duration.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -115,7 +134,11 @@ pub fn execute_fund_native(
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    let coin = info.funds.into_iter().next().ok_or(ContractError::InvalidFunds {})?;
+    let coin = info
+        .funds
+        .into_iter()
+        .next()
+        .ok_or(ContractError::InvalidFunds {})?;
 
     let amount = coin.amount;
     let denom = coin.denom;
@@ -141,14 +164,20 @@ pub fn execute_fund(
     let new_reward_config = if reward_config.period_finish <= env.block.height {
         RewardConfig {
             period_finish: env.block.height + reward_config.reward_duration,
-            reward_rate: amount.checked_div(Uint128::from(reward_config.reward_duration)).map_err(StdError::divide_by_zero)?,
+            reward_rate: amount
+                .checked_div(Uint128::from(reward_config.reward_duration))
+                .map_err(StdError::divide_by_zero)?,
             reward_duration: reward_config.reward_duration,
         }
     } else {
         RewardConfig {
             period_finish: reward_config.period_finish, // period finish needs to be incremented by the rewards duration
             reward_rate: reward_config.reward_rate
-                + (amount.checked_div(Uint128::from(reward_config.period_finish - env.block.height)).map_err(StdError::divide_by_zero)?),
+                + (amount
+                    .checked_div(Uint128::from(
+                        reward_config.period_finish - env.block.height,
+                    ))
+                    .map_err(StdError::divide_by_zero)?),
             reward_duration: reward_config.reward_duration,
         }
     };
@@ -159,8 +188,7 @@ pub fn execute_fund(
     Ok(Response::new()
         .add_attribute("action", "fund")
         .add_attribute("amount", amount)
-        .add_attribute("new_reward_rate", new_reward_config.reward_rate.to_string())
-    )
+        .add_attribute("new_reward_rate", new_reward_config.reward_rate.to_string()))
 }
 
 pub fn execute_stake_changed(
@@ -273,7 +301,9 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> S
     } else {
         let numerator = reward_config
             .reward_rate
-            .full_mul(Uint128::from(last_time_reward_applicable - last_update_block))
+            .full_mul(Uint128::from(
+                last_time_reward_applicable - last_update_block,
+            ))
             .full_mul(scale_factor());
         let denominator = Uint512::from(total_staked);
         let result = numerator.checked_div(denominator)?;
@@ -388,7 +418,9 @@ pub fn execute_update_manager(
     info: MessageInfo,
     new_manager: Option<String>,
 ) -> Result<Response<Empty>, ContractError> {
-    let new_manager = new_manager.map(|a| deps.api.addr_validate(&a)).transpose()?;
+    let new_manager = new_manager
+        .map(|a| deps.api.addr_validate(&a))
+        .transpose()?;
 
     let mut config = CONFIG.load(deps.storage)?;
     if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
