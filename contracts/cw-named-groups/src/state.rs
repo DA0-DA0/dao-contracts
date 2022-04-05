@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Order, StdResult, Storage};
+use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
 
 pub const OWNER: Item<Addr> = Item::new("owner");
@@ -67,5 +67,37 @@ impl<'a> Groups<'a> {
         }
 
         Ok(())
+    }
+
+    pub fn list_addresses(&self, storage: &dyn Storage, group: String) -> StdResult<Vec<Addr>> {
+        // Retrieve all addresses under this group, returning error if group not found.
+        let addresses = GROUPS
+            .groups_to_addresses
+            .prefix(&group)
+            .keys(storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<Addr>>>()
+            .map_err(|_| StdError::not_found("group"))?;
+
+        return Ok(addresses);
+    }
+
+    pub fn list_groups(&self, storage: &dyn Storage, addr: &Addr) -> Vec<String> {
+        // Return groups, or an empty vec if failed to load (address probably doesn't exist).
+        // It doesn't make sense to ask for the addresses in a group if the group doesn't exist, which is why
+        // we return an error in query_list_addresses; however, here in query_list_groups, it makes sense
+        // to return an empty list when an address is not in any groups since this is a valid case.
+        GROUPS
+            .addresses_to_groups
+            .prefix(&addr)
+            .keys(storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<String>>>()
+            .unwrap_or_default()
+    }
+
+    pub fn is_in_group(&self, storage: &dyn Storage, addr: &Addr, group: String) -> bool {
+        GROUPS
+            .groups_to_addresses
+            .load(storage, (&group, &addr))
+            .is_ok()
     }
 }

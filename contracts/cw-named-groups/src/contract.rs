@@ -231,14 +231,7 @@ fn query_list_addresses(
     offset: Option<u32>,
     limit: Option<u32>,
 ) -> StdResult<ListAddressesResponse> {
-    // Retrieve all addresses under this group, returning error if group not found.
-    let addresses: Vec<Addr> = GROUPS
-        .groups_to_addresses
-        .prefix(&group)
-        .keys(deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<Addr>>>()
-        .map_err(|_| StdError::not_found("group"))?;
-
+    let addresses = GROUPS.list_addresses(deps.storage, group)?;
     // Paginate.
     let default_take_all = addresses.len() as u32;
     let addresses = addresses
@@ -258,16 +251,7 @@ fn query_list_groups(
 ) -> StdResult<ListGroupsResponse> {
     // Validate address.
     let addr = deps.api.addr_validate(&address)?;
-    // Return groups, or an empty vec if failed to load (address probably doesn't exist).
-    // It doesn't make sense to ask for the addresses in a group if the group doesn't exist, which is why
-    // we return an error in query_list_addresses; however, here in query_list_groups, it makes sense
-    // to return an empty list when an address is not in any groups since this is a valid case.
-    let groups = GROUPS
-        .addresses_to_groups
-        .prefix(&addr)
-        .keys(deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<String>>>()
-        .unwrap_or_default();
+    let groups = GROUPS.list_groups(deps.storage, &addr);
 
     // Paginate.
     let default_take_all = groups.len() as u32;
@@ -287,11 +271,6 @@ fn query_is_address_in_group(
 ) -> StdResult<IsAddressInGroupResponse> {
     // Validate address.
     let addr = deps.api.addr_validate(&address)?;
-
-    let is_in_group = GROUPS
-        .groups_to_addresses
-        .load(deps.storage, (&group, &addr))
-        .is_ok();
-
+    let is_in_group = GROUPS.is_in_group(deps.storage, &addr, group);
     Ok(IsAddressInGroupResponse { is_in_group })
 }
