@@ -10,16 +10,14 @@ use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable, Unauth
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use cosmwasm_std::{
-    from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128, Uint256, Uint512, WasmMsg,
-};
+use cosmwasm_std::{from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError, StdResult, Uint128, Uint256, Uint512, WasmMsg, DivideByZeroError};
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
 use stake_cw20::hooks::StakeChangedHookMsg;
 
 use std::cmp::min;
 use std::convert::TryInto;
+use cosmwasm_std::StdError::DivideByZero;
 use cw20::Denom::Cw20;
 
 const CONTRACT_NAME: &str = "crates.io:stake-cw20-external-rewards";
@@ -66,6 +64,8 @@ pub fn instantiate(
             Cw20(addr) => addr.into_string(),
         })
         .add_attribute("reward_rate", reward_config.reward_rate)
+        .add_attribute("period_finish", reward_config.period_finish.to_string())
+        .add_attribute("reward_duration", reward_config.reward_duration.to_string())
     )
 }
 
@@ -141,14 +141,14 @@ pub fn execute_fund(
     let new_reward_config = if reward_config.period_finish <= env.block.height {
         RewardConfig {
             period_finish: env.block.height + reward_config.reward_duration,
-            reward_rate: amount / Uint128::from(reward_config.reward_duration),
+            reward_rate: amount.checked_div(Uint128::from(reward_config.reward_duration)).map_err(StdError::divide_by_zero)?,
             reward_duration: reward_config.reward_duration,
         }
     } else {
         RewardConfig {
             period_finish: reward_config.period_finish, // period finish needs to be incremented by the rewards duration
             reward_rate: reward_config.reward_rate
-                + (amount / Uint128::from(reward_config.period_finish - env.block.height)),
+                + (amount.checked_div(Uint128::from(reward_config.period_finish - env.block.height)).map_err(StdError::divide_by_zero)?),
             reward_duration: reward_config.reward_duration,
         }
     };
@@ -158,7 +158,9 @@ pub fn execute_fund(
 
     Ok(Response::new()
         .add_attribute("action", "fund")
-        .add_attribute("amount", amount))
+        .add_attribute("amount", amount)
+        .add_attribute("new_reward_rate", new_reward_config.reward_rate.to_string())
+    )
 }
 
 pub fn execute_stake_changed(
