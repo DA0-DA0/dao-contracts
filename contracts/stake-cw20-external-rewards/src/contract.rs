@@ -57,7 +57,15 @@ pub fn instantiate(
     };
     REWARD_CONFIG.save(deps.storage, &reward_config)?;
 
-    Ok(Response::new())
+    Ok(Response::new()
+        .add_attribute("owner", config.owner.map(|a| a.into_string()).unwrap_or("".to_string()))
+        .add_attribute("manager", config.manager.map(|a| a.into_string()).unwrap_or("".to_string()))
+        .add_attribute("staking_contract", config.staking_contract)
+        .add_attribute("reward_token", config.reward_token)
+        .add_attribute("reward_rate", reward_config.reward_rate)
+        .add_attribute("reward_duration", reward_config.reward_duration)
+        .add_attribute("period_finish", reward_config.period_finish)
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
