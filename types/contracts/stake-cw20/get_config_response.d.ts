@@ -1,8 +1,9 @@
-import { Addr, Duration } from "./shared-types";
+import { Duration } from "./shared-types";
 
 export interface GetConfigResponse {
-admin: Addr
-token_address: Addr
+manager?: (string | null)
+owner?: (string | null)
+token_address: string
 unstaking_duration?: (Duration | null)
 [k: string]: unknown
 }
