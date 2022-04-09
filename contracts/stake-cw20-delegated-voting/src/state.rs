@@ -12,4 +12,3 @@ pub const VOTING_POWER: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
 );
 
 pub const DELEGATIONS: Map<Addr, Addr> = Map::new("delegations");
-

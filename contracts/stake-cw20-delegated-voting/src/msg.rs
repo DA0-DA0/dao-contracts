@@ -6,7 +6,6 @@ use stake_cw20::hooks::StakeChangedHookMsg;
 
 pub use stake_cw20::msg::StakedBalanceAtHeightResponse;
 
-
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
     pub staking_contract: String,
@@ -16,8 +15,8 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),
-    Delegate{address: String},
-    Undelegate{}
+    Delegate { address: String },
+    Undelegate {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -28,8 +27,8 @@ pub enum QueryMsg {
         height: Option<u64>,
     },
     Delegation {
-        address: String
-    }
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
