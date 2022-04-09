@@ -3,8 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use stake_cw20_external_rewards::msg::{
-    ExecuteMsg, InfoResponse, InstantiateMsg, PendingRewardsResponse, QueryMsg,
+use stake_cw20_delegated_voting::msg::{
+    ExecuteMsg, InstantiateMsg, StakedBalanceAtHeightResponse, DelegationResponse, QueryMsg,
 };
 
 fn main() {
@@ -16,6 +16,6 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(InfoResponse), &out_dir);
-    export_schema(&schema_for!(PendingRewardsResponse), &out_dir);
+    export_schema(&schema_for!(StakedBalanceAtHeightResponse), &out_dir);
+    export_schema(&schema_for!(DelegationResponse), &out_dir);
 }
