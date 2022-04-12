@@ -60,9 +60,9 @@ pub enum VoteCmp {
 /// `Greater` comparason is when looking to see if no votes have
 /// reached `> (1 - threshold)` and thus made the proposal
 /// unpassable. As threshold will be a rounded down version of the
-/// infinite percision real version `1 - threshold` will actually be a
+/// infinite precision real version `1 - threshold` will actually be a
 /// higher magnitured than the real one meaning that we won't ever be
-/// in the position of simeltaniously reporting a proposal as both
+/// in the position of simultaneously reporting a proposal as both
 /// rejected and passed.
 ///
 pub fn compare_vote_count(

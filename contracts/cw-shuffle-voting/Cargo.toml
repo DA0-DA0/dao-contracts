@@ -1,7 +1,6 @@
 [package]
-name = "cw4-voting"
+name = "cw-shuffle-voting"
 version = "0.1.0"
-authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2018"
 
 exclude = [
@@ -29,11 +28,12 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
+oorandom = "11.1.3"
 cosmwasm-std = { version = "1.0.0-beta5" }
 cosmwasm-storage = { version = "1.0.0-beta5" }
 cw-storage-plus = "0.12"
 cw2 = "0.12"
-cw-utils = "0.12"
+cw-utils = "0.11"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
@@ -41,7 +41,12 @@ cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
 cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" } 
 cw4-group = "0.11"
 cw4 = "0.11"
+cw20-staked-balance-voting = { version = "0.1.0", path = "../cw20-staked-balance-voting", features = ["library"]}
+stake-cw20 = { path = "../stake-cw20", features = ["library"]}
+cw20 = "0.12"
 cw20-base = {  version = "0.12", features = ["library"] }
+proposal-hooks = { version = "0.1.0", path = "../../packages/proposal-hooks" }
+
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }

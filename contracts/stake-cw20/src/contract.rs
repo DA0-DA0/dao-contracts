@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
     StdError, StdResult, Uint128,
 };
 
@@ -174,18 +174,27 @@ pub fn execute_stake(
         env.block.height,
         |bal| -> StdResult<Uint128> { Ok(bal.unwrap_or_default().checked_add(amount_to_stake)?) },
     )?;
-    STAKED_TOTAL.update(
-        deps.storage,
-        env.block.height,
-        |total| -> StdResult<Uint128> {
-            Ok(total.unwrap_or_default().checked_add(amount_to_stake)?)
-        },
-    )?;
+
+    let new_staked_total = staked_total
+        .checked_add(amount_to_stake)
+        .map_err(StdError::overflow)?;
+
+    STAKED_TOTAL.save(deps.storage, &new_staked_total, env.block.height)?;
     BALANCE.save(
         deps.storage,
         &balance.checked_add(amount).map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = stake_hook_msgs(deps.storage, sender.clone(), amount_to_stake)?;
+
+    let staked_addresses_count = STAKED_BALANCES
+        .keys(deps.storage, None, None, Order::Ascending)
+        .count();
+
+    let hook_msgs = stake_hook_msgs(
+        deps.storage,
+        sender.clone(),
+        amount_to_stake,
+        staked_addresses_count,
+    )?;
     Ok(Response::new()
         .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
@@ -213,18 +222,28 @@ pub fn execute_unstake(
         env.block.height,
         |bal| -> StdResult<Uint128> { Ok(bal.unwrap_or_default().checked_sub(amount)?) },
     )?;
-    STAKED_TOTAL.update(
-        deps.storage,
-        env.block.height,
-        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_sub(amount)?) },
-    )?;
+    let new_staked_total = staked_total
+        .checked_sub(amount)
+        .map_err(StdError::overflow)?;
+
+    STAKED_TOTAL.save(deps.storage, &new_staked_total, env.block.height)?;
     BALANCE.save(
         deps.storage,
         &balance
             .checked_sub(amount_to_claim)
             .map_err(StdError::overflow)?,
     )?;
-    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), amount)?;
+
+    let staked_addresses_count = STAKED_BALANCES
+        .keys(deps.storage, None, None, Order::Ascending)
+        .count();
+
+    let hook_msgs = unstake_hook_msgs(
+        deps.storage,
+        info.sender.clone(),
+        amount,
+        staked_addresses_count,
+    )?;
     match config.unstaking_duration {
         None => {
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {

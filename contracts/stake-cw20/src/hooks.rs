@@ -7,17 +7,30 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum StakeChangedHookMsg {
-    Stake { addr: Addr, amount: Uint128 },
-    Unstake { addr: Addr, amount: Uint128 },
+    Stake {
+        addr: Addr,
+        amount: Uint128,
+        staked_addresses_count: u64,
+    },
+    Unstake {
+        addr: Addr,
+        amount: Uint128,
+        staked_addresses_count: u64,
+    },
 }
 
 pub fn stake_hook_msgs(
     storage: &dyn Storage,
     addr: Addr,
     amount: Uint128,
+    staked_addresses_count: usize,
 ) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
-        StakeChangedHookMsg::Stake { addr, amount },
+        StakeChangedHookMsg::Stake {
+            addr,
+            amount,
+            staked_addresses_count: staked_addresses_count as u64,
+        },
     ))?;
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
@@ -33,9 +46,14 @@ pub fn unstake_hook_msgs(
     storage: &dyn Storage,
     addr: Addr,
     amount: Uint128,
+    staked_addresses_count: usize,
 ) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
-        StakeChangedHookMsg::Unstake { addr, amount },
+        StakeChangedHookMsg::Unstake {
+            addr,
+            amount,
+            staked_addresses_count: staked_addresses_count as u64,
+        },
     ))?;
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {

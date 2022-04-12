@@ -323,6 +323,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-shuffle-voting"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core-interface",
+ "cw-core-macros",
+ "cw-multi-test 0.12.1",
+ "cw-storage-plus 0.12.1",
+ "cw-utils 0.11.1",
+ "cw2 0.12.1",
+ "cw20 0.12.1",
+ "cw20-base 0.12.1",
+ "cw20-staked-balance-voting",
+ "cw4",
+ "cw4-group",
+ "oorandom",
+ "proposal-hooks",
+ "schemars",
+ "serde",
+ "stake-cw20",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-storage-plus"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -614,6 +640,7 @@ dependencies = [
  "cw-storage-plus 0.12.1",
  "cw-utils 0.12.1",
  "cw2 0.12.1",
+ "cw20-base 0.12.1",
  "cw4",
  "cw4-group",
  "schemars",
@@ -845,6 +872,12 @@ name = "libc"
 version = "0.2.124"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21a41fed9d98f27ab1c6d161da622a4fa35e8a54a8adc24bbf3ddd0ef70b0e50"
+
+[[package]]
+name = "oorandom"
+version = "11.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 
 [[package]]
 name = "opaque-debug"
