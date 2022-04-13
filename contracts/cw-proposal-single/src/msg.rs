@@ -109,10 +109,16 @@ pub enum ExecuteMsg {
         /// proposal. None if no deposit, Some otherwise.
         deposit_info: Option<DepositInfo>,
     },
-    AddHook {
+    AddProposalHook {
         address: String,
     },
-    RemoveHook {
+    RemoveProposalHook {
+        address: String,
+    },
+    AddVoteHook {
+        address: String,
+    },
+    RemoveVoteHook {
         address: String,
     },
 }

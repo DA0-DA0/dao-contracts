@@ -2,12 +2,14 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, WasmMsg,
+    StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_controllers::Hooks;
 use cw_storage_plus::Bound;
 use cw_utils::{Duration, Expiration};
-use proposal_hooks::{new_proposal_hooks, new_vote_hooks, proposal_status_changed_hooks};
+use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use vote_hooks::new_vote_hooks;
 
 use voting::{Vote, Votes};
 
@@ -18,8 +20,8 @@ use crate::{
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
-        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, HOOKS, PROPOSALS,
-        PROPOSAL_COUNT,
+        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
+        PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
     },
     threshold::Threshold,
     utils::{get_total_power, get_voting_power},
@@ -95,8 +97,16 @@ pub fn execute(
             dao,
             deposit_info,
         ),
-        ExecuteMsg::AddHook { address } => execute_add_hook(deps, env, info, address),
-        ExecuteMsg::RemoveHook { address } => execute_remove_hook(deps, env, info, address),
+        ExecuteMsg::AddProposalHook { address } => {
+            execute_add_proposal_hook(deps, env, info, address)
+        }
+        ExecuteMsg::RemoveProposalHook { address } => {
+            execute_remove_proposal_hook(deps, env, info, address)
+        }
+        ExecuteMsg::AddVoteHook { address } => execute_add_vote_hook(deps, env, info, address),
+        ExecuteMsg::RemoveVoteHook { address } => {
+            execute_remove_vote_hook(deps, env, info, address)
+        }
     }
 }
 
@@ -161,7 +171,7 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-    let hooks = new_proposal_hooks(HOOKS, deps.storage, id)?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
     Ok(Response::default()
         .add_messages(deposit_msg)
         .add_submessages(hooks)
@@ -218,7 +228,7 @@ pub fn execute_execute(
     };
 
     let hooks = proposal_status_changed_hooks(
-        HOOKS,
+        PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
         old_status.to_string(),
@@ -276,14 +286,14 @@ pub fn execute_vote(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
     let new_status = prop.status;
     let change_hooks = proposal_status_changed_hooks(
-        HOOKS,
+        PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
         old_status.to_string(),
         new_status.to_string(),
     )?;
     let vote_hooks = new_vote_hooks(
-        HOOKS,
+        VOTE_HOOKS,
         deps.storage,
         proposal_id,
         info.sender.to_string(),
@@ -324,7 +334,7 @@ pub fn execute_close(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let changed_hooks = proposal_status_changed_hooks(
-        HOOKS,
+        PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
         old_status.to_string(),
@@ -376,8 +386,29 @@ pub fn execute_update_config(
         .add_attribute("action", "update_config")
         .add_attribute("sender", info.sender))
 }
+pub fn add_hook(
+    hooks: Hooks,
+    storage: &mut dyn Storage,
+    validated_address: Addr,
+) -> Result<(), ContractError> {
+    hooks
+        .add_hook(storage, validated_address)
+        .map_err(ContractError::HookError)?;
+    Ok(())
+}
 
-pub fn execute_add_hook(
+pub fn remove_hook(
+    hooks: Hooks,
+    storage: &mut dyn Storage,
+    validate_address: Addr,
+) -> Result<(), ContractError> {
+    hooks
+        .remove_hook(storage, validate_address)
+        .map_err(ContractError::HookError)?;
+    Ok(())
+}
+
+pub fn execute_add_proposal_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -391,16 +422,14 @@ pub fn execute_add_hook(
 
     let validated_address = deps.api.addr_validate(&address)?;
 
-    HOOKS
-        .add_hook(deps.storage, validated_address)
-        .map_err(ContractError::HookError)?;
+    add_hook(PROPOSAL_HOOKS, deps.storage, validated_address)?;
 
     Ok(Response::default()
-        .add_attribute("action", "add_hook")
+        .add_attribute("action", "add_proposal_hook")
         .add_attribute("address", address))
 }
 
-pub fn execute_remove_hook(
+pub fn execute_remove_proposal_hook(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -414,12 +443,52 @@ pub fn execute_remove_hook(
 
     let validated_address = deps.api.addr_validate(&address)?;
 
-    HOOKS
-        .remove_hook(deps.storage, validated_address)
-        .map_err(ContractError::HookError)?;
+    remove_hook(PROPOSAL_HOOKS, deps.storage, validated_address)?;
 
     Ok(Response::default()
-        .add_attribute("action", "remove_hook")
+        .add_attribute("action", "remove_proposal_hook")
+        .add_attribute("address", address))
+}
+
+pub fn execute_add_vote_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can add hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    add_hook(VOTE_HOOKS, deps.storage, validated_address)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "add_vote_hook")
+        .add_attribute("address", address))
+}
+
+pub fn execute_remove_vote_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can remove hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    remove_hook(VOTE_HOOKS, deps.storage, validated_address)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "remove_vote_hook")
         .add_attribute("address", address))
 }
 

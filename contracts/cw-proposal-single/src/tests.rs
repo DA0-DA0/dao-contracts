@@ -1713,7 +1713,7 @@ fn test_hooks() {
         .unwrap();
     let dao = govmod_config.dao;
 
-    let msg = ExecuteMsg::AddHook {
+    let msg = ExecuteMsg::AddProposalHook {
         address: "some_addr".to_string(),
     };
 
@@ -1742,14 +1742,69 @@ fn test_hooks() {
         .execute_contract(
             dao.clone(),
             govmod_single.clone(),
-            &ExecuteMsg::RemoveHook {
+            &ExecuteMsg::RemoveProposalHook {
                 address: "not_exist".to_string(),
             },
             &[],
         )
         .unwrap_err();
 
-    let msg = ExecuteMsg::RemoveHook {
+    let msg = ExecuteMsg::RemoveProposalHook {
+        address: "some_addr".to_string(),
+    };
+
+    // Expect error as sender is not DAO
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &msg,
+            &[],
+        )
+        .unwrap_err();
+
+    // Expect success
+    let _res = app
+        .execute_contract(dao.clone(), govmod_single.clone(), &msg, &[])
+        .unwrap();
+
+    let msg = ExecuteMsg::AddVoteHook {
+        address: "some_addr".to_string(),
+    };
+
+    // Expect error as sender is not DAO
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &msg,
+            &[],
+        )
+        .unwrap_err();
+
+    // Expect success as sender is now DAO
+    let _res = app
+        .execute_contract(dao.clone(), govmod_single.clone(), &msg, &[])
+        .unwrap();
+
+    // Expect error as hook is already set
+    let _err = app
+        .execute_contract(dao.clone(), govmod_single.clone(), &msg, &[])
+        .unwrap_err();
+
+    // Expect error as hook does not exist
+    let _err = app
+        .execute_contract(
+            dao.clone(),
+            govmod_single.clone(),
+            &ExecuteMsg::RemoveVoteHook {
+                address: "not_exist".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    let msg = ExecuteMsg::RemoveVoteHook {
         address: "some_addr".to_string(),
     };
 

@@ -14,11 +14,6 @@ pub enum ProposalHookMsg {
         old_status: String,
         new_status: String,
     },
-    NewVote {
-        proposal_id: u64,
-        voter: String,
-        vote: String,
-    },
 }
 
 // This is just a helper to properly serialize the above message
@@ -58,30 +53,6 @@ pub fn proposal_status_changed_hooks(
             id,
             old_status,
             new_status,
-        },
-    ))?;
-    hooks.prepare_hooks(storage, |a| {
-        let execute = WasmMsg::Execute {
-            contract_addr: a.to_string(),
-            msg: msg.clone(),
-            funds: vec![],
-        };
-        Ok(SubMsg::new(execute))
-    })
-}
-
-pub fn new_vote_hooks(
-    hooks: Hooks,
-    storage: &dyn Storage,
-    proposal_id: u64,
-    voter: String,
-    vote: String,
-) -> StdResult<Vec<SubMsg>> {
-    let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
-        ProposalHookMsg::NewVote {
-            proposal_id,
-            voter,
-            vote,
         },
     ))?;
     hooks.prepare_hooks(storage, |a| {

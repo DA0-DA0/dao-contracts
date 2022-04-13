@@ -45,6 +45,7 @@ cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interfac
 voting = { version = "0.1.0", path = "../../packages/voting" }
 cw-controllers = "0.12"
 proposal-hooks = { version = "0.1.0", path = "../../packages/proposal-hooks" }
+vote-hooks = { version = "0.1.0", path = "../../packages/vote-hooks" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }
