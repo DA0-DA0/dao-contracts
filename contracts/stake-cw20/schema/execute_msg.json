@@ -54,12 +54,16 @@
       "properties": {
         "update_config": {
           "type": "object",
-          "required": [
-            "admin"
-          ],
           "properties": {
             "admin": {
-              "$ref": "#/definitions/Addr"
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "duration": {
               "anyOf": [

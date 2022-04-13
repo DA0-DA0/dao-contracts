@@ -29,7 +29,7 @@ use std::cmp::Ordering;
 use std::string::FromUtf8Error;
 
 // Version info for migration info
-pub const CONTRACT_NAME: &str = "crates.io:sg_dao";
+pub const CONTRACT_NAME: &str = "crates.io:cw3_dao";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // Settings for pagination
@@ -140,7 +140,7 @@ pub fn instantiate(
                 admin: Some(env.contract.address.to_string()),
                 label,
                 msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                    admin: env.contract.address,
+                    admin: Some(env.contract.address),
                     unstaking_duration,
                     token_address: cw20_addr.addr(),
                 })?,
@@ -331,7 +331,7 @@ pub fn execute_execute(
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
     // We allow execution even after the proposal "expiration" as long as all vote come in before
     // that point. If it was approved on time, it can be executed any time.
-    if prop.status != Status::Passed {
+    if prop.current_status(&env.block) != Status::Passed {
         return Err(ContractError::WrongExecuteStatus {});
     }
 
@@ -542,6 +542,7 @@ fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<ProposalResponse> 
         expires: prop.expires,
         threshold,
         deposit_amount: prop.deposit,
+        start_height: prop.start_height,
     })
 }
 
@@ -740,7 +741,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         admin: Some(env.contract.address.to_string()),
                         label: env.contract.address.to_string(),
                         msg: to_binary(&stake_cw20::msg::InstantiateMsg {
-                            admin: env.contract.address,
+                            admin: Some(env.contract.address),
                             unstaking_duration,
                             token_address: cw20_addr,
                         })?,

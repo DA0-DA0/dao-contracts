@@ -8,7 +8,7 @@ use cw_utils::Duration;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct Config {
-    pub admin: Addr,
+    pub admin: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }
