@@ -499,7 +499,7 @@ mod tests {
 
     use crate::ContractError;
 
-    use cosmwasm_std::{coin, to_binary, Addr, Empty, Uint128, Uint256};
+    use cosmwasm_std::{coin, to_binary, Addr, Empty, Uint128};
     use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
     use cw_utils::Duration;
 
@@ -2036,22 +2036,5 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR1, 1000);
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 500);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 500);
-    }
-
-    #[test]
-    fn test_math() {
-        let max_u128 = Uint256::from(Uint128::MAX);
-        let scale = Uint256::MAX.checked_div(max_u128).unwrap();
-
-        let scale_factor = Uint256::from(10u8).checked_pow(39).unwrap();
-        let min_128 = Uint128::new(1);
-        let scaled_min = Uint256::from(min_128).checked_mul(scale_factor).unwrap();
-        assert!(scaled_min > Uint256::from(Uint128::MAX));
-
-        let _max = Uint256::from(Uint128::MAX)
-            .checked_mul(scale_factor)
-            .unwrap_err();
-
-        let possible_max = Uint256::MAX.checked_div(scale_factor).unwrap();
     }
 }
