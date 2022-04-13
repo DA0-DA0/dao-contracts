@@ -11,7 +11,6 @@ use proposal_hooks::{new_proposal_hooks, new_vote_hooks, proposal_status_changed
 
 use voting::{Vote, Votes};
 
-use crate::state::HOOKS;
 use crate::{
     error::ContractError,
     msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -19,7 +18,7 @@ use crate::{
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
-        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
+        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, HOOKS, PROPOSALS,
         PROPOSAL_COUNT,
     },
     threshold::Threshold,
@@ -198,6 +197,7 @@ pub fn execute_execute(
     // Check here that the proposal is passed. Allow it to be
     // executed even if it is expired so long as it passed during its
     // voting period.
+    let old_status = prop.status;
     if !prop.is_passed(&env.block) {
         return Err(ContractError::NotPassed {});
     }
@@ -217,8 +217,16 @@ pub fn execute_execute(
         Response::default()
     };
 
+    let hooks = proposal_status_changed_hooks(
+        HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        prop.status.to_string(),
+    )?;
     Ok(response
         .add_messages(return_deposit)
+        .add_submessages(hooks)
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
@@ -384,12 +392,12 @@ pub fn execute_add_hook(
     let validated_address = deps.api.addr_validate(&address)?;
 
     HOOKS
-        .add_hook(deps.storage, validated_address.clone())
+        .add_hook(deps.storage, validated_address)
         .map_err(ContractError::HookError)?;
 
     Ok(Response::default()
         .add_attribute("action", "add_hook")
-        .add_attribute("address", validated_address))
+        .add_attribute("address", address))
 }
 
 pub fn execute_remove_hook(
@@ -407,12 +415,12 @@ pub fn execute_remove_hook(
     let validated_address = deps.api.addr_validate(&address)?;
 
     HOOKS
-        .remove_hook(deps.storage, validated_address.clone())
+        .remove_hook(deps.storage, validated_address)
         .map_err(ContractError::HookError)?;
 
     Ok(Response::default()
         .add_attribute("action", "remove_hook")
-        .add_attribute("address", validated_address))
+        .add_attribute("address", address))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
