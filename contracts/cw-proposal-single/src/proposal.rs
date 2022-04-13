@@ -65,9 +65,7 @@ pub fn does_vote_count_pass(
         return false;
     }
     match percent {
-        PercentageThreshold::Majority {} => {
-            compare_vote_count(yes_votes, VoteCmp::Greater, options, Decimal::percent(50))
-        }
+        PercentageThreshold::Majority {} => yes_votes.full_mul(2u64) > options.into(),
         PercentageThreshold::Percent(percent) => {
             compare_vote_count(yes_votes, VoteCmp::Geq, options, percent)
         }
@@ -86,7 +84,7 @@ pub fn does_vote_count_fail(
     match percent {
         PercentageThreshold::Majority {} => {
             // Fails if no votes have >= half of all votes.
-            compare_vote_count(no_votes, VoteCmp::Geq, options, Decimal::percent(50))
+            no_votes.full_mul(2u64) >= options.into()
         }
         PercentageThreshold::Percent(percent) => compare_vote_count(
             no_votes,
@@ -332,7 +330,7 @@ mod test {
     }
 
     #[test]
-    fn test_pass_absolute_percentage() {
+    fn test_pass_majority_percentage() {
         let threshold = Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         };
@@ -342,7 +340,7 @@ mod test {
             abstain: Uint128::new(2),
         };
 
-        // 15 total votes. 7 yes and 2 abstain. 50% threshold. This
+        // 15 total votes. 7 yes and 2 abstain. Majority threshold. This
         // should pass.
         assert!(check_is_passed(
             threshold.clone(),
@@ -363,7 +361,63 @@ mod test {
     }
 
     #[test]
-    fn test_reject_absolute_percentage() {
+    fn test_tricky_pass() {
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::from_ratio(7u32, 13u32)),
+        };
+        let votes = Votes {
+            yes: Uint128::new(7),
+            no: Uint128::new(6),
+            abstain: Uint128::zero(),
+        };
+        assert!(check_is_passed(threshold, votes, Uint128::new(13), false))
+    }
+
+    #[test]
+    fn test_weird_failure_rounding() {
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::from_ratio(6u32, 13u32)),
+        };
+        let votes = Votes {
+            yes: Uint128::new(6),
+            no: Uint128::new(7),
+            abstain: Uint128::zero(),
+        };
+        assert!(check_is_passed(
+            threshold.clone(),
+            votes.clone(),
+            Uint128::new(13),
+            false
+        ));
+        assert!(!check_is_rejected(
+            threshold,
+            votes,
+            Uint128::new(13),
+            false
+        ));
+    }
+
+    #[test]
+    fn test_tricky_pass_majority() {
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Majority {},
+        };
+        let votes = Votes {
+            yes: Uint128::new(7),
+            no: Uint128::new(6),
+            abstain: Uint128::zero(),
+        };
+        assert!(check_is_passed(
+            threshold.clone(),
+            votes.clone(),
+            Uint128::new(13),
+            false
+        ));
+        assert!(!check_is_passed(threshold, votes, Uint128::new(14), false))
+    }
+
+    #[test]
+    fn test_reject_majority_percentage() {
         let percent = Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         };
