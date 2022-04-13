@@ -7,9 +7,11 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::{Duration, Expiration};
+use proposal_hooks::{new_proposal_hooks, new_vote_hooks, proposal_status_changed_hooks};
 
 use voting::{Vote, Votes};
 
+use crate::state::HOOKS;
 use crate::{
     error::ContractError,
     msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -94,6 +96,8 @@ pub fn execute(
             dao,
             deposit_info,
         ),
+        ExecuteMsg::AddHook { address } => execute_add_hook(deps, env, info, address),
+        ExecuteMsg::RemoveHook { address } => execute_remove_hook(deps, env, info, address),
     }
 }
 
@@ -158,9 +162,10 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-
+    let hooks = new_proposal_hooks(HOOKS, deps.storage, id)?;
     Ok(Response::default()
         .add_messages(deposit_msg)
+        .add_submessages(hooks)
         .add_attribute("action", "propose")
         .add_attribute("sender", sender)
         .add_attribute("proposal_id", id.to_string())
@@ -257,11 +262,28 @@ pub fn execute_vote(
         },
     )?;
 
+    let old_status = prop.status;
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
+    let new_status = prop.status;
+    let change_hooks = proposal_status_changed_hooks(
+        HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        new_status.to_string(),
+    )?;
+    let vote_hooks = new_vote_hooks(
+        HOOKS,
+        deps.storage,
+        proposal_id,
+        info.sender.to_string(),
+        vote.to_string(),
+    )?;
     Ok(Response::default()
+        .add_submessages(change_hooks)
+        .add_submessages(vote_hooks)
         .add_attribute("action", "vote")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
@@ -287,13 +309,22 @@ pub fn execute_close(
         }
         _ => return Err(ContractError::WrongCloseStatus {}),
     }
-
+    let old_status = prop.status;
     let refund_message = get_return_deposit_msg(&prop)?;
 
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
+    let changed_hooks = proposal_status_changed_hooks(
+        HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        prop.status.to_string(),
+    )?;
+
     Ok(Response::default()
+        .add_submessages(changed_hooks)
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_messages(refund_message)
@@ -336,6 +367,52 @@ pub fn execute_update_config(
     Ok(Response::default()
         .add_attribute("action", "update_config")
         .add_attribute("sender", info.sender))
+}
+
+pub fn execute_add_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can add hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    HOOKS
+        .add_hook(deps.storage, validated_address.clone())
+        .map_err(ContractError::HookError)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "add_hook")
+        .add_attribute("address", validated_address))
+}
+
+pub fn execute_remove_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can remove hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    HOOKS
+        .remove_hook(deps.storage, validated_address.clone())
+        .map_err(ContractError::HookError)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "remove_hook")
+        .add_attribute("address", validated_address))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

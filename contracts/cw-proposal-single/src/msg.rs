@@ -109,6 +109,12 @@ pub enum ExecuteMsg {
         /// proposal. None if no deposit, Some otherwise.
         deposit_info: Option<DepositInfo>,
     },
+    AddHook {
+        address: String,
+    },
+    RemoveHook {
+        address: String,
+    },
 }
 
 #[govmod_query]

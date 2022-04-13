@@ -1674,3 +1674,95 @@ fn test_query_list_proposals() {
     proposals_backward.proposals.reverse();
     assert_eq!(proposals_forward.proposals, proposals_backward.proposals);
 }
+
+#[test]
+fn test_hooks() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+    };
+
+    let governance_addr =
+        instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::GovernanceModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = govmod_config.dao;
+
+    let msg = ExecuteMsg::AddHook {
+        address: "some_addr".to_string(),
+    };
+
+    // Expect error as sender is not DAO
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &msg,
+            &[],
+        )
+        .unwrap_err();
+
+    // Expect success as sender is now DAO
+    let _res = app
+        .execute_contract(dao.clone(), govmod_single.clone(), &msg, &[])
+        .unwrap();
+
+    // Expect error as hook is already set
+    let _err = app
+        .execute_contract(dao.clone(), govmod_single.clone(), &msg, &[])
+        .unwrap_err();
+
+    // Expect error as hook does not exist
+    let _err = app
+        .execute_contract(
+            dao.clone(),
+            govmod_single.clone(),
+            &ExecuteMsg::RemoveHook {
+                address: "not_exist".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    let msg = ExecuteMsg::RemoveHook {
+        address: "some_addr".to_string(),
+    };
+
+    // Expect error as sender is not DAO
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &msg,
+            &[],
+        )
+        .unwrap_err();
+
+    // Expect success
+    let _res = app.execute_contract(dao, govmod_single, &msg, &[]).unwrap();
+}
