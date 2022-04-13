@@ -1,8 +1,9 @@
-use rand::{prelude::SliceRandom, Rng};
-
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use rand::{prelude::SliceRandom, Rng};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use voting::{Vote, Votes};
 
@@ -1675,6 +1676,14 @@ fn test_query_list_proposals() {
     assert_eq!(proposals_forward.proposals, proposals_backward.proposals);
 }
 
+// Temporary hooks response for deserialization as
+// the actual hooks response is not exported from
+// cw-controllers.
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+struct HooksResponse {
+    pub hooks: Vec<String>,
+}
+
 #[test]
 fn test_hooks() {
     let mut app = App::default();
@@ -1713,6 +1722,19 @@ fn test_hooks() {
         .unwrap();
     let dao = govmod_config.dao;
 
+    // Expect no hooks
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::ProposalHooks {})
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 0);
+
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::VoteHooks {})
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 0);
+
     let msg = ExecuteMsg::AddProposalHook {
         address: "some_addr".to_string(),
     };
@@ -1731,6 +1753,12 @@ fn test_hooks() {
     let _res = app
         .execute_contract(dao.clone(), govmod_single.clone(), &msg, &[])
         .unwrap();
+
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::ProposalHooks {})
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 1);
 
     // Expect error as hook is already set
     let _err = app
@@ -1786,6 +1814,12 @@ fn test_hooks() {
     let _res = app
         .execute_contract(dao.clone(), govmod_single.clone(), &msg, &[])
         .unwrap();
+
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::VoteHooks {})
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 1);
 
     // Expect error as hook is already set
     let _err = app
