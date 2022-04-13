@@ -152,4 +152,6 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u64>,
     },
+    ProposalHooks {},
+    VoteHooks {},
 }
