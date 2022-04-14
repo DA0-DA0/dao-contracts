@@ -193,12 +193,10 @@ pub fn query_voting_power_at_height(
             height,
         },
     )?;
-    to_binary(
-        &cw_governance_interface::voting::VotingPowerAtHeightResponse {
-            power: res.balance,
-            height: res.height,
-        },
-    )
+    to_binary(&cw_core_interface::voting::VotingPowerAtHeightResponse {
+        power: res.balance,
+        height: res.height,
+    })
 }
 
 pub fn query_total_power_at_height(
@@ -211,17 +209,15 @@ pub fn query_total_power_at_height(
         staking_contract,
         &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height },
     )?;
-    to_binary(
-        &cw_governance_interface::voting::TotalPowerAtHeightResponse {
-            power: res.total,
-            height: res.height,
-        },
-    )
+    to_binary(&cw_core_interface::voting::TotalPowerAtHeightResponse {
+        power: res.total,
+        height: res.height,
+    })
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&cw_governance_interface::voting::InfoResponse { info })
+    to_binary(&cw_core_interface::voting::InfoResponse { info })
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {

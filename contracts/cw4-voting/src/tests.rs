@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw2::ContractVersion;
-use cw_governance_interface::voting::{
+use cw_core_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};

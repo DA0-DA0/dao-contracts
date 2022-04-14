@@ -1,4 +1,4 @@
-import { Addr, Duration, Uint128 } from "./shared-types";
+import { Duration, Uint128 } from "./shared-types";
 
 export type ExecuteMsg = ({
 receive: Cw20ReceiveMsg
@@ -13,8 +13,19 @@ claim: {
 }
 } | {
 update_config: {
-admin: Addr
 duration?: (Duration | null)
+manager?: (string | null)
+owner?: (string | null)
+[k: string]: unknown
+}
+} | {
+add_hook: {
+addr: string
+[k: string]: unknown
+}
+} | {
+remove_hook: {
+addr: string
 [k: string]: unknown
 }
 })

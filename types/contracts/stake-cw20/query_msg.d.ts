@@ -27,4 +27,8 @@ claims: {
 address: string
 [k: string]: unknown
 }
+} | {
+get_hooks: {
+[k: string]: unknown
+}
 })

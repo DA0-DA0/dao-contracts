@@ -30,7 +30,7 @@ const TSCONFIG_DEFAULT = `{
   },
   "include": ["*.ts"],
   "exclude": ["node_modules"]
-}    
+}
 `;
 
 const CODEGEN_NO_DEDUP = !!process.env.NO_DEDUP;
@@ -66,8 +66,20 @@ const DEFAULT_CONFIG = {
   schemaRoots: [
     {
       name: "contracts",
-      paths: [process.env.CONTRACTS_ROOT || "../contracts"],
+      paths: ["../contracts"],
       outputName: "contracts",
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
+      name: "packages",
+      paths: ["../packages"],
+      outputName: "packages",
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
+      name: "legacy",
+      paths: ["../legacy"],
+      outputName: "legacy",
       outputDir: CONTRACTS_OUTPUT_DIR,
     },
   ],
@@ -320,17 +332,17 @@ async function writeIndex(outputPath: string) {
     fs.readdir(outputPath, (err, dirEntries) => {
       if (err) {
         console.error(err);
-        reject(err)
+        reject(err);
       }
 
       dirEntries.forEach((entry) => {
         const fullPath = path.join(outputPath, entry);
         if (entry.endsWith(".d.ts") && fs.existsSync(fullPath)) {
-          exports.push(`export * from './${path.basename(entry, '.d.ts')}'`);
+          exports.push(`export * from './${path.basename(entry, ".d.ts")}'`);
         }
       });
 
-      fs.writeFileSync(indexFilePath, exports.join('\n') + '\n')
+      fs.writeFileSync(indexFilePath, exports.join("\n") + "\n");
       resolve(exports);
     });
   });
@@ -390,13 +402,13 @@ async function main() {
       dedupPromises.push(dedup(spec.outputPath));
     }
     await Promise.all(dedupPromises);
-    const indexPromises = []
+    const indexPromises = [];
     for (const spec of compilationSpecs) {
       if (!fs.existsSync(path.join(spec.outputPath, "index.ts"))) {
         indexPromises.push(writeIndex(spec.outputPath));
       }
     }
-    await Promise.all(indexPromises)
+    await Promise.all(indexPromises);
   }
   log(`code generation complete`, LogLevels.Normal);
 }

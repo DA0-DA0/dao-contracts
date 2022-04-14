@@ -1,7 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw2::ContractVersion;
 use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
-use cw_governance_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
+use cw_core_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
 use crate::msg::{InstantiateMsg, QueryMsg, StakingInfo};

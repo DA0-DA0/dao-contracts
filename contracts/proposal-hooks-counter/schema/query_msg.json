@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "vote_counter"
+      ],
+      "properties": {
+        "vote_counter": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "proposal_counter"
+      ],
+      "properties": {
+        "proposal_counter": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "status_changed_counter"
+      ],
+      "properties": {
+        "status_changed_counter": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

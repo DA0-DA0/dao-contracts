@@ -113,12 +113,10 @@ pub fn query_voting_power_at_height(deps: Deps, env: Env, address: String) -> St
             address: address.to_string(),
         },
     )?;
-    to_binary(
-        &cw_governance_interface::voting::VotingPowerAtHeightResponse {
-            power: balance.balance,
-            height: env.block.height,
-        },
-    )
+    to_binary(&cw_core_interface::voting::VotingPowerAtHeightResponse {
+        power: balance.balance,
+        height: env.block.height,
+    })
 }
 
 pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
@@ -126,17 +124,15 @@ pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
     let info: cw20::TokenInfoResponse = deps
         .querier
         .query_wasm_smart(token, &cw20::Cw20QueryMsg::TokenInfo {})?;
-    to_binary(
-        &cw_governance_interface::voting::TotalPowerAtHeightResponse {
-            power: info.total_supply,
-            height: env.block.height,
-        },
-    )
+    to_binary(&cw_core_interface::voting::TotalPowerAtHeightResponse {
+        power: info.total_supply,
+        height: env.block.height,
+    })
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&cw_governance_interface::voting::InfoResponse { info })
+    to_binary(&cw_core_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

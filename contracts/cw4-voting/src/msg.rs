@@ -1,4 +1,4 @@
-use cw_governance_macros::voting_query;
+use cw_core_macros::voting_query;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
