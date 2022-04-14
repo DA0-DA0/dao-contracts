@@ -198,7 +198,6 @@ fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
     for group in GROUPS
         .group_names
         .keys(deps.storage, None, None, Order::Ascending)
-        .into_iter()
     {
         if let Err(e) = group {
             return Err(e);
