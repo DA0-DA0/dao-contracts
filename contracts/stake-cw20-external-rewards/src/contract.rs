@@ -45,6 +45,9 @@ pub fn instantiate(
         Cw20(addr) => Cw20(deps.api.addr_validate(&addr.to_string())?),
     };
 
+    // Verify contract provided is a staking contract
+    let _: stake_cw20::msg::TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(&msg.staking_contract, &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None })?;
+
     let config = Config {
         owner,
         manager,
