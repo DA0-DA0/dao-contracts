@@ -872,6 +872,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "proposal-hooks-counter"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core",
+ "cw-multi-test 0.12.1",
+ "cw-proposal-single",
+ "cw-storage-plus 0.12.1",
+ "cw-utils 0.12.1",
+ "cw2 0.12.1",
+ "cw20 0.12.1",
+ "cw20-balance-voting",
+ "cw20-base 0.12.1",
+ "indexable-hooks",
+ "proposal-hooks",
+ "schemars",
+ "serde",
+ "thiserror",
+ "vote-hooks",
+ "voting",
+]
+
+[[package]]
 name = "prost"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
