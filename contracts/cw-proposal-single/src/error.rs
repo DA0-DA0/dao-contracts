@@ -47,4 +47,7 @@ pub enum ContractError {
 
     #[error("Only rejected or expired proposals may be closed.")]
     WrongCloseStatus {},
+
+    #[error("The DAO is currently inactive, you cannot create proposals")]
+    InactiveDao {},
 }

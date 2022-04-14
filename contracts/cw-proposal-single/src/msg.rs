@@ -3,6 +3,7 @@ use cw_utils::{Duration, Expiration};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::state::StakingThreshold;
 use crate::threshold::Threshold;
 use cw_core_macros::govmod_query;
 
@@ -21,6 +22,9 @@ pub struct InstantiateMsg {
     /// proposal. None if there is no deposit requirement, Some
     /// otherwise.
     pub deposit_info: Option<DepositInfo>,
+    /// Staking threshold for a DAO to be active,
+    /// can be null when staking is not used for power
+    pub staking_threshold: Option<StakingThreshold>,
 }
 
 /// Information about the token to use for proposal deposits.
@@ -108,6 +112,9 @@ pub enum ExecuteMsg {
         /// Information about the deposit required to make a
         /// proposal. None if no deposit, Some otherwise.
         deposit_info: Option<DepositInfo>,
+        /// Staking threshold for a DAO to be active,
+        /// can be null when staking is not used for power
+        staking_threshold: Option<StakingThreshold>,
     },
     AddProposalHook {
         address: String,

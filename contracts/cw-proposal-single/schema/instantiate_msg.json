@@ -31,6 +31,17 @@
       "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal.",
       "type": "boolean"
     },
+    "staking_threshold": {
+      "description": "Staking threshold for a DAO to be active, can be null when staking is not used for power",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/StakingThreshold"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "threshold": {
       "description": "The threshold a proposal must reach to complete.",
       "allOf": [
@@ -174,6 +185,51 @@
           "properties": {
             "percent": {
               "$ref": "#/definitions/Decimal"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "StakingThreshold": {
+      "description": "Threshold requirements for a DAO to be active and allow proposals",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "AbsoluteCount"
+          ],
+          "properties": {
+            "AbsoluteCount": {
+              "type": "object",
+              "required": [
+                "count"
+              ],
+              "properties": {
+                "count": {
+                  "$ref": "#/definitions/Uint128"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "Percentage"
+          ],
+          "properties": {
+            "Percentage": {
+              "type": "object",
+              "required": [
+                "percent"
+              ],
+              "properties": {
+                "percent": {
+                  "$ref": "#/definitions/Decimal"
+                }
+              }
             }
           },
           "additionalProperties": false

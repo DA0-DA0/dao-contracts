@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Deps, StdResult, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Deps, StdResult, Uint128, WasmMsg};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 
@@ -27,6 +27,13 @@ pub struct CheckedDepositInfo {
     pub refund_failed_proposals: bool,
 }
 
+/// Threshold requirements for a DAO to be active and allow proposals
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum StakingThreshold {
+    AbsoluteCount { count: Uint128 },
+    Percentage { percent: Decimal },
+}
+
 /// The governance module's configuration.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -45,6 +52,9 @@ pub struct Config {
     /// Information about the depost required to create a
     /// proposal. None if no deposit is required, Some otherwise.
     pub deposit_info: Option<CheckedDepositInfo>,
+    /// Staking threshold for a DAO to be active,
+    /// can be null when staking is not used for power
+    pub staking_threshold: Option<StakingThreshold>,
 }
 
 /// A vote cast for a proposal.

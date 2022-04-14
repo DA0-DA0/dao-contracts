@@ -140,6 +140,7 @@ fn test_counters() {
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
+        staking_threshold: None,
     };
 
     let governance_addr =

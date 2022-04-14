@@ -13,6 +13,7 @@ use vote_hooks::new_vote_hooks;
 
 use voting::{Vote, Votes};
 
+use crate::state::StakingThreshold;
 use crate::{
     error::ContractError,
     msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -56,6 +57,7 @@ pub fn instantiate(
         only_members_execute: msg.only_members_execute,
         dao: dao.clone(),
         deposit_info,
+        staking_threshold: msg.staking_threshold,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -88,6 +90,7 @@ pub fn execute(
             only_members_execute,
             dao,
             deposit_info,
+            staking_threshold,
         } => execute_update_config(
             deps,
             info,
@@ -96,6 +99,7 @@ pub fn execute(
             only_members_execute,
             dao,
             deposit_info,
+            staking_threshold,
         ),
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
@@ -120,6 +124,38 @@ pub fn execute_propose(
     latest: Option<Expiration>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    if let Some(staking_threshold) = config.staking_threshold {
+        let total_power =
+            get_total_power(deps.as_ref(), config.dao.clone(), Some(env.block.height))?;
+        match staking_threshold {
+            StakingThreshold::AbsoluteCount { count } => {
+                if total_power < count {
+                    return Err(ContractError::InactiveDao {});
+                }
+            }
+            StakingThreshold::Percentage { percent } => {
+                // Get the token info
+                let voting_module: Addr = deps.querier.query_wasm_smart(
+                    config.dao.clone(),
+                    &cw_core::msg::QueryMsg::VotingModule {},
+                )?;
+                // Now we can get the token
+                let token: Addr = deps.querier.query_wasm_smart(
+                    voting_module,
+                    &cw_core_interface::voting::Query::TokenContract {},
+                )?;
+                // Now we can get the info we need
+                let token_info: cw20::TokenInfoResponse = deps
+                    .querier
+                    .query_wasm_smart(token, &cw20_base::msg::QueryMsg::TokenInfo {})?;
+                let amount_to_be_active = percent * token_info.total_supply;
+                if total_power < amount_to_be_active {
+                    return Err(ContractError::InactiveDao {});
+                }
+            }
+        }
+    }
 
     // Check that the sender is a member of the governance contract.
     let sender_power = get_voting_power(
@@ -349,6 +385,7 @@ pub fn execute_close(
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
@@ -357,6 +394,7 @@ pub fn execute_update_config(
     only_members_execute: bool,
     dao: String,
     deposit_info: Option<DepositInfo>,
+    staking_threshold: Option<StakingThreshold>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -379,6 +417,7 @@ pub fn execute_update_config(
             only_members_execute,
             dao,
             deposit_info,
+            staking_threshold,
         },
     )?;
 
