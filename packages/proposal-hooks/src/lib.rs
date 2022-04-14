@@ -65,7 +65,7 @@ pub fn proposal_status_changed_hooks(
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, index * 2 + 1);
+        let tmp = SubMsg::reply_on_error(execute, index * 2);
         index += 1;
         Ok(tmp)
     })
