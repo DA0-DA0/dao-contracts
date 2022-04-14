@@ -145,9 +145,10 @@ mod add {
             .execute_contract(
                 Addr::unchecked(USER1),
                 contract_addr.clone(),
-                &ExecuteMsg::Add {
+                &ExecuteMsg::Update {
                     group: "group1".to_string(),
-                    addresses: Some(vec![USER1.to_string()]),
+                    addresses_to_add: Some(vec![USER1.to_string()]),
+                    addresses_to_remove: None,
                 },
                 &[],
             )
@@ -172,9 +173,10 @@ mod add {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: Some(group1.addresses.to_vec()),
+                addresses_to_add: Some(group1.addresses.to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -197,9 +199,10 @@ mod add {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group_name.clone(),
-                addresses: Some(addresses[..1].to_vec()),
+                addresses_to_add: Some(addresses[..1].to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -209,9 +212,10 @@ mod add {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group_name.clone(),
-                addresses: Some(addresses[1..].to_vec()),
+                addresses_to_add: Some(addresses[1..].to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -242,9 +246,10 @@ mod add {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: Some(group1.addresses.to_vec()),
+                addresses_to_add: Some(group1.addresses.to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -254,9 +259,10 @@ mod add {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group2.name.clone(),
-                addresses: Some(group2.addresses.to_vec()),
+                addresses_to_add: Some(group2.addresses.to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -274,6 +280,7 @@ mod add {
 }
 
 mod remove {
+
     use super::*;
 
     #[test]
@@ -289,13 +296,13 @@ mod remove {
                 contract_addr.clone(),
                 &ExecuteMsg::RemoveGroup {
                     group: group1.name.clone(),
-                    addresses: Some(group1.addresses.to_vec()),
                 },
                 &[],
             )
             .unwrap_err()
             .downcast()
             .unwrap();
+
         // Expect unauthorized.
         assert_eq!(err, ContractError::Unauthorized {});
 
@@ -306,7 +313,7 @@ mod remove {
     }
 
     #[test]
-    fn remove_from_nonexistent_group() {
+    fn remove_nonexistent_group() {
         let (mut app, contract_addr) = instantiate(None).unwrap();
 
         let group1 = group_factory(1);
@@ -318,15 +325,15 @@ mod remove {
                 contract_addr.clone(),
                 &ExecuteMsg::RemoveGroup {
                     group: group1.name.clone(),
-                    addresses: None,
                 },
                 &[],
             )
             .unwrap_err()
             .downcast()
             .unwrap();
-        // Expect invalid group.
-        assert_eq!(err, ContractError::InvalidGroup(group1.name.clone()));
+
+        // Expect group not found.
+        assert_eq!(ContractError::Std(StdError::not_found("group")), err);
 
         // Try to remove a non-existent group with some addresses.
         let err: ContractError = app
@@ -335,15 +342,15 @@ mod remove {
                 contract_addr,
                 &ExecuteMsg::RemoveGroup {
                     group: group1.name.clone(),
-                    addresses: Some(group1.addresses.to_vec()),
                 },
                 &[],
             )
             .unwrap_err()
             .downcast()
             .unwrap();
-        // Expect invalid group.
-        assert_eq!(err, ContractError::InvalidGroup(group1.name));
+
+        // Expect group not found.
+        assert_eq!(ContractError::Std(StdError::not_found("group")), err);
     }
 
     #[test]
@@ -361,9 +368,10 @@ mod remove {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::RemoveGroup {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: Some(vec![USER2.to_string()]),
+                addresses_to_add: None,
+                addresses_to_remove: Some(vec![USER2.to_string()]),
             },
             &[],
         )
@@ -378,9 +386,10 @@ mod remove {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::RemoveGroup {
+            &ExecuteMsg::Update {
                 group: group1.name,
-                addresses: Some(group1.addresses.to_vec()),
+                addresses_to_remove: Some(group1.addresses.to_vec()),
+                addresses_to_add: None,
             },
             &[],
         )
@@ -388,6 +397,7 @@ mod remove {
 
         // Ensure there is still 1 group but it is empty.
         let dump_result = dump(&app, &contract_addr);
+        println!("{}", dump_result.groups.len());
         assert_eq!(dump_result.groups.len(), 1);
         assert_eq!(dump_result.groups[0].addresses.len(), 0);
     }
@@ -407,7 +417,6 @@ mod remove {
             contract_addr.clone(),
             &ExecuteMsg::RemoveGroup {
                 group: group1_with_two_addresses.name.clone(),
-                addresses: None,
             },
             &[],
         )
@@ -432,7 +441,7 @@ mod change_owner {
                 // not the owner
                 Addr::unchecked(USER1),
                 contract_addr.clone(),
-                &ExecuteMsg::ChangeOwner {
+                &ExecuteMsg::UpdateOwner {
                     owner: USER1.to_string(),
                 },
                 &[],
@@ -451,9 +460,10 @@ mod change_owner {
                 // not the owner
                 Addr::unchecked(USER1),
                 contract_addr,
-                &ExecuteMsg::Add {
+                &ExecuteMsg::Update {
                     group: group1.name.clone(),
-                    addresses: Some(group1.addresses.to_vec()),
+                    addresses_to_add: Some(group1.addresses.to_vec()),
+                    addresses_to_remove: None,
                 },
                 &[],
             )
@@ -473,7 +483,7 @@ mod change_owner {
             // the current owner
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::ChangeOwner {
+            &ExecuteMsg::UpdateOwner {
                 owner: USER1.to_string(),
             },
             &[],
@@ -489,9 +499,10 @@ mod change_owner {
                 // the old owner
                 Addr::unchecked(ADMIN),
                 contract_addr.clone(),
-                &ExecuteMsg::Add {
+                &ExecuteMsg::Update {
                     group: group1.name.clone(),
-                    addresses: Some(group1.addresses.to_vec()),
+                    addresses_to_add: Some(group1.addresses.to_vec()),
+                    addresses_to_remove: None,
                 },
                 &[],
             )
@@ -506,9 +517,10 @@ mod change_owner {
             // the new owner
             Addr::unchecked(USER1),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: Some(group1.addresses.to_vec()),
+                addresses_to_add: Some(group1.addresses.to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -533,7 +545,6 @@ mod list_addresses {
         let err = list_addresses(&app, &contract_addr, group1.name, None, None).unwrap_err();
 
         // Expect group not found.
-        // Not sure why this becomes a generic error and not the StdError::NotFound enum but whatever.
         assert_eq!(
             err,
             StdError::generic_err("Querier contract error: group not found")
@@ -549,9 +560,10 @@ mod list_addresses {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: None,
+                addresses_to_add: None,
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -575,9 +587,10 @@ mod list_addresses {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: Some(group1.addresses.to_vec()),
+                addresses_to_add: Some(group1.addresses.to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -684,9 +697,10 @@ mod list_groups {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name,
-                addresses: None,
+                addresses_to_add: None,
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -710,9 +724,10 @@ mod list_groups {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
+                addresses_to_add: Some(group1.addresses.to_vec()),
+                addresses_to_remove: None,
                 group: group1.name.clone(),
-                addresses: Some(group1.addresses.to_vec()),
             },
             &[],
         )
@@ -851,9 +866,10 @@ mod is_address_in_group {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: None,
+                addresses_to_add: None,
+                addresses_to_remove: None,
             },
             &[],
         )
@@ -878,9 +894,10 @@ mod is_address_in_group {
         app.execute_contract(
             Addr::unchecked(ADMIN),
             contract_addr.clone(),
-            &ExecuteMsg::Add {
+            &ExecuteMsg::Update {
                 group: group1.name.clone(),
-                addresses: Some(group1.addresses.to_vec()),
+                addresses_to_add: Some(group1.addresses.to_vec()),
+                addresses_to_remove: None,
             },
             &[],
         )
