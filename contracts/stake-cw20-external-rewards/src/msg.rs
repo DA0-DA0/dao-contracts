@@ -13,6 +13,7 @@ pub struct InstantiateMsg {
     pub manager: Option<String>,
     pub staking_contract: String,
     pub reward_token: Denom,
+    pub reward_duration: u64
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

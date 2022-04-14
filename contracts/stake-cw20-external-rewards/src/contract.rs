@@ -56,7 +56,7 @@ pub fn instantiate(
     let reward_config = RewardConfig {
         period_finish: 0,
         reward_rate: Uint128::zero(),
-        reward_duration: 100000,
+        reward_duration: msg.reward_duration,
     };
     REWARD_CONFIG.save(deps.storage, &reward_config)?;
 
@@ -638,6 +638,7 @@ mod tests {
             manager: Some(manager.into_string()),
             staking_contract: staking_contract.clone().into_string(),
             reward_token,
+            reward_duration: 100000
         };
         let reward_addr = app
             .instantiate_contract(reward_code_id, owner, &msg, &[], "reward", None)
