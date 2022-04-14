@@ -2,6 +2,7 @@ use cosmwasm_std::{to_binary, Addr, CosmosMsg, Deps, StdResult, Uint128, WasmMsg
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 
+use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -59,6 +60,8 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
 pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
+pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
+pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
 
 impl DepositInfo {
     /// Converts deposit info into checked deposit info.

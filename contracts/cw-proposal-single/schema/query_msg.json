@@ -175,6 +175,30 @@
     {
       "type": "object",
       "required": [
+        "proposal_hooks"
+      ],
+      "properties": {
+        "proposal_hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "vote_hooks"
+      ],
+      "properties": {
+        "vote_hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "info"
       ],
       "properties": {

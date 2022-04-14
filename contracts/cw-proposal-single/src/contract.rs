@@ -1,12 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, WasmMsg,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::{Duration, Expiration};
+use indexable_hooks::Hooks;
+use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use vote_hooks::new_vote_hooks;
 
 use voting::{Vote, Votes};
 
@@ -18,7 +21,7 @@ use crate::{
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
         get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
-        PROPOSAL_COUNT,
+        PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
     },
     threshold::Threshold,
     utils::{get_total_power, get_voting_power},
@@ -94,6 +97,16 @@ pub fn execute(
             dao,
             deposit_info,
         ),
+        ExecuteMsg::AddProposalHook { address } => {
+            execute_add_proposal_hook(deps, env, info, address)
+        }
+        ExecuteMsg::RemoveProposalHook { address } => {
+            execute_remove_proposal_hook(deps, env, info, address)
+        }
+        ExecuteMsg::AddVoteHook { address } => execute_add_vote_hook(deps, env, info, address),
+        ExecuteMsg::RemoveVoteHook { address } => {
+            execute_remove_vote_hook(deps, env, info, address)
+        }
     }
 }
 
@@ -158,9 +171,10 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
     Ok(Response::default()
         .add_messages(deposit_msg)
+        .add_submessages(hooks)
         .add_attribute("action", "propose")
         .add_attribute("sender", sender)
         .add_attribute("proposal_id", id.to_string())
@@ -193,6 +207,7 @@ pub fn execute_execute(
     // Check here that the proposal is passed. Allow it to be
     // executed even if it is expired so long as it passed during its
     // voting period.
+    let old_status = prop.status;
     if !prop.is_passed(&env.block) {
         return Err(ContractError::NotPassed {});
     }
@@ -212,8 +227,16 @@ pub fn execute_execute(
         Response::default()
     };
 
+    let hooks = proposal_status_changed_hooks(
+        PROPOSAL_HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        prop.status.to_string(),
+    )?;
     Ok(response
         .add_messages(return_deposit)
+        .add_submessages(hooks)
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
@@ -257,11 +280,28 @@ pub fn execute_vote(
         },
     )?;
 
+    let old_status = prop.status;
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
+    let new_status = prop.status;
+    let change_hooks = proposal_status_changed_hooks(
+        PROPOSAL_HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        new_status.to_string(),
+    )?;
+    let vote_hooks = new_vote_hooks(
+        VOTE_HOOKS,
+        deps.storage,
+        proposal_id,
+        info.sender.to_string(),
+        vote.to_string(),
+    )?;
     Ok(Response::default()
+        .add_submessages(change_hooks)
+        .add_submessages(vote_hooks)
         .add_attribute("action", "vote")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
@@ -287,13 +327,22 @@ pub fn execute_close(
         }
         _ => return Err(ContractError::WrongCloseStatus {}),
     }
-
+    let old_status = prop.status;
     let refund_message = get_return_deposit_msg(&prop)?;
 
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
+    let changed_hooks = proposal_status_changed_hooks(
+        PROPOSAL_HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        prop.status.to_string(),
+    )?;
+
     Ok(Response::default()
+        .add_submessages(changed_hooks)
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_messages(refund_message)
@@ -337,6 +386,111 @@ pub fn execute_update_config(
         .add_attribute("action", "update_config")
         .add_attribute("sender", info.sender))
 }
+pub fn add_hook(
+    hooks: Hooks,
+    storage: &mut dyn Storage,
+    validated_address: Addr,
+) -> Result<(), ContractError> {
+    hooks
+        .add_hook(storage, validated_address)
+        .map_err(ContractError::HookError)?;
+    Ok(())
+}
+
+pub fn remove_hook(
+    hooks: Hooks,
+    storage: &mut dyn Storage,
+    validate_address: Addr,
+) -> Result<(), ContractError> {
+    hooks
+        .remove_hook(storage, validate_address)
+        .map_err(ContractError::HookError)?;
+    Ok(())
+}
+
+pub fn execute_add_proposal_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can add hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    add_hook(PROPOSAL_HOOKS, deps.storage, validated_address)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "add_proposal_hook")
+        .add_attribute("address", address))
+}
+
+pub fn execute_remove_proposal_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can remove hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    remove_hook(PROPOSAL_HOOKS, deps.storage, validated_address)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "remove_proposal_hook")
+        .add_attribute("address", address))
+}
+
+pub fn execute_add_vote_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can add hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    add_hook(VOTE_HOOKS, deps.storage, validated_address)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "add_vote_hook")
+        .add_attribute("address", address))
+}
+
+pub fn execute_remove_vote_hook(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can remove hooks
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    remove_hook(VOTE_HOOKS, deps.storage, validated_address)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "remove_vote_hook")
+        .add_attribute("address", address))
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -358,6 +512,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         } => query_reverse_proposals(deps, env, start_before, limit),
+        QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
+        QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
     }
 }
 
@@ -457,4 +613,19 @@ pub fn query_list_votes(
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&cw_core_interface::voting::InfoResponse { info })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.id % 2 == 0 {
+        // Proposal hook so we can just divide by two for index
+        let idx = msg.id / 2;
+        PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+        Ok(Response::new())
+    } else {
+        // Vote hook so we can minus one then divid by two for index
+        let idx = (msg.id - 1) / 2;
+        VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+        Ok(Response::new())
+    }
 }
