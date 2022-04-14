@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult,
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
 };
 use cw2::set_contract_version;
 
@@ -11,7 +11,6 @@ use crate::msg::{
     ListAddressesResponse, ListGroupsResponse, QueryMsg,
 };
 
-use crate::ContractError::Std;
 use crate::state::{GROUPS, OWNER};
 
 // version info for migration info
@@ -39,7 +38,7 @@ pub fn instantiate(
                 .map(|address| {
                     let addr = deps
                         .api
-                        .addr_validate(&address)
+                        .addr_validate(address)
                         .map_err(|_| ContractError::InvalidAddress(address.clone()))?;
                     Ok(addr)
                 })
@@ -95,7 +94,7 @@ fn execute_update(
                 .map(|address| {
                     let addr = deps
                         .api
-                        .addr_validate(&address)
+                        .addr_validate(address)
                         .map_err(|_| ContractError::InvalidAddress(address.clone()))?;
                     Ok(addr)
                 })
@@ -112,7 +111,7 @@ fn execute_update(
                 .map(|address| {
                     let addr = deps
                         .api
-                        .addr_validate(&address)
+                        .addr_validate(address)
                         .map_err(|_| ContractError::InvalidAddress(address.clone()))?;
                     Ok(addr)
                 })
@@ -194,25 +193,36 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
     // Map groups to contained addresses.
-    let groups = GROUPS
-        .groups_to_addresses
-        .keys(deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<(String, Addr)>>>()?;
-
-    let (latest_name, _) = groups.first().ok_or(StdError::generic_err("not found"))?;
-
     let mut dump: Vec<Group> = vec![];
-    let mut tmp: Vec<String> = vec![];
-    for (name, addr) in groups {
-        if name == *latest_name {
-            tmp.push(addr.to_string());
-        }
-        else {
-            dump.push(Group{ name, addresses: tmp })
-        }
-   }
 
-    Ok(DumpResponse{ groups:  dump})
+    for group in GROUPS
+        .group_names
+        .keys(deps.storage, None, None, Order::Ascending)
+        .into_iter()
+    {
+        if let Err(e) = group {
+            return Err(e);
+        }
+
+        let name = group.unwrap();
+        let addrs = GROUPS
+            .groups_to_addresses
+            .prefix(&name)
+            .keys(deps.storage, None, None, Order::Ascending)
+            .into_iter()
+            .map(|addr| match addr {
+                Ok(_) => Ok(addr.unwrap().to_string()),
+                Err(_) => Err(addr.unwrap_err()),
+            })
+            .collect::<StdResult<Vec<String>>>()?;
+
+        dump.push(Group {
+            name,
+            addresses: addrs,
+        });
+    }
+
+    Ok(DumpResponse { groups: dump })
 }
 
 fn query_list_addresses(
@@ -261,6 +271,6 @@ fn query_is_address_in_group(
 ) -> StdResult<IsAddressInGroupResponse> {
     // Validate address.
     let addr = deps.api.addr_validate(&address)?;
-    let is_in_group = GROUPS.is_in_group(deps.storage, &addr, group);
+    let is_in_group = GROUPS.is_in_group(deps.storage, &addr, group)?;
     Ok(IsAddressInGroupResponse { is_in_group })
 }
