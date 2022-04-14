@@ -22,7 +22,9 @@ pub enum ProposalHookMsg {
 pub enum ProposalHookExecuteMsg {
     ProposalHook(ProposalHookMsg),
 }
-
+/// Prepares new proposal hook messages. These messages reply on error
+/// and have even reply IDs.
+/// IDs are set to even numbers to then be interleaved with the vote hooks.
 pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::NewProposal { id },
@@ -40,6 +42,9 @@ pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdRe
     })
 }
 
+/// Prepares proposal status hook messages. These messages reply on error
+/// and have even reply IDs.
+/// IDs are set to even numbers to then be interleaved with the vote hooks.
 pub fn proposal_status_changed_hooks(
     hooks: Hooks,
     storage: &dyn Storage,

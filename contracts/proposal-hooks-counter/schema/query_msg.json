@@ -5,10 +5,10 @@
     {
       "type": "object",
       "required": [
-        "staking_contract"
+        "vote_counter"
       ],
       "properties": {
-        "staking_contract": {
+        "vote_counter": {
           "type": "object"
         }
       },
@@ -17,10 +17,10 @@
     {
       "type": "object",
       "required": [
-        "dao"
+        "proposal_counter"
       ],
       "properties": {
-        "dao": {
+        "proposal_counter": {
           "type": "object"
         }
       },
@@ -29,72 +29,10 @@
     {
       "type": "object",
       "required": [
-        "voting_power_at_height"
+        "status_changed_counter"
       ],
       "properties": {
-        "voting_power_at_height": {
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "string"
-            },
-            "height": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "total_power_at_height"
-      ],
-      "properties": {
-        "total_power_at_height": {
-          "type": "object",
-          "properties": {
-            "height": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "info"
-      ],
-      "properties": {
-        "info": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "token_contract"
-      ],
-      "properties": {
-        "token_contract": {
+        "status_changed_counter": {
           "type": "object"
         }
       },

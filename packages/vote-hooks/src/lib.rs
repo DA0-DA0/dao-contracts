@@ -20,6 +20,9 @@ pub enum VoteHookExecuteMsg {
     VoteHook(VoteHookMsg),
 }
 
+/// Prepares new vote hook messages. These messages reply on error
+/// and have even reply IDs.
+/// IDs are set to odd numbers to then be interleaved with the proposal hooks.
 pub fn new_vote_hooks(
     hooks: Hooks,
     storage: &dyn Storage,
