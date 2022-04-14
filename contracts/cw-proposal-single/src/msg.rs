@@ -109,6 +109,18 @@ pub enum ExecuteMsg {
         /// proposal. None if no deposit, Some otherwise.
         deposit_info: Option<DepositInfo>,
     },
+    AddProposalHook {
+        address: String,
+    },
+    RemoveProposalHook {
+        address: String,
+    },
+    AddVoteHook {
+        address: String,
+    },
+    RemoveVoteHook {
+        address: String,
+    },
 }
 
 #[govmod_query]
@@ -140,4 +152,6 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u64>,
     },
+    ProposalHooks {},
+    VoteHooks {},
 }
