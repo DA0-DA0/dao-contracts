@@ -4,7 +4,9 @@ use serde::{Deserialize, Serialize};
 use vote_hooks::VoteHookMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub should_error: bool, // Debug flag to test when hooks fail over
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

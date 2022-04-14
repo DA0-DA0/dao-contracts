@@ -171,9 +171,21 @@ fn test_counters() {
         .instantiate_contract(
             counters_id,
             Addr::unchecked(CREATOR_ADDR),
-            &InstantiateMsg {},
+            &InstantiateMsg {
+                should_error: false,
+            },
             &[],
             "counters",
+            None,
+        )
+        .unwrap();
+    let failing_counters: Addr = app
+        .instantiate_contract(
+            counters_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg { should_error: true },
+            &[],
+            "failing counters",
             None,
         )
         .unwrap();
@@ -189,7 +201,7 @@ fn test_counters() {
     )
     .unwrap();
     app.execute_contract(
-        dao,
+        dao.clone(),
         govmod_single.clone(),
         &cw_proposal_single::msg::ExecuteMsg::AddVoteHook {
             address: counters.to_string(),
@@ -261,7 +273,7 @@ fn test_counters() {
     // Vote
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
-        govmod_single,
+        govmod_single.clone(),
         &cw_proposal_single::msg::ExecuteMsg::Vote {
             proposal_id: 1,
             vote: Vote::Yes,
@@ -280,7 +292,167 @@ fn test_counters() {
     // Query status changed counter, expect 1
     let resp: CountResponse = app
         .wrap()
-        .query_wasm_smart(counters, &QueryMsg::StatusChangedCounter {})
+        .query_wasm_smart(counters.clone(), &QueryMsg::StatusChangedCounter {})
         .unwrap();
     assert_eq!(resp.count, 1);
+
+    // Register the failing hooks
+    app.execute_contract(
+        dao.clone(),
+        govmod_single.clone(),
+        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook {
+            address: failing_counters.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        dao.clone(),
+        govmod_single.clone(),
+        &cw_proposal_single::msg::ExecuteMsg::AddVoteHook {
+            address: failing_counters.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Expect 2 for each hook
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+        )
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 2);
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+        )
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 2);
+
+    // Create a new proposal.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &cw_proposal_single::msg::ExecuteMsg::Propose {
+            title: "A simple text proposal 2nd".to_string(),
+            description: "This is a simple text proposal 2nd".to_string(),
+            msgs: vec![],
+            latest: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // The success counters should still work
+    // Query proposal counter, expect 2
+    let resp: CountResponse = app
+        .wrap()
+        .query_wasm_smart(counters.clone(), &QueryMsg::ProposalCounter {})
+        .unwrap();
+    assert_eq!(resp.count, 2);
+
+    // The contract should of removed the failing counters
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+        )
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 1);
+
+    // To verify it removed the right one, lets try and remove failing counters
+    // will fail as it does not exist.
+    let _err = app
+        .execute_contract(
+            dao.clone(),
+            govmod_single.clone(),
+            &cw_proposal_single::msg::ExecuteMsg::RemoveProposalHook {
+                address: failing_counters.to_string(),
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    // It should still have the vote hook as that has not technically failed yet
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+        )
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 2);
+
+    // Vote on the new proposal to fail the other hook
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &cw_proposal_single::msg::ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // The success counters should still work
+    // Query vote counter, expect 2
+    let resp: CountResponse = app
+        .wrap()
+        .query_wasm_smart(counters.clone(), &QueryMsg::VoteCounter {})
+        .unwrap();
+    assert_eq!(resp.count, 2);
+    // Query status changed counter, expect 2
+    let resp: CountResponse = app
+        .wrap()
+        .query_wasm_smart(counters, &QueryMsg::StatusChangedCounter {})
+        .unwrap();
+    assert_eq!(resp.count, 2);
+
+    // The contract should of removed the failing counters
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+        )
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 1);
+
+    // To verify it removed the right one, lets try and remove failing counters
+    // will fail as it does not exist.
+    let _err = app
+        .execute_contract(
+            dao,
+            govmod_single.clone(),
+            &cw_proposal_single::msg::ExecuteMsg::RemoveVoteHook {
+                address: failing_counters.to_string(),
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    // Verify only one hook remains for each
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+        )
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 1);
+    let hooks: HooksResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single,
+            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+        )
+        .unwrap();
+    assert_eq!(hooks.hooks.len(), 1);
 }

@@ -7,7 +7,7 @@ use vote_hooks::VoteHookMsg;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{PROPOSAL_COUNTER, STATUS_CHANGED_COUNTER, VOTE_COUNTER};
+use crate::state::{Config, CONFIG, PROPOSAL_COUNTER, STATUS_CHANGED_COUNTER, VOTE_COUNTER};
 
 const CONTRACT_NAME: &str = "crates.io:proposal-hooks-counter";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -17,10 +17,14 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let config = Config {
+        should_error: msg.should_error,
+    };
+    CONFIG.save(deps.storage, &config)?;
     PROPOSAL_COUNTER.save(deps.storage, &0)?;
     VOTE_COUNTER.save(deps.storage, &0)?;
     STATUS_CHANGED_COUNTER.save(deps.storage, &0)?;
@@ -34,6 +38,11 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.should_error {
+        return Err(ContractError::Unauthorized {});
+    }
+
     match msg {
         ExecuteMsg::ProposalHook(proposal_hook) => {
             execute_proposal_hook(deps, env, info, proposal_hook)
