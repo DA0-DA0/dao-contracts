@@ -3,35 +3,33 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "reward_duration",
     "reward_token",
     "staking_contract"
   ],
   "properties": {
     "manager": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Addr"
-        },
-        {
-          "type": "null"
-        }
+      "type": [
+        "string",
+        "null"
       ]
     },
     "owner": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Addr"
-        },
-        {
-          "type": "null"
-        }
+      "type": [
+        "string",
+        "null"
       ]
+    },
+    "reward_duration": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "reward_token": {
       "$ref": "#/definitions/Denom"
     },
     "staking_contract": {
-      "$ref": "#/definitions/Addr"
+      "type": "string"
     }
   },
   "definitions": {

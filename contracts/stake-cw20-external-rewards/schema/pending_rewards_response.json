@@ -10,7 +10,7 @@
   ],
   "properties": {
     "address": {
-      "$ref": "#/definitions/Addr"
+      "type": "string"
     },
     "denom": {
       "$ref": "#/definitions/Denom"
