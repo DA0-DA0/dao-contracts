@@ -340,9 +340,7 @@ mod remove {
             .execute_contract(
                 Addr::unchecked(ADMIN),
                 contract_addr,
-                &ExecuteMsg::RemoveGroup {
-                    group: group1.name.clone(),
-                },
+                &ExecuteMsg::RemoveGroup { group: group1.name },
                 &[],
             )
             .unwrap_err()
