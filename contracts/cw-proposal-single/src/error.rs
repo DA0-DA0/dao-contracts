@@ -1,7 +1,7 @@
 use std::u64;
 
 use cosmwasm_std::StdError;
-use cw_controllers::HookError;
+use indexable_hooks::HookError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

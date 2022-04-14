@@ -1,9 +1,8 @@
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use indexable_hooks::HooksResponse;
 use rand::{prelude::SliceRandom, Rng};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use voting::{Vote, Votes};
 
@@ -1674,14 +1673,6 @@ fn test_query_list_proposals() {
 
     proposals_backward.proposals.reverse();
     assert_eq!(proposals_forward.proposals, proposals_backward.proposals);
-}
-
-// Temporary hooks response for deserialization as
-// the actual hooks response is not exported from
-// cw-controllers.
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-struct HooksResponse {
-    pub hooks: Vec<String>,
 }
 
 #[test]

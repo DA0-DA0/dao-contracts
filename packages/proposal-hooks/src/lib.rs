@@ -1,5 +1,5 @@
 use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
-use cw_controllers::Hooks;
+use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -27,13 +27,16 @@ pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdRe
     let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::NewProposal { id },
     ))?;
+    let mut index: u64 = 0;
     hooks.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.to_string(),
             msg: msg.clone(),
             funds: vec![],
         };
-        Ok(SubMsg::new(execute))
+        let tmp = SubMsg::reply_on_error(execute, index * 2);
+        index += 1;
+        Ok(tmp)
     })
 }
 
@@ -55,12 +58,15 @@ pub fn proposal_status_changed_hooks(
             new_status,
         },
     ))?;
+    let mut index: u64 = 0;
     hooks.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.to_string(),
             msg: msg.clone(),
             funds: vec![],
         };
-        Ok(SubMsg::new(execute))
+        let tmp = SubMsg::reply_on_error(execute, index * 2 + 1);
+        index += 1;
+        Ok(tmp)
     })
 }

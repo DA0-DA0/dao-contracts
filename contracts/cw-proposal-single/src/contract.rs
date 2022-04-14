@@ -1,13 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
     StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_controllers::Hooks;
 use cw_storage_plus::Bound;
 use cw_utils::{Duration, Expiration};
+use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 
@@ -613,4 +613,19 @@ pub fn query_list_votes(
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&cw_core_interface::voting::InfoResponse { info })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.id % 2 == 0 {
+        // Proposal hook so we can just divide by two for index
+        let idx = msg.id / 2;
+        PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+        Ok(Response::new())
+    } else {
+        // Vote hook so we can minus one then divid by two for index
+        let idx = (msg.id - 1) / 2;
+        VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+        Ok(Response::new())
+    }
 }

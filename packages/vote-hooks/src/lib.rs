@@ -1,5 +1,5 @@
 use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
-use cw_controllers::Hooks;
+use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -32,12 +32,15 @@ pub fn new_vote_hooks(
         voter,
         vote,
     }))?;
+    let mut index: u64 = 0;
     hooks.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.to_string(),
             msg: msg.clone(),
             funds: vec![],
         };
-        Ok(SubMsg::new(execute))
+        let tmp = SubMsg::reply_on_error(execute, index * 2 + 1);
+        index += 1;
+        Ok(tmp)
     })
 }

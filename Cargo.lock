@@ -176,20 +176,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-controllers"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e125c834c186f20b48106917329fae6459b41715fd1c6a4f4be4a49e4185c49"
-dependencies = [
- "cosmwasm-std",
- "cw-storage-plus 0.12.1",
- "cw-utils 0.12.1",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "cw-core"
 version = "0.1.0"
 dependencies = [
@@ -282,7 +268,6 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-controllers 0.12.1",
  "cw-core",
  "cw-core-interface",
  "cw-core-macros",
@@ -294,6 +279,7 @@ dependencies = [
  "cw20-balance-voting",
  "cw20-base 0.12.1",
  "cw3 0.12.1",
+ "indexable-hooks",
  "proposal-hooks",
  "rand",
  "schemars",
@@ -570,7 +556,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db3389be9a6d350cc5ed9918af4070007c9acc360e515788a10885536b972764"
 dependencies = [
  "cosmwasm-std",
- "cw-controllers 0.11.1",
+ "cw-controllers",
  "cw-storage-plus 0.11.1",
  "cw-utils 0.11.1",
  "cw2 0.11.1",
@@ -801,6 +787,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexable-hooks"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.12.1",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "itertools"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -869,7 +866,7 @@ name = "proposal-hooks"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
- "cw-controllers 0.12.1",
+ "indexable-hooks",
  "schemars",
  "serde",
 ]
@@ -1066,7 +1063,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-controllers 0.11.1",
+ "cw-controllers",
  "cw-multi-test 0.11.1",
  "cw-storage-plus 0.11.1",
  "cw-utils 0.11.1",
@@ -1156,7 +1153,7 @@ name = "vote-hooks"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
- "cw-controllers 0.12.1",
+ "indexable-hooks",
  "schemars",
  "serde",
 ]

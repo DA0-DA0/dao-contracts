@@ -1,8 +1,8 @@
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Deps, StdResult, Uint128, WasmMsg};
-use cw_controllers::Hooks;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 
+use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
