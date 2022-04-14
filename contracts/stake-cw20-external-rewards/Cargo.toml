@@ -1,0 +1,35 @@
+[package]
+name = "stake-cw20-external-rewards"
+version = "0.2.6"
+authors = ["Ben2x4 <Ben2x4@tutanota.com>"]
+edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/cw-dao/contracts/cw20-stakeable"
+description = "CW20 token that can be staked and staked balance can be queried at any height"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { version = "1.0.0-beta" }
+cosmwasm-storage = { version = "1.0.0-beta" }
+cw-storage-plus = { version = "0.11" }
+cw-controllers = "0.11"
+cw20 = { version = "0.11" }
+cw-utils = { version = "0.11" }
+cw20-base = {  version = "0.11", features = ["library"] }
+cw2 = "0.11"
+schemars = "0.8.8"
+serde = { version = "1.0.132", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.30" }
+stake-cw20 = { path = "../stake-cw20", features = ["library"]}
+
+[dev-dependencies]
+cosmwasm-schema = { version = "1.0.0-beta" }
+cw-multi-test = {  version = "0.11" }
+anyhow = { version = "1.0.51"}
