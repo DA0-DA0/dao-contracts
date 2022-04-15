@@ -72,14 +72,14 @@ pub fn instantiate(
             config
                 .owner
                 .map(|a| a.into_string())
-                .unwrap_or_else(|| "".to_string()),
+                .unwrap_or_else(|| "None".to_string()),
         )
         .add_attribute(
             "manager",
             config
                 .manager
                 .map(|a| a.into_string())
-                .unwrap_or_else(|| "".to_string()),
+                .unwrap_or_else(|| "None".to_string()),
         )
         .add_attribute("staking_contract", config.staking_contract)
         .add_attribute(
