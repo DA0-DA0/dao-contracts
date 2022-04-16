@@ -1,10 +1,10 @@
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw2::ContractVersion;
 use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
-use cw_core_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
+use cw_core_interface::voting::{InfoResponse, IsActiveResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
-use crate::msg::{InstantiateMsg, QueryMsg, StakingInfo};
+use crate::msg::{ActiveThreshold, InstantiateMsg, QueryMsg, StakingInfo};
 
 const DAO_ADDR: &str = "dao";
 const CREATOR_ADDR: &str = "creator";
@@ -85,6 +85,7 @@ fn test_instantiate_zero_supply() {
                 staking_code_id: staking_contract_id,
                 initial_dao_balance: Some(Uint128::zero()),
             },
+            active_threshold: None,
         },
     );
 }
@@ -112,6 +113,7 @@ fn test_instantiate_no_balances() {
                 staking_code_id: staking_contract_id,
                 initial_dao_balance: Some(Uint128::zero()),
             },
+            active_threshold: None,
         },
     );
 }
@@ -142,6 +144,7 @@ fn test_contract_info() {
                 staking_code_id: staking_contract_id,
                 initial_dao_balance: Some(Uint128::zero()),
             },
+            active_threshold: None,
         },
     );
 
@@ -192,6 +195,7 @@ fn test_new_cw20() {
                 staking_code_id: staking_contract_id,
                 initial_dao_balance: Some(Uint128::from(10u64)),
             },
+            active_threshold: None,
         },
     );
 
@@ -365,6 +369,7 @@ fn test_existing_cw20_new_staking() {
                     unstaking_duration: None,
                 },
             },
+            active_threshold: None,
         },
     );
 
@@ -515,6 +520,7 @@ fn test_existing_cw20_existing_staking() {
                     unstaking_duration: None,
                 },
             },
+            active_threshold: None,
         },
     );
 
@@ -552,6 +558,7 @@ fn test_existing_cw20_existing_staking() {
                     staking_contract_address: staking_addr.to_string(),
                 },
             },
+            active_threshold: None,
         },
     );
 
@@ -666,6 +673,7 @@ fn test_existing_cw20_existing_staking() {
                     staking_contract_address: staking_addr.to_string(),
                 },
             },
+            active_threshold: None,
         },
         &[],
         "voting module",
@@ -713,6 +721,7 @@ fn test_different_heights() {
                     unstaking_duration: None,
                 },
             },
+            active_threshold: None,
         },
     );
 
@@ -871,4 +880,124 @@ fn test_different_heights() {
             height: app.block_info().height - 1,
         }
     );
+}
+
+#[test]
+fn test_active_threshold_absolute_count() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    let voting_addr = instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(200u64),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::from(100u64)),
+            },
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(100),
+            }),
+        },
+    );
+
+    let token_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::TokenContract {})
+        .unwrap();
+    let staking_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::StakingContract {})
+        .unwrap();
+
+    // Not active as none staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 100 token as creator
+    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 100);
+    app.update_block(next_block);
+
+    // Active as enough staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
+}
+
+#[test]
+fn test_active_threshold_percent() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    let voting_addr = instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(200u64),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::from(100u64)),
+            },
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(20),
+            }),
+        },
+    );
+
+    let token_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::TokenContract {})
+        .unwrap();
+    let staking_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::StakingContract {})
+        .unwrap();
+
+    // Not active as none staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 60 token as creator, now active
+    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 60);
+    app.update_block(next_block);
+
+    // Active as enough staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
 }

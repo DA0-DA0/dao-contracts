@@ -163,6 +163,77 @@ pub fn token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Adds the nesecary fields to an enum such that it implements the
+/// interface needed to be a cw-governance voting module that has an
+/// active check threshold.
+///
+/// For example:
+///
+/// ```
+/// use cw_core_macros::active_query;
+///
+/// #[active_query]
+/// enum QueryMsg {}
+/// ```
+///
+/// Will transform the enum to:
+///
+/// ```
+/// enum QueryMsg {
+///     IsActive {},
+/// }
+/// ```
+///
+/// Note that other derive macro invocations must occur after this
+/// procedural macro as they may depend on the new fields. For
+/// example, the following will fail becase the `Clone` derivation
+/// occurs before the addition of the field.
+///
+/// ```compile_fail
+/// use cw_core_macros::active_query;
+///
+/// #[derive(Clone)]
+/// #[active_query]
+/// #[allow(dead_code)]
+/// enum Test {
+///     Foo,
+///     Bar(u64),
+///     Baz { foo: u64 },
+/// }
+/// ```
+#[proc_macro_attribute]
+pub fn active_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    // Make sure that no arguments were passed in.
+    let args = parse_macro_input!(metadata as AttributeArgs);
+    if let Some(first_arg) = args.first() {
+        return syn::Error::new_spanned(first_arg, "token query macro takes no arguments")
+            .to_compile_error()
+            .into();
+    }
+
+    let mut ast: DeriveInput = parse_macro_input!(input);
+    match &mut ast.data {
+        syn::Data::Enum(DataEnum { variants, .. }) => {
+            let info: Variant = syn::parse2(quote! { IsActive {} }).unwrap();
+
+            variants.push(info);
+        }
+        _ => {
+            return syn::Error::new(
+                ast.ident.span(),
+                "token query types can not be only be derived for enums",
+            )
+            .to_compile_error()
+            .into()
+        }
+    };
+
+    quote! {
+    #ast
+    }
+    .into()
+}
+
+/// Adds the nesecary fields to an enum such that it implements the
 /// interface needed to be a cw-governance governance module.
 ///
 /// For example:

@@ -5,13 +5,15 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw20::Cw20Coin;
+use cw20::{Cw20Coin, TokenInfoResponse};
+use cw_core_interface::voting::IsActiveResponse;
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo, TokenInfo};
+use crate::msg::{ActiveThreshold, ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo, TokenInfo};
 use crate::state::{
-    DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
+    ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID,
+    STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw20-staked-balance-voting";
@@ -29,6 +31,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     DAO.save(deps.storage, &info.sender)?;
+    if let Some(active_threshold) = msg.active_threshold {
+        ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+    }
 
     match msg.token_info {
         TokenInfo::Existing {
@@ -166,6 +171,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::IsActive {} => query_is_active(deps),
     }
 }
 
@@ -224,6 +230,36 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
     to_binary(&dao)
+}
+
+pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
+    let threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
+    match threshold {
+        Some(threshold) => {
+            let token_contract = TOKEN.load(deps.storage)?;
+            let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+            let total_potential_power: TokenInfoResponse = deps
+                .querier
+                .query_wasm_smart(token_contract, &cw20_base::msg::QueryMsg::TokenInfo {})?;
+            let actual_power: stake_cw20::msg::TotalStakedAtHeightResponse =
+                deps.querier.query_wasm_smart(
+                    staking_contract,
+                    &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None },
+                )?;
+            match threshold {
+                ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
+                    active: actual_power.total >= count,
+                }),
+                ActiveThreshold::Percentage { percent } => {
+                    let count = percent * total_potential_power.total_supply;
+                    to_binary(&IsActiveResponse {
+                        active: actual_power.total >= count,
+                    })
+                }
+            }
+        }
+        None => to_binary(&IsActiveResponse { active: true }),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
