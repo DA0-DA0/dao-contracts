@@ -1001,3 +1001,41 @@ fn test_active_threshold_percent() {
         .unwrap();
     assert!(is_active.active);
 }
+
+#[test]
+fn test_active_threshold_none() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    let voting_addr = instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(200u64),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+            },
+            initial_dao_balance: Some(Uint128::from(100u64)),
+            active_threshold: None,
+        },
+    );
+
+    // Active as no threshold
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
+}
