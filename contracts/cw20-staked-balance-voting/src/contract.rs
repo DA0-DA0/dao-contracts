@@ -92,6 +92,7 @@ pub fn instantiate(
             symbol,
             decimals,
             mut initial_balances,
+            initial_dao_balance,
             marketing,
             staking_code_id,
             unstaking_duration,
@@ -105,7 +106,7 @@ pub fn instantiate(
             }
 
             // Add DAO initial balance to initial_balances vector if defined.
-            if let Some(initial_dao_balance) = msg.initial_dao_balance {
+            if let Some(initial_dao_balance) = initial_dao_balance {
                 if initial_dao_balance > Uint128::zero() {
                     initial_balances.push(Cw20Coin {
                         address: info.sender.to_string(),
