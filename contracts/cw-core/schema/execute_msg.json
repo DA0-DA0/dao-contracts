@@ -144,6 +144,94 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Executed when the contract receives a cw20 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
+      "type": "object",
+      "required": [
+        "receive"
+      ],
+      "properties": {
+        "receive": {
+          "$ref": "#/definitions/Cw20ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Executed when the contract receives a cw721 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
+      "type": "object",
+      "required": [
+        "receive_nft"
+      ],
+      "properties": {
+        "receive_nft": {
+          "$ref": "#/definitions/Cw721ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Updates the list of cw20 tokens this contract has registered.",
+      "type": "object",
+      "required": [
+        "update_cw20_list"
+      ],
+      "properties": {
+        "update_cw20_list": {
+          "type": "object",
+          "required": [
+            "to_add",
+            "to_remove"
+          ],
+          "properties": {
+            "to_add": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "to_remove": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Updates the list of cw721 tokens this contract has registered.",
+      "type": "object",
+      "required": [
+        "update_cw721_list"
+      ],
+      "properties": {
+        "update_cw721_list": {
+          "type": "object",
+          "required": [
+            "to_add",
+            "to_remove"
+          ],
+          "properties": {
+            "to_add": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "to_remove": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
@@ -278,20 +366,33 @@
     "Config": {
       "type": "object",
       "required": [
+        "automatically_add_cw20s",
+        "automatically_add_cw721s",
         "description",
         "name"
       ],
       "properties": {
+        "automatically_add_cw20s": {
+          "description": "If true the contract will automatically add received cw20 tokens to its treasury.",
+          "type": "boolean"
+        },
+        "automatically_add_cw721s": {
+          "description": "If true the contract will automatically add received cw721 tokens to its treasury.",
+          "type": "boolean"
+        },
         "description": {
+          "description": "A description of the contract.",
           "type": "string"
         },
         "image_url": {
+          "description": "An optional image URL for displaying alongside the contract.",
           "type": [
             "string",
             "null"
           ]
         },
         "name": {
+          "description": "The name of the contract.",
           "type": "string"
         }
       }
@@ -359,6 +460,46 @@
           "additionalProperties": false
         }
       ]
+    },
+    "Cw20ReceiveMsg": {
+      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+      "type": "object",
+      "required": [
+        "amount",
+        "msg",
+        "sender"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        }
+      }
+    },
+    "Cw721ReceiveMsg": {
+      "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+      "type": "object",
+      "required": [
+        "msg",
+        "sender",
+        "token_id"
+      ],
+      "properties": {
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "string"
+        }
+      }
     },
     "DistributionMsg": {
       "description": "The message types of the distribution module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto",
