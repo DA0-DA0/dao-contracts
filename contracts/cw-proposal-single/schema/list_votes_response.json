@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "VoteListResponse",
+  "title": "ListVotesResponse",
   "description": "Information about the votes for a proposal.",
   "type": "object",
   "required": [
