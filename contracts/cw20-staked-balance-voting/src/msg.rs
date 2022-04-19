@@ -20,6 +20,7 @@ pub enum StakingInfo {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+#[allow(clippy::large_enum_variant)]
 pub enum TokenInfo {
     Existing {
         address: String,
@@ -36,13 +37,13 @@ pub enum TokenInfo {
         marketing: Option<InstantiateMarketingInfo>,
         staking_code_id: u64,
         unstaking_duration: Option<Duration>,
+        initial_dao_balance: Option<Uint128>,
     },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub token_info: TokenInfo,
-    pub initial_dao_balance: Option<Uint128>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

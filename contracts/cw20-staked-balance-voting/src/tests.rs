@@ -83,8 +83,8 @@ fn test_instantiate_zero_supply() {
                 marketing: None,
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::zero()),
             },
-            initial_dao_balance: Some(Uint128::zero()),
         },
     );
 }
@@ -110,8 +110,8 @@ fn test_instantiate_no_balances() {
                 marketing: None,
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::zero()),
             },
-            initial_dao_balance: Some(Uint128::zero()),
         },
     );
 }
@@ -140,8 +140,8 @@ fn test_contract_info() {
                 marketing: None,
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::zero()),
             },
-            initial_dao_balance: Some(Uint128::zero()),
         },
     );
 
@@ -190,8 +190,8 @@ fn test_new_cw20() {
                 marketing: None,
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::from(10u64)),
             },
-            initial_dao_balance: Some(Uint128::from(10u64)),
         },
     );
 
@@ -365,7 +365,6 @@ fn test_existing_cw20_new_staking() {
                     unstaking_duration: None,
                 },
             },
-            initial_dao_balance: None,
         },
     );
 
@@ -516,7 +515,6 @@ fn test_existing_cw20_existing_staking() {
                     unstaking_duration: None,
                 },
             },
-            initial_dao_balance: None,
         },
     );
 
@@ -554,7 +552,6 @@ fn test_existing_cw20_existing_staking() {
                     staking_contract_address: staking_addr.to_string(),
                 },
             },
-            initial_dao_balance: None,
         },
     );
 
@@ -669,7 +666,6 @@ fn test_existing_cw20_existing_staking() {
                     staking_contract_address: staking_addr.to_string(),
                 },
             },
-            initial_dao_balance: None,
         },
         &[],
         "voting module",
@@ -717,7 +713,6 @@ fn test_different_heights() {
                     unstaking_duration: None,
                 },
             },
-            initial_dao_balance: None,
         },
     );
 
