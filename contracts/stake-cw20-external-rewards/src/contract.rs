@@ -2088,12 +2088,7 @@ mod tests {
 
         let _res = app
             .borrow_mut()
-            .execute_contract(
-                admin,
-                reward_addr.clone(),
-                &fund_msg,
-                &reward_funding,
-            )
+            .execute_contract(admin, reward_addr.clone(), &fund_msg, &reward_funding)
             .unwrap();
 
         let res: InfoResponse = app
