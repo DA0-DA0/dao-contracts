@@ -173,7 +173,6 @@ fn test_propose() {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
-            latest: None,
         },
         &[],
     )
@@ -318,7 +317,6 @@ fn do_test_votes(
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
-            latest: None,
         },
         &[],
     )
@@ -1091,7 +1089,6 @@ fn test_take_proposal_deposit() {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
-            latest: None,
         },
         &[],
     )
@@ -1118,7 +1115,6 @@ fn test_take_proposal_deposit() {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
-            latest: None,
         },
         &[],
     )
@@ -1575,7 +1571,6 @@ fn test_query_list_proposals() {
                 title: format!("Text proposal {}.", i),
                 description: "This is a simple text proposal".to_string(),
                 msgs: vec![],
-                latest: None,
             },
             &[],
         )

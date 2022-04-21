@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
-use cw_utils::{Duration, Expiration};
+use cw_utils::Duration;
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
@@ -77,8 +77,7 @@ pub fn execute(
             title,
             description,
             msgs,
-            latest,
-        } => execute_propose(deps, env, info.sender, title, description, msgs, latest),
+        } => execute_propose(deps, env, info.sender, title, description, msgs),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
@@ -117,7 +116,6 @@ pub fn execute_propose(
     title: String,
     description: String,
     msgs: Vec<CosmosMsg<Empty>>,
-    latest: Option<Expiration>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -134,16 +132,7 @@ pub fn execute_propose(
 
     // Set the expiration to the minimum of the proposal's `latest`
     // argument and the configured max voting period.
-    let max_voting_expiration = config.max_voting_period.after(&env.block);
-    let expiration = if let Some(latest) = latest {
-        if latest <= max_voting_expiration {
-            latest
-        } else {
-            return Err(ContractError::InvalidExpiration {});
-        }
-    } else {
-        max_voting_expiration
-    };
+    let expiration = config.max_voting_period.after(&env.block);
 
     let total_power = get_total_power(deps.as_ref(), config.dao, Some(env.block.height))?;
 
