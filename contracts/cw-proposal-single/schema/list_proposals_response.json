@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ProposalListResponse",
+  "title": "ListProposalsResponse",
   "description": "A list of proposals returned by `ListProposals` and `ReverseProposals`.",
   "type": "object",
   "required": [

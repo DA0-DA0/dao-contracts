@@ -71,6 +71,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Gets the address associated with an item key.",
       "type": "object",
       "required": [
         "get_item"
@@ -91,12 +92,100 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the item keys associted with the contract. For example, given the items `{ \"group\": \"...\", \"subdao\": \"...\"}` this query would return `[\"group\", \"subdao\"]`.",
       "type": "object",
       "required": [
         "list_items"
       ],
       "properties": {
         "list_items": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists the addresses of the cw20 tokens in this contract's treasury.",
+      "type": "object",
+      "required": [
+        "cw20_token_list"
+      ],
+      "properties": {
+        "cw20_token_list": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists the addresses of the cw721 tokens in this contract's treasury.",
+      "type": "object",
+      "required": [
+        "cw721_token_list"
+      ],
+      "properties": {
+        "cw721_token_list": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the token balance for each cw20 registered with the contract.",
+      "type": "object",
+      "required": [
+        "cw20_balances"
+      ],
+      "properties": {
+        "cw20_balances": {
           "type": "object",
           "properties": {
             "limit": {
