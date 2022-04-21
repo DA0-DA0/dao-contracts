@@ -27,6 +27,9 @@ pub enum ContractError {
     #[error("No such proposal ({id})")]
     NoSuchProposal { id: u64 },
 
+    #[error("Proposal is ({size}) bytes, must be <= ({max}) bytes")]
+    ProposalTooLarge { size: u64, max: u64 },
+
     #[error("Proposal is not open ({id})")]
     NotOpen { id: u64 },
 

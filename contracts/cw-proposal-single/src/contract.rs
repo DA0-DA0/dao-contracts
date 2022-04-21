@@ -32,6 +32,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Default limit for proposal pagination.
 const DEFAULT_LIMIT: u64 = 30;
+const MAX_PROPOSAL_SIZE: u64 = 30_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -157,6 +158,29 @@ pub fn execute_propose(
         proposal
     };
     let id = advance_proposal_id(deps.storage)?;
+
+    // Limit the size of proposals.
+    //
+    // The Juno mainnet has a larger limit for data that can be
+    // uploaded as part of an execute message than it does for data
+    // that can be queried as part of a query. This means that without
+    // this check it is possible to create a proposal that can not be
+    // queried.
+    //
+    // The size selected was determined by uploading versions of this
+    // contract to the Juno mainnet until queries worked within a
+    // reasonable margin of error.
+    //
+    // `to_vec` is the method used by cosmwasm to convert a struct
+    // into it's byte representation in storage.
+    let proposal_size = cosmwasm_std::to_vec(&proposal)?.len() as u64;
+    if proposal_size > MAX_PROPOSAL_SIZE {
+        return Err(ContractError::ProposalTooLarge {
+            size: proposal_size,
+            max: MAX_PROPOSAL_SIZE,
+        });
+    }
+
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
