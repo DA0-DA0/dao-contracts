@@ -305,20 +305,16 @@ pub fn get_reward_per_token(deps: Deps, env: &Env, staking_contract: &Addr) -> S
     let additional_reward_per_token = if total_staked == Uint128::zero() {
         Uint256::zero()
     } else {
+        // It is impossible for this to overflow as total rewards can never exceed max value of
+        // Uint128 as total tokens in existence cannot exceed Uint128
         let numerator = reward_config
             .reward_rate
             .full_mul(Uint128::from(
                 last_time_reward_applicable - last_update_block,
             ))
-            .full_mul(scale_factor());
-        let denominator = Uint512::from(total_staked);
-        let result = numerator.checked_div(denominator)?;
-
-        // try_into() shouldn't cause problems here because final results fits into Uint256
-        result
-            .checked_div(Uint512::from(scale_factor()))?
-            .try_into()
-            .unwrap()
+            .checked_mul(scale_factor())?;
+        let denominator = Uint256::from(total_staked);
+        numerator.checked_div(denominator)?
     };
 
     Ok(prev_reward_per_token + additional_reward_per_token)
@@ -332,12 +328,12 @@ pub fn get_rewards_earned(
     staking_contract: &Addr,
 ) -> StdResult<Uint128> {
     let _config = CONFIG.load(deps.storage)?;
-    let staked_balance = get_staked_balance(deps, staking_contract, addr)?;
+    let staked_balance = Uint256::from(get_staked_balance(deps, staking_contract, addr)?);
     let user_reward_per_token = USER_REWARD_PER_TOKEN
         .load(deps.storage, addr.clone())
         .unwrap_or_default();
     let reward_factor = reward_per_token.checked_sub(user_reward_per_token)?;
-    Ok(staked_balance.checked_mul(reward_factor.try_into()?)?)
+    Ok(staked_balance.checked_mul(reward_factor)?.checked_div(Uint256::from(scale_factor()))?.try_into()?)
 }
 
 fn get_last_time_reward_applicable(deps: Deps, env: &Env) -> StdResult<u64> {
@@ -2043,5 +2039,137 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR1, 1000);
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 500);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 500);
+    }
+    #[test]
+    fn test_small_rewards() {
+        // This test was added due to a bug in the contract not properly paying out small reward
+        // amounts due to floor division
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+        let reward_funding = vec![coin(1000000, denom.clone())];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: admin.to_string(),
+                amount: reward_funding.clone(),
+            }
+        }))
+            .unwrap();
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Native(denom.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let _res = app
+            .borrow_mut()
+            .execute_contract(
+                admin.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &reward_funding,
+            )
+            .unwrap();
+
+        let res: InfoResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+            .unwrap();
+
+        assert_eq!(res.reward.reward_rate, Uint128::new(10));
+        assert_eq!(res.reward.period_finish, 101000);
+        assert_eq!(res.reward.reward_duration, 100000);
+
+        app.borrow_mut().update_block(next_block);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 5);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR2, 2);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR3, 2);
+    }
+
+    #[test]
+    fn test_zero_rewards() {
+        // This test was added due to a bug in the contract not properly paying out small reward
+        // amounts due to floor division
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+        let reward_funding = vec![coin(100, denom.clone())];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: admin.to_string(),
+                amount: reward_funding.clone(),
+            }
+        }))
+            .unwrap();
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Native(denom.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let _res = app
+            .borrow_mut()
+            .execute_contract(
+                admin.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &reward_funding,
+            )
+            .unwrap();
+
+        let res: InfoResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+            .unwrap();
+
+        assert_eq!(res.reward.reward_rate, Uint128::new(0));
+        assert_eq!(res.reward.period_finish, 101000);
+        assert_eq!(res.reward.reward_duration, 100000);
     }
 }
