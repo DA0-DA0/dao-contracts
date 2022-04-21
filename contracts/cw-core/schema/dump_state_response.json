@@ -50,20 +50,33 @@
     "Config": {
       "type": "object",
       "required": [
+        "automatically_add_cw20s",
+        "automatically_add_cw721s",
         "description",
         "name"
       ],
       "properties": {
+        "automatically_add_cw20s": {
+          "description": "If true the contract will automatically add received cw20 tokens to its treasury.",
+          "type": "boolean"
+        },
+        "automatically_add_cw721s": {
+          "description": "If true the contract will automatically add received cw721 tokens to its treasury.",
+          "type": "boolean"
+        },
         "description": {
+          "description": "A description of the contract.",
           "type": "string"
         },
         "image_url": {
+          "description": "An optional image URL for displaying alongside the contract.",
           "type": [
             "string",
             "null"
           ]
         },
         "name": {
+          "description": "The name of the contract.",
           "type": "string"
         }
       }

@@ -3,12 +3,22 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "automatically_add_cw20s",
+    "automatically_add_cw721s",
     "description",
     "governance_modules_instantiate_info",
     "name",
     "voting_module_instantiate_info"
   ],
   "properties": {
+    "automatically_add_cw20s": {
+      "description": "If true the contract will automatically add received cw20 tokens to its treasury.",
+      "type": "boolean"
+    },
+    "automatically_add_cw721s": {
+      "description": "If true the contract will automatically add received cw721 tokens to its treasury.",
+      "type": "boolean"
+    },
     "description": {
       "description": "A description of the governance contract.",
       "type": "string"

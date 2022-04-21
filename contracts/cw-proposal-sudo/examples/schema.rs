@@ -1,8 +1,9 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-
+use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
+use cosmwasm_std::Addr;
+use cw_core_interface::voting::InfoResponse;
 use cw_proposal_sudo::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
@@ -14,4 +15,11 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
+
+    export_schema(&schema_for!(InfoResponse), &out_dir);
+
+    // Auto TS code generation expects the query return type as QueryNameResponse
+    // Here we map query resonses to the correct name
+    export_schema_with_title(&schema_for!(Addr), &out_dir, "DaoResponse");
+    export_schema_with_title(&schema_for!(Addr), &out_dir, "AdminResponse");
 }
