@@ -1,0 +1,273 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Gets the contract's config. Returns Config.",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the contract's voting module. Returns Addr.",
+      "type": "object",
+      "required": [
+        "voting_module"
+      ],
+      "properties": {
+        "voting_module": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the governance modules assocaited with the contract. Returns Vec<Addr>.",
+      "type": "object",
+      "required": [
+        "governance_modules"
+      ],
+      "properties": {
+        "governance_modules": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Dumps all of the governance contract's state in a single query. Useful for frontends as performance for queries is more limited by network times than compute times. Returns `DumpStateResponse`.",
+      "type": "object",
+      "required": [
+        "dump_state"
+      ],
+      "properties": {
+        "dump_state": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the address associated with an item key.",
+      "type": "object",
+      "required": [
+        "get_item"
+      ],
+      "properties": {
+        "get_item": {
+          "type": "object",
+          "required": [
+            "key"
+          ],
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists all of the item keys associted with the contract. For example, given the items `{ \"group\": \"...\", \"subdao\": \"...\"}` this query would return `[\"group\", \"subdao\"]`.",
+      "type": "object",
+      "required": [
+        "list_items"
+      ],
+      "properties": {
+        "list_items": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists the addresses of the cw20 tokens in this contract's treasury.",
+      "type": "object",
+      "required": [
+        "cw20_token_list"
+      ],
+      "properties": {
+        "cw20_token_list": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists the addresses of the cw721 tokens in this contract's treasury.",
+      "type": "object",
+      "required": [
+        "cw721_token_list"
+      ],
+      "properties": {
+        "cw721_token_list": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the token balance for each cw20 registered with the contract.",
+      "type": "object",
+      "required": [
+        "cw20_balances"
+      ],
+      "properties": {
+        "cw20_balances": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "voting_power_at_height"
+      ],
+      "properties": {
+        "voting_power_at_height": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "height": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "total_power_at_height"
+      ],
+      "properties": {
+        "total_power_at_height": {
+          "type": "object",
+          "properties": {
+            "height": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "info"
+      ],
+      "properties": {
+        "info": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

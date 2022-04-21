@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecuteMsg",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "proposal_hook"
+      ],
+      "properties": {
+        "proposal_hook": {
+          "$ref": "#/definitions/ProposalHookMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "vote_hook"
+      ],
+      "properties": {
+        "vote_hook": {
+          "$ref": "#/definitions/VoteHookMsg"
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "ProposalHookMsg": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "new_proposal"
+          ],
+          "properties": {
+            "new_proposal": {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "proposal_status_changed"
+          ],
+          "properties": {
+            "proposal_status_changed": {
+              "type": "object",
+              "required": [
+                "id",
+                "new_status",
+                "old_status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "new_status": {
+                  "type": "string"
+                },
+                "old_status": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "VoteHookMsg": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "new_vote"
+          ],
+          "properties": {
+            "new_vote": {
+              "type": "object",
+              "required": [
+                "proposal_id",
+                "vote",
+                "voter"
+              ],
+              "properties": {
+                "proposal_id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "vote": {
+                  "type": "string"
+                },
+                "voter": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

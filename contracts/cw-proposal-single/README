@@ -1,0 +1,4 @@
+# cw20-govmod-sudo
+
+A governance module for the cw-governance contract. Does single choice
+voting.
