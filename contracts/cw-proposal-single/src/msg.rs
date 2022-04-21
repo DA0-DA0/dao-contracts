@@ -1,5 +1,5 @@
 use cosmwasm_std::{CosmosMsg, Empty, Uint128};
-use cw_utils::{Duration, Expiration};
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -63,10 +63,6 @@ pub enum ExecuteMsg {
         /// The messages that should be executed in response to this
         /// proposal passing.
         msgs: Vec<CosmosMsg<Empty>>,
-        /// Optionally, a proposal may have a different expiration
-        /// than the one that would be set by the `max_voting_period`
-        /// in the governance module's config.
-        latest: Option<Expiration>,
     },
     /// Votes on a proposal. Voting power is determined by the DAO's
     /// voting power module.

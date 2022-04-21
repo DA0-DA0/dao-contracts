@@ -243,7 +243,6 @@ fn test_counters() {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
-            latest: None,
         },
         &[],
     )
@@ -342,7 +341,6 @@ fn test_counters() {
             title: "A simple text proposal 2nd".to_string(),
             description: "This is a simple text proposal 2nd".to_string(),
             msgs: vec![],
-            latest: None,
         },
         &[],
     )

@@ -145,14 +145,6 @@ impl Proposal {
                     // expired the number of votes needed to pass a
                     // proposal is compared to the number of votes on
                     // the proposal.
-                    //
-                    // NOTE(zeke): I do not like this
-                    // behavior. Strongly recomend that we either
-                    // remove custom end dates from proposals or
-                    // remove this logic. These together make the cost
-                    // of doing a hostile takeover of the DAO
-                    // `token_price * quorum` as opposed to the
-                    // 'desired' `token_price * threshold`.
                     let options = self.votes.total() - self.votes.abstain;
                     does_vote_count_pass(self.votes.yes, options, threshold)
                 } else {
