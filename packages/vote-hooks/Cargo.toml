@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
-cosmwasm-std = "1.0.0-beta5"
+cosmwasm-std = "1.0.0-beta"
 indexable-hooks = { version = "0.1.0", path = "../indexable-hooks" }

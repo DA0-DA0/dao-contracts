@@ -1,0 +1,16 @@
+[package]
+name = "testing"
+version = "0.1.0"
+edition = "2021"
+
+# This crate depends on multi-test and rand. These are not features in
+# wasm builds of cosmwasm. Despite this crate only being used as a dev
+# dependency, because it is part of the workspace it will always be
+# compiled. There is no good way to remove a member from a workspace
+# conditionally. As such, we don't compile anything here if we're
+# targeting wasm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rand = "0.8"
+cosmwasm-std = { version = "1.0.0-beta5" }
+voting = { path = "../voting", version = "*" }
+cw-multi-test = {  version = "0.13" }

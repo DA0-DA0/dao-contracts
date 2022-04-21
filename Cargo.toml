@@ -1,17 +1,5 @@
 [workspace]
-members = ["contracts/*", "packages/*", "legacy/*"] 
-
-[profile.release.package.cw3-dao]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.cw3-multisig]
-codegen-units = 1
-incremental = false
-
-[profile.release.package.stake-cw20]
-codegen-units = 1
-incremental = false
+members = ["contracts/*", "packages/*"]  
 
 
 [profile.release.package.stake-cw20-external-rewards]
@@ -19,6 +7,7 @@ codegen-units = 1
 incremental = false
 
 [profile.release]
+codegen-units = 1
 opt-level = 3
 debug = false
 rpath = false
@@ -27,3 +16,4 @@ debug-assertions = false
 panic = 'abort'
 incremental = false
 overflow-checks = true
+ 

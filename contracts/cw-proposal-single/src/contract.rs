@@ -12,19 +12,18 @@ use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 
-use voting::{Vote, Votes};
+use voting::{Status, Threshold, Vote, Votes};
 
 use crate::{
     error::ContractError,
     msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::{advance_proposal_id, Proposal, Status},
+    proposal::{advance_proposal_id, Proposal},
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
         get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
         PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
     },
-    threshold::Threshold,
     utils::{get_total_power, get_voting_power},
 };
 
