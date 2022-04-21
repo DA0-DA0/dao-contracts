@@ -3,13 +3,10 @@ use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use indexable_hooks::HooksResponse;
 
-use voting::Vote;
+use voting::{PercentageThreshold, Threshold, Vote};
 
 use crate::msg::{CountResponse, InstantiateMsg, QueryMsg};
-use cw_proposal_single::{
-    state::Config,
-    threshold::{PercentageThreshold, Threshold},
-};
+use cw_proposal_single::state::Config;
 
 const CREATOR_ADDR: &str = "creator";
 

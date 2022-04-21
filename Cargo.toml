@@ -1,5 +1,5 @@
 [workspace]
-members = ["contracts/*", "packages/*", "legacy/*"] 
+members = ["contracts/*", "packages/*"]  
 
 [profile.release.package.cw3-dao]
 codegen-units = 1

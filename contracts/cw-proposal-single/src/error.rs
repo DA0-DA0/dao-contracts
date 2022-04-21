@@ -15,11 +15,8 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Required threshold cannot be zero")]
-    ZeroThreshold {},
-
-    #[error("Not possible to reach required (passing) threshold")]
-    UnreachableThreshold {},
+    #[error("{0}")]
+    ThresholdError(#[from] voting::ThresholdError),
 
     #[error("Suggested proposal expiration is larger than the maximum proposal duration")]
     InvalidExpiration {},

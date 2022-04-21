@@ -41,7 +41,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 cw-core = { path = "../cw-core", version = "0.1.0", features = ["library"] }
 cw-core-macros = { path = "../../packages/cw-core-macros", version = "0.1.0" }
-cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" } 
+cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
 voting = { version = "0.1.0", path = "../../packages/voting" }
 indexable-hooks = { version = "0.1.0", path = "../../packages/indexable-hooks" }
 proposal-hooks = { version = "0.1.0", path = "../../packages/proposal-hooks" }
@@ -50,6 +50,8 @@ vote-hooks = { version = "0.1.0", path = "../../packages/vote-hooks" }
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }
 cw-multi-test = "0.12"
-cw20-balance-voting = { path = "../cw20-balance-voting", version = "0.1.0" }
+cw20-balance-voting = { path = "../cw20-balance-voting", version = "*" }
+cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }
+testing = { version = "*", path = "../../packages/testing" }
+stake-cw20 = { path="../stake-cw20", version = "*" }
 cw20-base = "0.12"
-rand = "0.8"

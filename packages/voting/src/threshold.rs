@@ -2,7 +2,16 @@ use cosmwasm_std::Decimal;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::ContractError;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ThresholdError {
+    #[error("Required threshold cannot be zero")]
+    ZeroThreshold {},
+
+    #[error("Not possible to reach required (passing) threshold")]
+    UnreachableThreshold {},
+}
 
 /// A percentage of voting power that must vote yes for a proposal to
 /// pass. An example of why this is needed:
@@ -58,12 +67,12 @@ pub enum Threshold {
 }
 
 /// Asserts that the 0.0 < percent <= 1.0
-fn validate_percentage(percent: &PercentageThreshold) -> Result<(), ContractError> {
+fn validate_percentage(percent: &PercentageThreshold) -> Result<(), ThresholdError> {
     if let PercentageThreshold::Percent(percent) = percent {
         if percent.is_zero() {
-            Err(ContractError::ZeroThreshold {})
+            Err(ThresholdError::ZeroThreshold {})
         } else if *percent > Decimal::one() {
-            Err(ContractError::UnreachableThreshold {})
+            Err(ThresholdError::UnreachableThreshold {})
         } else {
             Ok(())
         }
@@ -73,10 +82,10 @@ fn validate_percentage(percent: &PercentageThreshold) -> Result<(), ContractErro
 }
 
 /// Asserts that a quorum <= 1. Quorums may be zero.
-fn validate_quorum(quorum: &PercentageThreshold) -> Result<(), ContractError> {
+fn validate_quorum(quorum: &PercentageThreshold) -> Result<(), ThresholdError> {
     if let PercentageThreshold::Percent(quorum) = quorum {
         if *quorum > Decimal::one() {
-            Err(ContractError::UnreachableThreshold {})
+            Err(ThresholdError::UnreachableThreshold {})
         } else {
             Ok(())
         }
@@ -88,7 +97,7 @@ fn validate_quorum(quorum: &PercentageThreshold) -> Result<(), ContractError> {
 impl Threshold {
     /// returns error if this is an unreachable value,
     /// given a total weight of all members in the group
-    pub fn validate(&self) -> Result<(), ContractError> {
+    pub fn validate(&self) -> Result<(), ThresholdError> {
         match self {
             Threshold::AbsolutePercentage {
                 percentage: percentage_needed,
