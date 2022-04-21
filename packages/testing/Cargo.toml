@@ -8,5 +8,5 @@ edition = "2021"
 [dependencies]
 cosmwasm-std = { version = "1.0.0-beta5" }
 voting = { path = "../voting", version = "*" }
-cw-multi-test = {  version = "0.12" }
+cw-multi-test = {  version = "0.13" }
 rand = "0.8"

@@ -214,6 +214,22 @@ fn instantiate_with_cw20_balances_governance(
         }]
     });
 
+    // Collapse balances so that we can test double votes.
+    let initial_balances: Vec<Cw20Coin> = {
+        let mut already_seen = vec![];
+        initial_balances
+            .into_iter()
+            .filter(|Cw20Coin { address, amount: _ }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .collect()
+    };
+
     let governance_instantiate = cw_core::msg::InstantiateMsg {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),

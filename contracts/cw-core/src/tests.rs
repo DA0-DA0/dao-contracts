@@ -944,11 +944,9 @@ fn test_instantiate_with_items() {
     );
 
     assert_eq!(items[1], "item1".to_string());
-    let item1 = get_item(&mut app, gov_addr, "item1".to_string())
+    get_item(&mut app, gov_addr, "item1".to_string())
         .item
         .unwrap();
-    // Tests instantiate contracts with addresses in the form "Contract #{index}"
-    assert!(item1.to_string().starts_with("Contract #"));
 }
 
 #[test]
