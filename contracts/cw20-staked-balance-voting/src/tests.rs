@@ -4,7 +4,9 @@ use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
 use cw_core_interface::voting::{InfoResponse, IsActiveResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
-use crate::msg::{ActiveThreshold, InstantiateMsg, QueryMsg, StakingInfo};
+use crate::msg::{
+    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo,
+};
 
 const DAO_ADDR: &str = "dao";
 const CREATOR_ADDR: &str = "creator";
@@ -1038,4 +1040,105 @@ fn test_active_threshold_none() {
         .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
         .unwrap();
     assert!(is_active.active);
+}
+
+#[test]
+fn test_update_active_threshold() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    let voting_addr = instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(200u64),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::from(100u64)),
+            },
+            active_threshold: None,
+        },
+    );
+
+    let resp: ActiveThresholdResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::ActiveThreshold {})
+        .unwrap();
+    assert_eq!(resp.active_threshold, None);
+
+    let msg = ExecuteMsg::UpdateActiveThreshold {
+        new_threshold: Some(ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(100),
+        }),
+    };
+
+    // Expect failure as sender is not the DAO
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        voting_addr.clone(),
+        &msg,
+        &[],
+    )
+    .unwrap_err();
+
+    // Expect success as sender is the DAO
+    app.execute_contract(Addr::unchecked(DAO_ADDR), voting_addr.clone(), &msg, &[])
+        .unwrap();
+
+    let resp: ActiveThresholdResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::ActiveThreshold {})
+        .unwrap();
+    assert_eq!(
+        resp.active_threshold,
+        Some(ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(100)
+        })
+    );
+}
+
+#[test]
+#[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
+fn test_active_threshold_invalid() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(200u64),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::from(100u64)),
+            },
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(120),
+            }),
+        },
+    );
 }

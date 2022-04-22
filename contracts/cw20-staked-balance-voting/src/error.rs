@@ -26,4 +26,7 @@ pub enum ContractError {
 
     #[error("Can not change the contract's staking contract after it has been set")]
     DuplicateStakingContract {},
+
+    #[error("Active threshold percentage must be greater than 0 and less than 1")]
+    InvalidActivePercentage {},
 }

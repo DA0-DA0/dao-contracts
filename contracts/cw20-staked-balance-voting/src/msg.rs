@@ -56,7 +56,11 @@ pub struct InstantiateMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    UpdateActiveThreshold {
+        new_threshold: Option<ActiveThreshold>,
+    },
+}
 
 #[voting_query]
 #[token_query]
@@ -66,4 +70,11 @@ pub enum ExecuteMsg {}
 pub enum QueryMsg {
     StakingContract {},
     Dao {},
+    ActiveThreshold {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ActiveThresholdResponse {
+    pub active_threshold: Option<ActiveThreshold>,
 }
