@@ -1026,8 +1026,8 @@ fn test_active_threshold_none() {
                 marketing: None,
                 unstaking_duration: None,
                 staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::from(100u64)),
             },
-            initial_dao_balance: Some(Uint128::from(100u64)),
             active_threshold: None,
         },
     );
