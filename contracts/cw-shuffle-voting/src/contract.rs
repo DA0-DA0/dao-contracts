@@ -96,6 +96,7 @@ pub fn instantiate(
             marketing,
             staking_code_id,
             unstaking_duration,
+            initial_dao_balance: _,
         } => {
             let initial_supply = initial_balances
                 .iter()
@@ -225,8 +226,8 @@ pub fn shuffle_voting_power(
     let weights = generate_random_voting_weights(env.block.height, addresses_count);
 
     // Remove unstaked address if exists
-    if addr_to_remove.is_some() {
-        VOTE_WEIGHTS.remove(deps.storage, &addr_to_remove.unwrap(), env.block.height)?;
+    if let Some(addr) = addr_to_remove {
+        VOTE_WEIGHTS.remove(deps.storage, &addr, env.block.height)?;
     }
 
     // Collect addresses into vector.
@@ -234,14 +235,14 @@ pub fn shuffle_voting_power(
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
         .into_iter()
         .map(|x| match x {
-            Err(_) => return Err(x.unwrap_err()),
-            Ok(_) => return Ok(x.unwrap().0),
+            Err(_) => Err(x.unwrap_err()),
+            Ok(_) => Ok(x.unwrap().0),
         })
         .collect::<StdResult<Vec<Addr>>>()?;
 
     // Add staked address if exists
-    if addr_to_add.is_some() {
-        addresses.push(addr_to_add.unwrap());
+    if let Some(addr) = addr_to_add {
+        addresses.push(addr);
     }
 
     // Assign random weights to addresses.
@@ -253,8 +254,8 @@ pub fn shuffle_voting_power(
     let sum = VOTE_WEIGHTS
         .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
         .map(|x| match x {
-            Err(_) => return Err(x.unwrap_err()),
-            Ok(_) => return Ok(x.unwrap().1),
+            Err(_) => Err(x.unwrap_err()),
+            Ok(_) => Ok(x.unwrap().1),
         })
         .collect::<StdResult<Vec<Uint128>>>()?
         .iter()
@@ -290,10 +291,7 @@ pub fn generate_random_voting_weights(block_height: u64, addresses_count: u64) -
 pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) -> StdResult<Binary> {
     let height = height.unwrap_or(env.block.height);
     let sum = HEIGHT_TO_TOTAL_POWER.load(deps.storage, height)?;
-    to_binary(&cw_core_interface::voting::VotingPowerAtHeightResponse {
-        power: sum,
-        height: height,
-    })
+    to_binary(&cw_core_interface::voting::VotingPowerAtHeightResponse { power: sum, height })
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
