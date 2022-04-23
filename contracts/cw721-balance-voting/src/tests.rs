@@ -1,6 +1,6 @@
-use cosmwasm_std::{Addr, Empty, Uint128};
-use cw721::{ContractInfoResponse};
-use cw_core_interface::voting::{VotingPowerAtHeightResponse, TotalPowerAtHeightResponse};
+use cosmwasm_std::{Addr, Empty, Env, Uint128};
+use cw721::ContractInfoResponse;
+use cw_core_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use crate::msg::{InstantiateMsg, QueryMsg};
@@ -38,9 +38,7 @@ fn instantiate_voting(app: &mut App, voting_id: u64, msg: InstantiateMsg) -> Add
     .unwrap()
 }
 
-#[test]
-fn test_existing_nft_voting() {
-    let mut app = App::default();
+fn proper_instantiate(app: &mut App) -> (Addr, Addr) {
     let cw721_id = app.store_code(cw721_contract());
     let voting_id = app.store_code(balance_voting_contract());
 
@@ -54,13 +52,13 @@ fn test_existing_nft_voting() {
                 minter: CREATOR_ADDR.to_string(),
             },
             &[],
-            "voting NFT",
+            "NFT Voting",
             None,
         )
         .unwrap();
 
     let voting_addr = instantiate_voting(
-        &mut app,
+        app,
         voting_id,
         InstantiateMsg {
             token_info: crate::msg::TokenInfo::Existing {
@@ -68,16 +66,29 @@ fn test_existing_nft_voting() {
             },
         },
     );
+    (token_addr, voting_addr)
+}
 
-    let token_addr: Addr = app
+#[test]
+fn test_existing_nft_info() {
+    let mut app = App::default();
+    let (initial_token_addr, voting_addr) = proper_instantiate(&mut app);
+
+    let token_address: Addr = app
         .wrap()
         .query_wasm_smart(voting_addr.clone(), &QueryMsg::TokenContract {})
         .unwrap();
 
+    assert_eq!(token_address, initial_token_addr);
+
     let token_info: ContractInfoResponse = app
         .wrap()
-        .query_wasm_smart(token_addr.clone(), &cw721::Cw721QueryMsg::ContractInfo {})
+        .query_wasm_smart(
+            initial_token_addr.clone(),
+            &cw721::Cw721QueryMsg::ContractInfo {},
+        )
         .unwrap();
+
     assert_eq!(
         token_info,
         ContractInfoResponse {
@@ -85,6 +96,12 @@ fn test_existing_nft_voting() {
             symbol: "DAO".to_string()
         }
     );
+}
+
+#[test]
+fn test_existing_nft_voting_power_at_height() {
+    let mut app = App::default();
+    let (token_addr, voting_addr) = proper_instantiate(&mut app);
 
     let creator_voting_power: VotingPowerAtHeightResponse = app
         .wrap()
@@ -198,15 +215,53 @@ fn test_existing_nft_voting() {
             height: app.block_info().height,
         }
     );
+}
+
+#[test]
+fn test_existing_nft_total_voting_power_at_height() {
+    let mut app = App::default();
+    let (token_addr, voting_addr) = proper_instantiate(&mut app);
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+            token_id: "DAO1".to_string(),
+            owner: CREATOR_ADDR.to_string(),
+            token_uri: None,
+            extension: None,
+        }),
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+            token_id: "DAO2".to_string(),
+            owner: CREATOR_ADDR.to_string(),
+            token_uri: None,
+            extension: None,
+        }),
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_addr,
+        &cw721::Cw721ExecuteMsg::TransferNft {
+            recipient: DAO_ADDR.to_string(),
+            token_id: "DAO1".to_string(),
+        },
+        &[],
+    )
+    .unwrap();
 
     let total_voting_power: TotalPowerAtHeightResponse = app
         .wrap()
-        .query_wasm_smart(
-            voting_addr,
-            &QueryMsg::TotalPowerAtHeight {
-                height: None,
-            },
-        )
+        .query_wasm_smart(voting_addr, &QueryMsg::TotalPowerAtHeight { height: None })
         .unwrap();
 
     assert_eq!(

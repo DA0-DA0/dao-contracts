@@ -29,8 +29,8 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta6" }
-cosmwasm-storage = { version = "1.0.0-beta6" }
+cosmwasm-std = { version = "1.0.0-beta" }
+cosmwasm-storage = { version = "1.0.0-beta" }
 cw-storage-plus = "0.12"
 cw2 = "0.12"
 cw721 = "0.12"
@@ -42,6 +42,6 @@ cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
 cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" } 
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta6" }
+cosmwasm-schema = { version = "1.0.0-beta" }
 cw721-base = "0.12"
-cw-multi-test = "0.13"
+cw-multi-test = "0.12"

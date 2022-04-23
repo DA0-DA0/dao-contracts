@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
-use cw2::{set_contract_version};
+use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo};
@@ -68,7 +68,7 @@ pub fn query_voting_power_at_height(deps: Deps, env: Env, address: String) -> St
         &cw721::Cw721QueryMsg::Tokens {
             owner: address.to_string(),
             start_after: None,
-            limit: None
+            limit: None,
         },
     )?;
     to_binary(&cw_core_interface::voting::VotingPowerAtHeightResponse {
@@ -81,8 +81,7 @@ pub fn query_total_power_at_height(deps: Deps, env: Env) -> StdResult<Binary> {
     let token = TOKEN.load(deps.storage)?;
     let info: cw721::NumTokensResponse = deps
         .querier
-        .query_wasm_smart(token, &cw721::Cw721QueryMsg::NumTokens {
-        })?;
+        .query_wasm_smart(token, &cw721::Cw721QueryMsg::NumTokens {})?;
     to_binary(&cw_core_interface::voting::TotalPowerAtHeightResponse {
         power: Uint128::from(info.count),
         height: env.block.height,
