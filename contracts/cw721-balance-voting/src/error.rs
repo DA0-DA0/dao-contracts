@@ -17,7 +17,4 @@ pub enum ContractError {
 
     #[error("Error instantiating token")]
     TokenInstantiateError {},
-
-    #[error("Got a submessage reply with unknown id: {id}")]
-    UnknownReplyId { id: u64 },
 }
