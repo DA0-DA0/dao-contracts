@@ -188,6 +188,10 @@ pub fn execute_fund(
         }
     };
 
+    if new_reward_config.reward_rate == Uint128::zero() {
+        return Err(ContractError::RewardRateLessThenOnePerBlock {});
+    };
+
     REWARD_CONFIG.save(deps.storage, &new_reward_config)?;
     LAST_UPDATE_BLOCK.save(deps.storage, &env.block.height)?;
 
@@ -2043,6 +2047,7 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 500);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 500);
     }
+
     #[test]
     fn test_small_rewards() {
         // This test was added due to a bug in the contract not properly paying out small reward
@@ -2105,5 +2110,54 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR1, 5);
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 2);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 2);
+    }
+
+    #[test]
+    fn test_zero_reward_rate_faild() {
+        // This test is due to a bug when funder provides rewards config that results in less then 1
+        // reward per block which rounds down to zer0
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, _) = setup_staking_contract(&mut app, initial_balances);
+        let reward_funding = vec![coin(10000, denom.clone())];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: admin.to_string(),
+                amount: reward_funding.clone(),
+            }
+        }))
+            .unwrap();
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr,
+            Denom::Native(denom),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let _res = app
+            .borrow_mut()
+            .execute_contract(admin, reward_addr.clone(), &fund_msg, &reward_funding)
+            .unwrap_err();
     }
 }
