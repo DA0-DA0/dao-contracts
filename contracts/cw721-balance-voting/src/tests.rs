@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Empty, Env, Uint128};
+use cosmwasm_std::{Addr, Empty, Uint128};
 use cw721::ContractInfoResponse;
 use cw_core_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -76,7 +76,7 @@ fn test_existing_nft_info() {
 
     let token_address: Addr = app
         .wrap()
-        .query_wasm_smart(voting_addr.clone(), &QueryMsg::TokenContract {})
+        .query_wasm_smart(voting_addr, &QueryMsg::TokenContract {})
         .unwrap();
 
     assert_eq!(token_address, initial_token_addr);
@@ -84,7 +84,7 @@ fn test_existing_nft_info() {
     let token_info: ContractInfoResponse = app
         .wrap()
         .query_wasm_smart(
-            initial_token_addr.clone(),
+            initial_token_addr,
             &cw721::Cw721QueryMsg::ContractInfo {},
         )
         .unwrap();
@@ -200,7 +200,7 @@ fn test_existing_nft_voting_power_at_height() {
     let dao_voting_power: VotingPowerAtHeightResponse = app
         .wrap()
         .query_wasm_smart(
-            voting_addr.clone(),
+            voting_addr,
             &QueryMsg::VotingPowerAtHeight {
                 address: DAO_ADDR.to_string(),
                 height: None,
