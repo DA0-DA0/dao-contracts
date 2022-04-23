@@ -1,17 +1,23 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw20::Cw20Coin;
+use cw20::{Cw20Coin, TokenInfoResponse};
+use cw_core_interface::voting::IsActiveResponse;
 use cw_utils::parse_reply_instantiate_data;
+use std::convert::TryInto;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo, TokenInfo};
+use crate::msg::{
+    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo,
+    TokenInfo,
+};
 use crate::state::{
-    DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID, STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
+    ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID,
+    STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw20-staked-balance-voting";
@@ -19,6 +25,10 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_TOKEN_REPLY_ID: u64 = 0;
 const INSTANTIATE_STAKING_REPLY_ID: u64 = 1;
+
+// We multiply by this when calculating needed power for being active
+// when using active threshold with percent
+const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -29,6 +39,14 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     DAO.save(deps.storage, &info.sender)?;
+    if let Some(active_threshold) = msg.active_threshold {
+        if let ActiveThreshold::Percentage { percent } = active_threshold {
+            if percent > Decimal::percent(100) {
+                return Err(ContractError::InvalidActivePercentage {});
+            }
+        }
+        ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+    }
 
     match msg.token_info {
         TokenInfo::Existing {
@@ -147,14 +165,42 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    match msg {}
+    match msg {
+        ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
+            execute_update_active_threshold(deps, env, info, new_threshold)
+        }
+    }
 }
 
+pub fn execute_update_active_threshold(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_active_threshold: Option<ActiveThreshold>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if let Some(active_threshold) = new_active_threshold {
+        if let ActiveThreshold::Percentage { percent } = active_threshold {
+            if percent > Decimal::percent(100) {
+                return Err(ContractError::InvalidActivePercentage {});
+            }
+        }
+        ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+    } else {
+        ACTIVE_THRESHOLD.remove(deps.storage);
+    }
+
+    Ok(Response::new().add_attribute("action", "update_active_threshold"))
+}
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -166,6 +212,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::IsActive {} => query_is_active(deps),
+        QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
     }
 }
 
@@ -224,6 +272,50 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
     to_binary(&dao)
+}
+
+pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
+    let threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
+    if let Some(threshold) = threshold {
+        let token_contract = TOKEN.load(deps.storage)?;
+        let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
+        let actual_power: stake_cw20::msg::TotalStakedAtHeightResponse =
+            deps.querier.query_wasm_smart(
+                staking_contract,
+                &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None },
+            )?;
+        match threshold {
+            ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
+                active: actual_power.total >= count,
+            }),
+            ActiveThreshold::Percentage { percent } => {
+                let total_potential_power: TokenInfoResponse = deps
+                    .querier
+                    .query_wasm_smart(token_contract, &cw20_base::msg::QueryMsg::TokenInfo {})?;
+                let total_power = total_potential_power
+                    .total_supply
+                    .full_mul(PRECISION_FACTOR);
+                let applied = total_power.multiply_ratio(
+                    percent.atomics(),
+                    Uint256::from(10u64).pow(percent.decimal_places()),
+                );
+                let rounded = (applied + Uint256::from(PRECISION_FACTOR) - Uint256::from(1u128))
+                    / Uint256::from(PRECISION_FACTOR);
+                let count: Uint128 = rounded.try_into().unwrap();
+                to_binary(&IsActiveResponse {
+                    active: actual_power.total >= count,
+                })
+            }
+        }
+    } else {
+        to_binary(&IsActiveResponse { active: true })
+    }
+}
+
+pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
+    to_binary(&ActiveThresholdResponse {
+        active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

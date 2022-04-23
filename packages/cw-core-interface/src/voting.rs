@@ -26,3 +26,8 @@ pub struct TotalPowerAtHeightResponse {
 pub struct InfoResponse {
     pub info: ContractVersion,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IsActiveResponse {
+    pub active: bool,
+}

@@ -1,7 +1,9 @@
+use crate::msg::ActiveThreshold;
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
 use cw_utils::Duration;
 
+pub const ACTIVE_THRESHOLD: Item<ActiveThreshold> = Item::new("active_threshold");
 pub const TOKEN: Item<Addr> = Item::new("token");
 pub const DAO: Item<Addr> = Item::new("dao");
 pub const STAKING_CONTRACT: Item<Addr> = Item::new("staking_contract");

@@ -1,7 +1,7 @@
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
-use cw_core_macros::{token_query, voting_query};
+use cw_core_macros::{active_query, token_query, voting_query};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -42,19 +42,39 @@ pub enum TokenInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ActiveThreshold {
+    AbsoluteCount { count: Uint128 },
+    Percentage { percent: Decimal },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub token_info: TokenInfo,
+    pub active_threshold: Option<ActiveThreshold>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    UpdateActiveThreshold {
+        new_threshold: Option<ActiveThreshold>,
+    },
+}
 
 #[voting_query]
 #[token_query]
+#[active_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     StakingContract {},
     Dao {},
+    ActiveThreshold {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ActiveThresholdResponse {
+    pub active_threshold: Option<ActiveThreshold>,
 }
