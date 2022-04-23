@@ -830,7 +830,7 @@ fn test_votes_low_threshold() {
 fn test_majority_vs_half() {
     testing::test_majority_vs_half(do_votes_cw20_balances);
     testing::test_majority_vs_half(do_votes_cw4_weights);
-    testing::test_votes_low_threshold(do_votes_staked_balances)
+    testing::test_majority_vs_half(do_votes_staked_balances)
 }
 
 #[test]
