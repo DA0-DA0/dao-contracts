@@ -18,5 +18,5 @@ pub enum ContractError {
     #[error("Invalid Cw20")]
     InvalidCw20 {},
     #[error("Reward rate less then one per block")]
-    RewardRateLessThenOnePerBlock {}
+    RewardRateLessThenOnePerBlock {},
 }

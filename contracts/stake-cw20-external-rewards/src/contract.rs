@@ -2142,7 +2142,7 @@ mod tests {
                 amount: reward_funding.clone(),
             }
         }))
-            .unwrap();
+        .unwrap();
         let reward_addr = setup_reward_contract(
             &mut app,
             staking_addr,
