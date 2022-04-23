@@ -83,10 +83,7 @@ fn test_existing_nft_info() {
 
     let token_info: ContractInfoResponse = app
         .wrap()
-        .query_wasm_smart(
-            initial_token_addr,
-            &cw721::Cw721QueryMsg::ContractInfo {},
-        )
+        .query_wasm_smart(initial_token_addr, &cw721::Cw721QueryMsg::ContractInfo {})
         .unwrap();
 
     assert_eq!(
