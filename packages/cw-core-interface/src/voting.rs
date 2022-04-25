@@ -1,11 +1,12 @@
 use cosmwasm_std::Uint128;
 use cw2::ContractVersion;
-use cw_core_macros::{token_query, voting_query};
+use cw_core_macros::{active_query, token_query, voting_query};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[token_query]
 #[voting_query]
+#[active_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {}

@@ -1,6 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw20_staked_balance_voting::msg::ActiveThreshold;
+use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use indexable_hooks::HooksResponse;
 use rand::{prelude::SliceRandom, Rng};
 
@@ -25,6 +26,15 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        stake_cw20::contract::execute,
+        stake_cw20::contract::instantiate,
+        stake_cw20::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn single_govmod_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
@@ -42,6 +52,16 @@ fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
         cw20_balance_voting::contract::query,
     )
     .with_reply(cw20_balance_voting::contract::reply);
+    Box::new(contract)
+}
+
+fn cw20_staked_balances_voting() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw20_staked_balance_voting::contract::execute,
+        cw20_staked_balance_voting::contract::instantiate,
+        cw20_staked_balance_voting::contract::query,
+    )
+    .with_reply(cw20_staked_balance_voting::contract::reply);
     Box::new(contract)
 }
 
@@ -102,6 +122,64 @@ fn instantiate_with_default_governance(
                     initial_balances,
                     marketing: None,
                 },
+            })
+            .unwrap(),
+            admin: cw_core::msg::Admin::GovernanceContract {},
+            label: "DAO DAO voting module".to_string(),
+        },
+        governance_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+            code_id,
+            msg: to_binary(&msg).unwrap(),
+            admin: cw_core::msg::Admin::GovernanceContract {},
+            label: "DAO DAO governance module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    instantiate_governance(app, governance_id, governance_instantiate)
+}
+
+fn instantiate_with_staking_default_governance(
+    app: &mut App,
+    code_id: u64,
+    msg: InstantiateMsg,
+    initial_balances: Option<Vec<Cw20Coin>>,
+    active_threshold: Option<ActiveThreshold>,
+) -> Addr {
+    let cw20_id = app.store_code(cw20_contract());
+    let cw20_staking_id = app.store_code(cw20_stake_contract());
+    let governance_id = app.store_code(cw_gov_contract());
+    let votemod_id = app.store_code(cw20_staked_balances_voting());
+
+    let initial_balances = initial_balances.unwrap_or_else(|| {
+        vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100_000_000),
+        }]
+    });
+
+    let governance_instantiate = cw_core::msg::InstantiateMsg {
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+            code_id: votemod_id,
+            msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
+                token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
+                    code_id: cw20_id,
+                    label: "DAO DAO governance token".to_string(),
+                    name: "DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances,
+                    marketing: None,
+                    staking_code_id: cw20_staking_id,
+                    unstaking_duration: None,
+                    initial_dao_balance: None,
+                },
+                active_threshold,
             })
             .unwrap(),
             admin: cw_core::msg::Admin::GovernanceContract {},
@@ -1841,4 +1919,377 @@ fn test_hooks() {
 
     // Expect success
     let _res = app.execute_contract(dao, govmod_single, &msg, &[]).unwrap();
+}
+
+#[test]
+fn test_active_threshold_absolute() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+    };
+
+    let governance_addr = instantiate_with_staking_default_governance(
+        &mut app,
+        govmod_id,
+        instantiate,
+        None,
+        Some(ActiveThreshold::AbsoluteCount {
+            count: Uint128::new(100),
+        }),
+    );
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::GovernanceModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = govmod_config.dao;
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Try and create a proposal, will fail as inactive
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    // Stake enough tokens
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_contract.to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(Addr::unchecked(CREATOR_ADDR), token_contract, &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // Try and create a proposal, will now succeed as enough tokens are staked
+    let _res = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap();
+
+    // Unstake some tokens to make it inactive again
+    let msg = stake_cw20::msg::ExecuteMsg::Unstake {
+        amount: Uint128::new(50),
+    };
+    app.execute_contract(Addr::unchecked(CREATOR_ADDR), staking_contract, &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // Try and create a proposal, will fail as no longer active
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single,
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap_err();
+}
+
+#[test]
+fn test_active_threshold_percent() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+    };
+
+    // 20% needed to be active, 20% of 100000000 is 20000000
+    let governance_addr = instantiate_with_staking_default_governance(
+        &mut app,
+        govmod_id,
+        instantiate,
+        None,
+        Some(ActiveThreshold::Percentage {
+            percent: Decimal::percent(20),
+        }),
+    );
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::GovernanceModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = govmod_config.dao;
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Try and create a proposal, will fail as inactive
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    // Stake enough tokens
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_contract.to_string(),
+        amount: Uint128::new(20000000),
+        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(Addr::unchecked(CREATOR_ADDR), token_contract, &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // Try and create a proposal, will now succeed as enough tokens are staked
+    let _res = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap();
+
+    // Unstake some tokens to make it inactive again
+    let msg = stake_cw20::msg::ExecuteMsg::Unstake {
+        amount: Uint128::new(1000),
+    };
+    app.execute_contract(Addr::unchecked(CREATOR_ADDR), staking_contract, &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // Try and create a proposal, will fail as no longer active
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single,
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap_err();
+}
+
+#[test]
+fn test_active_threshold_none() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+    };
+
+    let governance_addr =
+        instantiate_with_staking_default_governance(&mut app, govmod_id, instantiate, None, None);
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::GovernanceModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = govmod_config.dao;
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake some tokens so we can propose
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_contract.to_string(),
+        amount: Uint128::new(2000),
+        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(Addr::unchecked(CREATOR_ADDR), token_contract, &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    // Try and create a proposal, will succeed as no threshold
+    let _res = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single,
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap();
+
+    // Now try with balance voting to test when IsActive is not implemented
+    // on the contract
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+    };
+
+    let governance_addr =
+        instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::GovernanceModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // Try and create a proposal, will succeed as IsActive is not implemented
+    let _res = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single,
+            &crate::msg::ExecuteMsg::Propose {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                msgs: vec![],
+            },
+            &[],
+        )
+        .unwrap();
 }

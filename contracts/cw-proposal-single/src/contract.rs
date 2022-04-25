@@ -5,6 +5,7 @@ use cosmwasm_std::{
     StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_core_interface::voting::IsActiveResponse;
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
 use indexable_hooks::Hooks;
@@ -119,6 +120,22 @@ pub fn execute_propose(
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    let voting_module: Addr = deps
+        .querier
+        .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::VotingModule {})?;
+
+    let active_resp: IsActiveResponse = deps
+        .querier
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::IsActive {},
+        )
+        .unwrap_or(IsActiveResponse { active: true });
+
+    if !active_resp.active {
+        return Err(ContractError::InactiveDao {});
+    }
 
     // Check that the sender is a member of the governance contract.
     let sender_power = get_voting_power(
