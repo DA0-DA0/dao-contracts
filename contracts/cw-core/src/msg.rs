@@ -12,14 +12,14 @@ use crate::state::Config;
 pub enum Admin {
     /// A specific address.
     Address { addr: String },
-    /// The governance contract itself. The contract will fill this in
+    /// The core contract itself. The contract will fill this in
     /// while instantiation takes place.
-    GovernanceContract {},
+    CoreContract {},
     /// No admin.
     None {},
 }
 
-/// Information needed to instantiate a governance or voting module.
+/// Information needed to instantiate a proposal or voting module.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ModuleInstantiateInfo {
     /// Code ID of the contract to be instantiated.
@@ -50,11 +50,11 @@ pub struct InitialItem {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    /// The name of the governance contract.
+    /// The name of the core contract.
     pub name: String,
-    /// A description of the governance contract.
+    /// A description of the core contract.
     pub description: String,
-    /// An image URL to describe the governance module contract.
+    /// An image URL to describe the core module contract.
     pub image_url: Option<String>,
 
     /// If true the contract will automatically add received cw20
@@ -64,12 +64,12 @@ pub struct InstantiateMsg {
     /// tokens to its treasury.
     pub automatically_add_cw721s: bool,
 
-    /// Instantiate information for the governance contract's voting
+    /// Instantiate information for the core contract's voting
     /// power module.
     pub voting_module_instantiate_info: ModuleInstantiateInfo,
-    /// Instantiate information for the governance contract's
-    /// governance modules.
-    pub governance_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
+    /// Instantiate information for the core contract's
+    /// proposal modules.
+    pub proposal_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
 
     /// Initial information for arbitrary contract addresses to be
     /// added to the items map. The key is the name of the item in the
@@ -81,28 +81,28 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    /// Callable by governance modules. The DAO will execute the
+    /// Callable by proposal modules. The DAO will execute the
     /// messages in the hook in order.
     ExecuteProposalHook { msgs: Vec<CosmosMsg<Empty>> },
-    /// Callable by the governance contract. Replaces the current
+    /// Callable by the core contract. Replaces the current
     /// governance contract config with the provided config.
     UpdateConfig { config: Config },
-    /// Callable by the governance contract. Replaces the current
+    /// Callable by the core contract. Replaces the current
     /// voting module with a new one instantiated by the governance
     /// contract.
     UpdateVotingModule { module: ModuleInstantiateInfo },
-    /// Updates the governance contract's governance modules. Module
+    /// Updates the core contract's proposal modules. Module
     /// instantiate info in `to_add` is used to create new modules and
     /// install them.
     UpdateGovernanceModules {
         to_add: Vec<ModuleInstantiateInfo>,
         to_remove: Vec<String>,
     },
-    /// Adds an item to the governance contract's item map. If the
+    /// Adds an item to the core contract's item map. If the
     /// item already exists the existing value is overriden. If the
     /// item does not exist a new item is added.
     SetItem { key: String, addr: String },
-    /// Removes an item from the governance contract's item map.
+    /// Removes an item from the core contract's item map.
     RemoveItem { key: String },
     /// Executed when the contract receives a cw20 token. Depending on
     /// the contract's configuration the contract will automatically
@@ -132,13 +132,13 @@ pub enum QueryMsg {
     Config {},
     /// Gets the contract's voting module. Returns Addr.
     VotingModule {},
-    /// Gets the governance modules assocaited with the
+    /// Gets the proposal modules assocaited with the
     /// contract. Returns Vec<Addr>.
-    GovernanceModules {
+    ProposalModules {
         start_at: Option<String>,
         limit: Option<u64>,
     },
-    /// Dumps all of the governance contract's state in a single
+    /// Dumps all of the core contract's state in a single
     /// query. Useful for frontends as performance for queries is more
     /// limited by network times than compute times. Returns
     /// `DumpStateResponse`.

@@ -7,7 +7,7 @@ impl ModuleInstantiateInfo {
         WasmMsg::Instantiate {
             admin: match self.admin {
                 Admin::Address { addr } => Some(addr),
-                Admin::GovernanceContract {} => Some(contract_address.to_string()),
+                Admin::CoreContract {} => Some(contract_address.to_string()),
                 Admin::None {} => None,
             },
             code_id: self.code_id,

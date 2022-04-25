@@ -16,15 +16,15 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
 use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse};
 use crate::state::{
-    Config, CONFIG, CW20_LIST, CW721_LIST, GOVERNANCE_MODULES, GOVERNANCE_MODULE_COUNT, ITEMS,
-    PENDING_ITEM_INSTANTIATION_NAMES, VOTING_MODULE,
+    Config, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PENDING_ITEM_INSTANTIATION_NAMES,
+    PROPOSAL_MODULES, PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-governance";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const GOV_MODULE_REPLY_ID: u64 = 0;
+const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 const VOTE_MODULE_UPDATE_REPLY_ID: u64 = 2;
 
@@ -62,16 +62,16 @@ pub fn instantiate(
         SubMsg::reply_on_success(vote_module_msg, VOTE_MODULE_INSTANTIATE_REPLY_ID);
 
     let gov_module_msgs: Vec<SubMsg<Empty>> = msg
-        .governance_modules_instantiate_info
+        .proposal_modules_instantiate_info
         .into_iter()
         .map(|info| info.into_wasm_msg(env.contract.address.clone()))
-        .map(|wasm| SubMsg::reply_on_success(wasm, GOV_MODULE_REPLY_ID))
+        .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
     if gov_module_msgs.is_empty() {
-        return Err(ContractError::NoGovernanceModule {});
+        return Err(ContractError::NoProposalModule {});
     }
 
-    GOVERNANCE_MODULE_COUNT.save(deps.storage, &(gov_module_msgs.len() as u64))?;
+    PROPOSAL_MODULE_COUNT.save(deps.storage, &(gov_module_msgs.len() as u64))?;
 
     // Add or instantiate items if any are present.
     let mut instantiate_item_msgs: Vec<SubMsg<Empty>> = vec![];
@@ -159,7 +159,7 @@ pub fn execute_proposal_hook(
     sender: Addr,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
-    if !GOVERNANCE_MODULES.has(deps.storage, sender) {
+    if !PROPOSAL_MODULES.has(deps.storage, sender) {
         return Err(ContractError::Unauthorized {});
     }
     Ok(Response::default()
@@ -221,7 +221,7 @@ pub fn execute_update_governance_modules(
         return Err(ContractError::Unauthorized {});
     }
 
-    let module_count = GOVERNANCE_MODULE_COUNT.load(deps.storage)?;
+    let module_count = PROPOSAL_MODULE_COUNT.load(deps.storage)?;
 
     // Some safe maths.
     let new_total = module_count
@@ -230,19 +230,19 @@ pub fn execute_update_governance_modules(
         .checked_sub(to_remove.len() as u64)
         .ok_or(ContractError::Overflow {})?;
     if new_total == 0 {
-        return Err(ContractError::NoGovernanceModule {});
+        return Err(ContractError::NoProposalModule {});
     }
-    GOVERNANCE_MODULE_COUNT.save(deps.storage, &new_total)?;
+    PROPOSAL_MODULE_COUNT.save(deps.storage, &new_total)?;
 
     for addr in to_remove {
         let addr = deps.api.addr_validate(&addr)?;
-        GOVERNANCE_MODULES.remove(deps.storage, addr);
+        PROPOSAL_MODULES.remove(deps.storage, addr);
     }
 
     let to_add: Vec<SubMsg<Empty>> = to_add
         .into_iter()
         .map(|info| info.into_wasm_msg(env.contract.address.clone()))
-        .map(|wasm| SubMsg::reply_on_success(wasm, GOV_MODULE_REPLY_ID))
+        .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
 
     Ok(Response::default()
@@ -368,7 +368,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::VotingModule {} => query_voting_module(deps),
-        QueryMsg::GovernanceModules { start_at, limit } => {
+        QueryMsg::ProposalModules { start_at, limit } => {
             query_governance_modules(deps, start_at, limit)
         }
         QueryMsg::DumpState {} => query_dump_state(deps),
@@ -416,7 +416,7 @@ pub fn query_governance_modules(
     //
     // Even if this does lock up one can determine the existing
     // governance modules by looking at past transactions on chain.
-    let modules = GOVERNANCE_MODULES.keys(
+    let modules = PROPOSAL_MODULES.keys(
         deps.storage,
         start_at.map(Bound::inclusive),
         None,
@@ -434,7 +434,7 @@ pub fn query_governance_modules(
 pub fn query_dump_state(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
-    let governance_modules = GOVERNANCE_MODULES
+    let governance_modules = PROPOSAL_MODULES
         .keys(deps.storage, None, None, cosmwasm_std::Order::Descending)
         .collect::<Result<Vec<Addr>, _>>()?;
     let version = get_contract_version(deps.storage)?;
@@ -583,10 +583,10 @@ pub fn query_cw20_balances(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
-        GOV_MODULE_REPLY_ID => {
+        PROPOSAL_MODULE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let gov_module_addr = deps.api.addr_validate(&res.contract_address)?;
-            GOVERNANCE_MODULES.save(deps.storage, gov_module_addr, &Empty {})?;
+            PROPOSAL_MODULES.save(deps.storage, gov_module_addr, &Empty {})?;
 
             Ok(Response::default().add_attribute("gov_module".to_string(), res.contract_address))
         }

@@ -14,7 +14,7 @@ pub enum ContractError {
     NoVotingModule {},
 
     #[error("Execution would result in no governance modules being present.")]
-    NoGovernanceModule {},
+    NoProposalModule {},
 
     #[error("An unknown reply ID was received.")]
     UnknownReplyID {},

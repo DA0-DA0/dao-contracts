@@ -110,13 +110,13 @@ fn instantiate_with_default_governance(
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::GovernanceContract {},
+            admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO voting module".to_string(),
         },
-        governance_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
             code_id,
             msg: to_binary(&msg).unwrap(),
-            admin: cw_core::msg::Admin::GovernanceContract {},
+            admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -148,7 +148,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },

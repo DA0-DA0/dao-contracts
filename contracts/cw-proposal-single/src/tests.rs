@@ -124,13 +124,13 @@ fn instantiate_with_default_governance(
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::GovernanceContract {},
+            admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO voting module".to_string(),
         },
-        governance_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
             code_id,
             msg: to_binary(&msg).unwrap(),
-            admin: cw_core::msg::Admin::GovernanceContract {},
+            admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -182,13 +182,13 @@ fn instantiate_with_staking_default_governance(
                 active_threshold,
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::GovernanceContract {},
+            admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO voting module".to_string(),
         },
-        governance_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
             code_id,
             msg: to_binary(&msg).unwrap(),
-            admin: cw_core::msg::Admin::GovernanceContract {},
+            admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -219,7 +219,7 @@ fn test_propose() {
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
@@ -356,7 +356,7 @@ fn do_test_votes(
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
@@ -1631,7 +1631,7 @@ fn test_query_list_proposals() {
         .wrap()
         .query_wasm_smart(
             gov_addr,
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
@@ -1771,7 +1771,7 @@ fn test_hooks() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
@@ -1950,7 +1950,7 @@ fn test_active_threshold_absolute() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
@@ -2075,7 +2075,7 @@ fn test_active_threshold_percent() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
@@ -2192,7 +2192,7 @@ fn test_active_threshold_none() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
@@ -2269,7 +2269,7 @@ fn test_active_threshold_none() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::GovernanceModules {
+            &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
             },
