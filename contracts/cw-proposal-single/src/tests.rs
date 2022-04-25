@@ -1283,6 +1283,28 @@ fn test_close_open_proposal() {
 }
 
 #[test]
+fn test_zero_deposit() {
+    do_test_votes(
+        vec![TestVote {
+            voter: "ekez".to_string(),
+            position: Vote::Yes,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Passed,
+        None,
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(0),
+            refund_failed_proposals: false,
+        }),
+    );
+}
+
+#[test]
 fn test_deposit_return_on_close() {
     let (mut app, governance_addr) = do_test_votes(
         vec![TestVote {
