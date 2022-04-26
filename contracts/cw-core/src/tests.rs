@@ -2,13 +2,14 @@ use cosmwasm_std::{to_binary, Addr, Empty, Uint128, WasmMsg};
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_utils::{Duration, Expiration};
 
 use crate::{
     msg::{
         Admin, ExecuteMsg, InitialItem, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo,
         QueryMsg,
     },
-    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse},
+    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
     state::Config,
     ContractError,
 };
@@ -1280,4 +1281,238 @@ fn test_cw721_receive_no_auto_add() {
         )
         .unwrap();
     assert_eq!(cw20_list, vec![Addr::unchecked("new"), cw721_addr]);
+}
+
+#[test]
+fn test_pause() {
+    let (core_addr, mut app) = do_standard_instantiate(false);
+
+    let start_height = app.block_info().height;
+
+    let proposal_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(paused, PauseInfoResponse::Unpaused {});
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
+
+    // DAO is not paused. Check that we can execute things.
+    //
+    // Tests intentionally use the core address to send these
+    // messsages to simulate a worst case scenerio where the core
+    // contract has a vulnerability.
+    app.execute_contract(
+        core_addr.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateConfig {
+            config: Config {
+                name: "The Empire Strikes Back".to_string(),
+                description: "haha lol we have pwned your DAO".to_string(),
+                image_url: None,
+                automatically_add_cw20s: true,
+                automatically_add_cw721s: true,
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Oh no the DAO is under attack! Quick! Pause the DAO while we
+    // figure out what to do!
+    let err: ContractError = app
+        .execute_contract(
+            proposal_module.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // Only the DAO may call this on itself. Proposal modules must use
+    // the execute hook.
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    app.execute_contract(
+        proposal_module.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(
+        all_state.pause_info,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+
+    let err: ContractError = app
+        .execute_contract(
+            core_addr.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::UpdateConfig {
+                config: Config {
+                    name: "The Empire Strikes Back Again".to_string(),
+                    description: "haha lol we have pwned your DAO again".to_string(),
+                    image_url: None,
+                    automatically_add_cw20s: true,
+                    automatically_add_cw721s: true,
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::Paused { .. }));
+
+    let err: ContractError = app
+        .execute_contract(
+            proposal_module.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::ExecuteProposalHook {
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: core_addr.to_string(),
+                    msg: to_binary(&ExecuteMsg::Pause {
+                        duration: Duration::Height(10),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::Paused { .. }));
+
+    app.update_block(|mut block| block.height += 9);
+
+    // Still not unpaused.
+    let err: ContractError = app
+        .execute_contract(
+            proposal_module.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::ExecuteProposalHook {
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: core_addr.to_string(),
+                    msg: to_binary(&ExecuteMsg::Pause {
+                        duration: Duration::Height(10),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::Paused { .. }));
+
+    app.update_block(|mut block| block.height += 1);
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(paused, PauseInfoResponse::Unpaused {});
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
+
+    // Now its unpaused so we should be able to pause again.
+    app.execute_contract(
+        proposal_module,
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 20)
+        }
+    );
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(
+        all_state.pause_info,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 20)
+        }
+    );
 }

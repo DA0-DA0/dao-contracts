@@ -1,4 +1,5 @@
 use cosmwasm_std::{Binary, CosmosMsg, Empty};
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -83,27 +84,41 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Callable by proposal modules. The DAO will execute the
     /// messages in the hook in order.
-    ExecuteProposalHook { msgs: Vec<CosmosMsg<Empty>> },
+    ExecuteProposalHook {
+        msgs: Vec<CosmosMsg<Empty>>,
+    },
     /// Callable by the core contract. Replaces the current
-    /// core contract config with the provided config.
-    UpdateConfig { config: Config },
+    /// governance contract config with the provided config.
+    UpdateConfig {
+        config: Config,
+    },
     /// Callable by the core contract. Replaces the current
-    /// voting module with a new one instantiated by the core
+    /// voting module with a new one instantiated by the governance
     /// contract.
-    UpdateVotingModule { module: ModuleInstantiateInfo },
-    /// Updates the core contract's proposal modules. Module
+    UpdateVotingModule {
+        module: ModuleInstantiateInfo,
+    },
+    /// Updates the governance contract's governance modules. Module
     /// instantiate info in `to_add` is used to create new modules and
     /// install them.
     UpdateProposalModules {
         to_add: Vec<ModuleInstantiateInfo>,
         to_remove: Vec<String>,
     },
-    /// Adds an item to the core contract's item map. If the
+    Pause {
+        duration: Duration,
+    },
+    /// Adds an item to the governance contract's item map. If the
     /// item already exists the existing value is overriden. If the
     /// item does not exist a new item is added.
-    SetItem { key: String, addr: String },
-    /// Removes an item from the core contract's item map.
-    RemoveItem { key: String },
+    SetItem {
+        key: String,
+        addr: String,
+    },
+    /// Removes an item from the governance contract's item map.
+    RemoveItem {
+        key: String,
+    },
     /// Executed when the contract receives a cw20 token. Depending on
     /// the contract's configuration the contract will automatically
     /// add the token to its treasury.
@@ -130,6 +145,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// Gets the contract's config. Returns Config.
     Config {},
+    /// Returns information about if the contract is currently paused.
+    PauseInfo {},
     /// Gets the contract's voting module. Returns Addr.
     VotingModule {},
     /// Gets the proposal modules assocaited with the

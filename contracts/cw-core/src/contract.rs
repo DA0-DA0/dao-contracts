@@ -8,15 +8,15 @@ use cosmwasm_std::{
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::{Bound, Map};
-use cw_utils::parse_reply_instantiate_data;
+use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_core_interface::voting;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
-use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse};
+use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
 use crate::state::{
-    Config, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PENDING_ITEM_INSTANTIATION_NAMES,
+    Config, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
     PROPOSAL_MODULES, PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
@@ -128,6 +128,13 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    // No actions can be performed while the DAO is paused.
+    if let Some(expiration) = PAUSED.may_load(deps.storage)? {
+        if !expiration.is_expired(&env.block) {
+            return Err(ContractError::Paused {});
+        }
+    }
+
     match msg {
         ExecuteMsg::ExecuteProposalHook { msgs } => {
             execute_proposal_hook(deps.as_ref(), info.sender, msgs)
@@ -151,7 +158,29 @@ pub fn execute(
         ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
             execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
         }
+        ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
     }
+}
+
+pub fn execute_pause(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    pause_duration: Duration,
+) -> Result<Response, ContractError> {
+    // Only the core contract may call this method.
+    if sender != env.contract.address {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let until = pause_duration.after(&env.block);
+
+    PAUSED.save(deps.storage, &until)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "execute_pause")
+        .add_attribute("sender", sender)
+        .add_attribute("until", until.to_string()))
 }
 
 pub fn execute_proposal_hook(
@@ -371,7 +400,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ProposalModules { start_at, limit } => {
             query_governance_modules(deps, start_at, limit)
         }
-        QueryMsg::DumpState {} => query_dump_state(deps),
+        QueryMsg::DumpState {} => query_dump_state(deps, env),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, address, height)
         }
@@ -384,6 +413,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Cw20Balances { start_at, limit } => {
             query_cw20_balances(deps, env, start_at, limit)
         }
+        QueryMsg::PauseInfo {} => query_paused(deps, env),
     }
 }
 
@@ -431,16 +461,35 @@ pub fn query_governance_modules(
     to_binary(&modules)
 }
 
-pub fn query_dump_state(deps: Deps) -> StdResult<Binary> {
+fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
+    Ok(match PAUSED.may_load(deps.storage)? {
+        Some(expiration) => {
+            if expiration.is_expired(&env.block) {
+                PauseInfoResponse::Unpaused {}
+            } else {
+                PauseInfoResponse::Paused { expiration }
+            }
+        }
+        None => PauseInfoResponse::Unpaused {},
+    })
+}
+
+pub fn query_paused(deps: Deps, env: Env) -> StdResult<Binary> {
+    to_binary(&get_pause_info(deps, env)?)
+}
+
+pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
     let governance_modules = PROPOSAL_MODULES
         .keys(deps.storage, None, None, cosmwasm_std::Order::Descending)
         .collect::<Result<Vec<Addr>, _>>()?;
+    let pause_info = get_pause_info(deps, env)?;
     let version = get_contract_version(deps.storage)?;
     to_binary(&DumpStateResponse {
         config,
         version,
+        pause_info,
         governance_modules,
         voting_module,
     })

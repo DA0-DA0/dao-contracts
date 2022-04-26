@@ -1,5 +1,6 @@
 use cosmwasm_std::{Addr, Uint128};
 use cw2::ContractVersion;
+use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +12,8 @@ use crate::state::Config;
 pub struct DumpStateResponse {
     /// The governance contract's config.
     pub config: Config,
+    // True if the contract is currently paused.
+    pub pause_info: PauseInfoResponse,
     /// The governance contract's version.
     pub version: ContractVersion,
     /// The governance modules associated with the governance
@@ -18,6 +21,13 @@ pub struct DumpStateResponse {
     pub governance_modules: Vec<Addr>,
     /// The voting module associated with the governance contract.
     pub voting_module: Addr,
+}
+
+/// Information about if the contract is currently paused.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum PauseInfoResponse {
+    Paused { expiration: Expiration },
+    Unpaused {},
 }
 
 /// Returned by the `GetItem` query.
