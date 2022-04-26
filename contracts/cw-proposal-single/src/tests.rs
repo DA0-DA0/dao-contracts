@@ -2,17 +2,20 @@ use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
-use indexable_hooks::HooksResponse;
-use rand::{prelude::SliceRandom, Rng};
 
-use voting::{Vote, Votes};
+use cw_core::msg::ModuleInstantiateInfo;
+use cw_utils::Duration;
+
+use indexable_hooks::HooksResponse;
+
+use testing::{ShouldExecute, TestVote};
+use voting::{PercentageThreshold, Status, Threshold, Vote, Votes};
 
 use crate::{
     msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::{Proposal, Status},
+    proposal::Proposal,
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
     state::{CheckedDepositInfo, Config},
-    threshold::{PercentageThreshold, Threshold},
 };
 
 const CREATOR_ADDR: &str = "creator";
@@ -75,28 +78,50 @@ fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn instantiate_governance(app: &mut App, code_id: u64, msg: cw_core::msg::InstantiateMsg) -> Addr {
-    app.instantiate_contract(
-        code_id,
-        Addr::unchecked(CREATOR_ADDR),
-        &msg,
-        &[],
-        "cw-governance",
-        None,
+fn staked_balances_voting() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw20_staked_balance_voting::contract::execute,
+        cw20_staked_balance_voting::contract::instantiate,
+        cw20_staked_balance_voting::contract::query,
     )
-    .unwrap()
+    .with_reply(cw20_staked_balance_voting::contract::reply);
+    Box::new(contract)
 }
 
-fn instantiate_with_default_governance(
+fn stake_cw20() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        stake_cw20::contract::execute,
+        stake_cw20::contract::instantiate,
+        stake_cw20::contract::query,
+    );
+    Box::new(contract)
+}
+
+fn cw4_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw4_group::contract::execute,
+        cw4_group::contract::instantiate,
+        cw4_group::contract::query,
+    );
+    Box::new(contract)
+}
+
+fn cw4_voting_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw4_voting::contract::execute,
+        cw4_voting::contract::instantiate,
+        cw4_voting::contract::query,
+    )
+    .with_reply(cw4_voting::contract::reply);
+    Box::new(contract)
+}
+
+fn instantiate_with_staked_balances_governance(
     app: &mut App,
-    code_id: u64,
-    msg: InstantiateMsg,
+    governance_code_id: u64,
+    governance_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
 ) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
-    let governance_id = app.store_code(cw_gov_contract());
-    let votemod_id = app.store_code(cw20_balances_voting());
-
     let initial_balances = initial_balances.unwrap_or_else(|| {
         vec![Cw20Coin {
             address: CREATOR_ADDR.to_string(),
@@ -104,42 +129,117 @@ fn instantiate_with_default_governance(
         }]
     });
 
-    let governance_instantiate = cw_core::msg::InstantiateMsg {
+    // Collapse balances so that we can test double votes.
+    let initial_balances: Vec<Cw20Coin> = {
+        let mut already_seen = vec![];
+        initial_balances
+            .into_iter()
+            .filter(|Cw20Coin { address, amount: _ }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .collect()
+    };
+
+    let cw20_id = app.store_code(cw20_contract());
+    let stake_cw20_id = app.store_code(stake_cw20());
+    let staked_balances_voting_id = app.store_code(staked_balances_voting());
+    let core_contract_id = app.store_code(cw_gov_contract());
+
+    let instantiate_core = cw_core::msg::InstantiateMsg {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
         automatically_add_cw20s: true,
-        automatically_add_cw721s: true,
-        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
-            code_id: votemod_id,
-            msg: to_binary(&cw20_balance_voting::msg::InstantiateMsg {
-                token_info: cw20_balance_voting::msg::TokenInfo::New {
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: staked_balances_voting_id,
+            msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
+                active_threshold: None,
+                token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
                     code_id: cw20_id,
-                    label: "DAO DAO governance token".to_string(),
-                    name: "DAO".to_string(),
+                    label: "DAO DAO governance token.".to_string(),
+                    name: "DAO DAO".to_string(),
                     symbol: "DAO".to_string(),
                     decimals: 6,
-                    initial_balances,
+                    initial_balances: initial_balances.clone(),
                     marketing: None,
+                    staking_code_id: stake_cw20_id,
+                    unstaking_duration: Some(Duration::Height(6)),
+                    initial_dao_balance: None,
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: cw_core::msg::Admin::None {},
             label: "DAO DAO voting module".to_string(),
         },
-        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
-            code_id,
-            msg: to_binary(&msg).unwrap(),
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: governance_code_id,
+            label: "DAO DAO governance module.".to_string(),
             admin: cw_core::msg::Admin::CoreContract {},
-            label: "DAO DAO governance module".to_string(),
+            msg: to_binary(&governance_instantiate).unwrap(),
         }],
         initial_items: None,
     };
 
-    instantiate_governance(app, governance_id, governance_instantiate)
+    let core_addr = app
+        .instantiate_contract(
+            core_contract_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &instantiate_core,
+            &[],
+            "DAO DAO",
+            None,
+        )
+        .unwrap();
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let voting_module = gov_state.voting_module;
+
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake all the initial balances.
+    for Cw20Coin { address, amount } in initial_balances {
+        app.execute_contract(
+            Addr::unchecked(&address),
+            token_contract.clone(),
+            &cw20::Cw20ExecuteMsg::Send {
+                contract: staking_contract.to_string(),
+                amount,
+                msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    // Update the block so that those staked balances appear.
+    app.update_block(|block| block.height += 1);
+
+    core_addr
 }
 
-fn instantiate_with_staking_default_governance(
+fn instantiate_with_staking_active_threshold(
     app: &mut App,
     code_id: u64,
     msg: InstantiateMsg,
@@ -194,125 +294,226 @@ fn instantiate_with_staking_default_governance(
         initial_items: None,
     };
 
-    instantiate_governance(app, governance_id, governance_instantiate)
+    app.instantiate_contract(
+        governance_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &governance_instantiate,
+        &[],
+        "DAO DAO",
+        None,
+    )
+    .unwrap()
 }
 
-#[test]
-fn test_propose() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+fn instantiate_with_cw4_groups_governance(
+    app: &mut App,
+    governance_code_id: u64,
+    governance_instantiate: InstantiateMsg,
+    initial_weights: Option<Vec<Cw20Coin>>,
+) -> Addr {
+    let cw4_id = app.store_code(cw4_contract());
+    let core_id = app.store_code(cw_gov_contract());
+    let votemod_id = app.store_code(cw4_voting_contract());
 
-    let threshold = Threshold::AbsolutePercentage {
-        percentage: PercentageThreshold::Majority {},
-    };
-    let max_voting_period = cw_utils::Duration::Height(6);
-    let instantiate = InstantiateMsg {
-        threshold: threshold.clone(),
-        max_voting_period,
-        only_members_execute: false,
-        deposit_info: None,
+    let initial_weights = initial_weights.unwrap_or_default();
+
+    // Remove duplicates so that we can test duplicate voting.
+    let initial_weights: Vec<cw4::Member> = {
+        let mut already_seen = vec![];
+        initial_weights
+            .into_iter()
+            .filter(|Cw20Coin { address, .. }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .map(|Cw20Coin { address, amount }| cw4::Member {
+                addr: address,
+                weight: amount.u128() as u64,
+            })
+            .collect()
     };
 
-    let governance_addr =
-        instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
-    let governance_modules: Vec<Addr> = app
-        .wrap()
-        .query_wasm_smart(
-            governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
-                limit: None,
-            },
+    let governance_instantiate = cw_core::msg::InstantiateMsg {
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+            code_id: votemod_id,
+            msg: to_binary(&cw4_voting::msg::InstantiateMsg {
+                cw4_group_code_id: cw4_id,
+                initial_members: initial_weights,
+            })
+            .unwrap(),
+            admin: cw_core::msg::Admin::CoreContract {},
+            label: "DAO DAO voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+            code_id: governance_code_id,
+            msg: to_binary(&governance_instantiate).unwrap(),
+            admin: cw_core::msg::Admin::CoreContract {},
+            label: "DAO DAO governance module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    let addr = app
+        .instantiate_contract(
+            core_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &governance_instantiate,
+            &[],
+            "DAO DAO",
+            None,
         )
         .unwrap();
 
-    assert_eq!(governance_modules.len(), 1);
-    let govmod_single = governance_modules.into_iter().next().unwrap();
+    // Update the block so that weights appear.
+    app.update_block(|block| block.height += 1);
 
-    // Check that the governance module has been configured correctly.
-    let config: Config = app
-        .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
-        .unwrap();
-    let expected = Config {
-        threshold: threshold.clone(),
-        max_voting_period,
-        only_members_execute: false,
-        dao: governance_addr,
-        deposit_info: None,
+    addr
+}
+
+fn instantiate_with_cw20_balances_governance(
+    app: &mut App,
+    governance_code_id: u64,
+    governance_instantiate: InstantiateMsg,
+    initial_balances: Option<Vec<Cw20Coin>>,
+) -> Addr {
+    let cw20_id = app.store_code(cw20_contract());
+    let core_id = app.store_code(cw_gov_contract());
+    let votemod_id = app.store_code(cw20_balances_voting());
+
+    let initial_balances = initial_balances.unwrap_or_else(|| {
+        vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100_000_000),
+        }]
+    });
+
+    // Collapse balances so that we can test double votes.
+    let initial_balances: Vec<Cw20Coin> = {
+        let mut already_seen = vec![];
+        initial_balances
+            .into_iter()
+            .filter(|Cw20Coin { address, amount: _ }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .collect()
     };
-    assert_eq!(config, expected);
 
-    // Create a new proposal.
-    app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        govmod_single.clone(),
-        &ExecuteMsg::Propose {
-            title: "A simple text proposal".to_string(),
-            description: "This is a simple text proposal".to_string(),
-            msgs: vec![],
+    let governance_instantiate = cw_core::msg::InstantiateMsg {
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+            code_id: votemod_id,
+            msg: to_binary(&cw20_balance_voting::msg::InstantiateMsg {
+                token_info: cw20_balance_voting::msg::TokenInfo::New {
+                    code_id: cw20_id,
+                    label: "DAO DAO governance token".to_string(),
+                    name: "DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances,
+                    marketing: None,
+                },
+            })
+            .unwrap(),
+            admin: cw_core::msg::Admin::CoreContract {},
+            label: "DAO DAO voting module".to_string(),
         },
-        &[],
-    )
-    .unwrap();
-
-    let created: ProposalResponse = app
-        .wrap()
-        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
-        .unwrap();
-    let current_block = app.block_info();
-    let expected = Proposal {
-        title: "A simple text proposal".to_string(),
-        description: "This is a simple text proposal".to_string(),
-        proposer: Addr::unchecked(CREATOR_ADDR),
-        start_height: current_block.height,
-        expiration: max_voting_period.after(&current_block),
-        threshold,
-        total_power: Uint128::new(100_000_000),
-        msgs: vec![],
-        status: crate::proposal::Status::Open,
-        votes: Votes::zero(),
-        deposit_info: None,
+        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+            code_id: governance_code_id,
+            msg: to_binary(&governance_instantiate).unwrap(),
+            admin: cw_core::msg::Admin::CoreContract {},
+            label: "DAO DAO governance module".to_string(),
+        }],
+        initial_items: None,
     };
 
-    assert_eq!(created.proposal, expected);
-    assert_eq!(created.id, 1u64);
+    app.instantiate_contract(
+        core_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &governance_instantiate,
+        &[],
+        "DAO DAO",
+        None,
+    )
+    .unwrap()
 }
 
-/// If a test vote should execute. Used for fuzzing and checking that
-/// votes after a proposal has completed aren't allowed.
-pub enum ShouldExecute {
-    /// This should execute.
-    Yes,
-    /// This should not execute.
-    No,
-    /// Doesn't matter.
-    Meh,
+fn do_votes_cw20_balances(
+    votes: Vec<TestVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+) {
+    do_test_votes(
+        votes,
+        threshold,
+        expected_status,
+        total_supply,
+        None,
+        instantiate_with_cw20_balances_governance,
+    );
 }
 
-struct TestVote {
-    /// The address casting the vote.
-    voter: String,
-    /// Position on the vote.
-    position: Vote,
-    /// Voting power of the address.
-    weight: Uint128,
-    /// If this vote is expected to execute.
-    should_execute: ShouldExecute,
+fn do_votes_staked_balances(
+    votes: Vec<TestVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+) {
+    do_test_votes(
+        votes,
+        threshold,
+        expected_status,
+        total_supply,
+        None,
+        instantiate_with_staked_balances_governance,
+    );
 }
 
-// Creates a proposal and then executes a series of votes on those
-// proposals. Asserts both that those votes execute as expected and
-// that the final status of the proposal is what is expected. Returns
-// the address of the governance contract that it has created so that
-// callers may do additional inspection of the contract's state.
-fn do_test_votes(
+fn do_votes_cw4_weights(
+    votes: Vec<TestVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+) {
+    do_test_votes(
+        votes,
+        threshold,
+        expected_status,
+        total_supply,
+        None,
+        instantiate_with_cw4_groups_governance,
+    );
+}
+
+fn do_test_votes<F>(
     votes: Vec<TestVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
     deposit_info: Option<DepositInfo>,
-) -> (App, Addr) {
+    setup_governance: F,
+) -> (App, Addr)
+where
+    F: Fn(&mut App, u64, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
+{
     let mut app = App::default();
     let govmod_id = app.store_code(single_govmod_contract());
 
@@ -345,12 +546,8 @@ fn do_test_votes(
         deposit_info,
     };
 
-    let governance_addr = instantiate_with_default_governance(
-        &mut app,
-        govmod_id,
-        instantiate,
-        Some(initial_balances),
-    );
+    let governance_addr =
+        setup_governance(&mut app, govmod_id, instantiate, Some(initial_balances));
 
     let governance_modules: Vec<Addr> = app
         .wrap()
@@ -465,489 +662,198 @@ fn do_test_votes(
     (app, governance_addr)
 }
 
+// Creates a proposal and then executes a series of votes on those
+// proposals. Asserts both that those votes execute as expected and
+// that the final status of the proposal is what is expected. Returns
+// the address of the governance contract that it has created so that
+// callers may do additional inspection of the contract's state.
+fn do_test_votes_cw20_balances(
+    votes: Vec<TestVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+    deposit_info: Option<DepositInfo>,
+) -> (App, Addr) {
+    do_test_votes(
+        votes,
+        threshold,
+        expected_status,
+        total_supply,
+        deposit_info,
+        instantiate_with_cw20_balances_governance,
+    )
+}
+
+#[test]
+fn test_propose() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold: threshold.clone(),
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+    };
+
+    let governance_addr =
+        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // Check that the governance module has been configured correctly.
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let expected = Config {
+        threshold: threshold.clone(),
+        max_voting_period,
+        only_members_execute: false,
+        dao: governance_addr,
+        deposit_info: None,
+    };
+    assert_eq!(config, expected);
+
+    // Create a new proposal.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let created: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    let current_block = app.block_info();
+    let expected = Proposal {
+        title: "A simple text proposal".to_string(),
+        description: "This is a simple text proposal".to_string(),
+        proposer: Addr::unchecked(CREATOR_ADDR),
+        start_height: current_block.height,
+        expiration: max_voting_period.after(&current_block),
+        threshold,
+        total_power: Uint128::new(100_000_000),
+        msgs: vec![],
+        status: Status::Open,
+        votes: Votes::zero(),
+        deposit_info: None,
+    };
+
+    assert_eq!(created.proposal, expected);
+    assert_eq!(created.id, 1u64);
+}
+
 #[test]
 fn test_vote_simple() {
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::Yes,
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Passed,
-        None,
-        None,
-    );
+    testing::test_simple_votes(do_votes_cw20_balances);
+    testing::test_simple_votes(do_votes_cw4_weights);
+    testing::test_simple_votes(do_votes_staked_balances)
+}
 
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::No,
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Rejected,
-        None,
-        None,
-    );
+#[test]
+fn test_simple_vote_no_overflow() {
+    testing::test_simple_vote_no_overflow(do_votes_cw20_balances);
+    testing::test_simple_vote_no_overflow(do_votes_staked_balances)
 }
 
 #[test]
 fn test_vote_no_overflow() {
-    // We should not overflow when computing passing thresholds even
-    // when there are 2^128 votes.
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::Yes,
-            weight: Uint128::new(u128::max_value()),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Passed,
-        None,
-        None,
-    );
+    testing::test_vote_no_overflow(do_votes_cw20_balances);
+    testing::test_vote_no_overflow(do_votes_staked_balances)
+}
+
+#[test]
+fn test_simple_early_rejection() {
+    testing::test_simple_early_rejection(do_votes_cw20_balances);
+    testing::test_simple_early_rejection(do_votes_cw4_weights);
+    testing::test_simple_early_rejection(do_votes_staked_balances)
 }
 
 #[test]
 fn test_vote_abstain_only() {
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::Abstain,
-            weight: Uint128::new(u128::max_value()),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Rejected,
-        None,
-        None,
-    );
-
-    // The quorum shouldn't matter here in determining if the vote is
-    // rejected.
-    for i in 0..101 {
-        do_test_votes(
-            vec![TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::Abstain,
-                weight: Uint128::new(u128::max_value()),
-                should_execute: ShouldExecute::Yes,
-            }],
-            Threshold::ThresholdQuorum {
-                threshold: PercentageThreshold::Percent(Decimal::percent(100)),
-                quorum: PercentageThreshold::Percent(Decimal::percent(i)),
-            },
-            Status::Rejected,
-            None,
-            None,
-        );
-    }
-}
-
-#[test]
-fn test_single_no() {
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::No,
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Rejected,
-        Some(Uint128::from(u128::max_value())),
-        None,
-    );
+    testing::test_vote_abstain_only(do_votes_cw20_balances);
+    testing::test_vote_abstain_only(do_votes_cw4_weights);
+    testing::test_vote_abstain_only(do_votes_staked_balances)
 }
 
 #[test]
 fn test_tricky_rounding() {
-    // This tests the smallest possible round up for passing
-    // thresholds we can have. Specifically, a 1% passing threshold
-    // and 1 total vote. This should round up and only pass if there
-    // are more than 1 yes votes.
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::Yes,
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(1)),
-        },
-        Status::Passed,
-        None,
-        None,
-    );
-
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::Abstain,
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(1)),
-        },
-        Status::Rejected,
-        None,
-        None,
-    );
+    testing::test_tricky_rounding(do_votes_cw20_balances);
+    testing::test_tricky_rounding(do_votes_cw4_weights);
+    testing::test_tricky_rounding(do_votes_staked_balances)
 }
 
 #[test]
 fn test_no_double_votes() {
-    do_test_votes(
-        vec![
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::Abstain,
-                weight: Uint128::new(2),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(2),
-                should_execute: ShouldExecute::No,
-            },
-        ],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        // NOTE: Updating our cw20-base version will cause this to
-        // fail. In versions of cw20-base before Feb 15 2022 (the one
-        // we use at the time of writing) it was allowed to have an
-        // initial balance that repeats for a given address but it
-        // would cause miscalculation of the total supply. In this
-        // case the total supply is miscumputed to be 4 so this is
-        // assumed to have 2 abstain votes out of 4 possible votes.
-        Status::Open,
-        None,
-        None,
-    );
+    testing::test_no_double_votes(do_votes_cw20_balances);
+    testing::test_no_double_votes(do_votes_cw4_weights);
+    testing::test_no_double_votes(do_votes_staked_balances);
 }
 
-/// The current behavior for passing proposals is that the first
-/// option to reach the threshold wins. For example, with a 50%
-/// passing threshold if 50% of voting power votes no that proposal
-/// fails even if the other 50% would have voted yes. The same goes if
-/// the yes and no were reversed.
-///
-/// TODO(zeke): is this the behavior that we want?
 #[test]
-fn test_close_votes() {
-    do_test_votes(
-        vec![
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::Abstain,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "keze".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(5),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "ezek".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(5),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(50)),
-        },
-        Status::Passed,
-        None,
-        None,
-    );
-
-    do_test_votes(
-        vec![
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::Abstain,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "keze".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(5),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "ezek".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(5),
-                should_execute: ShouldExecute::No,
-            },
-        ],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(50)),
-        },
-        Status::Passed,
-        None,
-        None,
-    );
+fn test_votes_favor_yes() {
+    testing::test_votes_favor_yes(do_votes_cw20_balances);
+    testing::test_votes_favor_yes(do_votes_staked_balances);
 }
 
-/// Another test which demonstrates the trouble with our "first to
-/// reach threshold" method for determining the winner. In this case
-/// there are more no votes than yes votes but because yes votes are
-/// the first ones to reach the threshold after the quorum has been
-/// passed yes votes win.
-///
-/// This is a pretty nonsense passing threshold but helps demonstrate
-/// the issue well enough.
 #[test]
-fn test_close_votes_quorum() {
-    do_test_votes(
-        vec![
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "keze".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(5),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "ezek".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::No,
-            },
-        ],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Percent(Decimal::percent(10)),
-            quorum: PercentageThreshold::Majority {},
-        },
-        Status::Passed,
-        None,
-        None,
-    );
+fn test_votes_low_threshold() {
+    testing::test_votes_low_threshold(do_votes_cw20_balances);
+    testing::test_votes_low_threshold(do_votes_cw4_weights);
+    testing::test_votes_low_threshold(do_votes_staked_balances)
 }
 
 #[test]
 fn test_majority_vs_half() {
-    do_test_votes(
-        vec![
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "keze".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Percent(Decimal::percent(50)),
-            quorum: PercentageThreshold::Majority {},
-        },
-        Status::Passed,
-        None,
-        None,
-    );
-
-    do_test_votes(
-        vec![
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestVote {
-                voter: "keze".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::No,
-            },
-        ],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Majority {},
-            quorum: PercentageThreshold::Majority {},
-        },
-        Status::Rejected,
-        None,
-        None,
-    );
+    testing::test_majority_vs_half(do_votes_cw20_balances);
+    testing::test_majority_vs_half(do_votes_cw4_weights);
+    testing::test_majority_vs_half(do_votes_staked_balances)
 }
 
 #[test]
 fn test_pass_threshold_not_quorum() {
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::Yes,
-            weight: Uint128::new(59),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Majority {},
-            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        },
-        Status::Open,
-        Some(Uint128::new(100)),
-        None,
-    );
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::No,
-            weight: Uint128::new(59),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Majority {},
-            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        },
-        // As the threshold is 50% and 59% of voters have voted no
-        // this is unable to pass.
-        Status::Rejected,
-        Some(Uint128::new(100)),
-        None,
-    );
+    testing::test_pass_threshold_not_quorum(do_votes_cw20_balances);
+    testing::test_pass_threshold_not_quorum(do_votes_cw4_weights);
+    testing::test_pass_threshold_not_quorum(do_votes_staked_balances)
 }
 
 #[test]
 fn test_pass_threshold_exactly_quorum() {
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::Yes,
-            weight: Uint128::new(60),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Majority {},
-            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        },
-        Status::Passed,
-        Some(Uint128::new(100)),
-        None,
-    );
-    do_test_votes(
-        vec![
-            TestVote {
-                voter: "ekez".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(59),
-                should_execute: ShouldExecute::Yes,
-            },
-            // This is an intersting one because in this case the no
-            // voter is actually incentivised not to vote. By voting
-            // they move the quorum over the threshold and pass the
-            // vote. In a DAO with sufficently involved stakeholders
-            // no voters should effectively never vote if there is a
-            // quorum higher than the threshold as it makes the
-            // passing threshold the quorum threshold.
-            TestVote {
-                voter: "keze".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(1),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Majority {},
-            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        },
-        Status::Passed,
-        Some(Uint128::new(100)),
-        None,
-    );
-    do_test_votes(
-        vec![TestVote {
-            voter: "ekez".to_string(),
-            position: Vote::No,
-            weight: Uint128::new(60),
-            should_execute: ShouldExecute::Yes,
-        }],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Majority {},
-            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        },
-        Status::Rejected,
-        Some(Uint128::new(100)),
-        None,
-    );
+    testing::test_pass_exactly_quorum(do_votes_cw20_balances);
+    testing::test_pass_exactly_quorum(do_votes_cw4_weights);
+    testing::test_pass_exactly_quorum(do_votes_staked_balances);
 }
 
 /// Generate some random voting selections and make sure they behave
 /// as expected.
 #[test]
 fn fuzz_voting() {
-    let mut rng = rand::thread_rng();
-    let dist = rand::distributions::Uniform::<u64>::new(1, 200);
-    for _ in 0..25 {
-        let yes: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
-        let no: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
-
-        let yes_sum: u64 = yes.iter().sum();
-        let no_sum: u64 = no.iter().sum();
-        let expected_status = match yes_sum.cmp(&no_sum) {
-            std::cmp::Ordering::Less => Status::Rejected,
-            // Depends on which reaches the threshold first. Ignore for now.
-            std::cmp::Ordering::Equal => Status::Rejected,
-            std::cmp::Ordering::Greater => Status::Passed,
-        };
-
-        let yes = yes.into_iter().enumerate().map(|(idx, weight)| TestVote {
-            voter: format!("yes_{}", idx),
-            position: Vote::Yes,
-            weight: Uint128::new(weight as u128),
-            should_execute: ShouldExecute::Meh,
-        });
-        let no = no.into_iter().enumerate().map(|(idx, weight)| TestVote {
-            voter: format!("no_{}", idx),
-            position: Vote::No,
-            weight: Uint128::new(weight as u128),
-            should_execute: ShouldExecute::Meh,
-        });
-        let mut votes = yes.chain(no).collect::<Vec<_>>();
-        votes.shuffle(&mut rng);
-
-        do_test_votes(
-            votes,
-            Threshold::AbsolutePercentage {
-                percentage: PercentageThreshold::Majority {},
-            },
-            expected_status,
-            None,
-            None,
-        );
-    }
+    testing::fuzz_voting(do_votes_cw20_balances);
+    testing::fuzz_voting(do_votes_cw4_weights);
+    testing::fuzz_voting(do_votes_staked_balances);
 }
 
 /// Instantiate the contract and use the voting module's token
@@ -973,7 +879,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     };
 
     let governance_addr =
-        instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
@@ -1049,7 +955,7 @@ fn test_different_token_proposal_deposit() {
         }),
     };
 
-    instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+    instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
 }
 
 /// Try to instantiate the governance module with a non-cw20 as its
@@ -1104,7 +1010,7 @@ fn test_bad_token_proposal_deposit() {
         }),
     };
 
-    instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+    instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
 }
 
 #[test]
@@ -1127,7 +1033,7 @@ fn test_take_proposal_deposit() {
         }),
     };
 
-    let governance_addr = instantiate_with_default_governance(
+    let governance_addr = instantiate_with_cw20_balances_governance(
         &mut app,
         govmod_id,
         instantiate,
@@ -1216,7 +1122,7 @@ fn test_deposit_return_on_execute() {
     // Will create a proposal and execute it, one token will be
     // deposited to create said proposal, expectation is that the
     // token is then returned once the proposal is executed.
-    let (mut app, governance_addr) = do_test_votes(
+    let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
@@ -1288,7 +1194,7 @@ fn test_deposit_return_on_execute() {
 
 #[test]
 fn test_close_open_proposal() {
-    let (mut app, governance_addr) = do_test_votes(
+    let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestVote {
             voter: "ekez".to_string(),
             position: Vote::No,
@@ -1362,7 +1268,7 @@ fn test_close_open_proposal() {
 
 #[test]
 fn test_deposit_return_on_close() {
-    let (mut app, governance_addr) = do_test_votes(
+    let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestVote {
             voter: "ekez".to_string(),
             position: Vote::No,
@@ -1434,7 +1340,7 @@ fn test_deposit_return_on_close() {
 
 #[test]
 fn test_update_config() {
-    let (mut app, governance_addr) = do_test_votes(
+    let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestVote {
             voter: "ekez".to_string(),
             position: Vote::No,
@@ -1548,7 +1454,7 @@ fn test_update_config() {
 
 #[test]
 fn test_no_return_if_no_refunds() {
-    let (mut app, governance_addr) = do_test_votes(
+    let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestVote {
             voter: "ekez".to_string(),
             position: Vote::No,
@@ -1609,7 +1515,7 @@ fn test_no_return_if_no_refunds() {
 fn test_query_list_proposals() {
     let mut app = App::default();
     let govmod_id = app.store_code(single_govmod_contract());
-    let gov_addr = instantiate_with_default_governance(
+    let gov_addr = instantiate_with_cw20_balances_governance(
         &mut app,
         govmod_id,
         InstantiateMsg {
@@ -1766,7 +1672,7 @@ fn test_hooks() {
     };
 
     let governance_addr =
-        instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
@@ -1937,7 +1843,7 @@ fn test_active_threshold_absolute() {
         deposit_info: None,
     };
 
-    let governance_addr = instantiate_with_staking_default_governance(
+    let governance_addr = instantiate_with_staking_active_threshold(
         &mut app,
         govmod_id,
         instantiate,
@@ -2062,7 +1968,7 @@ fn test_active_threshold_percent() {
     };
 
     // 20% needed to be active, 20% of 100000000 is 20000000
-    let governance_addr = instantiate_with_staking_default_governance(
+    let governance_addr = instantiate_with_staking_active_threshold(
         &mut app,
         govmod_id,
         instantiate,
@@ -2187,7 +2093,7 @@ fn test_active_threshold_none() {
     };
 
     let governance_addr =
-        instantiate_with_staking_default_governance(&mut app, govmod_id, instantiate, None, None);
+        instantiate_with_staking_active_threshold(&mut app, govmod_id, instantiate, None, None);
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
@@ -2264,7 +2170,7 @@ fn test_active_threshold_none() {
     };
 
     let governance_addr =
-        instantiate_with_default_governance(&mut app, govmod_id, instantiate, None);
+        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(

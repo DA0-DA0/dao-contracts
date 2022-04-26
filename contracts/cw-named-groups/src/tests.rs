@@ -17,15 +17,15 @@ fn named_group_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-const ADMIN: &str = "DAO";
-const USER1: &str = "USER1";
-const USER2: &str = "USER2";
-const USER3: &str = "USER3";
+const ADMIN: &str = "dao";
+const USER1: &str = "user1";
+const USER2: &str = "user2";
+const USER3: &str = "user3";
 
 fn group_factory(id: u8) -> Group {
     Group {
-        name: format!("GROUP{}_NAME", id),
-        addresses: vec![format!("USER{}", id)],
+        name: format!("group{}_name", id),
+        addresses: vec![format!("user{}", id)],
     }
 }
 
@@ -678,7 +678,7 @@ mod list_groups {
         let (app, contract_addr) = instantiate(None).unwrap();
 
         // List groups from a non-existent address.
-        let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string(), None, None)
+        let groups = list_groups(&app, &contract_addr, "address".to_string(), None, None)
             .unwrap()
             .groups;
 
@@ -705,7 +705,7 @@ mod list_groups {
         .unwrap();
 
         // List groups from a non-existent address.
-        let groups = list_groups(&app, &contract_addr, "ADDRESS".to_string(), None, None)
+        let groups = list_groups(&app, &contract_addr, "address".to_string(), None, None)
             .unwrap()
             .groups;
 
@@ -842,8 +842,8 @@ mod is_address_in_group {
         let err = is_address_in_group(
             &app,
             &contract_addr,
-            "ADDRESS".to_string(),
-            "GROUP".to_string(),
+            "address".to_string(),
+            "group".to_string(),
         )
         .unwrap_err();
 
@@ -875,7 +875,7 @@ mod is_address_in_group {
 
         // Check if address is in group.
         let is_in_group =
-            is_address_in_group(&app, &contract_addr, "ADDRESS".to_string(), group1.name)
+            is_address_in_group(&app, &contract_addr, "address".to_string(), group1.name)
                 .unwrap()
                 .is_in_group;
 

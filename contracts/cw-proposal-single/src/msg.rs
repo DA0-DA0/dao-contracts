@@ -3,8 +3,8 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::threshold::Threshold;
 use cw_core_macros::govmod_query;
+use voting::Threshold;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {

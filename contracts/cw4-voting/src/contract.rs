@@ -52,6 +52,7 @@ pub fn instantiate(
         funds: vec![],
         label: env.contract.address.to_string(),
     };
+
     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_GROUP_REPLY_ID);
 
     DAO_ADDRESS.save(deps.storage, &info.sender)?;

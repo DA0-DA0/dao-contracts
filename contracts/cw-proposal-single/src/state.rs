@@ -6,12 +6,11 @@ use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::Vote;
+use voting::{Status, Threshold, Vote};
 
 use crate::{
     msg::{DepositInfo, DepositToken},
-    proposal::{Proposal, Status},
-    threshold::Threshold,
+    proposal::Proposal,
 };
 
 /// Counterpart to the `DepositInfo` struct which has been processed.

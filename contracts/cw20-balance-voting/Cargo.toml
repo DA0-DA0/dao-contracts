@@ -29,19 +29,19 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta5" }
-cosmwasm-storage = { version = "1.0.0-beta5" }
-cw-storage-plus = "0.12"
-cw2 = "0.12"
-cw20 = "0.12"
-cw-utils = "0.12"
+cosmwasm-std = { version = "1.0.0-beta" }
+cosmwasm-storage = { version = "1.0.0-beta" }
+cw-storage-plus = "0.13"
+cw2 = "0.13"
+cw20 = "0.13"
+cw-utils = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
-cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" } 
-cw20-base = {  version = "0.12", features = ["library"] }
+cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
+cw20-base = {  version = "0.13", features = ["library"] }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta5" }
-cw-multi-test = "0.12"
+cosmwasm-schema = { version = "1.0.0-beta" }
+cw-multi-test = "0.13"
