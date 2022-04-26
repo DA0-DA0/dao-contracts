@@ -85,16 +85,16 @@ pub enum ExecuteMsg {
     /// messages in the hook in order.
     ExecuteProposalHook { msgs: Vec<CosmosMsg<Empty>> },
     /// Callable by the core contract. Replaces the current
-    /// governance contract config with the provided config.
+    /// core contract config with the provided config.
     UpdateConfig { config: Config },
     /// Callable by the core contract. Replaces the current
-    /// voting module with a new one instantiated by the governance
+    /// voting module with a new one instantiated by the core
     /// contract.
     UpdateVotingModule { module: ModuleInstantiateInfo },
     /// Updates the core contract's proposal modules. Module
     /// instantiate info in `to_add` is used to create new modules and
     /// install them.
-    UpdateGovernanceModules {
+    UpdateProposalModules {
         to_add: Vec<ModuleInstantiateInfo>,
         to_remove: Vec<String>,
     },

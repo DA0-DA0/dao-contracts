@@ -387,7 +387,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
                     funds: vec![],
-                    msg: to_binary(&ExecuteMsg::UpdateGovernanceModules { to_add, to_remove })
+                    msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove })
                         .unwrap(),
                 }
                 .into()],
@@ -587,7 +587,7 @@ fn test_permissions() {
     test_unauthorized(
         &mut app,
         gov_addr.clone(),
-        ExecuteMsg::UpdateGovernanceModules {
+        ExecuteMsg::UpdateProposalModules {
             to_add: vec![],
             to_remove: vec![],
         },
