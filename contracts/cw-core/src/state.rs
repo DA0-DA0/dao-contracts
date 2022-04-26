@@ -23,7 +23,7 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
-pub const GOVERNANCE_MODULES: Map<Addr, Empty> = Map::new("governance_modules");
+pub const PROPOSAL_MODULES: Map<Addr, Empty> = Map::new("governance_modules");
 pub const ITEMS: Map<String, Addr> = Map::new("items");
 pub const PENDING_ITEM_INSTANTIATION_NAMES: Map<u64, String> =
     Map::new("pending_item_instantiations");
@@ -42,4 +42,4 @@ pub const CW721_LIST: Map<Addr, Empty> = Map::new("cw721s");
 /// removing modules to check that at least one is present as it could
 /// cause the contract to lock due to gas issues if too many modules
 /// are present.
-pub const GOVERNANCE_MODULE_COUNT: Item<u64> = Item::new("governance_module_count");
+pub const PROPOSAL_MODULE_COUNT: Item<u64> = Item::new("governance_module_count");
