@@ -1268,7 +1268,7 @@ fn test_close_open_proposal() {
 
 #[test]
 fn test_zero_deposit() {
-    do_test_votes(
+    do_test_votes_cw20_balances(
         vec![TestVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,

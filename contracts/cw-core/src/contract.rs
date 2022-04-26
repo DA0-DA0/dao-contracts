@@ -138,7 +138,7 @@ pub fn execute(
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
         }
-        ExecuteMsg::UpdateGovernanceModules { to_add, to_remove } => {
+        ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_governance_modules(deps, env, info.sender, to_add, to_remove)
         }
         ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
