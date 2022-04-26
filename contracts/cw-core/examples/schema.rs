@@ -5,7 +5,7 @@ use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, s
 use cosmwasm_std::Addr;
 use cw_core::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse},
+    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
     state::Config,
 };
 use cw_core_interface::voting::{
@@ -23,6 +23,7 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
 
     export_schema(&schema_for!(DumpStateResponse), &out_dir);
+    export_schema(&schema_for!(PauseInfoResponse), &out_dir);
     export_schema(&schema_for!(GetItemResponse), &out_dir);
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);
