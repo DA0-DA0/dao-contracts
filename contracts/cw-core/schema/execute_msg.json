@@ -100,6 +100,26 @@
       "additionalProperties": false
     },
     {
+      "type": "object",
+      "required": [
+        "pause"
+      ],
+      "properties": {
+        "pause": {
+          "type": "object",
+          "required": [
+            "duration"
+          ],
+          "properties": {
+            "duration": {
+              "$ref": "#/definitions/Duration"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overriden. If the item does not exist a new item is added.",
       "type": "object",
       "required": [
@@ -544,6 +564,40 @@
                   "type": "string"
                 }
               }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Duration": {
+      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Time in seconds",
+          "type": "object",
+          "required": [
+            "time"
+          ],
+          "properties": {
+            "time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false

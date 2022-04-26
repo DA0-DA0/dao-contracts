@@ -16,6 +16,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns information about if the contract is currently paused.",
+      "type": "object",
+      "required": [
+        "pause_info"
+      ],
+      "properties": {
+        "pause_info": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Gets the contract's voting module. Returns Addr.",
       "type": "object",
       "required": [

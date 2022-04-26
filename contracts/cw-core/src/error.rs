@@ -10,6 +10,9 @@ pub enum ContractError {
     #[error("Unauthorized.")]
     Unauthorized {},
 
+    #[error("The contract is paused.")]
+    Paused {},
+
     #[error("No voting module provided.")]
     NoVotingModule {},
 
