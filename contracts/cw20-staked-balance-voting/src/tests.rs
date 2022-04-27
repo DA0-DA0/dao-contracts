@@ -1005,6 +1005,81 @@ fn test_active_threshold_percent() {
 }
 
 #[test]
+fn test_active_threshold_percent_rounds_up() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    let voting_addr = instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(5u64),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+                initial_dao_balance: None,
+            },
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(50),
+            }),
+        },
+    );
+
+    let token_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::TokenContract {})
+        .unwrap();
+    let staking_addr: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::StakingContract {})
+        .unwrap();
+
+    // Not active as none staked
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 2 token as creator, should not be active.
+    stake_tokens(
+        &mut app,
+        staking_addr.clone(),
+        token_addr.clone(),
+        CREATOR_ADDR,
+        2,
+    );
+    app.update_block(next_block);
+
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(!is_active.active);
+
+    // Stake 1 more token as creator, should now be active.
+    stake_tokens(&mut app, staking_addr, token_addr, CREATOR_ADDR, 2);
+    app.update_block(next_block);
+
+    let is_active: IsActiveResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::IsActive {})
+        .unwrap();
+    assert!(is_active.active);
+}
+
+#[test]
 fn test_active_threshold_none() {
     let mut app = App::default();
     let cw20_id = app.store_code(cw20_contract());
