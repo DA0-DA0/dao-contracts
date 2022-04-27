@@ -124,6 +124,8 @@ pub fn execute_propose(
         .querier
         .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::VotingModule {})?;
 
+    // Voting modules are not required to implement this
+    // query. Lacking an implementation they are active by default.
     let active_resp: IsActiveResponse = deps
         .querier
         .query_wasm_smart(
@@ -147,8 +149,6 @@ pub fn execute_propose(
         return Err(ContractError::Unauthorized {});
     }
 
-    // Set the expiration to the minimum of the proposal's `latest`
-    // argument and the configured max voting period.
     let expiration = config.max_voting_period.after(&env.block);
 
     let total_power = get_total_power(deps.as_ref(), config.dao, Some(env.block.height))?;
@@ -218,12 +218,7 @@ pub fn execute_execute(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if config.only_members_execute {
-        let power = get_voting_power(
-            deps.as_ref(),
-            info.sender.clone(),
-            config.dao.clone(),
-            Some(env.block.height),
-        )?;
+        let power = get_voting_power(deps.as_ref(), info.sender.clone(), config.dao.clone(), None)?;
         if power.is_zero() {
             return Err(ContractError::Unauthorized {});
         }
@@ -233,9 +228,9 @@ pub fn execute_execute(
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
-    // Check here that the proposal is passed. Allow it to be
-    // executed even if it is expired so long as it passed during its
-    // voting period.
+    // Check here that the proposal is passed. Allow it to be executed
+    // even if it is expired so long as it passed during its voting
+    // period.
     let old_status = prop.status;
     if !prop.is_passed(&env.block) {
         return Err(ContractError::NotPassed {});

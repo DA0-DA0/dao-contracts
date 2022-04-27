@@ -1361,6 +1361,104 @@ fn test_deposit_return_on_close() {
 }
 
 #[test]
+fn test_execute_expired_proposal() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "innactive".to_string(),
+                amount: Uint128::new(90),
+            },
+        ]),
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_modules = gov_state.governance_modules;
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_single = proposal_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "This proposal will expire.".to_string(),
+            description: "What will happen?".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Proposal has now reached quorum but should not be passed.
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Open);
+
+    // Expire the proposal. It should now be passed as we had 100% yes
+    // votes inside the quorum.
+    app.update_block(|b| b.height += 10);
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Passed);
+
+    // Check that we can execute the proposal despite the fact that it
+    // is technically expired.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Executed);
+}
+
+#[test]
 fn test_update_config() {
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestVote {

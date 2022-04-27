@@ -85,7 +85,11 @@ impl DepositInfo {
         };
         // Make an info query as a smoke test that we are indeed
         // working with a token here. We can't turbofish this
-        // type. See <https://github.com/rust-lang/rust/issues/83701>
+        // type. See <https://github.com/rust-lang/rust/issues/83701>.
+        //
+        // This also covers the case where a misbehaving core contract
+        // has returned an invalid address from the `TokenContract`
+        // query as this will fail if the address is bad.
         let _info: cw20::TokenInfoResponse = deps
             .querier
             .query_wasm_smart(token.clone(), &cw20::Cw20QueryMsg::TokenInfo {})?;
