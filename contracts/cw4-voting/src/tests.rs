@@ -5,7 +5,10 @@ use cw_core_interface::voting::{
 };
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
-use crate::msg::{InstantiateMsg, QueryMsg};
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    ContractError,
+};
 
 const DAO_ADDR: &str = "dao";
 const ADDR1: &str = "addr1";
@@ -158,6 +161,38 @@ fn test_contract_info() {
 }
 
 #[test]
+fn test_permissions() {
+    let mut app = App::default();
+    let voting_addr = setup_test_case(&mut app);
+
+    // DAO can not execute hook message.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(DAO_ADDR),
+            voting_addr.clone(),
+            &ExecuteMsg::MemberChangedHook { diffs: vec![] },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
+    // Contract itself can not execute hook message.
+    let err: ContractError = app
+        .execute_contract(
+            voting_addr.clone(),
+            voting_addr,
+            &ExecuteMsg::MemberChangedHook { diffs: vec![] },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+}
+
+#[test]
 fn test_power_at_height() {
     let mut app = App::default();
     let voting_addr = setup_test_case(&mut app);
@@ -199,6 +234,33 @@ fn test_power_at_height() {
             weight: 2,
         }],
     };
+
+    // Should still be one as voting power should not update until
+    // the following block.
+    let addr1_voting_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
+
+    // Same should be true about the groups contract.
+    let cw4_power: cw4::MemberResponse = app
+        .wrap()
+        .query_wasm_smart(
+            cw4_addr.clone(),
+            &cw4::Cw4QueryMsg::Member {
+                addr: ADDR1.to_string(),
+                at_height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw4_power.weight.unwrap(), 1);
 
     app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
         .unwrap();
