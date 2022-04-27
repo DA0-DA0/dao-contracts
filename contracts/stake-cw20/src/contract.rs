@@ -825,7 +825,17 @@ mod tests {
         // Successful bond
         let amount = Uint128::new(50);
         stake_tokens(&mut app, &staking_addr, &cw20_addr, info.clone(), amount).unwrap();
+
+        // Very important that this balances is not reflected until
+        // the next block. This protects us from flash loan hostile
+        // takeovers.
+        assert_eq!(
+            query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::zero()
+        );
+
         app.update_block(next_block);
+
         assert_eq!(
             query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
             Uint128::from(50u128)
