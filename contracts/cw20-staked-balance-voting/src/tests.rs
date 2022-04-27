@@ -1186,7 +1186,7 @@ fn test_update_active_threshold() {
 
 #[test]
 #[should_panic(expected = "Active threshold percentage must be greater than 0 and less than 1")]
-fn test_active_threshold_invalid() {
+fn test_active_threshold_percentage_invalid() {
     let mut app = App::default();
     let cw20_id = app.store_code(cw20_contract());
     let voting_id = app.store_code(staked_balance_voting_contract());
@@ -1213,6 +1213,40 @@ fn test_active_threshold_invalid() {
             },
             active_threshold: Some(ActiveThreshold::Percentage {
                 percent: Decimal::percent(120),
+            }),
+        },
+    );
+}
+
+#[test]
+#[should_panic(expected = "Absolute count threshold cannot be greater than the total token supply")]
+fn test_active_threshold_absolute_count_invalid() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::from(200u64),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::from(100u64)),
+            },
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(10000),
             }),
         },
     );

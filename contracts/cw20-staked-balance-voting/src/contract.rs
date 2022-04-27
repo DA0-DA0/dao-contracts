@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+    to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
     SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -39,7 +39,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     DAO.save(deps.storage, &info.sender)?;
-    if let Some(active_threshold) = msg.active_threshold {
+    if let Some(active_threshold) = msg.active_threshold.clone() {
         if let ActiveThreshold::Percentage { percent } = active_threshold {
             if percent > Decimal::percent(100) {
                 return Err(ContractError::InvalidActivePercentage {});
@@ -55,6 +55,9 @@ pub fn instantiate(
         } => {
             let address = deps.api.addr_validate(&address)?;
             TOKEN.save(deps.storage, &address)?;
+            if let Some(ActiveThreshold::AbsoluteCount { count }) = msg.active_threshold {
+                assert_valid_absolute_count_threshold(deps.as_ref(), address.clone(), count)?
+            }
 
             match staking_contract {
                 StakingInfo::Existing {
@@ -163,6 +166,20 @@ pub fn instantiate(
     }
 }
 
+pub fn assert_valid_absolute_count_threshold(
+    deps: Deps,
+    token_addr: Addr,
+    count: Uint128,
+) -> Result<(), ContractError> {
+    let token_info: cw20::TokenInfoResponse = deps
+        .querier
+        .query_wasm_smart(token_addr, &cw20_base::msg::QueryMsg::TokenInfo {})?;
+    if count > token_info.total_supply {
+        return Err(ContractError::InvalidAbsoluteCount {});
+    }
+    Ok(())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -189,9 +206,15 @@ pub fn execute_update_active_threshold(
     }
 
     if let Some(active_threshold) = new_active_threshold {
-        if let ActiveThreshold::Percentage { percent } = active_threshold {
-            if percent > Decimal::percent(100) {
-                return Err(ContractError::InvalidActivePercentage {});
+        match active_threshold {
+            ActiveThreshold::Percentage { percent } => {
+                if percent > Decimal::percent(100) {
+                    return Err(ContractError::InvalidActivePercentage {});
+                }
+            }
+            ActiveThreshold::AbsoluteCount { count } => {
+                let token = TOKEN.load(deps.storage)?;
+                assert_valid_absolute_count_threshold(deps.as_ref(), token, count)?;
             }
         }
         ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
@@ -331,6 +354,12 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     }
                     let token = deps.api.addr_validate(&res.contract_address)?;
                     TOKEN.save(deps.storage, &token)?;
+
+                    let active_threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
+                    if let Some(ActiveThreshold::AbsoluteCount { count }) = active_threshold {
+                        assert_valid_absolute_count_threshold(deps.as_ref(), token.clone(), count)?;
+                    }
+
                     let staking_contract_code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
                     let unstaking_duration =
                         STAKING_CONTRACT_UNSTAKING_DURATION.load(deps.storage)?;

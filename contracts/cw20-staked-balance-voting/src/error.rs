@@ -29,4 +29,7 @@ pub enum ContractError {
 
     #[error("Active threshold percentage must be greater than 0 and less than 1")]
     InvalidActivePercentage {},
+
+    #[error("Absolute count threshold cannot be greater than the total token supply")]
+    InvalidAbsoluteCount {},
 }
