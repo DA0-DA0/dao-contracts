@@ -430,6 +430,151 @@ fn test_swap_governance_bad() {
 }
 
 #[test]
+fn test_removed_modules_can_not_execute() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_govmod_contract());
+    let gov_id = app.store_code(cw_gov_contract());
+
+    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+
+    let gov_instantiate = InstantiateMsg {
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "governance module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    let gov_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            None,
+        )
+        .unwrap();
+
+    let modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(modules.len(), 1);
+
+    let start_module = modules.into_iter().next().unwrap();
+
+    let to_add = vec![ModuleInstantiateInfo {
+        code_id: govmod_id,
+        msg: to_binary(&govmod_instantiate).unwrap(),
+        admin: Admin::CoreContract {},
+        label: "new governance module".to_string(),
+    }];
+
+    let to_remove = vec![start_module.to_string()];
+
+    // Swap ourselves out.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        start_module.clone(),
+        &cw_proposal_sudo::msg::ExecuteMsg::Execute {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: gov_addr.to_string(),
+                funds: vec![],
+                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove }).unwrap(),
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let finish_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    let new_proposal_module = finish_modules.into_iter().next().unwrap();
+
+    // Try to add a new module and remove the one we added
+    // earlier. This should fail as we have been removed.
+    let to_add = vec![ModuleInstantiateInfo {
+        code_id: govmod_id,
+        msg: to_binary(&govmod_instantiate).unwrap(),
+        admin: Admin::CoreContract {},
+        label: "new governance module".to_string(),
+    }];
+    let to_remove = vec![new_proposal_module.to_string()];
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            start_module,
+            &cw_proposal_sudo::msg::ExecuteMsg::Execute {
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: gov_addr.to_string(),
+                    funds: vec![],
+                    msg: to_binary(&ExecuteMsg::UpdateProposalModules {
+                        to_add: to_add.clone(),
+                        to_remove: to_remove.clone(),
+                    })
+                    .unwrap(),
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
+    // The new proposal module should be able to perform actions.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        new_proposal_module,
+        &cw_proposal_sudo::msg::ExecuteMsg::Execute {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: gov_addr.to_string(),
+                funds: vec![],
+                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove }).unwrap(),
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+}
+
+#[test]
 fn test_swap_voting_module() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_govmod_contract());

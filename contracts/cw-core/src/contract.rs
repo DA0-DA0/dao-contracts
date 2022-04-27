@@ -17,7 +17,7 @@ use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateI
 use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
 use crate::state::{
     Config, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
-    PROPOSAL_MODULES, PROPOSAL_MODULE_COUNT, VOTING_MODULE,
+    PROPOSAL_MODULES, VOTING_MODULE,
 };
 
 // version info for migration info
@@ -70,8 +70,6 @@ pub fn instantiate(
     if gov_module_msgs.is_empty() {
         return Err(ContractError::NoProposalModule {});
     }
-
-    PROPOSAL_MODULE_COUNT.save(deps.storage, &(gov_module_msgs.len() as u64))?;
 
     // Add or instantiate items if any are present.
     let mut instantiate_item_msgs: Vec<SubMsg<Empty>> = vec![];
@@ -250,19 +248,6 @@ pub fn execute_update_governance_modules(
         return Err(ContractError::Unauthorized {});
     }
 
-    let module_count = PROPOSAL_MODULE_COUNT.load(deps.storage)?;
-
-    // Some safe maths.
-    let new_total = module_count
-        .checked_add(to_add.len() as u64)
-        .ok_or(ContractError::Overflow {})?
-        .checked_sub(to_remove.len() as u64)
-        .ok_or(ContractError::Overflow {})?;
-    if new_total == 0 {
-        return Err(ContractError::NoProposalModule {});
-    }
-    PROPOSAL_MODULE_COUNT.save(deps.storage, &new_total)?;
-
     for addr in to_remove {
         let addr = deps.api.addr_validate(&addr)?;
         PROPOSAL_MODULES.remove(deps.storage, addr);
@@ -273,6 +258,18 @@ pub fn execute_update_governance_modules(
         .map(|info| info.into_wasm_msg(env.contract.address.clone()))
         .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
+
+    // If we removed all of our proposal modules and we are not adding
+    // any this operation would result in no proposal modules being
+    // present.
+    if PROPOSAL_MODULES
+        .keys_raw(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .next()
+        .is_none()
+        && to_add.is_empty()
+    {
+        return Err(ContractError::NoProposalModule {});
+    }
 
     Ok(Response::default()
         .add_attribute("action", "execute_update_governance_modules")
