@@ -230,9 +230,10 @@ dependencies = [
  "cw-utils",
  "cw2",
  "cw20",
+ "cw20-base",
  "schemars",
  "serde",
- "stake-cw20-external-rewards",
+ "stake-cw20",
  "thiserror",
 ]
 

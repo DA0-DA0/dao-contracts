@@ -1,470 +1,259 @@
-// use cosmwasm_std::{Addr, Empty, Uint128};
-// use cw2::ContractVersion;
-// use cw_core_interface::voting::{
-//     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
-// };
-// use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+use crate::{
+    msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, LastPaymentBlockResponse, QueryMsg},
+    state::Config,
+    ContractError,
+};
+use cosmwasm_std::{Addr, Empty, Uint128};
+use cw20::Cw20Coin;
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
-// use crate::{
-//     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-//     ContractError,
-// };
+const OWNER: &str = "owner";
+const OWNER2: &str = "owner2";
+const MANAGER: &str = "manager";
 
-// const DAO_ADDR: &str = "dao";
-// const ADDR1: &str = "addr1";
-// const ADDR2: &str = "addr2";
-// const ADDR3: &str = "addr3";
+pub fn cw20_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw20_base::contract::execute,
+        cw20_base::contract::instantiate,
+        cw20_base::contract::query,
+    );
+    Box::new(contract)
+}
 
-// fn cw4_contract() -> Box<dyn Contract<Empty>> {
-//     let contract = ContractWrapper::new(
-//         cw4_group::contract::execute,
-//         cw4_group::contract::instantiate,
-//         cw4_group::contract::query,
-//     );
-//     Box::new(contract)
-// }
+fn staking_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        stake_cw20::contract::execute,
+        stake_cw20::contract::instantiate,
+        stake_cw20::contract::query,
+    );
+    Box::new(contract)
+}
 
-// fn voting_contract() -> Box<dyn Contract<Empty>> {
-//     let contract = ContractWrapper::new(
-//         crate::contract::execute,
-//         crate::contract::instantiate,
-//         crate::contract::query,
-//     )
-//     .with_reply(crate::contract::reply);
-//     Box::new(contract)
-// }
+fn distributor_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        crate::contract::execute,
+        crate::contract::instantiate,
+        crate::contract::query,
+    );
+    Box::new(contract)
+}
 
-// fn instantiate_voting(app: &mut App, voting_id: u64, msg: InstantiateMsg) -> Addr {
-//     app.instantiate_contract(
-//         voting_id,
-//         Addr::unchecked(DAO_ADDR),
-//         &msg,
-//         &[],
-//         "voting module",
-//         None,
-//     )
-//     .unwrap()
-// }
+fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
+    let cw20_id = app.store_code(cw20_contract());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: String::from("Test"),
+        symbol: String::from("TEST"),
+        decimals: 6,
+        initial_balances,
+        mint: None,
+        marketing: None,
+    };
 
-// fn setup_test_case(app: &mut App) -> Addr {
-//     let cw4_id = app.store_code(cw4_contract());
-//     let voting_id = app.store_code(voting_contract());
+    app.instantiate_contract(cw20_id, Addr::unchecked(OWNER), &msg, &[], "cw20", None)
+        .unwrap()
+}
 
-//     let members = vec![
-//         cw4::Member {
-//             addr: ADDR1.to_string(),
-//             weight: 1,
-//         },
-//         cw4::Member {
-//             addr: ADDR2.to_string(),
-//             weight: 1,
-//         },
-//         cw4::Member {
-//             addr: ADDR3.to_string(),
-//             weight: 1,
-//         },
-//     ];
-//     instantiate_voting(
-//         app,
-//         voting_id,
-//         InstantiateMsg {
-//             cw4_group_code_id: cw4_id,
-//             initial_members: members,
-//         },
-//     )
-// }
+fn instantiate_staking(app: &mut App, cw20_addr: Addr) -> Addr {
+    let staking_id = app.store_code(staking_contract());
+    let msg = stake_cw20::msg::InstantiateMsg {
+        owner: Some(OWNER.to_string()),
+        manager: Some(MANAGER.to_string()),
+        token_address: cw20_addr.to_string(),
+        unstaking_duration: None,
+    };
+    app.instantiate_contract(
+        staking_id,
+        Addr::unchecked(OWNER),
+        &msg,
+        &[],
+        "staking",
+        None,
+    )
+    .unwrap()
+}
 
-// #[test]
-// fn test_instantiate() {
-//     let mut app = App::default();
-//     // Valid instantiate no panics
-//     let _voting_addr = setup_test_case(&mut app);
+fn instantiate_distributor(app: &mut App, msg: InstantiateMsg) -> Addr {
+    let code_id = app.store_code(distributor_contract());
+    app.instantiate_contract(
+        code_id,
+        Addr::unchecked(OWNER), // TODO: Remove this?
+        &msg,
+        &[],
+        "distributor",
+        None,
+    )
+    .unwrap()
+}
 
-//     // Instantiate with no members, error
-//     let voting_id = app.store_code(voting_contract());
-//     let cw4_id = app.store_code(cw4_contract());
-//     let msg = InstantiateMsg {
-//         cw4_group_code_id: cw4_id,
-//         initial_members: vec![],
-//     };
-//     let _err = app
-//         .instantiate_contract(
-//             voting_id,
-//             Addr::unchecked(DAO_ADDR),
-//             &msg,
-//             &[],
-//             "voting module",
-//             None,
-//         )
-//         .unwrap_err();
+#[test]
+fn test_instantiate() {
+    let mut app = App::default();
 
-//     // Instantiate with members but no weight
-//     let msg = InstantiateMsg {
-//         cw4_group_code_id: cw4_id,
-//         initial_members: vec![
-//             cw4::Member {
-//                 addr: ADDR1.to_string(),
-//                 weight: 0,
-//             },
-//             cw4::Member {
-//                 addr: ADDR2.to_string(),
-//                 weight: 0,
-//             },
-//             cw4::Member {
-//                 addr: ADDR3.to_string(),
-//                 weight: 0,
-//             },
-//         ],
-//     };
-//     let _err = app
-//         .instantiate_contract(
-//             voting_id,
-//             Addr::unchecked(DAO_ADDR),
-//             &msg,
-//             &[],
-//             "voting module",
-//             None,
-//         )
-//         .unwrap_err();
-// }
+    let cw20_addr = instantiate_cw20(&mut app, vec![]);
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
 
-// #[test]
-// fn test_contract_info() {
-//     let mut app = App::default();
-//     let voting_addr = setup_test_case(&mut app);
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        recipient: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
 
-//     let info: InfoResponse = app
-//         .wrap()
-//         .query_wasm_smart(voting_addr.clone(), &QueryMsg::Info {})
-//         .unwrap();
-//     assert_eq!(
-//         info,
-//         InfoResponse {
-//             info: ContractVersion {
-//                 contract: "crates.io:cw4-voting".to_string(),
-//                 version: env!("CARGO_PKG_VERSION").to_string()
-//             }
-//         }
-//     );
+    let distributor_addr = instantiate_distributor(&mut app, msg);
+    let response: ConfigResponse = app
+        .wrap()
+        .query_wasm_smart(&distributor_addr, &QueryMsg::Config {})
+        .unwrap();
 
-//     // Ensure group contract is set
-//     let _group_contract: Addr = app
-//         .wrap()
-//         .query_wasm_smart(voting_addr.clone(), &QueryMsg::GroupContract {})
-//         .unwrap();
+    assert_eq!(
+        response.config,
+        Config {
+            owner: Addr::unchecked(OWNER),
+            recipient: staking_addr,
+            reward_rate: Uint128::new(1),
+            reward_token: cw20_addr,
+        }
+    );
 
-//     let dao_contract: Addr = app
-//         .wrap()
-//         .query_wasm_smart(voting_addr, &QueryMsg::Dao {})
-//         .unwrap();
-//     assert_eq!(dao_contract, Addr::unchecked(DAO_ADDR));
-// }
+    let response: LastPaymentBlockResponse = app
+        .wrap()
+        .query_wasm_smart(&distributor_addr, &QueryMsg::LastPaymentBlock {})
+        .unwrap();
 
-// #[test]
-// fn test_permissions() {
-//     let mut app = App::default();
-//     let voting_addr = setup_test_case(&mut app);
+    assert_eq!(response.last_payment_block, app.block_info().height);
+}
 
-//     // DAO can not execute hook message.
-//     let err: ContractError = app
-//         .execute_contract(
-//             Addr::unchecked(DAO_ADDR),
-//             voting_addr.clone(),
-//             &ExecuteMsg::MemberChangedHook { diffs: vec![] },
-//             &[],
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
-//     assert!(matches!(err, ContractError::Unauthorized {}));
+#[test]
+fn test_update_config() {
+    let mut app = App::default();
 
-//     // Contract itself can not execute hook message.
-//     let err: ContractError = app
-//         .execute_contract(
-//             voting_addr.clone(),
-//             voting_addr,
-//             &ExecuteMsg::MemberChangedHook { diffs: vec![] },
-//             &[],
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
-//     assert!(matches!(err, ContractError::Unauthorized {}));
-// }
+    let cw20_addr = instantiate_cw20(&mut app, vec![]);
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
 
-// #[test]
-// fn test_power_at_height() {
-//     let mut app = App::default();
-//     let voting_addr = setup_test_case(&mut app);
-//     app.update_block(next_block);
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        recipient: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
+    let distributor_addr = instantiate_distributor(&mut app, msg);
 
-//     let cw4_addr: Addr = app
-//         .wrap()
-//         .query_wasm_smart(voting_addr.clone(), &QueryMsg::GroupContract {})
-//         .unwrap();
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: OWNER2.to_string(),
+        recipient: staking_addr.to_string(),
+        reward_rate: Uint128::new(5),
+        reward_token: cw20_addr.to_string(),
+    };
 
-//     let addr1_voting_power: VotingPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::VotingPowerAtHeight {
-//                 address: ADDR1.to_string(),
-//                 height: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
-//     assert_eq!(addr1_voting_power.height, app.block_info().height);
+    app.execute_contract(Addr::unchecked(OWNER), distributor_addr.clone(), &msg, &[])
+        .unwrap();
 
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight { height: None },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(3u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height);
+    let response: ConfigResponse = app
+        .wrap()
+        .query_wasm_smart(&distributor_addr, &QueryMsg::Config {})
+        .unwrap();
 
-//     // Update ADDR1's weight to 2
-//     let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
-//         remove: vec![],
-//         add: vec![cw4::Member {
-//             addr: ADDR1.to_string(),
-//             weight: 2,
-//         }],
-//     };
+    assert_eq!(
+        response.config,
+        Config {
+            owner: Addr::unchecked(OWNER2),
+            recipient: staking_addr.clone(),
+            reward_rate: Uint128::new(5),
+            reward_token: cw20_addr.clone(),
+        }
+    );
 
-//     // Should still be one as voting power should not update until
-//     // the following block.
-//     let addr1_voting_power: VotingPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::VotingPowerAtHeight {
-//                 address: ADDR1.to_string(),
-//                 height: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: OWNER2.to_string(),
+        recipient: staking_addr.to_string(),
+        reward_rate: Uint128::new(7),
+        reward_token: cw20_addr.to_string(),
+    };
 
-//     // Same should be true about the groups contract.
-//     let cw4_power: cw4::MemberResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             cw4_addr.clone(),
-//             &cw4::Cw4QueryMsg::Member {
-//                 addr: ADDR1.to_string(),
-//                 at_height: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(cw4_power.weight.unwrap(), 1);
+    let err: ContractError = app
+        .execute_contract(Addr::unchecked(OWNER), distributor_addr, &msg, &[])
+        .unwrap_err()
+        .downcast()
+        .unwrap();
 
-//     app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
-//         .unwrap();
-//     app.update_block(next_block);
+    assert_eq!(err, ContractError::Unauthorized {});
+}
 
-//     // Should now be 2
-//     let addr1_voting_power: VotingPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::VotingPowerAtHeight {
-//                 address: ADDR1.to_string(),
-//                 height: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(addr1_voting_power.power, Uint128::new(2u128));
-//     assert_eq!(addr1_voting_power.height, app.block_info().height);
+fn get_balance_cw20<T: Into<String>, U: Into<String>>(
+    app: &App,
+    contract_addr: T,
+    address: U,
+) -> Uint128 {
+    let msg = cw20::Cw20QueryMsg::Balance {
+        address: address.into(),
+    };
+    let result: cw20::BalanceResponse = app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+    result.balance
+}
 
-//     // Check we can still get the 1 weight he had last block
-//     let addr1_voting_power: VotingPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::VotingPowerAtHeight {
-//                 address: ADDR1.to_string(),
-//                 height: Some(app.block_info().height - 1),
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
-//     assert_eq!(addr1_voting_power.height, app.block_info().height - 1);
+#[test]
+fn test_distribute() {
+    let mut app = App::default();
 
-//     // Check total power is now 4
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight { height: None },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(4u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height);
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
 
-//     // Check total power for last block is 3
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight {
-//                 height: Some(app.block_info().height - 1),
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(3u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height - 1);
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        recipient: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
+    let distributor_addr = instantiate_distributor(&mut app, msg);
 
-//     // Update ADDR1's weight back to 1
-//     let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
-//         remove: vec![],
-//         add: vec![cw4::Member {
-//             addr: ADDR1.to_string(),
-//             weight: 1,
-//         }],
-//     };
+    let msg = cw20::Cw20ExecuteMsg::Transfer {
+        recipient: distributor_addr.to_string(),
+        amount: Uint128::from(1000u128),
+    };
+    app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
+        .unwrap();
 
-//     app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
-//         .unwrap();
-//     app.update_block(next_block);
+    app.update_block(|mut block| block.height += 10);
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr.clone(),
+        &ExecuteMsg::Distribute {},
+        &[],
+    )
+    .unwrap();
 
-//     // Should now be 1 again
-//     let addr1_voting_power: VotingPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::VotingPowerAtHeight {
-//                 address: ADDR1.to_string(),
-//                 height: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
-//     assert_eq!(addr1_voting_power.height, app.block_info().height);
+    let balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
+    assert_eq!(balance, Uint128::new(10));
 
-//     // Check total power for current block is now 3
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight { height: None },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(3u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height);
+    let response: LastPaymentBlockResponse = app
+        .wrap()
+        .query_wasm_smart(&distributor_addr, &QueryMsg::LastPaymentBlock {})
+        .unwrap();
 
-//     // Check total power for last block is 4
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight {
-//                 height: Some(app.block_info().height - 1),
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(4u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height - 1);
+    assert_eq!(response.last_payment_block, app.block_info().height);
 
-//     // Remove address 2 completely
-//     let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
-//         remove: vec![ADDR2.to_string()],
-//         add: vec![],
-//     };
+    app.update_block(|mut block| block.height += 990);
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr.clone(),
+        &ExecuteMsg::Distribute {},
+        &[],
+    )
+    .unwrap();
 
-//     app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
-//         .unwrap();
-//     app.update_block(next_block);
+    let balance = get_balance_cw20(&app, cw20_addr, staking_addr);
+    assert_eq!(balance, Uint128::new(1000));
 
-//     // ADDR2 power is now 0
-//     let addr2_voting_power: VotingPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::VotingPowerAtHeight {
-//                 address: ADDR2.to_string(),
-//                 height: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(addr2_voting_power.power, Uint128::zero());
-//     assert_eq!(addr2_voting_power.height, app.block_info().height);
+    let response: LastPaymentBlockResponse = app
+        .wrap()
+        .query_wasm_smart(&distributor_addr, &QueryMsg::LastPaymentBlock {})
+        .unwrap();
 
-//     // Check total power for current block is now 2
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight { height: None },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(2u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height);
-
-//     // Check total power for last block is 3
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight {
-//                 height: Some(app.block_info().height - 1),
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(3u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height - 1);
-
-//     // Readd ADDR2 with 10 power
-//     let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
-//         remove: vec![],
-//         add: vec![cw4::Member {
-//             addr: ADDR2.to_string(),
-//             weight: 10,
-//         }],
-//     };
-
-//     app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr, &msg, &[])
-//         .unwrap();
-//     app.update_block(next_block);
-
-//     // ADDR2 power is now 10
-//     let addr2_voting_power: VotingPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::VotingPowerAtHeight {
-//                 address: ADDR2.to_string(),
-//                 height: None,
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(addr2_voting_power.power, Uint128::new(10u128));
-//     assert_eq!(addr2_voting_power.height, app.block_info().height);
-
-//     // Check total power for current block is now 12
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr.clone(),
-//             &QueryMsg::TotalPowerAtHeight { height: None },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(12u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height);
-
-//     // Check total power for last block is 2
-//     let total_voting_power: TotalPowerAtHeightResponse = app
-//         .wrap()
-//         .query_wasm_smart(
-//             voting_addr,
-//             &QueryMsg::TotalPowerAtHeight {
-//                 height: Some(app.block_info().height - 1),
-//             },
-//         )
-//         .unwrap();
-//     assert_eq!(total_voting_power.power, Uint128::new(2u128));
-//     assert_eq!(total_voting_power.height, app.block_info().height - 1);
-// }
+    assert_eq!(response.last_payment_block, app.block_info().height)
+}

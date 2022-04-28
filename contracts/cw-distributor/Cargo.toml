@@ -2,6 +2,7 @@
 name = "cw-distributor"
 version = "0.1.0"
 edition = "2018"
+authors = ["Vernon Johnson <vtj2105@columbia.edu>"]
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -35,7 +36,8 @@ cw2 = "0.13"
 cw20 = { version = "0.13" }
 cw-utils = "0.13"
 schemars = "0.8"
-stake-cw20-external-rewards = { path = "../stake-cw20-external-rewards", features = ["library"]}
+cw20-base = {  version = "0.13", features = ["library"] }
+stake-cw20 = { path = "../stake-cw20", features = ["library"]}
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 
