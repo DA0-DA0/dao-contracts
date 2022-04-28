@@ -1,6 +1,6 @@
 use cosmwasm_std::{Decimal, Uint128};
 use rand::{prelude::SliceRandom, Rng};
-use voting::{PercentageThreshold, Status, Threshold, Vote};
+use voting::{PercentageThreshold, SingleChoiceVote, Status, Threshold};
 
 /// If a test vote should execute. Used for fuzzing and checking that
 /// votes after a proposal has completed aren't allowed.
@@ -17,7 +17,7 @@ pub struct TestVote {
     /// The address casting the vote.
     pub voter: String,
     /// Position on the vote.
-    pub position: Vote,
+    pub position: SingleChoiceVote,
     /// Voting power of the address.
     pub weight: Uint128,
     /// If this vote is expected to execute.
@@ -31,7 +31,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
@@ -45,7 +45,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::No,
+            position: SingleChoiceVote::No,
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
@@ -64,7 +64,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(u128::max_value()),
             should_execute: ShouldExecute::Yes,
         }],
@@ -83,7 +83,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(u128::max_value()),
             should_execute: ShouldExecute::Yes,
         }],
@@ -98,13 +98,13 @@ where
         vec![
             TestVote {
                 voter: "zeke".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(u128::max_value() - 1),
                 should_execute: ShouldExecute::Yes,
             },
@@ -125,13 +125,13 @@ where
         vec![
             TestVote {
                 voter: "zeke".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(u128::max_value() - 1),
                 should_execute: ShouldExecute::No,
             },
@@ -146,7 +146,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::No,
+            position: SingleChoiceVote::No,
             weight: Uint128::new(1),
             should_execute: ShouldExecute::Yes,
         }],
@@ -165,7 +165,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Abstain,
+            position: SingleChoiceVote::Abstain,
             weight: Uint128::new(u64::max_value().into()),
             should_execute: ShouldExecute::Yes,
         }],
@@ -182,7 +182,7 @@ where
         do_votes(
             vec![TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Abstain,
+                position: SingleChoiceVote::Abstain,
                 weight: Uint128::new(u64::max_value().into()),
                 should_execute: ShouldExecute::Yes,
             }],
@@ -207,7 +207,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(1),
             should_execute: ShouldExecute::Yes,
         }],
@@ -221,7 +221,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
@@ -236,7 +236,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(9999999),
             should_execute: ShouldExecute::Yes,
         }],
@@ -250,7 +250,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Abstain,
+            position: SingleChoiceVote::Abstain,
             weight: Uint128::new(1),
             should_execute: ShouldExecute::Yes,
         }],
@@ -270,13 +270,13 @@ where
         vec![
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Abstain,
+                position: SingleChoiceVote::Abstain,
                 weight: Uint128::new(2),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(2),
                 should_execute: ShouldExecute::No,
             },
@@ -304,19 +304,19 @@ where
         vec![
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Abstain,
+                position: SingleChoiceVote::Abstain,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ezek".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
@@ -332,19 +332,19 @@ where
         vec![
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Abstain,
+                position: SingleChoiceVote::Abstain,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ezek".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::No,
             },
@@ -365,19 +365,19 @@ where
         vec![
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "ezek".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::No,
             },
@@ -399,13 +399,13 @@ where
         vec![
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
@@ -422,13 +422,13 @@ where
         vec![
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
             TestVote {
                 voter: "keze".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::No,
             },
@@ -449,7 +449,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(59),
             should_execute: ShouldExecute::Yes,
         }],
@@ -463,7 +463,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::No,
+            position: SingleChoiceVote::No,
             weight: Uint128::new(59),
             should_execute: ShouldExecute::Yes,
         }],
@@ -485,7 +485,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(60),
             should_execute: ShouldExecute::Yes,
         }],
@@ -500,7 +500,7 @@ where
         vec![
             TestVote {
                 voter: "ekez".to_string(),
-                position: Vote::Yes,
+                position: SingleChoiceVote::Yes,
                 weight: Uint128::new(59),
                 should_execute: ShouldExecute::Yes,
             },
@@ -513,7 +513,7 @@ where
             // passing threshold the quorum threshold.
             TestVote {
                 voter: "keze".to_string(),
-                position: Vote::No,
+                position: SingleChoiceVote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
@@ -528,7 +528,7 @@ where
     do_votes(
         vec![TestVote {
             voter: "ekez".to_string(),
-            position: Vote::No,
+            position: SingleChoiceVote::No,
             weight: Uint128::new(60),
             should_execute: ShouldExecute::Yes,
         }],
@@ -562,13 +562,13 @@ where
 
         let yes = yes.into_iter().enumerate().map(|(idx, weight)| TestVote {
             voter: format!("yes_{}", idx),
-            position: Vote::Yes,
+            position: SingleChoiceVote::Yes,
             weight: Uint128::new(weight as u128),
             should_execute: ShouldExecute::Meh,
         });
         let no = no.into_iter().enumerate().map(|(idx, weight)| TestVote {
             voter: format!("no_{}", idx),
-            position: Vote::No,
+            position: SingleChoiceVote::No,
             weight: Uint128::new(weight as u128),
             should_execute: ShouldExecute::Meh,
         });

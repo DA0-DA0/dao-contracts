@@ -4,7 +4,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_core_macros::govmod_query;
-use voting::Threshold;
+use voting::{Threshold, Vote};
+
+use crate::{proposal::Choices, state::ProposalType};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -60,9 +62,10 @@ pub enum ExecuteMsg {
         title: String,
         /// A description of the proposal.
         description: String,
-        /// The messages that should be executed in response to this
-        /// proposal passing.
-        msgs: Vec<CosmosMsg<Empty>>,
+        /// The choices to select from in this proposal.
+        choices: Choices,
+        /// The type of this proposal (Single or Multiple Choice).
+        proposal_type: ProposalType,
     },
     /// Votes on a proposal. Voting power is determined by the DAO's
     /// voting power module.
@@ -70,7 +73,7 @@ pub enum ExecuteMsg {
         /// The ID of the proposal to vote on.
         proposal_id: u64,
         /// The senders position on the proposal.
-        vote: voting::Vote,
+        vote: Vote,
     },
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.

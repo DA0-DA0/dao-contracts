@@ -1,3 +1,5 @@
+use std::ops::Add;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -12,17 +14,17 @@ use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 
-use voting::{Status, Threshold, Vote, Votes};
+use voting::{SingleChoiceVote, SingleChoiceVoteCounts, Status, Threshold, Vote, VoteCounts};
 
 use crate::{
     error::ContractError,
     msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::{advance_proposal_id, Proposal},
-    query::ProposalListResponse,
-    query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
+    proposal::{advance_proposal_id, Choices, Proposal},
+    query::{ProposalListResponse, ProposalResponse},
+    query::{VoteInfo, VoteListResponse, VoteResponse},
     state::{
-        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
-        PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
+        get_deposit_msg, get_return_deposit_msg, Ballot, Config, ProposalType, BALLOTS, CONFIG,
+        PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
     },
     utils::{get_total_power, get_voting_power},
 };
@@ -77,8 +79,9 @@ pub fn execute(
         ExecuteMsg::Propose {
             title,
             description,
-            msgs,
-        } => execute_propose(deps, env, info.sender, title, description, msgs),
+            choices,
+            proposal_type,
+        } => execute_propose(deps, env, info.sender, title, choices, proposal_type),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
@@ -115,8 +118,8 @@ pub fn execute_propose(
     env: Env,
     sender: Addr,
     title: String,
-    description: String,
-    msgs: Vec<CosmosMsg<Empty>>,
+    choices: Choices,
+    proposal_type: ProposalType,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -153,20 +156,30 @@ pub fn execute_propose(
 
     let total_power = get_total_power(deps.as_ref(), config.dao, Some(env.block.height))?;
 
+    let choices: Choices;
+    let votes: VoteCounts;
+    match proposal_type {
+        ProposalType::SingleChoice => {
+            votes = VoteCounts::SingleChoice(SingleChoiceVoteCounts::zero())
+        }
+        ProposalType::MultipleChoice => {
+            todo!()
+        }
+    }
     let proposal = {
         // Limit mutability to this block.
         let mut proposal = Proposal {
             title,
-            description,
             proposer: sender.clone(),
             start_height: env.block.height,
             expiration,
             threshold: config.threshold,
             total_power,
-            msgs,
+            choices,
             status: Status::Open,
-            votes: Votes::zero(),
+            votes: votes,
             deposit_info: config.deposit_info.clone(),
+            proposal_type,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -229,39 +242,48 @@ pub fn execute_execute(
         }
     }
 
-    let mut prop = PROPOSALS
+    let mut proposal = PROPOSALS
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
     // Check here that the proposal is passed. Allow it to be
     // executed even if it is expired so long as it passed during its
     // voting period.
-    let old_status = prop.status;
-    if !prop.is_passed(&env.block) {
+    let old_status = proposal.status;
+    if !proposal.is_passed(&env.block) {
         return Err(ContractError::NotPassed {});
     }
-    prop.status = Status::Executed;
-    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+    proposal.status = Status::Executed;
+    PROPOSALS.save(deps.storage, proposal_id, &proposal)?;
 
-    let return_deposit = get_return_deposit_msg(&prop)?;
+    let return_deposit = get_return_deposit_msg(&proposal)?;
 
-    let response = if !prop.msgs.is_empty() {
-        let execute_message = WasmMsg::Execute {
-            contract_addr: config.dao.to_string(),
-            msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs: prop.msgs })?,
-            funds: vec![],
-        };
-        Response::<Empty>::default().add_message(execute_message)
-    } else {
-        Response::default()
-    };
+    let winning_choice = proposal.choices.get_winning_choice();
+    let response: Response;
+    match winning_choice {
+        Some(c) => {
+            let response = if !proposal.choices.is_empty() {
+                let execute_message = WasmMsg::Execute {
+                    contract_addr: config.dao.to_string(),
+                    msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook {
+                        msgs: c.msgs,
+                    })?,
+                    funds: vec![],
+                };
+                Response::<Empty>::default().add_message(execute_message)
+            } else {
+                Response::default()
+            };
+        }
+        None => return ContractError::NoWinningChoice {},
+    }
 
     let hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
         old_status.to_string(),
-        prop.status.to_string(),
+        proposal.status.to_string(),
     )?;
     Ok(response
         .add_messages(return_deposit)
@@ -357,7 +379,7 @@ pub fn execute_close(
         _ => return Err(ContractError::WrongCloseStatus {}),
     }
     let old_status = prop.status;
-    let refund_message = get_return_deposit_msg(&prop)?;
+    // let refund_message = get_return_deposit_msg(&prop)?;
 
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
@@ -374,7 +396,7 @@ pub fn execute_close(
         .add_submessages(changed_hooks)
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
-        .add_messages(refund_message)
+        // .add_messages(refund_message)
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
 

@@ -253,7 +253,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-proposal-single"
+name = "cw-proposal"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
@@ -749,7 +749,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-core",
  "cw-multi-test",
- "cw-proposal-single",
+ "cw-proposal",
  "cw-storage-plus",
  "cw-utils",
  "cw2",

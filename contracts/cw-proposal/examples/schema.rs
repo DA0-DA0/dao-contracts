@@ -4,9 +4,13 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use cosmwasm_std::Addr;
 use cw_core_interface::voting::InfoResponse;
-use cw_proposal_single::{
+use cw_proposal::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
+    query::{
+        MultipleChoiceProposalListResponse, MultipleChoiceProposalResponse, ProposalListResponse,
+        ProposalResponse, SingleChoiceProposalListResponse, SingleChoiceProposalResponse,
+        VoteListResponse, VoteResponse,
+    },
     state::Config,
 };
 use indexable_hooks::HooksResponse;
@@ -22,7 +26,8 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
 
     export_schema(&schema_for!(InfoResponse), &out_dir);
-    export_schema(&schema_for!(ProposalResponse), &out_dir);
+    export_schema(&schema_for!(SingleChoiceProposalResponse), &out_dir);
+    export_schema(&schema_for!(MultipleChoiceProposalResponse), &out_dir);
     export_schema(&schema_for!(VoteResponse), &out_dir);
 
     // Auto TS code generation expects the query return type as QueryNameResponse
@@ -34,9 +39,14 @@ fn main() {
         "GovernanceModulesResponse",
     );
     export_schema_with_title(
-        &schema_for!(ProposalListResponse),
+        &schema_for!(SingleChoiceProposalListResponse),
         &out_dir,
-        "ListProposalsResponse",
+        "ListSingleChoiceProposalsResponse",
+    );
+    export_schema_with_title(
+        &schema_for!(MultipleChoiceProposalListResponse),
+        &out_dir,
+        "ListMultipleChoiceProposalsResponse",
     );
     export_schema_with_title(
         &schema_for!(VoteListResponse),
@@ -45,9 +55,14 @@ fn main() {
     );
     export_schema_with_title(&schema_for!(u64), &out_dir, "ProposalCountResponse");
     export_schema_with_title(
-        &schema_for!(ProposalListResponse),
+        &schema_for!(SingleChoiceProposalListResponse),
         &out_dir,
-        "ReverseProposalsResponse",
+        "ReverseSingleChoiceProposalsResponse",
+    );
+    export_schema_with_title(
+        &schema_for!(MultipleChoiceProposalListResponse),
+        &out_dir,
+        "ReverseMultipleChoiceProposalsResponse",
     );
     export_schema_with_title(
         &schema_for!(HooksResponse),

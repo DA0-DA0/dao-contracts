@@ -50,4 +50,7 @@ pub enum ContractError {
 
     #[error("The DAO is currently inactive, you cannot create proposals")]
     InactiveDao {},
+
+    #[error("No winning choice found")]
+    NoWinningChoice {},
 }

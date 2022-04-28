@@ -13,6 +13,13 @@ pub struct ProposalResponse {
     pub proposal: Proposal,
 }
 
+/// A list of proposals returned by `ListProposals` and
+/// `ReverseProposals`.
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct ProposalListResponse {
+    pub proposals: Vec<ProposalResponse>,
+}
+
 /// Information about a vote that was cast.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct VoteInfo {
@@ -35,11 +42,4 @@ pub struct VoteResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct VoteListResponse {
     pub votes: Vec<VoteInfo>,
-}
-
-/// A list of proposals returned by `ListProposals` and
-/// `ReverseProposals`.
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-pub struct ProposalListResponse {
-    pub proposals: Vec<ProposalResponse>,
 }

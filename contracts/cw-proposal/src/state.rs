@@ -26,6 +26,14 @@ pub struct CheckedDepositInfo {
     pub refund_failed_proposals: bool,
 }
 
+// Single or multiple choice proposal.
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum ProposalType {
+    SingleChoice,
+    MultipleChoice,
+}
+
 /// The governance module's configuration.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
