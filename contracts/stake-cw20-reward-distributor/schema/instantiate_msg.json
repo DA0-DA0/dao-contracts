@@ -4,21 +4,21 @@
   "type": "object",
   "required": [
     "owner",
-    "recipient",
     "reward_rate",
-    "reward_token"
+    "reward_token",
+    "staking_addr"
   ],
   "properties": {
     "owner": {
-      "type": "string"
-    },
-    "recipient": {
       "type": "string"
     },
     "reward_rate": {
       "$ref": "#/definitions/Uint128"
     },
     "reward_token": {
+      "type": "string"
+    },
+    "staking_addr": {
       "type": "string"
     }
   },

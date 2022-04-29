@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
-    pub recipient: Addr,
+    pub staking_addr: Addr,
     pub reward_rate: Uint128,
     pub reward_token: Addr,
 }

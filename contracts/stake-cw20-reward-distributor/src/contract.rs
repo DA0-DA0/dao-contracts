@@ -23,8 +23,8 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = deps.api.addr_validate(&msg.owner)?;
-    let recipient = deps.api.addr_validate(&msg.recipient)?;
-    if !validate_staking(deps.as_ref(), recipient.clone()) {
+    let staking_addr = deps.api.addr_validate(&msg.staking_addr)?;
+    if !validate_staking(deps.as_ref(), staking_addr.clone()) {
         return Err(ContractError::InvalidStakingContract {});
     }
 
@@ -35,7 +35,7 @@ pub fn instantiate(
 
     let config = Config {
         owner,
-        recipient,
+        staking_addr,
         reward_token,
         reward_rate: msg.reward_rate,
     };
@@ -57,10 +57,10 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig {
             owner,
-            recipient,
+            staking_addr,
             reward_rate,
             reward_token,
-        } => execute_update_config(deps, info, owner, recipient, reward_rate, reward_token),
+        } => execute_update_config(deps, info, owner, staking_addr, reward_rate, reward_token),
         ExecuteMsg::Distribute {} => execute_distribute(deps, env),
     }
 }
@@ -69,7 +69,7 @@ pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
     owner: String,
-    recipient: String,
+    staking_addr: String,
     reward_rate: Uint128,
     reward_token: String,
 ) -> Result<Response, ContractError> {
@@ -79,8 +79,8 @@ pub fn execute_update_config(
     }
 
     let owner = deps.api.addr_validate(&owner)?;
-    let recipient = deps.api.addr_validate(&recipient)?;
-    if !validate_staking(deps.as_ref(), recipient.clone()) {
+    let staking_addr = deps.api.addr_validate(&staking_addr)?;
+    if !validate_staking(deps.as_ref(), staking_addr.clone()) {
         return Err(ContractError::InvalidStakingContract {});
     }
 
@@ -91,7 +91,7 @@ pub fn execute_update_config(
 
     let config = Config {
         owner,
-        recipient,
+        staking_addr,
         reward_token,
         reward_rate,
     };
@@ -103,10 +103,7 @@ pub fn validate_cw20(deps: Deps, cw20_addr: Addr) -> bool {
     let response: Result<cw20::TokenInfoResponse, StdError> = deps
         .querier
         .query_wasm_smart(cw20_addr, &cw20::Cw20QueryMsg::TokenInfo {});
-    match response {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    response.is_ok()
 }
 
 pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
@@ -115,10 +112,7 @@ pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
             staking_addr,
             &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None },
         );
-    match response {
-        Ok(_) => true,
-        Err(_) => false,
-    }
+    response.is_ok()
 }
 
 pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
@@ -146,7 +140,7 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
-        contract: config.recipient.clone().into_string(),
+        contract: config.staking_addr.clone().into_string(),
         amount,
         msg: to_binary(&stake_cw20::msg::ReceiveMsg::Fund {}).unwrap(),
     })?;

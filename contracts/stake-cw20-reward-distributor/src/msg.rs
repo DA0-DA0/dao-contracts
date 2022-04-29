@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub recipient: String,
+    pub staking_addr: String,
     pub reward_rate: Uint128,
     pub reward_token: String,
 }
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateConfig {
         owner: String,
-        recipient: String,
+        staking_addr: String,
         reward_rate: Uint128,
         reward_token: String,
     },

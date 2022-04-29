@@ -114,7 +114,7 @@ fn test_instantiate() {
 
     let msg = InstantiateMsg {
         owner: OWNER.to_string(),
-        recipient: staking_addr.to_string(),
+        staking_addr: staking_addr.to_string(),
         reward_rate: Uint128::new(1),
         reward_token: cw20_addr.to_string(),
     };
@@ -129,7 +129,7 @@ fn test_instantiate() {
         response.config,
         Config {
             owner: Addr::unchecked(OWNER),
-            recipient: staking_addr,
+            staking_addr,
             reward_rate: Uint128::new(1),
             reward_token: cw20_addr,
         }
@@ -146,7 +146,7 @@ fn test_update_config() {
 
     let msg = InstantiateMsg {
         owner: OWNER.to_string(),
-        recipient: staking_addr.to_string(),
+        staking_addr: staking_addr.to_string(),
         reward_rate: Uint128::new(1),
         reward_token: cw20_addr.to_string(),
     };
@@ -154,7 +154,7 @@ fn test_update_config() {
 
     let msg = ExecuteMsg::UpdateConfig {
         owner: OWNER2.to_string(),
-        recipient: staking_addr.to_string(),
+        staking_addr: staking_addr.to_string(),
         reward_rate: Uint128::new(5),
         reward_token: cw20_addr.to_string(),
     };
@@ -171,7 +171,7 @@ fn test_update_config() {
         response.config,
         Config {
             owner: Addr::unchecked(OWNER2),
-            recipient: staking_addr.clone(),
+            staking_addr: staking_addr.clone(),
             reward_rate: Uint128::new(5),
             reward_token: cw20_addr.clone(),
         }
@@ -179,7 +179,7 @@ fn test_update_config() {
 
     let msg = ExecuteMsg::UpdateConfig {
         owner: OWNER2.to_string(),
-        recipient: staking_addr.to_string(),
+        staking_addr: staking_addr.to_string(),
         reward_rate: Uint128::new(7),
         reward_token: cw20_addr.to_string(),
     };
@@ -208,7 +208,7 @@ fn test_distribute() {
 
     let msg = InstantiateMsg {
         owner: OWNER.to_string(),
-        recipient: staking_addr.to_string(),
+        staking_addr: staking_addr.to_string(),
         reward_rate: Uint128::new(1),
         reward_token: cw20_addr.to_string(),
     };
@@ -284,7 +284,7 @@ fn test_invalid_addrs() {
 
     let msg = InstantiateMsg {
         owner: OWNER.to_string(),
-        recipient: staking_addr.to_string(),
+        staking_addr: staking_addr.to_string(),
         reward_rate: Uint128::new(1),
         reward_token: "invalid_cw20".to_string(),
     };
@@ -307,7 +307,7 @@ fn test_invalid_addrs() {
 
     let msg = InstantiateMsg {
         owner: OWNER.to_string(),
-        recipient: "invalid_staking".to_string(),
+        staking_addr: "invalid_staking".to_string(),
         reward_rate: Uint128::new(1),
         reward_token: cw20_addr.to_string(),
     };
