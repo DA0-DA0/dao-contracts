@@ -56,7 +56,7 @@ pub fn instantiate(
             let address = deps.api.addr_validate(&address)?;
             TOKEN.save(deps.storage, &address)?;
             if let Some(ActiveThreshold::AbsoluteCount { count }) = msg.active_threshold {
-                assert_valid_absolute_count_threshold(deps.as_ref(), address.clone(), count)?
+                assert_valid_absolute_count_threshold(deps.as_ref(), address.clone(), count)?;
             }
 
             match staking_contract {
