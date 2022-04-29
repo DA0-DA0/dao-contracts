@@ -230,8 +230,8 @@ fn test_distribute() {
     )
     .unwrap();
 
-    let balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
-    assert_eq!(balance, Uint128::new(10));
+    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
+    assert_eq!(staking_balance, Uint128::new(10));
 
     let distributor_info = get_info(&app, distributor_addr.clone());
     assert_eq!(distributor_info.balance, Uint128::new(990));
@@ -246,8 +246,8 @@ fn test_distribute() {
     )
     .unwrap();
 
-    let balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
-    assert_eq!(balance, Uint128::new(510));
+    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
+    assert_eq!(staking_balance, Uint128::new(510));
 
     let distributor_info = get_info(&app, distributor_addr.clone());
     assert_eq!(distributor_info.balance, Uint128::new(490));
@@ -262,8 +262,8 @@ fn test_distribute() {
     )
     .unwrap();
 
-    let balance = get_balance_cw20(&app, cw20_addr, staking_addr);
-    assert_eq!(balance, Uint128::new(1000));
+    let staking_balance = get_balance_cw20(&app, cw20_addr, staking_addr);
+    assert_eq!(staking_balance, Uint128::new(1000));
 
     let distributor_info = get_info(&app, distributor_addr);
     assert_eq!(distributor_info.balance, Uint128::new(0));
