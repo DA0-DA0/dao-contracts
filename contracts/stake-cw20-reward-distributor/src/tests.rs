@@ -271,7 +271,7 @@ fn test_distribute() {
 }
 
 #[test]
-fn test_invalid_addrs() {
+fn test_instantiate_invalid_addrs() {
     let mut app = App::default();
     let cw20_addr = instantiate_cw20(
         &mut app,
@@ -320,6 +320,50 @@ fn test_invalid_addrs() {
             "distributor",
             None,
         )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InvalidStakingContract {});
+}
+
+#[test]
+fn test_update_config_invalid_addrs() {
+    let mut app = App::default();
+
+    let cw20_addr = instantiate_cw20(&mut app, vec![]);
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
+
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        staking_addr: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
+    let distributor_addr = instantiate_distributor(&mut app, msg);
+
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: OWNER.to_string(),
+        staking_addr: staking_addr.to_string(),
+        reward_rate: Uint128::new(5),
+        reward_token: "invalid_cw20".to_string(),
+    };
+
+    let err: ContractError = app
+        .execute_contract(Addr::unchecked(OWNER), distributor_addr.clone(), &msg, &[])
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InvalidCw20 {});
+
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: OWNER.to_string(),
+        staking_addr: "invalid_staking".to_string(),
+        reward_rate: Uint128::new(5),
+        reward_token: staking_addr.to_string(),
+    };
+
+    let err: ContractError = app
+        .execute_contract(Addr::unchecked(OWNER), distributor_addr, &msg, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
