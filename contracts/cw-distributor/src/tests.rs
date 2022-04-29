@@ -1,5 +1,5 @@
 use crate::{
-    msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, LastPaymentBlockResponse, QueryMsg},
+    msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg},
     state::Config,
     ContractError,
 };
@@ -85,6 +85,26 @@ fn instantiate_distributor(app: &mut App, msg: InstantiateMsg) -> Addr {
     .unwrap()
 }
 
+fn get_balance_cw20<T: Into<String>, U: Into<String>>(
+    app: &App,
+    contract_addr: T,
+    address: U,
+) -> Uint128 {
+    let msg = cw20::Cw20QueryMsg::Balance {
+        address: address.into(),
+    };
+    let result: cw20::BalanceResponse = app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+    result.balance
+}
+
+fn get_info<T: Into<String>>(app: &App, distributor_addr: T) -> InfoResponse {
+    let result: InfoResponse = app
+        .wrap()
+        .query_wasm_smart(distributor_addr, &QueryMsg::Info {})
+        .unwrap();
+    result
+}
+
 #[test]
 fn test_instantiate() {
     let mut app = App::default();
@@ -100,9 +120,9 @@ fn test_instantiate() {
     };
 
     let distributor_addr = instantiate_distributor(&mut app, msg);
-    let response: ConfigResponse = app
+    let response: InfoResponse = app
         .wrap()
-        .query_wasm_smart(&distributor_addr, &QueryMsg::Config {})
+        .query_wasm_smart(&distributor_addr, &QueryMsg::Info {})
         .unwrap();
 
     assert_eq!(
@@ -114,12 +134,6 @@ fn test_instantiate() {
             reward_token: cw20_addr,
         }
     );
-
-    let response: LastPaymentBlockResponse = app
-        .wrap()
-        .query_wasm_smart(&distributor_addr, &QueryMsg::LastPaymentBlock {})
-        .unwrap();
-
     assert_eq!(response.last_payment_block, app.block_info().height);
 }
 
@@ -148,9 +162,9 @@ fn test_update_config() {
     app.execute_contract(Addr::unchecked(OWNER), distributor_addr.clone(), &msg, &[])
         .unwrap();
 
-    let response: ConfigResponse = app
+    let response: InfoResponse = app
         .wrap()
-        .query_wasm_smart(&distributor_addr, &QueryMsg::Config {})
+        .query_wasm_smart(&distributor_addr, &QueryMsg::Info {})
         .unwrap();
 
     assert_eq!(
@@ -177,18 +191,6 @@ fn test_update_config() {
         .unwrap();
 
     assert_eq!(err, ContractError::Unauthorized {});
-}
-
-fn get_balance_cw20<T: Into<String>, U: Into<String>>(
-    app: &App,
-    contract_addr: T,
-    address: U,
-) -> Uint128 {
-    let msg = cw20::Cw20QueryMsg::Balance {
-        address: address.into(),
-    };
-    let result: cw20::BalanceResponse = app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-    result.balance
 }
 
 #[test]
@@ -231,14 +233,27 @@ fn test_distribute() {
     let balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
     assert_eq!(balance, Uint128::new(10));
 
-    let response: LastPaymentBlockResponse = app
-        .wrap()
-        .query_wasm_smart(&distributor_addr, &QueryMsg::LastPaymentBlock {})
-        .unwrap();
+    let distributor_info = get_info(&app, distributor_addr.clone());
+    assert_eq!(distributor_info.balance, Uint128::new(990));
+    assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 
-    assert_eq!(response.last_payment_block, app.block_info().height);
+    app.update_block(|mut block| block.height += 500);
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr.clone(),
+        &ExecuteMsg::Distribute {},
+        &[],
+    )
+    .unwrap();
 
-    app.update_block(|mut block| block.height += 990);
+    let balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
+    assert_eq!(balance, Uint128::new(510));
+
+    let distributor_info = get_info(&app, distributor_addr.clone());
+    assert_eq!(distributor_info.balance, Uint128::new(490));
+    assert_eq!(distributor_info.last_payment_block, app.block_info().height);
+
+    app.update_block(|mut block| block.height += 1000);
     app.execute_contract(
         Addr::unchecked(OWNER),
         distributor_addr.clone(),
@@ -250,10 +265,7 @@ fn test_distribute() {
     let balance = get_balance_cw20(&app, cw20_addr, staking_addr);
     assert_eq!(balance, Uint128::new(1000));
 
-    let response: LastPaymentBlockResponse = app
-        .wrap()
-        .query_wasm_smart(&distributor_addr, &QueryMsg::LastPaymentBlock {})
-        .unwrap();
-
-    assert_eq!(response.last_payment_block, app.block_info().height)
+    let distributor_info = get_info(&app, distributor_addr);
+    assert_eq!(distributor_info.balance, Uint128::new(0));
+    assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 }

@@ -9,7 +9,7 @@ use cw2::set_contract_version;
 use stake_cw20::msg::ReceiveMsg;
 
 use crate::error::ContractError;
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, LastPaymentBlockResponse, QueryMsg};
+use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, LAST_PAYMENT_BLOCK};
 
 const CONTRACT_NAME: &str = "crates.io:cw-distributor";
@@ -101,7 +101,8 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
         config.reward_token.clone(),
         &cw20::Cw20QueryMsg::Balance {
             address: env.contract.address.to_string(),
-    })?;
+        },
+    )?;
 
     if balance_info.balance == Uint128::zero() {
         return Err(ContractError::OutOfFunds {});
@@ -125,19 +126,25 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::LastPaymentBlock {} => to_binary(&query_last_payment_block(deps)?),
+        QueryMsg::Info {} => to_binary(&query_info(deps, env)?),
     }
 }
 
-fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+fn query_info(deps: Deps, env: Env) -> StdResult<InfoResponse> {
     let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse { config })
-}
-
-fn query_last_payment_block(deps: Deps) -> StdResult<LastPaymentBlockResponse> {
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
-    Ok(LastPaymentBlockResponse { last_payment_block })
+    let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+        config.reward_token.clone(),
+        &cw20::Cw20QueryMsg::Balance {
+            address: env.contract.address.to_string(),
+        },
+    )?;
+
+    Ok(InfoResponse {
+        config,
+        last_payment_block,
+        balance: balance_info.balance,
+    })
 }
