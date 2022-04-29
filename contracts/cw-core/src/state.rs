@@ -40,12 +40,3 @@ pub const CW20_LIST: Map<Addr, Empty> = Map::new("cw20s");
 /// Set of cw721 tokens that have been registered with this contract's
 /// treasury.
 pub const CW721_LIST: Map<Addr, Empty> = Map::new("cw721s");
-
-/// Stores the number of governance modules present in the governance
-/// contract. This information is avaliable from the governance
-/// modules map but finding it requires a full traversal of the
-/// keys. This means that we can't us that value when adding and
-/// removing modules to check that at least one is present as it could
-/// cause the contract to lock due to gas issues if too many modules
-/// are present.
-pub const PROPOSAL_MODULE_COUNT: Item<u64> = Item::new("governance_module_count");
