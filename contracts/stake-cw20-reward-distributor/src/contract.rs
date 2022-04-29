@@ -12,7 +12,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, LAST_PAYMENT_BLOCK};
 
-const CONTRACT_NAME: &str = "crates.io:cw-distributor";
+const CONTRACT_NAME: &str = "crates.io:stake-cw20-reward-distributor";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
