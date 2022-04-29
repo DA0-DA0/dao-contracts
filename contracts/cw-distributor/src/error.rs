@@ -11,4 +11,7 @@ pub enum ContractError {
 
     #[error("No Pending Payments")]
     NoPendingPayments {},
+
+    #[error("Out of Funds")]
+    OutOfFunds {},
 }

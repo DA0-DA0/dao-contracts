@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, CosmosMsg, Uint128, WasmMsg};
@@ -89,12 +91,23 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
     let config = CONFIG.load(deps.storage)?;
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
     let block_diff = env.block.height - last_payment_block;
-    let amount: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
+    let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
-    if amount == Uint128::zero() {
+    if pending_rewards == Uint128::zero() {
         return Err(ContractError::NoPendingPayments {});
     }
 
+    let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+        config.reward_token.clone(),
+        &cw20::Cw20QueryMsg::Balance {
+            address: env.contract.address.to_string(),
+    })?;
+
+    if balance_info.balance == Uint128::zero() {
+        return Err(ContractError::OutOfFunds {});
+    }
+
+    let amount = min(balance_info.balance, pending_rewards);
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
