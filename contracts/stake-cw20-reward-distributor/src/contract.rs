@@ -2,15 +2,13 @@ use std::cmp::min;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, CosmosMsg, Uint128, WasmMsg};
-
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw2::set_contract_version;
-use stake_cw20::msg::ReceiveMsg;
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, StdError, Uint128, WasmMsg};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, LAST_PAYMENT_BLOCK};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cw2::set_contract_version;
 
 const CONTRACT_NAME: &str = "crates.io:stake-cw20-reward-distributor";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -26,8 +24,15 @@ pub fn instantiate(
 
     let owner = deps.api.addr_validate(&msg.owner)?;
     let recipient = deps.api.addr_validate(&msg.recipient)?;
+    if !validate_staking(deps.as_ref(), recipient.clone()) {
+        return Err(ContractError::InvalidStakingContract {});
+    }
 
     let reward_token = deps.api.addr_validate(&msg.reward_token)?;
+    if !validate_cw20(deps.as_ref(), reward_token.clone()) {
+        return Err(ContractError::InvalidCw20 {});
+    }
+
     let config = Config {
         owner,
         recipient,
@@ -75,7 +80,14 @@ pub fn execute_update_config(
 
     let owner = deps.api.addr_validate(&owner)?;
     let recipient = deps.api.addr_validate(&recipient)?;
+    if !validate_staking(deps.as_ref(), recipient.clone()) {
+        return Err(ContractError::InvalidStakingContract {});
+    }
+
     let reward_token = deps.api.addr_validate(&reward_token)?;
+    if !validate_cw20(deps.as_ref(), reward_token.clone()) {
+        return Err(ContractError::InvalidCw20 {});
+    }
 
     let config = Config {
         owner,
@@ -85,6 +97,28 @@ pub fn execute_update_config(
     };
     CONFIG.save(deps.storage, &config)?;
     Ok(Response::default())
+}
+
+pub fn validate_cw20(deps: Deps, cw20_addr: Addr) -> bool {
+    let response: Result<cw20::TokenInfoResponse, StdError> = deps
+        .querier
+        .query_wasm_smart(cw20_addr, &cw20::Cw20QueryMsg::TokenInfo {});
+    match response {
+        Ok(_) => true,
+        Err(_) => false,
+    }
+}
+
+pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
+    let response: Result<stake_cw20::msg::TotalStakedAtHeightResponse, StdError> =
+        deps.querier.query_wasm_smart(
+            staking_addr,
+            &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None },
+        );
+    match response {
+        Ok(_) => true,
+        Err(_) => false,
+    }
 }
 
 pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
@@ -114,7 +148,7 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
         contract: config.recipient.clone().into_string(),
         amount,
-        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Fund {}).unwrap(),
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
         contract_addr: config.reward_token.into(),

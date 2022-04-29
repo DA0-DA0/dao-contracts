@@ -269,3 +269,59 @@ fn test_distribute() {
     assert_eq!(distributor_info.balance, Uint128::new(0));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 }
+
+#[test]
+fn test_invalid_addrs() {
+    let mut app = App::default();
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
+
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        recipient: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: "invalid_cw20".to_string(),
+    };
+
+    let code_id = app.store_code(distributor_contract());
+    let err: ContractError = app
+        .instantiate_contract(
+            code_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &[],
+            "distributor",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::InvalidCw20 {});
+
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        recipient: "invalid_staking".to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
+    let err: ContractError = app
+        .instantiate_contract(
+            code_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &[],
+            "distributor",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InvalidStakingContract {});
+}
