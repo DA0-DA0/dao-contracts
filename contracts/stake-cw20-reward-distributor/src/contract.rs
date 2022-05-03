@@ -66,7 +66,7 @@ pub fn execute(
             staking_addr,
             reward_rate,
             reward_token,
-        } => execute_update_config(deps, info, owner, staking_addr, reward_rate, reward_token),
+        } => execute_update_config(deps, info, env, owner, staking_addr, reward_rate, reward_token),
         ExecuteMsg::Distribute {} => execute_distribute(deps, env),
         ExecuteMsg::Withdraw {} => execute_withdraw(deps, info, env),
     }
@@ -75,6 +75,7 @@ pub fn execute(
 pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
+    env: Env,
     owner: String,
     staking_addr: String,
     reward_rate: Uint128,
@@ -84,6 +85,9 @@ pub fn execute_update_config(
     if config.owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
+
+    let distribution_msg = get_distribution_msg(deps.as_ref(), &env)?;
+    LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
     let owner = deps.api.addr_validate(&owner)?;
     let staking_addr = deps.api.addr_validate(&staking_addr)?;
@@ -105,6 +109,7 @@ pub fn execute_update_config(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
+        .add_message(distribution_msg)
         .add_attribute("action", "update_config")
         .add_attribute("owner", owner.into_string())
         .add_attribute("staking_addr", staking_addr.into_string())
@@ -129,47 +134,48 @@ pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
     response.is_ok()
 }
 
-pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+fn get_distribution_msg(deps: Deps, env: &Env) -> Result<CosmosMsg, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
     let block_diff = env.block.height - last_payment_block;
     let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
     if pending_rewards == Uint128::zero() {
-        return Err(ContractError::NoPendingPayments {});
+    return Err(ContractError::NoPendingPayments {});
     }
 
     let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
-        config.reward_token.clone(),
-        &cw20::Cw20QueryMsg::Balance {
-            address: env.contract.address.to_string(),
-        },
+    config.reward_token.clone(),
+    &cw20::Cw20QueryMsg::Balance {
+    address: env.contract.address.to_string(),
+    },
     )?;
 
     if balance_info.balance == Uint128::zero() {
-        return Err(ContractError::OutOfFunds {});
+    return Err(ContractError::OutOfFunds {});
     }
 
     let amount = min(balance_info.balance, pending_rewards);
-    LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
-        contract: config.staking_addr.clone().into_string(),
-        amount,
-        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Fund {}).unwrap(),
+    contract: config.staking_addr.clone().into_string(),
+    amount,
+    msg: to_binary(&stake_cw20::msg::ReceiveMsg::Fund {}).unwrap(),
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
-        contract_addr: config.reward_token.into(),
-        msg,
-        funds: vec![],
+    contract_addr: config.reward_token.into(),
+    msg,
+    funds: vec![],
     }
     .into();
 
-    Ok(Response::new()
-        .add_message(send_msg)
-        .add_attribute("action", "distribute")
-        .add_attribute("amount", amount)
-    )
+    Ok(send_msg)
+}
+
+pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+    let msg = get_distribution_msg(deps.as_ref(), &env)?;
+    LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
+    Ok(Response::new().add_message(msg).add_attribute("action", "distribute"))
 }
 
 pub fn execute_withdraw(

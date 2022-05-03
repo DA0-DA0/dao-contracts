@@ -450,3 +450,35 @@ fn test_withdraw() {
     let owner_balance = get_balance_cw20(&app, cw20_addr, Addr::unchecked(OWNER));
     assert_eq!(owner_balance, Uint128::new(990));
 }
+
+#[test]
+fn test_dao_deploy() {
+    // DAOs will deploy this contract with following steps
+    // Contract is instantiated by any address with 0 reward rate
+    // Dao updates reward rate and funds in same transaction
+    let mut app = App::default();
+
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
+
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        staking_addr: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
+    let distributor_addr = instantiate_distributor(&mut app, msg);
+
+    let msg = cw20::Cw20ExecuteMsg::Transfer {
+        recipient: distributor_addr.to_string(),
+        amount: Uint128::from(1000u128),
+    };
+    app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
+        .unwrap();
+}
