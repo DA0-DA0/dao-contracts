@@ -49,8 +49,7 @@ pub fn instantiate(
         .add_attribute("owner", owner.into_string())
         .add_attribute("staking_addr", staking_addr.into_string())
         .add_attribute("reward_token", reward_token.into_string())
-        .add_attribute("reward_rate", msg.reward_rate)
-    )
+        .add_attribute("reward_rate", msg.reward_rate))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -66,7 +65,15 @@ pub fn execute(
             staking_addr,
             reward_rate,
             reward_token,
-        } => execute_update_config(deps, info, env, owner, staking_addr, reward_rate, reward_token),
+        } => execute_update_config(
+            deps,
+            info,
+            env,
+            owner,
+            staking_addr,
+            reward_rate,
+            reward_token,
+        ),
         ExecuteMsg::Distribute {} => execute_distribute(deps, env),
         ExecuteMsg::Withdraw {} => execute_withdraw(deps, info, env),
     }
@@ -114,8 +121,7 @@ pub fn execute_update_config(
         .add_attribute("owner", owner.into_string())
         .add_attribute("staking_addr", staking_addr.into_string())
         .add_attribute("reward_token", reward_token.into_string())
-        .add_attribute("reward_rate", reward_rate)
-    )
+        .add_attribute("reward_rate", reward_rate))
 }
 
 pub fn validate_cw20(deps: Deps, cw20_addr: Addr) -> bool {
@@ -140,29 +146,28 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
     let block_diff = env.block.height - last_payment_block;
     let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
-
     let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
-    config.reward_token.clone(),
-    &cw20::Cw20QueryMsg::Balance {
-    address: env.contract.address.to_string(),
-    },
+        config.reward_token.clone(),
+        &cw20::Cw20QueryMsg::Balance {
+            address: env.contract.address.to_string(),
+        },
     )?;
 
     let amount = min(balance_info.balance, pending_rewards);
 
     if amount == Uint128::zero() {
-        return Ok(None)
+        return Ok(None);
     }
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
-    contract: config.staking_addr.clone().into_string(),
-    amount,
-    msg: to_binary(&stake_cw20::msg::ReceiveMsg::Fund {}).unwrap(),
+        contract: config.staking_addr.clone().into_string(),
+        amount,
+        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Fund {}).unwrap(),
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
-    contract_addr: config.reward_token.into(),
-    msg,
-    funds: vec![],
+        contract_addr: config.reward_token.into(),
+        msg,
+        funds: vec![],
     }
     .into();
 
@@ -172,7 +177,9 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
 pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let msg = get_distribution_msg(deps.as_ref(), &env)?;
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
-    Ok(Response::new().add_messages(msg).add_attribute("action", "distribute"))
+    Ok(Response::new()
+        .add_messages(msg)
+        .add_attribute("action", "distribute"))
 }
 
 pub fn execute_withdraw(
@@ -207,8 +214,7 @@ pub fn execute_withdraw(
         .add_message(send_msg)
         .add_attribute("action", "withdraw")
         .add_attribute("amount", balance_info.balance)
-        .add_attribute("recipient", config.owner.into_string())
-    )
+        .add_attribute("recipient", config.owner.into_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

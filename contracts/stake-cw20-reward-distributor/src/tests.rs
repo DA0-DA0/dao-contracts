@@ -271,12 +271,13 @@ fn test_distribute() {
 
     // Pays out nothing
     app.update_block(|mut block| block.height += 1100);
-    let err = app.execute_contract(
-        Addr::unchecked(OWNER),
-        distributor_addr.clone(),
-        &ExecuteMsg::Distribute {},
-        &[],
-    )
+    let _err = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            distributor_addr.clone(),
+            &ExecuteMsg::Distribute {},
+            &[],
+        )
         .unwrap();
 
     let staking_balance = get_balance_cw20(&app, cw20_addr, staking_addr);
@@ -285,8 +286,6 @@ fn test_distribute() {
     let distributor_info = get_info(&app, distributor_addr);
     assert_eq!(distributor_info.balance, Uint128::new(0));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
-
-
 }
 
 #[test]
@@ -500,7 +499,6 @@ fn test_dao_deploy() {
     app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-
     app.update_block(|mut block| block.height += 10);
     app.execute_contract(
         Addr::unchecked(OWNER),
@@ -508,12 +506,12 @@ fn test_dao_deploy() {
         &ExecuteMsg::Distribute {},
         &[],
     )
-        .unwrap();
+    .unwrap();
 
-    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
+    let staking_balance = get_balance_cw20(&app, cw20_addr, staking_addr);
     assert_eq!(staking_balance, Uint128::new(10));
 
-    let distributor_info = get_info(&app, distributor_addr.clone());
+    let distributor_info = get_info(&app, distributor_addr);
     assert_eq!(distributor_info.balance, Uint128::new(990));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 }
