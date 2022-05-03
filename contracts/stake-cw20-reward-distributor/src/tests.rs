@@ -265,9 +265,21 @@ fn test_distribute() {
     let staking_balance = get_balance_cw20(&app, cw20_addr, staking_addr);
     assert_eq!(staking_balance, Uint128::new(1000));
 
-    let distributor_info = get_info(&app, distributor_addr);
+    let distributor_info = get_info(&app, distributor_addr.clone());
     assert_eq!(distributor_info.balance, Uint128::new(0));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
+
+    // Returns out of funds error
+    app.update_block(|mut block| block.height += 1001);
+    let err = app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr,
+        &ExecuteMsg::Distribute {},
+        &[],
+    )
+        .unwrap_err();
+
+    assert_eq!(ContractError::OutOfFunds {}, err.downcast().unwrap())
 }
 
 #[test]
