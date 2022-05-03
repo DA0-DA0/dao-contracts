@@ -44,7 +44,13 @@ pub fn instantiate(
     // Initialize last payment block
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(Response::new()
+        .add_attribute("action", "instantiate")
+        .add_attribute("owner", owner.into())
+        .add_attribute("staking_addr", staking_addr.into())
+        .add_attribute("reward_token", reward_token.into())
+        .add_attribute("reward_rate", msg.reward_rate)
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -97,7 +103,14 @@ pub fn execute_update_config(
         reward_rate,
     };
     CONFIG.save(deps.storage, &config)?;
-    Ok(Response::default())
+
+    Ok(Response::new()
+        .add_attribute("action", "update_config")
+        .add_attribute("owner", owner.into())
+        .add_attribute("staking_addr", staking_addr.into())
+        .add_attribute("reward_token", reward_token.into())
+        .add_attribute("reward_rate", reward_rate)
+    )
 }
 
 pub fn validate_cw20(deps: Deps, cw20_addr: Addr) -> bool {
@@ -151,7 +164,12 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
         funds: vec![],
     }
     .into();
-    Ok(Response::default().add_message(send_msg))
+
+    Ok(Response::new()
+        .add_message(send_msg)
+        .add_attribute("action", "distribute")
+        .add_attribute("amount", amount)
+    )
 }
 
 pub fn execute_withdraw(
@@ -182,7 +200,11 @@ pub fn execute_withdraw(
     }
     .into();
 
-    Ok(Response::new().add_message(send_msg))
+    Ok(Response::new()
+        .add_message(send_msg)
+        .add_attribute("action", "withdraw")
+        .add_attribute("amount", balance_info.balance)
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
