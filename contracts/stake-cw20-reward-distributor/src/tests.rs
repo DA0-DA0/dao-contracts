@@ -262,24 +262,31 @@ fn test_distribute() {
     )
     .unwrap();
 
-    let staking_balance = get_balance_cw20(&app, cw20_addr, staking_addr);
+    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
     assert_eq!(staking_balance, Uint128::new(1000));
 
     let distributor_info = get_info(&app, distributor_addr.clone());
     assert_eq!(distributor_info.balance, Uint128::new(0));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 
-    // Returns out of funds error
-    app.update_block(|mut block| block.height += 1001);
+    // Pays out nothing
+    app.update_block(|mut block| block.height += 1100);
     let err = app.execute_contract(
         Addr::unchecked(OWNER),
-        distributor_addr,
+        distributor_addr.clone(),
         &ExecuteMsg::Distribute {},
         &[],
     )
-        .unwrap_err();
+        .unwrap();
 
-    assert_eq!(ContractError::OutOfFunds {}, err.downcast().unwrap())
+    let staking_balance = get_balance_cw20(&app, cw20_addr, staking_addr);
+    assert_eq!(staking_balance, Uint128::new(1000));
+
+    let distributor_info = get_info(&app, distributor_addr);
+    assert_eq!(distributor_info.balance, Uint128::new(0));
+    assert_eq!(distributor_info.last_payment_block, app.block_info().height);
+
+
 }
 
 #[test]
@@ -470,10 +477,21 @@ fn test_dao_deploy() {
     let msg = InstantiateMsg {
         owner: OWNER.to_string(),
         staking_addr: staking_addr.to_string(),
-        reward_rate: Uint128::new(1),
+        reward_rate: Uint128::new(0),
         reward_token: cw20_addr.to_string(),
     };
     let distributor_addr = instantiate_distributor(&mut app, msg);
+
+    app.update_block(|mut block| block.height += 1000);
+
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: OWNER.to_string(),
+        staking_addr: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
+    app.execute_contract(Addr::unchecked(OWNER), distributor_addr.clone(), &msg, &[])
+        .unwrap();
 
     let msg = cw20::Cw20ExecuteMsg::Transfer {
         recipient: distributor_addr.to_string(),
@@ -481,4 +499,21 @@ fn test_dao_deploy() {
     };
     app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
         .unwrap();
+
+
+    app.update_block(|mut block| block.height += 10);
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr.clone(),
+        &ExecuteMsg::Distribute {},
+        &[],
+    )
+        .unwrap();
+
+    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
+    assert_eq!(staking_balance, Uint128::new(10));
+
+    let distributor_info = get_info(&app, distributor_addr.clone());
+    assert_eq!(distributor_info.balance, Uint128::new(990));
+    assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 }

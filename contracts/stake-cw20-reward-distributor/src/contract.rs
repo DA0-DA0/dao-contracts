@@ -109,7 +109,7 @@ pub fn execute_update_config(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
-        .add_message(distribution_msg)
+        .add_messages(distribution_msg)
         .add_attribute("action", "update_config")
         .add_attribute("owner", owner.into_string())
         .add_attribute("staking_addr", staking_addr.into_string())
@@ -134,15 +134,12 @@ pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
     response.is_ok()
 }
 
-fn get_distribution_msg(deps: Deps, env: &Env) -> Result<CosmosMsg, ContractError> {
+fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
     let block_diff = env.block.height - last_payment_block;
     let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
-    if pending_rewards == Uint128::zero() {
-    return Err(ContractError::NoPendingPayments {});
-    }
 
     let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
     config.reward_token.clone(),
@@ -151,11 +148,11 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<CosmosMsg, ContractErro
     },
     )?;
 
-    if balance_info.balance == Uint128::zero() {
-    return Err(ContractError::OutOfFunds {});
-    }
-
     let amount = min(balance_info.balance, pending_rewards);
+
+    if amount == Uint128::zero() {
+        return Ok(None)
+    }
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
     contract: config.staking_addr.clone().into_string(),
@@ -169,13 +166,13 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<CosmosMsg, ContractErro
     }
     .into();
 
-    Ok(send_msg)
+    Ok(Some(send_msg))
 }
 
 pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let msg = get_distribution_msg(deps.as_ref(), &env)?;
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
-    Ok(Response::new().add_message(msg).add_attribute("action", "distribute"))
+    Ok(Response::new().add_messages(msg).add_attribute("action", "distribute"))
 }
 
 pub fn execute_withdraw(
