@@ -62,6 +62,7 @@ pub fn execute(
             reward_token,
         } => execute_update_config(deps, info, owner, staking_addr, reward_rate, reward_token),
         ExecuteMsg::Distribute {} => execute_distribute(deps, env),
+        ExecuteMsg::Withdraw {} => execute_withdraw(deps, info, env),
     }
 }
 
@@ -151,6 +152,32 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
     }
     .into();
     Ok(Response::default().add_message(send_msg))
+}
+
+pub fn execute_withdraw(deps: DepsMut, info: MessageInfo, env: Env) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+        config.reward_token.clone(),
+        &cw20::Cw20QueryMsg::Balance {
+            address: env.contract.address.to_string(),
+        },
+    )?;
+
+    let msg = to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+        recipient: config.owner.into(),
+        amount: balance_info.balance,
+    })?;
+    let send_msg: CosmosMsg = WasmMsg::Execute {
+        contract_addr: config.reward_token.into(),
+        msg,
+        funds: vec![],
+    }.into();
+
+    Ok(Response::new().add_message(send_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

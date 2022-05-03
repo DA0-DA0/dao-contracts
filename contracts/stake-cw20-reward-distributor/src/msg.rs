@@ -21,6 +21,7 @@ pub enum ExecuteMsg {
         reward_token: String,
     },
     Distribute {},
+    Withdraw {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
