@@ -34,9 +34,9 @@ pub fn instantiate(
     }
 
     let config = Config {
-        owner,
-        staking_addr,
-        reward_token,
+        owner: owner.clone(),
+        staking_addr: staking_addr.clone(),
+        reward_token: reward_token.clone(),
         reward_rate: msg.reward_rate,
     };
     CONFIG.save(deps.storage, &config)?;
@@ -46,9 +46,9 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("owner", owner.into())
-        .add_attribute("staking_addr", staking_addr.into())
-        .add_attribute("reward_token", reward_token.into())
+        .add_attribute("owner", owner.into_string())
+        .add_attribute("staking_addr", staking_addr.into_string())
+        .add_attribute("reward_token", reward_token.into_string())
         .add_attribute("reward_rate", msg.reward_rate)
     )
 }
@@ -97,18 +97,18 @@ pub fn execute_update_config(
     }
 
     let config = Config {
-        owner,
-        staking_addr,
-        reward_token,
+        owner: owner.clone(),
+        staking_addr: staking_addr.clone(),
+        reward_token: reward_token.clone(),
         reward_rate,
     };
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
         .add_attribute("action", "update_config")
-        .add_attribute("owner", owner.into())
-        .add_attribute("staking_addr", staking_addr.into())
-        .add_attribute("reward_token", reward_token.into())
+        .add_attribute("owner", owner.into_string())
+        .add_attribute("staking_addr", staking_addr.into_string())
+        .add_attribute("reward_token", reward_token.into_string())
         .add_attribute("reward_rate", reward_rate)
     )
 }
@@ -190,7 +190,7 @@ pub fn execute_withdraw(
     )?;
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-        recipient: config.owner.into(),
+        recipient: config.owner.clone().into(),
         amount: balance_info.balance,
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
@@ -204,6 +204,7 @@ pub fn execute_withdraw(
         .add_message(send_msg)
         .add_attribute("action", "withdraw")
         .add_attribute("amount", balance_info.balance)
+        .add_attribute("recipient", config.owner.into_string())
     )
 }
 
