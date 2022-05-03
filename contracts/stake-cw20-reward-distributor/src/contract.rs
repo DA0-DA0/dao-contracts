@@ -154,7 +154,11 @@ pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractE
     Ok(Response::default().add_message(send_msg))
 }
 
-pub fn execute_withdraw(deps: DepsMut, info: MessageInfo, env: Env) -> Result<Response, ContractError> {
+pub fn execute_withdraw(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if config.owner != info.sender {
         return Err(ContractError::Unauthorized {});
@@ -175,7 +179,8 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo, env: Env) -> Result<Re
         contract_addr: config.reward_token.into(),
         msg,
         funds: vec![],
-    }.into();
+    }
+    .into();
 
     Ok(Response::new().add_message(send_msg))
 }

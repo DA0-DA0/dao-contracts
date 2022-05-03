@@ -405,9 +405,9 @@ fn test_withdraw() {
         &ExecuteMsg::Distribute {},
         &[],
     )
-        .unwrap();
+    .unwrap();
 
-    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr.clone());
+    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr);
     assert_eq!(staking_balance, Uint128::new(10));
 
     let distributor_info = get_info(&app, distributor_addr.clone());
@@ -415,12 +415,13 @@ fn test_withdraw() {
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
 
     // Unauthorized user cannot withdraw funds
-    let err = app.execute_contract(
-        Addr::unchecked(MANAGER),
-        distributor_addr.clone(),
-        &ExecuteMsg::Withdraw {},
-        &[],
-    )
+    let err = app
+        .execute_contract(
+            Addr::unchecked(MANAGER),
+            distributor_addr.clone(),
+            &ExecuteMsg::Withdraw {},
+            &[],
+        )
         .unwrap_err();
 
     assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
@@ -428,13 +429,12 @@ fn test_withdraw() {
     // Withdraw funds
     app.execute_contract(
         Addr::unchecked(OWNER),
-        distributor_addr.clone(),
+        distributor_addr,
         &ExecuteMsg::Withdraw {},
         &[],
     )
-        .unwrap();
+    .unwrap();
 
-
-    let owner_balance = get_balance_cw20(&app, cw20_addr.clone(), Addr::unchecked(OWNER));
+    let owner_balance = get_balance_cw20(&app, cw20_addr, Addr::unchecked(OWNER));
     assert_eq!(owner_balance, Uint128::new(990));
 }
