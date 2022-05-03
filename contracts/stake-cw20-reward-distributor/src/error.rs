@@ -9,12 +9,6 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("No Pending Payments")]
-    NoPendingPayments {},
-
-    #[error("Out of Funds")]
-    OutOfFunds {},
-
     #[error("Invalid Cw20")]
     InvalidCw20 {},
 
