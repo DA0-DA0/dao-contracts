@@ -369,3 +369,72 @@ fn test_update_config_invalid_addrs() {
         .unwrap();
     assert_eq!(err, ContractError::InvalidStakingContract {});
 }
+
+#[test]
+fn test_withdraw() {
+    let mut app = App::default();
+
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
+
+    let msg = InstantiateMsg {
+        owner: OWNER.to_string(),
+        staking_addr: staking_addr.to_string(),
+        reward_rate: Uint128::new(1),
+        reward_token: cw20_addr.to_string(),
+    };
+    let distributor_addr = instantiate_distributor(&mut app, msg);
+
+    let msg = cw20::Cw20ExecuteMsg::Transfer {
+        recipient: distributor_addr.to_string(),
+        amount: Uint128::from(1000u128),
+    };
+    app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
+        .unwrap();
+
+    app.update_block(|mut block| block.height += 10);
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr.clone(),
+        &ExecuteMsg::Distribute {},
+        &[],
+    )
+    .unwrap();
+
+    let staking_balance = get_balance_cw20(&app, cw20_addr.clone(), staking_addr);
+    assert_eq!(staking_balance, Uint128::new(10));
+
+    let distributor_info = get_info(&app, distributor_addr.clone());
+    assert_eq!(distributor_info.balance, Uint128::new(990));
+    assert_eq!(distributor_info.last_payment_block, app.block_info().height);
+
+    // Unauthorized user cannot withdraw funds
+    let err = app
+        .execute_contract(
+            Addr::unchecked(MANAGER),
+            distributor_addr.clone(),
+            &ExecuteMsg::Withdraw {},
+            &[],
+        )
+        .unwrap_err();
+
+    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+
+    // Withdraw funds
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr,
+        &ExecuteMsg::Withdraw {},
+        &[],
+    )
+    .unwrap();
+
+    let owner_balance = get_balance_cw20(&app, cw20_addr, Addr::unchecked(OWNER));
+    assert_eq!(owner_balance, Uint128::new(990));
+}
