@@ -99,7 +99,7 @@ pub fn register_name(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if amount < config.payment_amount {
-        // TODO: Improve error here
+        // TODO: Improve error here, not enough funds sent
         return Err(ContractError::Unauthorized {});
     }
 
@@ -107,7 +107,12 @@ pub fn register_name(
     let sender = deps.api.addr_validate(&sender)?;
 
     if NAME_TO_DAO.has(deps.storage, name.clone()) {
-        // TODO: Improve error here
+        // TODO: Improve error here, name already taken
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if DAO_TO_NAME.has(deps.storage, sender.clone()) {
+        // TODO: Improve error here, only one name per DAO
         return Err(ContractError::Unauthorized {});
     }
 
@@ -132,9 +137,9 @@ pub fn execute_update_config(
     }
 
     let new_payment_token_address =
-        new_payment_token_address.unwrap_or(config.payment_token_address.to_string());
+        new_payment_token_address.unwrap_or_else(|| config.payment_token_address.to_string());
     let payment_amount = new_payment_amount.unwrap_or(config.payment_amount);
-    let new_admin = new_admin.unwrap_or(config.admin.to_string());
+    let new_admin = new_admin.unwrap_or_else(|| config.admin.to_string());
 
     // Validate addresses
     let admin = deps.api.addr_validate(&new_admin)?;
@@ -151,7 +156,7 @@ pub fn execute_update_config(
 
 pub fn execute_revoke(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     name: String,
 ) -> Result<Response, ContractError> {
