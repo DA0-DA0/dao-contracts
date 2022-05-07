@@ -104,26 +104,22 @@ pub fn register_name(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if amount < config.payment_amount {
-        // TODO: Improve error here, not enough funds sent
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::InsufficientFunds {});
     }
 
     // this is the DAO
     let sender = deps.api.addr_validate(&sender)?;
 
     if RESERVED_NAMES.has(deps.storage, name.clone()) {
-        // TODO: Improve error here, name reserved for later user
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NameReserved {});
     }
 
     if NAME_TO_DAO.has(deps.storage, name.clone()) {
-        // TODO: Improve error here, name already taken
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NameAlreadyTaken {});
     }
 
     if DAO_TO_NAME.has(deps.storage, sender.clone()) {
-        // TODO: Improve error here, only one name per DAO
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NameAlreadyRegistered {});
     }
 
     NAME_TO_DAO.save(deps.storage, name.clone(), &sender)?;
@@ -193,8 +189,7 @@ pub fn execute_reserve(
     let config = CONFIG.load(deps.storage)?;
     // Check if name is already taken
     if NAME_TO_DAO.has(deps.storage, name.clone()) {
-        // TODO: Improve error here, name already taken
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NameAlreadyTaken {});
     }
 
     // Only the admin can reserve names
@@ -225,13 +220,11 @@ pub fn execute_transfer_reservation(
 
     // Check if DAO already has a name
     if DAO_TO_NAME.has(deps.storage, dao.clone()) {
-        // TODO: Improve error here, DAO already has a name
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NameAlreadyRegistered {});
     }
 
     if !RESERVED_NAMES.has(deps.storage, name.clone()) {
-        // TODO: Improve error here, name not reserved
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NameNotReserved {});
     }
 
     DAO_TO_NAME.save(deps.storage, dao.clone(), &name)?;

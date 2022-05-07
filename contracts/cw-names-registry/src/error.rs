@@ -8,4 +8,19 @@ pub enum ContractError {
 
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("Insufficient funds sent")]
+    InsufficientFunds {},
+
+    #[error("This name is reserved for later user")]
+    NameReserved {},
+
+    #[error("This name is not reserved for later use")]
+    NameNotReserved {},
+
+    #[error("This name is already taken")]
+    NameAlreadyTaken {},
+
+    #[error("You already registered a name with this DAO")]
+    NameAlreadyRegistered {},
 }
