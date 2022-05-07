@@ -1,7 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    from_binary, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -10,7 +11,7 @@ use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, InstantiateMsg, LookUpDaoResponse, LookUpNameResponse, QueryMsg, ReceiveMsg,
 };
-use crate::state::{Config, CONFIG, DAO_TO_NAME, NAME_TO_DAO};
+use crate::state::{Config, CONFIG, DAO_TO_NAME, NAME_TO_DAO, RESERVED_NAMES};
 
 const CONTRACT_NAME: &str = "crates.io:cw-name-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -64,6 +65,10 @@ pub fn execute(
             new_payment_amount,
         ),
         ExecuteMsg::Revoke { name } => execute_revoke(deps, env, info, name),
+        ExecuteMsg::Reserve { name } => execute_reserve(deps, env, info, name),
+        ExecuteMsg::TransferReservation { name, dao } => {
+            execute_transfer_reservation(deps, env, info, name, dao)
+        }
     }
 }
 
@@ -105,6 +110,11 @@ pub fn register_name(
 
     // this is the DAO
     let sender = deps.api.addr_validate(&sender)?;
+
+    if RESERVED_NAMES.has(deps.storage, name.clone()) {
+        // TODO: Improve error here, name reserved for later user
+        return Err(ContractError::Unauthorized {});
+    }
 
     if NAME_TO_DAO.has(deps.storage, name.clone()) {
         // TODO: Improve error here, name already taken
@@ -174,6 +184,63 @@ pub fn execute_revoke(
     Ok(Response::new())
 }
 
+pub fn execute_reserve(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    name: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    // Check if name is already taken
+    if NAME_TO_DAO.has(deps.storage, name.clone()) {
+        // TODO: Improve error here, name already taken
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Only the admin can reserve names
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    RESERVED_NAMES.save(deps.storage, name, &Empty {})?;
+
+    Ok(Response::new())
+}
+
+pub fn execute_transfer_reservation(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    name: String,
+    dao: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    // Validate DAO
+    let dao = deps.api.addr_validate(&dao)?;
+
+    // Only the admin can transfer reserved names
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Check if DAO already has a name
+    if DAO_TO_NAME.has(deps.storage, dao.clone()) {
+        // TODO: Improve error here, DAO already has a name
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if !RESERVED_NAMES.has(deps.storage, name.clone()) {
+        // TODO: Improve error here, name not reserved
+        return Err(ContractError::Unauthorized {});
+    }
+
+    DAO_TO_NAME.save(deps.storage, dao.clone(), &name)?;
+    NAME_TO_DAO.save(deps.storage, name.clone(), &dao)?;
+    RESERVED_NAMES.remove(deps.storage, name);
+
+    Ok(Response::new())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -190,6 +257,7 @@ pub fn query_look_up_dao(deps: Deps, dao: String) -> StdResult<Binary> {
 }
 
 pub fn query_look_up_name(deps: Deps, name: String) -> StdResult<Binary> {
+    let reserved = RESERVED_NAMES.has(deps.storage, name.clone());
     let dao = NAME_TO_DAO.may_load(deps.storage, name)?;
-    to_binary(&LookUpNameResponse { dao })
+    to_binary(&LookUpNameResponse { reserved, dao })
 }

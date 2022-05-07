@@ -1,6 +1,3 @@
-# Proposal Hooks Counter
+# CW-Name-Registry
 
-## Purely for testing for hooks integration. (DO NOT USE IN MAINNET)
-
-Contract that integrates with the new proposal hooks
-system to test if they work and are reverted correctly.
+Allows DAOs to register (at a cost) for a text name.

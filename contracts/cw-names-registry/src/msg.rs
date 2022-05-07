@@ -19,6 +19,15 @@ pub enum ExecuteMsg {
         new_admin: Option<String>,
         new_payment_amount: Option<Uint128>,
     },
+    /// Reserve a name so it cannot be taken for later use
+    Reserve {
+        name: String,
+    },
+    /// Transfer a reserved name to a DAO
+    TransferReservation {
+        name: String,
+        dao: String,
+    },
     Revoke {
         name: String,
     },
@@ -48,5 +57,6 @@ pub struct LookUpDaoResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct LookUpNameResponse {
+    pub reserved: bool, // Reserved is a special case where there is no DAO but it still can't be used
     pub dao: Option<Addr>,
 }

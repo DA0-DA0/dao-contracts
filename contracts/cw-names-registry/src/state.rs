@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Empty, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -17,3 +17,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 /// two way look ups.
 pub const DAO_TO_NAME: Map<Addr, String> = Map::new("dao_to_name");
 pub const NAME_TO_DAO: Map<String, Addr> = Map::new("name_to_dao");
+
+/// Maps for names which are reserved for later user, e.g. RAW, JUNO, or
+/// anything of importance that could cause issues.
+pub const RESERVED_NAMES: Map<String, Empty> = Map::new("reserved_names");

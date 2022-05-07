@@ -1,4 +1,6 @@
-use crate::msg::{InstantiateMsg, LookUpNameResponse, QueryMsg, ReceiveMsg};
+use crate::msg::{
+    ExecuteMsg, InstantiateMsg, LookUpDaoResponse, LookUpNameResponse, QueryMsg, ReceiveMsg,
+};
 use anyhow::Result as AnyResult;
 use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
@@ -104,8 +106,34 @@ fn register(
     app.execute_contract(sender, token_addr, &msg, &[])
 }
 
+fn revoke(app: &mut App, names_addr: Addr, name: String, sender: Addr) -> AnyResult<AppResponse> {
+    let msg = ExecuteMsg::Revoke { name };
+    app.execute_contract(sender, names_addr, &msg, &[])
+}
+
+fn reserve(app: &mut App, names_addr: Addr, name: String, sender: Addr) -> AnyResult<AppResponse> {
+    let msg = ExecuteMsg::Reserve { name };
+    app.execute_contract(sender, names_addr, &msg, &[])
+}
+
+fn transfer_reservation(
+    app: &mut App,
+    names_addr: Addr,
+    name: String,
+    dao: String,
+    sender: Addr,
+) -> AnyResult<AppResponse> {
+    let msg = ExecuteMsg::TransferReservation { name, dao };
+    app.execute_contract(sender, names_addr, &msg, &[])
+}
+
 fn query_name(app: &mut App, names_addr: Addr, name: String) -> LookUpNameResponse {
     let msg = QueryMsg::LookUpName { name };
+    app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
+}
+
+fn query_dao(app: &mut App, names_addr: Addr, dao: String) -> LookUpDaoResponse {
+    let msg = QueryMsg::LookUpDao { dao };
     app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
 }
 
@@ -138,6 +166,26 @@ fn test_register() {
     )
     .unwrap_err();
 
+    // Reserve a name to test failure to register reserved name
+    reserve(
+        &mut app,
+        names.clone(),
+        "Reserved".to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    // Try to register a reserved name
+    register(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        "Reserved".to_string(),
+        Addr::unchecked(DAO_ADDR),
+        token.clone(),
+    )
+    .unwrap_err();
+
     // Valid
     register(
         &mut app,
@@ -149,9 +197,14 @@ fn test_register() {
     )
     .unwrap();
 
+    // Look it up both ways
     let resp = query_name(&mut app, names.clone(), name.to_string());
     assert!(resp.dao.is_some());
+    assert!(!resp.reserved);
     assert_eq!(resp.dao, Some(Addr::unchecked(DAO_ADDR)));
+    let resp = query_dao(&mut app, names.clone(), DAO_ADDR.to_string());
+    assert!(resp.name.is_some());
+    assert_eq!(resp.name, Some(name.to_string()));
 
     // Name already taken
     register(
@@ -177,12 +230,180 @@ fn test_register() {
 
     // Name has not been registered
     let resp = query_name(&mut app, names, "Name2".to_string());
+    assert!(!resp.reserved);
     assert!(resp.dao.is_none());
     assert_eq!(resp.dao, None);
 }
 
 #[test]
-fn test_revoke() {}
+fn test_revoke() {
+    let mut app = App::default();
+    let (names, token) = setup_test_case(&mut app, Uint128::new(50));
+    let name: &str = "Name";
+
+    // Register the name
+    register(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+        token.clone(),
+    )
+    .unwrap();
+
+    // Try to revoke non existent name, will fail
+    revoke(
+        &mut app,
+        names.clone(),
+        "NotExist".to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Try to revoke as non admin and not DAO, will fail
+    revoke(
+        &mut app,
+        names.clone(),
+        name.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Revoke as owner, will succeed
+    revoke(
+        &mut app,
+        names.clone(),
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+    )
+    .unwrap();
+
+    // Reregister to test revoking as admin
+    register(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+        token,
+    )
+    .unwrap();
+
+    // Revoke as admin, will succeed
+    revoke(
+        &mut app,
+        names,
+        name.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+}
+
+#[test]
+fn test_reserve() {
+    let mut app = App::default();
+    let (names, token) = setup_test_case(&mut app, Uint128::new(50));
+    let name: &str = "Name";
+    let already_registered_name: &str = "Already";
+
+    // Register this name
+    register(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        already_registered_name.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+        token,
+    )
+    .unwrap();
+
+    // Try to reserve registered name, will fail
+    reserve(
+        &mut app,
+        names.clone(),
+        already_registered_name.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Try to reserve as non admin, will fail
+    reserve(
+        &mut app,
+        names.clone(),
+        name.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    let res = query_name(&mut app, names.clone(), name.to_string());
+    assert!(!res.reserved);
+
+    // Reserve a name
+    reserve(
+        &mut app,
+        names.clone(),
+        name.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    let res = query_name(&mut app, names.clone(), name.to_string());
+    assert!(res.reserved);
+
+    // Try to transfer as non admin
+    transfer_reservation(
+        &mut app,
+        names.clone(),
+        name.to_string(),
+        DAO_ADDR.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Try to transfer unreserved name
+    transfer_reservation(
+        &mut app,
+        names.clone(),
+        "NotReserved".to_string(),
+        DAO_ADDR.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Try to transfer to a DAO that already has a name
+    transfer_reservation(
+        &mut app,
+        names.clone(),
+        name.to_string(),
+        NON_ADMIN_ADDR.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Successfully transfer
+    transfer_reservation(
+        &mut app,
+        names.clone(),
+        name.to_string(),
+        DAO_ADDR.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    let res = query_name(&mut app, names.clone(), name.to_string());
+    assert!(!res.reserved);
+    assert_eq!(res.dao, Some(Addr::unchecked(DAO_ADDR)));
+
+    // Try to reserve the newly registered name from transfer, will fail
+    reserve(
+        &mut app,
+        names,
+        name.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap_err();
+}
 
 #[test]
 fn test_update_config() {}
