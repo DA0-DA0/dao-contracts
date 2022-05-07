@@ -1,6 +1,7 @@
 use crate::msg::{
     ExecuteMsg, InstantiateMsg, LookUpDaoResponse, LookUpNameResponse, QueryMsg, ReceiveMsg,
 };
+use crate::state::Config;
 use anyhow::Result as AnyResult;
 use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
@@ -127,6 +128,22 @@ fn transfer_reservation(
     app.execute_contract(sender, names_addr, &msg, &[])
 }
 
+fn update_config(
+    app: &mut App,
+    names_addr: Addr,
+    new_payment_token_address: Option<String>,
+    new_admin: Option<String>,
+    new_payment_amount: Option<Uint128>,
+    sender: Addr,
+) -> AnyResult<AppResponse> {
+    let msg = ExecuteMsg::UpdateConfig {
+        new_payment_token_address,
+        new_admin,
+        new_payment_amount,
+    };
+    app.execute_contract(sender, names_addr, &msg, &[])
+}
+
 fn query_name(app: &mut App, names_addr: Addr, name: String) -> LookUpNameResponse {
     let msg = QueryMsg::LookUpName { name };
     app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
@@ -134,6 +151,11 @@ fn query_name(app: &mut App, names_addr: Addr, name: String) -> LookUpNameRespon
 
 fn query_dao(app: &mut App, names_addr: Addr, dao: String) -> LookUpDaoResponse {
     let msg = QueryMsg::LookUpDao { dao };
+    app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
+}
+
+fn query_config(app: &mut App, names_addr: Addr) -> Config {
+    let msg = QueryMsg::Config {};
     app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
 }
 
@@ -406,4 +428,50 @@ fn test_reserve() {
 }
 
 #[test]
-fn test_update_config() {}
+fn test_update_config() {
+    let mut app = App::default();
+    let (names, token) = setup_test_case(&mut app, Uint128::new(50));
+    let other_token = create_token(&mut app); // To be used when updating payment token
+
+    let config = query_config(&mut app, names.clone());
+    assert_eq!(
+        config,
+        Config {
+            admin: Addr::unchecked(ADMIN_ADDR),
+            payment_token_address: token,
+            payment_amount: Uint128::new(50),
+        }
+    );
+
+    // Update config as non admin fails
+    update_config(
+        &mut app,
+        names.clone(),
+        Some(other_token.to_string()),
+        Some(NON_ADMIN_ADDR.to_string()),
+        Some(Uint128::new(25)),
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Update config as admin
+    update_config(
+        &mut app,
+        names.clone(),
+        Some(other_token.to_string()),
+        Some(NON_ADMIN_ADDR.to_string()),
+        Some(Uint128::new(25)),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    let config = query_config(&mut app, names);
+    assert_eq!(
+        config,
+        Config {
+            admin: Addr::unchecked(NON_ADMIN_ADDR),
+            payment_token_address: other_token,
+            payment_amount: Uint128::new(25),
+        }
+    );
+}
