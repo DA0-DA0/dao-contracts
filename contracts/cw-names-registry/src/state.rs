@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     pub admin: Addr, // Admin to allow revoking of names, could be a DAO, MS
     pub payment_token_address: Addr, // The address of the tokens used for payments
-    pub payment_amount: Uint128, // Micro units we have to pay
+    pub payment_amount_to_register_name: Uint128, // Micro units we have to pay
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

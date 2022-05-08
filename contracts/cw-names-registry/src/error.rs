@@ -18,9 +18,15 @@ pub enum ContractError {
     #[error("This name is not reserved for later use")]
     NameNotReserved {},
 
-    #[error("This name is already taken")]
+    #[error("This name is already taken by another DAO")]
     NameAlreadyTaken {},
 
     #[error("You already registered a name with this DAO")]
-    NameAlreadyRegistered {},
+    AlreadyRegisteredName {},
+
+    #[error("Invalid payment amount, amount cannot be zero")]
+    InvalidPaymentAmount {},
+
+    #[error("This name is not registered to a DAO")]
+    NameNotRegistered {},
 }

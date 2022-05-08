@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
     pub admin: String,
     pub payment_token_address: String,
-    pub payment_amount: Uint128,
+    pub payment_amount_to_register_name: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -44,8 +44,16 @@ pub enum ReceiveMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Config {},
-    LookUpDao { dao: String },
-    LookUpName { name: String },
+    LookUpNameByDao { dao: String },
+    LookUpDaoByName { name: String },
+    IsNameAvailableToRegister { name: String },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct IsNameAvailableToRegisterResponse {
+    pub taken: bool,
+    pub reserved: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -57,6 +65,5 @@ pub struct LookUpDaoResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct LookUpNameResponse {
-    pub reserved: bool, // Reserved is a special case where there is no DAO but it still can't be used
     pub dao: Option<Addr>,
 }

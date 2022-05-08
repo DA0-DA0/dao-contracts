@@ -9,7 +9,8 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, LookUpDaoResponse, LookUpNameResponse, QueryMsg, ReceiveMsg,
+    ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoResponse,
+    LookUpNameResponse, QueryMsg, ReceiveMsg,
 };
 use crate::state::{Config, CONFIG, DAO_TO_NAME, NAME_TO_DAO, RESERVED_NAMES};
 
@@ -28,14 +29,14 @@ pub fn instantiate(
     let payment_token_address = deps.api.addr_validate(&msg.payment_token_address)?;
     let admin = deps.api.addr_validate(&msg.admin)?;
 
-    if msg.payment_amount.is_zero() {
-        return Err(ContractError::Unauthorized {});
+    if msg.payment_amount_to_register_name.is_zero() {
+        return Err(ContractError::InvalidPaymentAmount {});
     }
 
     let config = Config {
         admin,
         payment_token_address,
-        payment_amount: msg.payment_amount,
+        payment_amount_to_register_name: msg.payment_amount_to_register_name,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -103,11 +104,12 @@ pub fn register_name(
     name: String,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    if amount < config.payment_amount {
+    if amount < config.payment_amount_to_register_name {
         return Err(ContractError::InsufficientFunds {});
     }
 
-    // this is the DAO
+    // We expect this to be a DAO that is registering a name
+    // TODO: Validate it is a DAO
     let sender = deps.api.addr_validate(&sender)?;
 
     if RESERVED_NAMES.has(deps.storage, name.clone()) {
@@ -119,7 +121,7 @@ pub fn register_name(
     }
 
     if DAO_TO_NAME.has(deps.storage, sender.clone()) {
-        return Err(ContractError::NameAlreadyRegistered {});
+        return Err(ContractError::AlreadyRegisteredName {});
     }
 
     NAME_TO_DAO.save(deps.storage, name.clone(), &sender)?;
@@ -144,14 +146,19 @@ pub fn execute_update_config(
 
     let new_payment_token_address =
         new_payment_token_address.unwrap_or_else(|| config.payment_token_address.to_string());
-    let payment_amount = new_payment_amount.unwrap_or(config.payment_amount);
+    let payment_amount = new_payment_amount.unwrap_or(config.payment_amount_to_register_name);
     let new_admin = new_admin.unwrap_or_else(|| config.admin.to_string());
+
+    // Validate payment amount
+    if payment_amount.is_zero() {
+        return Err(ContractError::InvalidPaymentAmount {});
+    }
 
     // Validate addresses
     let admin = deps.api.addr_validate(&new_admin)?;
     let payment_token_address = deps.api.addr_validate(&new_payment_token_address)?;
 
-    config.payment_amount = payment_amount;
+    config.payment_amount_to_register_name = payment_amount;
     config.admin = admin;
     config.payment_token_address = payment_token_address;
 
@@ -167,6 +174,11 @@ pub fn execute_revoke(
     name: String,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    if !NAME_TO_DAO.has(deps.storage, name.clone()) {
+        return Err(ContractError::NameNotRegistered {});
+    }
+
     let dao = NAME_TO_DAO.load(deps.storage, name.clone())?;
 
     // Only name owner and overall name admin can revoke
@@ -190,6 +202,10 @@ pub fn execute_reserve(
     // Check if name is already taken
     if NAME_TO_DAO.has(deps.storage, name.clone()) {
         return Err(ContractError::NameAlreadyTaken {});
+    }
+
+    if RESERVED_NAMES.has(deps.storage, name.clone()) {
+        return Err(ContractError::NameReserved {});
     }
 
     // Only the admin can reserve names
@@ -220,7 +236,7 @@ pub fn execute_transfer_reservation(
 
     // Check if DAO already has a name
     if DAO_TO_NAME.has(deps.storage, dao.clone()) {
-        return Err(ContractError::NameAlreadyRegistered {});
+        return Err(ContractError::AlreadyRegisteredName {});
     }
 
     if !RESERVED_NAMES.has(deps.storage, name.clone()) {
@@ -238,19 +254,27 @@ pub fn execute_transfer_reservation(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&CONFIG.load(deps.storage)?),
-        QueryMsg::LookUpDao { dao } => query_look_up_dao(deps, dao),
-        QueryMsg::LookUpName { name } => query_look_up_name(deps, name),
+        QueryMsg::LookUpNameByDao { dao } => query_look_up_name_by_dao(deps, dao),
+        QueryMsg::LookUpDaoByName { name } => query_look_up_dao_by_name(deps, name),
+        QueryMsg::IsNameAvailableToRegister { name } => {
+            query_is_name_available_to_register(deps, name)
+        }
     }
 }
 
-pub fn query_look_up_dao(deps: Deps, dao: String) -> StdResult<Binary> {
+pub fn query_look_up_name_by_dao(deps: Deps, dao: String) -> StdResult<Binary> {
     let dao = deps.api.addr_validate(&dao)?;
     let name = DAO_TO_NAME.may_load(deps.storage, dao)?;
     to_binary(&LookUpDaoResponse { name })
 }
 
-pub fn query_look_up_name(deps: Deps, name: String) -> StdResult<Binary> {
-    let reserved = RESERVED_NAMES.has(deps.storage, name.clone());
+pub fn query_look_up_dao_by_name(deps: Deps, name: String) -> StdResult<Binary> {
     let dao = NAME_TO_DAO.may_load(deps.storage, name)?;
-    to_binary(&LookUpNameResponse { reserved, dao })
+    to_binary(&LookUpNameResponse { dao })
+}
+
+pub fn query_is_name_available_to_register(deps: Deps, name: String) -> StdResult<Binary> {
+    let reserved = RESERVED_NAMES.has(deps.storage, name.clone());
+    let taken = NAME_TO_DAO.has(deps.storage, name);
+    to_binary(&IsNameAvailableToRegisterResponse { taken, reserved })
 }

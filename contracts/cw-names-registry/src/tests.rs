@@ -1,5 +1,6 @@
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, LookUpDaoResponse, LookUpNameResponse, QueryMsg, ReceiveMsg,
+    ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoResponse,
+    LookUpNameResponse, QueryMsg, ReceiveMsg,
 };
 use crate::state::Config;
 use anyhow::Result as AnyResult;
@@ -74,7 +75,7 @@ fn setup_test_case(app: &mut App, payment_amount: Uint128) -> (Addr, Addr) {
             &InstantiateMsg {
                 admin: ADMIN_ADDR.to_string(),
                 payment_token_address: token_addr.to_string(),
-                payment_amount,
+                payment_amount_to_register_name: payment_amount,
             },
             &[],
             "DAO Names Registry",
@@ -145,12 +146,21 @@ fn update_config(
 }
 
 fn query_name(app: &mut App, names_addr: Addr, name: String) -> LookUpNameResponse {
-    let msg = QueryMsg::LookUpName { name };
+    let msg = QueryMsg::LookUpDaoByName { name };
     app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
 }
 
 fn query_dao(app: &mut App, names_addr: Addr, dao: String) -> LookUpDaoResponse {
-    let msg = QueryMsg::LookUpDao { dao };
+    let msg = QueryMsg::LookUpNameByDao { dao };
+    app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
+}
+
+fn query_availability(
+    app: &mut App,
+    names_addr: Addr,
+    name: String,
+) -> IsNameAvailableToRegisterResponse {
+    let msg = QueryMsg::IsNameAvailableToRegister { name };
     app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
 }
 
@@ -222,7 +232,6 @@ fn test_register() {
     // Look it up both ways
     let resp = query_name(&mut app, names.clone(), name.to_string());
     assert!(resp.dao.is_some());
-    assert!(!resp.reserved);
     assert_eq!(resp.dao, Some(Addr::unchecked(DAO_ADDR)));
     let resp = query_dao(&mut app, names.clone(), DAO_ADDR.to_string());
     assert!(resp.name.is_some());
@@ -252,7 +261,6 @@ fn test_register() {
 
     // Name has not been registered
     let resp = query_name(&mut app, names, "Name2".to_string());
-    assert!(!resp.reserved);
     assert!(resp.dao.is_none());
     assert_eq!(resp.dao, None);
 }
@@ -358,7 +366,9 @@ fn test_reserve() {
     )
     .unwrap_err();
 
-    let res = query_name(&mut app, names.clone(), name.to_string());
+    // Name is not reserved not taken
+    let res = query_availability(&mut app, names.clone(), name.to_string());
+    assert!(!res.taken);
     assert!(!res.reserved);
 
     // Reserve a name
@@ -369,8 +379,8 @@ fn test_reserve() {
         Addr::unchecked(ADMIN_ADDR),
     )
     .unwrap();
-
-    let res = query_name(&mut app, names.clone(), name.to_string());
+    let res = query_availability(&mut app, names.clone(), name.to_string());
+    assert!(!res.taken);
     assert!(res.reserved);
 
     // Try to transfer as non admin
@@ -414,8 +424,10 @@ fn test_reserve() {
     .unwrap();
 
     let res = query_name(&mut app, names.clone(), name.to_string());
-    assert!(!res.reserved);
     assert_eq!(res.dao, Some(Addr::unchecked(DAO_ADDR)));
+    let res = query_availability(&mut app, names.clone(), name.to_string());
+    assert!(res.taken);
+    assert!(!res.reserved);
 
     // Try to reserve the newly registered name from transfer, will fail
     reserve(
@@ -438,8 +450,8 @@ fn test_update_config() {
         config,
         Config {
             admin: Addr::unchecked(ADMIN_ADDR),
-            payment_token_address: token,
-            payment_amount: Uint128::new(50),
+            payment_token_address: token.clone(),
+            payment_amount_to_register_name: Uint128::new(50),
         }
     );
 
@@ -465,13 +477,77 @@ fn test_update_config() {
     )
     .unwrap();
 
-    let config = query_config(&mut app, names);
+    let config = query_config(&mut app, names.clone());
     assert_eq!(
         config,
         Config {
             admin: Addr::unchecked(NON_ADMIN_ADDR),
             payment_token_address: other_token,
-            payment_amount: Uint128::new(25),
+            payment_amount_to_register_name: Uint128::new(25),
+        }
+    );
+
+    // Update one config value but not the others
+    // Only token
+    update_config(
+        &mut app,
+        names.clone(),
+        Some(token.to_string()),
+        None,
+        None,
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap();
+
+    let config = query_config(&mut app, names.clone());
+    assert_eq!(
+        config,
+        Config {
+            admin: Addr::unchecked(NON_ADMIN_ADDR),
+            payment_token_address: token.clone(), // Only this has changed
+            payment_amount_to_register_name: Uint128::new(25),
+        }
+    );
+
+    // Only admin
+    update_config(
+        &mut app,
+        names.clone(),
+        None,
+        Some(ADMIN_ADDR.to_string()),
+        None,
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap();
+
+    let config = query_config(&mut app, names.clone());
+    assert_eq!(
+        config,
+        Config {
+            admin: Addr::unchecked(ADMIN_ADDR), // Only this has changed
+            payment_token_address: token.clone(),
+            payment_amount_to_register_name: Uint128::new(25),
+        }
+    );
+
+    // Only amount
+    update_config(
+        &mut app,
+        names.clone(),
+        None,
+        None,
+        Some(Uint128::new(50)),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    let config = query_config(&mut app, names);
+    assert_eq!(
+        config,
+        Config {
+            admin: Addr::unchecked(ADMIN_ADDR), // Only this has changed
+            payment_token_address: token,
+            payment_amount_to_register_name: Uint128::new(50),
         }
     );
 }
