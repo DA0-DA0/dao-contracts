@@ -58,12 +58,12 @@ pub struct IsNameAvailableToRegisterResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct LookUpDaoResponse {
+pub struct LookUpNameByDaoResponse {
     pub name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct LookUpNameResponse {
+pub struct LookUpDaoByNameResponse {
     pub dao: Option<Addr>,
 }

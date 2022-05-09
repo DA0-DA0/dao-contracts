@@ -1,21 +1,29 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
-    Uint128,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use cw20::Cw20ReceiveMsg;
+use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoResponse,
-    LookUpNameResponse, QueryMsg, ReceiveMsg,
+    ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoByNameResponse,
+    LookUpNameByDaoResponse, QueryMsg, ReceiveMsg,
 };
 use crate::state::{Config, CONFIG, DAO_TO_NAME, NAME_TO_DAO, RESERVED_NAMES};
 
 const CONTRACT_NAME: &str = "crates.io:cw-name-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn assert_cw20(deps: Deps, cw20_addr: &Addr) -> StdResult<()> {
+    let _resp: TokenInfoResponse = deps
+        .querier
+        .query_wasm_smart(cw20_addr, &cw20_base::msg::QueryMsg::TokenInfo {})
+        .unwrap();
+    Ok(())
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -27,6 +35,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let payment_token_address = deps.api.addr_validate(&msg.payment_token_address)?;
+    assert_cw20(deps.as_ref(), &payment_token_address)?;
     let admin = deps.api.addr_validate(&msg.admin)?;
 
     if msg.payment_amount_to_register_name.is_zero() {
@@ -104,7 +113,7 @@ pub fn register_name(
     name: String,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    if amount < config.payment_amount_to_register_name {
+    if amount != config.payment_amount_to_register_name {
         return Err(ContractError::InsufficientFunds {});
     }
 
@@ -157,6 +166,7 @@ pub fn execute_update_config(
     // Validate addresses
     let admin = deps.api.addr_validate(&new_admin)?;
     let payment_token_address = deps.api.addr_validate(&new_payment_token_address)?;
+    assert_cw20(deps.as_ref(), &payment_token_address)?;
 
     config.payment_amount_to_register_name = payment_amount;
     config.admin = admin;
@@ -265,12 +275,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_look_up_name_by_dao(deps: Deps, dao: String) -> StdResult<Binary> {
     let dao = deps.api.addr_validate(&dao)?;
     let name = DAO_TO_NAME.may_load(deps.storage, dao)?;
-    to_binary(&LookUpDaoResponse { name })
+    to_binary(&LookUpNameByDaoResponse { name })
 }
 
 pub fn query_look_up_dao_by_name(deps: Deps, name: String) -> StdResult<Binary> {
     let dao = NAME_TO_DAO.may_load(deps.storage, name)?;
-    to_binary(&LookUpNameResponse { dao })
+    to_binary(&LookUpDaoByNameResponse { dao })
 }
 
 pub fn query_is_name_available_to_register(deps: Deps, name: String) -> StdResult<Binary> {

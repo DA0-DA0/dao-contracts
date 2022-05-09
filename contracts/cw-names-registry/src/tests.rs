@@ -1,6 +1,6 @@
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoResponse,
-    LookUpNameResponse, QueryMsg, ReceiveMsg,
+    ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoByNameResponse,
+    LookUpNameByDaoResponse, QueryMsg, ReceiveMsg,
 };
 use crate::state::Config;
 use anyhow::Result as AnyResult;
@@ -145,12 +145,12 @@ fn update_config(
     app.execute_contract(sender, names_addr, &msg, &[])
 }
 
-fn query_name(app: &mut App, names_addr: Addr, name: String) -> LookUpNameResponse {
+fn query_name(app: &mut App, names_addr: Addr, name: String) -> LookUpDaoByNameResponse {
     let msg = QueryMsg::LookUpDaoByName { name };
     app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
 }
 
-fn query_dao(app: &mut App, names_addr: Addr, dao: String) -> LookUpDaoResponse {
+fn query_dao(app: &mut App, names_addr: Addr, dao: String) -> LookUpNameByDaoResponse {
     let msg = QueryMsg::LookUpNameByDao { dao };
     app.wrap().query_wasm_smart(names_addr, &msg).unwrap()
 }
