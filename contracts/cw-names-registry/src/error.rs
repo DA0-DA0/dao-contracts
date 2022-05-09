@@ -29,4 +29,7 @@ pub enum ContractError {
 
     #[error("This name is not registered to a DAO")]
     NameNotRegistered {},
+
+    #[error("Invalid CW20, this address is not a CW20")]
+    InvalidCw20 {},
 }

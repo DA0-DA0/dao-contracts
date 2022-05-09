@@ -17,11 +17,11 @@ use crate::state::{Config, CONFIG, DAO_TO_NAME, NAME_TO_DAO, RESERVED_NAMES};
 const CONTRACT_NAME: &str = "crates.io:cw-name-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn assert_cw20(deps: Deps, cw20_addr: &Addr) -> StdResult<()> {
+fn assert_cw20(deps: Deps, cw20_addr: &Addr) -> Result<(), ContractError> {
     let _resp: TokenInfoResponse = deps
         .querier
         .query_wasm_smart(cw20_addr, &cw20_base::msg::QueryMsg::TokenInfo {})
-        .unwrap();
+        .map_err(|_err| ContractError::InvalidCw20 {})?;
     Ok(())
 }
 
@@ -95,7 +95,6 @@ pub fn execute_receive(
         return Err(ContractError::Unauthorized {});
     }
 
-    // TODO: Is there a way we can verify this is a DAO
     let sender = wrapped.sender;
     let amount = wrapped.amount;
     let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
@@ -118,7 +117,6 @@ pub fn register_name(
     }
 
     // We expect this to be a DAO that is registering a name
-    // TODO: Validate it is a DAO
     let sender = deps.api.addr_validate(&sender)?;
 
     if RESERVED_NAMES.has(deps.storage, name.clone()) {

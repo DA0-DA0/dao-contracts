@@ -89,7 +89,23 @@ fn setup_test_case(app: &mut App, payment_amount: Uint128) -> (Addr, Addr) {
 #[test]
 fn test_instantiate() {
     let mut app = App::default();
-    let (_names, _token) = setup_test_case(&mut app, Uint128::new(50));
+    let (names, _token) = setup_test_case(&mut app, Uint128::new(50));
+    let names_id = app.store_code(names_contract());
+
+    let _err = app
+        .instantiate_contract(
+            names_id,
+            Addr::unchecked(ADMIN_ADDR),
+            &InstantiateMsg {
+                admin: ADMIN_ADDR.to_string(),
+                payment_token_address: names.to_string(), // Use the names address, as this is not a token
+                payment_amount_to_register_name: Uint128::new(50),
+            },
+            &[],
+            "DAO Names Registry",
+            None,
+        )
+        .unwrap_err();
 }
 
 fn register(
