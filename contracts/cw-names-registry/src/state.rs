@@ -5,10 +5,22 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum PaymentInfo {
+    NativePayment {
+        token_denom: String,
+        payment_amount: Uint128,
+    },
+    Cw20Payment {
+        token_address: String,
+        payment_amount: Uint128,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct Config {
     pub admin: Addr, // Admin to allow revoking of names, could be a DAO, MS
-    pub payment_token_address: Addr, // The address of the tokens used for payments
-    pub payment_amount_to_register_name: Uint128, // Micro units we have to pay
+    pub payment_info: PaymentInfo,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

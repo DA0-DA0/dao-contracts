@@ -32,4 +32,13 @@ pub enum ContractError {
 
     #[error("Invalid CW20, this address is not a CW20")]
     InvalidCw20 {},
+
+    #[error("This CW20's address does not match the configured CW20 payment address")]
+    UnrecognisedCw20 {},
+
+    #[error("This token's denom does not match the configured token's denom")]
+    UnrecognisedNativeToken {},
+
+    #[error("Invalid payment")]
+    InvalidPayment {},
 }

@@ -2,9 +2,9 @@ use crate::msg::{
     ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoByNameResponse,
     LookUpNameByDaoResponse, QueryMsg, ReceiveMsg,
 };
-use crate::state::Config;
+use crate::state::{Config, PaymentInfo};
 use anyhow::Result as AnyResult;
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
+use cosmwasm_std::{coins, to_binary, Addr, Coin, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
@@ -28,6 +28,60 @@ fn names_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::query,
     );
     Box::new(contract)
+}
+
+fn setup_app() -> App {
+    let amount = Uint128::new(10000);
+    App::new(|r, _a, s| {
+        r.bank
+            .init_balance(
+                s,
+                &Addr::unchecked(DAO_ADDR),
+                vec![
+                    Coin {
+                        denom: "ujuno".to_string(),
+                        amount,
+                    },
+                    Coin {
+                        denom: "uatom".to_string(),
+                        amount,
+                    },
+                ],
+            )
+            .unwrap();
+        r.bank
+            .init_balance(
+                s,
+                &Addr::unchecked(NON_ADMIN_ADDR),
+                vec![
+                    Coin {
+                        denom: "ujuno".to_string(),
+                        amount,
+                    },
+                    Coin {
+                        denom: "uatom".to_string(),
+                        amount,
+                    },
+                ],
+            )
+            .unwrap();
+        r.bank
+            .init_balance(
+                s,
+                &Addr::unchecked(ADMIN_ADDR),
+                vec![
+                    Coin {
+                        denom: "ujuno".to_string(),
+                        amount,
+                    },
+                    Coin {
+                        denom: "uatom".to_string(),
+                        amount,
+                    },
+                ],
+            )
+            .unwrap();
+    })
 }
 
 fn create_token(app: &mut App) -> Addr {
@@ -63,33 +117,33 @@ fn create_token(app: &mut App) -> Addr {
     .unwrap()
 }
 
-fn setup_test_case(app: &mut App, payment_amount: Uint128) -> (Addr, Addr) {
+fn setup_test_case(app: &mut App, payment_info: PaymentInfo) -> Addr {
     let names_id = app.store_code(names_contract());
-
-    let token_addr = create_token(app);
-
-    let names_addr = app
-        .instantiate_contract(
-            names_id,
-            Addr::unchecked(ADMIN_ADDR),
-            &InstantiateMsg {
-                admin: ADMIN_ADDR.to_string(),
-                payment_token_address: token_addr.to_string(),
-                payment_amount_to_register_name: payment_amount,
-            },
-            &[],
-            "DAO Names Registry",
-            None,
-        )
-        .unwrap();
-
-    (names_addr, token_addr)
+    app.instantiate_contract(
+        names_id,
+        Addr::unchecked(ADMIN_ADDR),
+        &InstantiateMsg {
+            admin: ADMIN_ADDR.to_string(),
+            payment_info,
+        },
+        &[],
+        "DAO Names Registry",
+        None,
+    )
+    .unwrap()
 }
 
 #[test]
 fn test_instantiate() {
-    let mut app = App::default();
-    let (names, _token) = setup_test_case(&mut app, Uint128::new(50));
+    let mut app = setup_app();
+    let token_addr = create_token(&mut app);
+    let names = setup_test_case(
+        &mut app,
+        PaymentInfo::Cw20Payment {
+            token_address: token_addr.to_string(),
+            payment_amount: Uint128::new(50),
+        },
+    );
     let names_id = app.store_code(names_contract());
 
     let _err = app
@@ -98,8 +152,10 @@ fn test_instantiate() {
             Addr::unchecked(ADMIN_ADDR),
             &InstantiateMsg {
                 admin: ADMIN_ADDR.to_string(),
-                payment_token_address: names.to_string(), // Use the names address, as this is not a token
-                payment_amount_to_register_name: Uint128::new(50),
+                payment_info: PaymentInfo::Cw20Payment {
+                    token_address: names.to_string(),
+                    payment_amount: Uint128::new(50),
+                },
             },
             &[],
             "DAO Names Registry",
@@ -108,7 +164,7 @@ fn test_instantiate() {
         .unwrap_err();
 }
 
-fn register(
+fn register_cw20(
     app: &mut App,
     names_addr: Addr,
     amount: Uint128,
@@ -122,6 +178,18 @@ fn register(
         msg: to_binary(&ReceiveMsg::Register { name }).unwrap(),
     };
     app.execute_contract(sender, token_addr, &msg, &[])
+}
+
+fn register_native(
+    app: &mut App,
+    names_addr: Addr,
+    amount: u128,
+    denom: &str,
+    name: String,
+    sender: Addr,
+) -> AnyResult<AppResponse> {
+    let msg = ExecuteMsg::RegisterName { name };
+    app.execute_contract(sender, names_addr, &msg, &coins(amount, denom))
 }
 
 fn revoke(app: &mut App, names_addr: Addr, name: String, sender: Addr) -> AnyResult<AppResponse> {
@@ -148,15 +216,13 @@ fn transfer_reservation(
 fn update_config(
     app: &mut App,
     names_addr: Addr,
-    new_payment_token_address: Option<String>,
     new_admin: Option<String>,
-    new_payment_amount: Option<Uint128>,
+    new_payment_info: Option<PaymentInfo>,
     sender: Addr,
 ) -> AnyResult<AppResponse> {
     let msg = ExecuteMsg::UpdateConfig {
-        new_payment_token_address,
         new_admin,
-        new_payment_amount,
+        new_payment_info,
     };
     app.execute_contract(sender, names_addr, &msg, &[])
 }
@@ -186,14 +252,32 @@ fn query_config(app: &mut App, names_addr: Addr) -> Config {
 }
 
 #[test]
-fn test_register() {
-    let mut app = App::default();
-    let (names, token) = setup_test_case(&mut app, Uint128::new(50));
+fn test_register_cw20() {
+    let mut app = setup_app();
+    let token = create_token(&mut app);
+    let names = setup_test_case(
+        &mut app,
+        PaymentInfo::Cw20Payment {
+            token_address: token.to_string(),
+            payment_amount: Uint128::new(50),
+        },
+    );
     let other_token = create_token(&mut app); // To be used when sending wrong token
     let name: &str = "Name";
 
+    // Try and register using natives funds will fail
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "ujunox",
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+    )
+    .unwrap_err();
+
     // Send wrong token
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -204,7 +288,7 @@ fn test_register() {
     .unwrap_err();
 
     // Send too little
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(25),
@@ -224,7 +308,7 @@ fn test_register() {
     .unwrap();
 
     // Try to register a reserved name
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -235,7 +319,7 @@ fn test_register() {
     .unwrap_err();
 
     // Valid
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -254,7 +338,7 @@ fn test_register() {
     assert_eq!(resp.name, Some(name.to_string()));
 
     // Name already taken
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -265,7 +349,7 @@ fn test_register() {
     .unwrap_err();
 
     // DAO already has name
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -282,13 +366,140 @@ fn test_register() {
 }
 
 #[test]
+fn test_register_native() {
+    let mut app = setup_app();
+    let names = setup_test_case(
+        &mut app,
+        PaymentInfo::NativePayment {
+            token_denom: "ujuno".to_string(),
+            payment_amount: Uint128::new(50),
+        },
+    );
+    let token = create_token(&mut app);
+    let name: &str = "Name";
+
+    // Try and register with a cw20 will fail
+    register_cw20(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+        token,
+    )
+    .unwrap_err();
+
+    // Send no coins
+    let msg = ExecuteMsg::RegisterName {
+        name: name.to_string(),
+    };
+    app.execute_contract(Addr::unchecked(DAO_ADDR), names.clone(), &msg, &[])
+        .unwrap_err();
+
+    // Send wrong denom
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "uatom",
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+    )
+    .unwrap_err();
+
+    // Not enough
+    register_native(
+        &mut app,
+        names.clone(),
+        25,
+        "ujuno",
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+    )
+    .unwrap_err();
+
+    // Reserve a name to test failure to register a reserved name
+    reserve(
+        &mut app,
+        names.clone(),
+        "Reserved".to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    // Try to register a reserved name
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "ujuno",
+        "Reserved".to_string(),
+        Addr::unchecked(DAO_ADDR),
+    )
+    .unwrap_err();
+
+    // Valid
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "ujuno",
+        name.to_string(),
+        Addr::unchecked(DAO_ADDR),
+    )
+    .unwrap();
+
+    // Look it up both ways
+    let resp = query_name(&mut app, names.clone(), name.to_string());
+    assert!(resp.dao.is_some());
+    assert_eq!(resp.dao, Some(Addr::unchecked(DAO_ADDR)));
+    let resp = query_dao(&mut app, names.clone(), DAO_ADDR.to_string());
+    assert!(resp.name.is_some());
+    assert_eq!(resp.name, Some(name.to_string()));
+
+    // Name already taken
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "ujuno",
+        name.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // DAO already has name
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "ujuno",
+        "Name2".to_string(),
+        Addr::unchecked(DAO_ADDR),
+    )
+    .unwrap_err();
+
+    // Name has not been registered
+    let resp = query_name(&mut app, names, "Name2".to_string());
+    assert!(resp.dao.is_none());
+    assert_eq!(resp.dao, None);
+}
+
+#[test]
 fn test_revoke() {
-    let mut app = App::default();
-    let (names, token) = setup_test_case(&mut app, Uint128::new(50));
+    let mut app = setup_app();
+    let token = create_token(&mut app);
+    let names = setup_test_case(
+        &mut app,
+        PaymentInfo::Cw20Payment {
+            token_address: token.to_string(),
+            payment_amount: Uint128::new(50),
+        },
+    );
     let name: &str = "Name";
 
     // Register the name
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -326,7 +537,7 @@ fn test_revoke() {
     .unwrap();
 
     // Reregister to test revoking as admin
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -348,13 +559,20 @@ fn test_revoke() {
 
 #[test]
 fn test_reserve() {
-    let mut app = App::default();
-    let (names, token) = setup_test_case(&mut app, Uint128::new(50));
+    let mut app = setup_app();
+    let token = create_token(&mut app);
+    let names = setup_test_case(
+        &mut app,
+        PaymentInfo::Cw20Payment {
+            token_address: token.to_string(),
+            payment_amount: Uint128::new(50),
+        },
+    );
     let name: &str = "Name";
     let already_registered_name: &str = "Already";
 
     // Register this name
-    register(
+    register_cw20(
         &mut app,
         names.clone(),
         Uint128::new(50),
@@ -457,8 +675,15 @@ fn test_reserve() {
 
 #[test]
 fn test_update_config() {
-    let mut app = App::default();
-    let (names, token) = setup_test_case(&mut app, Uint128::new(50));
+    let mut app = setup_app();
+    let token = create_token(&mut app);
+    let names = setup_test_case(
+        &mut app,
+        PaymentInfo::Cw20Payment {
+            token_address: token.to_string(),
+            payment_amount: Uint128::new(50),
+        },
+    );
     let other_token = create_token(&mut app); // To be used when updating payment token
 
     let config = query_config(&mut app, names.clone());
@@ -466,8 +691,10 @@ fn test_update_config() {
         config,
         Config {
             admin: Addr::unchecked(ADMIN_ADDR),
-            payment_token_address: token.clone(),
-            payment_amount_to_register_name: Uint128::new(50),
+            payment_info: PaymentInfo::Cw20Payment {
+                token_address: token.to_string(),
+                payment_amount: Uint128::new(50)
+            }
         }
     );
 
@@ -476,8 +703,10 @@ fn test_update_config() {
         &mut app,
         names.clone(),
         Some(other_token.to_string()),
-        Some(NON_ADMIN_ADDR.to_string()),
-        Some(Uint128::new(25)),
+        Some(PaymentInfo::NativePayment {
+            token_denom: "ujunox".to_string(),
+            payment_amount: Uint128::new(50),
+        }),
         Addr::unchecked(NON_ADMIN_ADDR),
     )
     .unwrap_err();
@@ -486,9 +715,11 @@ fn test_update_config() {
     update_config(
         &mut app,
         names.clone(),
-        Some(other_token.to_string()),
         Some(NON_ADMIN_ADDR.to_string()),
-        Some(Uint128::new(25)),
+        Some(PaymentInfo::NativePayment {
+            token_denom: "ujunox".to_string(),
+            payment_amount: Uint128::new(25),
+        }),
         Addr::unchecked(ADMIN_ADDR),
     )
     .unwrap();
@@ -498,38 +729,19 @@ fn test_update_config() {
         config,
         Config {
             admin: Addr::unchecked(NON_ADMIN_ADDR),
-            payment_token_address: other_token,
-            payment_amount_to_register_name: Uint128::new(25),
+            payment_info: PaymentInfo::NativePayment {
+                token_denom: "ujunox".to_string(),
+                payment_amount: Uint128::new(25)
+            }
         }
     );
 
     // Update one config value but not the others
-    // Only token
-    update_config(
-        &mut app,
-        names.clone(),
-        Some(token.to_string()),
-        None,
-        None,
-        Addr::unchecked(NON_ADMIN_ADDR),
-    )
-    .unwrap();
-
-    let config = query_config(&mut app, names.clone());
-    assert_eq!(
-        config,
-        Config {
-            admin: Addr::unchecked(NON_ADMIN_ADDR),
-            payment_token_address: token.clone(), // Only this has changed
-            payment_amount_to_register_name: Uint128::new(25),
-        }
-    );
 
     // Only admin
     update_config(
         &mut app,
         names.clone(),
-        None,
         Some(ADMIN_ADDR.to_string()),
         None,
         Addr::unchecked(NON_ADMIN_ADDR),
@@ -541,18 +753,22 @@ fn test_update_config() {
         config,
         Config {
             admin: Addr::unchecked(ADMIN_ADDR), // Only this has changed
-            payment_token_address: token.clone(),
-            payment_amount_to_register_name: Uint128::new(25),
+            payment_info: PaymentInfo::NativePayment {
+                token_denom: "ujunox".to_string(),
+                payment_amount: Uint128::new(25)
+            }
         }
     );
 
-    // Only amount
+    // Only payment info
     update_config(
         &mut app,
         names.clone(),
         None,
-        None,
-        Some(Uint128::new(50)),
+        Some(PaymentInfo::NativePayment {
+            token_denom: "uatom".to_string(),
+            payment_amount: Uint128::new(50),
+        }),
         Addr::unchecked(ADMIN_ADDR),
     )
     .unwrap();
@@ -561,9 +777,11 @@ fn test_update_config() {
     assert_eq!(
         config,
         Config {
-            admin: Addr::unchecked(ADMIN_ADDR), // Only this has changed
-            payment_token_address: token,
-            payment_amount_to_register_name: Uint128::new(50),
+            admin: Addr::unchecked(ADMIN_ADDR),
+            payment_info: PaymentInfo::NativePayment {
+                token_denom: "uatom".to_string(),
+                payment_amount: Uint128::new(50)
+            }
         }
     );
 }

@@ -12,7 +12,7 @@ use crate::msg::{
     ExecuteMsg, InstantiateMsg, IsNameAvailableToRegisterResponse, LookUpDaoByNameResponse,
     LookUpNameByDaoResponse, QueryMsg, ReceiveMsg,
 };
-use crate::state::{Config, CONFIG, DAO_TO_NAME, NAME_TO_DAO, RESERVED_NAMES};
+use crate::state::{Config, PaymentInfo, CONFIG, DAO_TO_NAME, NAME_TO_DAO, RESERVED_NAMES};
 
 const CONTRACT_NAME: &str = "crates.io:cw-name-registry";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -25,6 +25,29 @@ fn assert_cw20(deps: Deps, cw20_addr: &Addr) -> Result<(), ContractError> {
     Ok(())
 }
 
+fn validate_payment_info(deps: Deps, payment_info: PaymentInfo) -> Result<(), ContractError> {
+    match payment_info {
+        PaymentInfo::Cw20Payment {
+            token_address,
+            payment_amount,
+        } => {
+            if payment_amount.is_zero() {
+                return Err(ContractError::InvalidPaymentAmount {});
+            }
+
+            // Validate it is a valid CW20 address
+            let payment_token_address = deps.api.addr_validate(&token_address)?;
+            assert_cw20(deps, &payment_token_address)?;
+        }
+        PaymentInfo::NativePayment { payment_amount, .. } => {
+            if payment_amount.is_zero() {
+                return Err(ContractError::InvalidPaymentAmount {});
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -34,22 +57,14 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let payment_token_address = deps.api.addr_validate(&msg.payment_token_address)?;
-    assert_cw20(deps.as_ref(), &payment_token_address)?;
-    let admin = deps.api.addr_validate(&msg.admin)?;
-
-    if msg.payment_amount_to_register_name.is_zero() {
-        return Err(ContractError::InvalidPaymentAmount {});
-    }
-
+    validate_payment_info(deps.as_ref(), msg.payment_info.clone())?;
+    let validated_admin = deps.api.addr_validate(&msg.admin)?;
     let config = Config {
-        admin,
-        payment_token_address,
-        payment_amount_to_register_name: msg.payment_amount_to_register_name,
+        admin: validated_admin,
+        payment_info: msg.payment_info,
     };
 
     CONFIG.save(deps.storage, &config)?;
-
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -62,18 +77,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(wrapped) => execute_receive(deps, env, info, wrapped),
+        ExecuteMsg::RegisterName { name } => execute_register_name_native(deps, env, info, name),
         ExecuteMsg::UpdateConfig {
-            new_payment_token_address,
             new_admin,
-            new_payment_amount,
-        } => execute_update_config(
-            deps,
-            env,
-            info,
-            new_payment_token_address,
-            new_admin,
-            new_payment_amount,
-        ),
+            new_payment_info,
+        } => execute_update_config(deps, env, info, new_admin, new_payment_info),
         ExecuteMsg::Revoke { name } => execute_revoke(deps, env, info, name),
         ExecuteMsg::Reserve { name } => execute_reserve(deps, env, info, name),
         ExecuteMsg::TransferReservation { name, dao } => {
@@ -90,17 +98,59 @@ pub fn execute_receive(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    // We only take payments from our specified token
-    if info.sender != config.payment_token_address {
-        return Err(ContractError::Unauthorized {});
+    match config.payment_info {
+        PaymentInfo::NativePayment { .. } => Err(ContractError::Unauthorized {}),
+        PaymentInfo::Cw20Payment {
+            token_address,
+            payment_amount,
+        } => {
+            if info.sender != token_address {
+                return Err(ContractError::UnrecognisedCw20 {});
+            }
+
+            let sender = wrapped.sender;
+            let amount = wrapped.amount;
+            let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
+
+            match msg {
+                ReceiveMsg::Register { name } => {
+                    register_name(deps, env, sender, amount, name, payment_amount)
+                }
+            }
+        }
     }
+}
 
-    let sender = wrapped.sender;
-    let amount = wrapped.amount;
-    let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
+pub fn execute_register_name_native(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    name: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
 
-    match msg {
-        ReceiveMsg::Register { name } => register_name(deps, env, sender, amount, name),
+    match config.payment_info {
+        PaymentInfo::Cw20Payment { .. } => Err(ContractError::InvalidPayment {}),
+        PaymentInfo::NativePayment {
+            token_denom,
+            payment_amount,
+        } => {
+            let token_idx = info.funds.iter().position(|c| c.denom == token_denom);
+            if token_idx.is_none() {
+                return Err(ContractError::UnrecognisedNativeToken {});
+            }
+
+            let coins = &info.funds[token_idx.unwrap()];
+
+            register_name(
+                deps,
+                env,
+                info.sender.to_string(),
+                coins.amount,
+                name,
+                payment_amount,
+            )
+        }
     }
 }
 
@@ -108,11 +158,11 @@ pub fn register_name(
     deps: DepsMut,
     _env: Env,
     sender: String,
-    amount: Uint128,
+    amount_sent: Uint128,
     name: String,
+    payment_amount_to_register_name: Uint128,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if amount != config.payment_amount_to_register_name {
+    if amount_sent != payment_amount_to_register_name {
         return Err(ContractError::InsufficientFunds {});
     }
 
@@ -141,9 +191,8 @@ pub fn execute_update_config(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    new_payment_token_address: Option<String>,
     new_admin: Option<String>,
-    new_payment_amount: Option<Uint128>,
+    new_payment_info: Option<PaymentInfo>,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
 
@@ -151,24 +200,17 @@ pub fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    let new_payment_token_address =
-        new_payment_token_address.unwrap_or_else(|| config.payment_token_address.to_string());
-    let payment_amount = new_payment_amount.unwrap_or(config.payment_amount_to_register_name);
+    let new_payment_info = new_payment_info.unwrap_or_else(|| config.clone().payment_info);
     let new_admin = new_admin.unwrap_or_else(|| config.admin.to_string());
 
-    // Validate payment amount
-    if payment_amount.is_zero() {
-        return Err(ContractError::InvalidPaymentAmount {});
-    }
-
-    // Validate addresses
+    // Validate admin address
     let admin = deps.api.addr_validate(&new_admin)?;
-    let payment_token_address = deps.api.addr_validate(&new_payment_token_address)?;
-    assert_cw20(deps.as_ref(), &payment_token_address)?;
 
-    config.payment_amount_to_register_name = payment_amount;
+    // Validate payment info
+    validate_payment_info(deps.as_ref(), new_payment_info.clone())?;
+
     config.admin = admin;
-    config.payment_token_address = payment_token_address;
+    config.payment_info = new_payment_info;
 
     CONFIG.save(deps.storage, &config)?;
 
