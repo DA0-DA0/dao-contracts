@@ -486,6 +486,148 @@ fn test_register_native() {
 }
 
 #[test]
+fn test_payment_info_switch() {
+    let mut app = setup_app();
+    let token = create_token(&mut app);
+    let names = setup_test_case(
+        &mut app,
+        PaymentInfo::Cw20Payment {
+            token_address: token.to_string(),
+            payment_amount: Uint128::new(50),
+        },
+    );
+    let other_token = create_token(&mut app); // To be used in an update config call
+    let name1: &str = "Name1";
+    let name2: &str = "Name2";
+    let name3: &str = "Name3";
+
+    // Start with token register successfully
+    register_cw20(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name1.to_string(),
+        Addr::unchecked(DAO_ADDR),
+        token.clone(),
+    )
+    .unwrap();
+
+    // Other token will fail
+    register_cw20(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name2.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+        other_token.clone(),
+    )
+    .unwrap_err();
+
+    // Native will fail
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "ujuno",
+        name3.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Keep CW20 payments but switch token
+    update_config(
+        &mut app,
+        names.clone(),
+        None,
+        Some(PaymentInfo::Cw20Payment {
+            token_address: other_token.to_string(),
+            payment_amount: Uint128::new(50),
+        }),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    // Original token will now fail
+    register_cw20(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name3.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+        token.clone(),
+    )
+    .unwrap_err();
+
+    // Other token will now succeed
+    register_cw20(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name2.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+        other_token.clone(),
+    )
+    .unwrap();
+
+    // Native still fails
+    register_native(
+        &mut app,
+        names.clone(),
+        50,
+        "ujuno",
+        name3.to_string(),
+        Addr::unchecked(NON_ADMIN_ADDR),
+    )
+    .unwrap_err();
+
+    // Now switch to native payments
+    update_config(
+        &mut app,
+        names.clone(),
+        None,
+        Some(PaymentInfo::NativePayment {
+            token_denom: "ujuno".to_string(),
+            payment_amount: Uint128::new(50),
+        }),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+
+    // Original token fails
+    register_cw20(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name3.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+        token,
+    )
+    .unwrap_err();
+
+    // Other token will now fail again
+    register_cw20(
+        &mut app,
+        names.clone(),
+        Uint128::new(50),
+        name3.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+        other_token,
+    )
+    .unwrap_err();
+
+    // Native now succeeds
+    register_native(
+        &mut app,
+        names,
+        50,
+        "ujuno",
+        name3.to_string(),
+        Addr::unchecked(ADMIN_ADDR),
+    )
+    .unwrap();
+}
+
+#[test]
 fn test_revoke() {
     let mut app = setup_app();
     let token = create_token(&mut app);
