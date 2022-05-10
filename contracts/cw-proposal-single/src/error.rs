@@ -42,8 +42,11 @@ pub enum ContractError {
     #[error("Proposal is not passed.")]
     NotPassed {},
 
-    #[error("Proposal is not expired.")]
-    NotExpired {},
+    #[error("Proposal has already been executed.")]
+    AlreadyExecuted {},
+
+    #[error("Proposal is closed.")]
+    Closed {},
 
     #[error("Only rejected or expired proposals may be closed.")]
     WrongCloseStatus {},

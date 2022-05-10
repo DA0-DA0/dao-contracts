@@ -235,6 +235,17 @@ pub fn execute_execute(
     if !prop.is_passed(&env.block) {
         return Err(ContractError::NotPassed {});
     }
+
+    // Can not execute a proposal more than once.
+    if prop.status == Status::Executed {
+        return Err(ContractError::AlreadyExecuted {});
+    }
+
+    // Can not execute a closed proposal.
+    if prop.status == Status::Closed {
+        return Err(ContractError::Closed {});
+    }
+
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
@@ -345,8 +356,8 @@ pub fn execute_close(
     match prop.status {
         Status::Rejected => (),
         Status::Open => {
-            if !prop.expiration.is_expired(&env.block) {
-                return Err(ContractError::NotExpired {});
+            if !prop.expiration.is_expired(&env.block) || prop.is_passed(&env.block) {
+                return Err(ContractError::WrongCloseStatus {});
             }
         }
         _ => return Err(ContractError::WrongCloseStatus {}),

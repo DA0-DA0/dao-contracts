@@ -1442,6 +1442,16 @@ fn test_execute_expired_proposal() {
         .unwrap();
     assert_eq!(proposal.proposal.status, Status::Passed);
 
+    // Try to close the proposal. This should fail as the proposal is
+    // passed.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
     // Check that we can execute the proposal despite the fact that it
     // is technically expired.
     app.execute_contract(
@@ -1451,6 +1461,16 @@ fn test_execute_expired_proposal() {
         &[],
     )
     .unwrap();
+
+    // Can't execute more than once.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
     let proposal: ProposalResponse = app
         .wrap()
         .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: 1 })
