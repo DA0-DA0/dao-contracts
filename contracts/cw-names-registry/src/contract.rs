@@ -184,7 +184,7 @@ pub fn register_name(
     NAME_TO_DAO.save(deps.storage, name.clone(), &sender)?;
     DAO_TO_NAME.save(deps.storage, sender, &name)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("action", "register_name"))
 }
 
 pub fn execute_update_config(
@@ -239,7 +239,7 @@ pub fn execute_revoke(
     NAME_TO_DAO.remove(deps.storage, name);
     DAO_TO_NAME.remove(deps.storage, dao);
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("action", "revoke_name"))
 }
 
 pub fn execute_reserve(
@@ -266,7 +266,7 @@ pub fn execute_reserve(
 
     RESERVED_NAMES.save(deps.storage, name, &Empty {})?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("action", "reserve_name"))
 }
 
 pub fn execute_transfer_reservation(
@@ -298,7 +298,7 @@ pub fn execute_transfer_reservation(
     NAME_TO_DAO.save(deps.storage, name.clone(), &dao)?;
     RESERVED_NAMES.remove(deps.storage, name);
 
-    Ok(Response::new())
+    Ok(Response::new().add_attribute("action", "transfer_reservation"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
