@@ -163,7 +163,7 @@ pub fn register_name(
     payment_amount_to_register_name: Uint128,
 ) -> Result<Response, ContractError> {
     if amount_sent != payment_amount_to_register_name {
-        return Err(ContractError::InsufficientFunds {});
+        return Err(ContractError::IncorrectPaymentAmount {});
     }
 
     // We expect this to be a DAO that is registering a name
@@ -249,6 +249,12 @@ pub fn execute_reserve(
     name: String,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    // Only the admin can reserve names
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
     // Check if name is already taken
     if NAME_TO_DAO.has(deps.storage, name.clone()) {
         return Err(ContractError::NameAlreadyTaken {});
@@ -256,11 +262,6 @@ pub fn execute_reserve(
 
     if RESERVED_NAMES.has(deps.storage, name.clone()) {
         return Err(ContractError::NameReserved {});
-    }
-
-    // Only the admin can reserve names
-    if info.sender != config.admin {
-        return Err(ContractError::Unauthorized {});
     }
 
     RESERVED_NAMES.save(deps.storage, name, &Empty {})?;

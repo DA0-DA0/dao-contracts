@@ -9,10 +9,10 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Insufficient funds sent")]
-    InsufficientFunds {},
+    #[error("Incorrect payment amount")]
+    IncorrectPaymentAmount {},
 
-    #[error("This name is reserved for later user")]
+    #[error("This name is reserved for later use")]
     NameReserved {},
 
     #[error("This name is not reserved for later use")]
