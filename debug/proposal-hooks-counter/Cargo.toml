@@ -46,7 +46,7 @@ cw20-balance-voting = { path = "../cw20-balance-voting", version = "0.1.0" }
 cw20-base = "0.13"
 cw-utils = "0.13"
 voting = { version = "0.1.0", path = "../../packages/voting" }
-cw-core = { path = "../cw-core", version = "0.1.0", features = ["library"] }
-cw-proposal-single = { path = "../cw-proposal-single" }
+cw-core = { path = "../../contracts/cw-core", version = "0.1.0", features = ["library"] }
+cw-proposal-single = { path = "../../contracts/cw-proposal-single" }
 cosmwasm-schema = { version = "1.0.0-beta" }
 cw-multi-test = "0.13"

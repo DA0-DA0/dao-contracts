@@ -36,7 +36,7 @@ cw2 = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core = { path = "../cw-core", version = "*", features = ["library"] }
+cw-core = { path = "../../contracts/cw-core", version = "*", features = ["library"] }
 cw-core-macros = { version = "*", path = "../../packages/cw-core-macros" }
 cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
 

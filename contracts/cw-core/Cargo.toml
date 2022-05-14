@@ -47,5 +47,5 @@ cosmwasm-schema = { version = "1.0.0-beta" }
 cw-multi-test = "0.13"
 cw20-base = "0.13"
 cw721-base = "0.13"
-cw-proposal-sudo = { version = "0.1.0", path = "../cw-proposal-sudo"}
-cw20-balance-voting = { version = "0.1.0", path = "../cw20-balance-voting"}
+cw-proposal-sudo = { version = "0.1.0", path = "../../debug/cw-proposal-sudo"}
+cw20-balance-voting = { version = "0.1.0", path = "../../debug/cw20-balance-voting"}

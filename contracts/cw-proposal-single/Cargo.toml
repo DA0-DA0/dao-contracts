@@ -51,7 +51,7 @@ vote-hooks = { version = "*", path = "../../packages/vote-hooks" }
 cosmwasm-schema = { version = "1.0.0-beta" }
 cw-multi-test = "0.13"
 cw4-voting = { path = "../cw4-voting", version = "*" }
-cw20-balance-voting = { path = "../cw20-balance-voting", version = "*" }
+cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" }
 cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }
 testing = { version = "*", path = "../../packages/testing" }
 stake-cw20 = { path="../stake-cw20", version = "*" }
