@@ -253,6 +253,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-names-registry"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-proposal-single"
 version = "0.1.0"
 dependencies = [
