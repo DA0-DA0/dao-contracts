@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, Uint128,
+    coins, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Empty, Env,
+    MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
@@ -184,7 +184,26 @@ pub fn register_name(
     NAME_TO_DAO.save(deps.storage, name.clone(), &sender)?;
     DAO_TO_NAME.save(deps.storage, sender, &name)?;
 
-    Ok(Response::new().add_attribute("action", "register_name"))
+    let config = CONFIG.load(deps.storage)?;
+
+    let msg = match config.payment_info {
+        PaymentInfo::NativePayment { token_denom, .. } => CosmosMsg::Bank(BankMsg::Send {
+            to_address: config.admin.to_string(),
+            amount: coins(amount_sent.u128(), token_denom),
+        }),
+        PaymentInfo::Cw20Payment { token_address, .. } => CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: token_address,
+            msg: to_binary(&cw20_base::msg::ExecuteMsg::Transfer {
+                recipient: config.admin.to_string(),
+                amount: amount_sent,
+            })?,
+            funds: vec![],
+        }),
+    };
+
+    Ok(Response::new()
+        .add_attribute("action", "register_name")
+        .add_message(msg))
 }
 
 pub fn execute_update_config(
