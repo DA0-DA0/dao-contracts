@@ -326,8 +326,6 @@ fn test_register_cw20() {
     )
     .unwrap_err();
 
-    // Get the balance before
-
     // Valid
     register_cw20(
         &mut app,
