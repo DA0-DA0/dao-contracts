@@ -5,7 +5,7 @@ use crate::msg::{
 use crate::state::{Config, PaymentInfo};
 use anyhow::Result as AnyResult;
 use cosmwasm_std::{coins, to_binary, Addr, Coin, Empty, Uint128};
-use cw20::Cw20Coin;
+use cw20::{BalanceResponse, Cw20Coin};
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 
 const DAO_ADDR: &str = "dao";
@@ -192,6 +192,14 @@ fn register_native(
     app.execute_contract(sender, names_addr, &msg, &coins(amount, denom))
 }
 
+fn query_cw20_balance(app: &mut App, token_addr: Addr, addr: Addr) -> Uint128 {
+    let msg = cw20_base::msg::QueryMsg::Balance {
+        address: addr.to_string(),
+    };
+    let res: BalanceResponse = app.wrap().query_wasm_smart(token_addr, &msg).unwrap();
+    res.balance
+}
+
 fn revoke(app: &mut App, names_addr: Addr, name: String, sender: Addr) -> AnyResult<AppResponse> {
     let msg = ExecuteMsg::Revoke { name };
     app.execute_contract(sender, names_addr, &msg, &[])
@@ -329,6 +337,11 @@ fn test_register_cw20() {
     )
     .unwrap();
 
+    // Check the admin now has 1050
+    // It started with 1000 and now has 50 from the success
+    let balance = query_cw20_balance(&mut app, token.clone(), Addr::unchecked(ADMIN_ADDR));
+    assert_eq!(balance, Uint128::new(1050));
+
     // Look it up both ways
     let resp = query_name(&mut app, names.clone(), name.to_string());
     assert!(resp.dao.is_some());
@@ -448,6 +461,11 @@ fn test_register_native() {
         Addr::unchecked(DAO_ADDR),
     )
     .unwrap();
+
+    // Check balance, should now have 10050 ujuno
+    // As it started with 10000
+    let coin = app.wrap().query_balance(ADMIN_ADDR, "ujuno").unwrap();
+    assert_eq!(coin.amount, Uint128::new(10050));
 
     // Look it up both ways
     let resp = query_name(&mut app, names.clone(), name.to_string());
