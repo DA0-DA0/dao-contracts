@@ -232,24 +232,21 @@ pub fn execute_execute(
     // even if it is expired so long as it passed during its voting
     // period.
     let old_status = prop.status;
-    if !prop.is_passed(&env.block) {
+    prop.update_status(&env.block);
+    if prop.status != Status::Passed {
         return Err(ContractError::NotPassed {});
-    }
-
-    // Can not execute a proposal more than once.
-    if prop.status == Status::Executed {
-        return Err(ContractError::AlreadyExecuted {});
-    }
-
-    // Can not execute a closed proposal.
-    if prop.status == Status::Closed {
-        return Err(ContractError::Closed {});
     }
 
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-    let return_deposit = get_return_deposit_msg(&prop)?;
+    let mut refund_message = vec![];
+    match prop.deposit_info {
+        Some(deposit_info) => {
+            refund_message = get_return_deposit_msg(&deposit_info, &prop.proposer)?
+        }
+        None => {}
+    }
 
     let response = if !prop.msgs.is_empty() {
         let execute_message = WasmMsg::Execute {
@@ -270,7 +267,7 @@ pub fn execute_execute(
         prop.status.to_string(),
     )?;
     Ok(response
-        .add_messages(return_deposit)
+        .add_messages(refund_message)
         .add_submessages(hooks)
         .add_attribute("action", "execute")
         .add_attribute("sender", info.sender)
@@ -352,18 +349,23 @@ pub fn execute_close(
 ) -> Result<Response, ContractError> {
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
 
-    // Only open and expired or rejected proposals may be closed.
-    match prop.status {
-        Status::Rejected => (),
-        Status::Open => {
-            if !prop.expiration.is_expired(&env.block) || prop.is_passed(&env.block) {
-                return Err(ContractError::WrongCloseStatus {});
+    // Update status to ensure that proposals which were open and have expired are moved to "rejected."
+    prop.update_status(&env.block);
+    if prop.status != Status::Rejected {
+        return Err(ContractError::WrongCloseStatus {});
+    }
+
+    let old_status = prop.status;
+
+    let mut refund_message = vec![];
+    match &prop.deposit_info {
+        Some(deposit_info) => {
+            if deposit_info.refund_failed_proposals {
+                refund_message = get_return_deposit_msg(deposit_info, &prop.proposer)?
             }
         }
-        _ => return Err(ContractError::WrongCloseStatus {}),
+        None => {}
     }
-    let old_status = prop.status;
-    let refund_message = get_return_deposit_msg(&prop)?;
 
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
