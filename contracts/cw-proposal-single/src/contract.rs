@@ -355,11 +355,13 @@ pub fn execute_close(
     let old_status = prop.status;
 
     let refund_message = match &prop.deposit_info {
-        Some(deposit_info) => if deposit_info.refund_failed_proposals {
-            get_return_deposit_msg(&deposit_info, &prop.proposer)?
-        } else {
-            vec![]
-        },
+        Some(deposit_info) => {
+            if deposit_info.refund_failed_proposals {
+                get_return_deposit_msg(deposit_info, &prop.proposer)?
+            } else {
+                vec![]
+            }
+        }
         None => vec![],
     };
 
