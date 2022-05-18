@@ -241,9 +241,9 @@ pub fn execute_execute(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let refund_message = match prop.deposit_info {
-        Some(deposit_info) => get_return_deposit_msg(&deposit_info, &prop.proposer)?
-        None => vec![]
-    }
+        Some(deposit_info) => get_return_deposit_msg(&deposit_info, &prop.proposer)?,
+        None => vec![],
+    };
 
     let response = if !prop.msgs.is_empty() {
         let execute_message = WasmMsg::Execute {
@@ -354,15 +354,10 @@ pub fn execute_close(
 
     let old_status = prop.status;
 
-    let mut refund_message = vec![];
-    match &prop.deposit_info {
-        Some(deposit_info) => {
-            if deposit_info.refund_failed_proposals {
-                refund_message = get_return_deposit_msg(deposit_info, &prop.proposer)?
-            }
-        }
-        None => {}
-    }
+    let refund_message = match &prop.deposit_info {
+        Some(deposit_info) => get_return_deposit_msg(&deposit_info, &prop.proposer)?,
+        None => vec![],
+    };
 
     prop.status = Status::Closed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
