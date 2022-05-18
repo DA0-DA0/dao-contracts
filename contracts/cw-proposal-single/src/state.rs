@@ -6,7 +6,7 @@ use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::{Status, Threshold, Vote};
+use voting::{Threshold, Vote};
 
 use crate::{
     msg::{DepositInfo, DepositToken},
@@ -128,27 +128,21 @@ pub fn get_deposit_msg(
     }
 }
 
-pub fn get_return_deposit_msg(proposal: &Proposal) -> StdResult<Vec<CosmosMsg>> {
-    match &proposal.deposit_info {
-        Some(info) => {
-            // If it is closed only issue a refund if we are refunding
-            // failed proposals. Otherwise, the proposal is open and
-            // expired.
-            if proposal.status == Status::Rejected && !info.refund_failed_proposals {
-                return Ok(vec![]);
-            }
-
-            let transfer_msg = WasmMsg::Execute {
-                contract_addr: info.token.to_string(),
-                funds: vec![],
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                    recipient: proposal.proposer.to_string(),
-                    amount: info.deposit,
-                })?,
-            };
-            let transfer_msg: CosmosMsg = transfer_msg.into();
-            Ok(vec![transfer_msg])
-        }
-        None => Ok(vec![]),
+pub fn get_return_deposit_msg(
+    deposit_info: &CheckedDepositInfo,
+    proposer: &Addr,
+) -> StdResult<Vec<CosmosMsg>> {
+    if deposit_info.deposit.is_zero() {
+        return Ok(vec![]);
     }
+    let transfer_msg = WasmMsg::Execute {
+        contract_addr: deposit_info.token.to_string(),
+        funds: vec![],
+        msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+            recipient: proposer.to_string(),
+            amount: deposit_info.deposit,
+        })?,
+    };
+    let transfer_msg: CosmosMsg = transfer_msg.into();
+    Ok(vec![transfer_msg])
 }

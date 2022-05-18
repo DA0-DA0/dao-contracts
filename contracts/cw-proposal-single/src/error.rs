@@ -39,7 +39,7 @@ pub enum ContractError {
     #[error("Already voted")]
     AlreadyVoted {},
 
-    #[error("Proposal is not passed.")]
+    #[error("Proposal is not in 'passed' state.")]
     NotPassed {},
 
     #[error("Proposal has already been executed.")]
