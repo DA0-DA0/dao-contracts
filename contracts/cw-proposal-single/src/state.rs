@@ -132,6 +132,9 @@ pub fn get_return_deposit_msg(
     deposit_info: &CheckedDepositInfo,
     proposer: &Addr,
 ) -> StdResult<Vec<CosmosMsg>> {
+    if deposit_info.deposit.is_zero() {
+        return Ok(vec![])
+    }
     let transfer_msg = WasmMsg::Execute {
         contract_addr: deposit_info.token.to_string(),
         funds: vec![],
