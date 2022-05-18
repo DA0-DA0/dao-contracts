@@ -240,12 +240,9 @@ pub fn execute_execute(
     prop.status = Status::Executed;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-    let mut refund_message = vec![];
-    match prop.deposit_info {
-        Some(deposit_info) => {
-            refund_message = get_return_deposit_msg(&deposit_info, &prop.proposer)?
-        }
-        None => {}
+    let refund_message = match prop.deposit_info {
+        Some(deposit_info) => get_return_deposit_msg(&deposit_info, &prop.proposer)?
+        None => vec![]
     }
 
     let response = if !prop.msgs.is_empty() {
