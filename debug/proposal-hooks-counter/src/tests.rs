@@ -136,6 +136,7 @@ fn test_counters() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
     };
 

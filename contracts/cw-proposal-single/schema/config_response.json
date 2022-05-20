@@ -4,12 +4,17 @@
   "description": "The governance module's configuration.",
   "type": "object",
   "required": [
+    "allow_revoting",
     "dao",
     "max_voting_period",
     "only_members_execute",
     "threshold"
   ],
   "properties": {
+    "allow_revoting": {
+      "description": "Allows changing votes before the proposal expires. If this is enabled proposals will not be able to complete early as final vote information is not known until the time of proposal expiration.",
+      "type": "boolean"
+    },
     "dao": {
       "description": "The address of the DAO that this governance module is associated with.",
       "allOf": [

@@ -57,6 +57,7 @@ pub fn instantiate(
         only_members_execute: msg.only_members_execute,
         dao: dao.clone(),
         deposit_info,
+        allow_revoting: msg.allow_revoting,
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -86,6 +87,7 @@ pub fn execute(
             threshold,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
         } => execute_update_config(
@@ -94,6 +96,7 @@ pub fn execute(
             threshold,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
         ),
@@ -166,6 +169,7 @@ pub fn execute_propose(
             msgs,
             status: Status::Open,
             votes: Votes::zero(),
+            allow_revoting: config.allow_revoting,
             deposit_info: config.deposit_info.clone(),
         };
         // Update the proposal's status. Addresses case where proposal
@@ -297,11 +301,29 @@ pub fn execute_vote(
         return Err(ContractError::NotRegistered {});
     }
 
+    let mut previous_ballot = None;
     BALLOTS.update(
         deps.storage,
         (proposal_id, info.sender.clone()),
         |bal| match bal {
-            Some(_) => Err(ContractError::AlreadyVoted {}),
+            Some(current_ballot) => {
+                if prop.allow_revoting {
+                    if current_ballot.vote == vote {
+                        // Don't allow casting the same vote more than
+                        // once. This seems liable to be confusing
+                        // behavior.
+                        Err(ContractError::AlreadyCast {})
+                    } else {
+                        previous_ballot = Some(current_ballot);
+                        Ok(Ballot {
+                            power: vote_power,
+                            vote,
+                        })
+                    }
+                } else {
+                    Err(ContractError::AlreadyVoted {})
+                }
+            }
             None => Ok(Ballot {
                 power: vote_power,
                 vote,
@@ -310,9 +332,17 @@ pub fn execute_vote(
     )?;
 
     let old_status = prop.status;
+
+    // Remove the old vote if this is a re-vote.
+    if let Some(ballot) = previous_ballot {
+        prop.votes.remove_vote(ballot.vote, ballot.power)
+    }
+
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
+
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
     let new_status = prop.status;
     let change_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
@@ -346,7 +376,8 @@ pub fn execute_close(
 ) -> Result<Response, ContractError> {
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
 
-    // Update status to ensure that proposals which were open and have expired are moved to "rejected."
+    // Update status to ensure that proposals which were open and have
+    // expired are moved to "rejected."
     prop.update_status(&env.block);
     if prop.status != Status::Rejected {
         return Err(ContractError::WrongCloseStatus {});
@@ -384,12 +415,14 @@ pub fn execute_close(
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
     threshold: Threshold,
     max_voting_period: Duration,
     only_members_execute: bool,
+    allow_revoting: bool,
     dao: String,
     deposit_info: Option<DepositInfo>,
 ) -> Result<Response, ContractError> {
@@ -412,6 +445,7 @@ pub fn execute_update_config(
             threshold,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
         },
