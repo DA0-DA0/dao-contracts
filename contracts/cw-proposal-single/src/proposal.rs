@@ -141,6 +141,7 @@ impl Proposal {
                     does_vote_count_pass(self.votes.yes, options, threshold)
                 }
             }
+            Threshold::AbsoluteCount { threshold } => self.votes.yes >= threshold,
         }
     }
 
@@ -247,6 +248,12 @@ impl Proposal {
                     // Hasn't met quorum requirement and voting has closed => rejected.
                     (false, true) => true,
                 }
+            }
+            Threshold::AbsoluteCount { threshold } => {
+                // If all the outstanding votes voting yes would not
+                // cause this proposal to pass then it is rejected.
+                let outstanding_votes = self.total_power - self.votes.total();
+                self.votes.yes + outstanding_votes < threshold
             }
         }
     }
@@ -407,6 +414,114 @@ mod test {
             threshold,
             votes,
             Uint128::new(15),
+            true,
+            true
+        ));
+    }
+
+    #[test]
+    fn test_absolute_threshold() {
+        let threshold = Threshold::AbsoluteCount {
+            threshold: Uint128::new(10),
+        };
+
+        assert!(check_is_passed(
+            threshold.clone(),
+            Votes {
+                yes: Uint128::new(10),
+                no: Uint128::zero(),
+                abstain: Uint128::zero(),
+            },
+            Uint128::new(100),
+            false,
+            false
+        ));
+
+        assert!(check_is_rejected(
+            threshold.clone(),
+            Votes {
+                yes: Uint128::new(9),
+                no: Uint128::new(1),
+                abstain: Uint128::zero()
+            },
+            Uint128::new(10),
+            false,
+            false
+        ));
+
+        assert!(!check_is_rejected(
+            threshold.clone(),
+            Votes {
+                yes: Uint128::new(9),
+                no: Uint128::new(1),
+                abstain: Uint128::zero()
+            },
+            Uint128::new(11),
+            false,
+            false
+        ));
+
+        assert!(!check_is_passed(
+            threshold,
+            Votes {
+                yes: Uint128::new(9),
+                no: Uint128::new(1),
+                abstain: Uint128::zero()
+            },
+            Uint128::new(11),
+            false,
+            false
+        ));
+    }
+
+    #[test]
+    fn test_absolute_threshold_revoting() {
+        let threshold = Threshold::AbsoluteCount {
+            threshold: Uint128::new(10),
+        };
+
+        assert!(!check_is_passed(
+            threshold.clone(),
+            Votes {
+                yes: Uint128::new(10),
+                no: Uint128::zero(),
+                abstain: Uint128::zero(),
+            },
+            Uint128::new(100),
+            false,
+            true
+        ));
+        assert!(check_is_passed(
+            threshold.clone(),
+            Votes {
+                yes: Uint128::new(10),
+                no: Uint128::zero(),
+                abstain: Uint128::zero(),
+            },
+            Uint128::new(100),
+            true,
+            true
+        ));
+
+        assert!(!check_is_rejected(
+            threshold.clone(),
+            Votes {
+                yes: Uint128::new(9),
+                no: Uint128::new(1),
+                abstain: Uint128::zero()
+            },
+            Uint128::new(10),
+            false,
+            true
+        ));
+        assert!(check_is_rejected(
+            threshold,
+            Votes {
+                yes: Uint128::new(9),
+                no: Uint128::new(1),
+                abstain: Uint128::zero()
+            },
+            Uint128::new(10),
             true,
             true
         ));

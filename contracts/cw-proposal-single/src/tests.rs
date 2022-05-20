@@ -1,3 +1,5 @@
+use std::u128;
+
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
@@ -2722,4 +2724,522 @@ fn test_revoting_same_vote_twice() {
         )
         .unwrap();
     }
+}
+
+#[test]
+fn test_three_of_five_multisig() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_cw4_groups_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::AbsoluteCount {
+                threshold: Uint128::new(3),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "four".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "five".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Make sure it doesn't pass early.
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Open);
+
+    app.execute_contract(
+        Addr::unchecked("three"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Passed);
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_module, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Executed);
+}
+
+#[test]
+fn test_three_of_five_multisig_reject() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_cw4_groups_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::AbsoluteCount {
+                threshold: Uint128::new(3),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "four".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "five".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("three"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Still one vote outstanding but the module ought to have
+    // rejected it already as that one vote can not make the proposal
+    // pass.
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_module, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Closed);
+}
+
+#[test]
+#[should_panic]
+fn test_voting_module_token_with_multisig_style_voting() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    instantiate_with_cw4_groups_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::AbsoluteCount {
+                threshold: Uint128::new(3),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: Some(DepositInfo {
+                token: DepositToken::VotingModuleToken {},
+                deposit: Uint128::new(1),
+                refund_failed_proposals: true,
+            }),
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+}
+
+#[test]
+fn test_three_of_five_multisig_revoting() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_cw4_groups_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::AbsoluteCount {
+                threshold: Uint128::new(3),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: true,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "four".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "five".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("three"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Make sure it doesn't pass early.
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Open);
+
+    // Four changes their mind.
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(|b| b.height += 10);
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Passed);
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_module, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Executed);
+}
+
+#[test]
+fn test_absolute_threshold_non_multisig() {
+    do_votes_staked_balances(
+        vec![
+            TestVote {
+                voter: "one".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestVote {
+                voter: "two".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(200),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestVote {
+                voter: "three".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
+        Threshold::AbsoluteCount {
+            threshold: Uint128::new(11),
+        },
+        Status::Passed,
+        None,
+    );
+}
+
+#[test]
+fn test_large_absolute_threshold() {
+    do_votes_staked_balances(
+        vec![
+            // Instant rejection after this.
+            TestVote {
+                voter: "two".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestVote {
+                voter: "one".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(u128::MAX - 1),
+                should_execute: ShouldExecute::No,
+            },
+        ],
+        Threshold::AbsoluteCount {
+            threshold: Uint128::new(u128::MAX),
+        },
+        Status::Rejected,
+        None,
+    );
+
+    do_votes_staked_balances(
+        vec![
+            TestVote {
+                voter: "one".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(u128::MAX - 1),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestVote {
+                voter: "two".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            },
+        ],
+        Threshold::AbsoluteCount {
+            threshold: Uint128::new(u128::MAX),
+        },
+        Status::Rejected,
+        None,
+    );
 }

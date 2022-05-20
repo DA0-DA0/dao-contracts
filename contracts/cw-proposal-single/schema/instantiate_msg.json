@@ -233,6 +233,27 @@
             }
           },
           "additionalProperties": false
+        },
+        {
+          "description": "An absolute number of votes needed for something to cross the threshold. Useful for multisig style voting.",
+          "type": "object",
+          "required": [
+            "absolute_count"
+          ],
+          "properties": {
+            "absolute_count": {
+              "type": "object",
+              "required": [
+                "threshold"
+              ],
+              "properties": {
+                "threshold": {
+                  "$ref": "#/definitions/Uint128"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
