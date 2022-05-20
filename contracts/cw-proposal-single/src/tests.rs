@@ -16,6 +16,7 @@ use crate::{
     proposal::Proposal,
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
     state::{CheckedDepositInfo, Config},
+    ContractError,
 };
 
 const CREATOR_ADDR: &str = "creator";
@@ -38,7 +39,7 @@ fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn single_govmod_contract() -> Box<dyn Contract<Empty>> {
+fn single_proposal_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -515,7 +516,7 @@ where
     F: Fn(&mut App, u64, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
 {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let mut initial_balances = votes
         .iter()
@@ -543,6 +544,7 @@ where
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
     };
 
@@ -687,7 +689,7 @@ fn do_test_votes_cw20_balances(
 #[test]
 fn test_propose() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -697,6 +699,7 @@ fn test_propose() {
         threshold: threshold.clone(),
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -725,6 +728,7 @@ fn test_propose() {
         threshold: threshold.clone(),
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
     };
@@ -755,6 +759,7 @@ fn test_propose() {
         start_height: current_block.height,
         expiration: max_voting_period.after(&current_block),
         threshold,
+        allow_revoting: false,
         total_power: Uint128::new(100_000_000),
         msgs: vec![],
         status: Status::Open,
@@ -861,7 +866,7 @@ fn fuzz_voting() {
 #[test]
 fn test_voting_module_token_proposal_deposit_instantiate() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -871,6 +876,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
@@ -918,7 +924,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 #[test]
 fn test_different_token_proposal_deposit() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
     let cw20_id = app.store_code(cw20_contract());
     let cw20_addr = app
         .instantiate_contract(
@@ -946,6 +952,7 @@ fn test_different_token_proposal_deposit() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::Token {
                 address: cw20_addr.to_string(),
@@ -965,7 +972,7 @@ fn test_different_token_proposal_deposit() {
 #[should_panic(expected = "Error parsing into type cw20_balance_voting::msg::QueryMsg")]
 fn test_bad_token_proposal_deposit() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
     let cw20_id = app.store_code(cw20_contract());
     let votemod_id = app.store_code(cw20_balances_voting());
 
@@ -1001,6 +1008,7 @@ fn test_bad_token_proposal_deposit() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::Token {
                 address: votemod_addr.to_string(),
@@ -1016,7 +1024,7 @@ fn test_bad_token_proposal_deposit() {
 #[test]
 fn test_take_proposal_deposit() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -1026,6 +1034,7 @@ fn test_take_proposal_deposit() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
@@ -1363,7 +1372,7 @@ fn test_deposit_return_on_close() {
 #[test]
 fn test_execute_expired_proposal() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
@@ -1374,6 +1383,7 @@ fn test_execute_expired_proposal() {
             },
             max_voting_period: Duration::Height(10),
             only_members_execute: true,
+            allow_revoting: false,
             deposit_info: None,
         },
         Some(vec![
@@ -1533,6 +1543,7 @@ fn test_update_config() {
             },
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
         },
@@ -1550,6 +1561,7 @@ fn test_update_config() {
             },
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
         },
@@ -1568,6 +1580,7 @@ fn test_update_config() {
         },
         max_voting_period: cw_utils::Duration::Height(10),
         only_members_execute: false,
+        allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
     };
@@ -1584,6 +1597,7 @@ fn test_update_config() {
             },
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
         },
@@ -1654,7 +1668,7 @@ fn test_no_return_if_no_refunds() {
 #[test]
 fn test_query_list_proposals() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
     let gov_addr = instantiate_with_cw20_balances_governance(
         &mut app,
         govmod_id,
@@ -1665,6 +1679,7 @@ fn test_query_list_proposals() {
             },
             max_voting_period: cw_utils::Duration::Height(100),
             only_members_execute: true,
+            allow_revoting: false,
             deposit_info: None,
         },
         Some(vec![Cw20Coin {
@@ -1738,6 +1753,7 @@ fn test_query_list_proposals() {
                 threshold: PercentageThreshold::Majority {},
                 quorum: PercentageThreshold::Percent(Decimal::percent(0)),
             },
+            allow_revoting: false,
             total_power: Uint128::new(100),
             msgs: vec![],
             status: Status::Open,
@@ -1781,6 +1797,7 @@ fn test_query_list_proposals() {
                 threshold: PercentageThreshold::Majority {},
                 quorum: PercentageThreshold::Percent(Decimal::percent(0)),
             },
+            allow_revoting: false,
             total_power: Uint128::new(100),
             msgs: vec![],
             status: Status::Open,
@@ -1798,7 +1815,7 @@ fn test_query_list_proposals() {
 #[test]
 fn test_hooks() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -1808,6 +1825,7 @@ fn test_hooks() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -1970,7 +1988,7 @@ fn test_hooks() {
 #[test]
 fn test_active_threshold_absolute() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -1980,6 +1998,7 @@ fn test_active_threshold_absolute() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -2094,7 +2113,7 @@ fn test_active_threshold_absolute() {
 #[test]
 fn test_active_threshold_percent() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -2104,6 +2123,7 @@ fn test_active_threshold_percent() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -2219,7 +2239,7 @@ fn test_active_threshold_percent() {
 #[test]
 fn test_active_threshold_none() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_govmod_contract());
+    let govmod_id = app.store_code(single_proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -2229,6 +2249,7 @@ fn test_active_threshold_none() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -2306,6 +2327,7 @@ fn test_active_threshold_none() {
         threshold,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -2338,4 +2360,366 @@ fn test_active_threshold_none() {
             &[],
         )
         .unwrap();
+}
+
+#[test]
+fn test_revoting() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: true,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(90),
+            },
+            Cw20Coin {
+                address: "slarbibfast".to_string(),
+                amount: Uint128::new(10),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+
+    // The supreme galatic floob rules over many DAOs with benevolance
+    // and grace. The people of floob have become complacent in the
+    // goodness of the floob.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Supreme galactic floob.".to_string(),
+            description: "Recognize the supreme galactic floob as our DAO leader.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // The people initially jump at the chance to recognize the supreme
+    // galactic floob!
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // The wise slarbibfast does not agree. After some digging they
+    // discover that the floob has been bugging the hotel rooms of
+    // political rivals.
+    app.execute_contract(
+        Addr::unchecked("slarbibfast"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Time passes.
+    app.update_block(|b| b.height += 5);
+
+    // Word spreads.
+    app.update_block(|b| b.height += 4);
+
+    // At the last moment the people realize their mistake.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Open);
+    assert_eq!(
+        proposal.proposal.votes,
+        Votes {
+            yes: Uint128::zero(),
+            no: Uint128::new(100),
+            abstain: Uint128::zero()
+        }
+    );
+
+    // As the clock strikes midnight on the last day of the proposal,
+    // revoting has saved the day!
+    app.update_block(|b| b.height += 1);
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_module, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+}
+
+#[test]
+fn test_allow_revoting_config_changes() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: true,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(90),
+            },
+            Cw20Coin {
+                address: "slarbibfast".to_string(),
+                amount: Uint128::new(10),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+
+    // Create a proposal. This proposal should allow revoting.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Supreme galactic floob.".to_string(),
+            description: "Recognize the supreme galactic floob as our DAO leader.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Disable revoting.
+    app.execute_contract(
+        core_addr.clone(),
+        proposal_module.clone(),
+        &ExecuteMsg::UpdateConfig {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+            dao: core_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    // The first created proposal should still allow revoting.
+    assert!(proposal.proposal.allow_revoting);
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // New proposals should not allow revoting.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Supreme galactic floob.".to_string(),
+            description: "Recognize the supreme galactic floob as our DAO leader.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("slarbibfast"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("slarbibfast"),
+            proposal_module,
+            &ExecuteMsg::Vote {
+                proposal_id: 2,
+                vote: Vote::Yes,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::AlreadyVoted {}))
+}
+
+#[test]
+fn test_revoting_same_vote_twice() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: true,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(90),
+            },
+            Cw20Coin {
+                address: "slarbibfast".to_string(),
+                amount: Uint128::new(10),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Supreme galactic floob.".to_string(),
+            description: "Recognize the supreme galactic floob as our DAO leader.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            proposal_module.clone(),
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: Vote::Yes,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // Can't cast the same vote twice.
+    assert!(matches!(err, ContractError::AlreadyCast {}));
+
+    // Casting a different vote is fine. You can do that as many times
+    // as you'd like.
+    for _ in 1..5 {
+        app.execute_contract(
+            Addr::unchecked("ekez"),
+            proposal_module.clone(),
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: Vote::No,
+            },
+            &[],
+        )
+        .unwrap();
+        app.execute_contract(
+            Addr::unchecked("ekez"),
+            proposal_module.clone(),
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: Vote::Yes,
+            },
+            &[],
+        )
+        .unwrap();
+    }
 }

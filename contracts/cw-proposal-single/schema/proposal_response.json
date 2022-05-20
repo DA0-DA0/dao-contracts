@@ -330,6 +330,7 @@
     "Proposal": {
       "type": "object",
       "required": [
+        "allow_revoting",
         "description",
         "expiration",
         "msgs",
@@ -342,6 +343,9 @@
         "votes"
       ],
       "properties": {
+        "allow_revoting": {
+          "type": "boolean"
+        },
         "deposit_info": {
           "description": "Information about the deposit that was sent as part of this proposal. None if no deposit.",
           "anyOf": [

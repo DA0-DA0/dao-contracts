@@ -38,6 +38,11 @@ pub struct Config {
     /// proposals. Otherwise, any address may execute a passed
     /// proposal.
     pub only_members_execute: bool,
+    /// Allows changing votes before the proposal expires. If this is
+    /// enabled proposals will not be able to complete early as final
+    /// vote information is not known until the time of proposal
+    /// expiration.
+    pub allow_revoting: bool,
     /// The address of the DAO that this governance module is
     /// associated with.
     pub dao: Addr,
