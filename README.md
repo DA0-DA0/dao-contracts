@@ -1,19 +1,35 @@
 # DAO DAO Contracts
 
-| Contract                                     | Description                                                |
-| :------------------------------------------- | :--------------------------------------------------------- |
-| [cw3-dao](contracts/cw3-dao)                 | A DAO with voting power based on staked governance tokens. |
-| [cw3-multisig](contracts/cw3-multisig)       | A multisig contract.                                       |
-| [cw4-registry](contracts/cw4-registry)       | A contract for indexing multisig group members.            |
-| [stake-cw20](contracts/stake-cw20)           | A cw20 staking contract.                                   |
+| Audited contracts                                                        | Description                                                |
+| :----------------------------------------------------------------------- | :--------------------------------------------------------- |
+| [cw-core](contracts/cw-core)                                             | The core module for a DAO DAO DAO.                         |
+| [cw-proposal-single](contracts/cw-proposal-single)                       | A proposal module for single choice (yes / no) voting.     |
+| [cw20-staked-balance-voting](contracts/cw20-staked-balance-voting)       | A voting power module for staked governance tokens.        |
+| [cw4-voting](contracts/cw4-voting)                                       | A voting power module for multisig-style voting.           |
+| [stake-cw20](contracts/stake-cw20)                                       | A contract for staking cw20 tokens.                        |
 
-NOTE: _These contracts have yet to be audited. Please see the [disclaimer](#Disclaimer)._
+
+| Unaudited contracts                                                      | Description                                                |
+| :----------------------------------------------------------------------- | :--------------------------------------------------------- |
+| [cw-named-groups](contracts/cw-named-groups)                             | A contract for managing named groups of addresses.         |
+| [cw-proposal-sudo](contracts/cw-proposal-sudo)                           | A proposal module that allows an admin to control a DAO.   |
+| [cw20-balance-voting](contracts/cw20-balance-voting)                     | TESTING ONLY - a voting module based on cw20 balances.     |
+| [proposal-hooks-counter](contracts/proposal-hooks-counter)               | TESTING ONLY - a contract for testing proposal hooks.      |
+| [stake-external-rewards](contracts/stake-cw20-external-rewards)          | A contract for providing external stakinig rewards.        |
+| [stake-cw20-reward-distributor](contracts/stake-cw20-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
+
+Audited contracts have completed [an
+audit](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
+by security DAO. A second audit is forthcoming.
 
 ## Contributing
 
 Interested in contributing to DAO DAO? Check out [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Deploying in a development environment
+
+_Note: this will deploy the legacy version of the contracts currently
+running at [daodao.zone](https://daodao.zone)._
 
 Build and deploy the contracts to a local chain running in Docker with:
 
