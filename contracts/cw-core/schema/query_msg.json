@@ -42,13 +42,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Gets the governance modules assocaited with the contract. Returns Vec<Addr>.",
+      "description": "Gets the proposal modules assocaited with the contract. Returns Vec<Addr>.",
       "type": "object",
       "required": [
-        "governance_modules"
+        "proposal_modules"
       ],
       "properties": {
-        "governance_modules": {
+        "proposal_modules": {
           "type": "object",
           "properties": {
             "limit": {
@@ -71,7 +71,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Dumps all of the governance contract's state in a single query. Useful for frontends as performance for queries is more limited by network times than compute times. Returns `DumpStateResponse`.",
+      "description": "Dumps all of the core contract's state in a single query. Useful for frontends as performance for queries is more limited by network times than compute times. Returns `DumpStateResponse`.",
       "type": "object",
       "required": [
         "dump_state"

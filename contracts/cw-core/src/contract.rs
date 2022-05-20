@@ -21,7 +21,7 @@ use crate::state::{
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw-governance";
+const CONTRACT_NAME: &str = "crates.io:cw-core";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
@@ -61,13 +61,13 @@ pub fn instantiate(
     let vote_module_msg: SubMsg<Empty> =
         SubMsg::reply_on_success(vote_module_msg, VOTE_MODULE_INSTANTIATE_REPLY_ID);
 
-    let gov_module_msgs: Vec<SubMsg<Empty>> = msg
+    let proposal_module_msgs: Vec<SubMsg<Empty>> = msg
         .proposal_modules_instantiate_info
         .into_iter()
         .map(|info| info.into_wasm_msg(env.contract.address.clone()))
         .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
-    if gov_module_msgs.is_empty() {
+    if proposal_module_msgs.is_empty() {
         return Err(ContractError::NoProposalModule {});
     }
 
@@ -115,7 +115,7 @@ pub fn instantiate(
         .add_attribute("action", "instantiate")
         .add_attribute("sender", info.sender)
         .add_submessage(vote_module_msg)
-        .add_submessages(gov_module_msgs)
+        .add_submessages(proposal_module_msgs)
         .add_submessages(instantiate_item_msgs))
 }
 
@@ -144,7 +144,7 @@ pub fn execute(
             execute_update_voting_module(env, info.sender, module)
         }
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
-            execute_update_governance_modules(deps, env, info.sender, to_add, to_remove)
+            execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
         }
         ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
@@ -209,7 +209,7 @@ pub fn execute_update_config(
     // response. This has the benefit that it makes it reasonably
     // simple to ask "when did this field in the config change" by
     // running something like `junod query txs --events
-    // 'wasm._contract_address=governance&wasm.name=name'`.
+    // 'wasm._contract_address=core&wasm.name=name'`.
     Ok(Response::default()
         .add_attribute("action", "execute_update_config")
         .add_attribute("name", config.name)
@@ -237,7 +237,7 @@ pub fn execute_update_voting_module(
         .add_submessage(submessage))
 }
 
-pub fn execute_update_governance_modules(
+pub fn execute_update_proposal_modules(
     deps: DepsMut,
     env: Env,
     sender: Addr,
@@ -272,7 +272,7 @@ pub fn execute_update_governance_modules(
     }
 
     Ok(Response::default()
-        .add_attribute("action", "execute_update_governance_modules")
+        .add_attribute("action", "execute_update_proposal_modules")
         .add_submessages(to_add))
 }
 
@@ -395,7 +395,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::VotingModule {} => query_voting_module(deps),
         QueryMsg::ProposalModules { start_at, limit } => {
-            query_governance_modules(deps, start_at, limit)
+            query_proposal_modules(deps, start_at, limit)
         }
         QueryMsg::DumpState {} => query_dump_state(deps, env),
         QueryMsg::VotingPowerAtHeight { address, height } => {
@@ -424,7 +424,7 @@ pub fn query_voting_module(deps: Deps) -> StdResult<Binary> {
     to_binary(&voting_module)
 }
 
-pub fn query_governance_modules(
+pub fn query_proposal_modules(
     deps: Deps,
     start_at: Option<String>,
     limit: Option<u64>,
@@ -442,7 +442,7 @@ pub fn query_governance_modules(
     // case we are only paying for what we need here.
     //
     // Even if this does lock up one can determine the existing
-    // governance modules by looking at past transactions on chain.
+    // proposal modules by looking at past transactions on chain.
     let modules = PROPOSAL_MODULES.keys(
         deps.storage,
         start_at.map(Bound::inclusive),
@@ -478,7 +478,7 @@ pub fn query_paused(deps: Deps, env: Env) -> StdResult<Binary> {
 pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
-    let governance_modules = PROPOSAL_MODULES
+    let proposal_modules = PROPOSAL_MODULES
         .keys(deps.storage, None, None, cosmwasm_std::Order::Descending)
         .collect::<Result<Vec<Addr>, _>>()?;
     let pause_info = get_pause_info(deps, env)?;
@@ -487,7 +487,7 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
         config,
         version,
         pause_info,
-        governance_modules,
+        proposal_modules,
         voting_module,
     })
 }
@@ -631,10 +631,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     match msg.id {
         PROPOSAL_MODULE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
-            let gov_module_addr = deps.api.addr_validate(&res.contract_address)?;
-            PROPOSAL_MODULES.save(deps.storage, gov_module_addr, &Empty {})?;
+            let prop_module_addr = deps.api.addr_validate(&res.contract_address)?;
+            PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &Empty {})?;
 
-            Ok(Response::default().add_attribute("gov_module".to_string(), res.contract_address))
+            Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))
         }
         VOTE_MODULE_INSTANTIATE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;

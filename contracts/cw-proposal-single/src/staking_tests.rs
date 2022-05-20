@@ -132,7 +132,7 @@ fn instantiate_with_staked_balances_voting() {
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
 
-    assert_eq!(state.governance_modules.len(), 1);
+    assert_eq!(state.proposal_modules.len(), 1);
     assert_eq!(
         state.config,
         cw_core::state::Config {

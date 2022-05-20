@@ -885,7 +885,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         .wrap()
         .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.governance_modules;
+    let governance_modules = gov_state.proposal_modules;
     let voting_module = gov_state.voting_module;
 
     assert_eq!(governance_modules.len(), 1);
@@ -1047,7 +1047,7 @@ fn test_take_proposal_deposit() {
         .wrap()
         .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.governance_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -1144,7 +1144,7 @@ fn test_deposit_return_on_execute() {
         .wrap()
         .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.governance_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -1217,7 +1217,7 @@ fn test_close_open_proposal() {
         .wrap()
         .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.governance_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -1312,7 +1312,7 @@ fn test_deposit_return_on_close() {
         .wrap()
         .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.governance_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -1392,7 +1392,7 @@ fn test_execute_expired_proposal() {
         .wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_modules = gov_state.governance_modules;
+    let proposal_modules = gov_state.proposal_modules;
 
     assert_eq!(proposal_modules.len(), 1);
     let proposal_single = proposal_modules.into_iter().next().unwrap();
@@ -1503,7 +1503,7 @@ fn test_update_config() {
         .wrap()
         .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.governance_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -1616,7 +1616,7 @@ fn test_no_return_if_no_refunds() {
         .wrap()
         .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.governance_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
