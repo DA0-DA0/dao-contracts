@@ -34,7 +34,7 @@ fn cw721_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn sudo_govmod_contract() -> Box<dyn Contract<Empty>> {
+fn sudo_proposal_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw_proposal_sudo::contract::execute,
         cw_proposal_sudo::contract::instantiate,
@@ -53,7 +53,7 @@ fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
+fn cw_core_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -78,7 +78,7 @@ fn instantiate_gov(app: &mut App, code_id: u64, msg: InstantiateMsg) -> Addr {
 fn test_instantiate_with_n_gov_modules(n: usize) {
     let mut app = App::default();
     let cw20_id = app.store_code(cw20_contract());
-    let gov_id = app.store_code(cw_gov_contract());
+    let gov_id = app.store_code(cw_core_contract());
 
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "DAO".to_string(),
@@ -131,12 +131,12 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
     assert_eq!(
         state.version,
         ContractVersion {
-            contract: "crates.io:cw-governance".to_string(),
+            contract: "crates.io:cw-core".to_string(),
             version: env!("CARGO_PKG_VERSION").to_string()
         }
     );
 
-    assert_eq!(state.governance_modules.len(), n);
+    assert_eq!(state.proposal_modules.len(), n);
 }
 
 #[test]
@@ -158,7 +158,7 @@ fn test_valid_instantiate() {
 fn test_instantiate_with_submessage_failure() {
     let mut app = App::default();
     let cw20_id = app.store_code(cw20_contract());
-    let gov_id = app.store_code(cw_gov_contract());
+    let gov_id = app.store_code(cw_core_contract());
 
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "DAO".to_string(),
@@ -214,8 +214,8 @@ makes wickedness."
 #[test]
 fn test_update_config() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
-    let gov_id = app.store_code(cw_gov_contract());
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let gov_id = app.store_code(cw_core_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -302,8 +302,8 @@ fn test_update_config() {
 
 fn test_swap_governance(swaps: Vec<(u64, u64)>) {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
-    let gov_id = app.store_code(cw_gov_contract());
+    let propmod_id = app.store_code(sudo_proposal_contract());
+    let core_id = app.store_code(cw_core_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -316,13 +316,13 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: govmod_id,
+            code_id: propmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: govmod_id,
+            code_id: propmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "governance module".to_string(),
@@ -332,7 +332,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
 
     let gov_addr = app
         .instantiate_contract(
-            gov_id,
+            core_id,
             Addr::unchecked(CREATOR_ADDR),
             &gov_instantiate,
             &[],
@@ -368,7 +368,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
 
         let to_add: Vec<_> = (0..add)
             .map(|n| ModuleInstantiateInfo {
-                code_id: govmod_id,
+                code_id: propmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
                 admin: Admin::CoreContract {},
                 label: format!("governance module {}", n),
@@ -377,6 +377,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
 
         let to_remove: Vec<_> = start_modules
             .iter()
+            .rev()
             .take(remove as usize)
             .map(|a| a.to_string())
             .collect();
@@ -412,7 +413,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             finish_modules.len() as u64,
             start_modules.len() as u64 + add - remove
         );
-        for module in start_modules.into_iter().take(remove as usize) {
+        for module in start_modules.into_iter().rev().take(remove as usize) {
             assert!(!finish_modules.contains(&module))
         }
     }
@@ -420,7 +421,13 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
 
 #[test]
 fn test_update_governance() {
-    test_swap_governance(vec![(1, 1), (5, 0), (0, 5), (0, 0)])
+    test_swap_governance(vec![(1, 1), (5, 0), (0, 5), (0, 0)]);
+    test_swap_governance(vec![(1, 1), (1, 1), (1, 1), (1, 1)])
+}
+
+#[test]
+fn test_add_then_remove_governance() {
+    test_swap_governance(vec![(1, 0), (0, 1)])
 }
 
 #[test]
@@ -432,8 +439,8 @@ fn test_swap_governance_bad() {
 #[test]
 fn test_removed_modules_can_not_execute() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
-    let gov_id = app.store_code(cw_gov_contract());
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let gov_id = app.store_code(cw_core_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -577,8 +584,8 @@ fn test_removed_modules_can_not_execute() {
 #[test]
 fn test_swap_voting_module() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
-    let gov_id = app.store_code(cw_gov_contract());
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let gov_id = app.store_code(cw_core_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -678,8 +685,8 @@ fn test_unauthorized(app: &mut App, gov_addr: Addr, msg: ExecuteMsg) {
 #[test]
 fn test_permissions() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
-    let gov_id = app.store_code(cw_gov_contract());
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let gov_id = app.store_code(cw_core_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -756,9 +763,9 @@ fn test_permissions() {
 
 fn do_standard_instantiate(auto_add: bool) -> (Addr, App) {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
+    let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_gov_contract());
+    let gov_id = app.store_code(cw_core_contract());
     let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
@@ -906,9 +913,9 @@ fn test_add_remove_get() {
 #[test]
 fn test_list_items() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
+    let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_gov_contract());
+    let gov_id = app.store_code(cw_core_contract());
     let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
@@ -991,9 +998,9 @@ fn test_list_items() {
 #[test]
 fn test_instantiate_with_items() {
     let mut app = App::default();
-    let govmod_id = app.store_code(sudo_govmod_contract());
+    let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_gov_contract());
+    let gov_id = app.store_code(cw_core_contract());
     let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {

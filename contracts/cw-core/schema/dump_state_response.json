@@ -5,8 +5,8 @@
   "type": "object",
   "required": [
     "config",
-    "governance_modules",
     "pause_info",
+    "proposal_modules",
     "version",
     "voting_module"
   ],
@@ -19,15 +19,15 @@
         }
       ]
     },
-    "governance_modules": {
+    "pause_info": {
+      "$ref": "#/definitions/PauseInfoResponse"
+    },
+    "proposal_modules": {
       "description": "The governance modules associated with the governance contract.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Addr"
       }
-    },
-    "pause_info": {
-      "$ref": "#/definitions/PauseInfoResponse"
     },
     "version": {
       "description": "The governance contract's version.",

@@ -18,7 +18,7 @@ pub struct DumpStateResponse {
     pub version: ContractVersion,
     /// The governance modules associated with the governance
     /// contract.
-    pub governance_modules: Vec<Addr>,
+    pub proposal_modules: Vec<Addr>,
     /// The voting module associated with the governance contract.
     pub voting_module: Addr,
 }

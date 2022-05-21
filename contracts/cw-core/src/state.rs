@@ -28,7 +28,7 @@ pub const PAUSED: Item<Expiration> = Item::new("paused");
 
 /// The voting module associated with this contract.
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
-pub const PROPOSAL_MODULES: Map<Addr, Empty> = Map::new("governance_modules");
+pub const PROPOSAL_MODULES: Map<Addr, Empty> = Map::new("proposal_modules");
 
 pub const ITEMS: Map<String, Addr> = Map::new("items");
 pub const PENDING_ITEM_INSTANTIATION_NAMES: Map<u64, String> =

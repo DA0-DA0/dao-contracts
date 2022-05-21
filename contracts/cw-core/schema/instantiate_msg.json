@@ -6,8 +6,8 @@
     "automatically_add_cw20s",
     "automatically_add_cw721s",
     "description",
-    "governance_modules_instantiate_info",
     "name",
+    "proposal_modules_instantiate_info",
     "voting_module_instantiate_info"
   ],
   "properties": {
@@ -20,18 +20,11 @@
       "type": "boolean"
     },
     "description": {
-      "description": "A description of the governance contract.",
+      "description": "A description of the core contract.",
       "type": "string"
     },
-    "governance_modules_instantiate_info": {
-      "description": "Instantiate information for the governance contract's governance modules.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ModuleInstantiateInfo"
-      }
-    },
     "image_url": {
-      "description": "An image URL to describe the governance module contract.",
+      "description": "An image URL to describe the core module contract.",
       "type": [
         "string",
         "null"
@@ -48,11 +41,18 @@
       }
     },
     "name": {
-      "description": "The name of the governance contract.",
+      "description": "The name of the core contract.",
       "type": "string"
     },
+    "proposal_modules_instantiate_info": {
+      "description": "Instantiate information for the core contract's proposal modules.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ModuleInstantiateInfo"
+      }
+    },
     "voting_module_instantiate_info": {
-      "description": "Instantiate information for the governance contract's voting power module.",
+      "description": "Instantiate information for the core contract's voting power module.",
       "allOf": [
         {
           "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -86,13 +86,13 @@
           "additionalProperties": false
         },
         {
-          "description": "The governance contract itself. The contract will fill this in while instantiation takes place.",
+          "description": "The core contract itself. The contract will fill this in while instantiation takes place.",
           "type": "object",
           "required": [
-            "governance_contract"
+            "core_contract"
           ],
           "properties": {
-            "governance_contract": {
+            "core_contract": {
               "type": "object"
             }
           },
@@ -185,7 +185,7 @@
       ]
     },
     "ModuleInstantiateInfo": {
-      "description": "Information needed to instantiate a governance or voting module.",
+      "description": "Information needed to instantiate a proposal or voting module.",
       "type": "object",
       "required": [
         "admin",

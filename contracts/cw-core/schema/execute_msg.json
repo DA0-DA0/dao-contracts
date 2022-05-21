@@ -3,7 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
-      "description": "Callable by governance modules. The DAO will execute the messages in the hook in order.",
+      "description": "Callable by proposal modules. The DAO will execute the messages in the hook in order.",
       "type": "object",
       "required": [
         "execute_proposal_hook"
@@ -27,7 +27,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Callable by the governance contract. Replaces the current governance contract config with the provided config.",
+      "description": "Callable by the core contract. Replaces the current governance contract config with the provided config.",
       "type": "object",
       "required": [
         "update_config"
@@ -48,7 +48,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Callable by the governance contract. Replaces the current voting module with a new one instantiated by the governance contract.",
+      "description": "Callable by the core contract. Replaces the current voting module with a new one instantiated by the governance contract.",
       "type": "object",
       "required": [
         "update_voting_module"
@@ -72,10 +72,10 @@
       "description": "Updates the governance contract's governance modules. Module instantiate info in `to_add` is used to create new modules and install them.",
       "type": "object",
       "required": [
-        "update_governance_modules"
+        "update_proposal_modules"
       ],
       "properties": {
-        "update_governance_modules": {
+        "update_proposal_modules": {
           "type": "object",
           "required": [
             "to_add",
@@ -280,13 +280,13 @@
           "additionalProperties": false
         },
         {
-          "description": "The governance contract itself. The contract will fill this in while instantiation takes place.",
+          "description": "The core contract itself. The contract will fill this in while instantiation takes place.",
           "type": "object",
           "required": [
-            "governance_contract"
+            "core_contract"
           ],
           "properties": {
-            "governance_contract": {
+            "core_contract": {
               "type": "object"
             }
           },
@@ -609,7 +609,7 @@
       "type": "object"
     },
     "ModuleInstantiateInfo": {
-      "description": "Information needed to instantiate a governance or voting module.",
+      "description": "Information needed to instantiate a proposal or voting module.",
       "type": "object",
       "required": [
         "admin",
