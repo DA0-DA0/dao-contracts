@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use indexable_hooks::HooksResponse;
@@ -450,4 +450,127 @@ fn test_counters() {
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
+}
+
+#[test]
+fn test_counters_pass_on_expiration() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_govmod_contract());
+    let counters_id = app.store_code(counters_contract());
+
+    let threshold = Threshold::ThresholdQuorum {
+        threshold: PercentageThreshold::Majority {},
+        quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = cw_proposal_single::msg::InstantiateMsg {
+        threshold,
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+    };
+
+    let governance_addr = instantiate_with_default_governance(
+        &mut app,
+        govmod_id,
+        instantiate,
+        Some(vec![
+            Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "floob".to_string(),
+                amount: Uint128::new(90),
+            },
+        ]),
+    );
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &cw_proposal_single::msg::QueryMsg::Config {},
+        )
+        .unwrap();
+    let dao = govmod_config.dao;
+
+    let counters: Addr = app
+        .instantiate_contract(
+            counters_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                should_error: false,
+            },
+            &[],
+            "counters",
+            None,
+        )
+        .unwrap();
+
+    // Register the hook.
+    app.execute_contract(
+        dao,
+        govmod_single.clone(),
+        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook {
+            address: counters.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &cw_proposal_single::msg::ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on the proposal. This will pass once the proposal expires.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &cw_proposal_single::msg::ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(|b| b.height += 6);
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single,
+        &cw_proposal_single::msg::ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let resp: CountResponse = app
+        .wrap()
+        .query_wasm_smart(counters, &QueryMsg::StatusChangedCounter {})
+        .unwrap();
+
+    // FIXME: count here is one as this proposal only had one state
+    // change from "open" -> "executed". Is this the correct behavior?
+    assert_eq!(resp.count, 2);
 }
