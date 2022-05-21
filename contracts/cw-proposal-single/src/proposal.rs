@@ -419,8 +419,10 @@ mod test {
         ));
     }
 
+    /// Simple checks for absolute count passing and failing
+    /// conditions.
     #[test]
-    fn test_absolute_threshold() {
+    fn test_absolute_count_threshold() {
         let threshold = Threshold::AbsoluteCount {
             threshold: Uint128::new(10),
         };
@@ -474,8 +476,10 @@ mod test {
         ));
     }
 
+    /// Tests that revoting works as expected with an absolute count
+    /// style threshold.
     #[test]
-    fn test_absolute_threshold_revoting() {
+    fn test_absolute_count_threshold_revoting() {
         let threshold = Threshold::AbsoluteCount {
             threshold: Uint128::new(10),
         };

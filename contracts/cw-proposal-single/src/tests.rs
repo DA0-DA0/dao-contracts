@@ -2364,6 +2364,7 @@ fn test_active_threshold_none() {
         .unwrap();
 }
 
+/// Simple test for revoting.
 #[test]
 fn test_revoting() {
     let mut app = App::default();
@@ -2397,7 +2398,7 @@ fn test_revoting() {
         .wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
 
     // The supreme galatic floob rules over many DAOs with benevolance
     // and grace. The people of floob have become complacent in the
@@ -2486,6 +2487,9 @@ fn test_revoting() {
     assert_eq!(proposal.proposal.status, Status::Rejected);
 }
 
+/// Tests that revoting is stored at a per-proposal level. Proposals
+/// created while revoting is enabled should not have it disabled if a
+/// config change turns if off.
 #[test]
 fn test_allow_revoting_config_changes() {
     let mut app = App::default();
@@ -2519,7 +2523,7 @@ fn test_allow_revoting_config_changes() {
         .wrap()
         .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
 
     // Create a proposal. This proposal should allow revoting.
     app.execute_contract(
@@ -2625,6 +2629,8 @@ fn test_allow_revoting_config_changes() {
     assert!(matches!(err, ContractError::AlreadyVoted {}))
 }
 
+/// Tests that we error if a revote casts the same vote as the
+/// previous vote.
 #[test]
 fn test_revoting_same_vote_twice() {
     let mut app = App::default();
@@ -2658,7 +2664,7 @@ fn test_revoting_same_vote_twice() {
         .wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
 
     app.execute_contract(
         Addr::unchecked("ekez"),
@@ -2726,6 +2732,7 @@ fn test_revoting_same_vote_twice() {
     }
 }
 
+/// Tests a simple three of five multisig configuration.
 #[test]
 fn test_three_of_five_multisig() {
     let mut app = App::default();
@@ -2770,7 +2777,7 @@ fn test_three_of_five_multisig() {
         .wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
 
     app.execute_contract(
         Addr::unchecked("one"),
@@ -2850,6 +2857,7 @@ fn test_three_of_five_multisig() {
     assert_eq!(proposal.proposal.status, Status::Executed);
 }
 
+/// Tests proposal rejection with three of five multisig style voting.
 #[test]
 fn test_three_of_five_multisig_reject() {
     let mut app = App::default();
@@ -2894,7 +2902,7 @@ fn test_three_of_five_multisig_reject() {
         .wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
 
     app.execute_contract(
         Addr::unchecked("one"),
@@ -2978,6 +2986,8 @@ fn test_three_of_five_multisig_reject() {
     assert_eq!(proposal.proposal.status, Status::Closed);
 }
 
+/// Tests that we fail to instantiate when using multisig style voting
+/// power and `VotingModuleToken {}`.
 #[test]
 #[should_panic]
 fn test_voting_module_token_with_multisig_style_voting() {
@@ -3016,6 +3026,7 @@ fn test_voting_module_token_with_multisig_style_voting() {
     );
 }
 
+/// Tests revoting with multisig style absolute count thresholds.
 #[test]
 fn test_three_of_five_multisig_revoting() {
     let mut app = App::default();
@@ -3060,7 +3071,7 @@ fn test_three_of_five_multisig_revoting() {
         .wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_module = core_state.governance_modules.into_iter().next().unwrap();
+    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
 
     app.execute_contract(
         Addr::unchecked("one"),
@@ -3165,8 +3176,10 @@ fn test_three_of_five_multisig_revoting() {
     assert_eq!(proposal.proposal.status, Status::Executed);
 }
 
+/// Tests that absolute count style thresholds work with token style
+/// voting.
 #[test]
-fn test_absolute_threshold_non_multisig() {
+fn test_absolute_count_threshold_non_multisig() {
     do_votes_staked_balances(
         vec![
             TestVote {
@@ -3196,8 +3209,10 @@ fn test_absolute_threshold_non_multisig() {
     );
 }
 
+/// Tests that we do not overflow when faced with really high token /
+/// vote supply.
 #[test]
-fn test_large_absolute_threshold() {
+fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
             // Instant rejection after this.

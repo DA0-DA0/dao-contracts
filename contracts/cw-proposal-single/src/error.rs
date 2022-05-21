@@ -39,7 +39,7 @@ pub enum ContractError {
     #[error("Already voted. This proposal does not support revoting.")]
     AlreadyVoted {},
 
-    #[error("Already cast that vote. Change your vote to revote.")]
+    #[error("Already cast a vote with that option. Change your vote to revote.")]
     AlreadyCast {},
 
     #[error("Proposal is not in 'passed' state.")]
