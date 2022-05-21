@@ -113,6 +113,17 @@ impl Votes {
         }
     }
 
+    /// Removes a vote from the votes. The vote being removed must
+    /// have been previously added or this method will cause an
+    /// overflow.
+    pub fn remove_vote(&mut self, vote: Vote, power: Uint128) {
+        match vote {
+            Vote::Yes => self.yes -= power,
+            Vote::No => self.no -= power,
+            Vote::Abstain => self.abstain -= power,
+        }
+    }
+
     /// Computes the total number of votes cast.
     ///
     /// NOTE: The total number of votes avaliable from a voting module

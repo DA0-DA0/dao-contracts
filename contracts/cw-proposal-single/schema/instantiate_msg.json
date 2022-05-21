@@ -3,11 +3,16 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "allow_revoting",
     "max_voting_period",
     "only_members_execute",
     "threshold"
   ],
   "properties": {
+    "allow_revoting": {
+      "description": "Allows changing votes before the proposal expires. If this is enabled proposals will not be able to complete early as final vote information is not known until the time of proposal expiration.",
+      "type": "boolean"
+    },
     "deposit_info": {
       "description": "Information about the deposit required to create a proposal. None if there is no deposit requirement, Some otherwise.",
       "anyOf": [
@@ -223,6 +228,27 @@
                 },
                 "threshold": {
                   "$ref": "#/definitions/PercentageThreshold"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "An absolute number of votes needed for something to cross the threshold. Useful for multisig style voting.",
+          "type": "object",
+          "required": [
+            "absolute_count"
+          ],
+          "properties": {
+            "absolute_count": {
+              "type": "object",
+              "required": [
+                "threshold"
+              ],
+              "properties": {
+                "threshold": {
+                  "$ref": "#/definitions/Uint128"
                 }
               }
             }

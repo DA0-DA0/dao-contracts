@@ -1,4 +1,4 @@
-use cosmwasm_std::Decimal;
+use cosmwasm_std::{Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -64,6 +64,10 @@ pub enum Threshold {
         threshold: PercentageThreshold,
         quorum: PercentageThreshold,
     },
+
+    /// An absolute number of votes needed for something to cross the
+    /// threshold. Useful for multisig style voting.
+    AbsoluteCount { threshold: Uint128 },
 }
 
 /// Asserts that the 0.0 < percent <= 1.0
@@ -105,6 +109,13 @@ impl Threshold {
             Threshold::ThresholdQuorum { threshold, quorum } => {
                 validate_percentage(threshold)?;
                 validate_quorum(quorum)
+            }
+            Threshold::AbsoluteCount { threshold } => {
+                if threshold.is_zero() {
+                    Err(ThresholdError::ZeroThreshold {})
+                } else {
+                    Ok(())
+                }
             }
         }
     }
