@@ -16,7 +16,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
 use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
 use crate::state::{
-    Config, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
+    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
     PROPOSAL_MODULES, VOTING_MODULE,
 };
 
@@ -54,6 +54,10 @@ pub fn instantiate(
         automatically_add_cw721s: msg.automatically_add_cw721s,
     };
     CONFIG.save(deps.storage, &config)?;
+
+    if let Some(admin) = msg.admin {
+        ADMIN.save(deps.storage, &admin)?;
+    }
 
     let vote_module_msg = msg
         .voting_module_instantiate_info
@@ -134,11 +138,26 @@ pub fn execute(
     }
 
     match msg {
+        ExecuteMsg::ExecuteAdminMsgs { msgs } => {
+            execute_admin_msgs(deps.as_ref(), info.sender, msgs)
+        }
         ExecuteMsg::ExecuteProposalHook { msgs } => {
             execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
+        ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
+        ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
+        ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
+        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
+        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
+        ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(deps, info.sender, admin),
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info.sender, config)
+        }
+        ExecuteMsg::UpdateCw20List { to_add, to_remove } => {
+            execute_update_cw20_list(deps, env, info.sender, to_add, to_remove)
+        }
+        ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
+            execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
         }
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
@@ -146,17 +165,6 @@ pub fn execute(
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
         }
-        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
-        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
-        ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
-        ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
-        ExecuteMsg::UpdateCw20List { to_add, to_remove } => {
-            execute_update_cw20_list(deps, env, info.sender, to_add, to_remove)
-        }
-        ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
-            execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
-        }
-        ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
     }
 }
 
@@ -181,17 +189,65 @@ pub fn execute_pause(
         .add_attribute("until", until.to_string()))
 }
 
+pub fn execute_admin_msgs(
+    deps: Deps,
+    sender: Addr,
+    msgs: Vec<CosmosMsg<Empty>>,
+) -> Result<Response, ContractError> {
+    let admin = ADMIN.may_load(deps.storage)?;
+
+    match admin {
+        Some(admin) => {
+            // Check if the sender is the DAO Admin
+            if sender != admin {
+                return Err(ContractError::Unauthorized {});
+            }
+
+            Ok(Response::default()
+                .add_attribute("action", "execute_admin_msgs")
+                .add_messages(msgs))
+        }
+        None => Err(ContractError::NoAdmin {}),
+    }
+}
+
 pub fn execute_proposal_hook(
     deps: Deps,
     sender: Addr,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
+    // Check that the message has come from one of the proposal modules
     if !PROPOSAL_MODULES.has(deps.storage, sender) {
         return Err(ContractError::Unauthorized {});
     }
+
     Ok(Response::default()
         .add_attribute("action", "execute_proposal_hook")
         .add_messages(msgs))
+}
+
+pub fn execute_update_admin(
+    deps: DepsMut,
+    sender: Addr,
+    admin: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let current_admin = ADMIN.load(deps.storage)?;
+
+    // Check sender is the DAO Admin
+    if sender != current_admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Save the new DAO Admin
+    // In no admin is set, remove the DAO Admin
+    match admin {
+        Some(admin) => {
+            ADMIN.save(deps.storage, &admin)?;
+        }
+        None => ADMIN.remove(deps.storage),
+    }
+
+    Ok(Response::default().add_attribute("action", "execute_update_admin"))
 }
 
 pub fn execute_update_config(

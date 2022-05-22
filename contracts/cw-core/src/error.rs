@@ -10,6 +10,9 @@ pub enum ContractError {
     #[error("Unauthorized.")]
     Unauthorized {},
 
+    #[error("DAO does not have an admin configured.")]
+    NoAdmin {},
+
     #[error("The contract is paused.")]
     Paused {},
 
