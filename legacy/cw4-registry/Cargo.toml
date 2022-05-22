@@ -29,8 +29,8 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta" }
-cosmwasm-storage = { version = "1.0.0-beta" }
+cosmwasm-std = { version = "1.0.0" }
+cosmwasm-storage = { version = "1.0.0" }
 cw-storage-plus = "0.11"
 cw-utils = "0.11"
 cw2 = "0.11"
@@ -43,5 +43,5 @@ thiserror = { version = "1.0.26" }
 [dev-dependencies]
 anyhow = "1"
 assert_matches = "1"
-cosmwasm-schema = { version = "1.0.0-beta" }
+cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = "0.11"

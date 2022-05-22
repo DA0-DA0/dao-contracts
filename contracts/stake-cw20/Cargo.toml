@@ -16,8 +16,8 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta" }
-cosmwasm-storage = { version = "1.0.0-beta" }
+cosmwasm-std = { version = "1.0.0" }
+cosmwasm-storage = { version = "1.0.0" }
 cw-storage-plus = { version = "0.13" }
 cw-controllers = "0.13"
 cw20 = { version = "0.13" }
@@ -29,6 +29,6 @@ serde = { version = "1.0.132", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.30" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta" }
+cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = {  version = "0.13" }
 anyhow = { version = "1.0.51"}

@@ -9,5 +9,5 @@ edition = "2021"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cosmwasm-std = "1.0.0-beta"
+cosmwasm-std = "1.0.0"
 cw-storage-plus = "0.13"
