@@ -15,7 +15,7 @@ pub struct Config {
 }
 pub const CONFIG: Item<Config> = Item::new("config");
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct RewardConfig {
     pub period_finish: u64,
     pub reward_rate: Uint128,

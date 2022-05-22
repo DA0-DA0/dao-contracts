@@ -8,7 +8,7 @@ use cw_core_macros::voting_query;
 use crate::state::Config;
 
 /// Information about the admin of a contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Admin {
     /// A specific address.
@@ -21,7 +21,7 @@ pub enum Admin {
 }
 
 /// Information needed to instantiate a proposal or voting module.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct ModuleInstantiateInfo {
     /// Code ID of the contract to be instantiated.
     pub code_id: u64,
@@ -33,7 +33,7 @@ pub struct ModuleInstantiateInfo {
     pub label: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum InitialItemInfo {
     /// An existing contract address.
     Existing { address: String },
@@ -41,7 +41,7 @@ pub enum InitialItemInfo {
     Instantiate { info: ModuleInstantiateInfo },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InitialItem {
     /// The name of the item.
     pub name: String,
@@ -49,7 +49,7 @@ pub struct InitialItem {
     pub info: InitialItemInfo,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     /// The name of the core contract.
     pub name: String,
@@ -140,7 +140,7 @@ pub enum ExecuteMsg {
 }
 
 #[voting_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Gets the contract's config. Returns Config.

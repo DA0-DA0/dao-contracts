@@ -7,17 +7,17 @@ use serde::{Deserialize, Serialize};
 #[token_query]
 #[voting_query]
 #[active_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct VotingPowerAtHeightResponse {
     pub power: Uint128,
     pub height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct TotalPowerAtHeightResponse {
     pub power: Uint128,
     pub height: u64,
@@ -28,7 +28,7 @@ pub struct InfoResponse {
     pub info: ContractVersion,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct IsActiveResponse {
     pub active: bool,
 }

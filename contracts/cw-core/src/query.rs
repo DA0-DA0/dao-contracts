@@ -31,7 +31,7 @@ pub enum PauseInfoResponse {
 }
 
 /// Returned by the `GetItem` query.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct GetItemResponse {
     /// `None` if no item with the provided key was found, `Some`
     /// otherwise.
@@ -39,7 +39,7 @@ pub struct GetItemResponse {
 }
 
 /// Returned by Cw20Balances query.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Cw20BalanceResponse {
     /// The address of the token.
     pub addr: Addr,

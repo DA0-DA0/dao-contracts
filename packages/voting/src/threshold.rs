@@ -36,7 +36,7 @@ pub enum ThresholdError {
 ///
 /// In both of these cases a proposal with only abstain votes must
 /// fail. This requires a special case passing logic.
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum PercentageThreshold {
     /// The majority of voters must vote yes for the proposal to pass.
@@ -47,7 +47,7 @@ pub enum PercentageThreshold {
 }
 
 /// The ways a proposal may reach its passing / failing threshold.
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum Threshold {
     /// Declares a percentage of the total weight that must cast Yes

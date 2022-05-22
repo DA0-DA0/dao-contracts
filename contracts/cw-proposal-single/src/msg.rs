@@ -29,7 +29,7 @@ pub struct InstantiateMsg {
 }
 
 /// Information about the token to use for proposal deposits.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DepositToken {
     /// Use a specific token address as the deposit token.
@@ -44,7 +44,7 @@ pub enum DepositToken {
 }
 
 /// Information about the deposit required to create a proposal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct DepositInfo {
     /// The address of the cw20 token to be used for proposal
     /// deposits.
@@ -130,7 +130,7 @@ pub enum ExecuteMsg {
 }
 
 #[govmod_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Gets the governance module's config. Returns `state::Config`.
