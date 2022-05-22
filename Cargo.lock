@@ -231,6 +231,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-fund-distributor"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core-interface",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "cw20-staked-balance-voting",
+ "schemars",
+ "serde",
+ "stake-cw20",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-multi-test"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
