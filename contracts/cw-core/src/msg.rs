@@ -141,15 +141,25 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    /// Get's the DAO's admin (if configured).
+    Admin {},
     /// Gets the contract's config. Returns Config.
     Config {},
-    /// Returns information about if the contract is currently paused.
-    PauseInfo {},
-    /// Gets the contract's voting module. Returns Addr.
-    VotingModule {},
-    /// Gets the proposal modules assocaited with the
-    /// contract. Returns Vec<Addr>.
-    ProposalModules {
+    /// Gets the token balance for each cw20 registered with the
+    /// contract.
+    Cw20Balances {
+        start_at: Option<String>,
+        limit: Option<u64>,
+    },
+    /// Lists the addresses of the cw20 tokens in this contract's
+    /// treasury.
+    Cw20TokenList {
+        start_at: Option<String>,
+        limit: Option<u64>,
+    },
+    /// Lists the addresses of the cw721 tokens in this contract's
+    /// treasury.
+    Cw721TokenList {
         start_at: Option<String>,
         limit: Option<u64>,
     },
@@ -167,22 +177,14 @@ pub enum QueryMsg {
         start_at: Option<String>,
         limit: Option<u64>,
     },
-    /// Lists the addresses of the cw20 tokens in this contract's
-    /// treasury.
-    Cw20TokenList {
+    /// Gets the proposal modules assocaited with the
+    /// contract. Returns Vec<Addr>.
+    ProposalModules {
         start_at: Option<String>,
         limit: Option<u64>,
     },
-    /// Lists the addresses of the cw721 tokens in this contract's
-    /// treasury.
-    Cw721TokenList {
-        start_at: Option<String>,
-        limit: Option<u64>,
-    },
-    /// Gets the token balance for each cw20 registered with the
-    /// contract.
-    Cw20Balances {
-        start_at: Option<String>,
-        limit: Option<u64>,
-    },
+    /// Returns information about if the contract is currently paused.
+    PauseInfo {},
+    /// Gets the contract's voting module. Returns Addr.
+    VotingModule {},
 }

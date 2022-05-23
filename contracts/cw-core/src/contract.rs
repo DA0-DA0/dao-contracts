@@ -459,26 +459,32 @@ pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, Co
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Admin {} => query_admin(deps),
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::VotingModule {} => query_voting_module(deps),
-        QueryMsg::ProposalModules { start_at, limit } => {
-            query_proposal_modules(deps, start_at, limit)
-        }
-        QueryMsg::DumpState {} => query_dump_state(deps, env),
-        QueryMsg::VotingPowerAtHeight { address, height } => {
-            query_voting_power_at_height(deps, address, height)
-        }
-        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
-        QueryMsg::GetItem { key } => query_get_item(deps, key),
-        QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
-        QueryMsg::Info {} => query_info(deps),
         QueryMsg::Cw20TokenList { start_at, limit } => query_cw20_list(deps, start_at, limit),
-        QueryMsg::Cw721TokenList { start_at, limit } => query_cw721_list(deps, start_at, limit),
         QueryMsg::Cw20Balances { start_at, limit } => {
             query_cw20_balances(deps, env, start_at, limit)
         }
+        QueryMsg::Cw721TokenList { start_at, limit } => query_cw721_list(deps, start_at, limit),
+        QueryMsg::DumpState {} => query_dump_state(deps, env),
+        QueryMsg::GetItem { key } => query_get_item(deps, key),
+        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
         QueryMsg::PauseInfo {} => query_paused(deps, env),
+        QueryMsg::ProposalModules { start_at, limit } => {
+            query_proposal_modules(deps, start_at, limit)
+        }
+        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
+        QueryMsg::VotingModule {} => query_voting_module(deps),
+        QueryMsg::VotingPowerAtHeight { address, height } => {
+            query_voting_power_at_height(deps, address, height)
+        }
     }
+}
+
+pub fn query_admin(deps: Deps) -> StdResult<Binary> {
+    let admin = ADMIN.load(deps.storage)?;
+    to_binary(&admin)
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
@@ -543,6 +549,7 @@ pub fn query_paused(deps: Deps, env: Env) -> StdResult<Binary> {
 }
 
 pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
+    let admin = ADMIN.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
     let proposal_modules = PROPOSAL_MODULES
@@ -551,6 +558,7 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let pause_info = get_pause_info(deps, env)?;
     let version = get_contract_version(deps.storage)?;
     to_binary(&DumpStateResponse {
+        admin,
         config,
         version,
         pause_info,

@@ -975,13 +975,20 @@ fn test_admin_permissions() {
     // Admin can update the admin.
     let res = app.execute_contract(
         Addr::unchecked("admin"),
-        core_with_admin_addr,
+        core_with_admin_addr.clone(),
         &ExecuteMsg::UpdateAdmin {
             admin: Some(Addr::unchecked("meow")),
         },
         &[],
     );
     assert!(res.is_ok());
+
+    // Check that admin has been updated
+    let res: Option<Addr> = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr, &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(res, Some(Addr::unchecked("meow")));
 }
 
 #[test]
