@@ -1,8 +1,6 @@
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
-use cw_utils::Duration;
-use schemars::_private::NoSerialize;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 
@@ -190,7 +188,7 @@ fn fund_tokens(
         None => app
             .execute_contract(
                 Addr::unchecked(sender),
-                dist_addr.clone(),
+                dist_addr,
                 &ExecuteMsg::Fund {},
                 &[Coin {
                     amount,
@@ -431,7 +429,7 @@ fn test_unstake_post_distribution(use_cw20s: bool) {
 
     // Unstake tokens. This shouldn't matter because distribution
     // ought to happen from the time of contract creation.
-    unstake_tokens(&mut app, staking_addr.clone(), "ekez", Uint128::new(10));
+    unstake_tokens(&mut app, staking_addr, "ekez", Uint128::new(10));
 
     app.update_block(next_block);
 

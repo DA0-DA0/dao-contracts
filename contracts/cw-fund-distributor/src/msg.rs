@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     /// An optional admin for this contract. The admin may withdraw
     /// funds that have been earmarked for distribution by this
@@ -44,18 +44,20 @@ pub enum ExecuteMsg {
 
     /// Callable only by the contract's admin. Returns this contract's
     /// token balances to the contract's admin. Errors if any token in
-    /// TOKENS is not being distributed by this contract.
-    WithdrawCw20s { tokens: Vec<String> },
+    /// TOKENS is not being distributed by this contract. If no TOKENS
+    /// are specified all tokens are withdrawn.
+    WithdrawCw20s { tokens: Option<Vec<String>> },
     /// Callable only by the contract's admin. Returns this contracts
     /// native balances to the contract's admin. Errors if any denom
-    /// in DENOMS is not being distributed by this contract.
-    WithdrawNatives { denoms: Vec<String> },
+    /// in DENOMS is not being distributed by this contract. If no
+    /// DENOMS are specified all native denoms are withdrawn.
+    WithdrawNatives { denoms: Option<Vec<String>> },
     /// Callable by the contract's admin. Updates the contract's admin
     /// to the new value.
     UpdateAdmin { admin: Option<String> },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Lists the native tokens this contract is distributing. Returns
@@ -73,22 +75,22 @@ pub enum QueryMsg {
     /// Gets the number of native tokens ADDRESS is entitled to given
     /// a native token denom. If DENOM is not being distributed by the
     /// contract an error is returned, otherwise returns
-    /// EntitlementResponse.
+    /// NativeEntitlementResponse.
     NativeEntitlement { address: String, denom: String },
     /// Gets the number of cw20 tokens ADDRESS is entitled to given a
     /// cw20 token address. If TOKEN is not being distributed by the
     /// contract an error is returned, otherwise returns
-    /// EntitlementResponse.
+    /// Cw20EntitlementResponse.
     Cw20Entitlement { address: String, token: String },
     /// Lists all of the native entitlements for ADDRESS. Returns
-    /// Vec<EntitlementResponse>.
+    /// Vec<NativeEntitlementResponse>.
     NativeEntitlements {
         address: String,
         start_at: Option<String>,
         limit: Option<u32>,
     },
     /// Lists all of the cw20 entitlements for ADDRESS. Returns
-    /// Vec<EntitlementResponse>.
+    /// Vec<Cw20EntitlementResponse>.
     Cw20Entitlements {
         address: String,
         start_at: Option<String>,
@@ -96,29 +98,44 @@ pub enum QueryMsg {
     },
     /// Gets the current admin of the contract. Returns AdminResponse.
     Admin {},
+    /// Gets information about the contract's voting power
+    /// contract. Returns VotingContractResponse.
+    VotingContract {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct DenomResponse {
     /// The contract's balance.
     pub contract_balance: Uint128,
-    /// The denom for these tokens. Either a cw20 token address or a
-    /// native denom depending in the query this is being returned
-    /// from.
+    /// The denom for these tokens.
     pub denom: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct EntitlementResponse {
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct NativeEntitlementResponse {
     /// The amount of tokens the address is entitled to.
     pub amount: Uint128,
-    /// The denom for these tokens. Either a cw20 token address or a
-    /// native denom depending in the query this is being returned
-    /// from.
+    /// The denom for these tokens.
     pub denom: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct Cw20EntitlementResponse {
+    /// The amount of tokens the address is entitled to.
+    pub amount: Uint128,
+    /// The address of the token contract.
+    pub token_contract: Addr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct AdminResponse {
     pub admin: Option<Addr>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct VotingContractResponse {
+    /// The voting power contract being used.
+    pub contract: Addr,
+    /// The height at which voting power is being determined.
+    pub distribution_height: u64,
 }
