@@ -67,6 +67,13 @@ jobs:
           command: clippy
           args: --all-targets -- -D warnings
 
+      - name: Generate Schema
+        run: ./scripts/schema.sh
+
+      - name: Schema Changes
+        # fails if any changes not committed
+        run: git diff --exit-code .
+
       # TODO: we should check
       # CHANGES_IN_REPO=$(git status --porcelain)
       # after this, but I don't know how
