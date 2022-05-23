@@ -66,6 +66,13 @@ Some commands require a password which defaults to `xxxxxxxxx`. You can use them
 echo xxxxxxxxx | docker exec -i cosmwasm  junod keys show validator -a
 ```
 
+## Generating schema for all contracts
+As we have a workflow to check schema differences on commit, to quickly run `cargo schema` against all contracts
+simply run the following from the repo root:
+```sh
+./scripts/schema.sh
+```
+
 ## Disclaimer
 
 DAO DAO TOOLING IS PROVIDED “AS IS”, AT YOUR OWN RISK, AND WITHOUT WARRANTIES OF ANY KIND. No developer or entity involved in creating the DAO DAO UI or smart contracts will be liable for any claims or damages whatsoever associated with your use, inability to use, or your interaction with other users of DAO DAO tooling, including any direct, indirect, incidental, special, exemplary, punitive or consequential damages, or loss of profits, cryptocurrencies, tokens, or anything else of value.
