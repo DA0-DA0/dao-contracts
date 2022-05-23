@@ -29,6 +29,18 @@
     {
       "type": "object",
       "required": [
+        "active_threshold"
+      ],
+      "properties": {
+        "active_threshold": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "voting_power_at_height"
       ],
       "properties": {
@@ -95,6 +107,18 @@
       ],
       "properties": {
         "token_contract": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_active"
+      ],
+      "properties": {
+        "is_active": {
           "type": "object"
         }
       },

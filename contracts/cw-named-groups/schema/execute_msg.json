@@ -5,16 +5,25 @@
     {
       "type": "object",
       "required": [
-        "add"
+        "update"
       ],
       "properties": {
-        "add": {
+        "update": {
           "type": "object",
           "required": [
             "group"
           ],
           "properties": {
-            "addresses": {
+            "addresses_to_add": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            },
+            "addresses_to_remove": {
               "type": [
                 "array",
                 "null"
@@ -34,24 +43,15 @@
     {
       "type": "object",
       "required": [
-        "remove"
+        "remove_group"
       ],
       "properties": {
-        "remove": {
+        "remove_group": {
           "type": "object",
           "required": [
             "group"
           ],
           "properties": {
-            "addresses": {
-              "type": [
-                "array",
-                "null"
-              ],
-              "items": {
-                "type": "string"
-              }
-            },
             "group": {
               "type": "string"
             }
@@ -63,10 +63,10 @@
     {
       "type": "object",
       "required": [
-        "change_owner"
+        "update_owner"
       ],
       "properties": {
-        "change_owner": {
+        "update_owner": {
           "type": "object",
           "required": [
             "owner"
