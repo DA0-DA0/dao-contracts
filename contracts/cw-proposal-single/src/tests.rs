@@ -154,6 +154,7 @@ fn instantiate_with_staked_balances_governance(
     let core_contract_id = app.store_code(cw_gov_contract());
 
     let instantiate_core = cw_core::msg::InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
@@ -262,6 +263,7 @@ fn instantiate_with_staking_active_threshold(
     });
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
@@ -341,6 +343,7 @@ fn instantiate_with_cw4_groups_governance(
     };
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
@@ -416,6 +419,7 @@ fn instantiate_with_cw20_balances_governance(
     };
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,

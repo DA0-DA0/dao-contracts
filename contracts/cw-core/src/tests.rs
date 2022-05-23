@@ -89,6 +89,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         marketing: None,
     };
     let instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -194,6 +195,7 @@ makes wickedness."
     });
 
     let instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -222,6 +224,7 @@ fn test_update_config() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -310,6 +313,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -447,6 +451,7 @@ fn test_removed_modules_can_not_execute() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -592,6 +597,7 @@ fn test_swap_voting_module() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -693,6 +699,7 @@ fn test_permissions() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -761,7 +768,7 @@ fn test_permissions() {
     );
 }
 
-fn do_standard_instantiate(auto_add: bool) -> (Addr, App) {
+fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App) {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
@@ -787,6 +794,7 @@ fn do_standard_instantiate(auto_add: bool) -> (Addr, App) {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -822,8 +830,170 @@ fn do_standard_instantiate(auto_add: bool) -> (Addr, App) {
 }
 
 #[test]
+fn test_admin_permissions() {
+    let (core_addr, mut app) = do_standard_instantiate(true, None);
+
+    let start_height = app.block_info().height;
+    let proposal_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
+
+    // Random address can't call ExecuteAdminMsgs
+    let res = app.execute_contract(
+        Addr::unchecked("random"),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Proposal mdoule can't call ExecuteAdminMsgs
+    let res = app.execute_contract(
+        proposal_module.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Update Admin can't be called by non-admins
+    let res = app.execute_contract(
+        Addr::unchecked("rando"),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateAdmin {
+            admin: Some(Addr::unchecked("rando")),
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Update Admin can't be called, even by the core module
+    let res = app.execute_contract(
+        core_addr.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::UpdateAdmin {
+                    admin: Some(Addr::unchecked("meow")),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Instantiate new DAO with an admin
+    let (core_with_admin_addr, mut app) =
+        do_standard_instantiate(true, Some(Addr::unchecked("admin").to_string()));
+
+    // Non admins still can't call ExecuteAdminMsgs
+    let res = app.execute_contract(
+        proposal_module,
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_with_admin_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Admin can call ExecuteAdminMsgs, here an admin pasues the DAO
+    let res = app.execute_contract(
+        Addr::unchecked("admin"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_with_admin_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+
+    // DAO unpauses after 10 blocks
+    app.update_block(|mut block| block.height += 11);
+
+    // Admin can update the admin.
+    let res = app.execute_contract(
+        Addr::unchecked("admin"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::UpdateAdmin {
+            admin: Some(Addr::unchecked("meow")),
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // Check that admin has been updated
+    let res: Option<Addr> = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr, &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(res, Some(Addr::unchecked("meow")));
+}
+
+#[test]
 fn test_passthrough_voting_queries() {
-    let (gov_addr, app) = do_standard_instantiate(true);
+    let (gov_addr, app) = do_standard_instantiate(true, None);
 
     let creator_voting_power: VotingPowerAtHeightResponse = app
         .wrap()
@@ -884,7 +1054,7 @@ fn list_items(
 
 #[test]
 fn test_add_remove_get() {
-    let (gov_addr, mut app) = do_standard_instantiate(true);
+    let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
     let a = get_item(&mut app, gov_addr.clone(), "aaaaa".to_string());
     assert_eq!(a, GetItemResponse { item: None });
@@ -937,6 +1107,7 @@ fn test_list_items() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -1022,6 +1193,7 @@ fn test_instantiate_with_items() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
@@ -1104,7 +1276,7 @@ fn test_instantiate_with_items() {
 
 #[test]
 fn test_cw20_receive_auto_add() {
-    let (gov_addr, mut app) = do_standard_instantiate(true);
+    let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
     let voting_module: Addr = app
         .wrap()
@@ -1201,7 +1373,7 @@ fn test_cw20_receive_auto_add() {
 
 #[test]
 fn test_cw20_receive_no_auto_add() {
-    let (gov_addr, mut app) = do_standard_instantiate(false);
+    let (gov_addr, mut app) = do_standard_instantiate(false, None);
 
     let voting_module: Addr = app
         .wrap()
@@ -1267,7 +1439,7 @@ fn test_cw20_receive_no_auto_add() {
 
 #[test]
 fn test_cw721_receive() {
-    let (gov_addr, mut app) = do_standard_instantiate(true);
+    let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
     let cw721_id = app.store_code(cw721_contract());
 
@@ -1350,7 +1522,7 @@ fn test_cw721_receive() {
 
 #[test]
 fn test_cw721_receive_no_auto_add() {
-    let (gov_addr, mut app) = do_standard_instantiate(false);
+    let (gov_addr, mut app) = do_standard_instantiate(false, None);
 
     let cw721_id = app.store_code(cw721_contract());
 
@@ -1437,7 +1609,7 @@ fn test_cw721_receive_no_auto_add() {
 
 #[test]
 fn test_pause() {
-    let (core_addr, mut app) = do_standard_instantiate(false);
+    let (core_addr, mut app) = do_standard_instantiate(false, None);
 
     let start_height = app.block_info().height;
 

@@ -11,6 +11,17 @@
     "voting_module"
   ],
   "properties": {
+    "admin": {
+      "description": "Optional DAO Admin",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "config": {
       "description": "The governance contract's config.",
       "allOf": [

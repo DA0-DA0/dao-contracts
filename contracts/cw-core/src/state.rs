@@ -22,6 +22,7 @@ pub struct Config {
     pub automatically_add_cw721s: bool,
 }
 
+pub const ADMIN: Item<Option<Addr>> = Item::new("admin");
 pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const PAUSED: Item<Expiration> = Item::new("paused");

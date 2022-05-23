@@ -16,7 +16,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
 use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
 use crate::state::{
-    Config, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
+    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
     PROPOSAL_MODULES, VOTING_MODULE,
 };
 
@@ -54,6 +54,12 @@ pub fn instantiate(
         automatically_add_cw721s: msg.automatically_add_cw721s,
     };
     CONFIG.save(deps.storage, &config)?;
+
+    let admin = msg
+        .admin
+        .map(|human| deps.api.addr_validate(&human))
+        .transpose()?;
+    ADMIN.save(deps.storage, &admin)?;
 
     let vote_module_msg = msg
         .voting_module_instantiate_info
@@ -134,11 +140,26 @@ pub fn execute(
     }
 
     match msg {
+        ExecuteMsg::ExecuteAdminMsgs { msgs } => {
+            execute_admin_msgs(deps.as_ref(), info.sender, msgs)
+        }
         ExecuteMsg::ExecuteProposalHook { msgs } => {
             execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
+        ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
+        ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
+        ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
+        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
+        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
+        ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(deps, info.sender, admin),
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info.sender, config)
+        }
+        ExecuteMsg::UpdateCw20List { to_add, to_remove } => {
+            execute_update_cw20_list(deps, env, info.sender, to_add, to_remove)
+        }
+        ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
+            execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
         }
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
@@ -146,17 +167,6 @@ pub fn execute(
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
         }
-        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
-        ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
-        ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
-        ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
-        ExecuteMsg::UpdateCw20List { to_add, to_remove } => {
-            execute_update_cw20_list(deps, env, info.sender, to_add, to_remove)
-        }
-        ExecuteMsg::UpdateCw721List { to_add, to_remove } => {
-            execute_update_cw721_list(deps, env, info.sender, to_add, to_remove)
-        }
-        ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
     }
 }
 
@@ -181,17 +191,74 @@ pub fn execute_pause(
         .add_attribute("until", until.to_string()))
 }
 
+pub fn execute_admin_msgs(
+    deps: Deps,
+    sender: Addr,
+    msgs: Vec<CosmosMsg<Empty>>,
+) -> Result<Response, ContractError> {
+    let admin = ADMIN.load(deps.storage)?;
+
+    match admin {
+        Some(admin) => {
+            // Check if the sender is the DAO Admin
+            if sender != admin {
+                return Err(ContractError::Unauthorized {});
+            }
+
+            Ok(Response::default()
+                .add_attribute("action", "execute_admin_msgs")
+                .add_messages(msgs))
+        }
+        None => Err(ContractError::NoAdmin {}),
+    }
+}
+
 pub fn execute_proposal_hook(
     deps: Deps,
     sender: Addr,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
+    // Check that the message has come from one of the proposal modules
     if !PROPOSAL_MODULES.has(deps.storage, sender) {
         return Err(ContractError::Unauthorized {});
     }
+
     Ok(Response::default()
         .add_attribute("action", "execute_proposal_hook")
         .add_messages(msgs))
+}
+
+pub fn execute_update_admin(
+    deps: DepsMut,
+    sender: Addr,
+    admin: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let current_admin = ADMIN.load(deps.storage)?;
+
+    match current_admin {
+        Some(current_admin) => {
+            // Check sender is the DAO Admin
+            if sender != current_admin {
+                return Err(ContractError::Unauthorized {});
+            }
+
+            // Save the new DAO Admin (which may be set to None)
+            ADMIN.save(deps.storage, &admin)?;
+
+            Ok(Response::default()
+                .add_attribute("action", "execute_update_admin")
+                .add_attribute(
+                    "new_admin",
+                    admin
+                        .map(|a| a.into_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                ))
+        }
+        None => {
+            // If no DAO admin is configured, return unauthorized
+            Err(ContractError::Unauthorized {})
+        }
+    }
 }
 
 pub fn execute_update_config(
@@ -392,26 +459,32 @@ pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, Co
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Admin {} => query_admin(deps),
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::VotingModule {} => query_voting_module(deps),
-        QueryMsg::ProposalModules { start_at, limit } => {
-            query_proposal_modules(deps, start_at, limit)
-        }
-        QueryMsg::DumpState {} => query_dump_state(deps, env),
-        QueryMsg::VotingPowerAtHeight { address, height } => {
-            query_voting_power_at_height(deps, address, height)
-        }
-        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
-        QueryMsg::GetItem { key } => query_get_item(deps, key),
-        QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
-        QueryMsg::Info {} => query_info(deps),
         QueryMsg::Cw20TokenList { start_at, limit } => query_cw20_list(deps, start_at, limit),
-        QueryMsg::Cw721TokenList { start_at, limit } => query_cw721_list(deps, start_at, limit),
         QueryMsg::Cw20Balances { start_at, limit } => {
             query_cw20_balances(deps, env, start_at, limit)
         }
+        QueryMsg::Cw721TokenList { start_at, limit } => query_cw721_list(deps, start_at, limit),
+        QueryMsg::DumpState {} => query_dump_state(deps, env),
+        QueryMsg::GetItem { key } => query_get_item(deps, key),
+        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
         QueryMsg::PauseInfo {} => query_paused(deps, env),
+        QueryMsg::ProposalModules { start_at, limit } => {
+            query_proposal_modules(deps, start_at, limit)
+        }
+        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
+        QueryMsg::VotingModule {} => query_voting_module(deps),
+        QueryMsg::VotingPowerAtHeight { address, height } => {
+            query_voting_power_at_height(deps, address, height)
+        }
     }
+}
+
+pub fn query_admin(deps: Deps) -> StdResult<Binary> {
+    let admin = ADMIN.load(deps.storage)?;
+    to_binary(&admin)
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
@@ -476,6 +549,7 @@ pub fn query_paused(deps: Deps, env: Env) -> StdResult<Binary> {
 }
 
 pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
+    let admin = ADMIN.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
     let proposal_modules = PROPOSAL_MODULES
@@ -484,6 +558,7 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let pause_info = get_pause_info(deps, env)?;
     let version = get_contract_version(deps.storage)?;
     to_binary(&DumpStateResponse {
+        admin,
         config,
         version,
         pause_info,

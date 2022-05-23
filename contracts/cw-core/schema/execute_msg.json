@@ -3,6 +3,30 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "Callable by the Admin, if one is configured. Executes messages in order.",
+      "type": "object",
+      "required": [
+        "execute_admin_msgs"
+      ],
+      "properties": {
+        "execute_admin_msgs": {
+          "type": "object",
+          "required": [
+            "msgs"
+          ],
+          "properties": {
+            "msgs": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/CosmosMsg_for_Empty"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Callable by proposal modules. The DAO will execute the messages in the hook in order.",
       "type": "object",
       "required": [
@@ -27,79 +51,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Callable by the core contract. Replaces the current governance contract config with the provided config.",
-      "type": "object",
-      "required": [
-        "update_config"
-      ],
-      "properties": {
-        "update_config": {
-          "type": "object",
-          "required": [
-            "config"
-          ],
-          "properties": {
-            "config": {
-              "$ref": "#/definitions/Config"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Callable by the core contract. Replaces the current voting module with a new one instantiated by the governance contract.",
-      "type": "object",
-      "required": [
-        "update_voting_module"
-      ],
-      "properties": {
-        "update_voting_module": {
-          "type": "object",
-          "required": [
-            "module"
-          ],
-          "properties": {
-            "module": {
-              "$ref": "#/definitions/ModuleInstantiateInfo"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Updates the governance contract's governance modules. Module instantiate info in `to_add` is used to create new modules and install them.",
-      "type": "object",
-      "required": [
-        "update_proposal_modules"
-      ],
-      "properties": {
-        "update_proposal_modules": {
-          "type": "object",
-          "required": [
-            "to_add",
-            "to_remove"
-          ],
-          "properties": {
-            "to_add": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/ModuleInstantiateInfo"
-              }
-            },
-            "to_remove": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
+      "description": "Pauses the DAO for a set duration. When paused the DAO is unable to execute proposals",
       "type": "object",
       "required": [
         "pause"
@@ -113,6 +65,53 @@
           "properties": {
             "duration": {
               "$ref": "#/definitions/Duration"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Executed when the contract receives a cw20 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
+      "type": "object",
+      "required": [
+        "receive"
+      ],
+      "properties": {
+        "receive": {
+          "$ref": "#/definitions/Cw20ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Executed when the contract receives a cw721 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
+      "type": "object",
+      "required": [
+        "receive_nft"
+      ],
+      "properties": {
+        "receive_nft": {
+          "$ref": "#/definitions/Cw721ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Removes an item from the governance contract's item map.",
+      "type": "object",
+      "required": [
+        "remove_item"
+      ],
+      "properties": {
+        "remove_item": {
+          "type": "object",
+          "required": [
+            "key"
+          ],
+          "properties": {
+            "key": {
+              "type": "string"
             }
           }
         }
@@ -145,20 +144,24 @@
       "additionalProperties": false
     },
     {
-      "description": "Removes an item from the governance contract's item map.",
+      "description": "Callable by the Admin, if one is configured, changes the current admin. Setting to None removes the Admin.",
       "type": "object",
       "required": [
-        "remove_item"
+        "update_admin"
       ],
       "properties": {
-        "remove_item": {
+        "update_admin": {
           "type": "object",
-          "required": [
-            "key"
-          ],
           "properties": {
-            "key": {
-              "type": "string"
+            "admin": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -166,27 +169,22 @@
       "additionalProperties": false
     },
     {
-      "description": "Executed when the contract receives a cw20 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
+      "description": "Callable by the core contract. Replaces the current governance contract config with the provided config.",
       "type": "object",
       "required": [
-        "receive"
+        "update_config"
       ],
       "properties": {
-        "receive": {
-          "$ref": "#/definitions/Cw20ReceiveMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Executed when the contract receives a cw721 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
-      "type": "object",
-      "required": [
-        "receive_nft"
-      ],
-      "properties": {
-        "receive_nft": {
-          "$ref": "#/definitions/Cw721ReceiveMsg"
+        "update_config": {
+          "type": "object",
+          "required": [
+            "config"
+          ],
+          "properties": {
+            "config": {
+              "$ref": "#/definitions/Config"
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -252,9 +250,65 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Updates the governance contract's governance modules. Module instantiate info in `to_add` is used to create new modules and install them.",
+      "type": "object",
+      "required": [
+        "update_proposal_modules"
+      ],
+      "properties": {
+        "update_proposal_modules": {
+          "type": "object",
+          "required": [
+            "to_add",
+            "to_remove"
+          ],
+          "properties": {
+            "to_add": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/ModuleInstantiateInfo"
+              }
+            },
+            "to_remove": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Callable by the core contract. Replaces the current voting module with a new one instantiated by the governance contract.",
+      "type": "object",
+      "required": [
+        "update_voting_module"
+      ],
+      "properties": {
+        "update_voting_module": {
+          "type": "object",
+          "required": [
+            "module"
+          ],
+          "properties": {
+            "module": {
+              "$ref": "#/definitions/ModuleInstantiateInfo"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
     "Admin": {
       "description": "Information about the admin of a contract.",
       "oneOf": [

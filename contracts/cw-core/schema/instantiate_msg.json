@@ -11,6 +11,13 @@
     "voting_module_instantiate_info"
   ],
   "properties": {
+    "admin": {
+      "description": "Optional Admin with the ability to execute DAO messages directly Useful for building SubDAOs completely controlled by a parent DAO.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "automatically_add_cw20s": {
       "description": "If true the contract will automatically add received cw20 tokens to its treasury.",
       "type": "boolean"

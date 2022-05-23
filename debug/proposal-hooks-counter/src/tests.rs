@@ -88,6 +88,7 @@ fn instantiate_with_default_governance(
     });
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {
+        admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
