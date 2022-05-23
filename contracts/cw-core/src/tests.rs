@@ -897,9 +897,9 @@ fn test_admin_permissions() {
     );
     assert!(res.is_err());
 
-    // Update Admin can't be called, even by the proposal module
+    // Update Admin can't be called, even by the core module
     let res = app.execute_contract(
-        proposal_module.clone(),
+       core_addr.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {

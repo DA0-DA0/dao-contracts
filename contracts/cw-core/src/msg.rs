@@ -92,7 +92,7 @@ pub enum ExecuteMsg {
     /// messages in the hook in order.
     ExecuteProposalHook { msgs: Vec<CosmosMsg<Empty>> },
     /// Pauses the DAO for a set duration.
-    /// When paused the DAO is unable to execute propopasls
+    /// When paused the DAO is unable to execute proposals
     Pause { duration: Duration },
     /// Executed when the contract receives a cw20 token. Depending on
     /// the contract's configuration the contract will automatically
