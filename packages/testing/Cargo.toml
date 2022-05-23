@@ -11,6 +11,6 @@ edition = "2021"
 # targeting wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rand = "0.8"
-cosmwasm-std = { version = "1.0.0-beta5" }
+cosmwasm-std = { version = "1.0.0" }
 voting = { path = "../voting", version = "*" }
 cw-multi-test = {  version = "0.13" }

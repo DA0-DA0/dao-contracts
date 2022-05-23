@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::{Item, Map};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     /// The name of the contract.
     pub name: String,

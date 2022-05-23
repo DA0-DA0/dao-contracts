@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 // up properly.
 const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct Votes {
     pub yes: Uint128,
     pub no: Uint128,
     pub abstain: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "lowercase")]
 #[repr(u8)]
 pub enum Vote {

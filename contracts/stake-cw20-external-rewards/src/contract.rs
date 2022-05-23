@@ -42,7 +42,7 @@ pub fn instantiate(
 
     let reward_token = match msg.reward_token {
         Denom::Native(denom) => Denom::Native(denom),
-        Cw20(addr) => Cw20(deps.api.addr_validate(&addr.to_string())?),
+        Cw20(addr) => Cw20(deps.api.addr_validate(addr.as_ref())?),
     };
 
     // Verify contract provided is a staking contract

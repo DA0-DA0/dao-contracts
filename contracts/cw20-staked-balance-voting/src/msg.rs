@@ -41,7 +41,7 @@ pub enum TokenInfo {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ActiveThreshold {
     AbsoluteCount { count: Uint128 },
@@ -54,7 +54,7 @@ pub struct InstantiateMsg {
     pub active_threshold: Option<ActiveThreshold>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     UpdateActiveThreshold {
@@ -65,7 +65,7 @@ pub enum ExecuteMsg {
 #[voting_query]
 #[token_query]
 #[active_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     StakingContract {},
@@ -73,7 +73,7 @@ pub enum QueryMsg {
     ActiveThreshold {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct ActiveThresholdResponse {
     pub active_threshold: Option<ActiveThreshold>,

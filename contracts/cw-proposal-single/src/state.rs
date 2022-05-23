@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Counterpart to the `DepositInfo` struct which has been processed.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct CheckedDepositInfo {
     /// The address of the cw20 token to be used for proposal
     /// deposits.
@@ -52,7 +52,7 @@ pub struct Config {
 }
 
 /// A vote cast for a proposal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Ballot {
     /// The amount of voting power behind the vote.
     pub power: Uint128,
