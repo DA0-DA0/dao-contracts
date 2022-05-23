@@ -1,4 +1,5 @@
 # DAO DAO Contracts
+[![codecov](https://codecov.io/gh/DA0-DA0/dao-contracts/branch/main/graph/badge.svg?token=SCKOIPYZPV)](https://codecov.io/gh/DA0-DA0/dao-contracts)
 
 | Audited contracts                                                        | Description                                                |
 | :----------------------------------------------------------------------- | :--------------------------------------------------------- |
