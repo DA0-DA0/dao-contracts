@@ -9,7 +9,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use cw_core_interface::voting;
-use cw_storage_plus::Bound;
+use cw_storage_plus::{Bound, Map, PrimaryKey};
 
 use crate::error::ContractError;
 use crate::msg::{AdminResponse, DenomResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -46,6 +46,10 @@ pub fn instantiate(
             height: Some(msg.distribution_height),
         },
     )?;
+
+    if total_power.power.is_zero() {
+        return Err(ContractError::ZeroTotalPower {});
+    }
 
     TOTAL_POWER.save(deps.storage, &total_power.power)?;
     VOTING_CONTRACT.save(deps.storage, &&voting_contract)?;
@@ -146,6 +150,40 @@ fn compute_entitled(
         .unwrap())
 }
 
+pub fn compute_entitlements<'a, K>(
+    deps: Deps,
+    contract_balances: Vec<(K, Uint128)>,
+    sender: Addr,
+    claims: Map<'a, (Addr, K), Uint128>,
+) -> StdResult<Vec<(K, Uint128)>>
+where
+    (Addr, K): PrimaryKey<'a>,
+    K: Clone,
+{
+    let total_power = TOTAL_POWER.load(deps.storage)?;
+    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
+    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
+    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        voting_contract,
+        &voting::Query::VotingPowerAtHeight {
+            address: sender.to_string(),
+            height: Some(dist_height),
+        },
+    )?;
+
+    contract_balances
+        .into_iter()
+        .map(|(key, provided)| {
+            let total_entitlement = compute_entitled(provided, voting_power.power, total_power)?;
+            let claimed = claims
+                .may_load(deps.storage, (sender.clone(), key.clone()))?
+                .unwrap_or_default();
+            let entitled = total_entitlement - claimed;
+            Ok((key, entitled))
+        })
+        .collect::<StdResult<Vec<_>>>()
+}
+
 pub fn execute_claim_cw20s(
     deps: DepsMut,
     sender: Addr,
@@ -167,55 +205,27 @@ pub fn execute_claim_cw20s(
             .collect::<Result<_, _>>()?,
     };
 
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: sender.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
-
-    let messages = tokens
+    let entitlements = compute_entitlements(deps.as_ref(), tokens, sender.clone(), CW20_CLAIMS)?;
+    let messages = entitlements
         .into_iter()
-        .map(|(addr, provided)| {
-            let entitled = compute_entitled(provided, voting_power.power, total_power)?;
-            let claimed = CW20_CLAIMS
-                .may_load(deps.storage, (sender.clone(), addr.clone()))?
-                .unwrap_or_default();
-            let to_send = entitled - claimed;
+        .filter(|(_, entitled)| !entitled.is_zero())
+        .map(|(addr, entitled)| {
             CW20_CLAIMS.update(deps.storage, (sender.clone(), addr.clone()), |claimed| {
                 claimed
                     .unwrap_or_default()
-                    .checked_add(to_send)
+                    .checked_add(entitled)
                     .map_err(StdError::overflow)
             })?;
-            // Don't send a message if it would send zero tokens as
-            // this would cause an error.
-            if to_send.is_zero() {
-                Ok(None)
-            } else {
-                Ok(Some(WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                        recipient: sender.to_string(),
-                        amount: to_send,
-                    })?,
-                    funds: vec![],
-                }))
-            }
+            Ok(WasmMsg::Execute {
+                contract_addr: addr.into_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    recipient: sender.to_string(),
+                    amount: entitled,
+                })?,
+                funds: vec![],
+            })
         })
-        // Filter out Ok(None) values.
-        .filter_map(|m| match m {
-            Ok(m) => match m {
-                Some(m) => Some(Ok(m)),
-                None => None,
-            },
-            Err(e) => Some(Err(e)),
-        })
-        .collect::<Result<Vec<_>, StdError>>()?;
+        .collect::<StdResult<Vec<_>>>()?;
 
     Ok(Response::default()
         .add_messages(messages)
@@ -241,48 +251,23 @@ pub fn execute_claim_natives(
             .collect::<Result<_, _>>()?,
     };
 
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: sender.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
-
-    let coins = denoms
+    let entitlements = compute_entitlements(deps.as_ref(), denoms, sender.clone(), NATIVE_CLAIMS)?;
+    let coins = entitlements
         .into_iter()
-        .map(|(denom, provided)| {
-            let entitled = compute_entitled(provided, voting_power.power, total_power)?;
-            let claimied = NATIVE_CLAIMS
-                .may_load(deps.storage, (sender.clone(), denom.clone()))?
-                .unwrap_or_default();
-            let to_send = entitled - claimied;
+        .filter(|(_, entitled)| !entitled.is_zero())
+        .map(|(denom, entitled)| {
             NATIVE_CLAIMS.update(deps.storage, (sender.clone(), denom.clone()), |claimed| {
                 claimed
                     .unwrap_or_default()
-                    .checked_add(to_send)
+                    .checked_add(entitled)
                     .map_err(StdError::overflow)
             })?;
-            if to_send.is_zero() {
-                Ok(None)
-            } else {
-                Ok(Some(Coin {
-                    denom,
-                    amount: to_send,
-                }))
-            }
+            Ok(Coin {
+                denom,
+                amount: entitled,
+            })
         })
-        .filter_map(|m| match m {
-            Ok(m) => match m {
-                Some(m) => Some(Ok(m)),
-                None => None,
-            },
-            Err(e) => Some(Err(e)),
-        })
-        .collect::<Result<Vec<_>, StdError>>()?;
+        .collect::<StdResult<Vec<_>>>()?;
 
     let message = BankMsg::Send {
         to_address: sender.to_string(),
