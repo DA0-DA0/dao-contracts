@@ -53,7 +53,7 @@ pub struct InitialItem {
 pub struct InstantiateMsg {
     /// Optional Admin with the ability to execute DAO messages directly
     /// Useful for building SubDAOs completely controlled by a parent DAO.
-    pub admin: Option<Addr>,
+    pub admin: Option<String>,
     /// The name of the core contract.
     pub name: String,
     /// A description of the core contract.

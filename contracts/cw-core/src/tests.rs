@@ -768,7 +768,7 @@ fn test_permissions() {
     );
 }
 
-fn do_standard_instantiate(auto_add: bool, admin: Option<Addr>) -> (Addr, App) {
+fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App) {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
@@ -905,7 +905,7 @@ fn test_admin_permissions() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
                 msg: to_binary(&ExecuteMsg::UpdateAdmin {
-                    admin: Some(Addr::unchecked("Meow")),
+                    admin: Some(Addr::unchecked("meow")),
                 })
                 .unwrap(),
                 funds: vec![],
@@ -918,7 +918,7 @@ fn test_admin_permissions() {
 
     // Instantiate new DAO with an admin
     let (core_with_admin_addr, mut app) =
-        do_standard_instantiate(true, Some(Addr::unchecked("ADMIN")));
+        do_standard_instantiate(true, Some(Addr::unchecked("admin").to_string()));
 
     // Non admins still can't call ExecuteAdminMsgs
     let res = app.execute_contract(
@@ -941,7 +941,7 @@ fn test_admin_permissions() {
 
     // Admin can call ExecuteAdminMsgs, here an admin pasues the DAO
     let res = app.execute_contract(
-        Addr::unchecked("ADMIN"),
+        Addr::unchecked("admin"),
         core_with_admin_addr.clone(),
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
@@ -974,10 +974,10 @@ fn test_admin_permissions() {
 
     // Admin can update the admin.
     let res = app.execute_contract(
-        Addr::unchecked("ADMIN"),
+        Addr::unchecked("admin"),
         core_with_admin_addr,
         &ExecuteMsg::UpdateAdmin {
-            admin: Some(Addr::unchecked("Meow")),
+            admin: Some(Addr::unchecked("meow")),
         },
         &[],
     );

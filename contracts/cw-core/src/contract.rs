@@ -55,7 +55,11 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &config)?;
 
-    ADMIN.save(deps.storage, &msg.admin)?;
+    let admin = msg
+        .admin
+        .map(|human| deps.api.addr_validate(&human))
+        .transpose()?;
+    ADMIN.save(deps.storage, &admin)?;
 
     let vote_module_msg = msg
         .voting_module_instantiate_info
