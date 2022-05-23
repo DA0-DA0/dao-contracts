@@ -31,6 +31,7 @@ fn main() {
 
     // Auto TS code generation expects the query return type as QueryNameResponse
     // Here we map query resonses to the correct name
+    export_schema_with_title(&schema_for!(Option<Addr>), &out_dir, "AdminResponse");
     export_schema_with_title(&schema_for!(Config), &out_dir, "ConfigResponse");
     export_schema_with_title(
         &schema_for!(Cw20BalanceResponse),

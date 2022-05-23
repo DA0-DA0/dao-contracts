@@ -3,6 +3,19 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "Get's the DAO's admin (if configured).",
+      "type": "object",
+      "required": [
+        "admin"
+      ],
+      "properties": {
+        "admin": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Gets the contract's config. Returns Config.",
       "type": "object",
       "required": [
@@ -16,39 +29,71 @@
       "additionalProperties": false
     },
     {
-      "description": "Returns information about if the contract is currently paused.",
+      "description": "Gets the token balance for each cw20 registered with the contract.",
       "type": "object",
       "required": [
-        "pause_info"
+        "cw20_balances"
       ],
       "properties": {
-        "pause_info": {
-          "type": "object"
+        "cw20_balances": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false
     },
     {
-      "description": "Gets the contract's voting module. Returns Addr.",
+      "description": "Lists the addresses of the cw20 tokens in this contract's treasury.",
       "type": "object",
       "required": [
-        "voting_module"
+        "cw20_token_list"
       ],
       "properties": {
-        "voting_module": {
-          "type": "object"
+        "cw20_token_list": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false
     },
     {
-      "description": "Gets the proposal modules assocaited with the contract. Returns Vec<Addr>.",
+      "description": "Lists the addresses of the cw721 tokens in this contract's treasury.",
       "type": "object",
       "required": [
-        "proposal_modules"
+        "cw721_token_list"
       ],
       "properties": {
-        "proposal_modules": {
+        "cw721_token_list": {
           "type": "object",
           "properties": {
             "limit": {
@@ -134,13 +179,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Lists the addresses of the cw20 tokens in this contract's treasury.",
+      "description": "Gets the proposal modules assocaited with the contract. Returns Vec<Addr>.",
       "type": "object",
       "required": [
-        "cw20_token_list"
+        "proposal_modules"
       ],
       "properties": {
-        "cw20_token_list": {
+        "proposal_modules": {
           "type": "object",
           "properties": {
             "limit": {
@@ -163,59 +208,27 @@
       "additionalProperties": false
     },
     {
-      "description": "Lists the addresses of the cw721 tokens in this contract's treasury.",
+      "description": "Returns information about if the contract is currently paused.",
       "type": "object",
       "required": [
-        "cw721_token_list"
+        "pause_info"
       ],
       "properties": {
-        "cw721_token_list": {
-          "type": "object",
-          "properties": {
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "start_at": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
+        "pause_info": {
+          "type": "object"
         }
       },
       "additionalProperties": false
     },
     {
-      "description": "Gets the token balance for each cw20 registered with the contract.",
+      "description": "Gets the contract's voting module. Returns Addr.",
       "type": "object",
       "required": [
-        "cw20_balances"
+        "voting_module"
       ],
       "properties": {
-        "cw20_balances": {
-          "type": "object",
-          "properties": {
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            "start_at": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
+        "voting_module": {
+          "type": "object"
         }
       },
       "additionalProperties": false
