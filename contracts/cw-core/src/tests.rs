@@ -899,7 +899,7 @@ fn test_admin_permissions() {
 
     // Update Admin can't be called, even by the core module
     let res = app.execute_contract(
-       core_addr.clone(),
+        core_addr.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {

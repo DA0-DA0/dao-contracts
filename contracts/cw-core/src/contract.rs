@@ -55,9 +55,7 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &config)?;
 
-    if let Some(admin) = msg.admin {
-        ADMIN.save(deps.storage, &admin)?;
-    }
+    ADMIN.save(deps.storage, &msg.admin)?;
 
     let vote_module_msg = msg
         .voting_module_instantiate_info
@@ -194,7 +192,7 @@ pub fn execute_admin_msgs(
     sender: Addr,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
-    let admin = ADMIN.may_load(deps.storage)?;
+    let admin = ADMIN.load(deps.storage)?;
 
     match admin {
         Some(admin) => {
@@ -233,21 +231,30 @@ pub fn execute_update_admin(
 ) -> Result<Response, ContractError> {
     let current_admin = ADMIN.load(deps.storage)?;
 
-    // Check sender is the DAO Admin
-    if sender != current_admin {
-        return Err(ContractError::Unauthorized {});
-    }
+    match current_admin {
+        Some(current_admin) => {
+            // Check sender is the DAO Admin
+            if sender != current_admin {
+                return Err(ContractError::Unauthorized {});
+            }
 
-    // Save the new DAO Admin
-    // In no admin is set, remove the DAO Admin
-    match admin {
-        Some(admin) => {
+            // Save the new DAO Admin (which may be set to None)
             ADMIN.save(deps.storage, &admin)?;
-        }
-        None => ADMIN.remove(deps.storage),
-    }
 
-    Ok(Response::default().add_attribute("action", "execute_update_admin"))
+            Ok(Response::default()
+                .add_attribute("action", "execute_update_admin")
+                .add_attribute(
+                    "new_admin",
+                    admin
+                        .map(|a| a.into_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                ))
+        }
+        None => {
+            // If no DAO admin is configured, return unauthorized
+            Err(ContractError::Unauthorized {})
+        }
+    }
 }
 
 pub fn execute_update_config(
