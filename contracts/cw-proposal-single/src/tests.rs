@@ -70,6 +70,18 @@ fn cw_authorization_manager_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+// Authorizations
+// ToDo: This needs to be abstracted away to simplify dealing with many auth contracts
+fn cw_whitelist_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        whitelist::contract::execute,
+        whitelist::contract::instantiate,
+        whitelist::contract::query,
+    );
+    Box::new(contract)
+}
+
+
 fn cw20_staked_balances_voting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw20_staked_balance_voting::contract::execute,
@@ -1453,7 +1465,7 @@ fn test_execute_proposal_with_auth() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -1485,24 +1497,42 @@ fn test_execute_proposal_with_auth() {
     // Get the auth module to manage authorizations
     let auth_module = gov_state.authorization_module;
     // Adding a simple authorization contract
-    // app.execute_contract(
-    //     Addr::unchecked("nico"),
-    //     auth_module.clone(),
-    //     &cw_auth_manager::msg::ExecuteMsg::AddAuthorization {
-    //         auth_contract: "I need a contract here!".to_string()
-    //     },
-    //     &[],
-    // )
-    //     .unwrap();
-    
+    let whitelist_id = app.store_code(cw_whitelist_contract());
+    let whitelist_addr = app
+        .instantiate_contract(
+            whitelist_id,
+            Addr::unchecked("Shouldn't matter"),
+            &whitelist::msg::InstantiateMsg {},
+            &[],
+            "Whitelist auth",
+            None,
+        )
+        .unwrap();
+
+    let another_stranger = Addr::unchecked("another stranger");
     app.execute_contract(
-        Addr::unchecked("stranger"),
+        Addr::unchecked("Anyone"),
+        whitelist_addr.clone(),
+        &whitelist::msg::ExecuteMsg::Allow { addr: another_stranger.clone()},
+        &[],
+    )
+        .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        auth_module.clone(),
+        &cw_auth_manager::msg::ExecuteMsg::AddAuthorization { auth_contract: whitelist_addr.to_string() },
+        &[],
+    )
+        .unwrap();
+
+    app.execute_contract(
+        another_stranger.clone(),
         proposal_single.clone(),
         &ExecuteMsg::Execute { proposal_id: 1 },
         &[],
     )
         .unwrap();
-
 }
 
 #[test]

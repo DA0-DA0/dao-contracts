@@ -59,4 +59,5 @@ stake-cw20 = { path="../stake-cw20", version = "*" }
 cw20-base = "0.13"
 cw4 = "0.13"
 cw4-group = "0.13"
+whitelist = { version = "*", path = "../../authorizations/whitelist" }
 

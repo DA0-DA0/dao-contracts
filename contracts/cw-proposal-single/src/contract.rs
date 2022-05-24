@@ -257,7 +257,7 @@ pub fn execute_execute(
     let authorizations_addr = dao_state.authorization_module;
     let authorized: bool = deps.querier.query_wasm_smart(
         authorizations_addr.clone(),
-        &cw_auth_manager::msg::QueryMsg::Authorize { msgs: prop.msgs.clone() }
+        &cw_auth_manager::msg::QueryMsg::Authorize { msgs: prop.msgs.clone(), sender: info.sender.clone() }
     ).unwrap_or(IsAuthorizedResponse { authorized: false }).authorized;
 
     if !authorized{
