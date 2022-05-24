@@ -1,7 +1,7 @@
 [package]
-name = "cw-proposal-single"
+name = "cw-auth-manager"
 version = "0.1.0"
-authors = ["Zeke Medley <zekemedley@gmail.com>"]
+authors = ["Nicolas Lara <nicolaslara@gmail.com>"]
 edition = "2018"
 
 exclude = [
@@ -29,8 +29,8 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0" }
-cosmwasm-storage = { version = "1.0.0" }
+cosmwasm-std = { version = "1.0.0-beta" }
+cosmwasm-storage = { version = "1.0.0-beta" }
 cw-storage-plus = "0.13"
 cw-utils = "0.13"
 cw2 = "0.13"
@@ -39,24 +39,9 @@ cw3 = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core = { path = "../cw-core", version = "*", features = ["library"] }
-cw-core-macros = { path = "../../packages/cw-core-macros", version = "*" }
-cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
-voting = { version = "*", path = "../../packages/voting" }
 indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
-proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }
-vote-hooks = { version = "*", path = "../../packages/vote-hooks" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0" }
+cosmwasm-schema = { version = "1.0.0-beta" }
 cw-multi-test = "0.13"
-cw4-voting = { path = "../cw4-voting", version = "*" }
-cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" }
-cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }
-cw-auth-manager = { path = "../../contracts/cw-auth-manager" }
 testing = { version = "*", path = "../../packages/testing" }
-stake-cw20 = { path="../stake-cw20", version = "*" }
-cw20-base = "0.13"
-cw4 = "0.13"
-cw4-group = "0.13"
-

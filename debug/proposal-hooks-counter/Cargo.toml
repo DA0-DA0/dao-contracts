@@ -48,5 +48,6 @@ cw-utils = "0.13"
 voting = { version = "0.1.0", path = "../../packages/voting" }
 cw-core = { path = "../../contracts/cw-core", version = "0.1.0", features = ["library"] }
 cw-proposal-single = { path = "../../contracts/cw-proposal-single" }
+cw-auth-manager = { path = "../../contracts/cw-auth-manager" }
 cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = "0.13"

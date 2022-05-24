@@ -53,6 +53,15 @@ fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn cw_authorization_manager_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_auth_manager::contract::execute,
+        cw_auth_manager::contract::instantiate,
+        cw_auth_manager::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn cw_core_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
@@ -79,6 +88,9 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
     let mut app = App::default();
     let cw20_id = app.store_code(cw20_contract());
     let gov_id = app.store_code(cw_core_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "DAO".to_string(),
@@ -102,8 +114,8 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -166,6 +178,9 @@ fn test_instantiate_with_submessage_failure() {
     let mut app = App::default();
     let cw20_id = app.store_code(cw20_contract());
     let gov_id = app.store_code(cw_core_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "DAO".to_string(),
@@ -214,8 +229,8 @@ makes wickedness."
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -230,18 +245,12 @@ fn test_update_config() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
-    };
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -258,8 +267,8 @@ fn test_update_config() {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -334,19 +343,12 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
     let mut app = App::default();
     let propmod_id = app.store_code(sudo_proposal_contract());
     let core_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
-    };
-
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -363,8 +365,8 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -488,19 +490,12 @@ fn test_removed_modules_can_not_execute() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
-    };
-
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -517,8 +512,8 @@ fn test_removed_modules_can_not_execute() {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -650,19 +645,12 @@ fn test_swap_voting_module() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
-    };
-
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -679,8 +667,8 @@ fn test_swap_voting_module() {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -768,19 +756,12 @@ fn test_permissions() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
-    };
-
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -795,8 +776,8 @@ fn test_permissions() {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -865,6 +846,7 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
     let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -884,14 +866,7 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
         },
     };
 
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
-    };
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let gov_instantiate = InstantiateMsg {
         admin,
@@ -907,8 +882,8 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -1193,6 +1168,9 @@ fn test_list_items() {
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
     let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1212,15 +1190,6 @@ fn test_list_items() {
         },
     };
 
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
-    };
-
     let gov_instantiate = InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
@@ -1235,8 +1204,8 @@ fn test_list_items() {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },
@@ -1294,6 +1263,9 @@ fn test_instantiate_with_items() {
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
     let cw20_id = app.store_code(cw20_contract());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
@@ -1313,15 +1285,6 @@ fn test_instantiate_with_items() {
         },
     };
 
-    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
-        name: "DAO".to_string(),
-        symbol: "DAO".to_string(),
-        decimals: 6,
-        initial_balances: vec![],
-        mint: None,
-        marketing: None,
-    };
-
     let gov_instantiate = InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
@@ -1336,8 +1299,8 @@ fn test_instantiate_with_items() {
             label: "voting module".to_string(),
         },
         authorization_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: cw20_id,
-            msg: to_binary(&cw20_instantiate).unwrap(),
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "auth module".to_string(),
         },

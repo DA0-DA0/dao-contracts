@@ -39,6 +39,15 @@ fn staked_balances_voting() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn cw_authorization_manager_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_auth_manager::contract::execute,
+        cw_auth_manager::contract::instantiate,
+        cw_auth_manager::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn stake_cw20() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         stake_cw20::contract::execute,
@@ -67,6 +76,9 @@ fn instantiate_with_staked_balances_voting() {
     let stake_cw20_id = app.store_code(stake_cw20());
     let core_contract_id = app.store_code(core_contract());
     let staked_balances_voting_id = app.store_code(staked_balances_voting());
+    let auth_manager_id = app.store_code(cw_authorization_manager_contract());
+
+    let auth_manager_instantiate = cw_auth_manager::msg::InstantiateMsg {};
 
     let instantiate_core = cw_core::msg::InstantiateMsg {
         admin: None,
@@ -98,6 +110,12 @@ fn instantiate_with_staked_balances_voting() {
             .unwrap(),
             admin: cw_core::msg::Admin::None {},
             label: "DAO DAO voting module".to_string(),
+        },
+        authorization_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+            code_id: auth_manager_id,
+            msg: to_binary(&auth_manager_instantiate).unwrap(),
+            admin: cw_core::msg::Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
