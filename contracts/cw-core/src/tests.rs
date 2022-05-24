@@ -101,6 +101,12 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
         },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
+        },
         proposal_modules_instantiate_info: (0..n)
             .map(|n| ModuleInstantiateInfo {
                 code_id: cw20_id,
@@ -207,6 +213,12 @@ makes wickedness."
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
         },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
+        },
         proposal_modules_instantiate_info: governance_modules,
         initial_items: None,
     };
@@ -218,9 +230,18 @@ fn test_update_config() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
+    };
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -235,6 +256,12 @@ fn test_update_config() {
             msg: to_binary(&govmod_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
@@ -307,9 +334,19 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
     let mut app = App::default();
     let propmod_id = app.store_code(sudo_proposal_contract());
     let core_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
+    };
+
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -324,6 +361,12 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             msg: to_binary(&govmod_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: propmod_id,
@@ -445,9 +488,19 @@ fn test_removed_modules_can_not_execute() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
+    };
+
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -462,6 +515,12 @@ fn test_removed_modules_can_not_execute() {
             msg: to_binary(&govmod_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
@@ -591,9 +650,19 @@ fn test_swap_voting_module() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
+    };
+
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -608,6 +677,12 @@ fn test_swap_voting_module() {
             msg: to_binary(&govmod_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
@@ -693,9 +768,19 @@ fn test_permissions() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_contract());
 
     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
+    };
+
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
     };
 
     let gov_instantiate = InstantiateMsg {
@@ -708,6 +793,12 @@ fn test_permissions() {
             msg: to_binary(&govmod_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
@@ -793,6 +884,15 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
         },
     };
 
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
+    };
+
     let gov_instantiate = InstantiateMsg {
         admin,
         name: "DAO DAO".to_string(),
@@ -805,6 +905,12 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
             msg: to_binary(&voting_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
@@ -1106,6 +1212,15 @@ fn test_list_items() {
         },
     };
 
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
+    };
+
     let gov_instantiate = InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
@@ -1118,6 +1233,12 @@ fn test_list_items() {
             msg: to_binary(&voting_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
@@ -1192,6 +1313,15 @@ fn test_instantiate_with_items() {
         },
     };
 
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
+    };
+
     let gov_instantiate = InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
@@ -1204,6 +1334,12 @@ fn test_instantiate_with_items() {
             msg: to_binary(&voting_instantiate).unwrap(),
             admin: Admin::CoreContract {},
             label: "voting module".to_string(),
+        },
+        authorization_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "auth module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
