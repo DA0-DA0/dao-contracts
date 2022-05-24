@@ -2,8 +2,6 @@ use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Re
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cw2::set_contract_version;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     error::ContractError,
@@ -88,8 +86,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 fn authorize_messages(deps: Deps, _env: Env, msgs: Vec<CosmosMsg<Empty>>) -> StdResult<Binary> {
     // This checks all the registered authorizations
+    println!("CHECKING_AUTH");
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
+    println!("Auths: {:?}", auths);
     if auths.len() == 0 {
         // If there aren't any authorizations, we consider the auth as not-configured and allow all
         // messages

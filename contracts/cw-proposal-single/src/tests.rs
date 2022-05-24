@@ -1421,6 +1421,91 @@ fn test_deposit_return_on_close() {
 }
 
 #[test]
+fn test_execute_proposal_with_auth() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                // ToDo: We may want to allow zero here so that all proposals immediately pass and
+                // authorization gets delegated to the auth module
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: false,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "nico".to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: "stranger".to_string(),
+                amount: Uint128::new(10),
+            },
+        ]),
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_modules = gov_state.proposal_modules;
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_single = proposal_modules.into_iter().next().unwrap();
+    
+    app.execute_contract(
+        Addr::unchecked("nico"),
+        proposal_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "This proposal will pass...".to_string(),
+            description: "but will be allowed depending on the auth module".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+        .unwrap();
+    app.execute_contract(
+        Addr::unchecked("nico"),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+        .unwrap();
+
+    // Get the auth module to manage authorizations
+    let auth_module = gov_state.authorization_module;
+    // Adding a simple authorization contract
+    // app.execute_contract(
+    //     Addr::unchecked("nico"),
+    //     auth_module.clone(),
+    //     &cw_auth_manager::msg::ExecuteMsg::AddAuthorization {
+    //         auth_contract: "I need a contract here!".to_string()
+    //     },
+    //     &[],
+    // )
+    //     .unwrap();
+    
+    app.execute_contract(
+        Addr::unchecked("stranger"),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+        .unwrap();
+
+}
+
+#[test]
 fn test_execute_expired_proposal() {
     let mut app = App::default();
     let govmod_id = app.store_code(single_proposal_contract());
