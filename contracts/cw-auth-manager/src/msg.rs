@@ -14,7 +14,12 @@ pub enum ExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg<T=Empty> {
+pub enum QueryMsg {
     GetAuthorizations {},
-    Authorize { msgs: Vec<CosmosMsg<T>> }
+    Authorize { msgs: Vec<CosmosMsg<Empty>> }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IsAuthorizedResponse {
+    pub authorized: bool,
 }

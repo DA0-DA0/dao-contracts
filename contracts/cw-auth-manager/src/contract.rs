@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, to_binary};
+use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult, to_binary};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cw2::set_contract_version;
@@ -10,6 +10,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{AUTHORIZATIONS, CONFIG, Config}
 };
+use crate::msg::IsAuthorizedResponse;
 use crate::state::Authorization;
 
 const CONTRACT_NAME: &str = "crates.io:cw-auth-manager";
@@ -57,7 +58,6 @@ pub fn execute_add_authorization(
 
     // ToDo: Verify that this is an auth?
     let validated_address = deps.api.addr_validate(&address)?;
-    println!("ADD: {:?}, {:?}", config, validated_address);
     AUTHORIZATIONS.update(
         deps.storage,
         &config.dao,
@@ -86,15 +86,23 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IsAuthorizedResponse {
-    pub authorized: bool,
-}
+fn authorize_messages(deps: Deps, _env: Env, msgs: Vec<CosmosMsg<Empty>>) -> StdResult<Binary> {
+    // This checks all the registered authorizations
+    let config = CONFIG.load(deps.storage)?;
+    let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
+    if auths.len() == 0 {
+        // If there aren't any authorizations, we consider the auth as not-configured and allow all
+        // messages
+        return to_binary(&IsAuthorizedResponse{ authorized: true })
+    }
 
-fn authorize_messages(_deps: Deps, _env: Env, _msgs: Vec<CosmosMsg>) -> StdResult<Binary> {
-    // This pretends to be an authorization
-    println!("CHECKING AUTHORIZATION");
-    to_binary(&IsAuthorizedResponse{ authorized: true })
+    let authorized = auths.into_iter().all(|a| {
+        deps.querier.query_wasm_smart(
+            a.contract.clone(),
+            &QueryMsg::Authorize { msgs: msgs.clone() }
+        ).unwrap_or(IsAuthorizedResponse { authorized: false }).authorized
+    });
+    to_binary(&IsAuthorizedResponse{ authorized })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
