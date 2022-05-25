@@ -6,7 +6,9 @@ use crate::state::{
     REWARD_PER_TOKEN, USER_REWARD_PER_TOKEN,
 };
 use crate::ContractError;
-use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodNotFinished, Unauthorized};
+use crate::ContractError::{
+    InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodNotFinished, Unauthorized,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -168,15 +170,15 @@ pub fn execute_fund(
     update_rewards(&mut deps, &env, &sender)?;
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
     if reward_config.period_finish > env.block.height {
-        return Err(RewardPeriodNotFinished {})
+        return Err(RewardPeriodNotFinished {});
     }
     let new_reward_config = RewardConfig {
-            period_finish: env.block.height + reward_config.reward_duration,
-            reward_rate: amount
-                .checked_div(Uint128::from(reward_config.reward_duration))
-                .map_err(StdError::divide_by_zero)?,
-            reward_duration: reward_config.reward_duration,
-        };
+        period_finish: env.block.height + reward_config.reward_duration,
+        reward_rate: amount
+            .checked_div(Uint128::from(reward_config.reward_duration))
+            .map_err(StdError::divide_by_zero)?,
+        reward_duration: reward_config.reward_duration,
+    };
 
     if new_reward_config.reward_rate == Uint128::zero() {
         return Err(ContractError::RewardRateLessThenOnePerBlock {});
@@ -904,7 +906,7 @@ mod tests {
         let _res = app
             .borrow_mut()
             .execute_contract(
-                admin.clone(),
+                admin,
                 reward_addr.clone(),
                 &fund_msg,
                 &reward_funding,
@@ -1307,7 +1309,10 @@ mod tests {
             .borrow_mut()
             .execute_contract(admin, reward_addr.clone(), &fund_msg, &reward_funding)
             .unwrap_err();
-        assert_eq!(ContractError::RewardPeriodNotFinished {},err.downcast().unwrap());
+        assert_eq!(
+            ContractError::RewardPeriodNotFinished {},
+            err.downcast().unwrap()
+        );
 
         let res: InfoResponse = app
             .borrow_mut()
