@@ -89,7 +89,7 @@ fn authorize_messages(deps: Deps, _env: Env, msgs: Vec<CosmosMsg<Empty>>, sender
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
     println!("Auths: {:?}", auths);
-    if auths.len() == 0 {
+    if auths.is_empty() {
         // If there aren't any authorizations, we consider the auth as not-configured and allow all
         // messages
         return to_binary(&IsAuthorizedResponse{ authorized: true })
