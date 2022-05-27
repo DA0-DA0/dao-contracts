@@ -6,7 +6,9 @@ use crate::state::{
     REWARD_PER_TOKEN, USER_REWARD_PER_TOKEN,
 };
 use crate::ContractError;
-use crate::ContractError::{InvalidCw20, InvalidFunds, NoRewardsClaimable, Unauthorized};
+use crate::ContractError::{
+    InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodNotFinished, Unauthorized,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -167,25 +169,15 @@ pub fn execute_fund(
 
     update_rewards(&mut deps, &env, &sender)?;
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
-    let new_reward_config = if reward_config.period_finish <= env.block.height {
-        RewardConfig {
-            period_finish: env.block.height + reward_config.reward_duration,
-            reward_rate: amount
-                .checked_div(Uint128::from(reward_config.reward_duration))
-                .map_err(StdError::divide_by_zero)?,
-            reward_duration: reward_config.reward_duration,
-        }
-    } else {
-        RewardConfig {
-            period_finish: reward_config.period_finish, // period finish needs to be incremented by the rewards duration
-            reward_rate: reward_config.reward_rate
-                + (amount
-                    .checked_div(Uint128::from(
-                        reward_config.period_finish - env.block.height,
-                    ))
-                    .map_err(StdError::divide_by_zero)?),
-            reward_duration: reward_config.reward_duration,
-        }
+    if reward_config.period_finish > env.block.height {
+        return Err(RewardPeriodNotFinished {});
+    }
+    let new_reward_config = RewardConfig {
+        period_finish: env.block.height + reward_config.reward_duration,
+        reward_rate: amount
+            .checked_div(Uint128::from(reward_config.reward_duration))
+            .map_err(StdError::divide_by_zero)?,
+        reward_duration: reward_config.reward_duration,
     };
 
     if new_reward_config.reward_rate == Uint128::zero() {
@@ -901,27 +893,8 @@ mod tests {
             Uint128::new(74997500)
         );
 
-        // Add more rewards, then add even more on top
-        let reward_funding = vec![coin(100000000, denom.clone())];
-        app.sudo(SudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: admin.to_string(),
-                amount: reward_funding.clone(),
-            }
-        }))
-        .unwrap();
-
-        let _res = app
-            .borrow_mut()
-            .execute_contract(
-                admin.clone(),
-                reward_addr.clone(),
-                &fund_msg,
-                &reward_funding,
-            )
-            .unwrap();
-
-        let reward_funding = vec![coin(100000000, denom.clone())];
+        // Add more rewards
+        let reward_funding = vec![coin(200000000, denom.clone())];
         app.sudo(SudoMsg::Bank({
             BankSudo::Mint {
                 to_address: admin.to_string(),
@@ -1157,21 +1130,13 @@ mod tests {
             Uint128::new(74997500)
         );
 
-        // Add more rewards, then add even more on top
+        // Add more rewards
         fund_rewards_cw20(
             &mut app,
             &admin,
             reward_token.clone(),
             &reward_addr,
-            100000000,
-        );
-
-        fund_rewards_cw20(
-            &mut app,
-            &admin,
-            reward_token.clone(),
-            &reward_addr,
-            100000000,
+            200000000,
         );
 
         app.borrow_mut().update_block(|b| b.height = 400000);
@@ -1293,35 +1258,6 @@ mod tests {
         assert_eq!(res.reward.period_finish, 101000);
         assert_eq!(res.reward.reward_duration, 100000);
 
-        // Increase rewards for current period
-        let reward_funding = vec![coin(100000000, denom.clone())];
-        app.sudo(SudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: admin.to_string(),
-                amount: reward_funding.clone(),
-            }
-        }))
-        .unwrap();
-        let _res = app
-            .borrow_mut()
-            .execute_contract(
-                admin.clone(),
-                reward_addr.clone(),
-                &fund_msg,
-                &reward_funding,
-            )
-            .unwrap();
-
-        let res: InfoResponse = app
-            .borrow_mut()
-            .wrap()
-            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
-            .unwrap();
-
-        assert_eq!(res.reward.reward_rate, Uint128::new(3000));
-        assert_eq!(res.reward.period_finish, 101000);
-        assert_eq!(res.reward.reward_duration, 100000);
-
         // Create new period after old period
         app.borrow_mut().update_block(|b| b.height = 101000);
 
@@ -1353,7 +1289,7 @@ mod tests {
         assert_eq!(res.reward.period_finish, 201000);
         assert_eq!(res.reward.reward_duration, 100000);
 
-        // Add funds in middle of period
+        // Add funds in middle of period returns an error
         app.borrow_mut().update_block(|b| b.height = 151000);
 
         let reward_funding = vec![coin(200000000, denom)];
@@ -1364,10 +1300,14 @@ mod tests {
             }
         }))
         .unwrap();
-        let _res = app
+        let err = app
             .borrow_mut()
             .execute_contract(admin, reward_addr.clone(), &fund_msg, &reward_funding)
-            .unwrap();
+            .unwrap_err();
+        assert_eq!(
+            ContractError::RewardPeriodNotFinished {},
+            err.downcast().unwrap()
+        );
 
         let res: InfoResponse = app
             .borrow_mut()
@@ -1375,7 +1315,7 @@ mod tests {
             .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
             .unwrap();
 
-        assert_eq!(res.reward.reward_rate, Uint128::new(5000));
+        assert_eq!(res.reward.reward_rate, Uint128::new(1000));
         assert_eq!(res.reward.period_finish, 201000);
         assert_eq!(res.reward.reward_duration, 100000);
     }
