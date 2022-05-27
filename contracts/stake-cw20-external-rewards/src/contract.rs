@@ -1,5 +1,6 @@
 use crate::msg::{
-    ExecuteMsg, InfoResponse, InstantiateMsg, PendingRewardsResponse, QueryMsg, ReceiveMsg,
+    ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, PendingRewardsResponse, QueryMsg,
+    ReceiveMsg,
 };
 use crate::state::{
     Config, RewardConfig, CONFIG, LAST_UPDATE_BLOCK, PENDING_REWARDS, REWARD_CONFIG,
@@ -94,6 +95,12 @@ pub fn instantiate(
         .add_attribute("reward_rate", reward_config.reward_rate)
         .add_attribute("period_finish", reward_config.period_finish.to_string())
         .add_attribute("reward_duration", reward_config.reward_duration.to_string()))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // No state migrations performed, just returned a Response
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
