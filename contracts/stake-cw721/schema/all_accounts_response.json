@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AllAccountsResponse",
+  "type": "object",
+  "required": [
+    "accounts"
+  ],
+  "properties": {
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
