@@ -15,6 +15,7 @@ const ADDR2: &str = "addr2";
 const ADDR3: &str = "addr3";
 const VALI1: &str = "vali1";
 const DENOM: &str = "ujuno";
+const NOT_USED_DENOM: &str = "uatom";
 
 fn setup_deps() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     let mut deps = mock_dependencies();
@@ -39,6 +40,13 @@ fn setup_deps() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
                 validator: VALI1.to_string(),
                 amount: coin(100, DENOM),
                 can_redelegate: coin(100, DENOM),
+                accumulated_rewards: vec![],
+            },
+            FullDelegation {
+                delegator: Addr::unchecked(ADDR1),
+                validator: VALI1.to_string(),
+                amount: coin(50, NOT_USED_DENOM),
+                can_redelegate: coin(50, NOT_USED_DENOM),
                 accumulated_rewards: vec![],
             },
         ],
