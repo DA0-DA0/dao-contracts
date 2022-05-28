@@ -81,7 +81,6 @@ fn cw_whitelist_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-
 fn cw20_staked_balances_voting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw20_staked_balance_voting::contract::execute,
@@ -1471,7 +1470,7 @@ fn test_execute_proposal_with_auth() {
 
     assert_eq!(proposal_modules.len(), 1);
     let proposal_single = proposal_modules.into_iter().next().unwrap();
-    
+
     app.execute_contract(
         Addr::unchecked("nico"),
         proposal_single.clone(),
@@ -1482,7 +1481,7 @@ fn test_execute_proposal_with_auth() {
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
     app.execute_contract(
         Addr::unchecked("nico"),
         proposal_single.clone(),
@@ -1492,7 +1491,7 @@ fn test_execute_proposal_with_auth() {
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     // Get the auth module to manage authorizations
     let auth_module = gov_state.authorization_module;
@@ -1502,29 +1501,47 @@ fn test_execute_proposal_with_auth() {
         .instantiate_contract(
             whitelist_id,
             Addr::unchecked("Shouldn't matter"),
-            &whitelist::msg::InstantiateMsg {},
+            &whitelist::msg::InstantiateMsg {
+                dao: core_addr.clone(),
+            },
             &[],
             "Whitelist auth",
             None,
         )
         .unwrap();
 
+    // Only the dao can add authorizations to the whitelist
     let another_stranger = Addr::unchecked("another stranger");
+    let _err = app
+        .execute_contract(
+            Addr::unchecked("Anyone"),
+            whitelist_addr.clone(),
+            &whitelist::msg::ExecuteMsg::Allow {
+                addr: another_stranger.clone(),
+            },
+            &[],
+        )
+        .unwrap_err();
+
     app.execute_contract(
-        Addr::unchecked("Anyone"),
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
         whitelist_addr.clone(),
-        &whitelist::msg::ExecuteMsg::Allow { addr: another_stranger.clone()},
+        &whitelist::msg::ExecuteMsg::Allow {
+            addr: another_stranger.clone(),
+        },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     app.execute_contract(
         Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
         auth_module.clone(),
-        &cw_auth_manager::msg::ExecuteMsg::AddAuthorization { auth_contract: whitelist_addr.to_string() },
+        &cw_auth_manager::msg::ExecuteMsg::AddAuthorization {
+            auth_contract: whitelist_addr.to_string(),
+        },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     app.execute_contract(
         another_stranger.clone(),
@@ -1532,7 +1549,7 @@ fn test_execute_proposal_with_auth() {
         &ExecuteMsg::Execute { proposal_id: 1 },
         &[],
     )
-        .unwrap();
+    .unwrap();
 }
 
 #[test]

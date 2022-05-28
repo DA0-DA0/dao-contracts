@@ -1,12 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, to_binary};
+use cosmwasm_std::{
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+};
 use cw2::set_contract_version;
 use cw_auth_manager::msg::{IsAuthorizedResponse, QueryMsg};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::state::{AUTHORIZED};
+use crate::state::{AUTHORIZED, DAO};
+use cw_auth_manager::ContractError as AuthorizationError;
 
 const CONTRACT_NAME: &str = "crates.io:whitelist";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -16,9 +19,10 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    DAO.save(deps.storage, &msg.dao)?;
     Ok(Response::default().add_attribute("action", "instantiate"))
 }
 
@@ -26,18 +30,30 @@ pub fn instantiate(
 pub fn execute(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Allow { addr } => {
-            AUTHORIZED.save(deps.storage, addr, &Empty{})?;
+            if info.sender != DAO.load(deps.storage)? {
+                return Err(AuthorizationError::Unauthorized {
+                    reason: Some("Only the dao can add authorizations".to_string()),
+                }
+                .into());
+            }
+            AUTHORIZED.save(deps.storage, addr, &Empty {})?;
             Ok(Response::default().add_attribute("action", "allow"))
-        },
+        }
         ExecuteMsg::Remove { addr } => {
+            if info.sender != DAO.load(deps.storage)? {
+                return Err(AuthorizationError::Unauthorized {
+                    reason: Some("Only the dao can remove authorizations".to_string()),
+                }
+                .into());
+            }
             AUTHORIZED.remove(deps.storage, addr);
             Ok(Response::default().add_attribute("action", "remove"))
-        },
+        }
     }
 }
 
@@ -45,16 +61,20 @@ pub fn execute(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
-        _ => unimplemented!()
+        _ => unimplemented!(),
     }
 }
 
-fn authorize_messages(deps: Deps, _env: Env, _msgs: Vec<CosmosMsg<Empty>>, sender: Addr) -> StdResult<Binary> {
+fn authorize_messages(
+    deps: Deps,
+    _env: Env,
+    _msgs: Vec<CosmosMsg<Empty>>,
+    sender: Addr,
+) -> StdResult<Binary> {
     // This checks all the registered authorizations
     let authorized = AUTHORIZED.may_load(deps.storage, sender)?.is_some();
-    to_binary(&IsAuthorizedResponse{ authorized })
+    to_binary(&IsAuthorizedResponse { authorized })
 }
-
 
 #[cfg(test)]
 mod tests {}
