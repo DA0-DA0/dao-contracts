@@ -31,6 +31,9 @@ pub enum ContractError {
     #[error("Multiple voting modules during instantiation.")]
     MultipleVotingModules {},
 
+    #[error("Multiple authorization modules during instantiation.")]
+    MultipleAuthorizationModules {},
+
     #[error("Unsigned integer overflow.")]
     Overflow {},
 

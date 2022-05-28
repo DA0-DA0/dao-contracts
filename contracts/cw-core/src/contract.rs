@@ -777,7 +777,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             // Make sure a bug in instantiation isn't causing us to
             // make more than one voting module.
             if current.is_some() {
-                return Err(ContractError::MultipleVotingModules {});
+                return Err(ContractError::MultipleAuthorizationModules {});
             }
 
             AUTHORIZATION_MODULE.save(deps.storage, &authorization_module_addr)?;
