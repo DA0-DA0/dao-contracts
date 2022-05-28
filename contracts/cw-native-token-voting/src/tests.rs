@@ -6,7 +6,9 @@ use cosmwasm_std::testing::{
 use cosmwasm_std::{
     coin, from_binary, Addr, Decimal, Deps, Env, FullDelegation, OwnedDeps, Uint128, Validator,
 };
-use cw_core_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
+use cw_core_interface::voting::{
+    InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+};
 
 const ADDR1: &str = "addr1";
 const ADDR2: &str = "addr2";
@@ -62,6 +64,11 @@ fn voting_power_at_height(
     from_binary(&bin).unwrap()
 }
 
+fn total_power_at_height(deps: Deps, env: Env, height: Option<u64>) -> TotalPowerAtHeightResponse {
+    let bin = query(deps, env, QueryMsg::TotalPowerAtHeight { height }).unwrap();
+    from_binary(&bin).unwrap()
+}
+
 #[test]
 fn test_instantiate() {
     let info = mock_info(ADDR1, &[]);
@@ -94,20 +101,35 @@ fn test_query_voting_power_at_height() {
     )
     .unwrap();
 
-    let res: VotingPowerAtHeightResponse =
-        voting_power_at_height(deps.as_ref(), env.clone(), ADDR1, None);
+    let res = voting_power_at_height(deps.as_ref(), env.clone(), ADDR1, None);
     assert_eq!(res.power, Uint128::new(200));
 
-    let res: VotingPowerAtHeightResponse =
-        voting_power_at_height(deps.as_ref(), env.clone(), ADDR2, None);
+    let res = voting_power_at_height(deps.as_ref(), env.clone(), ADDR2, None);
     assert_eq!(res.power, Uint128::new(100));
 
-    let res: VotingPowerAtHeightResponse = voting_power_at_height(deps.as_ref(), env, ADDR3, None);
+    let res = voting_power_at_height(deps.as_ref(), env, ADDR3, None);
     assert_eq!(res.power, Uint128::zero());
 }
 
 #[test]
-fn test_query_total_power_at_height() {}
+fn test_query_total_power_at_height() {
+    let info = mock_info(ADDR1, &[]);
+    let env = mock_env();
+    let mut deps = setup_deps();
+
+    let _res = instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            token_denom: DENOM.to_string(),
+        },
+    )
+    .unwrap();
+
+    let res = total_power_at_height(deps.as_ref(), env, None);
+    assert_eq!(res.power, Uint128::zero());
+}
 
 #[test]
 fn test_general_queries() {
