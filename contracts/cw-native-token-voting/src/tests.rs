@@ -4,9 +4,9 @@ use cosmwasm_std::testing::{
     mock_dependencies, mock_env, mock_info, MockApi, MockQuerier, MockStorage,
 };
 use cosmwasm_std::{
-    coin, from_binary, Addr, Decimal, FullDelegation, OwnedDeps, Uint128, Validator,
+    coin, from_binary, Addr, Decimal, Deps, Env, FullDelegation, OwnedDeps, Uint128, Validator,
 };
-use cw_core_interface::voting::VotingPowerAtHeightResponse;
+use cw_core_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
 
 const ADDR1: &str = "addr1";
 const ADDR2: &str = "addr2";
@@ -44,6 +44,24 @@ fn setup_deps() -> OwnedDeps<MockStorage, MockApi, MockQuerier> {
     deps
 }
 
+fn voting_power_at_height(
+    deps: Deps,
+    env: Env,
+    address: &str,
+    height: Option<u64>,
+) -> VotingPowerAtHeightResponse {
+    let bin = query(
+        deps,
+        env,
+        QueryMsg::VotingPowerAtHeight {
+            address: address.to_string(),
+            height,
+        },
+    )
+    .unwrap();
+    from_binary(&bin).unwrap()
+}
+
 #[test]
 fn test_instantiate() {
     let info = mock_info(ADDR1, &[]);
@@ -68,7 +86,7 @@ fn test_query_voting_power_at_height() {
 
     let _res = instantiate(
         deps.as_mut(),
-        mock_env(),
+        env.clone(),
         info,
         InstantiateMsg {
             token_denom: DENOM.to_string(),
@@ -76,15 +94,49 @@ fn test_query_voting_power_at_height() {
     )
     .unwrap();
 
-    let bin = query(
-        deps.as_ref(),
-        env,
-        QueryMsg::VotingPowerAtHeight {
-            address: ADDR1.to_string(),
-            height: None,
+    let res: VotingPowerAtHeightResponse =
+        voting_power_at_height(deps.as_ref(), env.clone(), ADDR1, None);
+    assert_eq!(res.power, Uint128::new(200));
+
+    let res: VotingPowerAtHeightResponse =
+        voting_power_at_height(deps.as_ref(), env.clone(), ADDR2, None);
+    assert_eq!(res.power, Uint128::new(100));
+
+    let res: VotingPowerAtHeightResponse = voting_power_at_height(deps.as_ref(), env, ADDR3, None);
+    assert_eq!(res.power, Uint128::zero());
+}
+
+#[test]
+fn test_query_total_power_at_height() {}
+
+#[test]
+fn test_general_queries() {
+    let info = mock_info(ADDR1, &[]);
+    let env = mock_env();
+    let mut deps = setup_deps();
+
+    let _res = instantiate(
+        deps.as_mut(),
+        env.clone(),
+        info,
+        InstantiateMsg {
+            token_denom: DENOM.to_string(),
         },
     )
     .unwrap();
-    let res: VotingPowerAtHeightResponse = from_binary(&bin).unwrap();
-    assert_eq!(res.power, Uint128::new(200));
+
+    let bin = query(deps.as_ref(), env.clone(), QueryMsg::Dao {}).unwrap();
+    let dao: Addr = from_binary(&bin).unwrap();
+    assert_eq!(dao, Addr::unchecked(ADDR1));
+
+    let bin = query(deps.as_ref(), env.clone(), QueryMsg::TokenDenom {}).unwrap();
+    let denom: String = from_binary(&bin).unwrap();
+    assert_eq!(denom, DENOM.to_string());
+
+    let bin = query(deps.as_ref(), env, QueryMsg::Info {}).unwrap();
+    let info: InfoResponse = from_binary(&bin).unwrap();
+    assert_eq!(
+        info.info.contract,
+        "crates.io:cw-native-token-voting".to_string()
+    );
 }
