@@ -1,12 +1,4 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use cosmwasm_std::Addr;
-use cw_storage_plus::Item;
+use cw_storage_plus::Map;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
-pub struct Config {
-    pub allowed_senders: Vec<Addr>,
-}
-
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const AUTHORIZED: Map<Addr, cosmwasm_std::Empty> = Map::new("authorized");
