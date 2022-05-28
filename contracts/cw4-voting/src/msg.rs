@@ -21,3 +21,6 @@ pub enum QueryMsg {
     GroupContract {},
     Dao {},
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct MigrateMsg {}

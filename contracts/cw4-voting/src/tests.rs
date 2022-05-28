@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg};
 use cw2::ContractVersion;
 use cw_core_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -6,7 +6,7 @@ use cw_core_interface::voting::{
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     ContractError,
 };
 
@@ -30,7 +30,8 @@ fn voting_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-    .with_reply(crate::contract::reply);
+    .with_reply(crate::contract::reply)
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -467,4 +468,76 @@ fn test_power_at_height() {
         .unwrap();
     assert_eq!(total_voting_power.power, Uint128::new(2u128));
     assert_eq!(total_voting_power.height, app.block_info().height - 1);
+}
+
+#[test]
+fn test_migrate() {
+    let mut app = App::default();
+
+    let initial_members = vec![
+        cw4::Member {
+            addr: ADDR1.to_string(),
+            weight: 1,
+        },
+        cw4::Member {
+            addr: ADDR2.to_string(),
+            weight: 1,
+        },
+        cw4::Member {
+            addr: ADDR3.to_string(),
+            weight: 1,
+        },
+    ];
+
+    // Instantiate with no members, error
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+    let msg = InstantiateMsg {
+        cw4_group_code_id: cw4_id,
+        initial_members,
+    };
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &msg,
+            &[],
+            "voting module",
+            Some(DAO_ADDR.to_string()),
+        )
+        .unwrap();
+
+    let power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr.clone(),
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+
+    app.execute(
+        Addr::unchecked(DAO_ADDR),
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: voting_addr.to_string(),
+            new_code_id: voting_id,
+            msg: to_binary(&MigrateMsg {}).unwrap(),
+        }),
+    )
+    .unwrap();
+
+    let new_power: VotingPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            voting_addr,
+            &QueryMsg::VotingPowerAtHeight {
+                address: ADDR1.to_string(),
+                height: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(new_power, power)
 }

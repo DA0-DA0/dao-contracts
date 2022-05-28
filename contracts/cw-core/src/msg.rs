@@ -188,3 +188,6 @@ pub enum QueryMsg {
     /// Gets the contract's voting module. Returns Addr.
     VotingModule {},
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct MigrateMsg {}

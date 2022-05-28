@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg};
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
@@ -6,8 +6,8 @@ use cw_utils::{Duration, Expiration};
 
 use crate::{
     msg::{
-        Admin, ExecuteMsg, InitialItem, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo,
-        QueryMsg,
+        Admin, ExecuteMsg, InitialItem, InitialItemInfo, InstantiateMsg, MigrateMsg,
+        ModuleInstantiateInfo, QueryMsg,
     },
     query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
     state::Config,
@@ -59,7 +59,8 @@ fn cw_core_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-    .with_reply(crate::contract::reply);
+    .with_reply(crate::contract::reply)
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -1839,4 +1840,87 @@ fn test_pause() {
             expiration: Expiration::AtHeight(start_height + 20)
         }
     );
+}
+
+#[test]
+fn test_migrate() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let voting_id = app.store_code(cw20_balances_voting());
+    let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_contract());
+
+    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
+        token_info: cw20_balance_voting::msg::TokenInfo::New {
+            code_id: cw20_id,
+            label: "DAO DAO voting".to_string(),
+            name: "DAO DAO".to_string(),
+            symbol: "DAO".to_string(),
+            decimals: 6,
+            initial_balances: vec![cw20::Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::from(2u64),
+            }],
+            marketing: None,
+        },
+    };
+
+    // Instantiate the core module with an admin to do migrations.
+    let gov_instantiate = InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: voting_id,
+            msg: to_binary(&voting_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "governance module".to_string(),
+        }],
+        initial_items: None,
+    };
+
+    let core_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            Some(CREATOR_ADDR.to_string()),
+        )
+        .unwrap();
+
+    let state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .unwrap();
+
+    app.execute(
+        Addr::unchecked(CREATOR_ADDR),
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: core_addr.to_string(),
+            new_code_id: gov_id,
+            msg: to_binary(&MigrateMsg {}).unwrap(),
+        }),
+    )
+    .unwrap();
+
+    let new_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
+        .unwrap();
+
+    assert_eq!(new_state, state);
 }

@@ -1,6 +1,6 @@
 use std::u128;
 
-use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Empty, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
@@ -14,7 +14,7 @@ use testing::{ShouldExecute, TestVote};
 use voting::{PercentageThreshold, Status, Threshold, Vote, Votes};
 
 use crate::{
-    msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::Proposal,
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
     state::{CheckedDepositInfo, Config},
@@ -47,7 +47,8 @@ fn single_proposal_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-    .with_reply(crate::contract::reply);
+    .with_reply(crate::contract::reply)
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -3261,4 +3262,60 @@ fn test_large_absolute_count_threshold() {
         Status::Rejected,
         None,
     );
+}
+
+#[test]
+fn test_migrate() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_proposal_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        only_members_execute: false,
+        allow_revoting: false,
+        deposit_info: None,
+    };
+
+    let governance_addr =
+        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    app.execute(
+        governance_addr,
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: govmod_single.to_string(),
+            new_code_id: govmod_id,
+            msg: to_binary(&MigrateMsg {}).unwrap(),
+        }),
+    )
+    .unwrap();
+
+    let new_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config, new_config);
 }
