@@ -16,7 +16,7 @@ use voting::{Status, Threshold, Vote, Votes};
 
 use crate::{
     error::ContractError,
-    msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DepositInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::{advance_proposal_id, Proposal},
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
@@ -682,6 +682,12 @@ pub fn query_list_votes(
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&cw_core_interface::voting::InfoResponse { info })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Don't do any state migrations.
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

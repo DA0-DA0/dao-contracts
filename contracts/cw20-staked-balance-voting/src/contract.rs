@@ -12,8 +12,8 @@ use std::convert::TryInto;
 
 use crate::error::ContractError;
 use crate::msg::{
-    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo,
-    TokenInfo,
+    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    StakingInfo, TokenInfo,
 };
 use crate::state::{
     ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID,
@@ -339,6 +339,12 @@ pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
     to_binary(&ActiveThresholdResponse {
         active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Don't do any state migrations.
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

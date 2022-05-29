@@ -78,3 +78,6 @@ pub enum QueryMsg {
 pub struct ActiveThresholdResponse {
     pub active_threshold: Option<ActiveThreshold>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct MigrateMsg {}

@@ -13,7 +13,9 @@ use cw_utils::{parse_reply_instantiate_data, Duration};
 use cw_core_interface::voting;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
+use crate::msg::{
+    ExecuteMsg, InitialItemInfo, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
+};
 use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
 use crate::state::{
     Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
@@ -699,6 +701,12 @@ pub fn query_cw20_balances(
         })
         .collect::<StdResult<Vec<_>>>()?;
     to_binary(&balances)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Don't do any state migrations.
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

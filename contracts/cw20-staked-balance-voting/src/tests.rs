@@ -1,11 +1,12 @@
-use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Empty, Uint128, WasmMsg};
 use cw2::ContractVersion;
 use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
 use cw_core_interface::voting::{InfoResponse, IsActiveResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
 use crate::msg::{
-    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo,
+    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    StakingInfo,
 };
 
 const DAO_ADDR: &str = "dao";
@@ -35,7 +36,8 @@ fn staked_balance_voting_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-    .with_reply(crate::contract::reply);
+    .with_reply(crate::contract::reply)
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -1250,4 +1252,67 @@ fn test_active_threshold_absolute_count_invalid() {
             }),
         },
     );
+}
+
+#[test]
+fn test_migrate() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &InstantiateMsg {
+                token_info: crate::msg::TokenInfo::New {
+                    code_id: cw20_id,
+                    label: "DAO DAO voting".to_string(),
+                    name: "DAO DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances: vec![Cw20Coin {
+                        address: CREATOR_ADDR.to_string(),
+                        amount: Uint128::from(2u64),
+                    }],
+                    marketing: None,
+                    unstaking_duration: None,
+                    staking_code_id: staking_contract_id,
+                    initial_dao_balance: Some(Uint128::zero()),
+                },
+                active_threshold: None,
+            },
+            &[],
+            "voting module",
+            Some(DAO_ADDR.to_string()),
+        )
+        .unwrap();
+
+    let info: InfoResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::Info {})
+        .unwrap();
+
+    let dao: Addr = app
+        .wrap()
+        .query_wasm_smart(voting_addr.clone(), &QueryMsg::Dao {})
+        .unwrap();
+
+    app.execute(
+        dao,
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: voting_addr.to_string(),
+            new_code_id: voting_id,
+            msg: to_binary(&MigrateMsg {}).unwrap(),
+        }),
+    )
+    .unwrap();
+
+    let new_info: InfoResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::Info {})
+        .unwrap();
+
+    assert_eq!(info, new_info);
 }
