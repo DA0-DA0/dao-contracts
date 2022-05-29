@@ -5,10 +5,10 @@ use cosmwasm_std::{
     StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_auth_manager::msg::IsAuthorizedResponse;
 use cw_core_interface::voting::IsActiveResponse;
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
-use cw_auth_manager::msg::IsAuthorizedResponse;
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
@@ -250,18 +250,25 @@ pub fn execute_execute(
         None => vec![],
     };
 
-    let dao_state: cw_core::query::DumpStateResponse  = deps.querier.query_wasm_smart(
-        config.dao.clone(),
-        &cw_core::msg::QueryMsg::DumpState {  }
-    )?;
+    let dao_state: cw_core::query::DumpStateResponse = deps
+        .querier
+        .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::DumpState {})?;
     let authorizations_addr = dao_state.authorization_module;
-    let authorized: bool = deps.querier.query_wasm_smart(
-        authorizations_addr.clone(),
-        &cw_auth_manager::msg::QueryMsg::Authorize { msgs: prop.msgs.clone(), sender: info.sender.clone() }
-    ).unwrap_or(IsAuthorizedResponse { authorized: false }).authorized;
+    let authorized: bool = deps
+        .querier
+        .query_wasm_smart(
+            authorizations_addr.clone(),
+            &cw_auth_manager::msg::QueryMsg::Authorize {
+                msgs: prop.msgs.clone(),
+                sender: Some(info.sender.clone()),
+                group: None,
+            },
+        )
+        .unwrap_or(IsAuthorizedResponse { authorized: false })
+        .authorized;
 
-    if !authorized{
-        return Err(ContractError::Unauthorized {})
+    if !authorized {
+        return Err(ContractError::Unauthorized {});
     }
 
     let response = if !prop.msgs.is_empty() {

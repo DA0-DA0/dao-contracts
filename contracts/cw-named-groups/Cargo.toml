@@ -36,6 +36,7 @@ cw2 = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
+cw-auth-manager = { path = "../../contracts/cw-auth-manager" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
