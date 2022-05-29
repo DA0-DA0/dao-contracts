@@ -34,19 +34,11 @@ pub struct ModuleInstantiateInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub enum InitialItemInfo {
-    /// An existing contract address.
-    Existing { address: String },
-    /// Info for instantiating a new contract.
-    Instantiate { info: ModuleInstantiateInfo },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InitialItem {
     /// The name of the item.
-    pub name: String,
-    /// The info from which to derive the address.
-    pub info: InitialItemInfo,
+    pub key: String,
+    /// The value the item will have at instantiation time.
+    pub value: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -149,19 +141,19 @@ pub enum QueryMsg {
     /// contract.
     Cw20Balances {
         start_at: Option<String>,
-        limit: Option<u64>,
+        limit: Option<u32>,
     },
     /// Lists the addresses of the cw20 tokens in this contract's
     /// treasury.
     Cw20TokenList {
         start_at: Option<String>,
-        limit: Option<u64>,
+        limit: Option<u32>,
     },
     /// Lists the addresses of the cw721 tokens in this contract's
     /// treasury.
     Cw721TokenList {
         start_at: Option<String>,
-        limit: Option<u64>,
+        limit: Option<u32>,
     },
     /// Dumps all of the core contract's state in a single
     /// query. Useful for frontends as performance for queries is more
@@ -170,18 +162,19 @@ pub enum QueryMsg {
     DumpState {},
     /// Gets the address associated with an item key.
     GetItem { key: String },
-    /// Lists all of the item keys associted with the contract. For
-    /// example, given the items `{ "group": "...", "subdao": "..."}`
-    /// this query would return `["group", "subdao"]`.
+    /// Lists all of the items associted with the contract. For
+    /// example, given the items `{ "group": "foo", "subdao": "bar"}`
+    /// this query would return `[("group", "foo"), ("subdao",
+    /// "bar")]`.
     ListItems {
         start_at: Option<String>,
-        limit: Option<u64>,
+        limit: Option<u32>,
     },
     /// Gets the proposal modules assocaited with the
     /// contract. Returns Vec<Addr>.
     ProposalModules {
         start_at: Option<String>,
-        limit: Option<u64>,
+        limit: Option<u32>,
     },
     /// Returns information about if the contract is currently paused.
     PauseInfo {},
