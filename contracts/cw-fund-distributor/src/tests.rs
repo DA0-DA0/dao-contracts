@@ -121,7 +121,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> SetupTestResponse {
             dist_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                admin: None,
+                admin: Some(CREATOR_ADDR.to_string()),
                 voting_contract: voting_addr.to_string(),
                 distribution_height: app.block_info().height,
             },
@@ -165,6 +165,33 @@ fn mint_tokens(app: &mut App, receiver: &str, amount: Uint128, token_contract: O
     };
 }
 
+fn withdraw_tokens(
+    app: &mut App,
+    dist_addr: Addr,
+    sender: &str,
+    use_cw20s: bool,
+    tokens: Option<Vec<String>>,
+) {
+    match use_cw20s {
+        false => app
+            .execute_contract(
+                Addr::unchecked(sender),
+                dist_addr,
+                &ExecuteMsg::WithdrawNatives { denoms: tokens },
+                &[],
+            )
+            .unwrap(),
+        true => app
+            .execute_contract(
+                Addr::unchecked(sender),
+                dist_addr,
+                &ExecuteMsg::WithdrawCw20s { tokens },
+                &[],
+            )
+            .unwrap(),
+    };
+}
+
 fn fund_tokens(
     app: &mut App,
     dist_addr: Addr,
@@ -199,6 +226,29 @@ fn fund_tokens(
     };
 }
 
+fn query_balance(app: &mut App, account: &str, token_contract: Option<Addr>) -> Uint128 {
+    match token_contract {
+        Some(token_contract) => {
+            let balance: cw20::BalanceResponse = app
+                .wrap()
+                .query_wasm_smart(
+                    token_contract,
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: account.to_string(),
+                    },
+                )
+                .unwrap();
+            balance.balance
+        }
+        None => {
+            app.wrap()
+                .query_balance(account.to_string(), FEE_DENOM.to_string())
+                .unwrap()
+                .amount
+        }
+    }
+}
+
 fn claim_and_assert_tokens(
     app: &mut App,
     sender: &str,
@@ -206,8 +256,8 @@ fn claim_and_assert_tokens(
     expected_fee_balance: Uint128,
     token_contract: Option<Addr>,
 ) {
-    let balance = match token_contract {
-        Some(token_contract) => {
+    match token_contract {
+        Some(_) => {
             app.execute_contract(
                 Addr::unchecked(sender),
                 dist_addr,
@@ -215,16 +265,6 @@ fn claim_and_assert_tokens(
                 &[],
             )
             .unwrap();
-            let balance: cw20::BalanceResponse = app
-                .wrap()
-                .query_wasm_smart(
-                    token_contract,
-                    &cw20::Cw20QueryMsg::Balance {
-                        address: sender.to_string(),
-                    },
-                )
-                .unwrap();
-            balance.balance
         }
         None => {
             app.execute_contract(
@@ -234,13 +274,9 @@ fn claim_and_assert_tokens(
                 &[],
             )
             .unwrap();
-            let balance = app
-                .wrap()
-                .query_balance(sender.to_string(), FEE_DENOM.to_string())
-                .unwrap();
-            balance.amount
         }
     };
+    let balance = query_balance(app, sender, token_contract);
     assert_eq!(balance, expected_fee_balance);
 }
 
@@ -458,4 +494,120 @@ fn test_unstake_post_distribution_cw20() {
 #[test]
 fn test_unstake_post_distribution_native() {
     test_unstake_post_distribution(false)
+}
+
+fn test_simple_withdraw(use_cw20s: bool) {
+    let SetupTestResponse {
+        mut app,
+        dist_addr,
+        token_addr: token_contract,
+        ..
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "floob".to_string(),
+            amount: Uint128::new(10),
+        },
+    ]);
+
+    let token_contract = if use_cw20s {
+        Some(token_contract)
+    } else {
+        None
+    };
+
+    mint_tokens(
+        &mut app,
+        CREATOR_ADDR,
+        Uint128::new(100),
+        token_contract.clone(),
+    );
+    fund_tokens(
+        &mut app,
+        dist_addr.clone(),
+        CREATOR_ADDR,
+        Uint128::new(100),
+        token_contract.clone(),
+    );
+
+    withdraw_tokens(&mut app, dist_addr, CREATOR_ADDR, use_cw20s, None);
+
+    let balance = query_balance(&mut app, CREATOR_ADDR, token_contract);
+
+    assert_eq!(balance, Uint128::new(100))
+}
+
+#[test]
+fn test_simple_withdraw_cw20() {
+    test_simple_withdraw(true)
+}
+
+#[test]
+fn test_simple_withdraw_native() {
+    test_simple_withdraw(false)
+}
+
+fn test_fund_claim_withdraw_fund_claim(use_cw20s: bool) {
+    let SetupTestResponse {
+        mut app,
+        dist_addr,
+        token_addr: token_contract,
+        ..
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "floob".to_string(),
+            amount: Uint128::new(10),
+        },
+    ]);
+
+    let token_contract = if use_cw20s {
+        Some(token_contract)
+    } else {
+        None
+    };
+
+    mint_tokens(
+        &mut app,
+        CREATOR_ADDR,
+        Uint128::new(100),
+        token_contract.clone(),
+    );
+    fund_tokens(
+        &mut app,
+        dist_addr.clone(),
+        CREATOR_ADDR,
+        Uint128::new(100),
+        token_contract.clone(),
+    );
+
+    claim_and_assert_tokens(
+        &mut app,
+        "ekez",
+        dist_addr.clone(),
+        Uint128::new(50),
+        token_contract.clone(),
+    );
+
+    withdraw_tokens(&mut app, dist_addr, CREATOR_ADDR, use_cw20s, None);
+
+    let balance = query_balance(&mut app, CREATOR_ADDR, token_contract);
+
+    assert_eq!(balance, Uint128::new(50))
+}
+
+#[test]
+fn test_fund_claim_withdraw_fund_claim_cw20() {
+    test_fund_claim_withdraw_fund_claim(true)
+}
+
+#[test]
+fn test_fund_claim_withdraw_fund_claim_native() {
+    test_fund_claim_withdraw_fund_claim(false)
 }

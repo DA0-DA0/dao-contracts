@@ -1,39 +1,179 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ExecuteMsg",
-  "anyOf": [
+  "oneOf": [
     {
+      "description": "Funds the contract with a cw20 token. The token is added to the contract's list of tokens to be distributed.",
       "type": "object",
       "required": [
-        "increment"
+        "receive"
       ],
       "properties": {
-        "increment": {
+        "receive": {
+          "$ref": "#/definitions/Cw20ReceiveMsg"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Funds the contract with native tokens. Any tokens sent in the `funds` field of this message will be distributed by this contract.",
+      "type": "object",
+      "required": [
+        "fund"
+      ],
+      "properties": {
+        "fund": {
           "type": "object"
         }
       },
       "additionalProperties": false
     },
     {
+      "description": "Sends the cw20 tokens the sender is entitled to to the sender. Errors if any of the tokens in TOKENS are not being distributed by this contract.\n\nIf TOKENS is None all cw20 tokens avaliable are paid out.",
       "type": "object",
       "required": [
-        "reset"
+        "claim_cw20s"
       ],
       "properties": {
-        "reset": {
+        "claim_cw20s": {
           "type": "object",
-          "required": [
-            "count"
-          ],
           "properties": {
-            "count": {
-              "type": "integer",
-              "format": "int32"
+            "tokens": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Sends the native tokens the sender is entitled to to the sender. Errors if any of the denoms in DENOMS are not being distributed by this contract.\n\nIf DENOMS iis None all native tokens avaliable are paid out.",
+      "type": "object",
+      "required": [
+        "claim_natives"
+      ],
+      "properties": {
+        "claim_natives": {
+          "type": "object",
+          "properties": {
+            "denoms": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Callable only by the contract's admin. Returns this contract's token balances to the contract's admin. Errors if any token in TOKENS is not being distributed by this contract. If no TOKENS are specified all tokens are withdrawn.",
+      "type": "object",
+      "required": [
+        "withdraw_cw20s"
+      ],
+      "properties": {
+        "withdraw_cw20s": {
+          "type": "object",
+          "properties": {
+            "tokens": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Callable only by the contract's admin. Returns this contracts native balances to the contract's admin. Errors if any denom in DENOMS is not being distributed by this contract. If no DENOMS are specified all native denoms are withdrawn.",
+      "type": "object",
+      "required": [
+        "withdraw_natives"
+      ],
+      "properties": {
+        "withdraw_natives": {
+          "type": "object",
+          "properties": {
+            "denoms": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Callable by the contract's admin. Updates the contract's admin to the new value.",
+      "type": "object",
+      "required": [
+        "update_admin"
+      ],
+      "properties": {
+        "update_admin": {
+          "type": "object",
+          "properties": {
+            "admin": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         }
       },
       "additionalProperties": false
     }
-  ]
+  ],
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "Cw20ReceiveMsg": {
+      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
+      "type": "object",
+      "required": [
+        "amount",
+        "msg",
+        "sender"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "msg": {
+          "$ref": "#/definitions/Binary"
+        },
+        "sender": {
+          "type": "string"
+        }
+      }
+    },
+    "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "type": "string"
+    }
+  }
 }

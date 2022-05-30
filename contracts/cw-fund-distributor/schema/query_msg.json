@@ -1,14 +1,206 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "QueryMsg",
-  "anyOf": [
+  "oneOf": [
     {
+      "description": "Lists the native tokens this contract is distributing. Returns Vec<DenomResponse>.",
       "type": "object",
       "required": [
-        "get_count"
+        "native_denoms"
       ],
       "properties": {
-        "get_count": {
+        "native_denoms": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists the cw20 tokens this contract is distributing. Returns Vec<DenomResponse>.",
+      "type": "object",
+      "required": [
+        "cw20_denoms"
+      ],
+      "properties": {
+        "cw20_denoms": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the number of native tokens ADDRESS is entitled to given a native token denom. If DENOM is not being distributed by the contract an error is returned, otherwise returns NativeEntitlementResponse.",
+      "type": "object",
+      "required": [
+        "native_entitlement"
+      ],
+      "properties": {
+        "native_entitlement": {
+          "type": "object",
+          "required": [
+            "address",
+            "denom"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the number of cw20 tokens ADDRESS is entitled to given a cw20 token address. If TOKEN is not being distributed by the contract an error is returned, otherwise returns Cw20EntitlementResponse.",
+      "type": "object",
+      "required": [
+        "cw20_entitlement"
+      ],
+      "properties": {
+        "cw20_entitlement": {
+          "type": "object",
+          "required": [
+            "address",
+            "token"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists all of the native entitlements for ADDRESS. Returns Vec<NativeEntitlementResponse>.",
+      "type": "object",
+      "required": [
+        "native_entitlements"
+      ],
+      "properties": {
+        "native_entitlements": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists all of the cw20 entitlements for ADDRESS. Returns Vec<Cw20EntitlementResponse>.",
+      "type": "object",
+      "required": [
+        "cw20_entitlements"
+      ],
+      "properties": {
+        "cw20_entitlements": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_at": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the current admin of the contract. Returns AdminResponse.",
+      "type": "object",
+      "required": [
+        "admin"
+      ],
+      "properties": {
+        "admin": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets information about the contract's voting power contract. Returns VotingContractResponse.",
+      "type": "object",
+      "required": [
+        "voting_contract"
+      ],
+      "properties": {
+        "voting_contract": {
           "type": "object"
         }
       },

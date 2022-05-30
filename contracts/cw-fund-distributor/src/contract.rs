@@ -75,7 +75,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -88,9 +88,11 @@ pub fn execute(
         ExecuteMsg::Fund {} => execute_fund_natives(deps, info),
         ExecuteMsg::ClaimCw20s { tokens } => execute_claim_cw20s(deps, info.sender, tokens),
         ExecuteMsg::ClaimNatives { denoms } => execute_claim_natives(deps, info.sender, denoms),
-        ExecuteMsg::WithdrawCw20s { tokens } => execute_withdraw_cw20s(deps, info.sender, tokens),
+        ExecuteMsg::WithdrawCw20s { tokens } => {
+            execute_withdraw_cw20s(deps, env, info.sender, tokens)
+        }
         ExecuteMsg::WithdrawNatives { denoms } => {
-            execute_withdraw_natives(deps, info.sender, denoms)
+            execute_withdraw_natives(deps, env, info.sender, denoms)
         }
         ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(deps, info.sender, admin),
     }
@@ -142,7 +144,18 @@ where
             let claimed = claims
                 .may_load(deps.storage, (sender.clone(), key.clone()))?
                 .unwrap_or_default();
-            let entitled = total_entitlement - claimed;
+            // If funds have been provided, withdrawn, and
+            // subsequentally provided again it is possible that there
+            // are accounts that have claimied more than they are
+            // currently entitled to. This happens if the initial
+            // amount provided was greater than the amount provided
+            // after withdrawal and the account claimed while the
+            // initial amount was up.
+            let entitled = if claimed > total_entitlement {
+                Uint128::zero()
+            } else {
+                total_entitlement - claimed
+            };
             Ok((key, entitled))
         })
         .collect::<StdResult<Vec<_>>>()
@@ -346,6 +359,7 @@ pub fn execute_claim_natives(
 
 pub fn execute_withdraw_cw20s(
     deps: DepsMut,
+    env: Env,
     sender: Addr,
     tokens: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
@@ -371,17 +385,21 @@ pub fn execute_withdraw_cw20s(
     )?;
     let messages = tokens
         .into_iter()
-        .map(|(token_contract, provided)| {
+        .map(|(token_contract, _)| {
             CW20S.remove(deps.storage, token_contract.clone());
-            // TODO: Remove cw20 claims with this addr prefix. Not
-            // doing this will cause strange behavior if the cw20
-            // token is later funded again as some could already have
-            // claims.
+
+            let remaining: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+                token_contract.clone(),
+                &cw20::Cw20QueryMsg::Balance {
+                    address: env.contract.address.to_string(),
+                },
+            )?;
+
             Ok(WasmMsg::Execute {
                 contract_addr: token_contract.into_string(),
                 msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: admin.to_string(),
-                    amount: provided,
+                    amount: remaining.balance,
                 })?,
                 funds: vec![],
             })
@@ -395,6 +413,7 @@ pub fn execute_withdraw_cw20s(
 
 pub fn execute_withdraw_natives(
     deps: DepsMut,
+    env: Env,
     sender: Addr,
     denoms: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
@@ -409,17 +428,19 @@ pub fn execute_withdraw_natives(
     let denoms = list_token_balance_pairs(deps.as_ref(), NATIVES, denoms)?;
     let coins = denoms
         .into_iter()
-        .map(|(denom, provided)| {
+        .map(|(denom, _)| {
             NATIVES.remove(deps.storage, denom.clone());
-            // TODO: Remove claims with this denom prefix. Not doing
-            // this will cause strange behavior if the native token is
-            // later funded again as some could already have claims.
-            Coin {
-                amount: provided,
+
+            let remaining = deps
+                .querier
+                .query_balance(env.contract.address.to_string(), denom.clone())?;
+
+            Ok(Coin {
+                amount: remaining.amount,
                 denom,
-            }
+            })
         })
-        .collect::<Vec<_>>();
+        .collect::<StdResult<Vec<_>>>()?;
 
     let msg = BankMsg::Send {
         to_address: admin.into_string(),
@@ -546,8 +567,14 @@ pub fn query_cw20_entitlement(
     let total_entitlement = compute_entitled(provided, voting_power.power, total_power)?;
     let claimed = CW20_CLAIMS.load(deps.storage, (address, token_contract.clone()))?;
 
+    let amount = if claimed > total_entitlement {
+        Uint128::zero()
+    } else {
+        total_entitlement - claimed
+    };
+
     to_binary(&Cw20EntitlementResponse {
-        amount: total_entitlement - claimed,
+        amount,
         token_contract,
     })
 }

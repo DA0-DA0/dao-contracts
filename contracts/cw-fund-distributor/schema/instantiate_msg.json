@@ -3,12 +3,26 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "count"
+    "distribution_height",
+    "voting_contract"
   ],
   "properties": {
-    "count": {
+    "admin": {
+      "description": "An optional admin for this contract. The admin may withdraw funds that have been earmarked for distribution by this contract.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "distribution_height": {
+      "description": "The block height at which voting power will be determined for fund distribution.",
       "type": "integer",
-      "format": "int32"
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "voting_contract": {
+      "description": "The voting power contract that this contract will use to derermine rewards entitlement for addresses. Funds will be distributed porportional to the amount of voting power an address has. This contract must implement the `VotingPowerAtHeight` and `TotalPowerAtHeight` queries.",
+      "type": "string"
     }
   }
 }
