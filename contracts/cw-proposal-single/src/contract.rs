@@ -267,6 +267,8 @@ pub fn execute_execute(
         .unwrap_or(IsAuthorizedResponse { authorized: false })
         .authorized;
 
+    // TODO: check group auth here? Would need to store the group contract somewhere
+
     if !authorized {
         return Err(ContractError::Unauthorized {});
     }

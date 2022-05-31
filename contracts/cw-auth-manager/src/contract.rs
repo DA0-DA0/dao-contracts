@@ -91,7 +91,11 @@ pub fn execute_add_authorization(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Authorize { msgs, sender, .. } => authorize_messages(deps, env, msgs, sender),
+        QueryMsg::Authorize {
+            msgs,
+            sender,
+            group,
+        } => authorize_messages(deps, env, msgs, sender, group),
         QueryMsg::GetAuthorizations { .. } => {
             unimplemented!()
         }
@@ -103,6 +107,7 @@ fn authorize_messages(
     _env: Env,
     msgs: Vec<CosmosMsg<Empty>>,
     sender: Option<Addr>,
+    group: Option<String>,
 ) -> StdResult<Binary> {
     // This checks all the registered authorizations
     let config = CONFIG.load(deps.storage)?;
@@ -121,7 +126,7 @@ fn authorize_messages(
                 &QueryMsg::Authorize {
                     msgs: msgs.clone(),
                     sender: sender.clone(),
-                    group: None,
+                    group: group.clone(),
                 },
             )
             .unwrap_or(IsAuthorizedResponse { authorized: false })
