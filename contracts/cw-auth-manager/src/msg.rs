@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -18,8 +18,7 @@ pub enum QueryMsg {
     GetAuthorizations {},
     Authorize {
         msgs: Vec<CosmosMsg<Empty>>,
-        sender: Option<Addr>,
-        group: Option<String>,
+        sender: String,
     },
 }
 

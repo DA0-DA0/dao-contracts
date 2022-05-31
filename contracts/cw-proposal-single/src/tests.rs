@@ -1517,7 +1517,7 @@ fn test_execute_proposal_with_auth() {
             Addr::unchecked("Anyone"),
             whitelist_addr.clone(),
             &whitelist::msg::ExecuteMsg::Allow {
-                addr: another_stranger.clone(),
+                addr: another_stranger.to_string(),
             },
             &[],
         )
@@ -1527,7 +1527,7 @@ fn test_execute_proposal_with_auth() {
         Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
         whitelist_addr.clone(),
         &whitelist::msg::ExecuteMsg::Allow {
-            addr: another_stranger.clone(),
+            addr: another_stranger.to_string(),
         },
         &[],
     )

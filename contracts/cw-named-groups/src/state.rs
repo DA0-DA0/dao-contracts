@@ -134,8 +134,7 @@ impl<'a> Groups<'a> {
                 auth_manager.clone(),
                 &QueryMsg::Authorize {
                     msgs: msgs.clone(),
-                    sender: None,
-                    group: Some(group.clone()),
+                    sender: group.to_string(),
                 },
             )
             .unwrap_or(IsAuthorizedResponse { authorized: false })

@@ -260,8 +260,7 @@ pub fn execute_execute(
             authorizations_addr.clone(),
             &cw_auth_manager::msg::QueryMsg::Authorize {
                 msgs: prop.msgs.clone(),
-                sender: Some(info.sender.clone()),
-                group: None,
+                sender: info.sender.to_string(),
             },
         )
         .unwrap_or(IsAuthorizedResponse { authorized: false })

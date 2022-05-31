@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
     StdResult,
 };
 use cw2::set_contract_version;
@@ -91,11 +91,7 @@ pub fn execute_add_authorization(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Authorize {
-            msgs,
-            sender,
-            group,
-        } => authorize_messages(deps, env, msgs, sender, group),
+        QueryMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
         QueryMsg::GetAuthorizations { .. } => {
             unimplemented!()
         }
@@ -106,8 +102,7 @@ fn authorize_messages(
     deps: Deps,
     _env: Env,
     msgs: Vec<CosmosMsg<Empty>>,
-    sender: Option<Addr>,
-    group: Option<String>,
+    sender: String,
 ) -> StdResult<Binary> {
     // This checks all the registered authorizations
     let config = CONFIG.load(deps.storage)?;
@@ -126,7 +121,6 @@ fn authorize_messages(
                 &QueryMsg::Authorize {
                     msgs: msgs.clone(),
                     sender: sender.clone(),
-                    group: group.clone(),
                 },
             )
             .unwrap_or(IsAuthorizedResponse { authorized: false })
