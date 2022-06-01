@@ -60,6 +60,9 @@ pub fn instantiate(
         allow_revoting: msg.allow_revoting,
     };
 
+    // Initialize proposal count to zero so that queries return zero
+    // instead of None.
+    PROPOSAL_COUNT.save(deps.storage, &0)?;
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::default()

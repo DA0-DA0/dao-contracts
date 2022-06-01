@@ -3319,3 +3319,48 @@ fn test_migrate() {
 
     assert_eq!(config, new_config);
 }
+
+#[test]
+fn test_proposal_count_initialized_to_zero() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "innactive".to_string(),
+                amount: Uint128::new(90),
+            },
+        ]),
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_modules = gov_state.proposal_modules;
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_single = proposal_modules.into_iter().next().unwrap();
+
+    let proposal_count: u64 = app
+        .wrap()
+        .query_wasm_smart(proposal_single, &QueryMsg::ProposalCount {})
+        .unwrap();
+    assert_eq!(proposal_count, 0);
+}
