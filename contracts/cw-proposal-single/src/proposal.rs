@@ -33,7 +33,7 @@ pub struct Proposal {
 }
 
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
-    let id: u64 = PROPOSAL_COUNT.may_load(store)?.unwrap_or_default() + 1;
+    let id: u64 = PROPOSAL_COUNT.load(store)? + 1;
     PROPOSAL_COUNT.save(store, &id)?;
     Ok(id)
 }
