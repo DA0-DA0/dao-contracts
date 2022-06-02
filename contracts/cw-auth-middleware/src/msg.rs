@@ -1,10 +1,15 @@
 use cosmwasm_std::{CosmosMsg, Empty};
+use cw_core::msg::ModuleInstantiateInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    /// Instantiate information for the proposal contract's  that
+    /// this authorization middlware is proxying
+    pub proposal_module_instantiate_info: ModuleInstantiateInfo,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

@@ -1,15 +1,13 @@
-use cosmwasm_std::{Addr, CosmosMsg, Deps, Empty, Order, StdError, StdResult, Storage};
-use cw_auth_manager::msg::{IsAuthorizedResponse, QueryMsg};
+use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
 
 pub const OWNER: Item<Addr> = Item::new("owner");
-pub const GROUPS: Groups = Groups::new("groups", "addresses", "group_names", "authorizations");
+pub const GROUPS: Groups = Groups::new("groups", "addresses", "group_names");
 
 pub struct Groups<'a> {
     pub groups_to_addresses: Map<'a, (&'a str, &'a Addr), bool>,
     pub addresses_to_groups: Map<'a, (&'a Addr, &'a str), bool>,
     pub group_names: Map<'a, &'a str, bool>, // This is maintained so that you can have groups with no addresses in them.
-    pub group_authorizations: Map<'a, String, Addr>,
 }
 
 impl<'a> Groups<'a> {
@@ -17,13 +15,11 @@ impl<'a> Groups<'a> {
         groups_storage_key: &'a str,
         addresses_storage_key: &'a str,
         group_names_storage_key: &'a str,
-        group_auth_storage_key: &'a str,
     ) -> Self {
         Groups {
             groups_to_addresses: Map::new(groups_storage_key),
             addresses_to_groups: Map::new(addresses_storage_key),
             group_names: Map::new(group_names_storage_key),
-            group_authorizations: Map::new(group_auth_storage_key),
         }
     }
 
@@ -106,41 +102,6 @@ impl<'a> Groups<'a> {
             .map_err(|_| StdError::not_found("group"))?;
 
         Ok(addresses)
-    }
-
-    pub fn is_authorized(
-        &self,
-        deps: &Deps,
-        group: String,
-        msgs: Vec<CosmosMsg<Empty>>,
-    ) -> StdResult<bool> {
-        if !self.group_names.has(deps.storage, &group) {
-            return Ok(false);
-        }
-
-        let auth_manager = GROUPS
-            .group_authorizations
-            .may_load(deps.storage, group.clone());
-
-        let auth_manager = match auth_manager {
-            Ok(Some(x)) => x,
-            _ => return Ok(false),
-        };
-
-        // TODO: abstract this to avoid code repetition
-        let authorized = deps
-            .querier
-            .query_wasm_smart(
-                auth_manager.clone(),
-                &QueryMsg::Authorize {
-                    msgs: msgs.clone(),
-                    sender: group.to_string(),
-                },
-            )
-            .unwrap_or(IsAuthorizedResponse { authorized: false })
-            .authorized;
-
-        Ok(authorized)
     }
 
     pub fn list_groups(&self, storage: &dyn Storage, addr: &Addr) -> Vec<String> {

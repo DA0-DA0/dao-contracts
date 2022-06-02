@@ -4,12 +4,12 @@ use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use cw_auth_manager::msg::{IsAuthorizedResponse, QueryMsg};
+use cw_auth_middleware::msg::{IsAuthorizedResponse, QueryMsg};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{AUTHORIZED, DAO};
-use cw_auth_manager::ContractError as AuthorizationError;
+use cw_auth_middleware::ContractError as AuthorizationError;
 
 const CONTRACT_NAME: &str = "crates.io:whitelist";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

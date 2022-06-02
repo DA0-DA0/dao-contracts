@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult,
+    StdResult, SubMsg,
 };
 use cw2::set_contract_version;
 
@@ -20,9 +20,9 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config {
@@ -31,7 +31,14 @@ pub fn instantiate(
     let empty: Vec<Authorization> = vec![];
     CONFIG.save(deps.storage, &config)?;
     AUTHORIZATIONS.save(deps.storage, &info.sender, &empty)?;
-    Ok(Response::default().add_attribute("action", "instantiate"))
+    let proposal_module_msg = msg
+        .proposal_module_instantiate_info
+        .into_wasm_msg(env.contract.address.clone());
+    let proposal_module_msg: SubMsg<Empty> = SubMsg::new(proposal_module_msg);
+
+    Ok(Response::default()
+        .add_attribute("action", "instantiate")
+        .add_submessage(proposal_module_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

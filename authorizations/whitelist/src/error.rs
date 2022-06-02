@@ -1,6 +1,6 @@
 use cosmwasm_std::StdError;
 use thiserror::Error;
-use cw_auth_manager::ContractError as AuthorizationError;
+use cw_auth_middleware::ContractError as AuthorizationError;
 
 #[derive(Error, Debug)]
 pub enum ContractError {

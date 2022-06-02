@@ -1,5 +1,5 @@
 [package]
-name = "cw-auth-manager"
+name = "cw-auth-middleware"
 version = "0.1.0"
 authors = ["Nicolas Lara <nicolaslara@gmail.com>"]
 edition = "2018"
@@ -40,6 +40,7 @@ schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
+cw-core = { version="*", path="../cw-core" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta" }

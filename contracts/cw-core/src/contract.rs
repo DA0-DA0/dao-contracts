@@ -15,7 +15,7 @@ use cw_core_interface::voting;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
 use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
-use crate::state::{Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES, PROPOSAL_MODULES, VOTING_MODULE, AUTHORIZATION_MODULE};
+use crate::state::{Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES, PROPOSAL_MODULES, VOTING_MODULE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-core";
@@ -24,8 +24,6 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 const VOTE_MODULE_UPDATE_REPLY_ID: u64 = 2;
-const AUTHORIZATION_MODULE_INSTANTIATE_REPLY_ID: u64 = 3;
-const AUTHORIZATION_MODULE_UPDATE_REPLY_ID: u64 = 4;
 
 // Start at this ID since the items to instantiate on the instantiation
 // of this contract can be arbitrarily long. Everything with a reply ID
@@ -65,13 +63,6 @@ pub fn instantiate(
         .into_wasm_msg(env.contract.address.clone());
     let vote_module_msg: SubMsg<Empty> =
         SubMsg::reply_on_success(vote_module_msg, VOTE_MODULE_INSTANTIATE_REPLY_ID);
-
-    let auth_module_msg = msg
-        .authorization_module_instantiate_info
-        .into_wasm_msg(env.contract.address.clone());
-    let auth_module_msg: SubMsg<Empty> =
-        SubMsg::reply_on_success(auth_module_msg, AUTHORIZATION_MODULE_INSTANTIATE_REPLY_ID);
-
 
     let proposal_module_msgs: Vec<SubMsg<Empty>> = msg
         .proposal_modules_instantiate_info
@@ -127,7 +118,6 @@ pub fn instantiate(
         .add_attribute("action", "instantiate")
         .add_attribute("sender", info.sender)
         .add_submessage(vote_module_msg)
-        .add_submessage(auth_module_msg)
         .add_submessages(proposal_module_msgs)
         .add_submessages(instantiate_item_msgs))
 }
@@ -170,9 +160,6 @@ pub fn execute(
         }
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
-        }
-        ExecuteMsg::UpdateAuthorizationModule { module } => {
-            execute_update_authorization_module(env, info.sender, module)
         }
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
@@ -311,23 +298,6 @@ pub fn execute_update_voting_module(
 
     Ok(Response::default()
         .add_attribute("action", "execute_update_voting_module")
-        .add_submessage(submessage))
-}
-
-pub fn execute_update_authorization_module(
-    env: Env,
-    sender: Addr,
-    module: ModuleInstantiateInfo,
-) -> Result<Response, ContractError> {
-    if env.contract.address != sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    let wasm = module.into_wasm_msg(env.contract.address);
-    let submessage = SubMsg::reply_on_success(wasm, AUTHORIZATION_MODULE_UPDATE_REPLY_ID);
-
-    Ok(Response::default()
-        .add_attribute("action", "execute_update_authorization_module")
         .add_submessage(submessage))
 }
 
@@ -524,11 +494,6 @@ pub fn query_voting_module(deps: Deps) -> StdResult<Binary> {
     to_binary(&voting_module)
 }
 
-pub fn query_authorization_module(deps: Deps) -> StdResult<Binary> {
-    let authorization_module = AUTHORIZATION_MODULE.load(deps.storage)?;
-    to_binary(&authorization_module)
-}
-
 pub fn query_proposal_modules(
     deps: Deps,
     start_at: Option<String>,
@@ -584,7 +549,6 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let admin = ADMIN.load(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
-    let authorization_module = AUTHORIZATION_MODULE.load(deps.storage)?;
     let proposal_modules = PROPOSAL_MODULES
         .keys(deps.storage, None, None, cosmwasm_std::Order::Descending)
         .collect::<Result<Vec<Addr>, _>>()?;
@@ -597,7 +561,6 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
         pause_info,
         proposal_modules,
         voting_module,
-        authorization_module
     })
 }
 
@@ -767,30 +730,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             VOTING_MODULE.save(deps.storage, &vote_module_addr)?;
 
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
-        }
-        // ToDo: There is a lot of duplicated code between voting an auth. Should be merge them?
-        AUTHORIZATION_MODULE_INSTANTIATE_REPLY_ID => {
-            let res = parse_reply_instantiate_data(msg)?;
-            let authorization_module_addr = deps.api.addr_validate(&res.contract_address)?;
-            let current = AUTHORIZATION_MODULE.may_load(deps.storage)?;
-
-            // Make sure a bug in instantiation isn't causing us to
-            // make more than one voting module.
-            if current.is_some() {
-                return Err(ContractError::MultipleAuthorizationModules {});
-            }
-
-            AUTHORIZATION_MODULE.save(deps.storage, &authorization_module_addr)?;
-
-            Ok(Response::default().add_attribute("authorization_module", authorization_module_addr))
-        }
-        AUTHORIZATION_MODULE_UPDATE_REPLY_ID => {
-            let res = parse_reply_instantiate_data(msg)?;
-            let authorization_module_addr = deps.api.addr_validate(&res.contract_address)?;
-
-            AUTHORIZATION_MODULE.save(deps.storage, &authorization_module_addr)?;
-
-            Ok(Response::default().add_attribute("authorization_module", authorization_module_addr))
         }
         reply_id if reply_id >= PENDING_ITEM_REPLY_ID_START => {
             // Retrieve the name using the ID. If it doesn't exist,

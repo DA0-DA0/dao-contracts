@@ -71,9 +71,6 @@ pub struct InstantiateMsg {
     /// Instantiate information for the core contract's voting
     /// power module.
     pub voting_module_instantiate_info: ModuleInstantiateInfo,
-    /// Instantiate information for the core contract's voting
-    /// power module.
-    pub authorization_module_instantiate_info: ModuleInstantiateInfo,
     /// Instantiate information for the core contract's
     /// proposal modules.
     pub proposal_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
@@ -138,10 +135,6 @@ pub enum ExecuteMsg {
     /// voting module with a new one instantiated by the governance
     /// contract.
     UpdateVotingModule { module: ModuleInstantiateInfo },
-    /// Callable by the core contract. Replaces the current
-    /// authorization module with a new one instantiated by the governance
-    /// contract.
-    UpdateAuthorizationModule { module: ModuleInstantiateInfo },
 }
 
 #[voting_query]

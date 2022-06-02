@@ -23,8 +23,6 @@ pub struct DumpStateResponse {
     pub proposal_modules: Vec<Addr>,
     /// The voting module associated with the governance contract.
     pub voting_module: Addr,
-    /// The voting module associated with the governance contract.
-    pub authorization_module: Addr,
 }
 
 /// Information about if the contract is currently paused.
