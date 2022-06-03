@@ -42,7 +42,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     msg.threshold.validate()?;
 
     let dao = info.sender;
@@ -61,7 +60,6 @@ pub fn instantiate(
     };
 
     CONFIG.save(deps.storage, &config)?;
-
     Ok(Response::default()
         .add_attribute("action", "instantiate")
         .add_attribute("dao", dao))
@@ -110,6 +108,7 @@ pub fn execute(
         ExecuteMsg::RemoveVoteHook { address } => {
             execute_remove_vote_hook(deps, env, info, address)
         }
+        ExecuteMsg::Custom(_) => unimplemented!(),
     }
 }
 
@@ -122,7 +121,6 @@ pub fn execute_propose(
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-
     let voting_module: Addr = deps
         .querier
         .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::VotingModule {})?;
@@ -605,6 +603,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => query_reverse_proposals(deps, env, start_before, limit),
         QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
+        QueryMsg::Custom(_) => unimplemented!(),
     }
 }
 

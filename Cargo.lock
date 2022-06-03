@@ -177,6 +177,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-core",
  "cw-multi-test",
+ "cw-proposal-single",
  "cw-storage-plus",
  "cw-utils",
  "cw2",

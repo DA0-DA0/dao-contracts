@@ -2,20 +2,22 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg,
+    StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_proposal_single::msg::{ExecuteMsg, QueryMsg};
+use cw_utils::parse_reply_instantiate_data;
 
-use crate::msg::IsAuthorizedResponse;
-use crate::state::Authorization;
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{Config, AUTHORIZATIONS, CONFIG},
+    msg::{ExecuteAuthMsg, InstantiateMsg, IsAuthorizedResponse, QueryAuthMsg},
+    state::{Authorization, Config, AUTHORIZATIONS, CONFIG, PROPOSAL_MODULE},
 };
 
-const CONTRACT_NAME: &str = "crates.io:cw-auth-manager";
+const CONTRACT_NAME: &str = "crates.io:cw-auth-middleware";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const PROPOSAL_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -34,7 +36,8 @@ pub fn instantiate(
     let proposal_module_msg = msg
         .proposal_module_instantiate_info
         .into_wasm_msg(env.contract.address.clone());
-    let proposal_module_msg: SubMsg<Empty> = SubMsg::new(proposal_module_msg);
+    let proposal_module_msg: SubMsg<Empty> =
+        SubMsg::reply_always(proposal_module_msg, PROPOSAL_MODULE_INSTANTIATE_REPLY_ID);
 
     Ok(Response::default()
         .add_attribute("action", "instantiate")
@@ -44,15 +47,40 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg,
+    msg: ExecuteMsg<ExecuteAuthMsg>,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddAuthorization { auth_contract } => {
-            execute_add_authorization(deps, env, info, auth_contract)
-        }
+        ExecuteMsg::Custom(auth_msg) => execute_auth_management(deps, auth_msg, info),
+        base_msg => execute_proxy_contract(deps, base_msg, info),
     }
+}
+
+pub fn execute_auth_management(
+    _deps: DepsMut,
+    _msg: ExecuteAuthMsg,
+    _info: MessageInfo,
+) -> Result<Response, ContractError> {
+    unimplemented!()
+}
+
+pub fn execute_proxy_contract(
+    deps: DepsMut,
+    msg: ExecuteMsg<ExecuteAuthMsg>,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let proposal_addr = PROPOSAL_MODULE.load(deps.storage)?;
+
+    let submsg = WasmMsg::Execute {
+        contract_addr: proposal_addr.to_string(),
+        msg: to_binary(&msg).unwrap(),
+        funds: info.funds,
+    };
+
+    Ok(Response::default()
+        .add_attribute("action", "proxied_proposal_msg")
+        .add_message(submsg))
 }
 
 pub fn execute_add_authorization(
@@ -96,13 +124,21 @@ pub fn execute_add_authorization(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
-        QueryMsg::GetAuthorizations { .. } => {
+        QueryMsg::Custom(QueryAuthMsg::Authorize { msgs, sender }) => {
+            authorize_messages(deps, env, msgs, sender)
+        }
+        QueryMsg::Custom(QueryAuthMsg::GetAuthorizations { .. }) => {
             unimplemented!()
         }
+        base_msg => query_proxy(deps, base_msg),
     }
+}
+
+fn query_proxy(deps: Deps, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Binary> {
+    let proposal_addr = PROPOSAL_MODULE.load(deps.storage)?;
+    deps.querier.query_wasm_smart(proposal_addr, &msg)
 }
 
 fn authorize_messages(
@@ -125,10 +161,10 @@ fn authorize_messages(
         deps.querier
             .query_wasm_smart(
                 a.contract.clone(),
-                &QueryMsg::Authorize {
+                &QueryMsg::Custom(QueryAuthMsg::Authorize {
                     msgs: msgs.clone(),
                     sender: sender.clone(),
-                },
+                }),
             )
             .unwrap_or(IsAuthorizedResponse { authorized: false })
             .authorized
@@ -137,6 +173,23 @@ fn authorize_messages(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> Result<Response, ContractError> {
-    unimplemented!();
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        PROPOSAL_MODULE_INSTANTIATE_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg)?;
+            let proposal_module_addr = deps.api.addr_validate(&res.contract_address)?;
+            let current = PROPOSAL_MODULE.may_load(deps.storage)?;
+
+            // Make sure a bug in instantiation isn't causing us to
+            // make more than one proposal module.
+            if current.is_some() {
+                return Err(ContractError::MultipleParents {});
+            }
+
+            PROPOSAL_MODULE.save(deps.storage, &proposal_module_addr)?;
+
+            Ok(Response::default().add_attribute("proposal_module", proposal_module_addr))
+        }
+        _ => Err(ContractError::UnknownReplyID {}),
+    }
 }

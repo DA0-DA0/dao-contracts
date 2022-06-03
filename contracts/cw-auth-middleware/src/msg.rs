@@ -13,13 +13,13 @@ pub struct InstantiateMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg {
+pub enum ExecuteAuthMsg {
     AddAuthorization { auth_contract: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
+pub enum QueryAuthMsg {
     GetAuthorizations {},
     Authorize {
         msgs: Vec<CosmosMsg<Empty>>,

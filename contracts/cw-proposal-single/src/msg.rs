@@ -58,7 +58,7 @@ pub struct DepositInfo {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg {
+pub enum ExecuteMsg<T = Empty> {
     /// Creates a proposal in the governance module.
     Propose {
         /// The title of the proposal.
@@ -127,12 +127,13 @@ pub enum ExecuteMsg {
     RemoveVoteHook {
         address: String,
     },
+    Custom(T),
 }
 
 #[govmod_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
+pub enum QueryMsg<T = Empty> {
     /// Gets the governance module's config. Returns `state::Config`.
     Config {},
     /// Gets information about a proposal. Returns
@@ -160,4 +161,5 @@ pub enum QueryMsg {
     },
     ProposalHooks {},
     VoteHooks {},
+    Custom(T),
 }

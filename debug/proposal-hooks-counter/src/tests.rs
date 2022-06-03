@@ -161,7 +161,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::Config {},
+            &cw_proposal_single::msg::QueryMsg::Config::<Empty> {},
         )
         .unwrap();
     let dao = govmod_config.dao;
@@ -193,7 +193,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook {
+        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook::<Empty> {
             address: counters.to_string(),
         },
         &[],
@@ -202,7 +202,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddVoteHook {
+        &cw_proposal_single::msg::ExecuteMsg::AddVoteHook::<Empty> {
             address: counters.to_string(),
         },
         &[],
@@ -214,7 +214,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_proposal_single::msg::QueryMsg::ProposalHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -222,7 +222,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_proposal_single::msg::QueryMsg::VoteHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -238,7 +238,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Propose {
+        &cw_proposal_single::msg::ExecuteMsg::Propose::<Empty> {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
@@ -272,7 +272,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Vote {
+        &cw_proposal_single::msg::ExecuteMsg::Vote::<Empty> {
             proposal_id: 1,
             vote: Vote::Yes,
         },
@@ -298,7 +298,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook {
+        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook::<Empty> {
             address: failing_counters.to_string(),
         },
         &[],
@@ -307,7 +307,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddVoteHook {
+        &cw_proposal_single::msg::ExecuteMsg::AddVoteHook::<Empty> {
             address: failing_counters.to_string(),
         },
         &[],
@@ -319,7 +319,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_proposal_single::msg::QueryMsg::ProposalHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 2);
@@ -327,7 +327,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_proposal_single::msg::QueryMsg::VoteHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 2);
@@ -336,7 +336,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Propose {
+        &cw_proposal_single::msg::ExecuteMsg::Propose::<Empty> {
             title: "A simple text proposal 2nd".to_string(),
             description: "This is a simple text proposal 2nd".to_string(),
             msgs: vec![],
@@ -358,7 +358,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_proposal_single::msg::QueryMsg::ProposalHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -369,7 +369,7 @@ fn test_counters() {
         .execute_contract(
             dao.clone(),
             govmod_single.clone(),
-            &cw_proposal_single::msg::ExecuteMsg::RemoveProposalHook {
+            &cw_proposal_single::msg::ExecuteMsg::RemoveProposalHook::<Empty> {
                 address: failing_counters.to_string(),
             },
             &[],
@@ -381,7 +381,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_proposal_single::msg::QueryMsg::VoteHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 2);
@@ -390,7 +390,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Vote {
+        &cw_proposal_single::msg::ExecuteMsg::Vote::<Empty> {
             proposal_id: 2,
             vote: Vote::Yes,
         },
@@ -417,7 +417,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_proposal_single::msg::QueryMsg::VoteHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -428,7 +428,7 @@ fn test_counters() {
         .execute_contract(
             dao,
             govmod_single.clone(),
-            &cw_proposal_single::msg::ExecuteMsg::RemoveVoteHook {
+            &cw_proposal_single::msg::ExecuteMsg::RemoveVoteHook::<Empty> {
                 address: failing_counters.to_string(),
             },
             &[],
@@ -440,7 +440,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_proposal_single::msg::QueryMsg::ProposalHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -448,7 +448,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single,
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_proposal_single::msg::QueryMsg::VoteHooks::<Empty> {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);

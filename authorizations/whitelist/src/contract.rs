@@ -4,7 +4,7 @@ use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use cw_auth_middleware::msg::{IsAuthorizedResponse, QueryMsg};
+use cw_auth_middleware::msg::{IsAuthorizedResponse, QueryAuthMsg};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -58,9 +58,9 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryAuthMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
+        QueryAuthMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
         _ => unimplemented!(),
     }
 }
