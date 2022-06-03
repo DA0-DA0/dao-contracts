@@ -65,6 +65,8 @@ pub fn instantiate(
         .add_attribute("dao", dao))
 }
 
+use colored::*;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -72,6 +74,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    println!("{} {:?}", "EXECUTING SINGLE PROPOSAL".yellow(), msg);
     match msg {
         ExecuteMsg::Propose {
             title,
@@ -121,12 +124,15 @@ pub fn execute_propose(
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    println!("BEFORE: {:?}", config.dao);
+    // ToDo: Get the DAO from the parent. "generic contract compossition interface"
     let voting_module: Addr = deps
         .querier
         .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::VotingModule {})?;
 
     // Voting modules are not required to implement this
     // query. Lacking an implementation they are active by default.
+    println!("AFTER: {:?}", voting_module);
     let active_resp: IsActiveResponse = deps
         .querier
         .query_wasm_smart(

@@ -46,6 +46,7 @@ voting = { version = "*", path = "../../packages/voting" }
 indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
 proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }
 vote-hooks = { version = "*", path = "../../packages/vote-hooks" }
+colored = {}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

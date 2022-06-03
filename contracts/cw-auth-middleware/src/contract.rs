@@ -19,14 +19,17 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PROPOSAL_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 
+use colored::*;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    println!("{}: {}", "DAO?".red(), info.sender.clone());
     let config = Config {
         dao: info.sender.clone(),
     };
@@ -35,7 +38,7 @@ pub fn instantiate(
     AUTHORIZATIONS.save(deps.storage, &info.sender, &empty)?;
     let proposal_module_msg = msg
         .proposal_module_instantiate_info
-        .into_wasm_msg(env.contract.address.clone());
+        .into_wasm_msg(info.sender.clone()); // The admin of the proxied proposal is not this contract, but the dao.
     let proposal_module_msg: SubMsg<Empty> =
         SubMsg::reply_always(proposal_module_msg, PROPOSAL_MODULE_INSTANTIATE_REPLY_ID);
 
@@ -51,6 +54,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg<ExecuteAuthMsg>,
 ) -> Result<Response, ContractError> {
+    println!("{}", "EXECUTE BASE".blue());
     match msg {
         ExecuteMsg::Custom(auth_msg) => execute_auth_management(deps, auth_msg, info),
         base_msg => execute_proxy_contract(deps, base_msg, info),
@@ -62,7 +66,8 @@ pub fn execute_auth_management(
     _msg: ExecuteAuthMsg,
     _info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    println!("{}", "EXECUTE MANAGEMENT".blue());
+    Err(ContractError::InvalidMessageError {})
 }
 
 pub fn execute_proxy_contract(
@@ -70,6 +75,7 @@ pub fn execute_proxy_contract(
     msg: ExecuteMsg<ExecuteAuthMsg>,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    println!("{} {:?}", "EXECUTE PROXY".blue(), msg);
     let proposal_addr = PROPOSAL_MODULE.load(deps.storage)?;
 
     let submsg = WasmMsg::Execute {
@@ -79,7 +85,7 @@ pub fn execute_proxy_contract(
     };
 
     Ok(Response::default()
-        .add_attribute("action", "proxied_proposal_msg")
+        .add_attribute("action", "execute_proxy_proposal")
         .add_message(submsg))
 }
 
@@ -125,6 +131,7 @@ pub fn execute_add_authorization(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Binary> {
+    println!("{} {:?}", "QUERYING BASE".yellow(), msg);
     match msg {
         QueryMsg::Custom(QueryAuthMsg::Authorize { msgs, sender }) => {
             authorize_messages(deps, env, msgs, sender)
@@ -138,6 +145,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Bin
 
 fn query_proxy(deps: Deps, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Binary> {
     let proposal_addr = PROPOSAL_MODULE.load(deps.storage)?;
+    println!("{}", "QUERYING INTERNAL".yellow());
     deps.querier.query_wasm_smart(proposal_addr, &msg)
 }
 
@@ -150,7 +158,7 @@ fn authorize_messages(
     // This checks all the registered authorizations
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
-    println!("Auths: {:?}", auths);
+    println!("{} Auths: {:?}", "".yellow(), auths);
     if auths.is_empty() {
         // If there aren't any authorizations, we consider the auth as not-configured and allow all
         // messages
@@ -179,7 +187,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let res = parse_reply_instantiate_data(msg)?;
             let proposal_module_addr = deps.api.addr_validate(&res.contract_address)?;
             let current = PROPOSAL_MODULE.may_load(deps.storage)?;
-
+            println!(
+                "{}: {:?}",
+                "PROPOSAL (PROXIED) ADDR".blue(),
+                proposal_module_addr
+            );
             // Make sure a bug in instantiation isn't causing us to
             // make more than one proposal module.
             if current.is_some() {

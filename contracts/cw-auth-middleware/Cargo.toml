@@ -42,6 +42,7 @@ thiserror = { version = "1.0" }
 indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
 cw-core = { version="*", path="../cw-core" }
 cw-proposal-single = { version="*", path="../cw-proposal-single" }
+colored = {}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta" }

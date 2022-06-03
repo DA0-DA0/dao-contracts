@@ -1527,6 +1527,8 @@ fn test_deposit_return_on_close() {
     assert_eq!(balance.balance, Uint128::new(10));
 }
 
+use colored::*;
+
 #[test]
 fn test_execute_proposal_with_auth() {
     let mut app = App::default();
@@ -1570,6 +1572,7 @@ fn test_execute_proposal_with_auth() {
             },
         ]),
     );
+    println!("{} {:?}", "DAO ADDR: ".green(), core_addr);
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
@@ -1579,6 +1582,12 @@ fn test_execute_proposal_with_auth() {
 
     assert_eq!(proposal_modules.len(), 1);
     let proposal_single = proposal_modules.into_iter().next().unwrap();
+
+    println!(
+        "{} {:?}",
+        "PROPOSAL (WITH AUTH) ADDR: ".green(),
+        proposal_single
+    );
 
     app.execute_contract(
         Addr::unchecked("nico"),
