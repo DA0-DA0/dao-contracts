@@ -800,7 +800,7 @@ fn test_propose_supports_stargate_message() {
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr.clone(),
+            governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
