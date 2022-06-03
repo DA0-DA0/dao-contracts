@@ -1581,17 +1581,17 @@ fn test_execute_proposal_with_auth() {
     let proposal_modules = gov_state.proposal_modules;
 
     assert_eq!(proposal_modules.len(), 1);
-    let proposal_single = proposal_modules.into_iter().next().unwrap();
+    let proposal_w_auth = proposal_modules.into_iter().next().unwrap();
 
     println!(
         "{} {:?}",
         "PROPOSAL (WITH AUTH) ADDR: ".green(),
-        proposal_single
+        proposal_w_auth
     );
 
     app.execute_contract(
         Addr::unchecked("nico"),
-        proposal_single.clone(),
+        proposal_w_auth.clone(),
         &ExecuteMsg::Propose::<Empty> {
             title: "This proposal will pass...".to_string(),
             description: "but will be allowed depending on the auth module".to_string(),
@@ -1603,7 +1603,7 @@ fn test_execute_proposal_with_auth() {
 
     app.execute_contract(
         Addr::unchecked("nico"),
-        proposal_single.clone(),
+        proposal_w_auth.clone(),
         &ExecuteMsg::Vote::<Empty> {
             proposal_id: 1,
             vote: Vote::Yes,
@@ -1654,7 +1654,7 @@ fn test_execute_proposal_with_auth() {
     // let auth_module = gov_state.authorization_module;
     app.execute_contract(
         Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
-        proposal_single.clone(),
+        proposal_w_auth.clone(),
         &ExecuteMsg::Custom(cw_auth_middleware::msg::ExecuteAuthMsg::AddAuthorization {
             auth_contract: whitelist_addr.to_string(),
         }),
@@ -1664,7 +1664,7 @@ fn test_execute_proposal_with_auth() {
 
     app.execute_contract(
         another_stranger.clone(),
-        proposal_single.clone(),
+        proposal_w_auth.clone(),
         &ExecuteMsg::Execute::<Empty> { proposal_id: 1 },
         &[],
     )

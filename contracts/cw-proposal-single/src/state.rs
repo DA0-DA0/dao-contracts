@@ -104,6 +104,16 @@ impl DepositInfo {
             refund_failed_proposals,
         })
     }
+
+    pub fn from_checked(checked: CheckedDepositInfo) -> Self {
+        Self {
+            token: DepositToken::Token {
+                address: checked.token.to_string(),
+            },
+            deposit: checked.deposit,
+            refund_failed_proposals: checked.refund_failed_proposals,
+        }
+    }
 }
 
 pub fn get_deposit_msg(

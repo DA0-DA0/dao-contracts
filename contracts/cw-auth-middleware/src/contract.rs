@@ -5,7 +5,7 @@ use cosmwasm_std::{
     StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_proposal_single::msg::{ExecuteMsg, QueryMsg};
+use cw_proposal_single::msg::{DepositInfo, ExecuteMsg, QueryMsg};
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::{
@@ -200,7 +200,38 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             PROPOSAL_MODULE.save(deps.storage, &proposal_module_addr)?;
 
-            Ok(Response::default().add_attribute("proposal_module", proposal_module_addr))
+            let own_config = CONFIG.load(deps.storage)?;
+            let mut proposal_config: cw_proposal_single::state::Config = deps
+                .querier
+                .query_wasm_smart(proposal_module_addr.clone(), &QueryMsg::Config::<Empty> {})?;
+            proposal_config.dao = own_config.dao;
+            println!("{}{:?}", "NEW_CONFIG:".red(), proposal_config);
+
+            // Now that I own the proposal. I update its config so that it knows who the real dao is
+            let deposit = if let Some(deposit) = proposal_config.deposit_info {
+                Some(DepositInfo::from_checked(deposit))
+            } else {
+                None
+            };
+
+            // Can we do this in a cleaner way?
+            let proposal_update_msg = WasmMsg::Execute {
+                contract_addr: proposal_module_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::UpdateConfig::<Empty> {
+                    threshold: proposal_config.threshold,
+                    max_voting_period: proposal_config.max_voting_period,
+                    only_members_execute: proposal_config.only_members_execute,
+                    allow_revoting: proposal_config.allow_revoting,
+                    dao: proposal_config.dao.to_string(),
+                    deposit_info: deposit,
+                })
+                .unwrap(),
+                funds: vec![],
+            };
+
+            Ok(Response::default()
+                .add_attribute("proposal_module", proposal_module_addr)
+                .add_submessage(SubMsg::new(proposal_update_msg)))
         }
         _ => Err(ContractError::UnknownReplyID {}),
     }

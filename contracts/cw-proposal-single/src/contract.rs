@@ -124,15 +124,12 @@ pub fn execute_propose(
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    println!("BEFORE: {:?}", config.dao);
-    // ToDo: Get the DAO from the parent. "generic contract compossition interface"
     let voting_module: Addr = deps
         .querier
         .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::VotingModule {})?;
 
     // Voting modules are not required to implement this
     // query. Lacking an implementation they are active by default.
-    println!("AFTER: {:?}", voting_module);
     let active_resp: IsActiveResponse = deps
         .querier
         .query_wasm_smart(
@@ -209,6 +206,7 @@ pub fn execute_propose(
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
     let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
+    println!("HERE?");
     Ok(Response::default()
         .add_messages(deposit_msg)
         .add_submessages(hooks)
