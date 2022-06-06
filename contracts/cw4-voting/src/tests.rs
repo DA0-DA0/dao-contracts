@@ -541,3 +541,52 @@ fn test_migrate() {
 
     assert_eq!(new_power, power)
 }
+
+#[test]
+fn test_duplicate_member() {
+    let mut app = App::default();
+    let _voting_addr = setup_test_case(&mut app);
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+    // Instantiate with members but have a duplicate
+    // Total weight is actually 75 but ADDR3 appears twice.
+    let msg = InstantiateMsg {
+        cw4_group_code_id: cw4_id,
+        initial_members: vec![
+            cw4::Member {
+                addr: ADDR1.to_string(),
+                weight: 25,
+            },
+            cw4::Member {
+                addr: ADDR2.to_string(),
+                weight: 25,
+            },
+            cw4::Member {
+                addr: ADDR3.to_string(),
+                weight: 25,
+            },
+            cw4::Member {
+                addr: ADDR3.to_string(), // same address above
+                weight: 25,
+            },
+        ],
+    };
+    let voting_addr = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &msg,
+            &[],
+            "voting module",
+            None,
+        )
+        .unwrap();
+    app.update_block(next_block);
+    let total_voting_power: TotalPowerAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(voting_addr, &QueryMsg::TotalPowerAtHeight { height: None })
+        .unwrap();
+    // Previous versions voting power was 100, due to no dedup.
+    // Bug busted : )
+    assert_eq!(total_voting_power.power, Uint128::new(75)) // should be 75
+}

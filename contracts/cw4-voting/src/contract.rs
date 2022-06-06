@@ -21,12 +21,13 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    mut msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     if msg.initial_members.is_empty() {
         return Err(ContractError::NoMembers {});
     }
+    msg.initial_members.dedup();
 
     let mut total_weight = Uint128::zero();
     for member in msg.initial_members.iter() {
