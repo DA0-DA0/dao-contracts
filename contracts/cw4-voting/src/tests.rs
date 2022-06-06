@@ -588,5 +588,5 @@ fn test_duplicate_member() {
         .unwrap();
     // Previous versions voting power was 100, due to no dedup.
     // Bug busted : )
-    assert_eq!(total_voting_power.power, Uint128::new(75)) // should be 75
+    assert_eq!(total_voting_power.power, Uint128::new(69)) // should be 69
 }
