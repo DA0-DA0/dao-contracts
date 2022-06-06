@@ -1,8 +1,8 @@
 use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Denom};
+use cw20_stake::hooks::StakeChangedHookMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cw20_stake::hooks::StakeChangedHookMsg;
 
 use crate::state::{Config, RewardConfig};
 pub use cw_controllers::ClaimsResponse;
