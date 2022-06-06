@@ -10,7 +10,7 @@ use crate::state::{Config, CONFIG, LAST_PAYMENT_BLOCK};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
-const CONTRACT_NAME: &str = "crates.io:stake-cw20-reward-distributor";
+const CONTRACT_NAME: &str = "crates.io:cw20-stake-reward-distributor";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -132,10 +132,10 @@ pub fn validate_cw20(deps: Deps, cw20_addr: Addr) -> bool {
 }
 
 pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
-    let response: Result<stake_cw20::msg::TotalStakedAtHeightResponse, StdError> =
+    let response: Result<cw20_stake::msg::TotalStakedAtHeightResponse, StdError> =
         deps.querier.query_wasm_smart(
             staking_addr,
-            &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None },
+            &cw20_stake::msg::QueryMsg::TotalStakedAtHeight { height: None },
         );
     response.is_ok()
 }
@@ -162,7 +162,7 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
         contract: config.staking_addr.clone().into_string(),
         amount,
-        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Fund {}).unwrap(),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Fund {}).unwrap(),
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
         contract_addr: config.reward_token.into(),

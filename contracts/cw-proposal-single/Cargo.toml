@@ -54,7 +54,7 @@ cw4-voting = { path = "../cw4-voting", version = "*" }
 cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" }
 cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }
 testing = { version = "*", path = "../../packages/testing" }
-stake-cw20 = { path="../stake-cw20", version = "*" }
+cw20-stake = { path= "../cw20-stake", version = "*" }
 cw20-base = "0.13"
 cw4 = "0.13"
 cw4-group = "0.13"

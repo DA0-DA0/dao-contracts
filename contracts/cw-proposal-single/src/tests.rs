@@ -34,9 +34,9 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
 
 fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        stake_cw20::contract::execute,
-        stake_cw20::contract::instantiate,
-        stake_cw20::contract::query,
+        cw20_stake::contract::execute,
+        cw20_stake::contract::instantiate,
+        cw20_stake::contract::query,
     );
     Box::new(contract)
 }
@@ -92,11 +92,11 @@ fn staked_balances_voting() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn stake_cw20() -> Box<dyn Contract<Empty>> {
+fn cw20_stake() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        stake_cw20::contract::execute,
-        stake_cw20::contract::instantiate,
-        stake_cw20::contract::query,
+        cw20_stake::contract::execute,
+        cw20_stake::contract::instantiate,
+        cw20_stake::contract::query,
     );
     Box::new(contract)
 }
@@ -150,7 +150,7 @@ fn instantiate_with_staked_balances_governance(
     };
 
     let cw20_id = app.store_code(cw20_contract());
-    let stake_cw20_id = app.store_code(stake_cw20());
+    let cw20_stake_id = app.store_code(cw20_stake());
     let staked_balances_voting_id = app.store_code(staked_balances_voting());
     let core_contract_id = app.store_code(cw_gov_contract());
 
@@ -173,7 +173,7 @@ fn instantiate_with_staked_balances_governance(
                     decimals: 6,
                     initial_balances: initial_balances.clone(),
                     marketing: None,
-                    staking_code_id: stake_cw20_id,
+                    staking_code_id: cw20_stake_id,
                     unstaking_duration: Some(Duration::Height(6)),
                     initial_dao_balance: None,
                 },
@@ -231,7 +231,7 @@ fn instantiate_with_staked_balances_governance(
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking_contract.to_string(),
                 amount,
-                msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &[],
         )
@@ -2074,7 +2074,7 @@ fn test_active_threshold_absolute() {
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_contract.to_string(),
         amount: Uint128::new(100),
-        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(Addr::unchecked(CREATOR_ADDR), token_contract, &msg, &[])
         .unwrap();
@@ -2095,7 +2095,7 @@ fn test_active_threshold_absolute() {
         .unwrap();
 
     // Unstake some tokens to make it inactive again
-    let msg = stake_cw20::msg::ExecuteMsg::Unstake {
+    let msg = cw20_stake::msg::ExecuteMsg::Unstake {
         amount: Uint128::new(50),
     };
     app.execute_contract(Addr::unchecked(CREATOR_ADDR), staking_contract, &msg, &[])
@@ -2200,7 +2200,7 @@ fn test_active_threshold_percent() {
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_contract.to_string(),
         amount: Uint128::new(20000000),
-        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(Addr::unchecked(CREATOR_ADDR), token_contract, &msg, &[])
         .unwrap();
@@ -2221,7 +2221,7 @@ fn test_active_threshold_percent() {
         .unwrap();
 
     // Unstake some tokens to make it inactive again
-    let msg = stake_cw20::msg::ExecuteMsg::Unstake {
+    let msg = cw20_stake::msg::ExecuteMsg::Unstake {
         amount: Uint128::new(1000),
     };
     app.execute_contract(Addr::unchecked(CREATOR_ADDR), staking_contract, &msg, &[])
@@ -2304,7 +2304,7 @@ fn test_active_threshold_none() {
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_contract.to_string(),
         amount: Uint128::new(2000),
-        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(Addr::unchecked(CREATOR_ADDR), token_contract, &msg, &[])
         .unwrap();

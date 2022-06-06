@@ -23,9 +23,9 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
 
 fn staking_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        stake_cw20::contract::execute,
-        stake_cw20::contract::instantiate,
-        stake_cw20::contract::query,
+        cw20_stake::contract::execute,
+        cw20_stake::contract::instantiate,
+        cw20_stake::contract::query,
     );
     Box::new(contract)
 }
@@ -57,7 +57,7 @@ fn stake_tokens(app: &mut App, staking_addr: Addr, cw20_addr: Addr, sender: &str
     let msg = cw20::Cw20ExecuteMsg::Send {
         contract: staking_addr.to_string(),
         amount: Uint128::new(amount),
-        msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     };
     app.execute_contract(Addr::unchecked(sender), cw20_addr, &msg, &[])
         .unwrap();

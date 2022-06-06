@@ -22,9 +22,9 @@ pub fn cw20_contract() -> Box<dyn Contract<Empty>> {
 
 fn staking_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        stake_cw20::contract::execute,
-        stake_cw20::contract::instantiate,
-        stake_cw20::contract::query,
+        cw20_stake::contract::execute,
+        cw20_stake::contract::instantiate,
+        cw20_stake::contract::query,
     );
     Box::new(contract)
 }
@@ -55,7 +55,7 @@ fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
 
 fn instantiate_staking(app: &mut App, cw20_addr: Addr) -> Addr {
     let staking_id = app.store_code(staking_contract());
-    let msg = stake_cw20::msg::InstantiateMsg {
+    let msg = cw20_stake::msg::InstantiateMsg {
         owner: Some(OWNER.to_string()),
         manager: Some(MANAGER.to_string()),
         token_address: cw20_addr.to_string(),

@@ -7,7 +7,7 @@
 | [cw-proposal-single](contracts/cw-proposal-single)                       | A proposal module for single choice (yes / no) voting.     |
 | [cw20-staked-balance-voting](contracts/cw20-staked-balance-voting)       | A voting power module for staked governance tokens.        |
 | [cw4-voting](contracts/cw4-voting)                                       | A voting power module for multisig-style voting.           |
-| [stake-cw20](contracts/stake-cw20)                                       | A contract for staking cw20 tokens.                        |
+| [cw20-stake](contracts/cw20-stake)                                       | A contract for staking cw20 tokens.                        |
 
 
 | Unaudited contracts                                                      | Description                                                |
@@ -16,8 +16,8 @@
 | [cw-proposal-sudo](contracts/cw-proposal-sudo)                           | A proposal module that allows an admin to control a DAO.   |
 | [cw20-balance-voting](contracts/cw20-balance-voting)                     | TESTING ONLY - a voting module based on cw20 balances.     |
 | [proposal-hooks-counter](contracts/proposal-hooks-counter)               | TESTING ONLY - a contract for testing proposal hooks.      |
-| [stake-external-rewards](contracts/stake-cw20-external-rewards)          | A contract for providing external stakinig rewards.        |
-| [stake-cw20-reward-distributor](contracts/stake-cw20-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
+| [stake-external-rewards](contracts/cw20-stake-external-rewards)          | A contract for providing external stakinig rewards.        |
+| [cw20-stake-reward-distributor](contracts/cw20-stake-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
 
 Audited contracts have completed [an
 audit](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)

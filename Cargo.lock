@@ -299,6 +299,7 @@ dependencies = [
  "cw20",
  "cw20-balance-voting",
  "cw20-base",
+ "cw20-stake",
  "cw20-staked-balance-voting",
  "cw3",
  "cw4",
@@ -308,7 +309,6 @@ dependencies = [
  "proposal-hooks",
  "schemars",
  "serde",
- "stake-cw20",
  "testing",
  "thiserror",
  "vote-hooks",
@@ -417,6 +417,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw20-stake"
+version = "0.2.6"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-controllers",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw-utils",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw20-staked-balance-voting"
 version = "0.1.0"
 dependencies = [
@@ -431,9 +451,9 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "cw20-stake",
  "schemars",
  "serde",
- "stake-cw20",
  "thiserror",
 ]
 
@@ -1009,26 +1029,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stake-cw20"
-version = "0.2.6"
-dependencies = [
- "anyhow",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-controllers",
- "cw-multi-test",
- "cw-storage-plus",
- "cw-utils",
- "cw2",
- "cw20",
- "cw20-base",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "stake-cw20-external-rewards"
 version = "0.2.6"
 dependencies = [
@@ -1043,9 +1043,9 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "cw20-stake",
  "schemars",
  "serde",
- "stake-cw20",
  "thiserror",
 ]
 
@@ -1062,9 +1062,9 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "cw20-stake",
  "schemars",
  "serde",
- "stake-cw20",
  "thiserror",
 ]
 
