@@ -549,7 +549,7 @@ fn test_duplicate_member() {
     let voting_id = app.store_code(voting_contract());
     let cw4_id = app.store_code(cw4_contract());
     // Instantiate with members but have a duplicate
-    // Total weight is actually 75 but ADDR3 appears twice.
+    // Total weight is actually 69 but ADDR3 appears twice.
     let msg = InstantiateMsg {
         cw4_group_code_id: cw4_id,
         initial_members: vec![
@@ -563,11 +563,11 @@ fn test_duplicate_member() {
             },
             cw4::Member {
                 addr: ADDR3.to_string(),
-                weight: 25,
+                weight: 19,
             },
             cw4::Member {
                 addr: ADDR3.to_string(), // same address above
-                weight: 25,
+                weight: 19,
             },
         ],
     };
