@@ -31,9 +31,8 @@ pub const PAUSED: Item<Expiration> = Item::new("paused");
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 pub const PROPOSAL_MODULES: Map<Addr, Empty> = Map::new("proposal_modules");
 
-pub const ITEMS: Map<String, Addr> = Map::new("items");
-pub const PENDING_ITEM_INSTANTIATION_NAMES: Map<u64, String> =
-    Map::new("pending_item_instantiations");
+// General purpose KV store for DAO associated state.
+pub const ITEMS: Map<String, String> = Map::new("items");
 
 /// Set of cw20 tokens that have been registered with this contract's
 /// treasury.

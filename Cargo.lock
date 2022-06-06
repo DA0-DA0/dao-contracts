@@ -192,6 +192,7 @@ dependencies = [
  "cw-core-interface",
  "cw-core-macros",
  "cw-multi-test",
+ "cw-paginate",
  "cw-proposal-sudo",
  "cw-storage-plus",
  "cw-utils",
@@ -280,6 +281,17 @@ dependencies = [
  "schemars",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "cw-paginate"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "serde",
 ]
 
 [[package]]

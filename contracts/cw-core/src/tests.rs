@@ -6,8 +6,7 @@ use cw_utils::{Duration, Expiration};
 
 use crate::{
     msg::{
-        Admin, ExecuteMsg, InitialItem, InitialItemInfo, InstantiateMsg, MigrateMsg,
-        ModuleInstantiateInfo, QueryMsg,
+        Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
     },
     query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
     state::Config,
@@ -1046,8 +1045,8 @@ fn list_items(
     app: &mut App,
     gov_addr: Addr,
     start_at: Option<String>,
-    limit: Option<u64>,
-) -> Vec<String> {
+    limit: Option<u32>,
+) -> Vec<(String, String)> {
     app.wrap()
         .query_wasm_smart(gov_addr, &QueryMsg::ListItems { start_at, limit })
         .unwrap()
@@ -1070,7 +1069,7 @@ fn test_add_remove_get() {
     assert_eq!(
         a,
         GetItemResponse {
-            item: Some(Addr::unchecked("aaaaaaddr"))
+            item: Some("aaaaaaddr".to_string())
         }
     );
 
@@ -1153,9 +1152,11 @@ fn test_list_items() {
         "baraddr".to_string(),
     );
 
+    // Foo returned as we are only getting one item and items are in
+    // decending order.
     let first_item = list_items(&mut app, gov_addr.clone(), None, Some(1));
     assert_eq!(first_item.len(), 1);
-    assert_eq!(first_item[0], "fookey".to_string());
+    assert_eq!(first_item[0], ("fookey".to_string(), "fooaddr".to_string()));
 
     let no_items = list_items(&mut app, gov_addr.clone(), None, Some(0));
     assert_eq!(no_items.len(), 0);
@@ -1164,7 +1165,10 @@ fn test_list_items() {
     // no limit ought to give us a single item.
     let second_item = list_items(&mut app, gov_addr, Some("foo".to_string()), None);
     assert_eq!(second_item.len(), 1);
-    assert_eq!(second_item[0], "fookey".to_string());
+    assert_eq!(
+        second_item[0],
+        ("fookey".to_string(), "fooaddr".to_string())
+    );
 }
 
 #[test]
@@ -1214,32 +1218,16 @@ fn test_instantiate_with_items() {
         }],
         initial_items: Some(vec![
             InitialItem {
-                name: "item0".to_string(),
-                info: InitialItemInfo::Instantiate {
-                    info: ModuleInstantiateInfo {
-                        code_id: voting_id,
-                        msg: to_binary(&voting_instantiate).unwrap(),
-                        admin: Admin::CoreContract {},
-                        label: "item0: a voting module".to_string(),
-                    },
-                },
+                key: "item0".to_string(),
+                value: "item0_value".to_string(),
             },
             InitialItem {
-                name: "item1".to_string(),
-                info: InitialItemInfo::Instantiate {
-                    info: ModuleInstantiateInfo {
-                        code_id: voting_id,
-                        msg: to_binary(&voting_instantiate).unwrap(),
-                        admin: Admin::CoreContract {},
-                        label: "item1: another voting module".to_string(),
-                    },
-                },
+                key: "item1".to_string(),
+                value: "item1_value".to_string(),
             },
             InitialItem {
-                name: "item2".to_string(),
-                info: InitialItemInfo::Existing {
-                    address: "item2_addr".to_string(),
-                },
+                key: "item0".to_string(),
+                value: "item0_value_override".to_string(),
             },
         ]),
     };
@@ -1255,24 +1243,23 @@ fn test_instantiate_with_items() {
         )
         .unwrap();
 
-    // Ensure initial items were added.
+    // Ensure initial items were added. One was overriden.
     let items = list_items(&mut app, gov_addr.clone(), None, None);
-    assert_eq!(items.len(), 3);
+    assert_eq!(items.len(), 2);
 
-    // Descending order, so item2 is first.
-    assert_eq!(items[0], "item2".to_string());
-    let get_item2 = get_item(&mut app, gov_addr.clone(), "item2".to_string());
+    // Descending order, so item1 is first.
+    assert_eq!(items[1].0, "item0".to_string());
+    let get_item0 = get_item(&mut app, gov_addr.clone(), "item0".to_string());
     assert_eq!(
-        get_item2,
+        get_item0,
         GetItemResponse {
-            item: Some(Addr::unchecked("item2_addr")),
+            item: Some("item0_value_override".to_string()),
         }
     );
 
-    assert_eq!(items[1], "item1".to_string());
-    get_item(&mut app, gov_addr, "item1".to_string())
-        .item
-        .unwrap();
+    assert_eq!(items[0].0, "item1".to_string());
+    let item1_value = get_item(&mut app, gov_addr, "item1".to_string()).item;
+    assert_eq!(item1_value, Some("item1_value".to_string()))
 }
 
 #[test]
