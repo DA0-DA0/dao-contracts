@@ -1,0 +1,41 @@
+name: Test, compile, and deploy contracts
+on:
+  push:
+    branches:
+      - feat/ci-deploy
+jobs:
+  # prepare:
+  #   name: prepare
+  #   runs-on: ubuntu-20.04
+  #   container:
+  #     image: 'ghcr.io/cosmoscontracts/juno:v6.0.0'
+  #   steps:
+  #     - name: import keys into the keystore
+  #       run: junod keys import deployer
+
+  compile:
+    runs-on: ubuntu-20.04
+    container:
+      image: 'cosmwasm/workspace-optimizer:0.12.6'
+    steps:
+      - name: Check it out
+        uses: actions/checkout@v3
+      - name: Optimize
+        run: optimize_workspace.sh
+      - name: Store contracts in cache
+        uses: actions/cache@v3
+        with:
+          path: artifacts
+          key: artifacts-contracts
+
+  # deploy:
+  #   prepare:
+  #     name: prepare
+  #     runs-on: ubuntu-latest
+  #   container:
+  #     image: 'ghcr.io/cosmoscontracts/juno:v6.0.0'
+  #   steps:
+  #     - name: Upload to community computer
+  #       with:
+  #         path: artifacts
+  #         junod tx wasm store cw_core.wasm --from <ngmi wallet> --chain-id juno-1 --gas-prices 0.1ujuno --gas auto --gas-adjustment 1.3 -b block
