@@ -554,6 +554,10 @@ fn test_duplicate_member() {
         cw4_group_code_id: cw4_id,
         initial_members: vec![
             cw4::Member {
+                addr: ADDR3.to_string(), // same address above
+                weight: 19,
+            },
+            cw4::Member {
                 addr: ADDR1.to_string(),
                 weight: 25,
             },
@@ -565,13 +569,12 @@ fn test_duplicate_member() {
                 addr: ADDR3.to_string(),
                 weight: 19,
             },
-            cw4::Member {
-                addr: ADDR3.to_string(), // same address above
-                weight: 19,
-            },
         ],
     };
-    let voting_addr = app
+    // Previous versions voting power was 100, due to no dedup.
+    // Now we error
+    // Bug busted : )
+    let _voting_addr = app
         .instantiate_contract(
             voting_id,
             Addr::unchecked(DAO_ADDR),
@@ -580,13 +583,5 @@ fn test_duplicate_member() {
             "voting module",
             None,
         )
-        .unwrap();
-    app.update_block(next_block);
-    let total_voting_power: TotalPowerAtHeightResponse = app
-        .wrap()
-        .query_wasm_smart(voting_addr, &QueryMsg::TotalPowerAtHeight { height: None })
-        .unwrap();
-    // Previous versions voting power was 100, due to no dedup.
-    // Bug busted : )
-    assert_eq!(total_voting_power.power, Uint128::new(69)) // should be 69
+        .unwrap_err();
 }
