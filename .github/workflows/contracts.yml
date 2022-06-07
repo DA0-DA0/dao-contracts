@@ -1,18 +1,9 @@
-name: Test, compile, and deploy contracts
+name: Compile and deploy DAO contracts
 on:
   push:
     branches:
       - feat/ci-deploy
 jobs:
-  # prepare:
-  #   name: prepare
-  #   runs-on: ubuntu-20.04
-  #   container:
-  #     image: 'ghcr.io/cosmoscontracts/juno:v6.0.0'
-  #   steps:
-  #     - name: import keys into the keystore
-  #       run: junod keys import deployer
-
   compile:
     runs-on: ubuntu-20.04
     container:
@@ -28,14 +19,26 @@ jobs:
           path: artifacts
           key: artifacts-contracts
 
-  # deploy:
-  #   prepare:
-  #     name: prepare
-  #     runs-on: ubuntu-latest
-  #   container:
-  #     image: 'ghcr.io/cosmoscontracts/juno:v6.0.0'
-  #   steps:
-  #     - name: Upload to community computer
-  #       with:
-  #         path: artifacts
-  #         junod tx wasm store cw_core.wasm --from <ngmi wallet> --chain-id juno-1 --gas-prices 0.1ujuno --gas auto --gas-adjustment 1.3 -b block
+  deploy:
+    prepare:
+      name: deploy
+      runs-on: ubuntu-latest
+    container:
+      image: 'ghcr.io/cosmoscontracts/juno:v6.0.0'
+    steps:
+      - name: Set RPC node
+        env:
+          JUNO_RPC_NODE: ${{ secrets.JUNO_RPC_NODE}}
+        run:
+          junod config node "$JUNO_RPC_NODE"
+      - name: Assume dao-deploy identity
+        env:
+          DAO_DEPLOY_NINJA: ${{ secrets.DAO_DEPLOY_NINJA}}
+        run: |
+          echo "$DAO_DEPLOY_NINJA" | base64 --decode > 🥷.sh
+          sh 🥷.sh
+      # - name: Upload to community computer
+      #   with:
+      #     path: artifacts
+        
+      #     junod tx wasm store cw_core.wasm --from <ngmi wallet> --chain-id juno-1 --gas-prices 0.1ujuno --gas auto --gas-adjustment 1.3 -b block
