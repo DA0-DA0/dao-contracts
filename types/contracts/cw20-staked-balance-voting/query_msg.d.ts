@@ -7,6 +7,10 @@ dao: {
 [k: string]: unknown
 }
 } | {
+active_threshold: {
+[k: string]: unknown
+}
+} | {
 voting_power_at_height: {
 address: string
 height?: (number | null)
@@ -23,6 +27,10 @@ info: {
 }
 } | {
 token_contract: {
+[k: string]: unknown
+}
+} | {
+is_active: {
 [k: string]: unknown
 }
 })

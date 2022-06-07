@@ -37,6 +37,14 @@ start_after?: (string | null)
 [k: string]: unknown
 }
 } | {
+proposal_hooks: {
+[k: string]: unknown
+}
+} | {
+vote_hooks: {
+[k: string]: unknown
+}
+} | {
 info: {
 [k: string]: unknown
 }

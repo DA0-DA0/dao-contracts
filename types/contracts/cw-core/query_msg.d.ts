@@ -1,13 +1,25 @@
 export type QueryMsg = ({
+admin: {
+[k: string]: unknown
+}
+} | {
 config: {
 [k: string]: unknown
 }
 } | {
-voting_module: {
+cw20_balances: {
+limit?: (number | null)
+start_at?: (string | null)
 [k: string]: unknown
 }
 } | {
-governance_modules: {
+cw20_token_list: {
+limit?: (number | null)
+start_at?: (string | null)
+[k: string]: unknown
+}
+} | {
+cw721_token_list: {
 limit?: (number | null)
 start_at?: (string | null)
 [k: string]: unknown
@@ -25,6 +37,20 @@ key: string
 list_items: {
 limit?: (number | null)
 start_at?: (string | null)
+[k: string]: unknown
+}
+} | {
+proposal_modules: {
+limit?: (number | null)
+start_at?: (string | null)
+[k: string]: unknown
+}
+} | {
+pause_info: {
+[k: string]: unknown
+}
+} | {
+voting_module: {
 [k: string]: unknown
 }
 } | {

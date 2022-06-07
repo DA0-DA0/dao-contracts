@@ -2,6 +2,10 @@ import { DepositInfo, Duration, Threshold } from "./shared-types";
 
 export interface InstantiateMsg {
 /**
+ * Allows changing votes before the proposal expires. If this is enabled proposals will not be able to complete early as final vote information is not known until the time of proposal expiration.
+ */
+allow_revoting: boolean
+/**
  * Information about the deposit required to create a proposal. None if there is no deposit requirement, Some otherwise.
  */
 deposit_info?: (DepositInfo | null)
