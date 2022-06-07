@@ -1,8 +1,9 @@
-name: "Compile ⬙ Optimize ⬙ Upload contracts"
+name: Contracts
 
 on:
   push:
-    branches: [ "ci/deploy" ]
+    branches:
+      - feat/ci-deploy
     #paths: "contracts/**"
 
 jobs:
