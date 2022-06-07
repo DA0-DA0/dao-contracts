@@ -35,15 +35,15 @@ jobs:
         run: |
           junod config chain-id "$JUNO_CHAIN_ID"
           junod config node "$JUNO_RPC_NODE"
-      - name: Assume upload identity
+      - name: Add service wallet
         env:
           DAO_UPLOAD_NINJA: ${{ secrets.DAO_UPLOAD_NINJA}}
         run: |
           echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
           sh 🥷.sh
       - name: Upload to community computer
-        with:
-          path: artifacts
+        # with:
+        #   path: artifacts
         run: |
           ls
           junod version
