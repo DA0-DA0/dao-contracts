@@ -1,15 +1,17 @@
-name: Compile and deploy DAO contracts
+name: "Compile ⬙ Optimize ⬙ Upload contracts"
+
 on:
   push:
-    branches:
-      - feat/ci-deploy
+    branches: [ "ci/deploy" ]
+    #paths: "contracts/**"
+
 jobs:
   compile:
     runs-on: ubuntu-20.04
     container:
-      image: 'cosmwasm/workspace-optimizer:0.12.6'
+      image: cosmwasm/workspace-optimizer:0.12.6
     steps:
-      - name: Check it out
+      - name: Checkout code
         uses: actions/checkout@v3
       - name: Optimize
         run: optimize_workspace.sh
@@ -20,15 +22,15 @@ jobs:
           key: artifacts-contracts
 
   upload:
-      runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
     container:
-      image: 'ghcr.io/cosmoscontracts/juno:v6.0.0'
+      image: ghcr.io/cosmoscontracts/juno:v6.0.0
     steps:
       - name: Calibrate the Stargate 🪐
         env:
           JUNO_CHAIN_ID: ${{ secrets.JUNO_CHAIN_ID }}
           JUNO_RPC_NODE: ${{ secrets.JUNO_RPC_NODE }}
-        run:
+        run: |
           junod config chain-id "$JUNO_CHAIN_ID"
           junod config node "$JUNO_RPC_NODE"
       - name: Assume upload identity
