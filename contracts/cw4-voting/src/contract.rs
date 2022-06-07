@@ -40,9 +40,13 @@ pub fn instantiate(
     let mut total_weight = Uint128::zero();
     for member in initial_members.iter() {
         let member_addr = deps.api.addr_validate(&member.addr)?;
-        let weight = Uint128::from(member.weight);
-        USER_WEIGHTS.save(deps.storage, &member_addr, &weight, env.block.height)?;
-        total_weight += weight;
+        if member.weight > 0 {
+            // This works because query_voting_power_at_height will return 0 on address missing
+            // from storage, so no need to store anything.
+            let weight = Uint128::from(member.weight);
+            USER_WEIGHTS.save(deps.storage, &member_addr, &weight, env.block.height)?;
+            total_weight += weight;
+        }
     }
 
     if total_weight.is_zero() {
@@ -111,12 +115,22 @@ pub fn execute_member_changed_hook(
         } else {
             negative_difference += Uint128::from(old - weight);
         }
-        USER_WEIGHTS.save(
-            deps.storage,
-            &user_address,
-            &Uint128::from(weight),
-            env.block.height,
-        )?;
+
+        if weight != 0 {
+            USER_WEIGHTS.save(
+                deps.storage,
+                &user_address,
+                &Uint128::from(weight),
+                env.block.height,
+            )?;
+        } else if weight == 0 && weight != old {
+            // This works because query_voting_power_at_height will return 0 on address missing
+            // from storage, so no need to store anything.
+            //
+            // Note that we also check for weight != old: If for some reason this hook is triggered
+            // with weight 0 for old and new values, we don't need to do anything.
+            USER_WEIGHTS.remove(deps.storage, &user_address, env.block.height)?;
+        }
     }
     let new_total_weight = total_weight
         .checked_add(positive_difference)
