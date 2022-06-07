@@ -1073,11 +1073,16 @@ fn test_add_remove_get() {
         }
     );
 
-    remove_item(&mut app, gov_addr.clone(), "a".to_string());
-    let a = get_item(&mut app, gov_addr.clone(), "a".to_string());
+    remove_item(&mut app, gov_addr.clone(), "aaaaakey".to_string());
+    let a = get_item(&mut app, gov_addr, "aaaaakey".to_string());
     assert_eq!(a, GetItemResponse { item: None });
+}
 
-    remove_item(&mut app, gov_addr, "b".to_string());
+#[test]
+#[should_panic(expected = "Key is missing from storage")]
+fn test_remove_missing_key() {
+    let (gov_addr, mut app) = do_standard_instantiate(true, None);
+    remove_item(&mut app, gov_addr, "b".to_string())
 }
 
 #[test]

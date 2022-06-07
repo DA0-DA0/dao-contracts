@@ -36,4 +36,7 @@ pub enum ContractError {
 
     #[error("You can only instantiate {0} items during instantiation, but you tried to instantiate {1}.")]
     TooManyItems(u64, usize),
+
+    #[error("Key is missing from storage")]
+    KeyMissing {},
 }
