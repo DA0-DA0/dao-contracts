@@ -19,23 +19,23 @@ jobs:
           path: artifacts
           key: artifacts-contracts
 
-  deploy:
-    prepare:
-      name: deploy
+  upload:
       runs-on: ubuntu-latest
     container:
       image: 'ghcr.io/cosmoscontracts/juno:v6.0.0'
     steps:
-      - name: Set RPC node
+      - name: Calibrate the Stargate 🪐
         env:
-          JUNO_RPC_NODE: ${{ secrets.JUNO_RPC_NODE}}
+          JUNO_CHAIN_ID: ${{ secrets.JUNO_CHAIN_ID }}
+          JUNO_RPC_NODE: ${{ secrets.JUNO_RPC_NODE }}
         run:
+          junod config chain-id "$JUNO_CHAIN_ID"
           junod config node "$JUNO_RPC_NODE"
-      - name: Assume dao-deploy identity
+      - name: Assume upload identity
         env:
-          DAO_DEPLOY_NINJA: ${{ secrets.DAO_DEPLOY_NINJA}}
+          DAO_UPLOAD_NINJA: ${{ secrets.DAO_UPLOAD_NINJA}}
         run: |
-          echo "$DAO_DEPLOY_NINJA" | base64 --decode > 🥷.sh
+          echo "$DAO_UPLOAD_NINJA" | base64 --decode > 🥷.sh
           sh 🥷.sh
       # - name: Upload to community computer
       #   with:
