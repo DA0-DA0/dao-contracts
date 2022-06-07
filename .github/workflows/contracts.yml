@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
           sh 🥷.sh
-        name: Upload to community computer
+      - name: Upload to community computer
         with:
           path: artifacts
         run: |
