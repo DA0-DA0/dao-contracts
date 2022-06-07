@@ -45,6 +45,5 @@ jobs:
         # with:
         #   path: artifacts
         run: |
-          ls
-          junod version
+          junod keys list
         #     junod tx wasm store cw_core.wasm --from <ngmi wallet> --chain-id juno-1 --gas-prices 0.1ujuno --gas auto --gas-adjustment 1.3 -b block
