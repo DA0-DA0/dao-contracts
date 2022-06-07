@@ -62,6 +62,10 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &config)?;
 
+    if msg.reward_duration == 0 {
+        return Err(ContractError::ZeroRewardDuration {});
+    }
+
     let reward_config = RewardConfig {
         period_finish: 0,
         reward_rate: Uint128::zero(),
@@ -179,6 +183,9 @@ pub fn execute_fund(
         reward_rate: amount
             .checked_div(Uint128::from(reward_config.reward_duration))
             .map_err(StdError::divide_by_zero)?,
+        // As we're not changing the value and changing the value
+        // validates that the duration is non-zero we don't need to
+        // check here.
         reward_duration: reward_config.reward_duration,
     };
 
@@ -374,6 +381,11 @@ pub fn execute_update_reward_duration(
     if reward_config.period_finish > env.block.height {
         return Err(ContractError::RewardPeriodNotFinished {});
     };
+
+    if new_duration == 0 {
+        return Err(ContractError::ZeroRewardDuration {});
+    }
+
     let old_duration = reward_config.reward_duration;
     reward_config.reward_duration = new_duration;
     REWARD_CONFIG.save(deps.storage, &reward_config)?;
@@ -714,6 +726,55 @@ mod tests {
             .borrow_mut()
             .execute_contract(admin.clone(), reward_token, &fund_msg, &[])
             .unwrap();
+    }
+
+    #[test]
+    fn test_zero_rewards_duration() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, _) = setup_staking_contract(&mut app, initial_balances);
+        let reward_funding = vec![coin(100000000, denom.clone())];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: admin.to_string(),
+                amount: reward_funding,
+            }
+        }))
+        .unwrap();
+
+        let reward_token = Denom::Native(denom);
+        let owner = admin;
+        let manager = Addr::unchecked(MANAGER);
+        let reward_code_id = app.store_code(contract_rewards());
+        let msg = crate::msg::InstantiateMsg {
+            owner: Some(owner.clone().into_string()),
+            manager: Some(manager.into_string()),
+            staking_contract: staking_addr.to_string(),
+            reward_token,
+            reward_duration: 0,
+        };
+        let err: ContractError = app
+            .instantiate_contract(reward_code_id, owner, &msg, &[], "reward", None)
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, ContractError::ZeroRewardDuration {})
     }
 
     #[test]
@@ -1369,6 +1430,16 @@ mod tests {
         assert_eq!(res.reward.reward_rate, Uint128::new(0));
         assert_eq!(res.reward.period_finish, 0);
         assert_eq!(res.reward.reward_duration, 100000);
+
+        // Zero rewards durations are not allowed.
+        let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 0 };
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(admin.clone(), reward_addr.clone(), &msg, &[])
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, ContractError::ZeroRewardDuration {});
 
         let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 10 };
         let _resp = app
