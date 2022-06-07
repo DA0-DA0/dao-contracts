@@ -1911,3 +1911,34 @@ fn test_migrate() {
 
     assert_eq!(new_state, state);
 }
+
+#[test]
+fn test_execute_stargate_msg() {
+    let (core_addr, mut app) = do_standard_instantiate(true, None);
+    let proposal_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
+
+    let res = app.execute_contract(
+        proposal_module,
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![CosmosMsg::Stargate {
+                type_url: "foo_type".to_string(),
+                value: to_binary("foo_bin").unwrap(),
+            }],
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+}
