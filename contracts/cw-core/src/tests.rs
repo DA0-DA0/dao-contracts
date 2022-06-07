@@ -1940,5 +1940,6 @@ fn test_execute_stargate_msg() {
         },
         &[],
     );
-    assert!(res.is_ok());
+    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this test assert
+    assert!(res.is_err());
 }
