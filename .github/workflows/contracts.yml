@@ -47,12 +47,8 @@ jobs:
         with:
           name: dao-dao-dao-dao-dao
           path: /¬☯️
-      - name: Check downloaded wasm
-        run: |
-          ls -lah /¬☯️
       - name: Upload to community computer
-        # with:
-        #   path: artifacts
+        with:
+          path: /¬☯️
         run: |
-          junod keys list
-        #     junod tx wasm store cw_core.wasm --from <ngmi wallet> --chain-id juno-1 --gas-prices 0.1ujuno --gas auto --gas-adjustment 1.3 -b block
+          junod tx wasm store cw_core.wasm -y --from  --chain-id uni-3 --gas-prices 0.1ujunox --gas auto --gas-adjustment 1.3 -b block
