@@ -38,7 +38,7 @@ jobs:
         env:
           DAO_UPLOAD_NINJA: ${{ secrets.DAO_UPLOAD_NINJA}}
         run: |
-          echo "$DAO_UPLOAD_NINJA" | base64 --decode > 🥷.sh
+          echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
           sh 🥷.sh
       # - name: Upload to community computer
       #   with:
