@@ -43,7 +43,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -72,7 +72,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -101,7 +101,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -150,7 +150,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Lists all of the item keys associted with the contract. For example, given the items `{ \"group\": \"...\", \"subdao\": \"...\"}` this query would return `[\"group\", \"subdao\"]`.",
+      "description": "Lists all of the items associted with the contract. For example, given the items `{ \"group\": \"foo\", \"subdao\": \"bar\"}` this query would return `[(\"group\", \"foo\"), (\"subdao\", \"bar\")]`.",
       "type": "object",
       "required": [
         "list_items"
@@ -164,7 +164,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -193,7 +193,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {

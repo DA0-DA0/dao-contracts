@@ -41,7 +41,7 @@ pub fn instantiate(
     DAO.save(deps.storage, &info.sender)?;
     if let Some(active_threshold) = msg.active_threshold.clone() {
         if let ActiveThreshold::Percentage { percent } = active_threshold {
-            if percent > Decimal::percent(100) {
+            if percent > Decimal::percent(100) || percent <= Decimal::percent(0) {
                 return Err(ContractError::InvalidActivePercentage {});
             }
         }
@@ -208,7 +208,7 @@ pub fn execute_update_active_threshold(
     if let Some(active_threshold) = new_active_threshold {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > Decimal::percent(100) {
+                if percent > Decimal::percent(100) || percent <= Decimal::percent(0) {
                     return Err(ContractError::InvalidActivePercentage {});
                 }
             }

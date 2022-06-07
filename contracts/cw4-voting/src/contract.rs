@@ -27,9 +27,18 @@ pub fn instantiate(
     if msg.initial_members.is_empty() {
         return Err(ContractError::NoMembers {});
     }
+    let original_len = msg.initial_members.len();
+    let mut initial_members = msg.initial_members;
+    initial_members.sort_by(|a, b| a.addr.cmp(&b.addr));
+    initial_members.dedup();
+    let new_len = initial_members.len();
+
+    if original_len != new_len {
+        return Err(ContractError::DuplicateMembers {});
+    }
 
     let mut total_weight = Uint128::zero();
-    for member in msg.initial_members.iter() {
+    for member in initial_members.iter() {
         let member_addr = deps.api.addr_validate(&member.addr)?;
         let weight = Uint128::from(member.weight);
         USER_WEIGHTS.save(deps.storage, &member_addr, &weight, env.block.height)?;
@@ -47,7 +56,7 @@ pub fn instantiate(
         code_id: msg.cw4_group_code_id,
         msg: to_binary(&cw4_group::msg::InstantiateMsg {
             admin: Some(env.contract.address.to_string()),
-            members: msg.initial_members,
+            members: initial_members,
         })?,
         funds: vec![],
         label: env.contract.address.to_string(),
