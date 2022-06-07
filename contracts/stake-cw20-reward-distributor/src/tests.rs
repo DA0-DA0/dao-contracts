@@ -437,18 +437,56 @@ fn test_withdraw() {
         .execute_contract(
             Addr::unchecked(MANAGER),
             distributor_addr.clone(),
-            &ExecuteMsg::Withdraw {},
+            &ExecuteMsg::Withdraw {
+                amount: Uint128::from(990u64),
+            },
             &[],
         )
         .unwrap_err();
 
     assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
 
+    // Withdraw amount must be greater than zero
+    let err = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            distributor_addr.clone(),
+            &ExecuteMsg::Withdraw {
+                amount: Uint128::from(0u64),
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        ContractError::InvalidAmountForWithdraw {},
+        err.downcast().unwrap()
+    );
+
+    // Withdraw amount must be less than or equal to distributor contract balance
+    let err = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            distributor_addr.clone(),
+            &ExecuteMsg::Withdraw {
+                amount: Uint128::from(991u64),
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        ContractError::InvalidAmountForWithdraw {},
+        err.downcast().unwrap()
+    );
+
     // Withdraw funds
     app.execute_contract(
         Addr::unchecked(OWNER),
         distributor_addr,
-        &ExecuteMsg::Withdraw {},
+        &ExecuteMsg::Withdraw {
+            amount: Uint128::from(990u64),
+        },
         &[],
     )
     .unwrap();

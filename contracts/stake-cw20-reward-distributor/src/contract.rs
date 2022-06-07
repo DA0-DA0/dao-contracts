@@ -75,7 +75,7 @@ pub fn execute(
             reward_token,
         ),
         ExecuteMsg::Distribute {} => execute_distribute(deps, env),
-        ExecuteMsg::Withdraw {} => execute_withdraw(deps, info, env),
+        ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, info, env, amount),
     }
 }
 
@@ -186,6 +186,7 @@ pub fn execute_withdraw(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
+    amount: Uint128,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if config.owner != info.sender {
@@ -198,10 +199,13 @@ pub fn execute_withdraw(
             address: env.contract.address.to_string(),
         },
     )?;
+    if amount.is_zero() || amount > balance_info.balance {
+        return Err(ContractError::InvalidAmountForWithdraw {});
+    }
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Transfer {
         recipient: config.owner.clone().into(),
-        amount: balance_info.balance,
+        amount: amount.clone(),
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
         contract_addr: config.reward_token.into(),

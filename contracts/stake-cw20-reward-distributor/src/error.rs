@@ -14,4 +14,7 @@ pub enum ContractError {
 
     #[error("Invalid Staking Contract")]
     InvalidStakingContract {},
+
+    #[error("Invalid Amount For Withdraw")]
+    InvalidAmountForWithdraw {},
 }
