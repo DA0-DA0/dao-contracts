@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty};
+use cosmwasm_std::{Binary, CosmosMsg, Empty};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -100,9 +100,26 @@ pub enum ExecuteMsg {
     /// item already exists the existing value is overriden. If the
     /// item does not exist a new item is added.
     SetItem { key: String, addr: String },
-    /// Callable by the Admin, if one is configured, changes the
-    /// current admin. Setting to None removes the Admin.
-    UpdateAdmin { admin: Option<Addr> },
+    /// Callable by the admin of the contract. If ADMIN is None
+    /// removes the admin from the contract. If ADMIN is Some a new
+    /// admin is proposed and that new admin may become the admin by
+    /// executing the `AcceptAdminNomination` message.
+    ///
+    /// If there is already a pending admin nomination the
+    /// `WithdrawAdminNomination` message must be executed before a
+    /// new admin may be nominated.
+    NominateAdmin { admin: Option<String> },
+    /// Callable by a nominated admin. Admins are nominated via the
+    /// `NominateAdmin` message. Accepting a nomination will make the
+    /// nominated address the new admin.
+    ///
+    /// Requiring that the new admin accepts the nomination before
+    /// becoming the admin protects against a typo causing the admin
+    /// to change to an invalid address.
+    AcceptAdminNomination {},
+    /// Callable by the current admin. Withdraws the current admin
+    /// nomination.
+    WithdrawAdminNomination {},
     /// Callable by the core contract. Replaces the current
     /// governance contract config with the provided config.
     UpdateConfig { config: Config },
@@ -135,6 +152,9 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// Get's the DAO's admin (if configured).
     Admin {},
+    /// Get's the currently nominated admin (if any). Returns
+    /// `AdminNominationResponse`.
+    AdminNomination {},
     /// Gets the contract's config. Returns Config.
     Config {},
     /// Gets the token balance for each cw20 registered with the

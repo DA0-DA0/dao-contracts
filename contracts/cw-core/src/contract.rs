@@ -15,9 +15,13 @@ use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
 };
-use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
+use crate::query::{
+    AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
+    PauseInfoResponse,
+};
 use crate::state::{
-    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PROPOSAL_MODULES, VOTING_MODULE,
+    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
+    VOTING_MODULE,
 };
 
 // version info for migration info
@@ -105,7 +109,6 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
         ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
-        ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(deps, info.sender, admin),
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info.sender, config)
         }
@@ -120,6 +123,11 @@ pub fn execute(
         }
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
+        }
+        ExecuteMsg::NominateAdmin { admin } => execute_nominate_admin(deps, info.sender, admin),
+        ExecuteMsg::AcceptAdminNomination {} => execute_accept_admin_nomination(deps, info.sender),
+        ExecuteMsg::WithdrawAdminNomination {} => {
+            execute_withdraw_admin_nomination(deps, info.sender)
         }
     }
 }
@@ -182,37 +190,76 @@ pub fn execute_proposal_hook(
         .add_messages(msgs))
 }
 
-pub fn execute_update_admin(
+pub fn execute_nominate_admin(
     deps: DepsMut,
     sender: Addr,
-    admin: Option<Addr>,
+    nomination: Option<String>,
 ) -> Result<Response, ContractError> {
+    let nomination = nomination.map(|h| deps.api.addr_validate(&h)).transpose()?;
+
     let current_admin = ADMIN.load(deps.storage)?;
-
-    match current_admin {
-        Some(current_admin) => {
-            // Check sender is the DAO Admin
-            if sender != current_admin {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            // Save the new DAO Admin (which may be set to None)
-            ADMIN.save(deps.storage, &admin)?;
-
-            Ok(Response::default()
-                .add_attribute("action", "execute_update_admin")
-                .add_attribute(
-                    "new_admin",
-                    admin
-                        .map(|a| a.into_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                ))
-        }
-        None => {
-            // If no DAO admin is configured, return unauthorized
-            Err(ContractError::Unauthorized {})
-        }
+    if current_admin.as_ref() != Some(&sender) {
+        return Err(ContractError::Unauthorized {});
     }
+
+    let current_nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    if current_nomination.is_some() {
+        return Err(ContractError::PendingNomination {});
+    }
+
+    match &nomination {
+        Some(nomination) => NOMINATED_ADMIN.save(deps.storage, nomination)?,
+        None => ADMIN.save(deps.storage, &None)?,
+    }
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_nominate_admin")
+        .add_attribute(
+            "nomination",
+            nomination
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+        ))
+}
+
+pub fn execute_accept_admin_nomination(
+    deps: DepsMut,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let nomination = NOMINATED_ADMIN
+        .may_load(deps.storage)?
+        .ok_or(ContractError::NoAdminNomination {})?;
+    if sender != nomination {
+        return Err(ContractError::Unauthorized {});
+    }
+    NOMINATED_ADMIN.remove(deps.storage);
+    ADMIN.save(deps.storage, &Some(nomination))?;
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_accept_admin_nomination")
+        .add_attribute("new_admin", sender))
+}
+
+pub fn execute_withdraw_admin_nomination(
+    deps: DepsMut,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let admin = ADMIN.load(deps.storage)?;
+    if admin.as_ref() != Some(&sender) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Check that there is indeed a nomination to withdraw.
+    let current_nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    if current_nomination.is_none() {
+        return Err(ContractError::NoAdminNomination {});
+    }
+
+    NOMINATED_ADMIN.remove(deps.storage);
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_withdraw_admin_nomination")
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_update_config(
@@ -417,6 +464,7 @@ pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, Co
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Admin {} => query_admin(deps),
+        QueryMsg::AdminNomination {} => query_admin_nomination(deps),
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::Cw20TokenList { start_at, limit } => query_cw20_list(deps, start_at, limit),
         QueryMsg::Cw20Balances { start_at, limit } => {
@@ -442,6 +490,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_admin(deps: Deps) -> StdResult<Binary> {
     let admin = ADMIN.load(deps.storage)?;
     to_binary(&admin)
+}
+
+pub fn query_admin_nomination(deps: Deps) -> StdResult<Binary> {
+    let nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    to_binary(&AdminNominationResponse { nomination })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {

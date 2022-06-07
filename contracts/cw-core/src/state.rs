@@ -22,7 +22,19 @@ pub struct Config {
     pub automatically_add_cw721s: bool,
 }
 
+/// The admin of the contract. Typically a DAO. The contract admin may
+/// unilaterally execute messages on this contract.
 pub const ADMIN: Item<Option<Addr>> = Item::new("admin");
+
+/// A new admin that has been nominated by the current admin. The
+/// nominated admin must accept the proposal before becoming the admin
+/// themselves.
+///
+/// NOTE: If no admin is currently nominated this will not have a
+/// value set. To load this value, use
+/// `NOMINATED_ADMIN.may_load(deps.storage)`.
+pub const NOMINATED_ADMIN: Item<Addr> = Item::new("nominated_admin");
+
 pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const PAUSED: Item<Expiration> = Item::new("paused");

@@ -16,6 +16,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Get's the currently nominated admin (if any). Returns `AdminNominationResponse`.",
+      "type": "object",
+      "required": [
+        "admin_nomination"
+      ],
+      "properties": {
+        "admin_nomination": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Gets the contract's config. Returns Config.",
       "type": "object",
       "required": [
