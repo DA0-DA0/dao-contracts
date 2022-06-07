@@ -9,6 +9,7 @@ use cw_core::msg::{Admin, ModuleInstantiateInfo};
 use cw_utils::Duration;
 use indexable_hooks::HooksResponse;
 
+use serde::de::DeserializeOwned;
 use testing::{ShouldExecute, TestVote};
 use voting::{PercentageThreshold, Status, Threshold, Vote, Votes};
 

@@ -1,12 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg, WasmMsg,
+    from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_proposal_single::msg::{DepositInfo, ExecuteMsg, QueryMsg};
 use cw_utils::parse_reply_instantiate_data;
+use serde::de::DeserializeOwned;
 
 use crate::{
     error::ContractError,
@@ -55,6 +56,7 @@ pub fn execute(
     msg: ExecuteMsg<ExecuteAuthMsg>,
 ) -> Result<Response, ContractError> {
     println!("{}", "EXECUTE BASE".blue());
+    println!("{} {:?}", "MSG:".red(), msg);
     match msg {
         ExecuteMsg::Custom(auth_msg) => execute_auth_management(deps, auth_msg, info),
         base_msg => execute_proxy_contract(deps, base_msg, info),
@@ -62,12 +64,16 @@ pub fn execute(
 }
 
 pub fn execute_auth_management(
-    _deps: DepsMut,
-    _msg: ExecuteAuthMsg,
-    _info: MessageInfo,
+    deps: DepsMut,
+    msg: ExecuteAuthMsg,
+    info: MessageInfo,
 ) -> Result<Response, ContractError> {
     println!("{}", "EXECUTE MANAGEMENT".blue());
-    Err(ContractError::InvalidMessageError {})
+    match msg {
+        ExecuteAuthMsg::AddAuthorization { auth_contract } => {
+            execute_add_authorization(deps, info, auth_contract)
+        }
+    }
 }
 
 pub fn execute_proxy_contract(
@@ -78,6 +84,13 @@ pub fn execute_proxy_contract(
     println!("{} {:?}", "EXECUTE PROXY".blue(), msg);
     let proposal_addr = PROPOSAL_MODULE.load(deps.storage)?;
 
+    // Wrap the message here ExecuteMsg::ProxiedExecute { sender: original_sender, msg }.
+    // The subcontract should be aware that of this call and deal with it accordingly.
+    // Make sure the sub contract check that the sender of this message is the dao (or the "proxy")
+    let msg = ExecuteMsg::ProxiedExecute {
+        sender: info.sender.clone(),
+        msg: Box::new(msg.clone()),
+    };
     let submsg = WasmMsg::Execute {
         contract_addr: proposal_addr.to_string(),
         msg: to_binary(&msg).unwrap(),
@@ -91,7 +104,6 @@ pub fn execute_proxy_contract(
 
 pub fn execute_add_authorization(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {

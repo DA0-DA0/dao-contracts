@@ -1,4 +1,4 @@
-use cosmwasm_std::{CosmosMsg, Empty, Uint128};
+use cosmwasm_std::{Addr, CosmosMsg, Empty, Uint128};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -82,6 +82,13 @@ pub enum ExecuteMsg<T = Empty> {
     Execute {
         /// The ID of the proposal to execute.
         proposal_id: u64,
+    },
+    /// For internal use. This allows the contract to override the sender
+    /// so the proposal can be proxied by a middleware
+    ProxiedExecute {
+        /// The ID of the proposal to execute.
+        sender: Addr,
+        msg: Box<ExecuteMsg<T>>,
     },
     /// Closes a proposal that has failed (either not passed or timed
     /// out). If applicable this will cause the proposal deposit

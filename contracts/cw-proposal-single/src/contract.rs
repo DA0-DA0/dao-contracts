@@ -76,6 +76,24 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     println!("{} {:?}", "EXECUTING SINGLE PROPOSAL".yellow(), msg);
     match msg {
+        ExecuteMsg::ProxiedExecute { sender, msg } => {
+            let info = MessageInfo {
+                sender,
+                funds: info.funds.clone(),
+            };
+            wrapped_execute(deps, env, info, *msg)
+        }
+        _ => wrapped_execute(deps, env, info, msg),
+    }
+}
+
+fn wrapped_execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    match msg {
         ExecuteMsg::Propose {
             title,
             description,
@@ -112,6 +130,7 @@ pub fn execute(
             execute_remove_vote_hook(deps, env, info, address)
         }
         ExecuteMsg::Custom(_) => unimplemented!(),
+        ExecuteMsg::ProxiedExecute { .. } => Err(ContractError::Unauthorized {}),
     }
 }
 
