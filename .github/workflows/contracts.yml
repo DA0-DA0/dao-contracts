@@ -16,11 +16,12 @@ jobs:
         uses: actions/checkout@v3
       - name: Optimize
         run: optimize_workspace.sh
-      - name: Store contracts in cache
-        uses: actions/cache@v3
+      - name: Upload compiled contract wasm and checksums
+        uses: actions/upload-artifact@v3
         with:
-          path: artifacts
-          key: artifacts-contracts
+          name: dao-dao-dao-dao-dao
+          path: artifacts/
+          retention-days: 1
 
   upload:
     needs: compile
@@ -35,12 +36,20 @@ jobs:
         run: |
           junod config chain-id "$JUNO_CHAIN_ID"
           junod config node "$JUNO_RPC_NODE"
-      - name: Add service wallet
+      - name: Add Service Wallet
         env:
           DAO_UPLOAD_NINJA: ${{ secrets.DAO_UPLOAD_NINJA}}
         run: |
           echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
           sh 🥷.sh
+      - name: Download contract wasm + checksums
+        uses: actions/download-artifact@v3
+        with:
+          name: dao-dao-dao-dao-dao
+          path: /¬☯️
+      - name: Check downloaded wasm
+        run: |
+          ls -lah /¬☯️
       - name: Upload to community computer
         # with:
         #   path: artifacts
