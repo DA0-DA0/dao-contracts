@@ -1931,7 +1931,7 @@ fn test_execute_stargate_msg() {
 
     let res = app.execute_contract(
         proposal_module,
-        core_addr.clone(),
+        core_addr,
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![CosmosMsg::Stargate {
                 type_url: "foo_type".to_string(),
