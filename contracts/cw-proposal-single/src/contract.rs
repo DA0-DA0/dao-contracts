@@ -149,7 +149,7 @@ pub fn execute_update_parent(
     if info.sender != config.dao {
         return Err(ContractError::Unauthorized {});
     }
-    let parent = PARENT.save(deps.storage, &parent)?;
+    PARENT.save(deps.storage, &parent)?;
     Ok(Response::default()
         .add_attribute("action", "propose")
         .add_attribute("sender", info.sender))
@@ -290,28 +290,6 @@ pub fn execute_execute(
         Some(deposit_info) => get_return_deposit_msg(&deposit_info, &prop.proposer)?,
         None => vec![],
     };
-
-    // let dao_state: cw_core::query::DumpStateResponse = deps
-    //     .querier
-    //     .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::DumpState {})?;
-    // let authorizations_addr = dao_state.authorization_module;
-    // let authorized: bool = deps
-    //     .querier
-    //     .query_wasm_smart(
-    //         authorizations_addr.clone(),
-    //         &cw_auth_manager::msg::QueryMsg::Authorize {
-    //             msgs: prop.msgs.clone(),
-    //             sender: info.sender.to_string(),
-    //         },
-    //     )
-    //     .unwrap_or(IsAuthorizedResponse { authorized: false })
-    //     .authorized;
-    //
-    // // TODO: check group auth here? Would need to store the group contract somewhere
-    //
-    // if !authorized {
-    //     return Err(ContractError::Unauthorized {});
-    // }
 
     let response = if !prop.msgs.is_empty() {
         let execute_message = WasmMsg::Execute {

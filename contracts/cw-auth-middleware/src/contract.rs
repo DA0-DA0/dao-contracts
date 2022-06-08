@@ -6,8 +6,8 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_proposal_single::msg::{DepositInfo, ExecuteMsg, QueryMsg};
+use cw_proposal_single::query::ProposalResponse;
 use cw_utils::parse_reply_instantiate_data;
-use serde::de::DeserializeOwned;
 
 use crate::{
     error::ContractError,
@@ -84,6 +84,33 @@ pub fn execute_proxy_contract(
     println!("{} {:?}", "EXECUTE PROXY".blue(), msg);
     let proposal_addr = PROPOSAL_MODULE.load(deps.storage)?;
 
+    match msg {
+        ExecuteMsg::Execute { proposal_id } => {
+            let prop: ProposalResponse = deps.querier.query_wasm_smart(
+                proposal_addr.clone(),
+                &QueryMsg::Proposal::<Empty> { proposal_id },
+            )?;
+
+            let response: IsAuthorizedResponse = from_binary(&authorize_messages(
+                deps.as_ref(),
+                prop.proposal.msgs.clone(),
+                info.sender.to_string(),
+            )?)?;
+            //.unwrap_or(IsAuthorizedResponse { authorized: false });
+
+            let authorized = response.authorized;
+
+            if !authorized {
+                return Err(ContractError::Unauthorized {
+                    reason: Some("here?".to_string()),
+                });
+            }
+        }
+        _ => (),
+    }
+
+    println!("{}", "AUTHORIZED!".blue());
+
     // Wrap the message here ExecuteMsg::ProxiedExecute { sender: original_sender, msg }.
     // The subcontract should be aware that of this call and deal with it accordingly.
     // Make sure the sub contract check that the sender of this message is the dao (or the "proxy")
@@ -142,11 +169,11 @@ pub fn execute_add_authorization(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Binary> {
     println!("{} {:?}", "QUERYING BASE".yellow(), msg);
     match msg {
         QueryMsg::Custom(QueryAuthMsg::Authorize { msgs, sender }) => {
-            authorize_messages(deps, env, msgs, sender)
+            authorize_messages(deps, msgs, sender)
         }
         QueryMsg::Custom(QueryAuthMsg::GetAuthorizations { .. }) => {
             unimplemented!()
@@ -163,14 +190,13 @@ fn query_proxy(deps: Deps, msg: QueryMsg<QueryAuthMsg>) -> StdResult<Binary> {
 
 fn authorize_messages(
     deps: Deps,
-    _env: Env,
     msgs: Vec<CosmosMsg<Empty>>,
     sender: String,
 ) -> StdResult<Binary> {
     // This checks all the registered authorizations
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
-    println!("{} Auths: {:?}", "".yellow(), auths);
+    println!("{} {:?}", "Auths:".yellow(), auths);
     if auths.is_empty() {
         // If there aren't any authorizations, we consider the auth as not-configured and allow all
         // messages
@@ -181,10 +207,10 @@ fn authorize_messages(
         deps.querier
             .query_wasm_smart(
                 a.contract.clone(),
-                &QueryMsg::Custom(QueryAuthMsg::Authorize {
+                &QueryAuthMsg::Authorize {
                     msgs: msgs.clone(),
                     sender: sender.clone(),
-                }),
+                },
             )
             .unwrap_or(IsAuthorizedResponse { authorized: false })
             .authorized

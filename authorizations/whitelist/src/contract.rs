@@ -59,6 +59,7 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryAuthMsg) -> StdResult<Binary> {
+    println!("WHITELIST QUERY");
     match msg {
         QueryAuthMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
         _ => unimplemented!(),
