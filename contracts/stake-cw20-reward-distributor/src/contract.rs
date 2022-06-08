@@ -205,7 +205,7 @@ pub fn execute_withdraw(
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Transfer {
         recipient: config.owner.clone().into(),
-        amount: amount,
+        amount,
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
         contract_addr: config.reward_token.into(),
