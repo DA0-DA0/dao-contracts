@@ -3,14 +3,11 @@
 # TODO: storing cw-core.wasm fails with an error:
 # Processing Contract: cw_core
 # Error: rpc error: code = InvalidArgument desc = failed to execute message; message index: 0: Error calling the VM: Error during static Wasm validation: Wasm contract doesn't have required export: "instantiate". Exports required by VM: ["allocate", "deallocate", "instantiate"].: create wasm contract failed: invalid request
-# 
-# (Maybe I should try uploading the non-optimized contract)
 
 # Run this from the root repo directory
 
 ## CONFIG
-# NOTE: you will need to update these to deploy on different network
-IMAGE_TAG="v6.0.0" # ${2:-"v2.3.0-beta.1"} # lupercalia beta - this allows you to pass in an image, e.g. pr-156 as arg 2
+IMAGE_TAG=${2:-"v6.0.0"} # this allows you to pass in an image, e.g. pr-156 as arg 2
 CONTAINER_NAME="cosmwasm"
 BINARY="docker exec -i $CONTAINER_NAME junod"
 DENOM='ujunox'
@@ -85,11 +82,10 @@ for CONTRACT in ./artifacts/*.wasm; do
   docker cp artifacts/$CONTRACT_NAME.wasm cosmwasm:/$CONTRACT_NAME.wasm
   CODE_ID=$(echo xxxxxxxxx | $BINARY tx wasm store "/$CONTRACT_NAME.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 
+  # dynamically create env var to store each contract code id
   declare ${CONTRACT_NAME}_CODE_ID=$CODE_ID
   echo "${CONTRACT_NAME}_CODE_ID: $CODE_ID"
 done
-
-echo "${stake_cw20_CODE_ID}"
 
 ##### INSTANTIATE CONTRACTS #####
 
@@ -184,14 +180,3 @@ CW_CORE_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $cw_core_CODE_ID --o
 # treasury. Unless this is done the DAO will be unable to perform
 # actions like executing proposals that require it to pay gas fees.
 $BINARY tx bank send validator $CW_CORE_DAO_CONTRACT 9000000$DENOM --chain-id testing $TXFLAG -y
-
-# Print out config variables
-#printf "\n ------------------------ \n"
-#printf "Config Variables \n\n"
-
-# echo "NEXT_PUBLIC_DAO_TOKEN_CODE_ID=$CW20_CODE"
-# echo "NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=$CW3_DAO_CODE"
-# echo "NEXT_PUBLIC_MULTISIG_CODE_ID=$CW3_MULTISIG_CODE"
-# echo "NEXT_PUBLIC_C4_GROUP_CODE_ID=$CW4_GROUP_CODE"
-# echo "NEXT_PUBLIC_STAKE_CW20_CODE_ID=$STAKE_CW20_CODE"
-# echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW3_DAO_CONTRACT"
