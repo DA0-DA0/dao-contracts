@@ -480,12 +480,29 @@ fn test_withdraw() {
         err.downcast().unwrap()
     );
 
-    // Withdraw funds
+    // Withdraw amount (0 < amount < contract balance)
     app.execute_contract(
         Addr::unchecked(OWNER),
-        distributor_addr,
+        distributor_addr.clone(),
         &ExecuteMsg::Withdraw {
-            amount: Uint128::from(990u64),
+            amount: Uint128::from(400u64),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let owner_balance = get_balance_cw20(&app, cw20_addr.clone(), Addr::unchecked(OWNER));
+    assert_eq!(owner_balance, Uint128::new(400));
+    let distributor_info = get_info(&app, distributor_addr.clone());
+    assert_eq!(distributor_info.balance, Uint128::new(590));
+    
+
+    // Withdraw all rest funds
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        distributor_addr.clone(),
+        &ExecuteMsg::Withdraw {
+            amount: Uint128::from(590u64),
         },
         &[],
     )
@@ -493,6 +510,26 @@ fn test_withdraw() {
 
     let owner_balance = get_balance_cw20(&app, cw20_addr, Addr::unchecked(OWNER));
     assert_eq!(owner_balance, Uint128::new(990));
+    let distributor_info = get_info(&app, distributor_addr.clone());
+    assert_eq!(distributor_info.balance, Uint128::zero());
+
+    // Can't withdraw because the funds have been withdrawn before
+    let err = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            distributor_addr.clone(),
+            &ExecuteMsg::Withdraw {
+                amount: Uint128::from(1u64),
+            },
+            &[],
+        )
+        .unwrap_err();
+
+    assert_eq!(
+        ContractError::InvalidAmountForWithdraw {},
+        err.downcast().unwrap()
+    );
+    
 }
 
 #[test]
