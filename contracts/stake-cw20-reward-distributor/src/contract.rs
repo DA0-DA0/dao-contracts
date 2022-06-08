@@ -145,8 +145,9 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
     let block_diff = env.block.height - last_payment_block;
     if block_diff <= 0 {
-        return Err(ContractError::ZeroRewards {});
+        return Ok(None);
     }
+
     let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
     let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
@@ -242,4 +243,35 @@ fn query_info(deps: Deps, env: Env) -> StdResult<InfoResponse> {
         last_payment_block,
         balance: balance_info.balance,
     })
+}
+
+mod tests {
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Addr, Uint128,
+    };
+
+    use crate::state::{Config, CONFIG, LAST_PAYMENT_BLOCK};
+
+    use super::get_distribution_msg;
+
+    #[test]
+    fn test_distribute_zero_rewards() {
+        let mut deps = mock_dependencies();
+        let config = Config {
+            owner: Addr::unchecked("OWNER"),
+            staking_addr: Addr::unchecked("staking"),
+            reward_rate: Uint128::new(1),
+            reward_token: Addr::unchecked("CW20"),
+        };
+
+        let env = mock_env();
+        LAST_PAYMENT_BLOCK
+            .save(deps.as_mut().storage, &env.block.height)
+            .unwrap();
+        CONFIG.save(deps.as_mut().storage, &config).unwrap();
+
+        let msg = get_distribution_msg(deps.as_ref(), &env).unwrap();
+        assert!(msg.is_none())
+    }
 }
