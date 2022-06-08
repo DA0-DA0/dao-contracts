@@ -144,6 +144,9 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
     let config = CONFIG.load(deps.storage)?;
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
     let block_diff = env.block.height - last_payment_block;
+    if block_diff <= 0 {
+        return Err(ContractError::ZeroRewards {});
+    }
     let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
     let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
