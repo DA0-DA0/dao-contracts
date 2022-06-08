@@ -160,7 +160,7 @@ DAO_INIT='{
   },
   "proposal_modules_instantiate_info": [
     {
-      "code_id": '$cw_proposal_single_id_CODE_ID',
+      "code_id": '$cw_proposal_single_CODE_ID',
       "label": "DAO DAO Proposal Module",
       "admin": {
         "core_contract": {}
