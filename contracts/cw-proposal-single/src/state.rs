@@ -61,6 +61,7 @@ pub struct Ballot {
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
+pub const PARENT: Item<Addr> = Item::new("parent");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
 pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");

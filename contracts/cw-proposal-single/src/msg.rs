@@ -134,6 +134,9 @@ pub enum ExecuteMsg<T = Empty> {
     RemoveVoteHook {
         address: String,
     },
+    UpdateParent {
+        parent: Addr,
+    },
     Custom(T),
 }
 

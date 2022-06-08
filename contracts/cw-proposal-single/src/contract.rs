@@ -21,8 +21,8 @@ use crate::{
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
-        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
-        PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
+        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PARENT,
+        PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
     },
     utils::{get_total_power, get_voting_power},
 };
@@ -77,6 +77,11 @@ pub fn execute(
     println!("{} {:?}", "EXECUTING SINGLE PROPOSAL".yellow(), msg);
     match msg {
         ExecuteMsg::ProxiedExecute { sender, msg } => {
+            let parent = PARENT.load(deps.storage)?;
+            if info.sender != parent {
+                return Err(ContractError::Unauthorized {});
+            }
+
             let info = MessageInfo {
                 sender,
                 funds: info.funds.clone(),
@@ -131,7 +136,23 @@ fn wrapped_execute(
         }
         ExecuteMsg::Custom(_) => unimplemented!(),
         ExecuteMsg::ProxiedExecute { .. } => Err(ContractError::Unauthorized {}),
+        ExecuteMsg::UpdateParent { parent } => execute_update_parent(deps, info, parent),
     }
+}
+
+pub fn execute_update_parent(
+    deps: DepsMut,
+    info: MessageInfo,
+    parent: Addr,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.dao {
+        return Err(ContractError::Unauthorized {});
+    }
+    let parent = PARENT.save(deps.storage, &parent)?;
+    Ok(Response::default()
+        .add_attribute("action", "propose")
+        .add_attribute("sender", info.sender))
 }
 
 pub fn execute_propose(

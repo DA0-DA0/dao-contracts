@@ -193,7 +193,7 @@ fn authorize_messages(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         PROPOSAL_MODULE_INSTANTIATE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
@@ -240,9 +240,18 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 .unwrap(),
                 funds: vec![],
             };
+            let update_parent_msg = WasmMsg::Execute {
+                contract_addr: proposal_module_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::UpdateParent::<Empty> {
+                    parent: env.contract.address,
+                })
+                .unwrap(),
+                funds: vec![],
+            };
 
             Ok(Response::default()
                 .add_attribute("proposal_module", proposal_module_addr)
+                .add_submessage(SubMsg::new(update_parent_msg))
                 .add_submessage(SubMsg::new(proposal_update_msg)))
         }
         _ => Err(ContractError::UnknownReplyID {}),
