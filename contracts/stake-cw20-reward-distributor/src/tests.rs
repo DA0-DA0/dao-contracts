@@ -289,50 +289,6 @@ fn test_distribute() {
 }
 
 #[test]
-fn test_distribute_zero_rewards() {
-    let mut app = App::default();
-
-    let cw20_addr = instantiate_cw20(
-        &mut app,
-        vec![cw20::Cw20Coin {
-            address: OWNER.to_string(),
-            amount: Uint128::from(1000u64),
-        }],
-    );
-    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
-
-    let msg = InstantiateMsg {
-        owner: OWNER.to_string(),
-        staking_addr: staking_addr.to_string(),
-        reward_rate: Uint128::new(1),
-        reward_token: cw20_addr.to_string(),
-    };
-    let distributor_addr = instantiate_distributor(&mut app, msg);
-
-    let msg = cw20::Cw20ExecuteMsg::Transfer {
-        recipient: distributor_addr.to_string(),
-        amount: Uint128::from(1000u128),
-    };
-
-    app.execute_contract(Addr::unchecked(OWNER), cw20_addr.clone(), &msg, &[])
-        .unwrap();
-
-    let err = app
-        .execute_contract(
-            Addr::unchecked(OWNER),
-            distributor_addr.clone(),
-            &ExecuteMsg::Distribute {},
-            &[],
-        )
-        .unwrap_err();
-
-    assert_eq!(
-        err.downcast::<ContractError>().unwrap(),
-        crate::ContractError::ZeroRewards {}
-    );
-}
-
-#[test]
 fn test_instantiate_invalid_addrs() {
     let mut app = App::default();
     let cw20_addr = instantiate_cw20(
