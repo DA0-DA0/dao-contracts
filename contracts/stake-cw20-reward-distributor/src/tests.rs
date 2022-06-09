@@ -516,7 +516,7 @@ fn test_withdraw() {
     let err = app
         .execute_contract(
             Addr::unchecked(OWNER),
-            distributor_addr.clone(),
+            distributor_addr,
             &ExecuteMsg::Withdraw {
                 amount: Uint128::from(1u64),
             },
