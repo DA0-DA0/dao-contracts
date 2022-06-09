@@ -52,5 +52,5 @@ jobs:
           path: /¬☯️
         run: |
           for $CONTRACT in *.wasm; do
-            junod tx wasm store $CONTRACT -y --from $JUNO_SERVICE_WALLET --chain-id uni-3 --gas-prices 0.1ujunox --gas auto --gas-adjustment 1.3 -b block
+            junod tx wasm store $CONTRACT -y --from juno1w0zu2cdt3ulk63590vvmdrdnca3ydnmtxn22ej --chain-id uni-3 --gas-prices 0.1ujunox --gas auto --gas-adjustment 1.3 -b block
           doneß
