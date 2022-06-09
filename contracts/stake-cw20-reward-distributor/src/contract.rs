@@ -144,7 +144,7 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
     let config = CONFIG.load(deps.storage)?;
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
     let block_diff = env.block.height - last_payment_block;
-    if block_diff <= 0 {
+    if block_diff == 0 {
         return Ok(None);
     }
 
@@ -245,6 +245,7 @@ fn query_info(deps: Deps, env: Env) -> StdResult<InfoResponse> {
     })
 }
 
+#[cfg(test)]
 mod tests {
     use cosmwasm_std::{
         testing::{mock_dependencies, mock_env},
