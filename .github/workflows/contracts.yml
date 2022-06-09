@@ -47,8 +47,10 @@ jobs:
         with:
           name: dao-dao-dao-dao-dao
           path: /¬☯️
-      - name: Upload to community computer
+      - name: Upload contracts to Community Computer
         with:
           path: /¬☯️
         run: |
-          junod tx wasm store cw_core.wasm -y --from juno1w0zu2cdt3ulk63590vvmdrdnca3ydnmtxn22ej --chain-id uni-3 --gas-prices 0.1ujunox --gas auto --gas-adjustment 1.3 -b block
+          for $CONTRACT in *.wasm; do
+            junod tx wasm store $CONTRACT -y --from $JUNO_SERVICE_WALLET --chain-id uni-3 --gas-prices 0.1ujunox --gas auto --gas-adjustment 1.3 -b block
+          doneß
