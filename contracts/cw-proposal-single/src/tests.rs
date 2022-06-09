@@ -5,7 +5,7 @@ use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
-use cw_core::msg::{Admin, ModuleInstantiateInfo};
+use cw_core::msg::ModuleInstantiateInfo;
 use cw_utils::Duration;
 
 use indexable_hooks::HooksResponse;
