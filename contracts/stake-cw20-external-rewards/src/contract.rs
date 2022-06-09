@@ -149,18 +149,13 @@ pub fn execute_fund_native(
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    let coin = info
-        .funds
-        .into_iter()
-        .next()
-        .ok_or(ContractError::InvalidFunds {})?;
-
-    let amount = coin.amount;
-    let denom = coin.denom;
-    if config.reward_token != Denom::Native(denom) {
-        return Err(InvalidFunds {});
-    };
-    execute_fund(deps, env, info.sender, amount)
+    match config.reward_token {
+        Denom::Native(denom) => {
+            let amount = cw_utils::must_pay(&info, &denom).map_err(|_| InvalidFunds {})?;
+            execute_fund(deps, env, info.sender, amount)
+        }
+        Cw20(_) => Err(InvalidFunds {}),
+    }
 }
 
 pub fn execute_fund(
@@ -1768,7 +1763,7 @@ mod tests {
         let reward_addr = setup_reward_contract(
             &mut app,
             staking_addr,
-            Denom::Native(denom),
+            Denom::Native(denom.clone()),
             owner.clone(),
             manager,
         );
@@ -1805,6 +1800,31 @@ mod tests {
                 reward_addr.clone(),
                 &fund_msg,
                 &*invalid_funding,
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, ContractError::InvalidFunds {});
+
+        // Extra funding
+        let extra_funding = vec![coin(100, denom), coin(100, "extra")];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: owner.to_string(),
+                amount: extra_funding.clone(),
+            }
+        }))
+        .unwrap();
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                owner.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &*extra_funding,
             )
             .unwrap_err()
             .downcast()
