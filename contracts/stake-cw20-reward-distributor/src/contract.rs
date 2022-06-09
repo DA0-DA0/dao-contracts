@@ -143,10 +143,10 @@ pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
 fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
-    let block_diff = env.block.height - last_payment_block;
-    if block_diff == 0 {
+    if last_payment_block >= env.block.height {
         return Ok(None);
     }
+    let block_diff = env.block.height - last_payment_block;
 
     let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
