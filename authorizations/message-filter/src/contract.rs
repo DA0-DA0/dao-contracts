@@ -1,11 +1,12 @@
-#[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
 use cw_auth_middleware::msg::{IsAuthorizedResponse, QueryMsg};
-use schemars::_serde_json::Value;
+use schemars::_serde_json::{json, Value};
+#[cfg(not(feature = "library"))]
+use std::ops::Deref;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -14,6 +15,18 @@ use cw_auth_middleware::ContractError as AuthorizationError;
 
 const CONTRACT_NAME: &str = "crates.io:whitelist";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn from_msg(msg: &CosmosMsg) -> Result<Value, ContractError> {
+    serde_json::to_value(&msg).map_err(|_| ContractError::CustomError {
+        val: "invalid CosmosMsg".to_string(),
+    })
+}
+
+fn from_str(msg: &str) -> Result<Value, ContractError> {
+    serde_json::from_str(msg).map_err(|_| ContractError::CustomError {
+        val: "Invalid str".to_string(),
+    })
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -27,23 +40,8 @@ pub fn instantiate(
     Ok(Response::default().add_attribute("action", "instantiate"))
 }
 
-fn deep_value_match(msg: &Value, authorization: &Value) -> bool {
-    println!("entering with {:?}, {:?}", msg, authorization);
+fn deep_partial_match(msg: &Value, authorization: &Value) -> bool {
     match authorization {
-        Value::Null => match msg {
-            Value::Null => true,
-            _ => false,
-        },
-        Value::Bool(x) => match msg {
-            Value::Bool(y) => x == y,
-            _ => false,
-        },
-        Value::Number(x) => match msg {
-            Value::Number(y) => x == y,
-            _ => false,
-        },
-        Value::String(_) => todo!(),
-        Value::Array(_) => todo!(),
         Value::Object(auth_map) => {
             let mut matching = true;
             for (key, val) in auth_map {
@@ -53,7 +51,7 @@ fn deep_value_match(msg: &Value, authorization: &Value) -> bool {
                     };
                     match val {
                         Value::Object(internal) if internal.is_empty() => return matching,
-                        _ => matching = deep_value_match(msg_map.get(key).unwrap(), val),
+                        _ => matching = deep_partial_match(msg_map.get(key).unwrap(), val),
                     }
                 } else {
                     return false;
@@ -61,16 +59,8 @@ fn deep_value_match(msg: &Value, authorization: &Value) -> bool {
             }
             matching
         }
+        _ => authorization == msg,
     }
-}
-
-fn compare(msg: &Value, authorization: &str) -> Result<bool, ContractError> {
-    let authorization =
-        serde_json::from_str(authorization).map_err(|_| ContractError::CustomError {
-            val: "bad stored auth".to_string(),
-        })?;
-
-    Ok(deep_value_match(msg, &authorization))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -89,13 +79,10 @@ pub fn execute(
                 .into());
             }
 
-            //let msg_json = serde_json::to_string(&msgs[0])?;
-            let msg_map =
-                serde_json::to_value(&msgs[0]).map_err(|_| ContractError::CustomError {
-                    val: "bad message".to_string(),
-                })?;
-            println!("{:?}", msg_map);
-            println!("{:?}", compare(&msg_map, "{\"bank\": {\"x\": 1}}"));
+            println!(
+                "{:?}",
+                deep_partial_match(&from_msg(&msgs[0])?, &json!({"bank": {}}).into())
+            );
 
             Ok(Response::default().add_attribute("action", "allow_messages"))
         }
@@ -126,4 +113,64 @@ fn authorize_messages(
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use cosmwasm_std::{coins, BankMsg};
+
+    #[test]
+    fn test_deep_partial_match() {
+        let to_address = String::from("you");
+        let amount = coins(1015, "earth");
+        let bank = BankMsg::Send { to_address, amount };
+        let msg: CosmosMsg = bank.clone().into();
+
+        // Comparing a cosmos message to partial json
+        assert_eq!(
+            deep_partial_match(&from_msg(&msg).unwrap(), &json!({"bank": {}}).into()),
+            true,
+        );
+
+        // Non-matching messages should fail
+        assert_eq!(
+            deep_partial_match(
+                &from_str(r#"{"test": 1}"#).unwrap(),
+                &json!({"bank": {}}).into()
+            ),
+            false,
+        );
+
+        // Partial messages work
+        assert_eq!(
+            deep_partial_match(
+                &from_str(r#"{"bank": [1,2,3]}"#).unwrap(),
+                &json!({"bank": {}}).into()
+            ),
+            true
+        );
+
+        // Testing array comparison as a proxy for all other Eq for Values
+        assert_eq!(
+            deep_partial_match(
+                &json!({"bank": [1,3,2]}).into(),
+                &from_str(r#"{"bank": [1,2,3]}"#).unwrap(),
+            ),
+            false
+        );
+        assert_eq!(
+            deep_partial_match(
+                &json!({"bank": [1,2,3]}).into(),
+                &from_str(r#"{"bank": [1,2,3]}"#).unwrap(),
+            ),
+            true
+        );
+
+        // The partial json comparison only works in one direction
+        assert_eq!(
+            deep_partial_match(
+                &json!({"bank": {}}).into(),
+                &from_str(r#"{"bank": [1,2,3]}"#).unwrap()
+            ),
+            false
+        );
+    }
+}
