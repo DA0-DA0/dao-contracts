@@ -1,23 +1,23 @@
 # DAO DAO Contracts
 [![codecov](https://codecov.io/gh/DA0-DA0/dao-contracts/branch/main/graph/badge.svg?token=SCKOIPYZPV)](https://codecov.io/gh/DA0-DA0/dao-contracts)
 
-| Audited contracts                                                        | Description                                                |
-| :----------------------------------------------------------------------- | :--------------------------------------------------------- |
-| [cw-core](contracts/cw-core)                                             | The core module for a DAO DAO DAO.                         |
-| [cw-proposal-single](contracts/cw-proposal-single)                       | A proposal module for single choice (yes / no) voting.     |
-| [cw20-staked-balance-voting](contracts/cw20-staked-balance-voting)       | A voting power module for staked governance tokens.        |
-| [cw4-voting](contracts/cw4-voting)                                       | A voting power module for multisig-style voting.           |
-| [stake-cw20](contracts/stake-cw20)                                       | A contract for staking cw20 tokens.                        |
+| Audited contracts                                                  | Description                                            |
+| :----------------------------------------------------------------- | :----------------------------------------------------- |
+| [cw-core](contracts/cw-core)                                       | The core module for a DAO DAO DAO.                     |
+| [cw-proposal-single](contracts/cw-proposal-single)                 | A proposal module for single choice (yes / no) voting. |
+| [cw20-staked-balance-voting](contracts/cw20-staked-balance-voting) | A voting power module for staked governance tokens.    |
+| [cw4-voting](contracts/cw4-voting)                                 | A voting power module for multisig-style voting.       |
+| [stake-cw20](contracts/stake-cw20)                                 | A contract for staking cw20 tokens.                    |
 
 
-| Unaudited contracts                                                      | Description                                                |
-| :----------------------------------------------------------------------- | :--------------------------------------------------------- |
-| [cw-named-groups](contracts/cw-named-groups)                             | A contract for managing named groups of addresses.         |
-| [cw-proposal-sudo](contracts/cw-proposal-sudo)                           | A proposal module that allows an admin to control a DAO.   |
-| [cw20-balance-voting](contracts/cw20-balance-voting)                     | TESTING ONLY - a voting module based on cw20 balances.     |
-| [proposal-hooks-counter](contracts/proposal-hooks-counter)               | TESTING ONLY - a contract for testing proposal hooks.      |
-| [stake-external-rewards](contracts/stake-cw20-external-rewards)          | A contract for providing external stakinig rewards.        |
-| [stake-cw20-reward-distributor](contracts/stake-cw20-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
+| Unaudited contracts                                                    | Description                                              |
+| :--------------------------------------------------------------------- | :------------------------------------------------------- |
+| [cw-named-groups](contracts/cw-named-groups)                           | A contract for managing named groups of addresses.       |
+| [cw-proposal-sudo](contracts/cw-proposal-sudo)                         | A proposal module that allows an admin to control a DAO. |
+| [cw20-balance-voting](contracts/cw20-balance-voting)                   | TESTING ONLY - a voting module based on cw20 balances.   |
+| [proposal-hooks-counter](contracts/proposal-hooks-counter)             | TESTING ONLY - a contract for testing proposal hooks.    |
+| [stake-external-rewards](contracts/stake-cw20-external-rewards)        | A contract for providing external stakinig rewards.      |
+| [stake-cw20-reward-distributor](contracts/stake-cw20-external-rewards) | A contract for distributing rewards via stake-cw20.      |
 
 Audited contracts have completed [an
 audit](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
@@ -45,11 +45,13 @@ This will run a chain locally in a docker container, then build and deploy the c
 The script will output something like:
 
 ```sh
-NEXT_PUBLIC_DAO_TOKEN_CODE_ID=1
-NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=2
-NEXT_PUBLIC_MULTISIG_CODE_ID=3
-NEXT_PUBLIC_C4_GROUP_CODE_ID=4
-NEXT_PUBLIC_STAKE_CW20_CODE_ID=5
+NEXT_PUBLIC_CW20_CODE_ID=1
+NEXT_PUBLIC_CW4GROUP_CODE_ID=2
+NEXT_PUBLIC_CWCORE_CODE_ID=5
+NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID=8
+NEXT_PUBLIC_CW4VOTING_CODE_ID=4
+NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=3
+NEXT_PUBLIC_STAKECW20_CODE_ID=9
 NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=juno1wug8sewp6cedgkmrmvhl3lf3tulagm9hnvy8p0rppz9yjw0g4wtqwrw37d
 ```
 

@@ -352,7 +352,6 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core",
  "cw-core-interface",
  "cw-core-macros",
  "cw-multi-test 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",

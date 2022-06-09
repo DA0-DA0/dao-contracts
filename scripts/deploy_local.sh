@@ -3,8 +3,7 @@
 # Run this from the root repo directory
 
 ## CONFIG
-# NOTE: you will need to update these to deploy on different network
-IMAGE_TAG=${2:-"v2.3.0-beta.1"} # lupercalia beta - this allows you to pass in an image, e.g. pr-156 as arg 2
+IMAGE_TAG=${2:-"v6.0.0"} # this allows you to pass in an image, e.g. pr-156 as arg 2
 CONTAINER_NAME="cosmwasm"
 BINARY="docker exec -i $CONTAINER_NAME junod"
 DENOM='ujunox'
@@ -49,9 +48,6 @@ curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base
 curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm
 
 # Copy wasm binaries to docker container
-# docker cp artifacts/cw3_dao.wasm cosmwasm:/cw3_dao.wasm
-# docker cp artifacts/cw3_multisig.wasm cosmwasm:/cw3_multisig.wasm
-# docker cp artifacts/stake_cw20.wasm cosmwasm:/stake_cw20.wasm
 docker cp cw20_base.wasm cosmwasm:/cw20_base.wasm
 docker cp cw4_group.wasm cosmwasm:/cw4_group.wasm
 
@@ -65,78 +61,132 @@ sleep 3
 echo "Address to deploy contracts: $1"
 echo "TX Flags: $TXFLAG"
 
-##### UPLOAD CONTRACTS #####
+##### UPLOAD CONTRACT DEPS #####
 
 ### CW20-BASE ###
 CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw20_base.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 
-### CW-DAO ###
-CW3_DAO_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw3_dao.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
-
-### CW3-MULTISIG ###
-CW3_MULTISIG_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw3_multisig.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
-
 ### CW4-GROUP ###
 CW4_GROUP_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/cw4_group.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
 
-### STAKE-CW20 ###
-STAKE_CW20_CODE=$(echo xxxxxxxxx | $BINARY tx wasm store "/stake_cw20.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+##### UPLOAD DAO DAO CONTRACTS #####
 
+for CONTRACT in ./artifacts/*.wasm; do
+  CONTRACT_NAME=`basename $CONTRACT .wasm`
+  echo "Processing Contract: $CONTRACT_NAME"
+
+  docker cp artifacts/$CONTRACT_NAME.wasm cosmwasm:/$CONTRACT_NAME.wasm
+  CODE_ID=$(echo xxxxxxxxx | $BINARY tx wasm store "/$CONTRACT_NAME.wasm" --from validator $TXFLAG --output json | jq -r '.logs[0].events[-1].attributes[0].value')
+
+  # dynamically create env var to store each contract code id
+  declare ${CONTRACT_NAME}_CODE_ID=$CODE_ID
+done
 
 ##### INSTANTIATE CONTRACTS #####
 
-# Instantiate a DAO contract instantiates its own cw20
-CW3_DAO_INIT='{
-  "name": "DAO DAO",
-  "description": "A DAO that makes DAO tooling",
-  "gov_token": {
-    "instantiate_new_cw20": {
-      "cw20_code_id": '$CW20_CODE',
-      "label": "DAO DAO v0.1.1",
-      "initial_dao_balance": "1000000000",
-      "msg": {
-        "name": "daodao",
-        "symbol": "DAO",
-        "decimals": 6,
-        "initial_balances": [{"address":"'"$1"'","amount":"1000000000"}]
+VOTING_MSG='{
+  "token_info": {
+    "new": {
+      "code_id": '$CW20_CODE',
+      "label": "DAO DAO Gov token",
+      "name": "DAO",
+      "symbol": "DAO",
+      "decimals": 6,
+      "initial_balances": [
+        {
+          "address": "'$1'",
+          "amount": "1000000000000000"
+        }
+      ],
+      "staking_code_id": '$stake_cw20_CODE_ID',
+      "unstaking_duration": {
+        "time": 1209600
+      }
+    }
+  }
+}'
+
+echo $VOTING_MSG | jq .
+
+ENCODED_VOTING_MSG=$(echo $VOTING_MSG | base64)
+
+PROPOSAL_MSG='{
+  "threshold": {
+    "threshold_quorum": {
+      "threshold": {
+        "majority": {}
+      },
+      "quorum": {
+        "percent": "0.1"
       }
     }
   },
-  "staking_contract": {
-    "instantiate_new_staking_contract": {
-      "staking_contract_code_id": '$STAKE_CW20_CODE'
-    }
-  },
-  "threshold": {
-    "absolute_percentage": {
-        "percentage": "0.5"
-    }
-  },
+  "only_members_execute": true,
+  "allow_revoting": false,
   "max_voting_period": {
-    "height": 100
+    "time": 432000
   },
-  "proposal_deposit_amount": "0",
-  "only_members_execute": false,
-  "automatically_add_cw20s": true
+  "deposit_info": {
+    "token": {
+      "voting_module_token": {}
+    },
+    "deposit": "1000000000",
+    "refund_failed_proposals": true
+  }
 }'
-echo $CW3_DAO_INIT | jq .
 
-echo xxxxxxxxx | $BINARY tx wasm instantiate "$CW3_DAO_CODE" "$CW3_DAO_INIT" --from validator --label "DAO DAO" $TXFLAG --output json --no-admin
+echo $PROPOSAL_MSG | jq .
 
-CW3_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $CW3_DAO_CODE --output json | jq -r '.contracts[-1]')
+ENCODED_PROPOSAL_MSG=$(echo $PROPOSAL_MSG | base64)
+
+# Instantiate a DAO contract instantiates its own cw20
+DAO_INIT='{
+  "name": "DAO DAO",
+  "description": "A DAO that makes DAO tooling",
+  "image_url": "https://zmedley.com/raw_logo.png",
+  "automatically_add_cw20s": false,
+  "automatically_add_cw721s": false,
+  "voting_module_instantiate_info": {
+    "code_id": '$cw20_staked_balance_voting_CODE_ID',
+    "admin": {
+      "core_contract": {}
+    },
+    "label": "DAO DAO Voting Module",
+    "msg": "'$ENCODED_VOTING_MSG'"
+  },
+  "proposal_modules_instantiate_info": [
+    {
+      "code_id": '$cw_proposal_single_CODE_ID',
+      "label": "DAO DAO Proposal Module",
+      "admin": {
+        "core_contract": {}
+      },
+      "msg": "'$ENCODED_PROPOSAL_MSG'"
+    }
+  ]
+}'
+
+echo $DAO_INIT | jq .
+
+echo xxxxxxxxx | $BINARY tx wasm instantiate "$cw_core_CODE_ID" "$DAO_INIT" --from validator --label "DAO DAO" $TXFLAG --output json --no-admin
+
+CW_CORE_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $cw_core_CODE_ID --output json | jq -r '.contracts[-1]')
 
 # Send some coins to the dao contract to initializae its
 # treasury. Unless this is done the DAO will be unable to perform
 # actions like executing proposals that require it to pay gas fees.
-$BINARY tx bank send validator $CW3_DAO_CONTRACT 9000000$DENOM --chain-id testing $TXFLAG -y
+$BINARY tx bank send validator $CW_CORE_DAO_CONTRACT 9000000$DENOM --chain-id testing $TXFLAG -y
+
 
 # Print out config variables
 printf "\n ------------------------ \n"
 printf "Config Variables \n\n"
 
-echo "NEXT_PUBLIC_DAO_TOKEN_CODE_ID=$CW20_CODE"
-echo "NEXT_PUBLIC_DAO_CONTRACT_CODE_ID=$CW3_DAO_CODE"
-echo "NEXT_PUBLIC_MULTISIG_CODE_ID=$CW3_MULTISIG_CODE"
-echo "NEXT_PUBLIC_C4_GROUP_CODE_ID=$CW4_GROUP_CODE"
-echo "NEXT_PUBLIC_STAKE_CW20_CODE_ID=$STAKE_CW20_CODE"
-echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW3_DAO_CONTRACT"
+echo "NEXT_PUBLIC_CW20_CODE_ID=$CW20_CODE"
+echo "NEXT_PUBLIC_CW4GROUP_CODE_ID=$CW4_GROUP_CODE"
+echo "NEXT_PUBLIC_CWCORE_CODE_ID=$cw_core_CODE_ID"
+echo "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID=$cw_proposal_single_CODE_ID"
+echo "NEXT_PUBLIC_CW4VOTING_CODE_ID=$cw4_voting_CODE_ID"
+echo "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=$cw20_staked_balance_voting_CODE_ID"
+echo "NEXT_PUBLIC_STAKECW20_CODE_ID=$stake_cw20_CODE_ID"
+echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW_CORE_DAO_CONTRACT"
