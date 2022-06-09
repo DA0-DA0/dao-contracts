@@ -495,7 +495,6 @@ fn test_withdraw() {
     assert_eq!(owner_balance, Uint128::new(400));
     let distributor_info = get_info(&app, distributor_addr.clone());
     assert_eq!(distributor_info.balance, Uint128::new(590));
-    
 
     // Withdraw all rest funds
     app.execute_contract(
@@ -529,7 +528,6 @@ fn test_withdraw() {
         ContractError::InvalidAmountForWithdraw {},
         err.downcast().unwrap()
     );
-    
 }
 
 #[test]
