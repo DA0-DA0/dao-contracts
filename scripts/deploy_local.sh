@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# TODO: storing cw-core.wasm fails with an error:
-# Processing Contract: cw_core
-# Error: rpc error: code = InvalidArgument desc = failed to execute message; message index: 0: Error calling the VM: Error during static Wasm validation: Wasm contract doesn't have required export: "instantiate". Exports required by VM: ["allocate", "deallocate", "instantiate"].: create wasm contract failed: invalid request
-
 # Run this from the root repo directory
 
 ## CONFIG
@@ -84,7 +80,6 @@ for CONTRACT in ./artifacts/*.wasm; do
 
   # dynamically create env var to store each contract code id
   declare ${CONTRACT_NAME}_CODE_ID=$CODE_ID
-  echo "${CONTRACT_NAME}_CODE_ID: $CODE_ID"
 done
 
 ##### INSTANTIATE CONTRACTS #####
@@ -127,6 +122,7 @@ PROPOSAL_MSG='{
     }
   },
   "only_members_execute": true,
+  "allow_revoting": false,
   "max_voting_period": {
     "time": 432000
   },
@@ -180,3 +176,17 @@ CW_CORE_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $cw_core_CODE_ID --o
 # treasury. Unless this is done the DAO will be unable to perform
 # actions like executing proposals that require it to pay gas fees.
 $BINARY tx bank send validator $CW_CORE_DAO_CONTRACT 9000000$DENOM --chain-id testing $TXFLAG -y
+
+
+# Print out config variables
+printf "\n ------------------------ \n"
+printf "Config Variables \n\n"
+
+echo "NEXT_PUBLIC_CW20_CODE_ID=$CW20_CODE"
+echo "NEXT_PUBLIC_CW4GROUP_CODE_ID=$CW4_GROUP_CODE"
+echo "NEXT_PUBLIC_CWCORE_CODE_ID=$cw_core_CODE_ID"
+echo "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID=$cw_proposal_single_CODE_ID"
+echo "NEXT_PUBLIC_CW4VOTING_CODE_ID=$cw4_voting_CODE_ID"
+echo "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=$cw20_staked_balance_voting_CODE_ID"
+echo "NEXT_PUBLIC_STAKECW20_CODE_ID=$stake_cw20_CODE_ID"
+echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW_CORE_DAO_CONTRACT"

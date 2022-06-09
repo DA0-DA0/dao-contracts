@@ -49,6 +49,5 @@ cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = { git = "https://github.com/CosmWasm/cw-plus", branch = "main",  features = ["stargate"] }
 cw20-base = "0.13"
 cw721-base = "0.13"
-# TODO: This is breaking the `wasm store` of the optimized cw-core.wasm when I uncomment this line:
-#cw-proposal-sudo = { version = "0.1.0", path = "../../debug/cw-proposal-sudo"}
+cw-proposal-sudo = { version = "0.1.0", path = "../../debug/cw-proposal-sudo"}
 cw20-balance-voting = { version = "0.1.0", path = "../../debug/cw20-balance-voting"}
