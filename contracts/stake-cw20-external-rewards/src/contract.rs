@@ -829,8 +829,16 @@ mod tests {
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 2500);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 6000);
 
+        // Current height is 1034. ADDR1 is receiving 500 tokens/block
+        // and ADDR2 / ADDR3 are receiving 250.
+        //
+        // At height 101000 99966 additional blocks have passed. So we
+        // expect:
+        //
+        // ADDR1: 5000 + 99966 * 500 = 49,998,000
+        // ADDR2: 2500 + 99966 * 250 = 24,994,000
+        // ADDR3: 6000 + 99966 * 250 = 24,997,500
         app.borrow_mut().update_block(|b| b.height = 101000);
-        // TODO: check these expected number are correct
         assert_pending_rewards(&mut app, &reward_addr, ADDR1, 49988000);
         assert_pending_rewards(&mut app, &reward_addr, ADDR2, 24994000);
         assert_pending_rewards(&mut app, &reward_addr, ADDR3, 24997500);
