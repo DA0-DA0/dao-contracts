@@ -53,7 +53,15 @@
       ],
       "properties": {
         "withdraw": {
-          "type": "object"
+          "type": "object",
+          "required": [
+            "amount"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
         }
       },
       "additionalProperties": false
