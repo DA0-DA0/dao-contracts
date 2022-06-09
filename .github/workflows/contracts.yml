@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Optimize
         run: optimize_workspace.sh
-      - name: Upload compiled contract wasm and checksums
+      - name: Store compiled contracts and checksums as artifacts
         uses: actions/upload-artifact@v3
         with:
           name: dao-dao-dao-dao-dao
@@ -42,7 +42,7 @@ jobs:
         run: |
           echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
           sh 🥷.sh
-      - name: Download contract wasm + checksums
+      - name: Retrieve compiled contracts wasm + checksums artifacts
         uses: actions/download-artifact@v3
         with:
           name: dao-dao-dao-dao-dao
