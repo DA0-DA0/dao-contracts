@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg,
+    StdResult,
 };
 use cw2::set_contract_version;
 
@@ -20,9 +20,9 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg,
+    _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config {
@@ -31,14 +31,8 @@ pub fn instantiate(
     let empty: Vec<Authorization> = vec![];
     CONFIG.save(deps.storage, &config)?;
     AUTHORIZATIONS.save(deps.storage, &info.sender, &empty)?;
-    let proposal_module_msg = msg
-        .proposal_module_instantiate_info
-        .into_wasm_msg(env.contract.address.clone());
-    let proposal_module_msg: SubMsg<Empty> = SubMsg::new(proposal_module_msg);
 
-    Ok(Response::default()
-        .add_attribute("action", "instantiate")
-        .add_submessage(proposal_module_msg))
+    Ok(Response::default().add_attribute("action", "instantiate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -52,7 +46,28 @@ pub fn execute(
         ExecuteMsg::AddAuthorization { auth_contract } => {
             execute_add_authorization(deps, env, info, auth_contract)
         }
+        ExecuteMsg::Authorize { msgs, sender } => execute_authorize(deps, msgs, sender),
     }
+}
+
+fn execute_authorize(
+    deps: DepsMut,
+    msgs: Vec<CosmosMsg<Empty>>,
+    sender: String,
+) -> Result<Response, ContractError> {
+    // Use the error here to provide better errors?
+    println!("AUTHORIZING");
+    let authorized = authorize_messages(deps.as_ref(), msgs, sender).unwrap_or(false);
+    println!("{}", authorized);
+    if !authorized {
+        return Err(ContractError::Unauthorized {
+            reason: Some("authorization failed".to_string()),
+        });
+    }
+    // TODO: Reusing the query mechanism. This should be executes later
+    Ok(Response::default()
+        .add_attribute("action", "execute_authorize")
+        .add_attribute("authorized", "true"))
 }
 
 pub fn execute_add_authorization(
@@ -96,21 +111,30 @@ pub fn execute_add_authorization(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
+        QueryMsg::Authorize { msgs, sender } => query_authorizations(deps, msgs, sender),
         QueryMsg::GetAuthorizations { .. } => {
             unimplemented!()
         }
     }
 }
 
-fn authorize_messages(
+fn query_authorizations(
     deps: Deps,
-    _env: Env,
     msgs: Vec<CosmosMsg<Empty>>,
     sender: String,
 ) -> StdResult<Binary> {
+    to_binary(&IsAuthorizedResponse {
+        authorized: authorize_messages(deps, msgs, sender).unwrap_or(false),
+    })
+}
+
+fn authorize_messages(
+    deps: Deps,
+    msgs: Vec<CosmosMsg<Empty>>,
+    sender: String,
+) -> Result<bool, ContractError> {
     // This checks all the registered authorizations
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
@@ -118,7 +142,7 @@ fn authorize_messages(
     if auths.is_empty() {
         // If there aren't any authorizations, we consider the auth as not-configured and allow all
         // messages
-        return to_binary(&IsAuthorizedResponse { authorized: true });
+        return Ok(true);
     }
 
     let authorized = auths.into_iter().all(|a| {
@@ -133,7 +157,7 @@ fn authorize_messages(
             .unwrap_or(IsAuthorizedResponse { authorized: false })
             .authorized
     });
-    to_binary(&IsAuthorizedResponse { authorized })
+    Ok(authorized)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -46,6 +46,7 @@ voting = { version = "*", path = "../../packages/voting" }
 indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
 proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }
 vote-hooks = { version = "*", path = "../../packages/vote-hooks" }
+cw-auth-middleware = { path = "../../contracts/cw-auth-middleware" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
@@ -58,5 +59,5 @@ stake-cw20 = { path="../stake-cw20", version = "*" }
 cw20-base = "0.13"
 cw4 = "0.13"
 cw4-group = "0.13"
-whitelist = { version = "*", path = "../../authorizations/whitelist" }
 cw-auth-middleware = { path = "../../contracts/cw-auth-middleware" }
+whitelist = { version = "*", path = "../../authorizations/whitelist" }

@@ -66,6 +66,7 @@ pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
 pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
 pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
+pub const AUTHORIZATION_MODULE: Item<Addr> = Item::new("authorization_module");
 
 impl DepositInfo {
     /// Converts deposit info into checked deposit info.

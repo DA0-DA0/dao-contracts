@@ -127,6 +127,10 @@ pub enum ExecuteMsg {
     RemoveVoteHook {
         address: String,
     },
+    AddAuthorizationModule {
+        address: String,
+    },
+    RemoveAuthorizationModule {},
 }
 
 #[govmod_query]

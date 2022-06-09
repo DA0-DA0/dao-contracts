@@ -263,131 +263,6 @@ fn instantiate_with_staked_balances_governance(
     core_addr
 }
 
-fn instantiate_with_staked_balances_governance_with_auth(
-    app: &mut App,
-    governance_code_id: u64,
-    governance_instantiate: cw_auth_middleware::msg::InstantiateMsg,
-    initial_balances: Option<Vec<Cw20Coin>>,
-) -> Addr {
-    let initial_balances = initial_balances.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(100_000_000),
-        }]
-    });
-
-    // Collapse balances so that we can test double votes.
-    let initial_balances: Vec<Cw20Coin> = {
-        let mut already_seen = vec![];
-        initial_balances
-            .into_iter()
-            .filter(|Cw20Coin { address, amount: _ }| {
-                if already_seen.contains(address) {
-                    false
-                } else {
-                    already_seen.push(address.clone());
-                    true
-                }
-            })
-            .collect()
-    };
-
-    let cw20_id = app.store_code(cw20_contract());
-    let stake_cw20_id = app.store_code(stake_cw20());
-    let staked_balances_voting_id = app.store_code(staked_balances_voting());
-    let core_contract_id = app.store_code(cw_gov_contract());
-
-    let instantiate_core = cw_core::msg::InstantiateMsg {
-        admin: None,
-        name: "DAO DAO".to_string(),
-        description: "A DAO that builds DAOs".to_string(),
-        image_url: None,
-        automatically_add_cw20s: true,
-        automatically_add_cw721s: false,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: staked_balances_voting_id,
-            msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
-                active_threshold: None,
-                token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
-                    code_id: cw20_id,
-                    label: "DAO DAO governance token.".to_string(),
-                    name: "DAO DAO".to_string(),
-                    symbol: "DAO".to_string(),
-                    decimals: 6,
-                    initial_balances: initial_balances.clone(),
-                    marketing: None,
-                    staking_code_id: stake_cw20_id,
-                    unstaking_duration: Some(Duration::Height(6)),
-                    initial_dao_balance: None,
-                },
-            })
-            .unwrap(),
-            admin: cw_core::msg::Admin::None {},
-            label: "DAO DAO voting module".to_string(),
-        },
-        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: governance_code_id,
-            label: "DAO DAO governance module.".to_string(),
-            admin: cw_core::msg::Admin::CoreContract {},
-            msg: to_binary(&governance_instantiate).unwrap(),
-        }],
-        initial_items: None,
-    };
-
-    let core_addr = app
-        .instantiate_contract(
-            core_contract_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &instantiate_core,
-            &[],
-            "DAO DAO",
-            None,
-        )
-        .unwrap();
-
-    let gov_state: cw_core::query::DumpStateResponse = app
-        .wrap()
-        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
-        .unwrap();
-    let voting_module = gov_state.voting_module;
-
-    let staking_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
-        )
-        .unwrap();
-    let token_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
-        )
-        .unwrap();
-
-    // Stake all the initial balances.
-    for Cw20Coin { address, amount } in initial_balances {
-        app.execute_contract(
-            Addr::unchecked(&address),
-            token_contract.clone(),
-            &cw20::Cw20ExecuteMsg::Send {
-                contract: staking_contract.to_string(),
-                amount,
-                msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
-            },
-            &[],
-        )
-        .unwrap();
-    }
-
-    // Update the block so that those staked balances appear.
-    app.update_block(|block| block.height += 1);
-
-    core_addr
-}
-
-
 fn instantiate_with_staking_active_threshold(
     app: &mut App,
     code_id: u64,
@@ -1523,34 +1398,27 @@ fn test_deposit_return_on_close() {
 #[test]
 fn test_execute_proposal_with_auth() {
     let mut app = App::default();
+
+    // Create a proposal manager (gov module)
     let govmod_id = app.store_code(single_proposal_contract());
-
     let gov_instantiate = InstantiateMsg {
-            threshold: Threshold::ThresholdQuorum {
-                threshold: PercentageThreshold::Majority {},
-                // ToDo: We may want to allow zero here so that all proposals immediately pass and
-                // authorization gets delegated to the auth module
-                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-            },
-            max_voting_period: Duration::Height(10),
-            only_members_execute: false,
-            allow_revoting: false,
-            deposit_info: None,
-        };
+        threshold: Threshold::ThresholdQuorum {
+            threshold: PercentageThreshold::Majority {},
+            // ToDo: We may want to allow zero here so that all proposals immediately pass and
+            // authorization gets delegated to the auth module
+            quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+        },
+        max_voting_period: Duration::Height(10),
+        only_members_execute: false,
+        allow_revoting: false,
+        deposit_info: None,
+    };
 
-    let auth_middleware_id = app.store_code(cw_authorization_middleware_contract());
-    let auth_middlware_instantiate = cw_auth_middleware::msg::InstantiateMsg {
-        proposal_module_instantiate_info: ModuleInstantiateInfo {
-        code_id: govmod_id,
-        msg: to_binary(&gov_instantiate).unwrap(),
-        admin: Admin::CoreContract {},
-        label: "proxied proposal".to_string()
-    } };
-
-    let core_addr = instantiate_with_staked_balances_governance_with_auth(
+    // Create the DAO (core)
+    let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
-        auth_middleware_id,
-        auth_middlware_instantiate,
+        govmod_id,
+        gov_instantiate,
         Some(vec![
             Cw20Coin {
                 address: "nico".to_string(),
@@ -1563,6 +1431,7 @@ fn test_execute_proposal_with_auth() {
         ]),
     );
 
+    // A dao can have several proposal/gov modules. Get the first one.
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
         .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
@@ -1572,6 +1441,32 @@ fn test_execute_proposal_with_auth() {
     assert_eq!(proposal_modules.len(), 1);
     let proposal_single = proposal_modules.into_iter().next().unwrap();
 
+    // Create an auth manager and add it to the proposal manager (gov module)
+    let auth_middleware_id = app.store_code(cw_authorization_middleware_contract());
+    let auth_middlware_instantiate = cw_auth_middleware::msg::InstantiateMsg {};
+    let auth_middleware_addr = app
+        .instantiate_contract(
+            auth_middleware_id,
+            core_addr.clone(), // Cheating. This should go through a proposal.
+            &auth_middlware_instantiate,
+            &[],
+            "Auth Manager",
+            None,
+        )
+        .unwrap();
+
+    // adding the auths module to the proposal
+    app.execute_contract(
+        core_addr.clone(), // Cheating. This should go through a proposal.
+        proposal_single.clone(),
+        &ExecuteMsg::AddAuthorizationModule {
+            address: auth_middleware_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Create a proposal
     app.execute_contract(
         Addr::unchecked("nico"),
         proposal_single.clone(),
@@ -1583,6 +1478,8 @@ fn test_execute_proposal_with_auth() {
         &[],
     )
     .unwrap();
+
+    // Vote on it
     app.execute_contract(
         Addr::unchecked("nico"),
         proposal_single.clone(),
@@ -1632,18 +1529,27 @@ fn test_execute_proposal_with_auth() {
     )
     .unwrap();
 
-    // Get the auth module to manage authorizations
-    // let auth_module = gov_state.authorization_module;
-    // app.execute_contract(
-    //     Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
-    //     auth_module.clone(),
-    //     &cw_auth_middleware::msg::ExecuteMsg::AddAuthorization {
-    //         auth_contract: whitelist_addr.to_string(),
-    //     },
-    //     &[],
-    // )
-    // .unwrap();
+    // Add the whitelist to the list of auths
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        auth_middleware_addr.clone(),
+        &cw_auth_middleware::msg::ExecuteMsg::AddAuthorization {
+            auth_contract: whitelist_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
 
+    // Execute the proposal by someone who is not whitelisted
+    app.execute_contract(
+        Addr::unchecked("RaNdO"),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
+    // Execute the proposal by someone who is whitelisted
     app.execute_contract(
         another_stranger.clone(),
         proposal_single.clone(),
