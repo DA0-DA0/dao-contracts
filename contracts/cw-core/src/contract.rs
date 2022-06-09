@@ -379,10 +379,14 @@ pub fn execute_remove_item(
         return Err(ContractError::Unauthorized {});
     }
 
-    ITEMS.remove(deps.storage, key.clone());
-    Ok(Response::default()
-        .add_attribute("action", "execute_remove_item")
-        .add_attribute("key", key))
+    if ITEMS.has(deps.storage, key.clone()) {
+        ITEMS.remove(deps.storage, key.clone());
+        Ok(Response::default()
+            .add_attribute("action", "execute_remove_item")
+            .add_attribute("key", key))
+    } else {
+        Err(ContractError::KeyMissing {})
+    }
 }
 
 pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
