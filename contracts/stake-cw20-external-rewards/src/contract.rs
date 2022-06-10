@@ -35,6 +35,10 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
+    if msg.reward_duration == 0 {
+        return Err(ContractError::ZeroRewardDuration {})
+    }
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let owner = msg.owner.map(|a| deps.api.addr_validate(&a)).transpose()?;
@@ -369,6 +373,10 @@ pub fn execute_update_reward_duration(
     if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
         return Err(ContractError::Unauthorized {});
     };
+
+    if new_duration == 0 {
+        return Err(ContractError::ZeroRewardDuration {})
+    }
 
     let mut reward_config = REWARD_CONFIG.load(deps.storage)?;
     if reward_config.period_finish > env.block.height {
@@ -954,6 +962,38 @@ mod tests {
     }
 
     #[test]
+    fn test_instantiate_zero_duration() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+
+        let (staking_addr, _) = setup_staking_contract(&mut app, vec![]);
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+
+        let msg = crate::msg::InstantiateMsg {
+            owner: Some(admin.clone().into_string()),
+            manager: Some(Addr::unchecked(MANAGER).into_string()),
+            staking_contract: staking_addr.into_string(),
+            reward_token: Denom::Cw20(reward_token),
+            reward_duration: 0,
+        };
+
+        let reward_code_id = app.store_code(contract_rewards());
+
+        let err: ContractError = app
+            .instantiate_contract(reward_code_id, admin, &msg, &[], "reward", None)
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, ContractError::ZeroRewardDuration {});
+    }
+
+    #[test]
     fn test_cw20_rewards() {
         let mut app = mock_app();
         let admin = Addr::unchecked(OWNER);
@@ -1453,7 +1493,7 @@ mod tests {
         let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 100 };
         let _resp = app
             .borrow_mut()
-            .execute_contract(admin, reward_addr.clone(), &msg, &[])
+            .execute_contract(admin.clone(), reward_addr.clone(), &msg, &[])
             .unwrap();
 
         let res: InfoResponse = app
@@ -1465,6 +1505,16 @@ mod tests {
         assert_eq!(res.reward.reward_rate, Uint128::new(100));
         assert_eq!(res.reward.period_finish, 1010);
         assert_eq!(res.reward.reward_duration, 100);
+
+        // Cannot set duration to 0
+        let msg = ExecuteMsg::UpdateRewardDuration { new_duration: 0 };
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(admin, reward_addr, &msg, &[])
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, ContractError::ZeroRewardDuration {});
     }
 
     #[test]
