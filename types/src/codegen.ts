@@ -19,17 +19,6 @@ export type CompilationSpec = {
 dotenv.config();
 
 const CONTRACTS_OUTPUT_DIR = ".";
-const TSCONFIG_DEFAULT = `{
-  "compilerOptions": {
-    "target": "es2017",
-    "lib": ["esnext"],
-    "baseUrl": ".",
-    "sourceMap": true
-  },
-  "include": ["*.ts"],
-  "exclude": ["node_modules"]
-}
-`;
 
 const CODEGEN_LOG_LEVEL = (() => {
   const logLevel = process.env.CODEGEN_LOG_LEVEL || "";
@@ -79,15 +68,8 @@ const DEFAULT_CONFIG = {
       outputName: OutputType.legacy,
       outputDir: CONTRACTS_OUTPUT_DIR,
     },
-  ],
-  tsconfig: TSCONFIG_DEFAULT,
+  ]
 };
-
-// TODO: Do we need this tsconfig.json still?
-//
-// function writeTsconfig(outputPath: string, tsconfig = TSCONFIG_DEFAULT) {
-//   fs.writeFileSync(path.join(outputPath, "tsconfig.json"), tsconfig);
-// }
 
 async function run(cmd: string): Promise<boolean> {
   log(cmd, LogLevels.Verbose);
