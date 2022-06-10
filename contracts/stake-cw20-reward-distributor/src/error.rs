@@ -17,4 +17,7 @@ pub enum ContractError {
 
     #[error("Zero eligible rewards")]
     ZeroRewards {},
+
+    #[error("Rewards have already been distributed for this block")]
+    RewardsDistributedForBlock {},
 }

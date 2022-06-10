@@ -268,24 +268,43 @@ fn test_distribute() {
     let distributor_info = get_info(&app, distributor_addr.clone());
     assert_eq!(distributor_info.balance, Uint128::new(0));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
+    let last_payment_block = distributor_info.last_payment_block;
 
     // Pays out nothing
     app.update_block(|mut block| block.height += 1100);
-    let _err = app
+    let err: ContractError = app
         .execute_contract(
             Addr::unchecked(OWNER),
             distributor_addr.clone(),
             &ExecuteMsg::Distribute {},
             &[],
         )
+        .unwrap_err()
+        .downcast()
         .unwrap();
+
+    assert!(matches!(err, ContractError::ZeroRewards {}));
 
     let staking_balance = get_balance_cw20(&app, cw20_addr, staking_addr);
     assert_eq!(staking_balance, Uint128::new(1000));
 
-    let distributor_info = get_info(&app, distributor_addr);
+    let distributor_info = get_info(&app, distributor_addr.clone());
     assert_eq!(distributor_info.balance, Uint128::new(0));
-    assert_eq!(distributor_info.last_payment_block, app.block_info().height);
+    assert_eq!(distributor_info.last_payment_block, last_payment_block);
+
+    // go to a block before the last payment
+    app.update_block(|mut block| block.height -= 2000);
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            distributor_addr,
+            &ExecuteMsg::Distribute {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::RewardsDistributedForBlock {}));
 }
 
 #[test]
