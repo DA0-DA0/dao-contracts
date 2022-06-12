@@ -1,6 +1,5 @@
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
-use crate::lazy_static::lazy_static;
 use crate::msg::{
     ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
@@ -12,8 +11,8 @@ use crate::state::{
 };
 use crate::ContractError;
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError,
+    StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -23,10 +22,6 @@ use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
 use std::collections::HashSet;
 use std::convert::{From, TryFrom};
-
-lazy_static! {
-    static ref DEFAULT_ADDR: Addr = Addr::unchecked("123");
-}
 
 const CONTRACT_NAME: &str = "crates.io:stake_cw721";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -38,25 +33,20 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let owner = match msg.owner {
-        Some(owner) => Some(deps.api.addr_validate(owner.as_str())?),
-        None => None,
-    };
-
-    let manager = match msg.manager {
-        Some(manager) => Some(deps.api.addr_validate(manager.as_str())?),
-        None => None,
-    };
-
-    let reward_token = match msg.reward_token_address {
-        Some(reward_token) => Some(deps.api.addr_validate(&*reward_token)?),
-        None => None,
-    };
+    let owner = msg.owner.map(|h| deps.api.addr_validate(&h)).transpose()?;
+    let manager = msg
+        .manager
+        .map(|h| deps.api.addr_validate(&h))
+        .transpose()?;
+    let reward_token = msg
+        .reward_token_address
+        .map(|h| deps.api.addr_validate(&h))
+        .transpose()?;
 
     let config = Config {
         owner,
         manager,
-        nft_address: deps.api.addr_validate(&*msg.nft_address)?,
+        nft_address: deps.api.addr_validate(&msg.nft_address)?,
         reward_token_address: reward_token,
         unstaking_duration: msg.unstaking_duration,
     };
@@ -100,7 +90,6 @@ pub fn execute_fund(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if let Some(reward_token_address) = config.reward_token_address {
-        let reward_token_address = deps.api.addr_validate(reward_token_address.as_ref())?;
         if info.sender != reward_token_address {
             return Err(ContractError::InvalidToken {
                 received: info.sender,
@@ -109,13 +98,9 @@ pub fn execute_fund(
         }
 
         let sender = deps.api.addr_validate(&wrapper.sender)?;
-        let balance = REWARD_BALANCE.load(deps.storage).unwrap_or_default();
-        REWARD_BALANCE.save(
-            deps.storage,
-            &balance
-                .checked_add(wrapper.amount)
-                .map_err(StdError::overflow)?,
-        )?;
+        REWARD_BALANCE.update(deps.storage, |old| {
+            old.checked_add(wrapper.amount).map_err(StdError::overflow)
+        })?;
 
         Ok(Response::new()
             .add_attribute("action", "fund")
@@ -175,15 +160,12 @@ pub fn execute_unstake(
     env: Env,
     info: MessageInfo,
     token_id: String,
-    reward_wallet_address: Option<Addr>,
+    reward_wallet_address: Option<String>,
 ) -> Result<Response, ContractError> {
-    let validated_reward_wallet = match reward_wallet_address {
-        Some(validated_reward_wallet) => {
-            Some(deps.api.addr_validate(validated_reward_wallet.as_str())?)
-        }
-        None => None,
-    };
-    let sender = deps.api.addr_validate(info.sender.as_str())?;
+    let validated_reward_wallet = reward_wallet_address
+        .map(|h| deps.api.addr_validate(&h))
+        .transpose()?;
+    let sender = info.sender.clone();
     let config = CONFIG.load(deps.storage)?;
     let sender_staked_nft_collection = STAKED_NFTS_PER_OWNER
         .may_load(deps.storage, &sender)?
@@ -253,10 +235,7 @@ pub fn execute_unstake(
             }
 
             let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
-                recipient: validated_reward_wallet
-                    .clone()
-                    .unwrap_or_else(|| DEFAULT_ADDR.clone())
-                    .to_string(),
+                recipient: validated_reward_wallet.clone().unwrap().to_string(),
                 amount: amount_to_claim,
             };
 
@@ -274,10 +253,7 @@ pub fn execute_unstake(
                 .add_attribute("token_id", token_id)
                 .add_attribute("claim_duration", "None")
                 .add_message(wasm_claim_rewards_msg)
-                .add_attribute(
-                    "reward_wallet",
-                    validated_reward_wallet.unwrap_or_else(|| DEFAULT_ADDR.clone()),
-                )
+                .add_attribute("reward_wallet", validated_reward_wallet.unwrap())
                 .add_attribute("reward_amount", amount_to_claim))
         }
 
@@ -314,9 +290,7 @@ pub fn execute_unstake(
 
             REWARD_CLAIMS.create_claim(
                 deps.storage,
-                &validated_reward_wallet
-                    .clone()
-                    .unwrap_or_else(|| DEFAULT_ADDR.clone()),
+                &validated_reward_wallet.clone().unwrap(),
                 amount_to_claim,
                 duration.after(&env.block),
             )?;
@@ -327,10 +301,7 @@ pub fn execute_unstake(
                 .add_attribute("from", info.sender)
                 .add_attribute("token_id", token_id)
                 .add_attribute("claim_duration", format!("{}", duration))
-                .add_attribute(
-                    "reward_wallet",
-                    validated_reward_wallet.unwrap_or_else(|| DEFAULT_ADDR.clone()),
-                )
+                .add_attribute("reward_wallet", validated_reward_wallet.unwrap())
                 .add_attribute("reward_amount", amount_to_claim))
         }
     }
@@ -373,13 +344,18 @@ pub fn execute_claim_rewards(
     _env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
     let reward_amount =
         REWARD_CLAIMS.claim_tokens(deps.storage, &info.sender, &_env.block, None)?;
+
     if reward_amount.is_zero() {
         return Err(ContractError::NothingToClaim {});
     }
 
-    let config = CONFIG.load(deps.storage)?;
+    if config.reward_token_address == None {
+        return Err(ContractError::NothingToFund {});
+    }
+
     let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
         recipient: info.sender.to_string(),
         amount: reward_amount,
@@ -406,10 +382,10 @@ pub fn execute_update_config(
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let new_owner = new_owner
-        .map(|new_owner| deps.api.addr_validate(&*new_owner))
+        .map(|new_owner| deps.api.addr_validate(&new_owner))
         .transpose()?;
     let new_manager = new_manager
-        .map(|new_manager| deps.api.addr_validate(&*new_manager))
+        .map(|new_manager| deps.api.addr_validate(&new_manager))
         .transpose()?;
 
     let mut config: Config = CONFIG.load(deps.storage)?;
@@ -520,10 +496,10 @@ pub fn query_staked_balance_at_height(
 
 pub fn query_total_staked_at_height(
     deps: Deps,
-    _env: Env,
+    env: Env,
     height: Option<u64>,
 ) -> StdResult<TotalStakedAtHeightResponse> {
-    let height = height.unwrap_or(_env.block.height);
+    let height = height.unwrap_or(env.block.height);
     let total_staked_nfts = TOTAL_STAKED_NFTS
         .may_load_at_height(deps.storage, height)?
         .unwrap_or_default();
@@ -854,7 +830,7 @@ mod tests {
         staking_addr: &Addr,
         info: MessageInfo,
         token_id: String,
-        reward_wallet_address: Option<Addr>,
+        reward_wallet_address: Option<String>,
     ) -> AnyResult<AppResponse> {
         let msg = ExecuteMsg::Unstake {
             token_id,
@@ -1358,7 +1334,7 @@ mod tests {
             &staking_addr,
             info,
             NFT_ID1.to_string(),
-            Some(Addr::unchecked(ADDR1)),
+            Some(Addr::unchecked(ADDR1).to_string()),
         )
         .unwrap();
         app.update_block(next_block);
@@ -1610,7 +1586,7 @@ mod tests {
             &staking_addr,
             info,
             NFT_ID1.to_string(),
-            Some(Addr::unchecked(ADDR1)),
+            Some(Addr::unchecked(ADDR1).to_string()),
         )
         .unwrap();
 
@@ -1623,7 +1599,7 @@ mod tests {
             &staking_addr,
             info,
             NFT_ID2.to_string(),
-            Some(Addr::unchecked(ADDR2)),
+            Some(Addr::unchecked(ADDR2).to_string()),
         )
         .unwrap();
 
@@ -1770,7 +1746,7 @@ mod tests {
             &staking_addr,
             info,
             NFT_ID1.to_string(),
-            Some(Addr::unchecked(ADDR1)),
+            Some(Addr::unchecked(ADDR1).to_string()),
         )
         .unwrap();
 
@@ -1782,7 +1758,7 @@ mod tests {
             &staking_addr,
             info,
             NFT_ID2.to_string(),
-            Some(Addr::unchecked(ADDR2)),
+            Some(Addr::unchecked(ADDR2).to_string()),
         )
         .unwrap();
 
