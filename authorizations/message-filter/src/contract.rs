@@ -1,12 +1,12 @@
-use cosmwasm_std::entry_point;
+use cosmwasm_std::{entry_point, to_vec};
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use cw_auth_middleware::msg::{IsAuthorizedResponse, QueryMsg};
-use schemars::_serde_json::{json, Value};
-#[cfg(not(feature = "library"))]
-use std::ops::Deref;
+use cw_auth_middleware::msg::QueryMsg;
+use schemars::{JsonSchema, Map};
+use serde_derive::{Deserialize, Serialize};
+use serde_json_wasm::{from_str, to_string};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
@@ -16,15 +16,29 @@ use cw_auth_middleware::ContractError as AuthorizationError;
 const CONTRACT_NAME: &str = "crates.io:whitelist";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn from_msg(msg: &CosmosMsg) -> Result<Value, ContractError> {
-    serde_json::to_value(&msg).map_err(|_| ContractError::CustomError {
-        val: "invalid CosmosMsg".to_string(),
-    })
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
+pub enum Value {
+    Null,
+    Bool(bool),
+    Number(u64),
+    String(String),
+    Array(Vec<Value>),
+    Object(Map<String, Value>),
 }
 
-fn from_str(msg: &str) -> Result<Value, ContractError> {
-    serde_json::from_str(msg).map_err(|_| ContractError::CustomError {
-        val: "Invalid str".to_string(),
+fn msg_to_value(msg: &CosmosMsg) -> Result<Value, ContractError> {
+    let serialized = to_string(msg).map_err(|_| ContractError::CustomError {
+        val: "invalid CosmosMsg".to_string(),
+    })?;
+
+    str_to_value(&serialized)
+}
+
+fn str_to_value(msg: &str) -> Result<Value, ContractError> {
+    from_str(msg).map_err(|_| ContractError::CustomError {
+        val: "invalid str".to_string(),
     })
 }
 
@@ -79,9 +93,10 @@ pub fn execute(
                 .into());
             }
 
+            println!("{:?}", msg_to_value(&msgs[0]));
             println!(
                 "{:?}",
-                deep_partial_match(&from_msg(&msgs[0])?, &json!({"bank": {}}).into())
+                deep_partial_match(&msg_to_value(&msgs[0])?, &str_to_value(r#"{"bank": {}}"#)?)
             );
 
             Ok(Response::default().add_attribute("action", "allow_messages"))
@@ -126,7 +141,10 @@ mod tests {
 
         // Comparing a cosmos message to partial json
         assert_eq!(
-            deep_partial_match(&from_msg(&msg).unwrap(), &json!({"bank": {}}).into()),
+            deep_partial_match(
+                &msg_to_value(&msg).unwrap(),
+                &from_str(r#"{"bank": {}}"#).unwrap()
+            ),
             true,
         );
 
@@ -134,7 +152,7 @@ mod tests {
         assert_eq!(
             deep_partial_match(
                 &from_str(r#"{"test": 1}"#).unwrap(),
-                &json!({"bank": {}}).into()
+                &from_str(r#"{"bank": {}}"#).unwrap()
             ),
             false,
         );
@@ -143,7 +161,7 @@ mod tests {
         assert_eq!(
             deep_partial_match(
                 &from_str(r#"{"bank": [1,2,3]}"#).unwrap(),
-                &json!({"bank": {}}).into()
+                &from_str(r#"{"bank": {}}"#).unwrap()
             ),
             true
         );
@@ -151,14 +169,14 @@ mod tests {
         // Testing array comparison as a proxy for all other Eq for Values
         assert_eq!(
             deep_partial_match(
-                &json!({"bank": [1,3,2]}).into(),
+                &from_str(r#"{"bank": [1,3,2]}"#).unwrap(),
                 &from_str(r#"{"bank": [1,2,3]}"#).unwrap(),
             ),
             false
         );
         assert_eq!(
             deep_partial_match(
-                &json!({"bank": [1,2,3]}).into(),
+                &from_str(r#"{"bank": [1,2,3]}"#).unwrap(),
                 &from_str(r#"{"bank": [1,2,3]}"#).unwrap(),
             ),
             true
@@ -167,7 +185,7 @@ mod tests {
         // The partial json comparison only works in one direction
         assert_eq!(
             deep_partial_match(
-                &json!({"bank": {}}).into(),
+                &from_str(r#"{"bank": {}}"#).unwrap(),
                 &from_str(r#"{"bank": [1,2,3]}"#).unwrap()
             ),
             false

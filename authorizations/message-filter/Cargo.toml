@@ -46,9 +46,10 @@ cw-storage-plus = "0.13.2"
 cw2 = "0.13.2"
 schemars = "0.8.8"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
-serde_json = "1.0"
 thiserror = { version = "1.0.31" }
 cw-auth-middleware = { path = "../../contracts/cw-auth-middleware", features = ["library"] }
+serde-json-wasm = "0.4.1"
+serde_derive = "1.0.137"
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

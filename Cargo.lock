@@ -768,7 +768,8 @@ dependencies = [
  "cw2",
  "schemars",
  "serde",
- "serde_json",
+ "serde-json-wasm",
+ "serde_derive",
  "thiserror",
 ]
 

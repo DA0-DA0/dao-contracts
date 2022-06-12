@@ -1,7 +1,6 @@
 #![cfg(test)]
 use cosmwasm_std::{coins, Addr, BankMsg, CosmosMsg, Empty};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use schemars::_serde_json::json;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 
