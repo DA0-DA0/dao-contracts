@@ -13,6 +13,8 @@ pub enum ContractError {
     NothingToFund {},
     #[error("Invalid token")]
     InvalidToken { received: Addr, expected: Addr },
+    #[error("Invalid address")]
+    InvalidAddress {},
     #[error("Unauthorized")]
     Unauthorized {},
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]

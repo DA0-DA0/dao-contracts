@@ -1,4 +1,3 @@
-use cosmwasm_std::Addr;
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw721::Cw721ReceiveMsg;
@@ -27,7 +26,7 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Unstake {
         token_id: String,
-        reward_wallet_address: Option<Addr>,
+        reward_wallet_address: Option<String>,
     },
     ClaimNfts {},
     ClaimRewards {},
