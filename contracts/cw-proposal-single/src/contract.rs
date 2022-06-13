@@ -24,7 +24,7 @@ use crate::{
         get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
         PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
     },
-    utils::{get_total_power, get_voting_power},
+    utils::{get_total_power, get_voting_power, validate_voting_period},
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
@@ -51,9 +51,13 @@ pub fn instantiate(
         .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
         .transpose()?;
 
+    let (min_voting_period, max_voting_period) =
+        validate_voting_period(msg.min_voting_period, msg.max_voting_period)?;
+
     let config = Config {
         threshold: msg.threshold,
-        max_voting_period: msg.max_voting_period,
+        max_voting_period,
+        min_voting_period,
         only_members_execute: msg.only_members_execute,
         dao: dao.clone(),
         deposit_info,
@@ -89,6 +93,7 @@ pub fn execute(
         ExecuteMsg::UpdateConfig {
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -98,6 +103,7 @@ pub fn execute(
             info,
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -166,6 +172,7 @@ pub fn execute_propose(
             description,
             proposer: sender.clone(),
             start_height: env.block.height,
+            min_voting_period: config.min_voting_period.map(|min| min.after(&env.block)),
             expiration,
             threshold: config.threshold,
             total_power,
@@ -424,6 +431,7 @@ pub fn execute_update_config(
     info: MessageInfo,
     threshold: Threshold,
     max_voting_period: Duration,
+    min_voting_period: Option<Duration>,
     only_members_execute: bool,
     allow_revoting: bool,
     dao: String,
@@ -442,11 +450,15 @@ pub fn execute_update_config(
         .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
         .transpose()?;
 
+    let (min_voting_period, max_voting_period) =
+        validate_voting_period(min_voting_period, max_voting_period)?;
+
     CONFIG.save(
         deps.storage,
         &Config {
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,

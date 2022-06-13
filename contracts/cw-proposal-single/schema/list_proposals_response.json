@@ -591,18 +591,41 @@
           "type": "string"
         },
         "expiration": {
-          "$ref": "#/definitions/Expiration"
+          "description": "The the time at which this proposal will expire and close for additional votes.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            }
+          ]
+        },
+        "min_voting_period": {
+          "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "msgs": {
+          "description": "The messages that will be executed should this proposal pass.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/CosmosMsg_for_Empty"
           }
         },
         "proposer": {
-          "$ref": "#/definitions/Addr"
+          "description": "The address that created this proposal.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
         },
         "start_height": {
+          "description": "The block height at which this proposal was created. Voting power queries should query for voting power at this block height.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
@@ -611,13 +634,23 @@
           "$ref": "#/definitions/Status"
         },
         "threshold": {
-          "$ref": "#/definitions/Threshold"
+          "description": "The threshold at which this proposal will pass.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Threshold"
+            }
+          ]
         },
         "title": {
           "type": "string"
         },
         "total_power": {
-          "$ref": "#/definitions/Uint128"
+          "description": "The total amount of voting power at the time of this proposal's creation.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
         },
         "votes": {
           "$ref": "#/definitions/Votes"

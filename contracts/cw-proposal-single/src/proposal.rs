@@ -13,14 +13,25 @@ use crate::{
 pub struct Proposal {
     pub title: String,
     pub description: String,
+    /// The address that created this proposal.
     pub proposer: Addr,
-
+    /// The block height at which this proposal was created. Voting
+    /// power queries should query for voting power at this block
+    /// height.
     pub start_height: u64,
+    /// The minimum amount of time this proposal must remain open for
+    /// voting. The proposal may not pass unless this is expired or
+    /// None.
+    pub min_voting_period: Option<Expiration>,
+    /// The the time at which this proposal will expire and close for
+    /// additional votes.
     pub expiration: Expiration,
-
+    /// The threshold at which this proposal will pass.
     pub threshold: Threshold,
+    /// The total amount of voting power at the time of this
+    /// proposal's creation.
     pub total_power: Uint128,
-
+    /// The messages that will be executed should this proposal pass.
     pub msgs: Vec<CosmosMsg<Empty>>,
 
     pub status: Status,
@@ -116,6 +127,18 @@ impl Proposal {
         // If re-voting is allowed nothing is known until the proposal
         // has expired.
         if self.allow_revoting && !self.expiration.is_expired(block) {
+            return false;
+        }
+        // If the min voting period is set and not expired the
+        // proposal can not yet be passed. This gives DAO members some
+        // time to remove liquidity / scheme on a recovery plan if a
+        // single actor accumulates enough tokens to unilaterally pass
+        // proposals.
+        if !self
+            .min_voting_period
+            .map(|min| min.is_expired(block))
+            .unwrap_or(true)
+        {
             return false;
         }
 
@@ -269,6 +292,7 @@ mod test {
         votes: Votes,
         total_power: Uint128,
         is_expired: bool,
+        min_voting_period_elapsed: bool,
         allow_revoting: bool,
     ) -> (Proposal, BlockInfo) {
         let block = mock_env().block;
@@ -276,12 +300,17 @@ mod test {
             true => Expiration::AtHeight(block.height - 5),
             false => Expiration::AtHeight(block.height + 100),
         };
+        let min_voting_period = match min_voting_period_elapsed {
+            true => Expiration::AtHeight(block.height - 5),
+            false => Expiration::AtHeight(block.height + 5),
+        };
         let prop = Proposal {
             title: "Demo".to_string(),
             description: "Info".to_string(),
             proposer: Addr::unchecked("test"),
             start_height: 100,
             expiration,
+            min_voting_period: Some(min_voting_period),
             allow_revoting,
             msgs: vec![],
             status: Status::Open,
@@ -298,9 +327,17 @@ mod test {
         votes: Votes,
         total_power: Uint128,
         is_expired: bool,
+        min_voting_period_elapsed: bool,
         allow_revoting: bool,
     ) -> bool {
-        let (prop, block) = setup_prop(threshold, votes, total_power, is_expired, allow_revoting);
+        let (prop, block) = setup_prop(
+            threshold,
+            votes,
+            total_power,
+            is_expired,
+            min_voting_period_elapsed,
+            allow_revoting,
+        );
         prop.is_passed(&block)
     }
 
@@ -309,9 +346,17 @@ mod test {
         votes: Votes,
         total_power: Uint128,
         is_expired: bool,
+        min_voting_period_elapsed: bool,
         allow_revoting: bool,
     ) -> bool {
-        let (prop, block) = setup_prop(threshold, votes, total_power, is_expired, allow_revoting);
+        let (prop, block) = setup_prop(
+            threshold,
+            votes,
+            total_power,
+            is_expired,
+            min_voting_period_elapsed,
+            allow_revoting,
+        );
         prop.is_rejected(&block)
     }
 
@@ -333,6 +378,7 @@ mod test {
             votes.clone(),
             Uint128::new(15),
             false,
+            true,
             false,
         ));
         // Proposal being expired should not effect those results.
@@ -340,6 +386,7 @@ mod test {
             threshold.clone(),
             votes.clone(),
             Uint128::new(15),
+            true,
             true,
             false
         ));
@@ -350,7 +397,81 @@ mod test {
             votes,
             Uint128::new(17),
             false,
+            true,
             false
+        ));
+    }
+
+    #[test]
+    fn test_min_voting_period_no_early_pass() {
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Majority {},
+        };
+        let votes = Votes {
+            yes: Uint128::new(7),
+            no: Uint128::new(4),
+            abstain: Uint128::new(2),
+        };
+
+        // Does not pass if min voting period is not expired.
+        assert!(!check_is_passed(
+            threshold.clone(),
+            votes.clone(),
+            Uint128::new(15),
+            false,
+            false,
+            false,
+        ));
+        // Should not be rejected either.
+        assert!(!check_is_rejected(
+            threshold.clone(),
+            votes.clone(),
+            Uint128::new(15),
+            false,
+            false,
+            false,
+        ));
+
+        // Min voting period being expired makes this pass.
+        assert!(check_is_passed(
+            threshold,
+            votes,
+            Uint128::new(15),
+            false,
+            true,
+            false
+        ));
+    }
+
+    #[test]
+    fn test_min_voting_period_early_rejection() {
+        let threshold = Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Majority {},
+        };
+        let votes = Votes {
+            yes: Uint128::new(4),
+            no: Uint128::new(7),
+            abstain: Uint128::new(2),
+        };
+
+        // Proposal has not passed.
+        assert!(!check_is_passed(
+            threshold.clone(),
+            votes.clone(),
+            Uint128::new(15),
+            false,
+            false,
+            false,
+        ));
+        // Should be rejected despite the min voting period not being
+        // passed.
+        assert!(check_is_rejected(
+            threshold,
+            votes,
+            Uint128::new(15),
+            false,
+            false,
+            false,
         ));
     }
 
@@ -375,6 +496,7 @@ mod test {
             Uint128::new(15),
             false,
             true,
+            true,
         ));
         // Proposal being expired should cause the proposal to be
         // passed as votes may no longer be cast.
@@ -382,6 +504,7 @@ mod test {
             threshold,
             votes,
             Uint128::new(15),
+            true,
             true,
             true
         ));
@@ -406,6 +529,7 @@ mod test {
             votes.clone(),
             Uint128::new(15),
             false,
+            true,
             true
         ));
 
@@ -414,6 +538,7 @@ mod test {
             threshold,
             votes,
             Uint128::new(15),
+            true,
             true,
             true
         ));
@@ -436,6 +561,7 @@ mod test {
             },
             Uint128::new(100),
             false,
+            true,
             false
         ));
 
@@ -448,6 +574,7 @@ mod test {
             },
             Uint128::new(10),
             false,
+            true,
             false
         ));
 
@@ -460,6 +587,7 @@ mod test {
             },
             Uint128::new(11),
             false,
+            true,
             false
         ));
 
@@ -472,6 +600,7 @@ mod test {
             },
             Uint128::new(11),
             false,
+            true,
             false
         ));
     }
@@ -493,6 +622,7 @@ mod test {
             },
             Uint128::new(100),
             false,
+            true,
             true
         ));
         assert!(check_is_passed(
@@ -503,6 +633,7 @@ mod test {
                 abstain: Uint128::zero(),
             },
             Uint128::new(100),
+            true,
             true,
             true
         ));
@@ -516,6 +647,7 @@ mod test {
             },
             Uint128::new(10),
             false,
+            true,
             true
         ));
         assert!(check_is_rejected(
@@ -526,6 +658,7 @@ mod test {
                 abstain: Uint128::zero()
             },
             Uint128::new(10),
+            true,
             true,
             true
         ));
@@ -546,6 +679,7 @@ mod test {
             votes,
             Uint128::new(13),
             false,
+            true,
             false
         ))
     }
@@ -565,6 +699,7 @@ mod test {
             votes.clone(),
             Uint128::new(13),
             false,
+            true,
             false
         ));
         assert!(!check_is_rejected(
@@ -572,6 +707,7 @@ mod test {
             votes,
             Uint128::new(13),
             false,
+            true,
             false
         ));
     }
@@ -591,6 +727,7 @@ mod test {
             votes.clone(),
             Uint128::new(13),
             false,
+            true,
             false
         ));
         assert!(!check_is_passed(
@@ -598,6 +735,7 @@ mod test {
             votes,
             Uint128::new(14),
             false,
+            true,
             false
         ))
     }
@@ -623,12 +761,14 @@ mod test {
             votes.clone(),
             Uint128::new(15),
             false,
+            true,
             false,
         ));
         assert!(check_is_rejected(
             percent.clone(),
             votes.clone(),
             Uint128::new(15),
+            true,
             true,
             false
         ));
@@ -640,12 +780,14 @@ mod test {
             votes.clone(),
             Uint128::new(17),
             false,
+            true,
             false
         ));
         assert!(!check_is_rejected(
             percent.clone(),
             votes.clone(),
             Uint128::new(17),
+            true,
             true,
             false
         ));
@@ -656,12 +798,14 @@ mod test {
             votes.clone(),
             Uint128::new(14),
             false,
+            true,
             false
         ));
         assert!(check_is_rejected(
             percent,
             votes,
             Uint128::new(14),
+            true,
             true,
             false
         ));
@@ -699,6 +843,7 @@ mod test {
             passing.clone(),
             Uint128::new(30),
             true,
+            true,
             false,
         ));
         // under quorum it is not passing (40% of 33 = 13.2 > 13)
@@ -706,6 +851,7 @@ mod test {
             quorum.clone(),
             passing.clone(),
             Uint128::new(33),
+            true,
             true,
             false
         ));
@@ -717,6 +863,7 @@ mod test {
             passes_ignoring_abstain.clone(),
             Uint128::new(40),
             true,
+            true,
             false,
         ));
         // over quorum, but under threshold fails also
@@ -724,6 +871,7 @@ mod test {
             quorum.clone(),
             failing,
             Uint128::new(20),
+            true,
             true,
             false
         ));
@@ -735,6 +883,7 @@ mod test {
             passing.clone(),
             Uint128::new(30),
             false,
+            true,
             false
         ));
         assert!(!check_is_passed(
@@ -742,6 +891,7 @@ mod test {
             passes_ignoring_abstain.clone(),
             Uint128::new(40),
             false,
+            true,
             false
         ));
         // if we have threshold * total_weight as yes votes this must pass
@@ -750,6 +900,7 @@ mod test {
             passing.clone(),
             Uint128::new(14),
             false,
+            true,
             false
         ));
         // all votes have been cast, some abstain
@@ -758,6 +909,7 @@ mod test {
             passes_ignoring_abstain,
             Uint128::new(17),
             false,
+            true,
             false
         ));
         // 3 votes uncast, if they all vote no, we have 7 yes, 7 no+veto, 2 abstain (out of 16)
@@ -766,6 +918,7 @@ mod test {
             passing,
             Uint128::new(16),
             false,
+            true,
             false
         ));
     }
@@ -802,6 +955,7 @@ mod test {
             rejecting.clone(),
             Uint128::new(30),
             true,
+            true,
             false
         ));
         // Total power of 33. 13 total votes. 8 no votes, 3 yes, 2
@@ -813,6 +967,7 @@ mod test {
             rejecting.clone(),
             Uint128::new(33),
             true,
+            true,
             false
         ));
 
@@ -823,6 +978,7 @@ mod test {
             quorum.clone(),
             rejected_ignoring_abstain.clone(),
             Uint128::new(40),
+            true,
             true,
             false
         ));
@@ -836,6 +992,7 @@ mod test {
             failing.clone(),
             Uint128::new(20),
             true,
+            true,
             false
         ));
         assert!(!check_is_rejected(
@@ -843,6 +1000,7 @@ mod test {
             failing,
             Uint128::new(20),
             false,
+            true,
             false
         ));
 
@@ -853,6 +1011,7 @@ mod test {
             rejecting.clone(),
             Uint128::new(30),
             false,
+            true,
             false
         ));
         assert!(!check_is_rejected(
@@ -860,6 +1019,7 @@ mod test {
             rejected_ignoring_abstain.clone(),
             Uint128::new(40),
             false,
+            true,
             false
         ));
         // if we have threshold * total_weight as no votes this must reject
@@ -868,6 +1028,7 @@ mod test {
             rejecting.clone(),
             Uint128::new(14),
             false,
+            true,
             false
         ));
         // all votes have been cast, some abstain
@@ -876,6 +1037,7 @@ mod test {
             rejected_ignoring_abstain,
             Uint128::new(17),
             false,
+            true,
             false
         ));
         // 3 votes uncast, if they all vote yes, we have 7 no, 7 yes+veto, 2 abstain (out of 16)
@@ -884,6 +1046,7 @@ mod test {
             rejecting,
             Uint128::new(16),
             false,
+            true,
             false
         ));
     }
@@ -910,12 +1073,14 @@ mod test {
             missing_voters.clone(),
             Uint128::new(15),
             false,
+            true,
             false
         ));
         assert!(!check_is_passed(
             quorum.clone(),
             missing_voters,
             Uint128::new(15),
+            true,
             true,
             false
         ));
@@ -931,12 +1096,14 @@ mod test {
             wait_til_expired.clone(),
             Uint128::new(15),
             false,
+            true,
             false
         ));
         assert!(check_is_passed(
             quorum.clone(),
             wait_til_expired,
             Uint128::new(15),
+            true,
             true,
             false
         ));
@@ -952,12 +1119,14 @@ mod test {
             passes_early.clone(),
             Uint128::new(15),
             false,
+            true,
             false
         ));
         assert!(check_is_passed(
             quorum,
             passes_early,
             Uint128::new(15),
+            true,
             true,
             false
         ));
