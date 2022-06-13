@@ -10,7 +10,7 @@ use serde_json_wasm::{from_str, to_string};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::state::{ALLOWED, DAO};
+use crate::state::{Authorization, Kind, ALLOWED, DAO};
 use cw_auth_middleware::ContractError as AuthorizationError;
 
 const CONTRACT_NAME: &str = "crates.io:whitelist";
@@ -85,7 +85,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AllowMessages { msgs } => {
+        ExecuteMsg::AddAuthorization { kind, addr, msg } => {
             if info.sender != DAO.load(deps.storage)? {
                 return Err(AuthorizationError::Unauthorized {
                     reason: Some("Only the dao can add authorizations".to_string()),
@@ -93,16 +93,64 @@ pub fn execute(
                 .into());
             }
 
-            println!("{:?}", msg_to_value(&msgs[0]));
-            println!(
-                "{:?}",
-                deep_partial_match(&msg_to_value(&msgs[0])?, &str_to_value(r#"{"bank": {}}"#)?)
-            );
+            // If the message can't be converted to a string, we fail
+            str_to_value(&msg)?;
+            ALLOWED.update(
+                deps.storage,
+                addr.clone(),
+                |auth: Option<Vec<Authorization>>| -> Result<Vec<Authorization>, ContractError> {
+                    let new_auth = Authorization {
+                        kind,
+                        addr,
+                        matcher: msg,
+                    };
+                    match auth {
+                        Some(mut auth) => {
+                            auth.push(new_auth);
+                            Ok(auth)
+                        }
+                        None => Ok(vec![new_auth]),
+                    }
+                },
+            )?;
 
-            Ok(Response::default().add_attribute("action", "allow_messages"))
+            Ok(Response::default().add_attribute("action", "allow_message"))
         }
-        ExecuteMsg::DisallowMessages { msgs } => {
+        ExecuteMsg::RemoveAuthorization { kind, addr, msg } => {
             unimplemented!()
+        }
+        ExecuteMsg::Authorize { msgs, sender } => {
+            let auths = ALLOWED.load(deps.storage, sender).map_err(|_| {
+                AuthorizationError::Unauthorized {
+                    reason: Some("No authorizations for sender".to_string()),
+                }
+            })?;
+
+            for msg in &msgs {
+                for auth in &auths {
+                    let check =
+                        deep_partial_match(&msg_to_value(&msg)?, &str_to_value(&auth.matcher)?);
+                    match auth.kind {
+                        Kind::Allow {} => {
+                            if check {
+                                return Ok(Response::default().add_attribute("allowed", "true"));
+                            }
+                        }
+                        Kind::Reject {} => {
+                            if !check {
+                                return Err(AuthorizationError::Unauthorized {
+                                    reason: Some(format!("Test failed: {}", auth.matcher)),
+                                }
+                                .into());
+                            }
+                        }
+                    }
+                }
+            }
+            Err(AuthorizationError::Unauthorized {
+                reason: Some("Not explicitly authorized, defaulting to reject".to_string()),
+            }
+            .into())
         }
     }
 }

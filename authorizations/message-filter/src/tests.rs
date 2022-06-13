@@ -1,8 +1,11 @@
 #![cfg(test)]
-use cosmwasm_std::{coins, Addr, BankMsg, CosmosMsg, Empty};
+use cosmwasm_std::{coin, coins, Addr, BankMsg, CosmosMsg, Empty, StakingMsg};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg},
+    state::Kind,
+};
 
 fn contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -46,8 +49,52 @@ fn test_simple_filtering() {
     app.execute_contract(
         Addr::unchecked(CREATOR),
         contract_addr.clone(),
-        &ExecuteMsg::AllowMessages { msgs },
+        &ExecuteMsg::AddAuthorization {
+            kind: Kind::Allow {},
+            addr: Addr::unchecked("Someone"),
+            msg: r#"{"bank": {}}"#.to_string(),
+        },
         &[],
     )
     .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR),
+        contract_addr.clone(),
+        &ExecuteMsg::Authorize {
+            sender: Addr::unchecked("Someone"),
+            msgs: msgs.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // No authorizations for sender
+    app.execute_contract(
+        Addr::unchecked(CREATOR),
+        contract_addr.clone(),
+        &ExecuteMsg::Authorize {
+            sender: Addr::unchecked("Someone_else"),
+            msgs,
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    let msgs: Vec<CosmosMsg> = vec![StakingMsg::Delegate {
+        validator: "validator".to_string(),
+        amount: coin(1, "earth".to_string()),
+    }
+    .into()];
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR),
+        contract_addr.clone(),
+        &ExecuteMsg::Authorize {
+            sender: Addr::unchecked("Someone"),
+            msgs: msgs.clone(),
+        },
+        &[],
+    )
+    .unwrap_err();
 }
