@@ -48,6 +48,10 @@ pub fn instantiate(
         Cw20(addr) => Cw20(deps.api.addr_validate(addr.as_ref())?),
     };
 
+    if msg.reward_duration == 0 {
+        return Err(ContractError::ZeroRewardDuration {});
+    }
+
     // Verify contract provided is a staking contract
     let _: cw20_stake::msg::TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
         &msg.staking_contract,
@@ -62,10 +66,7 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &config)?;
 
-    if msg.reward_duration == 0 {
-        return Err(ContractError::ZeroRewardDuration {});
-    }
-
+    // Non-zero rewards duration checked above.
     let reward_config = RewardConfig {
         period_finish: 0,
         reward_rate: Uint128::zero(),
@@ -733,22 +734,8 @@ mod tests {
         let mut app = mock_app();
         let admin = Addr::unchecked(OWNER);
         app.borrow_mut().update_block(|b| b.height = 0);
-        let initial_balances = vec![
-            Cw20Coin {
-                address: ADDR1.to_string(),
-                amount: Uint128::new(100),
-            },
-            Cw20Coin {
-                address: ADDR2.to_string(),
-                amount: Uint128::new(50),
-            },
-            Cw20Coin {
-                address: ADDR3.to_string(),
-                amount: Uint128::new(50),
-            },
-        ];
         let denom = "utest".to_string();
-        let (staking_addr, _) = setup_staking_contract(&mut app, initial_balances);
+        let (staking_addr, _) = setup_staking_contract(&mut app, vec![]);
         let reward_funding = vec![coin(100000000, denom.clone())];
         app.sudo(SudoMsg::Bank({
             BankSudo::Mint {
