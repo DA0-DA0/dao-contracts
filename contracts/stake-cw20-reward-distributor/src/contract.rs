@@ -93,7 +93,6 @@ pub fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    let distribution_msg = get_distribution_msg(deps.as_ref(), &env)?;
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
     let owner = deps.api.addr_validate(&owner)?;
@@ -115,8 +114,14 @@ pub fn execute_update_config(
     };
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new()
-        .add_messages(distribution_msg)
+    let resp = match get_distribution_msg(deps.as_ref(), &env) {
+        // distribution succeeded
+        Ok(msg) => Response::new().add_message(msg),
+        // distribution failed (either zero rewards or already distributed for block)
+        _ => Response::new(),
+    };
+
+    Ok(resp
         .add_attribute("action", "update_config")
         .add_attribute("owner", owner.into_string())
         .add_attribute("staking_addr", staking_addr.into_string())
@@ -140,10 +145,14 @@ pub fn validate_staking(deps: Deps, staking_addr: Addr) -> bool {
     response.is_ok()
 }
 
-fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, ContractError> {
+fn get_distribution_msg(deps: Deps, env: &Env) -> Result<CosmosMsg, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let last_payment_block = LAST_PAYMENT_BLOCK.load(deps.storage)?;
+    if last_payment_block >= env.block.height {
+        return Err(ContractError::RewardsDistributedForBlock {});
+    }
     let block_diff = env.block.height - last_payment_block;
+
     let pending_rewards: Uint128 = config.reward_rate * Uint128::new(block_diff.into());
 
     let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
@@ -156,7 +165,7 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
     let amount = min(balance_info.balance, pending_rewards);
 
     if amount == Uint128::zero() {
-        return Ok(None);
+        return Err(ContractError::ZeroRewards {});
     }
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Send {
@@ -171,14 +180,14 @@ fn get_distribution_msg(deps: Deps, env: &Env) -> Result<Option<CosmosMsg>, Cont
     }
     .into();
 
-    Ok(Some(send_msg))
+    Ok(send_msg)
 }
 
 pub fn execute_distribute(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let msg = get_distribution_msg(deps.as_ref(), &env)?;
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
     Ok(Response::new()
-        .add_messages(msg)
+        .add_message(msg)
         .add_attribute("action", "distribute"))
 }
 
