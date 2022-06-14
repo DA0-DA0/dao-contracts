@@ -114,8 +114,33 @@ pub fn execute(
 
             Ok(Response::default().add_attribute("action", "allow_message"))
         }
-        ExecuteMsg::RemoveAuthorization { .. } => {
-            unimplemented!()
+        ExecuteMsg::RemoveAuthorization { addr, msg } => {
+            let config = CONFIG.load(deps.storage)?;
+            if info.sender != config.dao {
+                return Err(AuthorizationError::Unauthorized {
+                    reason: Some("Only the dao can add authorizations".to_string()),
+                }
+                .into());
+            }
+
+            ALLOWED.update(
+                deps.storage,
+                addr.clone(),
+                |auth: Option<Vec<Authorization>>| -> Result<Vec<Authorization>, ContractError> {
+                    match auth {
+                        Some(mut auth) => {
+                            let i = auth.iter().position(|x| *x.matcher == msg);
+                            if i.is_none() {
+                                return Err(ContractError::NotFound {});
+                            }
+                            auth.remove(i.unwrap());
+                            Ok(auth)
+                        }
+                        None => Err(ContractError::NotFound {}),
+                    }
+                },
+            )?;
+            Ok(Response::default().add_attribute("action", "removed"))
         }
         ExecuteMsg::Authorize { msgs, sender } => {
             let config = CONFIG.load(deps.storage)?;

@@ -1,6 +1,6 @@
 use cosmwasm_std::StdError;
-use thiserror::Error;
 use cw_auth_middleware::ContractError as AuthorizationError;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -12,4 +12,7 @@ pub enum ContractError {
 
     #[error("Custom Error val: {val:?}")]
     CustomError { val: String },
+
+    #[error("Authorization not found")]
+    NotFound {},
 }
