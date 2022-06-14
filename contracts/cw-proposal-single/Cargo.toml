@@ -25,11 +25,11 @@ library = []
 optimize = """docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.12.5
+  cosmwasm/workspace-optimizer:0.12.6
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0" }
+cosmwasm-std = { version = "1.0.0", features = ["ibc3"] }
 cosmwasm-storage = { version = "1.0.0" }
 cw-storage-plus = "0.13"
 cw-utils = "0.13"

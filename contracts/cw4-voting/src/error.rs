@@ -18,6 +18,9 @@ pub enum ContractError {
     #[error("Cannot instantiate a group contract with no initial members")]
     NoMembers {},
 
+    #[error("Cannot instantiate a group contract with duplicate initial members")]
+    DuplicateMembers {},
+
     #[error("Total weight of the CW4 contract cannot be zero")]
     ZeroTotalWeight {},
 

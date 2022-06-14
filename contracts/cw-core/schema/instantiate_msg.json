@@ -127,69 +127,19 @@
     "InitialItem": {
       "type": "object",
       "required": [
-        "info",
-        "name"
+        "key",
+        "value"
       ],
       "properties": {
-        "info": {
-          "description": "The info from which to derive the address.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/InitialItemInfo"
-            }
-          ]
-        },
-        "name": {
+        "key": {
           "description": "The name of the item.",
+          "type": "string"
+        },
+        "value": {
+          "description": "The value the item will have at instantiation time.",
           "type": "string"
         }
       }
-    },
-    "InitialItemInfo": {
-      "oneOf": [
-        {
-          "description": "An existing contract address.",
-          "type": "object",
-          "required": [
-            "Existing"
-          ],
-          "properties": {
-            "Existing": {
-              "type": "object",
-              "required": [
-                "address"
-              ],
-              "properties": {
-                "address": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Info for instantiating a new contract.",
-          "type": "object",
-          "required": [
-            "Instantiate"
-          ],
-          "properties": {
-            "Instantiate": {
-              "type": "object",
-              "required": [
-                "info"
-              ],
-              "properties": {
-                "info": {
-                  "$ref": "#/definitions/ModuleInstantiateInfo"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
     },
     "ModuleInstantiateInfo": {
       "description": "Information needed to instantiate a proposal or voting module.",
