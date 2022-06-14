@@ -253,7 +253,7 @@ dependencies = [
 [[package]]
 name = "cw-multi-test"
 version = "0.13.4"
-source = "git+https://github.com/CosmWasm/cw-plus?branch=main#44852805788d9c76e3b1faa7a039d5a77c49007b"
+source = "git+https://github.com/CosmWasm/cw-plus?branch=main#07d1f718a40bb33574f4ac40141aa6a948bc8c24"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
@@ -329,6 +329,7 @@ dependencies = [
  "cw20",
  "cw20-balance-voting",
  "cw20-base",
+ "cw20-stake",
  "cw20-staked-balance-voting",
  "cw3",
  "cw4",
@@ -338,7 +339,6 @@ dependencies = [
  "proposal-hooks",
  "schemars",
  "serde",
- "stake-cw20",
  "testing",
  "thiserror",
  "vote-hooks",
@@ -376,7 +376,7 @@ dependencies = [
 [[package]]
 name = "cw-storage-plus"
 version = "0.13.4"
-source = "git+https://github.com/CosmWasm/cw-plus?branch=main#44852805788d9c76e3b1faa7a039d5a77c49007b"
+source = "git+https://github.com/CosmWasm/cw-plus?branch=main#07d1f718a40bb33574f4ac40141aa6a948bc8c24"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -398,7 +398,7 @@ dependencies = [
 [[package]]
 name = "cw-utils"
 version = "0.13.4"
-source = "git+https://github.com/CosmWasm/cw-plus?branch=main#44852805788d9c76e3b1faa7a039d5a77c49007b"
+source = "git+https://github.com/CosmWasm/cw-plus?branch=main#07d1f718a40bb33574f4ac40141aa6a948bc8c24"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -467,6 +467,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw20-stake"
+version = "0.2.6"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-controllers",
+ "cw-multi-test 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-storage-plus 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-utils 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw2",
+ "cw20",
+ "cw20-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw20-staked-balance-voting"
 version = "0.1.0"
 dependencies = [
@@ -481,9 +501,9 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "cw20-stake",
  "schemars",
  "serde",
- "stake-cw20",
  "thiserror",
 ]
 
@@ -701,13 +721,13 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.6"
+version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9be70c98951c83b8d2f8f60d7065fa6d5146873094452a1008da8c2f1e4205ad"
+checksum = "4eb1a864a501629691edf6c15a593b7a51eebaa1e8468e9ddc623de7c9b58ec6"
 dependencies = [
  "cfg-if",
  "libc",
- "wasi 0.10.2+wasi-snapshot-preview1",
+ "wasi 0.11.0+wasi-snapshot-preview1",
 ]
 
 [[package]]
@@ -917,7 +937,7 @@ version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d34f1408f55294453790c48b2f1ebbb1c5b4b7563eb1f418bcfcfdbb06ebb4e7"
 dependencies = [
- "getrandom 0.2.6",
+ "getrandom 0.2.7",
 ]
 
 [[package]]
@@ -1059,26 +1079,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stake-cw20"
-version = "0.2.6"
-dependencies = [
- "anyhow",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-controllers",
- "cw-multi-test 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw-storage-plus 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw-utils 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw2",
- "cw20",
- "cw20-base",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "stake-cw20-external-rewards"
 version = "0.2.6"
 dependencies = [
@@ -1093,9 +1093,9 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "cw20-stake",
  "schemars",
  "serde",
- "stake-cw20",
  "thiserror",
 ]
 
@@ -1112,9 +1112,9 @@ dependencies = [
  "cw2",
  "cw20",
  "cw20-base",
+ "cw20-stake",
  "schemars",
  "serde",
- "stake-cw20",
  "thiserror",
 ]
 
@@ -1191,9 +1191,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d22af068fba1eb5edcb4aea19d382b2a3deb4c8f9d475c589b6ada9e0fd493ee"
+checksum = "5bd2fe26506023ed7b5e1e315add59d6f584c621d037f9368fea9cfb988f368c"
 
 [[package]]
 name = "version_check"
@@ -1229,9 +1229,9 @@ checksum = "cccddf32554fecc6acb585f82a32a72e28b48f8c4c1883ddfeeeaa96f7d8e519"
 
 [[package]]
 name = "wasi"
-version = "0.10.2+wasi-snapshot-preview1"
+version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
+checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "zeroize"
