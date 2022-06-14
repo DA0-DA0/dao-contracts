@@ -1,4 +1,4 @@
-use cosmwasm_std::entry_point;
+use cosmwasm_std::{entry_point, Uint128};
 use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use schemars::{JsonSchema, Map};
@@ -19,7 +19,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub enum Value {
     Null,
     Bool(bool),
-    Number(u64),
+    U128(Uint128),
+    Number(u64), // Why doesn't u128 work here?
     String(String),
     Array(Vec<Value>),
     Object(Map<String, Value>),
@@ -58,19 +59,35 @@ pub fn instantiate(
 fn deep_partial_match(msg: &Value, authorization: &Value) -> bool {
     match authorization {
         Value::Object(auth_map) => {
+            if auth_map.is_empty() {
+                return true;
+            }
+
             let mut matching = true;
-            for (key, val) in auth_map {
-                if let Value::Object(msg_map) = msg {
+            if let Value::Object(msg_map) = msg {
+                for (key, val) in auth_map {
                     if !msg_map.contains_key(key) {
                         return false;
                     };
-                    match val {
-                        Value::Object(internal) if internal.is_empty() => (),
-                        _ => matching = deep_partial_match(msg_map.get(key).unwrap(), val),
-                    }
-                } else {
+                    matching = matching & deep_partial_match(msg_map.get(key).unwrap(), val);
+                }
+            } else {
+                return false;
+            }
+            matching
+        }
+        Value::Array(auth_array) => {
+            // Comparing arrays manually because PartialEq doesn't understand use our deep matching.
+            let mut matching = true;
+            if let Value::Array(msg_array) = msg {
+                if msg_array.len() != auth_array.len() {
                     return false;
                 }
+                for (i, elem) in auth_array.iter().enumerate() {
+                    matching = matching & deep_partial_match(&msg_array[i], &elem);
+                }
+            } else {
+                return false;
             }
             matching
         }
@@ -253,6 +270,15 @@ mod tests {
             deep_partial_match(
                 &from_str(r#"{"bank": {}}"#).unwrap(),
                 &from_str(r#"{"bank": [1,2,3]}"#).unwrap()
+            ),
+            false
+        );
+
+        // The partial json comparison works with any json
+        assert_eq!(
+            deep_partial_match(
+                &from_str(r#"{"send": {"to_address": {}}}"#).unwrap(),
+                &from_str(r#"{"send": {"to_address": "test"}}"#).unwrap()
             ),
             false
         );

@@ -61,3 +61,4 @@ cw4 = "0.13"
 cw4-group = "0.13"
 cw-auth-middleware = { path = "../../contracts/cw-auth-middleware" }
 whitelist = { version = "*", path = "../../authorizations/whitelist" }
+message-filter = { version = "*", path = "../../authorizations/message-filter" }

@@ -1,6 +1,6 @@
 use std::u128;
 
-use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
+use cosmwasm_std::{coin, coins, to_binary, Addr, BankMsg, CosmosMsg, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
@@ -71,12 +71,20 @@ fn cw_authorization_middleware_contract() -> Box<dyn Contract<Empty>> {
 }
 
 // Authorizations
-// ToDo: This needs to be abstracted away to simplify dealing with many auth contracts
 fn cw_whitelist_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         whitelist::contract::execute,
         whitelist::contract::instantiate,
         whitelist::contract::query,
+    );
+    Box::new(contract)
+}
+
+fn cw_message_filter_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        message_filter::contract::execute,
+        message_filter::contract::instantiate,
+        message_filter::contract::query,
     );
     Box::new(contract)
 }
@@ -1397,7 +1405,14 @@ fn test_deposit_return_on_close() {
 
 #[test]
 fn test_execute_proposal_with_auth() {
-    let mut app = App::default();
+    let init_funds = vec![coin(1000000, "juno"), coin(100, "other")];
+    let mut app = App::new(|router, _, storage| {
+        // initialization moved to App construction
+        router
+            .bank
+            .init_balance(storage, &Addr::unchecked("McDuck"), init_funds)
+            .unwrap();
+    });
 
     // Create a proposal manager (gov module)
     let govmod_id = app.store_code(single_proposal_contract());
@@ -1430,6 +1445,16 @@ fn test_execute_proposal_with_auth() {
             },
         ]),
     );
+
+    // Let's give the dao some funds
+    let amount = coins(100000, "juno");
+    let bank = BankMsg::Send {
+        to_address: core_addr.to_string(),
+        amount,
+    };
+    let msg: CosmosMsg = bank.clone().into();
+    app.execute_multi(Addr::unchecked("McDuck"), vec![msg])
+        .unwrap();
 
     // A dao can have several proposal/gov modules. Get the first one.
     let gov_state: cw_core::query::DumpStateResponse = app
@@ -1507,27 +1532,27 @@ fn test_execute_proposal_with_auth() {
         .unwrap();
 
     // Only the dao can add authorizations to the whitelist
-    let another_stranger = Addr::unchecked("another stranger");
+    let whitelisted_addr = Addr::unchecked("whitelisted_addr");
     let _err = app
         .execute_contract(
             Addr::unchecked("Anyone"),
             whitelist_addr.clone(),
             &whitelist::msg::ExecuteMsg::Allow {
-                addr: another_stranger.to_string(),
+                addr: whitelisted_addr.to_string(),
             },
             &[],
         )
-        .unwrap_err();
+        .unwrap_err(); // This fails!
 
     app.execute_contract(
         Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
         whitelist_addr.clone(),
         &whitelist::msg::ExecuteMsg::Allow {
-            addr: another_stranger.to_string(),
+            addr: whitelisted_addr.to_string(),
         },
         &[],
     )
-    .unwrap();
+    .unwrap(); // The address has been whitelisted
 
     // Add the whitelist to the list of auths
     app.execute_contract(
@@ -1551,12 +1576,161 @@ fn test_execute_proposal_with_auth() {
 
     // Execute the proposal by someone who is whitelisted
     app.execute_contract(
-        another_stranger.clone(),
+        whitelisted_addr.clone(),
         proposal_single.clone(),
         &ExecuteMsg::Execute { proposal_id: 1 },
         &[],
     )
     .unwrap();
+
+    // Adding a filtering authorization contract
+    let message_filter_id = app.store_code(cw_message_filter_contract());
+    let message_filter_addr = app
+        .instantiate_contract(
+            message_filter_id,
+            Addr::unchecked("Shouldn't matter"),
+            &message_filter::msg::InstantiateMsg {
+                dao: core_addr.clone(),
+                kind: message_filter::state::Kind::Allow {},
+            },
+            &[],
+            "Allow some message types - auth",
+            None,
+        )
+        .unwrap();
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        auth_middleware_addr.clone(),
+        &cw_auth_middleware::msg::ExecuteMsg::AddAuthorization {
+            auth_contract: message_filter_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // An employee can send transactions but only on of a specific token
+    let employee_addr = Addr::unchecked("employee");
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        message_filter_addr.clone(),
+        &message_filter::msg::ExecuteMsg::AddAuthorization {
+            addr: employee_addr.clone(),
+            msg: r#"{"bank": {"send": {"to_address": {}, "amount": [{"denom": "juno", "amount": {}}]}}}"#.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Create a proposal to spend some tokens
+    let amount = coins(1234, "juno");
+    let bank = BankMsg::Send {
+        to_address: "other_addr".to_string(),
+        amount,
+    };
+    let msg: CosmosMsg = bank.clone().into();
+
+    app.execute_contract(
+        Addr::unchecked("nico"),
+        proposal_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "This proposal will pass...".to_string(),
+            description: "but will be allowed depending on the auth module".to_string(),
+            msgs: vec![msg],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on it
+    app.execute_contract(
+        Addr::unchecked("nico"),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Someone without bank permissions tries to execute the proposal
+    app.execute_contract(
+        whitelisted_addr.clone(),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 2 },
+        &[],
+    )
+    .unwrap_err(); // This should fail
+
+    // The employee tries to execute the proposal... but they're not whitelisted!
+    app.execute_contract(
+        employee_addr.clone(),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 2 },
+        &[],
+    )
+    .unwrap_err(); // This should fail
+
+    // Whitelist the employee
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        whitelist_addr.clone(),
+        &whitelist::msg::ExecuteMsg::Allow {
+            addr: employee_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap(); // The address has been whitelisted
+
+    // The employee tries to execute the proposal again. This time after being whitelisted
+    app.execute_contract(
+        employee_addr.clone(),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 2 },
+        &[],
+    )
+    .unwrap(); // This should work!
+
+    // Create a new proposal to spend some that don't match the employee's auth
+    let amount = coins(1, "other");
+    let bank = BankMsg::Send {
+        to_address: "other_addr".to_string(),
+        amount,
+    };
+    let msg: CosmosMsg = bank.clone().into();
+
+    app.execute_contract(
+        Addr::unchecked("nico"),
+        proposal_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "This proposal will pass...".to_string(),
+            description: "but will be allowed depending on the auth module".to_string(),
+            msgs: vec![msg],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on it
+    app.execute_contract(
+        Addr::unchecked("nico"),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // The employee tries to execute the new proposal. This should fail because the coins aren't what the auth allows them
+    app.execute_contract(
+        employee_addr.clone(),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 3 },
+        &[],
+    )
+    .unwrap_err(); // This should fail!
 }
 
 #[test]
