@@ -54,6 +54,19 @@ pub fn execute(
             AUTHORIZED.remove(deps.storage, addr);
             Ok(Response::default().add_attribute("action", "remove"))
         }
+        ExecuteMsg::Authorize { msgs: _, sender } => {
+            let authorized = AUTHORIZED
+                .may_load(deps.storage, sender.to_string())?
+                .is_some();
+            if authorized {
+                Ok(Response::default().add_attribute("action", "allow"))
+            } else {
+                Err(AuthorizationError::Unauthorized {
+                    reason: Some("Not in whitelist".to_string()),
+                }
+                .into())
+            }
+        }
     }
 }
 

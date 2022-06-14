@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult,
+    to_binary, wasm_execute, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
+    Response, StdError, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 
@@ -50,22 +50,44 @@ pub fn execute(
     }
 }
 
+pub fn authorize_message(
+    contract: impl Into<String>,
+    msgs: &Vec<CosmosMsg>,
+    sender: impl Into<String>,
+) -> Result<WasmMsg, StdError> {
+    wasm_execute(
+        contract.into(),
+        &ExecuteMsg::Authorize {
+            msgs: msgs.clone(),
+            sender: sender.into(),
+        },
+        vec![],
+    )
+}
+
 fn execute_authorize(
     deps: DepsMut,
     msgs: Vec<CosmosMsg<Empty>>,
     sender: String,
 ) -> Result<Response, ContractError> {
-    // Use the error here to provide better errors?
-    println!("AUTHORIZING");
-    let authorized = authorize_messages(deps.as_ref(), msgs, sender).unwrap_or(false);
-    println!("{}", authorized);
-    if !authorized {
-        return Err(ContractError::Unauthorized {
-            reason: Some("authorization failed".to_string()),
-        });
+    let config = CONFIG.load(deps.storage)?;
+    let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
+
+    if auths.is_empty() {
+        // If there aren't any authorizations, we consider the auth as not-configured and allow all
+        // messages
+        return Ok(Response::default()
+            .add_attribute("action", "execute_authorize")
+            .add_attribute("authorized", "true"));
     }
-    // TODO: Reusing the query mechanism. This should be executes later
-    Ok(Response::default()
+
+    let mut response: Response<Empty> = Response::default();
+    for auth in auths {
+        let sub_msg = authorize_message(auth.contract, &msgs, sender.clone())?;
+        response = response.add_message(sub_msg);
+    }
+
+    Ok(response
         .add_attribute("action", "execute_authorize")
         .add_attribute("authorized", "true"))
 }
@@ -138,7 +160,7 @@ fn authorize_messages(
     // This checks all the registered authorizations
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
-    println!("Auths: {:?}", auths);
+
     if auths.is_empty() {
         // If there aren't any authorizations, we consider the auth as not-configured and allow all
         // messages
