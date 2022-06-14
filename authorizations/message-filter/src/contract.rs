@@ -1,16 +1,13 @@
-use cosmwasm_std::{entry_point, to_vec};
-use cosmwasm_std::{
-    Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
-use cw_auth_middleware::msg::QueryMsg;
 use schemars::{JsonSchema, Map};
 use serde_derive::{Deserialize, Serialize};
 use serde_json_wasm::{from_str, to_string};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
-use crate::state::{Authorization, Kind, ALLOWED, DAO};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{Authorization, Config, Kind, ALLOWED, CONFIG};
 use cw_auth_middleware::ContractError as AuthorizationError;
 
 const CONTRACT_NAME: &str = "crates.io:whitelist";
@@ -50,7 +47,11 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    DAO.save(deps.storage, &msg.dao)?;
+    let config = Config {
+        dao: msg.dao,
+        kind: msg.kind,
+    };
+    CONFIG.save(deps.storage, &config)?;
     Ok(Response::default().add_attribute("action", "instantiate"))
 }
 
@@ -64,7 +65,7 @@ fn deep_partial_match(msg: &Value, authorization: &Value) -> bool {
                         return false;
                     };
                     match val {
-                        Value::Object(internal) if internal.is_empty() => return matching,
+                        Value::Object(internal) if internal.is_empty() => (),
                         _ => matching = deep_partial_match(msg_map.get(key).unwrap(), val),
                     }
                 } else {
@@ -85,8 +86,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddAuthorization { kind, addr, msg } => {
-            if info.sender != DAO.load(deps.storage)? {
+        ExecuteMsg::AddAuthorization { addr, msg } => {
+            let config = CONFIG.load(deps.storage)?;
+            if info.sender != config.dao {
                 return Err(AuthorizationError::Unauthorized {
                     reason: Some("Only the dao can add authorizations".to_string()),
                 }
@@ -99,11 +101,7 @@ pub fn execute(
                 deps.storage,
                 addr.clone(),
                 |auth: Option<Vec<Authorization>>| -> Result<Vec<Authorization>, ContractError> {
-                    let new_auth = Authorization {
-                        kind,
-                        addr,
-                        matcher: msg,
-                    };
+                    let new_auth = Authorization { addr, matcher: msg };
                     match auth {
                         Some(mut auth) => {
                             auth.push(new_auth);
@@ -116,63 +114,58 @@ pub fn execute(
 
             Ok(Response::default().add_attribute("action", "allow_message"))
         }
-        ExecuteMsg::RemoveAuthorization { kind, addr, msg } => {
+        ExecuteMsg::RemoveAuthorization { .. } => {
             unimplemented!()
         }
         ExecuteMsg::Authorize { msgs, sender } => {
-            let auths = ALLOWED.load(deps.storage, sender).map_err(|_| {
-                AuthorizationError::Unauthorized {
-                    reason: Some("No authorizations for sender".to_string()),
-                }
-            })?;
+            let config = CONFIG.load(deps.storage)?;
+            let auths = ALLOWED.load(deps.storage, sender);
 
-            for msg in &msgs {
-                for auth in &auths {
-                    let check =
-                        deep_partial_match(&msg_to_value(&msg)?, &str_to_value(&auth.matcher)?);
-                    match auth.kind {
-                        Kind::Allow {} => {
-                            if check {
-                                return Ok(Response::default().add_attribute("allowed", "true"));
-                            }
-                        }
-                        Kind::Reject {} => {
-                            if !check {
-                                return Err(AuthorizationError::Unauthorized {
-                                    reason: Some(format!("Test failed: {}", auth.matcher)),
-                                }
-                                .into());
-                            }
-                        }
+            // If there are no auths, return the default for each Kind
+            if auths.is_err() {
+                return config.default_response();
+            }
+
+            let auths = auths.unwrap();
+
+            // check that all messages can be converted to values
+            for m in &msgs {
+                msg_to_value(&m)?;
+            }
+            // check that all auths can be converted to values
+            for a in &auths {
+                str_to_value(&a.matcher)?;
+            }
+
+            // TODO: Do this manually instead of using any/all so we can provide better error messages
+            let matched = auths.iter().any(|a| {
+                msgs.iter().all(|m| {
+                    deep_partial_match(
+                        &msg_to_value(&m).unwrap(),
+                        &str_to_value(&a.matcher).unwrap(),
+                    )
+                })
+            });
+
+            if matched {
+                return match config.kind {
+                    Kind::Allow {} => Ok(Response::default().add_attribute("allowed", "true")),
+                    Kind::Reject {} => Err(AuthorizationError::Unauthorized {
+                        reason: Some("Rejected by auth".to_string()),
                     }
-                }
+                    .into()),
+                };
             }
-            Err(AuthorizationError::Unauthorized {
-                reason: Some("Not explicitly authorized, defaulting to reject".to_string()),
-            }
-            .into())
+            config.default_response()
         }
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Authorize { msgs, sender } => authorize_messages(deps, env, msgs, sender),
         _ => unimplemented!(),
     }
-}
-
-fn authorize_messages(
-    deps: Deps,
-    _env: Env,
-    _msgs: Vec<CosmosMsg<Empty>>,
-    sender: String,
-) -> StdResult<Binary> {
-    // This checks all the registered authorizations
-    // let authorized = AUTHORIZED.may_load(deps.storage, sender)?.is_some();
-    // to_binary(&IsAuthorizedResponse { authorized })
-    unimplemented!()
 }
 
 #[cfg(test)]
@@ -181,7 +174,7 @@ mod tests {
     use cosmwasm_std::{coins, BankMsg};
 
     #[test]
-    fn test_deep_partial_match() {
+    fn test_deep_partial_match_simple() {
         let to_address = String::from("you");
         let amount = coins(1015, "earth");
         let bank = BankMsg::Send { to_address, amount };
@@ -235,6 +228,60 @@ mod tests {
             deep_partial_match(
                 &from_str(r#"{"bank": {}}"#).unwrap(),
                 &from_str(r#"{"bank": [1,2,3]}"#).unwrap()
+            ),
+            false
+        );
+    }
+
+    #[test]
+    fn test_deep_partial_match_complex() {
+        let to_address = String::from("an_address");
+        let amount = coins(1015, "earth");
+        let bank = BankMsg::Send {
+            to_address: to_address.clone(),
+            amount,
+        };
+        let msg: CosmosMsg = bank.clone().into();
+
+        assert_eq!(
+            deep_partial_match(
+                &msg_to_value(&msg).unwrap(),
+                &from_str(r#"{"bank": {"send": {"to_address": "an_address", "amount": {}}}}"#)
+                    .unwrap(),
+            ),
+            true
+        );
+
+        // Changing amouont
+        let amount = coins(1234, "juno");
+        let bank = BankMsg::Send {
+            to_address: to_address.clone(),
+            amount,
+        };
+        let msg: CosmosMsg = bank.clone().into();
+
+        assert_eq!(
+            deep_partial_match(
+                &msg_to_value(&msg).unwrap(),
+                &from_str(r#"{"bank": {"send": {"to_address": "an_address", "amount": {}}}}"#)
+                    .unwrap(),
+            ),
+            true
+        );
+
+        // Changing address
+        let amount = coins(1234, "juno");
+        let bank = BankMsg::Send {
+            to_address: "other_addr".to_string(),
+            amount,
+        };
+        let msg: CosmosMsg = bank.clone().into();
+
+        assert_eq!(
+            deep_partial_match(
+                &msg_to_value(&msg).unwrap(),
+                &from_str(r#"{"bank": {"send": {"to_address": "an_address", "amount": {}}}}"#)
+                    .unwrap(),
             ),
             false
         );

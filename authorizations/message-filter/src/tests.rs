@@ -26,6 +26,7 @@ fn test_simple_filtering() {
     let code_id = app.store_code(contract());
     let instantiate_msg = InstantiateMsg {
         dao: Addr::unchecked(CREATOR),
+        kind: Kind::Allow {},
     };
     let contract_addr = app
         .instantiate_contract(
@@ -50,7 +51,6 @@ fn test_simple_filtering() {
         Addr::unchecked(CREATOR),
         contract_addr.clone(),
         &ExecuteMsg::AddAuthorization {
-            kind: Kind::Allow {},
             addr: Addr::unchecked("Someone"),
             msg: r#"{"bank": {}}"#.to_string(),
         },
