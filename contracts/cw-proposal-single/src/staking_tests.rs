@@ -39,11 +39,11 @@ fn staked_balances_voting() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn stake_cw20() -> Box<dyn Contract<Empty>> {
+fn cw20_stake() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        stake_cw20::contract::execute,
-        stake_cw20::contract::instantiate,
-        stake_cw20::contract::query,
+        cw20_stake::contract::execute,
+        cw20_stake::contract::instantiate,
+        cw20_stake::contract::query,
     );
     Box::new(contract)
 }
@@ -64,7 +64,7 @@ fn instantiate_with_staked_balances_voting() {
 
     let govmod_id = app.store_code(single_govmod_contract());
     let cw20_id = app.store_code(cw20_contract());
-    let stake_cw20_id = app.store_code(stake_cw20());
+    let cw20_stake_id = app.store_code(cw20_stake());
     let core_contract_id = app.store_code(core_contract());
     let staked_balances_voting_id = app.store_code(staked_balances_voting());
 
@@ -90,7 +90,7 @@ fn instantiate_with_staked_balances_voting() {
                         amount: Uint128::new(100),
                     }],
                     marketing: None,
-                    staking_code_id: stake_cw20_id,
+                    staking_code_id: cw20_stake_id,
                     unstaking_duration: Some(Duration::Height(10u64)),
                     initial_dao_balance: Some(Uint128::new(100)),
                 },

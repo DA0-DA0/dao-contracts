@@ -32,7 +32,7 @@ pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
 
-const CONTRACT_NAME: &str = "crates.io:stake_cw20";
+const CONTRACT_NAME: &str = "crates.io:cw20-stake";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

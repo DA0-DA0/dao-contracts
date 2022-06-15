@@ -4,7 +4,7 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use cosmwasm_std::Addr;
 use cw_core::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
     state::Config,
 };
@@ -21,6 +21,7 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
+    export_schema(&schema_for!(MigrateMsg), &out_dir);
 
     export_schema(&schema_for!(DumpStateResponse), &out_dir);
     export_schema(&schema_for!(PauseInfoResponse), &out_dir);

@@ -37,7 +37,7 @@ pub enum PauseInfoResponse {
 pub struct GetItemResponse {
     /// `None` if no item with the provided key was found, `Some`
     /// otherwise.
-    pub item: Option<Addr>,
+    pub item: Option<String>,
 }
 
 /// Returned by Cw20Balances query.

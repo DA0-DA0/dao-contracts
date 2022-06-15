@@ -1,8 +1,8 @@
 use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Denom};
+use cw20_stake::hooks::StakeChangedHookMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use stake_cw20::hooks::StakeChangedHookMsg;
 
 use crate::state::{Config, RewardConfig};
 pub use cw_controllers::ClaimsResponse;
@@ -15,6 +15,9 @@ pub struct InstantiateMsg {
     pub reward_token: Denom,
     pub reward_duration: u64,
 }
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

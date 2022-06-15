@@ -165,3 +165,6 @@ pub enum QueryMsg {
     ProposalHooks {},
     VoteHooks {},
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct MigrateMsg {}
