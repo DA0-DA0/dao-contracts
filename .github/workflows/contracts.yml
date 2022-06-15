@@ -14,51 +14,41 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Get changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v22.2
+      - name: Optimize
+        run: optimize_workspace.sh
+      - name: Store compiled contracts and checksums as artifacts
+        uses: actions/upload-artifact@v3
         with:
-          fetch-depth: 2
-      - name: List all changed files
-        run: |
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "$file was changed"
-          done
-      # - name: Optimize
-      #   run: optimize_workspace.sh
-      # - name: Store compiled contracts and checksums as artifacts
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: dao-dao-dao-dao-dao
-      #     path: artifacts/
-      #     retention-days: 1
+          name: dao-dao-dao-dao-dao
+          path: artifacts/
+          retention-days: 1
 
-  # upload:
-  #   needs: compile
-  #   runs-on: ubuntu-latest
-  #   container:
-  #     image: ghcr.io/cosmoscontracts/juno:v6.0.0
-  #   steps:
-  #     - name: Calibrate the Stargate 🪐
-  #       env:
-  #         JUNO_CHAIN_ID: ${{ secrets.JUNO_CHAIN_ID }}
-  #         JUNO_RPC_NODE: ${{ secrets.JUNO_RPC_NODE }}
-  #       run: |
-  #         junod config chain-id "$JUNO_CHAIN_ID"
-  #         junod config node "$JUNO_RPC_NODE"
-  #     - name: Add Service Wallet
-  #       env:
-  #         DAO_UPLOAD_NINJA: ${{ secrets.DAO_UPLOAD_NINJA}}
-  #       run: |
-  #         echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
-  #         sh 🥷.sh
-  #     - name: Retrieve compiled contracts wasm + checksums artifacts
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: dao-dao-dao-dao-dao
-  #         path: /¬☯️
-  #     - name: Upload contracts to Community Computer
-  #       run: |
-  #         for CONTRACT in /¬☯️/*.wasm; do
-  #           junod tx wasm store $CONTRACT -y --from juno1w0zu2cdt3ulk63590vvmdrdnca3ydnmtxn22ejj --chain-id uni-3 --gas-prices 0.1ujunox --gas auto --gas-adjustment 1.3 -b block
-  #         done
+  upload:
+    needs: compile
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cosmoscontracts/juno:v6.0.0
+    steps:
+      - name: Retrieve compiled contracts wasm + checksums artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dao-dao-dao-dao-dao
+          path: /¬☯️
+      - name: Calibrate the Stargate 🪐
+        env:
+          JUNO_CHAIN_ID: ${{ secrets.JUNO_CHAIN_ID }}
+          JUNO_RPC_NODE: ${{ secrets.JUNO_RPC_NODE }}
+        run: |
+          junod config chain-id "$JUNO_CHAIN_ID"
+          junod config node "$JUNO_RPC_NODE"
+      - name: Add Service Wallet
+        env:
+          DAO_UPLOAD_NINJA: ${{ secrets.DAO_UPLOAD_NINJA}}
+        run: |
+          echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
+          sh 🥷.sh
+      - name: Upload contracts to Community Computer
+        run: |
+          for CONTRACT in /¬☯️/*.wasm; do
+            junod tx wasm store $CONTRACT -y --from juno1w0zu2cdt3ulk63590vvmdrdnca3ydnmtxn22ejj --chain-id uni-3 --gas-prices 0.1ujunox --gas auto --gas-adjustment 1.3 -b block
+          done
