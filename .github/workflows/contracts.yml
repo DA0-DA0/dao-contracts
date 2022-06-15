@@ -7,23 +7,24 @@ on:
     #paths: "contracts/**"
 
 jobs:
-  # compile:
-  #   runs-on: ubuntu-20.04
-  #   container:
-  #     image: cosmwasm/workspace-optimizer:0.12.6
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-  #     - name: Optimize
-  #       run: optimize_workspace.sh
-  #     - name: Store compiled contracts and checksums as artifacts
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: dao-dao-dao-dao-dao
-  #         path: artifacts/
-  #         retention-days: 1
+  compile:
+    runs-on: ubuntu-20.04
+    container:
+      image: cosmwasm/workspace-optimizer:0.12.6
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Optimize
+        run: optimize_workspace.sh
+      - name: Store compiled contracts and checksums as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dao-dao-dao-dao-dao
+          path: artifacts/
+          retention-days: 1
 
-  upload: # needs: compile
+  upload:
+    needs: compile
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/cosmoscontracts/juno:v6.0.0
