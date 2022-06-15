@@ -23,8 +23,7 @@ jobs:
   #         path: artifacts/
   #         retention-days: 1
 
-  upload:
-    needs: compile
+  upload: # needs: compile
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/cosmoscontracts/juno:v6.0.0
