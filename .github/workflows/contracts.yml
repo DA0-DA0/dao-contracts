@@ -7,33 +7,27 @@ on:
     #paths: "contracts/**"
 
 jobs:
-  compile:
-    runs-on: ubuntu-20.04
-    container:
-      image: cosmwasm/workspace-optimizer:0.12.6
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Optimize
-        run: optimize_workspace.sh
-      - name: Store compiled contracts and checksums as artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dao-dao-dao-dao-dao
-          path: artifacts/
-          retention-days: 1
+  # compile:
+  #   runs-on: ubuntu-20.04
+  #   container:
+  #     image: cosmwasm/workspace-optimizer:0.12.6
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #     - name: Optimize
+  #       run: optimize_workspace.sh
+  #     - name: Store compiled contracts and checksums as artifacts
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: dao-dao-dao-dao-dao
+  #         path: artifacts/
+  #         retention-days: 1
 
   upload:
-    needs: compile
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/cosmoscontracts/juno:v6.0.0
     steps:
-      - name: Retrieve compiled contracts wasm + checksums artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: dao-dao-dao-dao-dao
-          path: /¬☯️
       - name: Add Service Wallet
         env:
           DAO_UPLOAD_NINJA: ${{ secrets.DAO_UPLOAD_NINJA}}
@@ -48,6 +42,7 @@ jobs:
         run: |
           junod config chain-id "$CHAIN_ID"
           junod config node "$RPC_NODE"
-          for CONTRACT in /¬☯️/*.wasm; do
-            junod tx wasm store $CONTRACT -y --from service-wallet --chain-id $CHAIN_ID --gas-prices 0.1$DENOM --gas auto --gas-adjustment 1.3 -b block
-          done
+          ls $HOME/.juno
+          # for CONTRACT in /¬☯️/*.wasm; do
+          #   junod tx wasm store $CONTRACT -y --from service-wallet --chain-id $CHAIN_ID --gas-prices 0.1$DENOM --gas auto --gas-adjustment 1.3 -b block
+          # done
