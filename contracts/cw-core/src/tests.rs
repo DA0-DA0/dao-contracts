@@ -53,7 +53,6 @@ fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-
 fn cw_core_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,

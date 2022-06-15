@@ -15,7 +15,10 @@ use cw_core_interface::voting;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
 use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
-use crate::state::{Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES, PROPOSAL_MODULES, VOTING_MODULE};
+use crate::state::{
+    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
+    PROPOSAL_MODULES, VOTING_MODULE,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-core";
