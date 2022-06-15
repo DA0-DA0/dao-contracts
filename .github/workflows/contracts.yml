@@ -47,7 +47,7 @@ jobs:
         run: |
           echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
           sh 🥷.sh
-          junod keys list
+          echo "$WALLET"
       - name: Upload contracts to Community Computer
         env:
           CHAIN_ID: ${{ secrets.JUNO_CHAIN_ID }}
