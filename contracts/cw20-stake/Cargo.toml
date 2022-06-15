@@ -1,5 +1,5 @@
 [package]
-name = "stake-cw20"
+name = "cw20-stake"
 version = "0.2.6"
 authors = ["Ben2x4 <Ben2x4@tutanota.com>"]
 edition = "2018"

@@ -19,13 +19,13 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::{Cw20ReceiveMsg, Denom};
-use stake_cw20::hooks::StakeChangedHookMsg;
+use cw20_stake::hooks::StakeChangedHookMsg;
 
 use cw20::Denom::Cw20;
 use std::cmp::min;
 use std::convert::TryInto;
 
-const CONTRACT_NAME: &str = "crates.io:stake-cw20-external-rewards";
+const CONTRACT_NAME: &str = "crates.io:cw20-stake-external-rewards";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -49,9 +49,9 @@ pub fn instantiate(
     };
 
     // Verify contract provided is a staking contract
-    let _: stake_cw20::msg::TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
+    let _: cw20_stake::msg::TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
         &msg.staking_contract,
-        &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None },
+        &cw20_stake::msg::QueryMsg::TotalStakedAtHeight { height: None },
     )?;
 
     let config = Config {
@@ -343,18 +343,18 @@ fn get_last_time_reward_applicable(deps: Deps, env: &Env) -> StdResult<u64> {
 }
 
 fn get_total_staked(deps: Deps, contract_addr: &Addr) -> StdResult<Uint128> {
-    let msg = stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None };
-    let resp: stake_cw20::msg::TotalStakedAtHeightResponse =
+    let msg = cw20_stake::msg::QueryMsg::TotalStakedAtHeight { height: None };
+    let resp: cw20_stake::msg::TotalStakedAtHeightResponse =
         deps.querier.query_wasm_smart(contract_addr, &msg)?;
     Ok(resp.total)
 }
 
 fn get_staked_balance(deps: Deps, contract_addr: &Addr, addr: &Addr) -> StdResult<Uint128> {
-    let msg = stake_cw20::msg::QueryMsg::StakedBalanceAtHeight {
+    let msg = cw20_stake::msg::QueryMsg::StakedBalanceAtHeight {
         address: addr.into(),
         height: None,
     };
-    let resp: stake_cw20::msg::StakedBalanceAtHeightResponse =
+    let resp: cw20_stake::msg::StakedBalanceAtHeightResponse =
         deps.querier.query_wasm_smart(contract_addr, &msg)?;
     Ok(resp.balance)
 }
@@ -527,9 +527,9 @@ mod tests {
 
     pub fn contract_staking() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            stake_cw20::contract::execute,
-            stake_cw20::contract::instantiate,
-            stake_cw20::contract::query,
+            cw20_stake::contract::execute,
+            cw20_stake::contract::instantiate,
+            cw20_stake::contract::query,
         );
         Box::new(contract)
     }
@@ -568,7 +568,7 @@ mod tests {
         unstaking_duration: Option<Duration>,
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
-        let msg = stake_cw20::msg::InstantiateMsg {
+        let msg = cw20_stake::msg::InstantiateMsg {
             owner: Some(OWNER.to_string()),
             manager: Some("manager".to_string()),
             token_address: cw20.to_string(),
@@ -595,14 +595,14 @@ mod tests {
         let msg = cw20::Cw20ExecuteMsg::Send {
             contract: staking_addr.to_string(),
             amount: Uint128::new(amount),
-            msg: to_binary(&stake_cw20::msg::ReceiveMsg::Stake {}).unwrap(),
+            msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         };
         app.execute_contract(Addr::unchecked(sender), cw20_addr.clone(), &msg, &[])
             .unwrap();
     }
 
     fn unstake_tokens(app: &mut App, staking_addr: &Addr, address: &str, amount: u128) {
-        let msg = stake_cw20::msg::ExecuteMsg::Unstake {
+        let msg = cw20_stake::msg::ExecuteMsg::Unstake {
             amount: Uint128::new(amount),
         };
         app.execute_contract(Addr::unchecked(address), staking_addr.clone(), &msg, &[])
@@ -646,7 +646,7 @@ mod tests {
         let reward_addr = app
             .instantiate_contract(reward_code_id, owner, &msg, &[], "reward", None)
             .unwrap();
-        let msg = stake_cw20::msg::ExecuteMsg::AddHook {
+        let msg = cw20_stake::msg::ExecuteMsg::AddHook {
             addr: reward_addr.to_string(),
         };
         let _result = app

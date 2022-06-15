@@ -37,7 +37,7 @@ cw20 = { version = "0.13" }
 cw-utils = "0.13"
 schemars = "0.8"
 cw20-base = {  version = "0.13", features = ["library"] }
-stake-cw20 = { path = "../stake-cw20", features = ["library"]}
+cw20-stake = { path = "../cw20-stake", features = ["library"]}
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 
