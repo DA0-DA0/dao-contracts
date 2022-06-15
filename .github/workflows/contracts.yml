@@ -7,7 +7,7 @@ on:
     #paths: "contracts/**"
 
 env:
-  TAG: ${{ secrets.JUNO_VERSION }}
+  JUNO_IMAGE: ghcr.io/cosmoscontracts/juno:${{ secrets.JUNO_VERSION }}
 
 jobs:
   compile:
@@ -30,7 +30,7 @@ jobs:
     needs: compile
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cosmoscontracts/juno:$TAG
+      image: $JUNO_IMAGE
     steps:
       - name: Retrieve compiled contracts wasm + checksums artifacts
         uses: actions/download-artifact@v3
