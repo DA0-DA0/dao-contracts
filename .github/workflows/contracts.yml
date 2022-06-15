@@ -47,6 +47,7 @@ jobs:
         run: |
           echo "$DAO_UPLOAD_NINJA" | base64 -d > 🥷.sh
           sh 🥷.sh
+          junod keys list
       - name: Upload contracts to Community Computer
         run: |
           for CONTRACT in /¬☯️/*.wasm; do
