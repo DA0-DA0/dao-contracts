@@ -7,21 +7,21 @@ on:
     #paths: "contracts/**"
 
 jobs:
-  compile:
-    runs-on: ubuntu-20.04
-    container:
-      image: cosmwasm/workspace-optimizer:0.12.6
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Optimize
-        run: optimize_workspace.sh
-      - name: Store compiled contracts and checksums as artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dao-dao-dao-dao-dao
-          path: artifacts/
-          retention-days: 1
+  # compile:
+  #   runs-on: ubuntu-20.04
+  #   container:
+  #     image: cosmwasm/workspace-optimizer:0.12.6
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #     - name: Optimize
+  #       run: optimize_workspace.sh
+  #     - name: Store compiled contracts and checksums as artifacts
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: dao-dao-dao-dao-dao
+  #         path: artifacts/
+  #         retention-days: 1
 
   upload:
     needs: compile
@@ -49,7 +49,9 @@ jobs:
           sh 🥷.sh
           junod keys list
       - name: Upload contracts to Community Computer
+        env:
+          CHAIN_ID: ${{ secrets.JUNO_CHAIN_ID }}
         run: |
           for CONTRACT in /¬☯️/*.wasm; do
-            junod tx wasm store $CONTRACT -y --from $WALLET --chain-id $JUNO_CHAIN_ID --gas-prices 0.1$DENOM --gas auto --gas-adjustment 1.3 -b block
+            junod tx wasm store $CONTRACT -y --from $WALLET --chain-id $CHAIN_ID --gas-prices 0.1$DENOM --gas auto --gas-adjustment 1.3 -b block
           done
