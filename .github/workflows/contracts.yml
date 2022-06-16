@@ -30,7 +30,7 @@ jobs:
     needs: compile
     runs-on: ubuntu-latest
     container:
-      image: $JUNO_IMAGE
+      image: {{ env.JUNO_IMAGE }}
     steps:
       - name: Retrieve compiled contracts wasm + checksums artifacts
         uses: actions/download-artifact@v3
