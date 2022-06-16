@@ -1,4 +1,4 @@
-use cosmwasm_std::{entry_point, Uint128};
+use cosmwasm_std::{entry_point, to_binary, Uint128};
 use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use schemars::{JsonSchema, Map};
@@ -6,7 +6,7 @@ use serde_derive::{Deserialize, Serialize};
 use serde_json_wasm::{from_str, to_string};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{AuthorizationsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Authorization, Config, Kind, ALLOWED, CONFIG};
 use cw_auth_middleware::ContractError as AuthorizationError;
 
@@ -204,9 +204,17 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        _ => unimplemented!(),
+        QueryMsg::GetAuthorizations { sender } => {
+            let auths = ALLOWED.may_load(deps.storage, sender)?;
+            match auths {
+                Some(authorizations) => to_binary(&AuthorizationsResponse { authorizations }),
+                None => to_binary(&AuthorizationsResponse {
+                    authorizations: vec![],
+                }),
+            }
+        }
     }
 }
 

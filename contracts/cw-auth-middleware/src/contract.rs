@@ -114,7 +114,7 @@ pub fn execute_add_authorization(
         &config.dao,
         |auths| -> Result<Vec<Authorization>, ContractError> {
             let new_auth = Authorization {
-                name: "test".to_string(),
+                //name: "test".to_string(),
                 contract: validated_address,
             };
             match auths {

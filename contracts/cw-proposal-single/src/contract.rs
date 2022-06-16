@@ -257,6 +257,7 @@ pub fn execute_execute(
         None => vec![],
     };
 
+    // TODO: Move this into its own proposal module.
     let response = Response::default();
     let response = if let Some(auths) = AUTHORIZATION_MODULE.may_load(deps.storage)? {
         let authorization_message = authorize_message(auths, &prop.msgs, info.sender.clone())?;

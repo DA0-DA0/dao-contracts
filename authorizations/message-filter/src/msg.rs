@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, CosmosMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::Kind;
+use crate::state::{Authorization, Kind};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -21,7 +21,14 @@ pub enum ExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    GetAuthorizations { sender: Addr },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AuthorizationsResponse {
+    pub authorizations: Vec<Authorization>,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

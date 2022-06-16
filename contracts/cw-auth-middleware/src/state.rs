@@ -13,7 +13,7 @@ pub struct Config {
 /// A contract
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Authorization {
-    pub name: String,
+    //pub name: String,
     pub contract: Addr,
     //pub expiration: DateTime
     // ...
