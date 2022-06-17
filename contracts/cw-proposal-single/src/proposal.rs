@@ -134,12 +134,10 @@ impl Proposal {
         // time to remove liquidity / scheme on a recovery plan if a
         // single actor accumulates enough tokens to unilaterally pass
         // proposals.
-        if !self
-            .min_voting_period
-            .map(|min| min.is_expired(block))
-            .unwrap_or(true)
-        {
-            return false;
+        if let Some(min) = self.min_voting_period {
+            if !min.is_expired(block) {
+                return false;
+            }
         }
 
         match self.threshold {
