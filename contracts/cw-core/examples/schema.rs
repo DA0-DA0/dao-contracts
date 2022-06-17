@@ -5,7 +5,10 @@ use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, s
 use cosmwasm_std::Addr;
 use cw_core::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
+    query::{
+        AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
+        PauseInfoResponse,
+    },
     state::Config,
 };
 use cw_core_interface::voting::{
@@ -29,6 +32,7 @@ fn main() {
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(VotingPowerAtHeightResponse), &out_dir);
+    export_schema(&schema_for!(AdminNominationResponse), &out_dir);
 
     // Auto TS code generation expects the query return type as QueryNameResponse
     // Here we map query resonses to the correct name

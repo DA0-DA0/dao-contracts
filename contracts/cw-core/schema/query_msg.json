@@ -3,13 +3,26 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "Get's the DAO's admin (if configured).",
+      "description": "Get's the DAO's admin. Returns `Addr`.",
       "type": "object",
       "required": [
         "admin"
       ],
       "properties": {
         "admin": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get's the currently nominated admin (if any). Returns `AdminNominationResponse`.",
+      "type": "object",
+      "required": [
+        "admin_nomination"
+      ],
+      "properties": {
+        "admin_nomination": {
           "type": "object"
         }
       },

@@ -8,7 +8,10 @@ use crate::{
     msg::{
         Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
     },
-    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
+    query::{
+        AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
+        PauseInfoResponse,
+    },
     state::Config,
     ContractError,
 };
@@ -890,22 +893,23 @@ fn test_admin_permissions() {
     let res = app.execute_contract(
         Addr::unchecked("rando"),
         core_addr.clone(),
-        &ExecuteMsg::UpdateAdmin {
-            admin: Some(Addr::unchecked("rando")),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("rando".to_string()),
         },
         &[],
     );
     assert!(res.is_err());
 
-    // Update Admin can't be called, even by the core module
+    // Nominate admin can be called by core contract as no admin was
+    // specified so the admin defaulted to the core contract.
     let res = app.execute_contract(
-        core_addr.clone(),
+        proposal_module.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::UpdateAdmin {
-                    admin: Some(Addr::unchecked("meow")),
+                msg: to_binary(&ExecuteMsg::NominateAdmin {
+                    admin: Some("meow".to_string()),
                 })
                 .unwrap(),
                 funds: vec![],
@@ -914,7 +918,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    assert!(res.is_ok());
 
     // Instantiate new DAO with an admin
     let (core_with_admin_addr, mut app) =
@@ -972,23 +976,295 @@ fn test_admin_permissions() {
     // DAO unpauses after 10 blocks
     app.update_block(|mut block| block.height += 11);
 
-    // Admin can update the admin.
+    // Admin can nominate a new admin.
     let res = app.execute_contract(
         Addr::unchecked("admin"),
         core_with_admin_addr.clone(),
-        &ExecuteMsg::UpdateAdmin {
-            admin: Some(Addr::unchecked("meow")),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("meow".to_string()),
         },
         &[],
     );
     assert!(res.is_ok());
 
-    // Check that admin has been updated
-    let res: Option<Addr> = app
+    let nomination: AdminNominationResponse = app
         .wrap()
-        .query_wasm_smart(core_with_admin_addr, &QueryMsg::Admin {})
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::AdminNomination {})
         .unwrap();
-    assert_eq!(res, Some(Addr::unchecked("meow")));
+    assert_eq!(
+        nomination,
+        AdminNominationResponse {
+            nomination: Some(Addr::unchecked("meow"))
+        }
+    );
+
+    // Check that admin has not yet been updated
+    let res: Addr = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(res, Addr::unchecked("admin"));
+
+    // Only the nominated address may accept the nomination.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("random"),
+            core_with_admin_addr.clone(),
+            &ExecuteMsg::AcceptAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Accept the nomination.
+    app.execute_contract(
+        Addr::unchecked("meow"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::AcceptAdminNomination {},
+        &[],
+    )
+    .unwrap();
+
+    // Check that admin has been updated
+    let res: Addr = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(res, Addr::unchecked("meow"));
+
+    // Check that the pending admin has been cleared.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr, &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+}
+
+#[test]
+fn test_admin_nomination() {
+    let (core_addr, mut app) = do_standard_instantiate(true, Some("admin".to_string()));
+
+    // Check that there is no pending nominations.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+
+    // Nominate a new admin.
+    app.execute_contract(
+        Addr::unchecked("admin"),
+        core_addr.clone(),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("ekez".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Check that the nomination is in place.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(
+        nomination,
+        AdminNominationResponse {
+            nomination: Some(Addr::unchecked("ekez"))
+        }
+    );
+
+    // Non-admin can not withdraw.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            core_addr.clone(),
+            &ExecuteMsg::WithdrawAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Admin can withdraw.
+    app.execute_contract(
+        Addr::unchecked("admin"),
+        core_addr.clone(),
+        &ExecuteMsg::WithdrawAdminNomination {},
+        &[],
+    )
+    .unwrap();
+
+    // Check that the nomination is withdrawn.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+
+    // Can not withdraw if no nomination is pending.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("admin"),
+            core_addr.clone(),
+            &ExecuteMsg::WithdrawAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::NoAdminNomination {});
+
+    // Can not claim nomination b/c it has been withdrawn.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            core_addr.clone(),
+            &ExecuteMsg::AcceptAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::NoAdminNomination {});
+
+    // Nominate a new admin.
+    app.execute_contract(
+        Addr::unchecked("admin"),
+        core_addr.clone(),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("meow".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // A new nomination can not be created if there is already a
+    // pending nomination.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("admin"),
+            core_addr.clone(),
+            &ExecuteMsg::NominateAdmin {
+                admin: Some("arthur".to_string()),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::PendingNomination {});
+
+    // Only nominated admin may accept.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            core_addr.clone(),
+            &ExecuteMsg::AcceptAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    app.execute_contract(
+        Addr::unchecked("meow"),
+        core_addr.clone(),
+        &ExecuteMsg::AcceptAdminNomination {},
+        &[],
+    )
+    .unwrap();
+
+    // Check that meow is the new admin.
+    let admin: Addr = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(admin, Addr::unchecked("meow".to_string()));
+
+    let start_height = app.block_info().height;
+    // Check that the new admin can do admin things and the old can not.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("admin"),
+            core_addr.clone(),
+            &ExecuteMsg::ExecuteAdminMsgs {
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: core_addr.to_string(),
+                    msg: to_binary(&ExecuteMsg::Pause {
+                        duration: Duration::Height(10),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    let res = app.execute_contract(
+        Addr::unchecked("meow"),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+
+    // DAO unpauses after 10 blocks
+    app.update_block(|mut block| block.height += 11);
+
+    // Remove the admin.
+    app.execute_contract(
+        Addr::unchecked("meow"),
+        core_addr.clone(),
+        &ExecuteMsg::NominateAdmin { admin: None },
+        &[],
+    )
+    .unwrap();
+
+    // Check that this has not caused an admin to be nominated.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+
+    // Check that admin has been updated. As there was no admin
+    // nominated the admin should revert back to the contract address.
+    let res: Addr = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(res, core_addr);
 }
 
 #[test]

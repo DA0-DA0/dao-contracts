@@ -11,7 +11,7 @@ use crate::state::Config;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DumpStateResponse {
     /// Optional DAO Admin
-    pub admin: Option<Addr>,
+    pub admin: Addr,
     /// The governance contract's config.
     pub config: Config,
     // True if the contract is currently paused.
@@ -40,11 +40,19 @@ pub struct GetItemResponse {
     pub item: Option<String>,
 }
 
-/// Returned by Cw20Balances query.
+/// Returned by the `Cw20Balances` query.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Cw20BalanceResponse {
     /// The address of the token.
     pub addr: Addr,
     /// The contract's balance.
     pub balance: Uint128,
+}
+
+/// Returned by the `AdminNomination` query.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct AdminNominationResponse {
+    /// The currently nominated admin or None if no nomination is
+    /// pending.
+    pub nomination: Option<Addr>,
 }

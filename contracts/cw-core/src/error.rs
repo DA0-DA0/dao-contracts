@@ -10,9 +10,6 @@ pub enum ContractError {
     #[error("Unauthorized.")]
     Unauthorized {},
 
-    #[error("DAO does not have an admin configured.")]
-    NoAdmin {},
-
     #[error("The contract is paused.")]
     Paused {},
 
@@ -34,9 +31,14 @@ pub enum ContractError {
     #[error("Unsigned integer overflow.")]
     Overflow {},
 
-    #[error("You can only instantiate {0} items during instantiation, but you tried to instantiate {1}.")]
-    TooManyItems(u64, usize),
-
     #[error("Key is missing from storage")]
     KeyMissing {},
+
+    #[error("No pending admin nomination.")]
+    NoAdminNomination {},
+
+    #[error(
+        "The pending admin nomination must be withdrawn before a new nomination can be created."
+    )]
+    PendingNomination {},
 }
