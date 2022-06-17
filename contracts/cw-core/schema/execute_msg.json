@@ -144,7 +144,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Callable by the admin of the contract. If ADMIN is None removes the admin from the contract. If ADMIN is Some a new admin is proposed and that new admin may become the admin by executing the `AcceptAdminNomination` message.\n\nIf there is already a pending admin nomination the `WithdrawAdminNomination` message must be executed before a new admin may be nominated.",
+      "description": "Callable by the admin of the contract. If ADMIN is None the admin is set as the contract itself so that it may be updated later by vote. If ADMIN is Some a new admin is proposed and that new admin may become the admin by executing the `AcceptAdminNomination` message.\n\nIf there is already a pending admin nomination the `WithdrawAdminNomination` message must be executed before a new admin may be nominated.",
       "type": "object",
       "required": [
         "nominate_admin"

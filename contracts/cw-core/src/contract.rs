@@ -53,7 +53,9 @@ pub fn instantiate(
     let admin = msg
         .admin
         .map(|human| deps.api.addr_validate(&human))
-        .transpose()?;
+        .transpose()?
+        // If no admin is specified, the contract is its own admin.
+        .unwrap_or_else(|| env.contract.address.clone());
     ADMIN.save(deps.storage, &admin)?;
 
     let vote_module_msg = msg
@@ -124,7 +126,9 @@ pub fn execute(
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
         }
-        ExecuteMsg::NominateAdmin { admin } => execute_nominate_admin(deps, info.sender, admin),
+        ExecuteMsg::NominateAdmin { admin } => {
+            execute_nominate_admin(deps, env, info.sender, admin)
+        }
         ExecuteMsg::AcceptAdminNomination {} => execute_accept_admin_nomination(deps, info.sender),
         ExecuteMsg::WithdrawAdminNomination {} => {
             execute_withdraw_admin_nomination(deps, info.sender)
@@ -160,19 +164,14 @@ pub fn execute_admin_msgs(
 ) -> Result<Response, ContractError> {
     let admin = ADMIN.load(deps.storage)?;
 
-    match admin {
-        Some(admin) => {
-            // Check if the sender is the DAO Admin
-            if sender != admin {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            Ok(Response::default()
-                .add_attribute("action", "execute_admin_msgs")
-                .add_messages(msgs))
-        }
-        None => Err(ContractError::NoAdmin {}),
+    // Check if the sender is the DAO Admin
+    if sender != admin {
+        return Err(ContractError::Unauthorized {});
     }
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_admin_msgs")
+        .add_messages(msgs))
 }
 
 pub fn execute_proposal_hook(
@@ -192,13 +191,14 @@ pub fn execute_proposal_hook(
 
 pub fn execute_nominate_admin(
     deps: DepsMut,
+    env: Env,
     sender: Addr,
     nomination: Option<String>,
 ) -> Result<Response, ContractError> {
     let nomination = nomination.map(|h| deps.api.addr_validate(&h)).transpose()?;
 
     let current_admin = ADMIN.load(deps.storage)?;
-    if current_admin.as_ref() != Some(&sender) {
+    if current_admin != sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -209,7 +209,9 @@ pub fn execute_nominate_admin(
 
     match &nomination {
         Some(nomination) => NOMINATED_ADMIN.save(deps.storage, nomination)?,
-        None => ADMIN.save(deps.storage, &None)?,
+        // If no admin set to default of the contract. This allows the
+        // contract to later set a new admin via governance.
+        None => ADMIN.save(deps.storage, &env.contract.address)?,
     }
 
     Ok(Response::default()
@@ -233,7 +235,7 @@ pub fn execute_accept_admin_nomination(
         return Err(ContractError::Unauthorized {});
     }
     NOMINATED_ADMIN.remove(deps.storage);
-    ADMIN.save(deps.storage, &Some(nomination))?;
+    ADMIN.save(deps.storage, &nomination)?;
 
     Ok(Response::default()
         .add_attribute("action", "execute_accept_admin_nomination")
@@ -245,7 +247,7 @@ pub fn execute_withdraw_admin_nomination(
     sender: Addr,
 ) -> Result<Response, ContractError> {
     let admin = ADMIN.load(deps.storage)?;
-    if admin.as_ref() != Some(&sender) {
+    if admin != sender {
         return Err(ContractError::Unauthorized {});
     }
 

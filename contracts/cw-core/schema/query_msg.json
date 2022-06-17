@@ -3,7 +3,7 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "Get's the DAO's admin (if configured).",
+      "description": "Get's the DAO's admin. Returns `Addr`.",
       "type": "object",
       "required": [
         "admin"

@@ -900,9 +900,10 @@ fn test_admin_permissions() {
     );
     assert!(res.is_err());
 
-    // Update Admin can't be called, even by the core module
+    // Nominate admin can be called by core contract as no admin was
+    // specified so the admin defaulted to the core contract.
     let res = app.execute_contract(
-        core_addr.clone(),
+        proposal_module.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
@@ -917,7 +918,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    assert!(res.is_ok());
 
     // Instantiate new DAO with an admin
     let (core_with_admin_addr, mut app) =
@@ -998,11 +999,11 @@ fn test_admin_permissions() {
     );
 
     // Check that admin has not yet been updated
-    let res: Option<Addr> = app
+    let res: Addr = app
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, Some(Addr::unchecked("admin")));
+    assert_eq!(res, Addr::unchecked("admin"));
 
     // Only the nominated address may accept the nomination.
     let err: ContractError = app
@@ -1027,11 +1028,11 @@ fn test_admin_permissions() {
     .unwrap();
 
     // Check that admin has been updated
-    let res: Option<Addr> = app
+    let res: Addr = app
         .wrap()
         .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, Some(Addr::unchecked("meow")));
+    assert_eq!(res, Addr::unchecked("meow"));
 
     // Check that the pending admin has been cleared.
     let nomination: AdminNominationResponse = app
@@ -1179,11 +1180,11 @@ fn test_admin_nomination() {
     .unwrap();
 
     // Check that meow is the new admin.
-    let admin: Option<Addr> = app
+    let admin: Addr = app
         .wrap()
         .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(admin, Some(Addr::unchecked("meow".to_string())));
+    assert_eq!(admin, Addr::unchecked("meow".to_string()));
 
     let start_height = app.block_info().height;
     // Check that the new admin can do admin things and the old can not.
@@ -1257,12 +1258,13 @@ fn test_admin_nomination() {
         .unwrap();
     assert_eq!(nomination, AdminNominationResponse { nomination: None });
 
-    // Check that admin has been updated.
-    let res: Option<Addr> = app
+    // Check that admin has been updated. As there was no admin
+    // nominated the admin should revert back to the contract address.
+    let res: Addr = app
         .wrap()
-        .query_wasm_smart(core_addr, &QueryMsg::Admin {})
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, None);
+    assert_eq!(res, core_addr);
 }
 
 #[test]

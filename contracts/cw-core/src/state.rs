@@ -24,7 +24,11 @@ pub struct Config {
 
 /// The admin of the contract. Typically a DAO. The contract admin may
 /// unilaterally execute messages on this contract.
-pub const ADMIN: Item<Option<Addr>> = Item::new("admin");
+///
+/// In cases where no admin is wanted the admin should be set to the
+/// contract itself. This will happen by default if no admin is
+/// specified in `NominateAdmin` and instantiate messages.
+pub const ADMIN: Item<Addr> = Item::new("admin");
 
 /// A new admin that has been nominated by the current admin. The
 /// nominated admin must accept the proposal before becoming the admin

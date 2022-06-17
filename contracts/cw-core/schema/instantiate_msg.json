@@ -12,7 +12,7 @@
   ],
   "properties": {
     "admin": {
-      "description": "Optional Admin with the ability to execute DAO messages directly Useful for building SubDAOs completely controlled by a parent DAO.",
+      "description": "Optional Admin with the ability to execute DAO messages directly. Useful for building SubDAOs controlled by a parent DAO. If no admin is specified the contract is set as its own admin so that the admin may be updated later by governance.",
       "type": [
         "string",
         "null"
