@@ -56,4 +56,10 @@ pub enum ContractError {
 
     #[error("The DAO is currently inactive, you cannot create proposals")]
     InactiveDao {},
+
+    #[error("min_voting_period and max_voting_period must have the same units (height or time)")]
+    DurationUnitsConflict {},
+
+    #[error("Min voting period must be less than or equal to max voting period")]
+    InvalidMinVotingPeriod {},
 }

@@ -550,6 +550,7 @@ where
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info,
@@ -705,6 +706,7 @@ fn test_propose() {
     let instantiate = InstantiateMsg {
         threshold: threshold.clone(),
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -734,6 +736,7 @@ fn test_propose() {
     let expected = Config {
         threshold: threshold.clone(),
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         dao: governance_addr,
@@ -765,6 +768,7 @@ fn test_propose() {
         proposer: Addr::unchecked(CREATOR_ADDR),
         start_height: current_block.height,
         expiration: max_voting_period.after(&current_block),
+        min_voting_period: None,
         threshold,
         allow_revoting: false,
         total_power: Uint128::new(100_000_000),
@@ -790,6 +794,7 @@ fn test_propose_supports_stargate_message() {
     let instantiate = InstantiateMsg {
         threshold: threshold.clone(),
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -838,6 +843,7 @@ fn test_propose_supports_stargate_message() {
         proposer: Addr::unchecked(CREATOR_ADDR),
         start_height: current_block.height,
         expiration: max_voting_period.after(&current_block),
+        min_voting_period: None,
         threshold,
         allow_revoting: false,
         total_power: Uint128::new(100_000_000),
@@ -958,6 +964,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: Some(DepositInfo {
@@ -1034,6 +1041,7 @@ fn test_different_token_proposal_deposit() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: Some(DepositInfo {
@@ -1090,6 +1098,7 @@ fn test_bad_token_proposal_deposit() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: Some(DepositInfo {
@@ -1116,6 +1125,7 @@ fn test_take_proposal_deposit() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: Some(DepositInfo {
@@ -1465,6 +1475,7 @@ fn test_execute_expired_proposal() {
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
@@ -1625,6 +1636,7 @@ fn test_update_config() {
                 percentage: PercentageThreshold::Majority {},
             },
             max_voting_period: cw_utils::Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: false,
             allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
@@ -1643,6 +1655,7 @@ fn test_update_config() {
                 percentage: PercentageThreshold::Majority {},
             },
             max_voting_period: cw_utils::Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: false,
             allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
@@ -1662,6 +1675,7 @@ fn test_update_config() {
             percentage: PercentageThreshold::Majority {},
         },
         max_voting_period: cw_utils::Duration::Height(10),
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
@@ -1679,6 +1693,7 @@ fn test_update_config() {
                 percentage: PercentageThreshold::Majority {},
             },
             max_voting_period: cw_utils::Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: false,
             allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
@@ -1761,6 +1776,7 @@ fn test_query_list_proposals() {
                 quorum: PercentageThreshold::Percent(Decimal::percent(0)),
             },
             max_voting_period: cw_utils::Duration::Height(100),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
@@ -1832,6 +1848,7 @@ fn test_query_list_proposals() {
             proposer: Addr::unchecked(CREATOR_ADDR),
             start_height: app.block_info().height,
             expiration: cw_utils::Expiration::AtHeight(app.block_info().height + 100),
+            min_voting_period: None,
             threshold: Threshold::ThresholdQuorum {
                 threshold: PercentageThreshold::Majority {},
                 quorum: PercentageThreshold::Percent(Decimal::percent(0)),
@@ -1876,6 +1893,7 @@ fn test_query_list_proposals() {
             proposer: Addr::unchecked(CREATOR_ADDR),
             start_height: app.block_info().height,
             expiration: cw_utils::Expiration::AtHeight(app.block_info().height + 100),
+            min_voting_period: None,
             threshold: Threshold::ThresholdQuorum {
                 threshold: PercentageThreshold::Majority {},
                 quorum: PercentageThreshold::Percent(Decimal::percent(0)),
@@ -1907,6 +1925,7 @@ fn test_hooks() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -2080,6 +2099,7 @@ fn test_active_threshold_absolute() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -2205,6 +2225,7 @@ fn test_active_threshold_percent() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -2331,6 +2352,7 @@ fn test_active_threshold_none() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -2409,6 +2431,7 @@ fn test_active_threshold_none() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -2459,6 +2482,7 @@ fn test_revoting() {
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
@@ -2584,6 +2608,7 @@ fn test_allow_revoting_config_changes() {
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
@@ -2629,6 +2654,7 @@ fn test_allow_revoting_config_changes() {
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
@@ -2725,6 +2751,7 @@ fn test_revoting_same_vote_twice() {
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
@@ -2826,6 +2853,7 @@ fn test_three_of_five_multisig() {
                 threshold: Uint128::new(3),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
@@ -2951,6 +2979,7 @@ fn test_three_of_five_multisig_reject() {
                 threshold: Uint128::new(3),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
@@ -3082,6 +3111,7 @@ fn test_voting_module_token_with_multisig_style_voting() {
                 threshold: Uint128::new(3),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: Some(DepositInfo {
@@ -3120,6 +3150,7 @@ fn test_three_of_five_multisig_revoting() {
                 threshold: Uint128::new(3),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
@@ -3352,6 +3383,7 @@ fn test_migrate() {
     let instantiate = InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -3409,6 +3441,7 @@ fn test_proposal_count_initialized_to_zero() {
                 quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Height(10),
+            min_voting_period: None,
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
@@ -3439,4 +3472,252 @@ fn test_proposal_count_initialized_to_zero() {
         .query_wasm_smart(proposal_single, &QueryMsg::ProposalCount {})
         .unwrap();
     assert_eq!(proposal_count, 0);
+}
+
+#[test]
+fn test_no_early_pass_with_min_duration() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: Some(Duration::Height(2)),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "wale".to_string(),
+                amount: Uint128::new(90),
+            },
+        ]),
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_modules = gov_state.proposal_modules;
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_single = proposal_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("wale"),
+        proposal_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Wale votes yes which under normal curcumstances would cause the
+    // proposal to pass. Because there is a min duration it does not.
+    app.execute_contract(
+        Addr::unchecked("wale"),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+
+    assert_eq!(proposal.proposal.status, Status::Open);
+
+    // Let the min voting period pass.
+    app.update_block(|b| b.height += 2);
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+
+    assert_eq!(proposal.proposal.status, Status::Passed);
+}
+
+#[test]
+#[should_panic(
+    expected = "min_voting_period and max_voting_period must have the same units (height or time)"
+)]
+fn test_min_duration_units_missmatch() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_proposal_contract());
+    instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: Some(Duration::Time(2)),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "wale".to_string(),
+                amount: Uint128::new(90),
+            },
+        ]),
+    );
+}
+
+#[test]
+#[should_panic(expected = "Min voting period must be less than or equal to max voting period")]
+fn test_min_duration_larger_than_proposal_duration() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_proposal_contract());
+    instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: Some(Duration::Height(11)),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "wale".to_string(),
+                amount: Uint128::new(90),
+            },
+        ]),
+    );
+}
+
+#[test]
+fn test_min_duration_same_as_proposal_duration() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        InstantiateMsg {
+            threshold: Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
+            },
+            max_voting_period: Duration::Time(10),
+            min_voting_period: Some(Duration::Time(10)),
+            only_members_execute: true,
+            allow_revoting: false,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "wale".to_string(),
+                amount: Uint128::new(90),
+            },
+        ]),
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_modules = gov_state.proposal_modules;
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_single = proposal_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("wale"),
+        proposal_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Wale votes yes which under normal curcumstances would cause the
+    // proposal to pass. Because there is a min duration it does not.
+    app.execute_contract(
+        Addr::unchecked("wale"),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+
+    assert_eq!(proposal.proposal.status, Status::Open);
+
+    // ekez can vote no.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Let the min voting period pass.
+    app.update_block(|b| b.time = b.time.plus_seconds(10));
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+
+    assert_eq!(proposal.proposal.status, Status::Passed);
 }
