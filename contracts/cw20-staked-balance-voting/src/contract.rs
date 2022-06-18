@@ -12,8 +12,8 @@ use std::convert::TryInto;
 
 use crate::error::ContractError;
 use crate::msg::{
-    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, QueryMsg, StakingInfo,
-    TokenInfo,
+    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    StakingInfo, TokenInfo,
 };
 use crate::state::{
     ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID,
@@ -41,7 +41,7 @@ pub fn instantiate(
     DAO.save(deps.storage, &info.sender)?;
     if let Some(active_threshold) = msg.active_threshold.clone() {
         if let ActiveThreshold::Percentage { percent } = active_threshold {
-            if percent > Decimal::percent(100) {
+            if percent > Decimal::percent(100) || percent <= Decimal::percent(0) {
                 return Err(ContractError::InvalidActivePercentage {});
             }
         }
@@ -65,9 +65,9 @@ pub fn instantiate(
                 } => {
                     let staking_contract_address =
                         deps.api.addr_validate(&staking_contract_address)?;
-                    let resp: stake_cw20::msg::GetConfigResponse = deps.querier.query_wasm_smart(
+                    let resp: cw20_stake::msg::GetConfigResponse = deps.querier.query_wasm_smart(
                         &staking_contract_address,
-                        &stake_cw20::msg::QueryMsg::GetConfig {},
+                        &cw20_stake::msg::QueryMsg::GetConfig {},
                     )?;
 
                     if address != resp.token_address {
@@ -90,7 +90,7 @@ pub fn instantiate(
                         funds: vec![],
                         admin: Some(info.sender.to_string()),
                         label: env.contract.address.to_string(),
-                        msg: to_binary(&stake_cw20::msg::InstantiateMsg {
+                        msg: to_binary(&cw20_stake::msg::InstantiateMsg {
                             owner: Some(info.sender.to_string()),
                             unstaking_duration,
                             token_address: address.to_string(),
@@ -208,7 +208,7 @@ pub fn execute_update_active_threshold(
     if let Some(active_threshold) = new_active_threshold {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > Decimal::percent(100) {
+                if percent > Decimal::percent(100) || percent <= Decimal::percent(0) {
                     return Err(ContractError::InvalidActivePercentage {});
                 }
             }
@@ -258,9 +258,9 @@ pub fn query_voting_power_at_height(
 ) -> StdResult<Binary> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let address = deps.api.addr_validate(&address)?;
-    let res: stake_cw20::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
+    let res: cw20_stake::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
-        &stake_cw20::msg::QueryMsg::StakedBalanceAtHeight {
+        &cw20_stake::msg::QueryMsg::StakedBalanceAtHeight {
             address: address.to_string(),
             height,
         },
@@ -277,9 +277,9 @@ pub fn query_total_power_at_height(
     height: Option<u64>,
 ) -> StdResult<Binary> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-    let res: stake_cw20::msg::TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
+    let res: cw20_stake::msg::TotalStakedAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
-        &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height },
+        &cw20_stake::msg::QueryMsg::TotalStakedAtHeight { height },
     )?;
     to_binary(&cw_core_interface::voting::TotalPowerAtHeightResponse {
         power: res.total,
@@ -302,10 +302,10 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
     if let Some(threshold) = threshold {
         let token_contract = TOKEN.load(deps.storage)?;
         let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
-        let actual_power: stake_cw20::msg::TotalStakedAtHeightResponse =
+        let actual_power: cw20_stake::msg::TotalStakedAtHeightResponse =
             deps.querier.query_wasm_smart(
                 staking_contract,
-                &stake_cw20::msg::QueryMsg::TotalStakedAtHeight { height: None },
+                &cw20_stake::msg::QueryMsg::TotalStakedAtHeight { height: None },
             )?;
         match threshold {
             ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
@@ -342,6 +342,12 @@ pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Don't do any state migrations.
+    Ok(Response::default())
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         INSTANTIATE_TOKEN_REPLY_ID => {
@@ -369,7 +375,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         funds: vec![],
                         admin: Some(dao.to_string()),
                         label: env.contract.address.to_string(),
-                        msg: to_binary(&stake_cw20::msg::InstantiateMsg {
+                        msg: to_binary(&cw20_stake::msg::InstantiateMsg {
                             owner: Some(dao.to_string()),
                             unstaking_duration,
                             token_address: token.to_string(),

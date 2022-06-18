@@ -136,6 +136,7 @@ fn test_counters() {
     let instantiate = cw_proposal_single::msg::InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,

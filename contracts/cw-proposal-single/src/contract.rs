@@ -16,7 +16,7 @@ use voting::{Status, Threshold, Vote, Votes};
 
 use crate::{
     error::ContractError,
-    msg::{DepositInfo, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DepositInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::{advance_proposal_id, Proposal},
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
@@ -24,7 +24,7 @@ use crate::{
         get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
         PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
     },
-    utils::{get_total_power, get_voting_power},
+    utils::{get_total_power, get_voting_power, validate_voting_period},
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
@@ -51,15 +51,22 @@ pub fn instantiate(
         .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
         .transpose()?;
 
+    let (min_voting_period, max_voting_period) =
+        validate_voting_period(msg.min_voting_period, msg.max_voting_period)?;
+
     let config = Config {
         threshold: msg.threshold,
-        max_voting_period: msg.max_voting_period,
+        max_voting_period,
+        min_voting_period,
         only_members_execute: msg.only_members_execute,
         dao: dao.clone(),
         deposit_info,
         allow_revoting: msg.allow_revoting,
     };
 
+    // Initialize proposal count to zero so that queries return zero
+    // instead of None.
+    PROPOSAL_COUNT.save(deps.storage, &0)?;
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::default()
@@ -86,6 +93,7 @@ pub fn execute(
         ExecuteMsg::UpdateConfig {
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -95,6 +103,7 @@ pub fn execute(
             info,
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -163,6 +172,7 @@ pub fn execute_propose(
             description,
             proposer: sender.clone(),
             start_height: env.block.height,
+            min_voting_period: config.min_voting_period.map(|min| min.after(&env.block)),
             expiration,
             threshold: config.threshold,
             total_power,
@@ -421,6 +431,7 @@ pub fn execute_update_config(
     info: MessageInfo,
     threshold: Threshold,
     max_voting_period: Duration,
+    min_voting_period: Option<Duration>,
     only_members_execute: bool,
     allow_revoting: bool,
     dao: String,
@@ -439,11 +450,15 @@ pub fn execute_update_config(
         .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
         .transpose()?;
 
+    let (min_voting_period, max_voting_period) =
+        validate_voting_period(min_voting_period, max_voting_period)?;
+
     CONFIG.save(
         deps.storage,
         &Config {
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -682,6 +697,12 @@ pub fn query_list_votes(
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&cw_core_interface::voting::InfoResponse { info })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Don't do any state migrations.
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

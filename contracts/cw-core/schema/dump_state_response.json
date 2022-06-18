@@ -4,6 +4,7 @@
   "description": "Relevant state for the governance module. Returned by the `DumpState` query.",
   "type": "object",
   "required": [
+    "admin",
     "config",
     "pause_info",
     "proposal_modules",
@@ -13,12 +14,9 @@
   "properties": {
     "admin": {
       "description": "Optional DAO Admin",
-      "anyOf": [
+      "allOf": [
         {
           "$ref": "#/definitions/Addr"
-        },
-        {
-          "type": "null"
         }
       ]
     },

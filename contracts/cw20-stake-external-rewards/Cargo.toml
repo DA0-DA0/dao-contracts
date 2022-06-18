@@ -27,7 +27,7 @@ cw2 = "0.13"
 schemars = "0.8.8"
 serde = { version = "1.0.132", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.30" }
-stake-cw20 = { path = "../stake-cw20", features = ["library"]}
+cw20-stake = { path = "../cw20-stake", features = ["library"]}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

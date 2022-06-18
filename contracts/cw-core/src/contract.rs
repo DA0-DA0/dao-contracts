@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -7,17 +5,23 @@ use cosmwasm_std::{
     StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_storage_plus::{Bound, Map};
+use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_core_interface::voting;
+use cw_paginate::{paginate_map, paginate_map_keys};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InitialItemInfo, InstantiateMsg, ModuleInstantiateInfo, QueryMsg};
-use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
+use crate::msg::{
+    ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
+};
+use crate::query::{
+    AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
+    PauseInfoResponse,
+};
 use crate::state::{
-    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PENDING_ITEM_INSTANTIATION_NAMES,
-    PROPOSAL_MODULES, VOTING_MODULE,
+    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
+    VOTING_MODULE,
 };
 
 // version info for migration info
@@ -27,15 +31,6 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
 const VOTE_MODULE_UPDATE_REPLY_ID: u64 = 2;
-
-// Start at this ID since the items to instantiate on the instantiation
-// of this contract can be arbitrarily long. Everything with a reply ID
-// greater than or equal to this value will be considered an instantiated
-// item to store in the items map.
-const PENDING_ITEM_REPLY_ID_START: u64 = 100;
-// The maximum number of items that can be instantiated when this
-// contract is instantiated.
-const MAX_ITEM_INSTANTIATIONS_ON_INSTANTIATE: u64 = u64::MAX - PENDING_ITEM_REPLY_ID_START;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -58,7 +53,9 @@ pub fn instantiate(
     let admin = msg
         .admin
         .map(|human| deps.api.addr_validate(&human))
-        .transpose()?;
+        .transpose()?
+        // If no admin is specified, the contract is its own admin.
+        .unwrap_or_else(|| env.contract.address.clone());
     ADMIN.save(deps.storage, &admin)?;
 
     let vote_module_msg = msg
@@ -77,52 +74,15 @@ pub fn instantiate(
         return Err(ContractError::NoProposalModule {});
     }
 
-    // Add or instantiate items if any are present.
-    let mut instantiate_item_msgs: Vec<SubMsg<Empty>> = vec![];
-    if let Some(items) = msg.initial_items {
-        if !items.is_empty() {
-            if items.len() > MAX_ITEM_INSTANTIATIONS_ON_INSTANTIATE.try_into().unwrap() {
-                return Err(ContractError::TooManyItems(
-                    MAX_ITEM_INSTANTIATIONS_ON_INSTANTIATE,
-                    items.len(),
-                ));
-            }
-
-            for (idx, item) in items.into_iter().enumerate() {
-                match item.info {
-                    // Use existing address.
-                    InitialItemInfo::Existing { address } => {
-                        let addr = deps.api.addr_validate(&address)?;
-                        ITEMS.save(deps.storage, item.name, &addr)?;
-                    }
-                    // Instantiate new contract and capture address on successful reply.
-                    InitialItemInfo::Instantiate { info } => {
-                        // Offset reply ID with index.
-                        let reply_id = PENDING_ITEM_REPLY_ID_START + idx as u64;
-
-                        // Create and add submessage.
-                        let item_msg = info.into_wasm_msg(env.contract.address.clone());
-                        let item_msg: SubMsg<Empty> = SubMsg::reply_on_success(item_msg, reply_id);
-                        instantiate_item_msgs.push(item_msg);
-
-                        // Store name in map for later retrieval if the contract instantiation succeeds.
-                        PENDING_ITEM_INSTANTIATION_NAMES.save(
-                            deps.storage,
-                            reply_id,
-                            &item.name,
-                        )?;
-                    }
-                }
-            }
-        }
+    for InitialItem { key, value } in msg.initial_items.unwrap_or_default() {
+        ITEMS.save(deps.storage, key, &value)?;
     }
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
         .add_attribute("sender", info.sender)
         .add_submessage(vote_module_msg)
-        .add_submessages(proposal_module_msgs)
-        .add_submessages(instantiate_item_msgs))
+        .add_submessages(proposal_module_msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -151,7 +111,6 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
         ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
-        ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(deps, info.sender, admin),
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info.sender, config)
         }
@@ -166,6 +125,13 @@ pub fn execute(
         }
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
+        }
+        ExecuteMsg::NominateAdmin { admin } => {
+            execute_nominate_admin(deps, env, info.sender, admin)
+        }
+        ExecuteMsg::AcceptAdminNomination {} => execute_accept_admin_nomination(deps, info.sender),
+        ExecuteMsg::WithdrawAdminNomination {} => {
+            execute_withdraw_admin_nomination(deps, info.sender)
         }
     }
 }
@@ -198,19 +164,14 @@ pub fn execute_admin_msgs(
 ) -> Result<Response, ContractError> {
     let admin = ADMIN.load(deps.storage)?;
 
-    match admin {
-        Some(admin) => {
-            // Check if the sender is the DAO Admin
-            if sender != admin {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            Ok(Response::default()
-                .add_attribute("action", "execute_admin_msgs")
-                .add_messages(msgs))
-        }
-        None => Err(ContractError::NoAdmin {}),
+    // Check if the sender is the DAO Admin
+    if sender != admin {
+        return Err(ContractError::Unauthorized {});
     }
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_admin_msgs")
+        .add_messages(msgs))
 }
 
 pub fn execute_proposal_hook(
@@ -228,37 +189,79 @@ pub fn execute_proposal_hook(
         .add_messages(msgs))
 }
 
-pub fn execute_update_admin(
+pub fn execute_nominate_admin(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    nomination: Option<String>,
+) -> Result<Response, ContractError> {
+    let nomination = nomination.map(|h| deps.api.addr_validate(&h)).transpose()?;
+
+    let current_admin = ADMIN.load(deps.storage)?;
+    if current_admin != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let current_nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    if current_nomination.is_some() {
+        return Err(ContractError::PendingNomination {});
+    }
+
+    match &nomination {
+        Some(nomination) => NOMINATED_ADMIN.save(deps.storage, nomination)?,
+        // If no admin set to default of the contract. This allows the
+        // contract to later set a new admin via governance.
+        None => ADMIN.save(deps.storage, &env.contract.address)?,
+    }
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_nominate_admin")
+        .add_attribute(
+            "nomination",
+            nomination
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+        ))
+}
+
+pub fn execute_accept_admin_nomination(
     deps: DepsMut,
     sender: Addr,
-    admin: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    let current_admin = ADMIN.load(deps.storage)?;
-
-    match current_admin {
-        Some(current_admin) => {
-            // Check sender is the DAO Admin
-            if sender != current_admin {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            // Save the new DAO Admin (which may be set to None)
-            ADMIN.save(deps.storage, &admin)?;
-
-            Ok(Response::default()
-                .add_attribute("action", "execute_update_admin")
-                .add_attribute(
-                    "new_admin",
-                    admin
-                        .map(|a| a.into_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                ))
-        }
-        None => {
-            // If no DAO admin is configured, return unauthorized
-            Err(ContractError::Unauthorized {})
-        }
+    let nomination = NOMINATED_ADMIN
+        .may_load(deps.storage)?
+        .ok_or(ContractError::NoAdminNomination {})?;
+    if sender != nomination {
+        return Err(ContractError::Unauthorized {});
     }
+    NOMINATED_ADMIN.remove(deps.storage);
+    ADMIN.save(deps.storage, &nomination)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_accept_admin_nomination")
+        .add_attribute("new_admin", sender))
+}
+
+pub fn execute_withdraw_admin_nomination(
+    deps: DepsMut,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let admin = ADMIN.load(deps.storage)?;
+    if admin != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Check that there is indeed a nomination to withdraw.
+    let current_nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    if current_nomination.is_none() {
+        return Err(ContractError::NoAdminNomination {});
+    }
+
+    NOMINATED_ADMIN.remove(deps.storage);
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_withdraw_admin_nomination")
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_update_config(
@@ -402,18 +405,17 @@ pub fn execute_set_item(
     env: Env,
     sender: Addr,
     key: String,
-    addr: String,
+    value: String,
 ) -> Result<Response, ContractError> {
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
 
-    let addr = deps.api.addr_validate(&addr)?;
-    ITEMS.save(deps.storage, key.clone(), &addr)?;
+    ITEMS.save(deps.storage, key.clone(), &value)?;
     Ok(Response::default()
         .add_attribute("action", "execute_set_item")
         .add_attribute("key", key)
-        .add_attribute("addr", addr))
+        .add_attribute("addr", value))
 }
 
 pub fn execute_remove_item(
@@ -426,10 +428,14 @@ pub fn execute_remove_item(
         return Err(ContractError::Unauthorized {});
     }
 
-    ITEMS.remove(deps.storage, key.clone());
-    Ok(Response::default()
-        .add_attribute("action", "execute_remove_item")
-        .add_attribute("key", key))
+    if ITEMS.has(deps.storage, key.clone()) {
+        ITEMS.remove(deps.storage, key.clone());
+        Ok(Response::default()
+            .add_attribute("action", "execute_remove_item")
+            .add_attribute("key", key))
+    } else {
+        Err(ContractError::KeyMissing {})
+    }
 }
 
 pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
@@ -460,6 +466,7 @@ pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, Co
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Admin {} => query_admin(deps),
+        QueryMsg::AdminNomination {} => query_admin_nomination(deps),
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::Cw20TokenList { start_at, limit } => query_cw20_list(deps, start_at, limit),
         QueryMsg::Cw20Balances { start_at, limit } => {
@@ -487,6 +494,11 @@ pub fn query_admin(deps: Deps) -> StdResult<Binary> {
     to_binary(&admin)
 }
 
+pub fn query_admin_nomination(deps: Deps) -> StdResult<Binary> {
+    let nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    to_binary(&AdminNominationResponse { nomination })
+}
+
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     to_binary(&config)
@@ -500,9 +512,8 @@ pub fn query_voting_module(deps: Deps) -> StdResult<Binary> {
 pub fn query_proposal_modules(
     deps: Deps,
     start_at: Option<String>,
-    limit: Option<u64>,
+    limit: Option<u32>,
 ) -> StdResult<Binary> {
-    let start_at = start_at.map(|a| deps.api.addr_validate(&a)).transpose()?;
     // This query is will run out of gas due to the size of the
     // returned message before it runs out of compute so taking a
     // limit here is still nice. As removes happen in constant time
@@ -516,19 +527,13 @@ pub fn query_proposal_modules(
     //
     // Even if this does lock up one can determine the existing
     // proposal modules by looking at past transactions on chain.
-    let modules = PROPOSAL_MODULES.keys(
-        deps.storage,
-        start_at.map(Bound::inclusive),
-        None,
+    to_binary(&paginate_map_keys(
+        deps,
+        &PROPOSAL_MODULES,
+        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        limit,
         cosmwasm_std::Order::Descending,
-    );
-    let modules: Vec<Addr> = match limit {
-        Some(limit) => modules
-            .take(limit as usize)
-            .collect::<Result<Vec<Addr>, _>>()?,
-        None => modules.collect::<Result<Vec<Addr>, _>>()?,
-    };
-    to_binary(&modules)
+    )?)
 }
 
 fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
@@ -601,73 +606,42 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 pub fn query_list_items(
     deps: Deps,
     start_at: Option<String>,
-    limit: Option<u64>,
+    limit: Option<u32>,
 ) -> StdResult<Binary> {
-    let items = ITEMS.keys(
-        deps.storage,
-        start_at.map(Bound::inclusive),
-        None,
+    to_binary(&paginate_map(
+        deps,
+        &ITEMS,
+        start_at,
+        limit,
         cosmwasm_std::Order::Descending,
-    );
-    let items = match limit {
-        Some(limit) => items
-            .take(limit as usize)
-            .collect::<Result<Vec<String>, _>>()?,
-        None => items.collect::<Result<Vec<String>, _>>()?,
-    };
-
-    to_binary(&items)
-}
-
-// Can't be generic over key type. Otherwise, we could use this in
-// `query_list_items` as well.
-// <https://github.com/CosmWasm/cw-plus/issues/691>
-fn list_addr_keys<V>(
-    deps: Deps,
-    map: Map<Addr, V>,
-    start_at: Option<Addr>,
-    limit: Option<u64>,
-) -> StdResult<Vec<Addr>>
-where
-    V: serde::de::DeserializeOwned + serde::Serialize,
-{
-    let items = map.keys(
-        deps.storage,
-        start_at.map(Bound::inclusive),
-        None,
-        cosmwasm_std::Order::Descending,
-    );
-    match limit {
-        Some(limit) => Ok(items
-            .take(limit as usize)
-            .collect::<Result<Vec<Addr>, _>>()?),
-        None => Ok(items.collect::<Result<Vec<Addr>, _>>()?),
-    }
+    )?)
 }
 
 pub fn query_cw20_list(
     deps: Deps,
     start_at: Option<String>,
-    limit: Option<u64>,
+    limit: Option<u32>,
 ) -> StdResult<Binary> {
-    to_binary(&list_addr_keys(
+    to_binary(&paginate_map_keys(
         deps,
-        CW20_LIST,
+        &CW20_LIST,
         start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
         limit,
+        cosmwasm_std::Order::Descending,
     )?)
 }
 
 pub fn query_cw721_list(
     deps: Deps,
     start_at: Option<String>,
-    limit: Option<u64>,
+    limit: Option<u32>,
 ) -> StdResult<Binary> {
-    to_binary(&list_addr_keys(
+    to_binary(&paginate_map_keys(
         deps,
-        CW721_LIST,
+        &CW721_LIST,
         start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
         limit,
+        cosmwasm_std::Order::Descending,
     )?)
 }
 
@@ -675,13 +649,14 @@ pub fn query_cw20_balances(
     deps: Deps,
     env: Env,
     start_at: Option<String>,
-    limit: Option<u64>,
+    limit: Option<u32>,
 ) -> StdResult<Binary> {
-    let addrs = list_addr_keys(
+    let addrs = paginate_map_keys(
         deps,
-        CW20_LIST,
+        &CW20_LIST,
         start_at.map(|a| deps.api.addr_validate(&a)).transpose()?,
         limit,
+        cosmwasm_std::Order::Descending,
     )?;
     let balances = addrs
         .into_iter()
@@ -699,6 +674,12 @@ pub fn query_cw20_balances(
         })
         .collect::<StdResult<Vec<_>>>()?;
     to_binary(&balances)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Don't do any state migrations.
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -733,20 +714,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             VOTING_MODULE.save(deps.storage, &vote_module_addr)?;
 
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
-        }
-        reply_id if reply_id >= PENDING_ITEM_REPLY_ID_START => {
-            // Retrieve the name using the ID. If it doesn't exist,
-            // we didn't expect this reply or it was a redundant execution.
-            let item_name = PENDING_ITEM_INSTANTIATION_NAMES.load(deps.storage, reply_id)?;
-
-            let res = parse_reply_instantiate_data(msg)?;
-            let item_addr = deps.api.addr_validate(&res.contract_address)?;
-
-            ITEMS.save(deps.storage, item_name, &item_addr)?;
-            // Remove from pending map since we now have the contract address.
-            PENDING_ITEM_INSTANTIATION_NAMES.remove(deps.storage, reply_id);
-
-            Ok(Response::default().add_attribute("item", item_addr))
         }
         _ => Err(ContractError::UnknownReplyID {}),
     }

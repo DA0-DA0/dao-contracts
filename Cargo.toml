@@ -15,5 +15,6 @@ lto = true
 debug-assertions = false
 panic = 'abort'
 incremental = false
+# Please do not disable these. Doing so will cause overflow checks in
+# all workspace members to stop working. Overflows should be errors. 
 overflow-checks = true
- 

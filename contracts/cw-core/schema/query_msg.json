@@ -3,13 +3,26 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "Get's the DAO's admin (if configured).",
+      "description": "Get's the DAO's admin. Returns `Addr`.",
       "type": "object",
       "required": [
         "admin"
       ],
       "properties": {
         "admin": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get's the currently nominated admin (if any). Returns `AdminNominationResponse`.",
+      "type": "object",
+      "required": [
+        "admin_nomination"
+      ],
+      "properties": {
+        "admin_nomination": {
           "type": "object"
         }
       },
@@ -43,7 +56,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -72,7 +85,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -101,7 +114,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -150,7 +163,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Lists all of the item keys associted with the contract. For example, given the items `{ \"group\": \"...\", \"subdao\": \"...\"}` this query would return `[\"group\", \"subdao\"]`.",
+      "description": "Lists all of the items associted with the contract. For example, given the items `{ \"group\": \"foo\", \"subdao\": \"bar\"}` this query would return `[(\"group\", \"foo\"), (\"subdao\", \"bar\")]`.",
       "type": "object",
       "required": [
         "list_items"
@@ -164,7 +177,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
@@ -193,7 +206,7 @@
                 "integer",
                 "null"
               ],
-              "format": "uint64",
+              "format": "uint32",
               "minimum": 0.0
             },
             "start_at": {
