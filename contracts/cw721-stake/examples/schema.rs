@@ -3,7 +3,7 @@ use cw20::{
     AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
     TokenInfoResponse,
 };
-use stake_cw721::msg::{
+use cw721_stake::msg::{
     ClaimsResponse, ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,

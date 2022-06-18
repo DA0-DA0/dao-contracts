@@ -1,4 +1,3 @@
-extern crate lazy_static;
 pub mod contract;
 mod error;
 pub mod hooks;
