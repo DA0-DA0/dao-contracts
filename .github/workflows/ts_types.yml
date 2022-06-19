@@ -10,14 +10,12 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Change to types dir
-        run: cd ./types
       - name: Yarn install
-        run: yarn install
+        run: yarn --cwd ./types install
       - name: Yarn build
-        run: yarn build
+        run: yarn --cwd ./types build
       - name: Yarn codegen
-        run: yarn codegen
+        run: yarn --cwd ./types codegen
       - name: Check for ts changes
         # fails if any changes not committed
         run: git diff --exit-code .
