@@ -43,6 +43,7 @@ export interface ConfigResponse {
   dao: Addr;
   deposit_info?: CheckedDepositInfo | null;
   max_voting_period: Duration;
+  min_voting_period?: Duration | null;
   only_members_execute: boolean;
   threshold: Threshold;
   [k: string]: unknown;
@@ -82,6 +83,7 @@ export type ExecuteMsg = {
     dao: string;
     deposit_info?: DepositInfo | null;
     max_voting_period: Duration;
+    min_voting_period?: Duration | null;
     only_members_execute: boolean;
     threshold: Threshold;
     [k: string]: unknown;
@@ -287,6 +289,7 @@ export interface InstantiateMsg {
   allow_revoting: boolean;
   deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
+  min_voting_period?: Duration | null;
   only_members_execute: boolean;
   threshold: Threshold;
   [k: string]: unknown;
@@ -315,6 +318,7 @@ export interface Proposal {
   deposit_info?: CheckedDepositInfo | null;
   description: string;
   expiration: Expiration;
+  min_voting_period?: Expiration | null;
   msgs: CosmosMsgForEmpty[];
   proposer: Addr;
   start_height: number;
@@ -604,6 +608,7 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     dao,
     depositInfo,
     maxVotingPeriod,
+    minVotingPeriod,
     onlyMembersExecute,
     threshold
   }: {
@@ -611,6 +616,7 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
+    minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
     threshold: Threshold;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
@@ -714,6 +720,7 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
     dao,
     depositInfo,
     maxVotingPeriod,
+    minVotingPeriod,
     onlyMembersExecute,
     threshold
   }: {
@@ -721,6 +728,7 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
+    minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
     threshold: Threshold;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
@@ -730,6 +738,7 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
         dao,
         deposit_info: depositInfo,
         max_voting_period: maxVotingPeriod,
+        min_voting_period: minVotingPeriod,
         only_members_execute: onlyMembersExecute,
         threshold
       }

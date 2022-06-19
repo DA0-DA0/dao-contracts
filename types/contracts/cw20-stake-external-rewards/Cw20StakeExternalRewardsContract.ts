@@ -111,7 +111,7 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 };
-export interface StakeCw20ExternalRewardsReadOnlyInterface {
+export interface Cw20StakeExternalRewardsReadOnlyInterface {
   contractAddress: string;
   info: () => Promise<InfoResponse>;
   getPendingRewards: ({
@@ -120,7 +120,7 @@ export interface StakeCw20ExternalRewardsReadOnlyInterface {
     address: string;
   }) => Promise<GetPendingRewardsResponse>;
 }
-export class StakeCw20ExternalRewardsQueryClient implements StakeCw20ExternalRewardsReadOnlyInterface {
+export class Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRewardsReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -148,7 +148,7 @@ export class StakeCw20ExternalRewardsQueryClient implements StakeCw20ExternalRew
     });
   };
 }
-export interface StakeCw20ExternalRewardsInterface extends StakeCw20ExternalRewardsReadOnlyInterface {
+export interface Cw20StakeExternalRewardsInterface extends Cw20StakeExternalRewardsReadOnlyInterface {
   contractAddress: string;
   sender: string;
   stakeChangeHook: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
@@ -179,7 +179,7 @@ export interface StakeCw20ExternalRewardsInterface extends StakeCw20ExternalRewa
     newManager?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class StakeCw20ExternalRewardsClient extends StakeCw20ExternalRewardsQueryClient implements StakeCw20ExternalRewardsInterface {
+export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRewardsInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;

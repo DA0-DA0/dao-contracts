@@ -168,7 +168,7 @@ export interface TotalValueResponse {
   total: Uint128;
   [k: string]: unknown;
 }
-export interface StakeCw20ReadOnlyInterface {
+export interface Cw20StakeReadOnlyInterface {
   contractAddress: string;
   stakedBalanceAtHeight: ({
     address,
@@ -196,7 +196,7 @@ export interface StakeCw20ReadOnlyInterface {
   }) => Promise<ClaimsResponse>;
   getHooks: () => Promise<GetHooksResponse>;
 }
-export class StakeCw20QueryClient implements StakeCw20ReadOnlyInterface {
+export class Cw20StakeQueryClient implements Cw20StakeReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -275,7 +275,7 @@ export class StakeCw20QueryClient implements StakeCw20ReadOnlyInterface {
     });
   };
 }
-export interface StakeCw20Interface extends StakeCw20ReadOnlyInterface {
+export interface Cw20StakeInterface extends Cw20StakeReadOnlyInterface {
   contractAddress: string;
   sender: string;
   receive: ({
@@ -313,7 +313,7 @@ export interface StakeCw20Interface extends StakeCw20ReadOnlyInterface {
     addr: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class StakeCw20Client extends StakeCw20QueryClient implements StakeCw20Interface {
+export class Cw20StakeClient extends Cw20StakeQueryClient implements Cw20StakeInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;

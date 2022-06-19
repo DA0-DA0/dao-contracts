@@ -6,8 +6,12 @@
 
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-export type AdminResponse = Addr | null;
 export type Addr = string;
+export interface AdminNominationResponse {
+  nomination?: Addr | null;
+  [k: string]: unknown;
+}
+export type AdminResponse = Addr | null;
 export interface ConfigResponse {
   automatically_add_cw20s: boolean;
   automatically_add_cw721s: boolean;
@@ -46,7 +50,7 @@ export type Expiration = {
 export type Timestamp = Uint64;
 export type Uint64 = string;
 export interface DumpStateResponse {
-  admin?: Addr | null;
+  admin: Addr;
   config: Config;
   pause_info: PauseInfoResponse;
   proposal_modules: Addr[];
@@ -98,8 +102,16 @@ export type ExecuteMsg = {
     [k: string]: unknown;
   };
 } | {
-  update_admin: {
-    admin?: Addr | null;
+  nominate_admin: {
+    admin?: string | null;
+    [k: string]: unknown;
+  };
+} | {
+  accept_admin_nomination: {
+    [k: string]: unknown;
+  };
+} | {
+  withdraw_admin_nomination: {
     [k: string]: unknown;
   };
 } | {
@@ -352,6 +364,10 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
+  admin_nomination: {
+    [k: string]: unknown;
+  };
+} | {
   config: {
     [k: string]: unknown;
   };
@@ -432,6 +448,7 @@ export interface VotingPowerAtHeightResponse {
 export interface CwCoreReadOnlyInterface {
   contractAddress: string;
   admin: () => Promise<AdminResponse>;
+  adminNomination: () => Promise<AdminNominationResponse>;
   config: () => Promise<ConfigResponse>;
   cw20Balances: ({
     limit,
@@ -498,6 +515,7 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
     this.client = client;
     this.contractAddress = contractAddress;
     this.admin = this.admin.bind(this);
+    this.adminNomination = this.adminNomination.bind(this);
     this.config = this.config.bind(this);
     this.cw20Balances = this.cw20Balances.bind(this);
     this.cw20TokenList = this.cw20TokenList.bind(this);
@@ -516,6 +534,11 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
   admin = async (): Promise<AdminResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       admin: {}
+    });
+  };
+  adminNomination = async (): Promise<AdminNominationResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      admin_nomination: {}
     });
   };
   config = async (): Promise<ConfigResponse> => {
@@ -698,11 +721,13 @@ export interface CwCoreInterface extends CwCoreReadOnlyInterface {
     addr: string;
     key: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
-  updateAdmin: ({
+  nominateAdmin: ({
     admin
   }: {
-    admin?: Addr;
+    admin?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  acceptAdminNomination: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  withdrawAdminNomination: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
     config
   }: {
@@ -752,7 +777,9 @@ export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
     this.receiveNft = this.receiveNft.bind(this);
     this.removeItem = this.removeItem.bind(this);
     this.setItem = this.setItem.bind(this);
-    this.updateAdmin = this.updateAdmin.bind(this);
+    this.nominateAdmin = this.nominateAdmin.bind(this);
+    this.acceptAdminNomination = this.acceptAdminNomination.bind(this);
+    this.withdrawAdminNomination = this.withdrawAdminNomination.bind(this);
     this.updateConfig = this.updateConfig.bind(this);
     this.updateCw20List = this.updateCw20List.bind(this);
     this.updateCw721List = this.updateCw721List.bind(this);
@@ -852,15 +879,25 @@ export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
       }
     }, fee, memo, funds);
   };
-  updateAdmin = async ({
+  nominateAdmin = async ({
     admin
   }: {
-    admin?: Addr;
+    admin?: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      update_admin: {
+      nominate_admin: {
         admin
       }
+    }, fee, memo, funds);
+  };
+  acceptAdminNomination = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      accept_admin_nomination: {}
+    }, fee, memo, funds);
+  };
+  withdrawAdminNomination = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      withdraw_admin_nomination: {}
     }, fee, memo, funds);
   };
   updateConfig = async ({
