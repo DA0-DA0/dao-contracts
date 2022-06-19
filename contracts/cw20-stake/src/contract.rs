@@ -2,16 +2,16 @@
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    from_binary, from_slice, to_binary, to_vec, Addr, Binary, Deps, DepsMut, Empty, Env,
+    MessageInfo, Response, StdError, StdResult, Uint128,
 };
 
 use cw20::Cw20ReceiveMsg;
 
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, MigrateMsg, QueryMsg,
+    ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,
 };
 use crate::state::{
@@ -434,6 +434,39 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
     Ok(GetHooksResponse {
         hooks: HOOKS.query_hooks(deps)?.hooks,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Serialize, Deserialize, Clone)]
+    struct BetaConfig {
+        pub admin: Addr,
+        pub token_address: Addr,
+        pub unstaking_duration: Option<Duration>,
+    }
+
+    match msg {
+        MigrateMsg::FromBeta { manager } => {
+            let data = deps
+                .storage
+                .get(b"config")
+                .ok_or_else(|| StdError::not_found("config"))?;
+            let beta_config: BetaConfig = from_slice(&data)?;
+            let new_config = Config {
+                owner: Some(beta_config.admin),
+                manager: manager
+                    .map(|human| deps.api.addr_validate(&human))
+                    .transpose()?,
+                token_address: beta_config.token_address,
+                unstaking_duration: beta_config.unstaking_duration,
+            };
+            deps.storage.set(b"config", &to_vec(&new_config)?);
+            Ok(Response::default())
+        }
+        MigrateMsg::FromCompatible {} => Ok(Response::default()),
+    }
 }
 
 #[cfg(test)]
