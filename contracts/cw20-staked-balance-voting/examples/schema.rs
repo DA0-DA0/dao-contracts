@@ -3,9 +3,11 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use cosmwasm_std::Addr;
-use cw20_staked_balance_voting::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use cw20_staked_balance_voting::msg::{
+    ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use cw_core_interface::voting::{
-    InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+    InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 
 fn main() {
@@ -22,6 +24,8 @@ fn main() {
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(VotingPowerAtHeightResponse), &out_dir);
+    export_schema(&schema_for!(ActiveThresholdResponse), &out_dir);
+    export_schema(&schema_for!(IsActiveResponse), &out_dir);
 
     // Auto TS code generation expects the query return type as QueryNameResponse
     // Here we map query resonses to the correct name

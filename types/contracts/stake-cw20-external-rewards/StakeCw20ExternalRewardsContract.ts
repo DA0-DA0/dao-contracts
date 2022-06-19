@@ -61,6 +61,13 @@ export type Denom = {
 } | {
   cw20: Addr;
 };
+export interface GetPendingRewardsResponse {
+  address: string;
+  denom: Denom;
+  last_update_block: number;
+  pending_rewards: Uint128;
+  [k: string]: unknown;
+}
 export interface InfoResponse {
   config: Config;
   reward: RewardConfig;

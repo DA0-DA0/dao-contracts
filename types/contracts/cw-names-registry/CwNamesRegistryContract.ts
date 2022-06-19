@@ -6,6 +6,26 @@
 
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
+export type Addr = string;
+export type PaymentInfo = {
+  native_payment: {
+    payment_amount: Uint128;
+    token_denom: string;
+    [k: string]: unknown;
+  };
+} | {
+  cw20_payment: {
+    payment_amount: Uint128;
+    token_address: string;
+    [k: string]: unknown;
+  };
+};
+export type Uint128 = string;
+export interface ConfigResponse {
+  admin: Addr;
+  payment_info: PaymentInfo;
+  [k: string]: unknown;
+}
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
@@ -36,21 +56,7 @@ export type ExecuteMsg = {
     [k: string]: unknown;
   };
 };
-export type Uint128 = string;
 export type Binary = string;
-export type PaymentInfo = {
-  native_payment: {
-    payment_amount: Uint128;
-    token_denom: string;
-    [k: string]: unknown;
-  };
-} | {
-  cw20_payment: {
-    payment_amount: Uint128;
-    token_address: string;
-    [k: string]: unknown;
-  };
-};
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
@@ -67,7 +73,6 @@ export interface IsNameAvailableToRegisterResponse {
   taken: boolean;
   [k: string]: unknown;
 }
-export type Addr = string;
 export interface LookUpDaoByNameResponse {
   dao?: Addr | null;
   [k: string]: unknown;

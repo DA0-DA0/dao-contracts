@@ -37,6 +37,10 @@ export interface InstantiateMsg {
   groups?: Group[] | null;
   [k: string]: unknown;
 }
+export interface IsAddressInGroupResponse {
+  is_in_group: boolean;
+  [k: string]: unknown;
+}
 export type Addr = string;
 export interface ListAddressesResponse {
   addresses: Addr[];

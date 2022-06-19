@@ -6,13 +6,6 @@
 
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-export type DaoResponse = string;
-export type ExecuteMsg = {
-  update_active_threshold: {
-    new_threshold?: ActiveThreshold | null;
-    [k: string]: unknown;
-  };
-};
 export type ActiveThreshold = {
   absolute_count: {
     count: Uint128;
@@ -26,6 +19,17 @@ export type ActiveThreshold = {
 };
 export type Uint128 = string;
 export type Decimal = string;
+export interface ActiveThresholdResponse {
+  active_threshold?: ActiveThreshold | null;
+  [k: string]: unknown;
+}
+export type DaoResponse = string;
+export type ExecuteMsg = {
+  update_active_threshold: {
+    new_threshold?: ActiveThreshold | null;
+    [k: string]: unknown;
+  };
+};
 export interface InfoResponse {
   info: ContractVersion;
   [k: string]: unknown;
@@ -99,6 +103,13 @@ export interface InstantiateMarketingInfo {
   logo?: Logo | null;
   marketing?: string | null;
   project?: string | null;
+  [k: string]: unknown;
+}
+export interface IsActiveResponse {
+  active: boolean;
+  [k: string]: unknown;
+}
+export interface MigrateMsg {
   [k: string]: unknown;
 }
 export type QueryMsg = {

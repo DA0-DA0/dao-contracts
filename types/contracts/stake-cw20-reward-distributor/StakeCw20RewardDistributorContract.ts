@@ -24,6 +24,20 @@ export type ExecuteMsg = {
   };
 };
 export type Uint128 = string;
+export type Addr = string;
+export interface InfoResponse {
+  balance: Uint128;
+  config: Config;
+  last_payment_block: number;
+  [k: string]: unknown;
+}
+export interface Config {
+  owner: Addr;
+  reward_rate: Uint128;
+  reward_token: Addr;
+  staking_addr: Addr;
+  [k: string]: unknown;
+}
 export interface InstantiateMsg {
   owner: string;
   reward_rate: Uint128;

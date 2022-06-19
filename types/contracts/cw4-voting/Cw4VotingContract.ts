@@ -39,6 +39,9 @@ export interface Member {
   weight: number;
   [k: string]: unknown;
 }
+export interface MigrateMsg {
+  [k: string]: unknown;
+}
 export type QueryMsg = {
   group_contract: {
     [k: string]: unknown;
