@@ -1,0 +1,24 @@
+
+on: [push, pull_request]
+
+name: Typescript Types
+
+jobs:
+  build:
+    name: Build typescript types
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: Change to types dir
+        run: cd ./types
+      - name: Yarn install
+        run: yarn install
+      - name: Yarn build
+        run: yarn build
+      - name: Yarn codegen
+        run: yarn codegen
+      - name: Check for ts changes
+        # fails if any changes not committed
+        run: git diff --exit-code .
+
