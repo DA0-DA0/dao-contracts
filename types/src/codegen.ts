@@ -5,8 +5,7 @@ import path from "path";
 
 enum OutputType {
   contracts = "contracts",
-  packages = "packages",
-  legacy = "legacy"
+  packages = "packages"
 }
 
 export type CompilationSpec = {
@@ -60,12 +59,6 @@ const DEFAULT_CONFIG = {
       name: OutputType.packages,
       paths: [`../${OutputType.packages}`],
       outputName: OutputType.packages,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-    {
-      name: OutputType.legacy,
-      paths: [`../${OutputType.legacy}`],
-      outputName: OutputType.legacy,
       outputDir: CONTRACTS_OUTPUT_DIR,
     },
   ]
