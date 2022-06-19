@@ -1,17 +1,4 @@
-/**
- * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
- * 
- * # Examples
- * 
- * Use `from` to create instances of this and `u128` to get the value out:
- * 
- * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
- * 
- * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
- * 
- * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
- */
-export type Uint128 = string
+import { ActiveThreshold, Uint128 } from "./shared-types";
 export type TokenInfo = ({
 existing: {
 address: string
@@ -23,6 +10,7 @@ new: {
 code_id: number
 decimals: number
 initial_balances: Cw20Coin[]
+initial_dao_balance?: (Uint128 | null)
 label: string
 marketing?: (InstantiateMarketingInfo | null)
 name: string
@@ -76,7 +64,7 @@ png: Binary
 export type Binary = string
 
 export interface InstantiateMsg {
-initial_dao_balance?: (Uint128 | null)
+active_threshold?: (ActiveThreshold | null)
 token_info: TokenInfo
 [k: string]: unknown
 }
