@@ -282,13 +282,21 @@ mod tests {
             false
         );
 
-        // The partial json comparison works with any json
+        // The partial json comparison works with any json type
         assert_eq!(
             deep_partial_match(
                 &from_str(r#"{"send": {"to_address": {}}}"#).unwrap(),
                 &from_str(r#"{"send": {"to_address": "test"}}"#).unwrap()
             ),
             false
+        );
+
+        assert_eq!(
+            deep_partial_match(
+                &from_str(r#"{"send": {"to_address": "test"}}"#).unwrap(),
+                &from_str(r#"{"send": {"to_address": {}}}"#).unwrap(),
+            ),
+            true
         );
     }
 
