@@ -1,6 +1,7 @@
-use cosmwasm_std::{entry_point, to_binary, Uint128};
+use cosmwasm_std::{entry_point, to_binary, Addr, Uint128};
 use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
+use cw_auth_middleware::msg::IsAuthorizedResponse;
 use schemars::{JsonSchema, Map};
 use serde_derive::{Deserialize, Serialize};
 use serde_json_wasm::{from_str, to_string};
@@ -160,47 +161,60 @@ pub fn execute(
             Ok(Response::default().add_attribute("action", "removed"))
         }
         ExecuteMsg::Authorize { msgs, sender } => {
-            let config = CONFIG.load(deps.storage)?;
-            let auths = ALLOWED.load(deps.storage, sender);
-
-            // If there are no auths, return the default for each Kind
-            if auths.is_err() {
-                return config.default_response();
+            let authorized = authorize_messages(deps.as_ref(), _env, msgs, sender)?;
+            if authorized {
+                Ok(Response::default().add_attribute("allowed", "true"))
+            } else {
+                Err(AuthorizationError::Unauthorized {
+                    reason: Some("Rejected by auth".to_string()),
+                }
+                .into())
             }
-
-            let auths = auths.unwrap();
-
-            // check that all messages can be converted to values
-            for m in &msgs {
-                msg_to_value(&m)?;
-            }
-            // check that all auths can be converted to values
-            for a in &auths {
-                str_to_value(&a.matcher)?;
-            }
-
-            // TODO: Do this manually instead of using any/all so we can provide better error messages
-            let matched = auths.iter().any(|a| {
-                msgs.iter().all(|m| {
-                    deep_partial_match(
-                        &msg_to_value(&m).unwrap(),
-                        &str_to_value(&a.matcher).unwrap(),
-                    )
-                })
-            });
-
-            if matched {
-                return match config.kind {
-                    Kind::Allow {} => Ok(Response::default().add_attribute("allowed", "true")),
-                    Kind::Reject {} => Err(AuthorizationError::Unauthorized {
-                        reason: Some("Rejected by auth".to_string()),
-                    }
-                    .into()),
-                };
-            }
-            config.default_response()
         }
     }
+}
+
+fn authorize_messages(
+    deps: Deps,
+    _env: Env,
+    msgs: Vec<CosmosMsg>,
+    sender: Addr,
+) -> Result<bool, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let auths = ALLOWED.load(deps.storage, sender);
+
+    // If there are no auths, return the default for each Kind
+    if auths.is_err() {
+        return Ok(config.default_authorization());
+    }
+
+    let auths = auths.unwrap();
+
+    // check that all messages can be converted to values
+    for m in &msgs {
+        msg_to_value(&m)?;
+    }
+    // check that all auths can be converted to values
+    for a in &auths {
+        str_to_value(&a.matcher)?;
+    }
+
+    let matched = auths.iter().any(|a| {
+        msgs.iter().all(|m| {
+            deep_partial_match(
+                &msg_to_value(&m).unwrap(),
+                &str_to_value(&a.matcher).unwrap(),
+            )
+        })
+    });
+
+    if matched {
+        return match config.kind {
+            Kind::Allow {} => Ok(true),
+            Kind::Reject {} => Ok(false),
+        };
+    }
+    Ok(config.default_authorization())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -214,6 +228,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                     authorizations: vec![],
                 }),
             }
+        }
+        QueryMsg::Authorize { msgs, sender } => {
+            let authorized = authorize_messages(deps, _env, msgs, sender).unwrap_or(false);
+            to_binary(&IsAuthorizedResponse { authorized })
         }
     }
 }

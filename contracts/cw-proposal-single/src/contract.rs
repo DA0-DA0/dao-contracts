@@ -1,11 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, WasmMsg,
+    to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_auth_middleware::contract::authorize_message;
 use cw_core_interface::voting::IsActiveResponse;
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
@@ -260,8 +259,14 @@ pub fn execute_execute(
     // TODO: Move this into its own proposal module.
     let response = Response::default();
     let response = if let Some(auths) = AUTHORIZATION_MODULE.may_load(deps.storage)? {
-        let authorization_message = authorize_message(auths, &prop.msgs, info.sender.clone())?;
-        response.add_message(authorization_message)
+        response.add_message(wasm_execute(
+            auths.to_string(),
+            &cw_auth_middleware::msg::ExecuteMsg::Authorize {
+                msgs: prop.msgs.clone(),
+                sender: info.sender.to_string(),
+            },
+            vec![],
+        )?)
     } else {
         response
     };

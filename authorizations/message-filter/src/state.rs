@@ -40,6 +40,13 @@ impl Config {
                 )),
         }
     }
+
+    pub fn default_authorization(&self) -> bool {
+        match self.kind {
+            Kind::Allow {} => false,
+            Kind::Reject {} => true,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

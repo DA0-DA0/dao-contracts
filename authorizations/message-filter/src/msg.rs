@@ -23,6 +23,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetAuthorizations { sender: Addr },
+    Authorize { msgs: Vec<CosmosMsg>, sender: Addr },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

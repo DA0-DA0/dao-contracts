@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, wasm_execute, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
-    Response, StdError, StdResult, WasmMsg,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    StdResult,
 };
 use cw2::set_contract_version;
 
@@ -50,46 +50,18 @@ pub fn execute(
     }
 }
 
-pub fn authorize_message(
-    contract: impl Into<String>,
-    msgs: &Vec<CosmosMsg>,
-    sender: impl Into<String>,
-) -> Result<WasmMsg, StdError> {
-    wasm_execute(
-        contract.into(),
-        &ExecuteMsg::Authorize {
-            msgs: msgs.clone(),
-            sender: sender.into(),
-        },
-        vec![],
-    )
-}
-
 fn execute_authorize(
     deps: DepsMut,
     msgs: Vec<CosmosMsg<Empty>>,
     sender: String,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
-
-    if auths.is_empty() {
-        // If there aren't any authorizations, we consider the auth as not-configured and allow all
-        // messages
-        return Ok(Response::default()
+    if authorize_messages(deps.as_ref(), msgs, sender)? {
+        Ok(Response::default()
             .add_attribute("action", "execute_authorize")
-            .add_attribute("authorized", "true"));
+            .add_attribute("authorized", "true"))
+    } else {
+        Err(ContractError::Unauthorized { reason: None })
     }
-
-    let mut response: Response<Empty> = Response::default();
-    for auth in auths {
-        let sub_msg = authorize_message(auth.contract, &msgs, sender.clone())?;
-        response = response.add_message(sub_msg);
-    }
-
-    Ok(response
-        .add_attribute("action", "execute_authorize")
-        .add_attribute("authorized", "true"))
 }
 
 pub fn execute_add_authorization(
@@ -161,12 +133,8 @@ fn authorize_messages(
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
 
-    if auths.is_empty() {
-        // If there aren't any authorizations, we consider the auth as not-configured and allow all
-        // messages
-        return Ok(true);
-    }
-
+    // If there aren't any authorizations, we consider the auth as not-configured and allow all
+    // messages
     let authorized = auths.into_iter().all(|a| {
         deps.querier
             .query_wasm_smart(
