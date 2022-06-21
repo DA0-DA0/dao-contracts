@@ -44,7 +44,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(deps, info.sender, msg),
         ExecuteMsg::Fund {} => execute_fund(deps, info),
-        ExecuteMsg::Withdraw {} => todo!(),
+        ExecuteMsg::Withdraw {} => execute_withdraw(deps, info),
     }
 }
 
