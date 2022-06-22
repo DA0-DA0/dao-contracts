@@ -1,13 +1,16 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+};
 use cw2::set_contract_version;
+use cw_storage_plus::Item;
 use cw_utils::must_pay;
 
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StatusResponse},
-    state::{CheckedTokenInfo, COUNTERPARTY_ONE, COUNTERPARTY_TWO},
+    state::{CheckedCounterparty, CheckedTokenInfo, COUNTERPARTY_ONE, COUNTERPARTY_TWO},
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-escrow";
@@ -48,136 +51,155 @@ pub fn execute(
     }
 }
 
+struct CounterpartyResponse<'a> {
+    pub counterparty: CheckedCounterparty,
+    pub other_counterparty: CheckedCounterparty,
+    pub storage: Item<'a, CheckedCounterparty>,
+}
+
+fn get_counterparty<'a>(
+    deps: Deps,
+    sender: &Addr,
+) -> Result<CounterpartyResponse<'a>, ContractError> {
+    let counterparty_one = COUNTERPARTY_ONE.load(deps.storage)?;
+    let counterparty_two = COUNTERPARTY_TWO.load(deps.storage)?;
+
+    let (counterparty, other_counterparty, storage) = if *sender == counterparty_one.address {
+        (counterparty_one, counterparty_two, COUNTERPARTY_ONE)
+    } else if *sender == counterparty_two.address {
+        (counterparty_two, counterparty_one, COUNTERPARTY_TWO)
+    } else {
+        // Contract may only be funded by a counterparty.
+        return Err(ContractError::Unauthorized {});
+    };
+
+    Ok(CounterpartyResponse {
+        counterparty,
+        other_counterparty,
+        storage,
+    })
+}
+
+/// Accepts funding from COUNTERPARTY for the escrow. Distributes
+/// escrow funds if both counterparties have funded the contract.
+///
+/// NOTE: The caller must verify that the denom of PAID is correct.
+fn do_fund(
+    deps: DepsMut,
+    counterparty: CheckedCounterparty,
+    paid: Uint128,
+    expected: Uint128,
+    other_counterparty: CheckedCounterparty,
+    storage: Item<CheckedCounterparty>,
+) -> Result<Response, ContractError> {
+    if paid != expected {
+        return Err(ContractError::InvalidAmount {
+            expected,
+            actual: paid,
+        });
+    }
+
+    if counterparty.provided {
+        return Err(ContractError::AlreadyProvided {});
+    }
+
+    let mut counterparty = counterparty;
+    counterparty.provided = true;
+    storage.save(deps.storage, &counterparty)?;
+
+    let messages = if counterparty.provided && other_counterparty.provided {
+        vec![
+            counterparty
+                .promise
+                .into_send_message(&other_counterparty.address)?,
+            other_counterparty
+                .promise
+                .into_send_message(&counterparty.address)?,
+        ]
+    } else {
+        vec![]
+    };
+
+    Ok(Response::new()
+        .add_attribute("method", "fund_escrow")
+        .add_attribute("counterparty", counterparty.address)
+        .add_messages(messages))
+}
+
 pub fn execute_receive(
     deps: DepsMut,
     token_contract: Addr,
     msg: cw20::Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let counterparty_one = COUNTERPARTY_ONE.load(deps.storage)?;
-    let counterparty_two = COUNTERPARTY_TWO.load(deps.storage)?;
-
     let sender = deps.api.addr_validate(&msg.sender)?;
 
-    let (counterparty, other_counterparty, storage) = if sender == counterparty_one.address {
-        (counterparty_one, counterparty_two, COUNTERPARTY_ONE)
-    } else if sender == counterparty_two.address {
-        (counterparty_two, counterparty_one, COUNTERPARTY_TWO)
-    } else {
-        // Contract may only be funded by a counterparty.
-        return Err(ContractError::Unauthorized {});
-    };
+    let CounterpartyResponse {
+        counterparty,
+        other_counterparty,
+        storage,
+    } = get_counterparty(deps.as_ref(), &sender)?;
 
-    if counterparty.provided {
-        // Can't provide more than once.
-        return Err(ContractError::AlreadyProvided {});
-    }
-
-    if let CheckedTokenInfo::Cw20 {
+    let (expected_payment, paid) = if let CheckedTokenInfo::Cw20 {
         contract_addr,
         amount,
     } = &counterparty.promise
     {
-        if *amount != msg.amount {
-            // Must fund the exact amount.
-            return Err(ContractError::InvalidAmount {
-                expected: *amount,
-                actual: msg.amount,
-            });
-        }
         if *contract_addr != token_contract {
             // Must fund with the promised tokens.
             return Err(ContractError::InvalidFunds {});
         }
 
-        let mut counterparty = counterparty;
-        counterparty.provided = true;
-        storage.save(deps.storage, &counterparty)?;
-
-        let messages = if counterparty.provided && other_counterparty.provided {
-            vec![
-                counterparty
-                    .promise
-                    .into_send_message(&other_counterparty.address)?,
-                other_counterparty
-                    .promise
-                    .into_send_message(&counterparty.address)?,
-            ]
-        } else {
-            vec![]
-        };
-
-        Ok(Response::new()
-            .add_attribute("method", "receive_cw20")
-            .add_attribute("counterparty", counterparty.address)
-            .add_messages(messages))
+        (*amount, msg.amount)
     } else {
-        Err(ContractError::InvalidFunds {})
-    }
+        return Err(ContractError::InvalidFunds {});
+    };
+
+    do_fund(
+        deps,
+        counterparty,
+        paid,
+        expected_payment,
+        other_counterparty,
+        storage,
+    )
 }
 
 pub fn execute_fund(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-    let counterparty_one = COUNTERPARTY_ONE.load(deps.storage)?;
-    let counterparty_two = COUNTERPARTY_TWO.load(deps.storage)?;
-
-    let (counterparty, other_counterparty, storage) = if info.sender == counterparty_one.address {
-        (counterparty_one, counterparty_two, COUNTERPARTY_ONE)
-    } else if info.sender == counterparty_two.address {
-        (counterparty_two, counterparty_one, COUNTERPARTY_TWO)
-    } else {
-        // Contract may only be funded by a counterparty.
-        return Err(ContractError::Unauthorized {});
-    };
+    let CounterpartyResponse {
+        counterparty,
+        other_counterparty,
+        storage,
+    } = get_counterparty(deps.as_ref(), &info.sender)?;
 
     if counterparty.provided {
         return Err(ContractError::AlreadyProvided {});
     }
 
-    if let CheckedTokenInfo::Native { amount, denom } = &counterparty.promise {
-        let paid = must_pay(&info, denom).map_err(|_| ContractError::InvalidFunds {})?;
-        if paid != *amount {
-            return Err(ContractError::InvalidAmount {
-                expected: *amount,
-                actual: paid,
-            });
-        }
+    let (expected_payment, paid) =
+        if let CheckedTokenInfo::Native { amount, denom } = &counterparty.promise {
+            let paid = must_pay(&info, denom).map_err(|_| ContractError::InvalidFunds {})?;
 
-        let mut counterparty = counterparty;
-        counterparty.provided = true;
-        storage.save(deps.storage, &counterparty)?;
-
-        let messages = if counterparty.provided && other_counterparty.provided {
-            vec![
-                counterparty
-                    .promise
-                    .into_send_message(&other_counterparty.address)?,
-                other_counterparty
-                    .promise
-                    .into_send_message(&counterparty.address)?,
-            ]
+            (*amount, paid)
         } else {
-            vec![]
+            return Err(ContractError::InvalidFunds {});
         };
 
-        Ok(Response::new()
-            .add_attribute("method", "fund")
-            .add_attribute("counterparty", counterparty.address)
-            .add_messages(messages))
-    } else {
-        Err(ContractError::InvalidFunds {})
-    }
+    do_fund(
+        deps,
+        counterparty,
+        paid,
+        expected_payment,
+        other_counterparty,
+        storage,
+    )
 }
 
 pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-    let counterparty_one = COUNTERPARTY_ONE.load(deps.storage)?;
-    let counterparty_two = COUNTERPARTY_TWO.load(deps.storage)?;
-
-    let (counterparty, other_counterparty, storage) = if info.sender == counterparty_one.address {
-        (counterparty_one, counterparty_two, COUNTERPARTY_ONE)
-    } else if info.sender == counterparty_two.address {
-        (counterparty_two, counterparty_one, COUNTERPARTY_TWO)
-    } else {
-        return Err(ContractError::Unauthorized {});
-    };
+    let CounterpartyResponse {
+        counterparty,
+        other_counterparty,
+        storage,
+    } = get_counterparty(deps.as_ref(), &info.sender)?;
 
     if !counterparty.provided {
         return Err(ContractError::NoProvision {});
@@ -185,9 +207,9 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
 
     // The escrow contract completes itself in the same transaction
     // that the second counterparty sends its funds. If that has
-    // happens no more withdrawals are allowsed. This check isn't
+    // happens no more withdrawals are allowed. This check isn't
     // strictly needed because the contract won't have enough balance
-    // anyhow, but may as well error nicely.
+    // anyhow, but we may as well error nicely.
     if counterparty.provided && other_counterparty.provided {
         return Err(ContractError::Complete {});
     }
