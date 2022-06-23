@@ -77,6 +77,7 @@ pub fn execute(
     }
 }
 
+// TODO: Rename this to UpdateAuthorizations or something like that. The auth check should already have happened as a Query
 fn execute_authorize(
     deps: Deps,
     msgs: Vec<CosmosMsg>,
@@ -89,22 +90,24 @@ fn execute_authorize(
         // If at least one authorization module authorized this message, we send the
         // Authorize execute message to all the authorizations so that they can update their
         // stateif needed.
-        let mut response = Response::default()
+        let response = Response::default()
             .add_attribute("action", "execute_authorize")
             .add_attribute("authorized", "true");
 
-        for auth in auths {
-            // TODO: Deal with the reply here. Should ignore OnError, since the validation has already been done above.
-            response = response.add_message(wasm_execute(
-                auth.contract.to_string(),
-                &ExecuteMsg::Authorize {
-                    msgs: msgs.clone(),
-                    sender: sender.clone(),
-                },
-                vec![],
-            )?);
-        }
-        Ok(response)
+        auths.iter().fold(
+            Ok(response),
+            |acc, auth| -> Result<Response, ContractError> {
+                // TODO: Deal with the reply here. Should ignore OnError, since the validation has already been done above.
+                Ok(acc?.add_message(wasm_execute(
+                    auth.contract.to_string(),
+                    &ExecuteMsg::Authorize {
+                        msgs: msgs.clone(),
+                        sender: sender.clone(),
+                    },
+                    vec![],
+                )?))
+            },
+        )
     } else {
         Err(ContractError::Unauthorized { reason: None })
     }
