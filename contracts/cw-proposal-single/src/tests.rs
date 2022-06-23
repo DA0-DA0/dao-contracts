@@ -633,7 +633,7 @@ where
                     .wrap()
                     .query_wasm_smart(
                         govmod_single.clone(),
-                        &QueryMsg::Vote {
+                        &QueryMsg::GetVote {
                             proposal_id: 1,
                             voter: voter.clone(),
                         },

@@ -113,10 +113,10 @@
     {
       "type": "object",
       "required": [
-        "vote"
+        "get_vote"
       ],
       "properties": {
-        "vote": {
+        "get_vote": {
           "type": "object",
           "required": [
             "proposal_id",
