@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     AddAuthorization { addr: Addr, msg: String },
     RemoveAuthorization { addr: Addr, msg: String },
-    Authorize { msgs: Vec<CosmosMsg>, sender: Addr },
+    UpdateExecutedAuthorizationState { msgs: Vec<CosmosMsg>, sender: Addr },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -1570,6 +1570,17 @@ fn test_execute_proposal_with_auth() {
     )
     .unwrap();
 
+    // TODO: This needs to be made better
+    app.execute_contract(
+        core_addr.clone(), // Cheating. This should go through a proposal.
+        auth_middleware_addr.clone(),
+        &cw_auth_middleware::msg::ExecuteMsg::ReplaceOwner {
+            new_dao: proposal_single.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
     // Create a proposal
     app.execute_contract(
         Addr::unchecked("nico"),
@@ -1635,7 +1646,7 @@ fn test_execute_proposal_with_auth() {
 
     // Add the whitelist to the list of auths
     app.execute_contract(
-        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        Addr::unchecked(proposal_single.clone()), // Cheating here. This should go through a proposal
         auth_middleware_addr.clone(),
         &cw_auth_middleware::msg::ExecuteMsg::AddAuthorization {
             auth_contract: whitelist_addr.to_string(),
@@ -1678,7 +1689,7 @@ fn test_execute_proposal_with_auth() {
         )
         .unwrap();
     app.execute_contract(
-        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        Addr::unchecked(proposal_single.clone()), // Cheating here. This should go through a proposal
         auth_middleware_addr.clone(),
         &cw_auth_middleware::msg::ExecuteMsg::AddAuthorization {
             auth_contract: message_filter_addr.to_string(),

@@ -160,7 +160,7 @@ pub fn execute(
             )?;
             Ok(Response::default().add_attribute("action", "removed"))
         }
-        ExecuteMsg::Authorize { msgs, sender } => {
+        ExecuteMsg::UpdateExecutedAuthorizationState { msgs, sender } => {
             let authorized = authorize_messages(deps.as_ref(), _env, msgs, sender)?;
             if authorized {
                 Ok(Response::default().add_attribute("allowed", "true"))

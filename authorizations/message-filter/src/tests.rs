@@ -61,7 +61,7 @@ fn test_simple_filtering() {
     app.execute_contract(
         Addr::unchecked(CREATOR),
         contract_addr.clone(),
-        &ExecuteMsg::Authorize {
+        &ExecuteMsg::UpdateExecutedAuthorizationState {
             sender: Addr::unchecked("Someone"),
             msgs: msgs.clone(),
         },
@@ -73,7 +73,7 @@ fn test_simple_filtering() {
     app.execute_contract(
         Addr::unchecked(CREATOR),
         contract_addr.clone(),
-        &ExecuteMsg::Authorize {
+        &ExecuteMsg::UpdateExecutedAuthorizationState {
             sender: Addr::unchecked("Someone_else"),
             msgs,
         },
@@ -90,7 +90,7 @@ fn test_simple_filtering() {
     app.execute_contract(
         Addr::unchecked(CREATOR),
         contract_addr.clone(),
-        &ExecuteMsg::Authorize {
+        &ExecuteMsg::UpdateExecutedAuthorizationState {
             sender: Addr::unchecked("Someone"),
             msgs: msgs.clone(),
         },

@@ -72,19 +72,40 @@ pub fn execute(
         ExecuteMsg::AddAuthorization { auth_contract } => {
             execute_add_authorization(deps, env, info, auth_contract)
         }
-        ExecuteMsg::Authorize { msgs, sender } => execute_authorize(deps.as_ref(), msgs, sender),
+        ExecuteMsg::RemoveAuthorization { auth_contract: _ } => todo!(),
+        ExecuteMsg::UpdateExecutedAuthorizationState { msgs, sender } => {
+            execute_update_authorization_state(deps.as_ref(), msgs, sender, info.sender)
+        }
         ExecuteMsg::Execute { msgs } => execute_execute(deps.as_ref(), msgs, info.sender),
+        ExecuteMsg::ReplaceOwner { new_dao } => {
+            let mut config = CONFIG.load(deps.storage)?;
+            if info.sender != config.dao {
+                Err(ContractError::Unauthorized { reason: None })
+            } else {
+                config.dao = new_dao.clone();
+                CONFIG.save(deps.storage, &config)?;
+                Ok(Response::default()
+                    .add_attribute("action", "replace_dao")
+                    .add_attribute("new_dao", new_dao))
+            }
+        }
     }
 }
 
-// TODO: Rename this to UpdateAuthorizations or something like that. The auth check should already have happened as a Query
-fn execute_authorize(
+fn execute_update_authorization_state(
     deps: Deps,
     msgs: Vec<CosmosMsg>,
     sender: Addr,
+    real_sender: Addr,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if sender != real_sender && real_sender != config.dao {
+        return Err(ContractError::Unauthorized {
+            reason: Some("Auth updates that aren't triggered by a parent contract cannot specify a sender other than the caller ".to_string()),
+        });
+    }
+
     if authorize_messages(deps, msgs.clone(), sender.clone())? {
-        let config = CONFIG.load(deps.storage)?;
         let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
 
         // If at least one authorization module authorized this message, we send the
@@ -100,7 +121,7 @@ fn execute_authorize(
                 // TODO: Deal with the reply here. Should ignore OnError, since the validation has already been done above.
                 Ok(acc?.add_message(wasm_execute(
                     auth.contract.to_string(),
-                    &ExecuteMsg::Authorize {
+                    &ExecuteMsg::UpdateExecutedAuthorizationState {
                         msgs: msgs.clone(),
                         sender: sender.clone(),
                     },
@@ -124,7 +145,12 @@ fn execute_execute(
     }
     let config = CONFIG.load(deps.storage)?;
 
-    let response = execute_authorize(deps.clone(), msgs.clone(), sender.clone())?;
+    let response = execute_update_authorization_state(
+        deps.clone(),
+        msgs.clone(),
+        sender.clone(),
+        sender.clone(),
+    )?;
     let execute_msg = wasm_execute(
         config.dao.to_string(),
         &cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs },

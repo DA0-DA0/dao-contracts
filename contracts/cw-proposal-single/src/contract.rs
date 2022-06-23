@@ -256,12 +256,21 @@ pub fn execute_execute(
         None => vec![],
     };
 
-    // TODO: Move this into its own proposal module.
+    // TODO: This is not ready. Next Steps:
+    //
+    //  * Turn this into a query
+    //  * Return unauthorized if the query fails
+    //  * Remove the authorization from the "update" on the sub authorizations
+    //  * Add the update messages anyway but ignore the result
+    //  * Update all the tests to reflect the query changes
+    //  * Figure out a better way to add the auth to this proposal instead of using ReplaceOwner
+    //  * Write proper tests for the auth, and more realistic tests for this proposal where we don't fake the sender
+    //
     let response = Response::default();
     let response = if let Some(auths) = AUTHORIZATION_MODULE.may_load(deps.storage)? {
         response.add_message(wasm_execute(
             auths.to_string(),
-            &cw_auth_middleware::msg::ExecuteMsg::Authorize {
+            &cw_auth_middleware::msg::ExecuteMsg::UpdateExecutedAuthorizationState {
                 msgs: prop.msgs.clone(),
                 sender: info.sender.clone(),
             },
