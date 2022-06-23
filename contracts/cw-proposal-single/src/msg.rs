@@ -161,7 +161,7 @@ pub enum QueryMsg {
         limit: Option<u64>,
     },
     ProposalCount {},
-    Vote {
+    GetVote {
         proposal_id: u64,
         voter: String,
     },
