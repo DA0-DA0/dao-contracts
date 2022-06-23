@@ -7,7 +7,10 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error("StorageError")]
-    StorageError { },
+    StorageError {},
+
+    #[error("InvalidProposal")]
+    InvalidProposal {},
 
     #[error("Unauthorized {reason:?}")]
     Unauthorized { reason: Option<String> },

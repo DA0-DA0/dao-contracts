@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult,
+    to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
+    Response, StdResult,
 };
 use cw2::set_contract_version;
 
@@ -35,6 +35,32 @@ pub fn instantiate(
     Ok(Response::default().add_attribute("action", "instantiate"))
 }
 
+fn authorize_messages(
+    deps: Deps,
+    msgs: Vec<CosmosMsg>,
+    sender: Addr,
+) -> Result<bool, ContractError> {
+    // This checks all the registered authorizations
+    let config = CONFIG.load(deps.storage)?;
+    let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
+
+    // If there aren't any authorizations, we consider the auth as not-configured and allow all
+    // messages
+    let authorized = auths.into_iter().all(|a| {
+        deps.querier
+            .query_wasm_smart(
+                a.contract.clone(),
+                &QueryMsg::Authorize {
+                    msgs: msgs.clone(),
+                    sender: sender.clone(),
+                },
+            )
+            .unwrap_or(IsAuthorizedResponse { authorized: false })
+            .authorized
+    });
+    Ok(authorized)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -46,22 +72,63 @@ pub fn execute(
         ExecuteMsg::AddAuthorization { auth_contract } => {
             execute_add_authorization(deps, env, info, auth_contract)
         }
-        ExecuteMsg::Authorize { msgs, sender } => execute_authorize(deps, msgs, sender),
+        ExecuteMsg::Authorize { msgs, sender } => execute_authorize(deps.as_ref(), msgs, sender),
+        ExecuteMsg::Execute { msgs } => execute_execute(deps.as_ref(), msgs, info.sender),
     }
 }
 
 fn execute_authorize(
-    deps: DepsMut,
-    msgs: Vec<CosmosMsg<Empty>>,
-    sender: String,
+    deps: Deps,
+    msgs: Vec<CosmosMsg>,
+    sender: Addr,
 ) -> Result<Response, ContractError> {
-    if authorize_messages(deps.as_ref(), msgs, sender)? {
-        Ok(Response::default()
+    if authorize_messages(deps, msgs.clone(), sender.clone())? {
+        let config = CONFIG.load(deps.storage)?;
+        let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
+
+        // If at least one authorization module authorized this message, we send the
+        // Authorize execute message to all the authorizations so that they can update their
+        // stateif needed.
+        let mut response = Response::default()
             .add_attribute("action", "execute_authorize")
-            .add_attribute("authorized", "true"))
+            .add_attribute("authorized", "true");
+
+        for auth in auths {
+            // TODO: Deal with the reply here. Should ignore OnError, since the validation has already been done above.
+            response = response.add_message(wasm_execute(
+                auth.contract.to_string(),
+                &ExecuteMsg::Authorize {
+                    msgs: msgs.clone(),
+                    sender: sender.clone(),
+                },
+                vec![],
+            )?);
+        }
+        Ok(response)
     } else {
         Err(ContractError::Unauthorized { reason: None })
     }
+}
+
+// This method allows this contract to behave as a proposal. For this to work, the contract needs to have been instantiated by a dao.
+fn execute_execute(
+    deps: Deps,
+    msgs: Vec<CosmosMsg>,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    if msgs.is_empty() {
+        return Err(ContractError::InvalidProposal {});
+    }
+    let config = CONFIG.load(deps.storage)?;
+
+    let response = execute_authorize(deps.clone(), msgs.clone(), sender.clone())?;
+    let execute_msg = wasm_execute(
+        config.dao.to_string(),
+        &cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs },
+        vec![],
+    )?;
+
+    Ok(response.add_message(execute_msg))
 }
 
 pub fn execute_add_authorization(
@@ -114,40 +181,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_authorizations(
-    deps: Deps,
-    msgs: Vec<CosmosMsg<Empty>>,
-    sender: String,
-) -> StdResult<Binary> {
+fn query_authorizations(deps: Deps, msgs: Vec<CosmosMsg>, sender: Addr) -> StdResult<Binary> {
     to_binary(&IsAuthorizedResponse {
         authorized: authorize_messages(deps, msgs, sender).unwrap_or(false),
     })
-}
-
-fn authorize_messages(
-    deps: Deps,
-    msgs: Vec<CosmosMsg<Empty>>,
-    sender: String,
-) -> Result<bool, ContractError> {
-    // This checks all the registered authorizations
-    let config = CONFIG.load(deps.storage)?;
-    let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
-
-    // If there aren't any authorizations, we consider the auth as not-configured and allow all
-    // messages
-    let authorized = auths.into_iter().all(|a| {
-        deps.querier
-            .query_wasm_smart(
-                a.contract.clone(),
-                &QueryMsg::Authorize {
-                    msgs: msgs.clone(),
-                    sender: sender.clone(),
-                },
-            )
-            .unwrap_or(IsAuthorizedResponse { authorized: false })
-            .authorized
-    });
-    Ok(authorized)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

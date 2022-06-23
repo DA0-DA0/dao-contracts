@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
 use cw_auth_middleware::msg::{IsAuthorizedResponse, QueryMsg};
@@ -82,10 +82,12 @@ fn authorize_messages(
     deps: Deps,
     _env: Env,
     _msgs: Vec<CosmosMsg<Empty>>,
-    sender: String,
+    sender: Addr,
 ) -> StdResult<Binary> {
     // This checks all the registered authorizations
-    let authorized = AUTHORIZED.may_load(deps.storage, sender)?.is_some();
+    let authorized = AUTHORIZED
+        .may_load(deps.storage, sender.to_string())?
+        .is_some();
     to_binary(&IsAuthorizedResponse { authorized })
 }
 

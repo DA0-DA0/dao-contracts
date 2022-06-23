@@ -263,7 +263,7 @@ pub fn execute_execute(
             auths.to_string(),
             &cw_auth_middleware::msg::ExecuteMsg::Authorize {
                 msgs: prop.msgs.clone(),
-                sender: info.sender.to_string(),
+                sender: info.sender.clone(),
             },
             vec![],
         )?)
