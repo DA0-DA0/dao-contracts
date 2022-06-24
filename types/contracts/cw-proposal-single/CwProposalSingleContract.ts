@@ -275,6 +275,16 @@ export interface DepositInfo {
   token: DepositToken;
   [k: string]: unknown;
 }
+export interface GetVoteResponse {
+  vote?: VoteInfo | null;
+  [k: string]: unknown;
+}
+export interface VoteInfo {
+  power: Uint128;
+  vote: Vote;
+  voter: Addr;
+  [k: string]: unknown;
+}
 export type GovernanceModulesResponse = Addr[];
 export interface InfoResponse {
   info: ContractVersion;
@@ -339,12 +349,6 @@ export interface ListVotesResponse {
   votes: VoteInfo[];
   [k: string]: unknown;
 }
-export interface VoteInfo {
-  power: Uint128;
-  vote: Vote;
-  voter: Addr;
-  [k: string]: unknown;
-}
 export interface MigrateMsg {
   [k: string]: unknown;
 }
@@ -379,7 +383,7 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
-  vote: {
+  get_vote: {
     proposal_id: number;
     voter: string;
     [k: string]: unknown;
@@ -439,13 +443,13 @@ export interface CwProposalSingleReadOnlyInterface {
     startBefore?: number;
   }) => Promise<ReverseProposalsResponse>;
   proposalCount: () => Promise<ProposalCountResponse>;
-  vote: ({
+  getVote: ({
     proposalId,
     voter
   }: {
     proposalId: number;
     voter: string;
-  }) => Promise<VoteResponse>;
+  }) => Promise<GetVoteResponse>;
   listVotes: ({
     limit,
     proposalId,
@@ -471,7 +475,7 @@ export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInte
     this.listProposals = this.listProposals.bind(this);
     this.reverseProposals = this.reverseProposals.bind(this);
     this.proposalCount = this.proposalCount.bind(this);
-    this.vote = this.vote.bind(this);
+    this.getVote = this.getVote.bind(this);
     this.listVotes = this.listVotes.bind(this);
     this.proposalHooks = this.proposalHooks.bind(this);
     this.voteHooks = this.voteHooks.bind(this);
@@ -527,15 +531,15 @@ export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInte
       proposal_count: {}
     });
   };
-  vote = async ({
+  getVote = async ({
     proposalId,
     voter
   }: {
     proposalId: number;
     voter: string;
-  }): Promise<VoteResponse> => {
+  }): Promise<GetVoteResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
-      vote: {
+      get_vote: {
         proposal_id: proposalId,
         voter
       }

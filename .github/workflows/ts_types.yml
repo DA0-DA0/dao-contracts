@@ -1,7 +1,7 @@
 
 on: [push, pull_request]
 
-name: Typescript Types
+name: Typescript Codegen
 
 jobs:
   build:
