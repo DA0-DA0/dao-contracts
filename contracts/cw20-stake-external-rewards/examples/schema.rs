@@ -1,7 +1,7 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 
 use stake_cw20_external_rewards::msg::{
     ExecuteMsg, InfoResponse, InstantiateMsg, PendingRewardsResponse, QueryMsg,
@@ -18,4 +18,12 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(PendingRewardsResponse), &out_dir);
+
+    // Auto TS code generation expects the query return type as QueryNameResponse
+    // Here we map query resonses to the correct name
+    export_schema_with_title(
+        &schema_for!(PendingRewardsResponse),
+        &out_dir,
+        "GetPendingRewardsResponse",
+    );
 }

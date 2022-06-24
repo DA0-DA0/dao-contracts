@@ -4,8 +4,8 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use cw_named_groups::msg::{
-    DumpResponse, ExecuteMsg, Group, InstantiateMsg, ListAddressesResponse, ListGroupsResponse,
-    QueryMsg,
+    DumpResponse, ExecuteMsg, Group, InstantiateMsg, IsAddressInGroupResponse,
+    ListAddressesResponse, ListGroupsResponse, QueryMsg,
 };
 
 fn main() {
@@ -24,4 +24,5 @@ fn main() {
     export_schema(&schema_for!(DumpResponse), &out_dir);
     export_schema(&schema_for!(ListGroupsResponse), &out_dir);
     export_schema(&schema_for!(ListAddressesResponse), &out_dir);
+    export_schema(&schema_for!(IsAddressInGroupResponse), &out_dir);
 }
