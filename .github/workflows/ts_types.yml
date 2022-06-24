@@ -1,0 +1,22 @@
+
+on: [push, pull_request]
+
+name: Typescript Codegen
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+      - name: Yarn install
+        run: yarn --cwd ./types install
+      - name: Yarn build
+        run: yarn --cwd ./types build
+      - name: Yarn codegen
+        run: yarn --cwd ./types codegen
+      - name: Check for ts changes
+        # fails if any changes not committed
+        run: git diff --exit-code .
+
