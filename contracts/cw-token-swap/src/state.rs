@@ -97,3 +97,50 @@ impl CheckedTokenInfo {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_into_spend_message_native() {
+        let info = CheckedTokenInfo::Native {
+            amount: Uint128::new(100),
+            denom: "uekez".to_string(),
+        };
+        let message = info.into_send_message(&Addr::unchecked("ekez")).unwrap();
+
+        assert_eq!(
+            message,
+            CosmosMsg::Bank(BankMsg::Send {
+                to_address: "ekez".to_string(),
+                amount: vec![Coin {
+                    amount: Uint128::new(100),
+                    denom: "uekez".to_string()
+                }]
+            })
+        );
+    }
+
+    #[test]
+    fn test_into_spend_message_cw20() {
+        let info = CheckedTokenInfo::Cw20 {
+            amount: Uint128::new(100),
+            contract_addr: Addr::unchecked("ekez_token"),
+        };
+        let message = info.into_send_message(&Addr::unchecked("ekez")).unwrap();
+
+        assert_eq!(
+            message,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                funds: vec![],
+                contract_addr: "ekez_token".to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    recipient: "ekez".to_string(),
+                    amount: Uint128::new(100)
+                })
+                .unwrap()
+            })
+        );
+    }
+}
