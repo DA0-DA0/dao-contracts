@@ -681,3 +681,157 @@ fn test_fund_invalid_amount() {
     };
     assert_eq!(err, expected);
 }
+
+#[test]
+fn test_fund_invalid_denom() {
+    let mut app = App::default();
+
+    let escrow_code = app.store_code(escrow_contract());
+
+    let escrow = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "uekez".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[],
+            "escrow",
+            None,
+        )
+        .unwrap();
+
+    // Coutnerparty one tries to fund in the denom of counterparty
+    // two.
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: DAO1.to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(100),
+            denom: "uekez".to_string(),
+        }],
+    }))
+    .unwrap();
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(DAO1),
+            escrow,
+            &ExecuteMsg::Fund {},
+            &[Coin {
+                amount: Uint128::new(100),
+                denom: "uekez".to_string(),
+            }],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::InvalidFunds {})
+}
+
+#[test]
+fn test_fund_invalid_cw20() {
+    let mut app = App::default();
+
+    let escrow_code = app.store_code(escrow_contract());
+    let cw20_code = app.store_code(cw20_contract());
+
+    let cw20 = app
+        .instantiate_contract(
+            cw20_code,
+            Addr::unchecked(DAO2),
+            &cw20_base::msg::InstantiateMsg {
+                name: "coin coin".to_string(),
+                symbol: "coin".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: DAO2.to_string(),
+                    amount: Uint128::new(100),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "coin",
+            None,
+        )
+        .unwrap();
+
+    let bad_cw20 = app
+        .instantiate_contract(
+            cw20_code,
+            Addr::unchecked(DAO2),
+            &cw20_base::msg::InstantiateMsg {
+                name: "coin coin".to_string(),
+                symbol: "coin".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: DAO2.to_string(),
+                    amount: Uint128::new(100),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "coin",
+            None,
+        )
+        .unwrap();
+
+    let escrow = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Cw20 {
+                        contract_addr: cw20.to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[],
+            "escrow",
+            None,
+        )
+        .unwrap();
+
+    // Try and fund the contract with the wrong cw20.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(DAO2),
+            bad_cw20,
+            &cw20::Cw20ExecuteMsg::Send {
+                contract: escrow.to_string(),
+                amount: Uint128::new(100),
+                msg: to_binary("").unwrap(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert_eq!(err, ContractError::InvalidFunds {})
+}
