@@ -96,15 +96,15 @@ fn do_fund(
     other_counterparty: CheckedCounterparty,
     storage: Item<CheckedCounterparty>,
 ) -> Result<Response, ContractError> {
+    if counterparty.provided {
+        return Err(ContractError::AlreadyProvided {});
+    }
+
     if paid != expected {
         return Err(ContractError::InvalidAmount {
             expected,
             actual: paid,
         });
-    }
-
-    if counterparty.provided {
-        return Err(ContractError::AlreadyProvided {});
     }
 
     let mut counterparty = counterparty;
@@ -174,10 +174,6 @@ pub fn execute_fund(deps: DepsMut, info: MessageInfo) -> Result<Response, Contra
         other_counterparty,
         storage,
     } = get_counterparty(deps.as_ref(), &info.sender)?;
-
-    if counterparty.provided {
-        return Err(ContractError::AlreadyProvided {});
-    }
 
     let (expected_payment, paid) =
         if let CheckedTokenInfo::Native { amount, denom } = &counterparty.promise {
