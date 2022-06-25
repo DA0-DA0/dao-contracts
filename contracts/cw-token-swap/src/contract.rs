@@ -28,6 +28,10 @@ pub fn instantiate(
     let counterparty_one = msg.counterparty_one.into_checked(deps.as_ref())?;
     let counterparty_two = msg.counterparty_two.into_checked(deps.as_ref())?;
 
+    if counterparty_one.address == counterparty_two.address {
+        return Err(ContractError::NonDistinctCounterparties {});
+    }
+
     COUNTERPARTY_ONE.save(deps.storage, &counterparty_one)?;
     COUNTERPARTY_TWO.save(deps.storage, &counterparty_two)?;
 

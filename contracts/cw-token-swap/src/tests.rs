@@ -514,6 +514,44 @@ fn test_invalid_instantiate() {
 }
 
 #[test]
+fn test_non_distincy_counterparties() {
+    let mut app = App::default();
+
+    let escrow_code = app.store_code(escrow_contract());
+
+    // Zero amount not allowed for native tokens.
+    let err: ContractError = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(110),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(10),
+                    },
+                },
+            },
+            &[],
+            "escrow",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::NonDistinctCounterparties {}));
+}
+
+#[test]
 fn test_fund_non_counterparty() {
     let mut app = App::default();
 

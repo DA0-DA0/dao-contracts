@@ -10,6 +10,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Counterparties must have different addresses")]
+    NonDistinctCounterparties {},
+
     #[error("Can not provide funds more than once")]
     AlreadyProvided {},
 
