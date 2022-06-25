@@ -16,6 +16,8 @@ jobs:
         run: yarn --cwd ./types build
       - name: Yarn codegen
         run: yarn --cwd ./types codegen
+      - name: Show ts changes
+        run: git status --porcelain
       - name: Check for ts changes
         # fails if any changes not committed
         run: test -z "$(git status --porcelain)"
