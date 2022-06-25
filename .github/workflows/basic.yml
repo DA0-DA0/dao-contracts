@@ -70,6 +70,9 @@ jobs:
       - name: Generate Schema
         run: ./scripts/schema.sh
 
+      - name: Show Schema changes
+        run: git status --porcelain
+
       - name: Schema Changes
         # fails if any changes not committed
         run: test -z "$(git status --porcelain)"
