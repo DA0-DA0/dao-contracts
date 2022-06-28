@@ -1,4 +1,6 @@
-use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Uint128};
+use cosmwasm_std::{
+    Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Timestamp, Uint128,
+};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -41,6 +43,10 @@ pub struct Proposal {
     /// Information about the deposit that was sent as part of this
     /// proposal. None if no deposit.
     pub deposit_info: Option<CheckedDepositInfo>,
+    /// The timestamp at which this proposal was created.
+    pub created: Timestamp,
+    /// The timestamp at which this proposal's status last changed (e.g. Passed, Executed).
+    pub last_updated: Timestamp,
 }
 
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
@@ -118,6 +124,7 @@ impl Proposal {
     /// Sets a proposals status to its current status.
     pub fn update_status(&mut self, block: &BlockInfo) {
         self.status = self.current_status(block);
+        self.last_updated = block.time
     }
 
     /// Returns true iff this proposal is sure to pass (even before
@@ -316,6 +323,8 @@ mod test {
             total_power,
             votes,
             deposit_info: None,
+            created: block.time,
+            last_updated: block.time,
         };
         (prop, block)
     }

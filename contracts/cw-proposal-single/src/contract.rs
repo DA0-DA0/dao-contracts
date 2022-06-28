@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, WasmMsg,
+    StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
@@ -181,6 +181,8 @@ pub fn execute_propose(
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
             deposit_info: config.deposit_info.clone(),
+            created: env.block.time,
+            last_updated: env.block.time,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
