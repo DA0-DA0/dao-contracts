@@ -364,6 +364,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-proposal-single-w-vote-comments"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core",
+ "cw-core-interface",
+ "cw-core-macros",
+ "cw-multi-test 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-storage-plus 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-utils 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw2",
+ "cw20",
+ "cw20-balance-voting",
+ "cw20-base",
+ "cw20-stake",
+ "cw20-staked-balance-voting",
+ "cw3",
+ "cw4",
+ "cw4-group",
+ "cw4-voting",
+ "indexable-hooks",
+ "proposal-hooks",
+ "schemars",
+ "serde",
+ "testing",
+ "thiserror",
+ "vote-hooks",
+ "voting",
+]
+
+[[package]]
 name = "cw-proposal-sudo"
 version = "0.1.0"
 dependencies = [
