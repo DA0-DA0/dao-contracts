@@ -3748,8 +3748,16 @@ fn test_timestamp_updated() {
         deposit_info: None,
     };
 
-    let governance_addr =
-        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
+    let governance_addr = instantiate_with_cw20_balances_governance(
+        &mut app,
+        govmod_id,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: "voter".to_string(),
+            amount: Uint128::new(2),
+        }]),
+    );
+
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
@@ -3765,7 +3773,7 @@ fn test_timestamp_updated() {
 
     // Create a new proposal.
     app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
+        Addr::unchecked("voter"),
         govmod_single.clone(),
         &ExecuteMsg::Propose {
             title: "A simple text proposal".to_string(),
@@ -3784,16 +3792,16 @@ fn test_timestamp_updated() {
         )
         .unwrap();
     let current_block = app.block_info();
-    let expected = Proposal {
+    let mut expected = Proposal {
         title: "A simple text proposal".to_string(),
         description: "This is a simple text proposal".to_string(),
-        proposer: Addr::unchecked(CREATOR_ADDR),
+        proposer: Addr::unchecked("voter"),
         start_height: current_block.height,
         expiration: max_voting_period.after(&current_block),
         min_voting_period: None,
         threshold,
         allow_revoting: false,
-        total_power: Uint128::new(100_000_000),
+        total_power: Uint128::new(2),
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
@@ -3821,6 +3829,10 @@ fn test_timestamp_updated() {
     )
     .unwrap();
 
+    expected.last_updated = app.block_info().time;
+    expected.status = Status::Passed;
+    expected.votes.yes = Uint128::new(2);
+
     let updated: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
@@ -3828,4 +3840,31 @@ fn test_timestamp_updated() {
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();
+
+    assert_eq!(updated.proposal, expected);
+
+    // Update block
+    let timestamp = Timestamp::from_seconds(500_000_000);
+    // Update block
+    app.update_block(|block| block.time = timestamp);
+    let latest_time = app.block_info().time;
+
+    // Execute proposal
+    app.execute_contract(
+        Addr::unchecked("voter"),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let updated: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+
+    assert_eq!(updated.proposal.last_updated, latest_time);
 }
