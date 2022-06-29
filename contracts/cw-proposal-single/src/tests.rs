@@ -3860,10 +3860,7 @@ fn test_timestamp_updated() {
 
     let updated: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(
-            govmod_single,
-            &QueryMsg::Proposal { proposal_id: 1 },
-        )
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
 
     assert_eq!(updated.proposal.last_updated, latest_time);
