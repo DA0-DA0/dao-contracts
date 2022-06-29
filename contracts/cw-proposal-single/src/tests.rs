@@ -3761,7 +3761,7 @@ fn test_timestamp_updated() {
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr.clone(),
+            governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
                 start_at: None,
                 limit: None,
@@ -3861,7 +3861,7 @@ fn test_timestamp_updated() {
     let updated: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
-            govmod_single.clone(),
+            govmod_single,
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();

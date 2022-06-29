@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, Timestamp, WasmMsg,
+    StdResult, Storage, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
