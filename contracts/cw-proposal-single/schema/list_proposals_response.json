@@ -666,12 +666,18 @@
       ],
       "properties": {
         "id": {
+          "description": "The ID of the proposal being returned.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "proposal": {
-          "$ref": "#/definitions/Proposal"
+          "description": "The proposal data.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Proposal"
+            }
+          ]
         }
       }
     },
