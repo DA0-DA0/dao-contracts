@@ -561,8 +561,10 @@
       "type": "object",
       "required": [
         "allow_revoting",
+        "created",
         "description",
         "expiration",
+        "last_updated",
         "msgs",
         "proposer",
         "start_height",
@@ -575,6 +577,14 @@
       "properties": {
         "allow_revoting": {
           "type": "boolean"
+        },
+        "created": {
+          "description": "The timestamp at which this proposal was created.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Timestamp"
+            }
+          ]
         },
         "deposit_info": {
           "description": "Information about the deposit that was sent as part of this proposal. None if no deposit.",
@@ -595,6 +605,14 @@
           "allOf": [
             {
               "$ref": "#/definitions/Expiration"
+            }
+          ]
+        },
+        "last_updated": {
+          "description": "The timestamp at which this proposal's status last changed (e.g. Passed, Executed).",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Timestamp"
             }
           ]
         },

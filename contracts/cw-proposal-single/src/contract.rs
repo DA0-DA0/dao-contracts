@@ -181,6 +181,8 @@ pub fn execute_propose(
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
             deposit_info: config.deposit_info.clone(),
+            created: env.block.time,
+            last_updated: env.block.time,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -252,6 +254,9 @@ pub fn execute_execute(
     }
 
     prop.status = Status::Executed;
+    // Update proposal's last updated timestamp.
+    prop.last_updated = env.block.time;
+
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let refund_message = match prop.deposit_info {
@@ -368,6 +373,7 @@ pub fn execute_vote(
         info.sender.to_string(),
         vote.to_string(),
     )?;
+
     Ok(Response::default()
         .add_submessages(change_hooks)
         .add_submessages(vote_hooks)
@@ -407,6 +413,8 @@ pub fn execute_close(
     };
 
     prop.status = Status::Closed;
+    // Update proposal's last updated timestamp.
+    prop.last_updated = env.block.time;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let changed_hooks = proposal_status_changed_hooks(
