@@ -1870,10 +1870,10 @@ cosmjs-types@^0.4.0:
     long "^4.0.0"
     protobufjs "~6.11.2"
 
-cosmwasm-typescript-gen@0.3.4:
-  version "0.3.4"
-  resolved "https://registry.yarnpkg.com/cosmwasm-typescript-gen/-/cosmwasm-typescript-gen-0.3.4.tgz#f18749fef6209185a5d351f241c6bcd33027ef69"
-  integrity sha512-m0H1si09bDNcdc1zEUgdOyqvtYSBx7zLoqtI2wRq4tx8jSAtCXGu27sSC1bXKfcvkhuVgh0g7HFBfjERVX0TIw==
+cosmwasm-typescript-gen@0.3.6:
+  version "0.3.6"
+  resolved "https://registry.yarnpkg.com/cosmwasm-typescript-gen/-/cosmwasm-typescript-gen-0.3.6.tgz#c863ce01335f53dd02c8ebc2c545be50828dfc3f"
+  integrity sha512-A+VfD9a59Y4LKhuuH2zN2Qdz5Re4P4qkf3DPMsCUaLiCzcdKSxj2QQCpRXsA4lXkJXbuXPop4WTpYGVX01xpjg==
   dependencies:
     "@babel/core" "7.18.5"
     "@babel/generator" "7.18.2"
@@ -1897,7 +1897,7 @@ cosmwasm-typescript-gen@0.3.4:
     minimist "1.2.6"
     mkdirp "1.0.4"
     shelljs "0.8.5"
-    wasm-ast-types "^0.3.3"
+    wasm-ast-types "^0.3.5"
 
 create-require@^1.1.0:
   version "1.1.1"
@@ -3599,10 +3599,10 @@ util@^0.10.3:
   dependencies:
     inherits "2.0.3"
 
-wasm-ast-types@^0.3.3:
-  version "0.3.3"
-  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.3.3.tgz#cff59e342aa84f563ada9d2e8cc80fa9df3db162"
-  integrity sha512-MzaCBDVLYG1dgA6FHJGnR3MLkB5N49ENXy1uJcRbqKHTHD00rgpdkHShhwvqHtHueeVGUgeEKJyiaEF3dfuEKw==
+wasm-ast-types@^0.3.5:
+  version "0.3.5"
+  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.3.5.tgz#b46d7b5f4f9312f45278f731f9eb496fdf2f4ca3"
+  integrity sha512-rzpP86SqVV3Rs24hG0ZSsFFrxp34J4U65z/3KWLZOxhe6ljuh3FFECbC6p0iyIkmG6hN5F6mQ+4Y2+QNP5GnAg==
   dependencies:
     "@babel/runtime" "^7.18.3"
     "@babel/types" "7.18.4"
