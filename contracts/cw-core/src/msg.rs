@@ -33,6 +33,7 @@ pub struct ModuleInstantiateInfo {
     pub label: String,
 }
 
+/// Information about an item to be stored in the items list.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InitialItem {
     /// The name of the item.

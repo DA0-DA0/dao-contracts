@@ -325,9 +325,11 @@ export interface ProposalResponse {
 }
 export interface Proposal {
   allow_revoting: boolean;
+  created: Timestamp;
   deposit_info?: CheckedDepositInfo | null;
   description: string;
   expiration: Expiration;
+  last_updated: Timestamp;
   min_voting_period?: Expiration | null;
   msgs: CosmosMsgForEmpty[];
   proposer: Addr;

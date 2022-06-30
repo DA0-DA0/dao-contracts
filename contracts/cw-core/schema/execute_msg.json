@@ -456,6 +456,7 @@
       }
     },
     "Config": {
+      "description": "Top level config type for core module.",
       "type": "object",
       "required": [
         "automatically_add_cw20s",
