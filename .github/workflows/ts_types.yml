@@ -9,8 +9,8 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Yarn install --frozen-lockfile
-        run: yarn --cwd ./types install
+      - name: Yarn install
+        run: yarn --cwd ./types install --frozen-lockfile
       - name: Yarn build
         run: yarn --cwd ./types build
       - name: Yarn codegen
