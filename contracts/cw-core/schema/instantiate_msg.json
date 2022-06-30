@@ -125,6 +125,7 @@
       "type": "string"
     },
     "InitialItem": {
+      "description": "Information about an item to be stored in the items list.",
       "type": "object",
       "required": [
         "key",

@@ -191,6 +191,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Adds an address as a consumer of proposal hooks. Consumers of proposal hooks have hook messages executed on them whenever the status of a proposal changes or a proposal is created. If a consumer contract errors when handling a hook message it will be removed from the list of consumers.",
       "type": "object",
       "required": [
         "add_proposal_hook"
@@ -211,6 +212,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Removes a consumer of proposal hooks.",
       "type": "object",
       "required": [
         "remove_proposal_hook"
@@ -231,6 +233,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Adds an address as a consumer of vote hooks. Consumers of vote hooks have hook messages executed on them whenever the a vote is cast. If a consumer contract errors when handling a hook message it will be removed from the list of consumers.",
       "type": "object",
       "required": [
         "add_vote_hook"
@@ -251,6 +254,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Removed a consumer of vote hooks.",
       "type": "object",
       "required": [
         "remove_vote_hook"

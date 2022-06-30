@@ -39,6 +39,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all the proposals that have been cast in this module. Returns `query::ProposalListResponse`.",
       "type": "object",
       "required": [
         "list_proposals"
@@ -48,6 +49,7 @@
           "type": "object",
           "properties": {
             "limit": {
+              "description": "The maximum number of proposals to return as part of this query. If no limit is set a max of 30 proposals will be returned.",
               "type": [
                 "integer",
                 "null"
@@ -56,6 +58,7 @@
               "minimum": 0.0
             },
             "start_after": {
+              "description": "The proposal ID to start listing proposals after. For example, if this is set to 2 proposals with IDs 3 and higher will be returned.",
               "type": [
                 "integer",
                 "null"
@@ -69,6 +72,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the proposals that have been cast in this module in decending order of proposal ID. Returns `query::ProposalListResponse`.",
       "type": "object",
       "required": [
         "reverse_proposals"
@@ -78,6 +82,7 @@
           "type": "object",
           "properties": {
             "limit": {
+              "description": "The maximum number of proposals to return as part of this query. If no limit is set a max of 30 proposals will be returned.",
               "type": [
                 "integer",
                 "null"
@@ -86,6 +91,7 @@
               "minimum": 0.0
             },
             "start_before": {
+              "description": "The proposal ID to start listing proposals before. For example, if this is set to 6 proposals with IDs 5 and lower will be returned.",
               "type": [
                 "integer",
                 "null"
@@ -99,6 +105,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the number of proposals that have been created in this module.",
       "type": "object",
       "required": [
         "proposal_count"
@@ -111,6 +118,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns a voters position on a propsal. Returns `query::VoteResponse`.",
       "type": "object",
       "required": [
         "get_vote"
@@ -137,6 +145,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the votes that have been cast on a proposal. Returns `VoteListResponse`.",
       "type": "object",
       "required": [
         "list_votes"
@@ -149,6 +158,7 @@
           ],
           "properties": {
             "limit": {
+              "description": "The maximum number of votes to return in response to this query. If no limit is specified a max of 30 are returned.",
               "type": [
                 "integer",
                 "null"
@@ -157,11 +167,13 @@
               "minimum": 0.0
             },
             "proposal_id": {
+              "description": "The proposal to list the votes of.",
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
             },
             "start_after": {
+              "description": "The voter to start listing votes after. Ordering is done alphabetically.",
               "type": [
                 "string",
                 "null"
@@ -173,6 +185,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the consumers of proposal hooks for this module.",
       "type": "object",
       "required": [
         "proposal_hooks"
@@ -185,6 +198,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the consumers of vote hooks for this module. Returns indexable_hooks::HooksResponse.",
       "type": "object",
       "required": [
         "vote_hooks"
