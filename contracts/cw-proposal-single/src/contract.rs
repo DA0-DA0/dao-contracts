@@ -282,10 +282,6 @@ pub fn execute_execute(
         old_status.to_string(),
         prop.status.to_string(),
     )?;
-
-    // Update proposal's last updated timestamp.
-    prop.last_updated = env.block.time;
-
     Ok(response
         .add_messages(refund_message)
         .add_submessages(hooks)
