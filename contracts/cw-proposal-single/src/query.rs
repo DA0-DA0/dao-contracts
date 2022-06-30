@@ -9,7 +9,9 @@ use crate::proposal::Proposal;
 /// Information about a proposal returned by proposal queries.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ProposalResponse {
+    /// The ID of the proposal being returned.
     pub id: u64,
+    /// The proposal data.
     pub proposal: Proposal,
 }
 
