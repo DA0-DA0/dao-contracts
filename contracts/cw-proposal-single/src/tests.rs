@@ -3740,7 +3740,7 @@ fn test_timestamp_updated() {
     };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
-        threshold: threshold.clone(),
+        threshold,
         max_voting_period,
         min_voting_period: None,
         only_members_execute: false,
@@ -3925,10 +3925,7 @@ fn test_timestamp_updated() {
     // Status should have changed to 'Closed'
     let updated: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::Proposal { proposal_id: 2 },
-        )
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 2 })
         .unwrap();
 
     assert_eq!(updated.proposal.last_updated, latest_time);
