@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::{Item, Map};
 
+/// Top level config type for core module.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     /// The name of the contract.
@@ -39,12 +40,16 @@ pub const ADMIN: Item<Addr> = Item::new("admin");
 /// `NOMINATED_ADMIN.may_load(deps.storage)`.
 pub const NOMINATED_ADMIN: Item<Addr> = Item::new("nominated_admin");
 
+/// The current configuration of the module.
 pub const CONFIG: Item<Config> = Item::new("config");
 
+/// The time the DAO will unpause. Here be dragons: this is not set if
+/// the DAO has never been paused.
 pub const PAUSED: Item<Expiration> = Item::new("paused");
 
 /// The voting module associated with this contract.
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
+/// The proposal modules assocaited with this contract.
 pub const PROPOSAL_MODULES: Map<Addr, Empty> = Map::new("proposal_modules");
 
 // General purpose KV store for DAO associated state.
