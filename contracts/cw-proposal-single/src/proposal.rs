@@ -123,8 +123,12 @@ impl Proposal {
 
     /// Sets a proposals status to its current status.
     pub fn update_status(&mut self, block: &BlockInfo) {
-        self.status = self.current_status(block);
-        self.last_updated = block.time
+        let new_status = self.current_status(block);
+        // Update last_updated only if status changed.
+        if new_status != self.status {
+            self.last_updated = block.time
+        }
+        self.status = new_status
     }
 
     /// Returns true iff this proposal is sure to pass (even before

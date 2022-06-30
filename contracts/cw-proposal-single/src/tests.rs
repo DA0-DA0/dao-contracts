@@ -3752,10 +3752,16 @@ fn test_timestamp_updated() {
         &mut app,
         govmod_id,
         instantiate,
-        Some(vec![Cw20Coin {
-            address: "voter".to_string(),
-            amount: Uint128::new(2),
-        }]),
+        Some(vec![
+            Cw20Coin {
+                address: "voter".to_string(),
+                amount: Uint128::new(3),
+            },
+            Cw20Coin {
+                address: "voter2".to_string(),
+                amount: Uint128::new(2),
+            },
+        ]),
     );
 
     let governance_modules: Vec<Addr> = app
@@ -3771,7 +3777,7 @@ fn test_timestamp_updated() {
 
     let govmod_single = governance_modules.into_iter().next().unwrap();
 
-    // Create a new proposal.
+    // Create 2 proposals.
     app.execute_contract(
         Addr::unchecked("voter"),
         govmod_single.clone(),
@@ -3784,7 +3790,19 @@ fn test_timestamp_updated() {
     )
     .unwrap();
 
-    let created: ProposalResponse = app
+    app.execute_contract(
+        Addr::unchecked("voter"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let created_1: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
@@ -3792,29 +3810,25 @@ fn test_timestamp_updated() {
         )
         .unwrap();
     let current_block = app.block_info();
-    let mut expected = Proposal {
-        title: "A simple text proposal".to_string(),
-        description: "This is a simple text proposal".to_string(),
-        proposer: Addr::unchecked("voter"),
-        start_height: current_block.height,
-        expiration: max_voting_period.after(&current_block),
-        min_voting_period: None,
-        threshold,
-        allow_revoting: false,
-        total_power: Uint128::new(2),
-        msgs: vec![],
-        status: Status::Open,
-        votes: Votes::zero(),
-        deposit_info: None,
-        created: current_block.time,
-        last_updated: current_block.time,
-    };
-    assert_eq!(created.proposal, expected);
-    assert_eq!(created.id, 1u64);
 
-    let timestamp = Timestamp::from_seconds(300_000_000);
+    // Verify created and last updated
+    assert_eq!(created_1.proposal.created, current_block.time);
+    assert_eq!(created_1.proposal.last_updated, current_block.time);
+
+    let created_2: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 2 },
+        )
+        .unwrap();
+
+    // Verify created and last updated
+    assert_eq!(created_2.proposal.created, current_block.time);
+    assert_eq!(created_2.proposal.last_updated, current_block.time);
 
     // Update block
+    let timestamp = Timestamp::from_seconds(300_000_000);
     app.update_block(|block| block.time = timestamp);
 
     // Vote on proposal
@@ -3829,10 +3843,7 @@ fn test_timestamp_updated() {
     )
     .unwrap();
 
-    expected.last_updated = app.block_info().time;
-    expected.status = Status::Passed;
-    expected.votes.yes = Uint128::new(2);
-
+    // Expect that last_updated changed because of status change
     let updated: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
@@ -3841,11 +3852,11 @@ fn test_timestamp_updated() {
         )
         .unwrap();
 
-    assert_eq!(updated.proposal, expected);
+    assert_eq!(updated.proposal.last_updated, app.block_info().time);
+    assert_eq!(updated.proposal.status, Status::Passed);
 
     // Update block
     let timestamp = Timestamp::from_seconds(500_000_000);
-    // Update block
     app.update_block(|block| block.time = timestamp);
     let latest_time = app.block_info().time;
 
@@ -3858,10 +3869,68 @@ fn test_timestamp_updated() {
     )
     .unwrap();
 
+    // Status should have changed to 'Executed'
     let updated: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
         .unwrap();
 
     assert_eq!(updated.proposal.last_updated, latest_time);
+    assert_eq!(updated.proposal.status, Status::Executed);
+
+    let timestamp = Timestamp::from_seconds(700_000_000);
+    app.update_block(|block| block.time = timestamp);
+    let latest_time = app.block_info().time;
+
+    // Vote no on second proposal
+    app.execute_contract(
+        Addr::unchecked("voter"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Status should have changed to 'Rejected'
+    let updated: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 2 },
+        )
+        .unwrap();
+
+    assert_eq!(updated.proposal.last_updated, latest_time);
+    assert_eq!(updated.proposal.status, Status::Rejected);
+
+    let timestamp = Timestamp::from_seconds(900_000_000);
+    app.update_block(|block| block.time = timestamp);
+    let latest_time = app.block_info().time;
+
+    // Close second proposal
+    app.execute_contract(
+        Addr::unchecked("voter"),
+        govmod_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 2 },
+        &[],
+    )
+    .unwrap();
+
+    // Status should have changed to 'Closed'
+    let updated: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 2 },
+        )
+        .unwrap();
+
+    assert_eq!(updated.proposal.last_updated, latest_time);
+    assert_eq!(updated.proposal.status, Status::Closed);
 }
