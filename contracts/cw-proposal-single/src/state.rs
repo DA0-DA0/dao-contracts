@@ -66,11 +66,18 @@ pub struct Ballot {
     pub vote: Vote,
 }
 
+/// The current top level config for the module.
 pub const CONFIG: Item<Config> = Item::new("config");
+/// The number of proposals that have been created.
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
+/// Maps proposal IDs to Proposals.
 pub const PROPOSALS: Map<u64, Proposal> = Map::new("proposals");
+/// Maps (proposal_ID, address) to that addresses vote on the
+/// specified proposal.
 pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
+/// Consumers of proposal state change hooks.
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
+/// Consumers of vote hooks.
 pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
 
 impl DepositInfo {
