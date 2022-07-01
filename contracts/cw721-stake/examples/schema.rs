@@ -5,8 +5,7 @@ use cw20::{
 };
 use cw721_stake::msg::{
     ClaimsResponse, ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse,
+    StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 use std::env::current_dir;
 use std::fs::create_dir_all;
@@ -22,8 +21,6 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(StakedBalanceAtHeightResponse), &out_dir);
     export_schema(&schema_for!(TotalStakedAtHeightResponse), &out_dir);
-    export_schema(&schema_for!(StakedValueResponse), &out_dir);
-    export_schema(&schema_for!(TotalValueResponse), &out_dir);
     export_schema(&schema_for!(GetConfigResponse), &out_dir);
     export_schema(&schema_for!(GetHooksResponse), &out_dir);
     export_schema(&schema_for!(ClaimsResponse), &out_dir);

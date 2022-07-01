@@ -17,6 +17,8 @@ pub enum ContractError {
     InvalidAddress {},
     #[error("Unauthorized")]
     Unauthorized {},
+    #[error("Can not unstake that which you have not staked")]
+    NotStaked {},
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
     #[error("No admin configured")]
