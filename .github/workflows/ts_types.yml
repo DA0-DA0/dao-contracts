@@ -1,4 +1,3 @@
-
 on: [push, pull_request]
 
 name: Typescript Codegen
@@ -11,7 +10,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
       - name: Yarn install
-        run: yarn --cwd ./types install
+        run: yarn --cwd ./types install --frozen-lockfile
       - name: Yarn build
         run: yarn --cwd ./types build
       - name: Yarn codegen
@@ -21,4 +20,3 @@ jobs:
       - name: Check for ts changes
         # fails if any changes not committed
         run: test -z "$(git status --porcelain)"
-

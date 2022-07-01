@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@types/node": "^15.14.9",
-    "cosmwasm-typescript-gen": "0.3.4",
+    "cosmwasm-typescript-gen": "0.3.6",
     "husky": "^7.0.4",
     "prettier": "^2.5.0",
     "pretty-quick": "^3.1.2",
