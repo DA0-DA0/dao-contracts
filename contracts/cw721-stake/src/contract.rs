@@ -2,23 +2,19 @@ use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
 use crate::msg::{
     ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse,
+    StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 use crate::state::{
-    Config, CONFIG, HOOKS, MAX_CLAIMS, NFT_CLAIMS, REWARD_BALANCE, REWARD_CLAIMS,
-    STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
+    Config, CONFIG, HOOKS, MAX_CLAIMS, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError,
-    StdResult, Uint128,
+    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw20::Cw20ReceiveMsg;
 use cw721::Cw721ReceiveMsg;
 use cw721_controllers::NftClaimsResponse;
-use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
 use std::collections::HashSet;
 use std::convert::{From, TryFrom};
@@ -38,23 +34,18 @@ pub fn instantiate(
         .manager
         .map(|h| deps.api.addr_validate(&h))
         .transpose()?;
-    let reward_token = msg
-        .reward_token_address
-        .map(|h| deps.api.addr_validate(&h))
-        .transpose()?;
 
     let config = Config {
         owner,
         manager,
         nft_address: deps.api.addr_validate(&msg.nft_address)?,
-        reward_token_address: reward_token,
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
-    REWARD_BALANCE.save(deps.storage, &Uint128::zero())?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    Ok(Response::new())
+    // TODO(zeke): things here.
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -65,14 +56,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
-        ExecuteMsg::Receive(msg) => execute_fund(deps, env, info, msg),
         ExecuteMsg::ReceiveNft(msg) => execute_stake(deps, env, info, msg),
-        ExecuteMsg::Unstake {
-            token_id,
-            reward_wallet_address,
-        } => execute_unstake(deps, env, info, token_id, reward_wallet_address),
+        ExecuteMsg::Unstake { token_id } => execute_unstake(deps, env, info, token_id),
         ExecuteMsg::ClaimNfts {} => execute_claim_nfts(deps, env, info),
-        ExecuteMsg::ClaimRewards {} => execute_claim_rewards(deps, env, info),
         ExecuteMsg::UpdateConfig {
             owner,
             manager,
@@ -80,35 +66,6 @@ pub fn execute(
         } => execute_update_config(info, deps, owner, manager, duration),
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
-    }
-}
-
-pub fn execute_fund(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    wrapper: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if let Some(reward_token_address) = config.reward_token_address {
-        if info.sender != reward_token_address {
-            return Err(ContractError::InvalidToken {
-                received: info.sender,
-                expected: reward_token_address,
-            });
-        }
-
-        let sender = deps.api.addr_validate(&wrapper.sender)?;
-        REWARD_BALANCE.update(deps.storage, |old| {
-            old.checked_add(wrapper.amount).map_err(StdError::overflow)
-        })?;
-
-        Ok(Response::new()
-            .add_attribute("action", "fund")
-            .add_attribute("from", &sender)
-            .add_attribute("amount", wrapper.amount))
-    } else {
-        Err(ContractError::NothingToFund {})
     }
 }
 
@@ -149,7 +106,7 @@ pub fn execute_stake(
     )?;
 
     let hook_msgs = stake_hook_msgs(deps.storage, sender.clone(), wrapper.token_id.clone())?;
-    Ok(Response::new()
+    Ok(Response::default()
         .add_submessages(hook_msgs)
         .add_attribute("action", "stake")
         .add_attribute("from", sender)
@@ -161,101 +118,65 @@ pub fn execute_unstake(
     env: Env,
     info: MessageInfo,
     token_id: String,
-    reward_wallet_address: Option<String>,
 ) -> Result<Response, ContractError> {
-    let validated_reward_wallet = reward_wallet_address
-        .map(|h| deps.api.addr_validate(&h))
-        .transpose()?;
-    let sender = info.sender.clone();
     let config = CONFIG.load(deps.storage)?;
-    let sender_staked_nft_collection = STAKED_NFTS_PER_OWNER
-        .may_load(deps.storage, &sender)?
-        .unwrap_or_default();
-    if !sender_staked_nft_collection.contains(&token_id) {
-        return Err(ContractError::Unauthorized {});
-    }
-    let balance = REWARD_BALANCE.load(deps.storage).unwrap_or_default();
-    let total_staked_nfts = TOTAL_STAKED_NFTS.load(deps.storage)?;
-    let amount_to_claim = balance
-        .checked_div(Uint128::from(
-            u128::try_from(total_staked_nfts.len()).unwrap(),
-        ))
-        .map_err(StdError::divide_by_zero)?;
-
-    REWARD_BALANCE.save(
-        deps.storage,
-        &balance
-            .checked_sub(amount_to_claim)
-            .map_err(StdError::overflow)?,
-    )?;
 
     STAKED_NFTS_PER_OWNER.update(
         deps.storage,
         &info.sender,
         env.block.height,
-        |nft_collection| -> StdResult<HashSet<String>> {
-            let mut updated_nft_collection = nft_collection.unwrap_or_default();
-            updated_nft_collection.remove(&token_id);
-            Ok(updated_nft_collection)
+        |nft_collection| -> Result<HashSet<String>, ContractError> {
+            if let Some(mut nft_collection) = nft_collection {
+                let was_present = nft_collection.remove(&token_id);
+                if was_present {
+                    Ok(nft_collection)
+                } else {
+                    Err(ContractError::NotStaked {})
+                }
+            } else {
+                Err(ContractError::NotStaked {})
+            }
         },
     )?;
 
     TOTAL_STAKED_NFTS.update(
         deps.storage,
         env.block.height,
-        |total_staked_nfts| -> StdResult<HashSet<String>> {
-            let mut updated_total_staked_nfts = total_staked_nfts.unwrap_or_default();
-            updated_total_staked_nfts.remove(&token_id);
-            Ok(updated_total_staked_nfts)
+        |total_staked_nfts| -> Result<HashSet<String>, ContractError> {
+            if let Some(mut total_staked_nfts) = total_staked_nfts {
+                let was_present = total_staked_nfts.remove(&token_id);
+                if was_present {
+                    Ok(total_staked_nfts)
+                } else {
+                    Err(ContractError::NotStaked {})
+                }
+            } else {
+                Err(ContractError::NotStaked {})
+            }
         },
     )?;
 
     let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), token_id.clone())?;
-    let response = Response::new();
     match config.unstaking_duration {
         None => {
-            let cw_transfer_msg = cw721::Cw721ExecuteMsg::TransferNft {
-                recipient: info.sender.to_string(),
-                token_id: token_id.clone(),
-            };
-
-            let wasm_unstake_nft_msg = cosmwasm_std::WasmMsg::Execute {
+            let return_nft_msg = cosmwasm_std::WasmMsg::Execute {
                 contract_addr: config.nft_address.to_string(),
-                msg: to_binary(&cw_transfer_msg)?,
+                msg: to_binary(
+                    &(cw721::Cw721ExecuteMsg::TransferNft {
+                        recipient: info.sender.to_string(),
+                        token_id: token_id.clone(),
+                    }),
+                )?,
                 funds: vec![],
             };
 
-            if amount_to_claim.is_zero() || validated_reward_wallet == None {
-                return Ok(response
-                    .add_message(wasm_unstake_nft_msg)
-                    .add_submessages(hook_msgs)
-                    .add_attribute("action", "unstake")
-                    .add_attribute("from", info.sender)
-                    .add_attribute("token_id", token_id)
-                    .add_attribute("claim_duration", "None"));
-            }
-
-            let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
-                recipient: validated_reward_wallet.clone().unwrap().to_string(),
-                amount: amount_to_claim,
-            };
-
-            let wasm_claim_rewards_msg = cosmwasm_std::WasmMsg::Execute {
-                contract_addr: config.reward_token_address.unwrap().to_string(),
-                msg: to_binary(&cw_send_msg)?,
-                funds: vec![],
-            };
-
-            Ok(response
-                .add_message(wasm_unstake_nft_msg)
+            Ok(Response::default()
+                .add_message(return_nft_msg)
                 .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
                 .add_attribute("token_id", token_id)
-                .add_attribute("claim_duration", "None")
-                .add_message(wasm_claim_rewards_msg)
-                .add_attribute("reward_wallet", validated_reward_wallet.unwrap())
-                .add_attribute("reward_amount", amount_to_claim))
+                .add_attribute("claim_duration", "None"))
         }
 
         Some(duration) => {
@@ -273,37 +194,12 @@ pub fn execute_unstake(
                 duration.after(&env.block),
             )?;
 
-            if amount_to_claim.is_zero() || validated_reward_wallet == None {
-                return Ok(Response::new()
-                    .add_attribute("action", "unstake")
-                    .add_submessages(hook_msgs)
-                    .add_attribute("from", info.sender)
-                    .add_attribute("token_id", token_id)
-                    .add_attribute("claim_duration", format!("{}", duration)));
-            }
-
-            let outstanding_reward_claims = REWARD_CLAIMS
-                .query_claims(deps.as_ref(), &info.sender)?
-                .claims;
-            if outstanding_reward_claims.len() >= MAX_CLAIMS as usize {
-                return Err(ContractError::TooManyClaims {});
-            }
-
-            REWARD_CLAIMS.create_claim(
-                deps.storage,
-                &validated_reward_wallet.clone().unwrap(),
-                amount_to_claim,
-                duration.after(&env.block),
-            )?;
-
-            Ok(Response::new()
+            Ok(Response::default()
                 .add_attribute("action", "unstake")
                 .add_submessages(hook_msgs)
                 .add_attribute("from", info.sender)
                 .add_attribute("token_id", token_id)
-                .add_attribute("claim_duration", format!("{}", duration))
-                .add_attribute("reward_wallet", validated_reward_wallet.unwrap())
-                .add_attribute("reward_amount", amount_to_claim))
+                .add_attribute("claim_duration", format!("{}", duration)))
         }
     }
 }
@@ -319,60 +215,26 @@ pub fn execute_claim_nfts(
     }
 
     let config = CONFIG.load(deps.storage)?;
-    let mut msgs = Vec::new();
-    for nft in nfts.iter() {
-        let cw_transfer_msg = cw721::Cw721ExecuteMsg::TransferNft {
-            recipient: info.sender.to_string(),
-            token_id: nft.clone(),
-        };
 
-        let wasm_msg = cosmwasm_std::WasmMsg::Execute {
-            contract_addr: config.nft_address.to_string(),
-            msg: to_binary(&cw_transfer_msg)?,
-            funds: vec![],
-        };
-        msgs.push(wasm_msg);
-    }
+    let msgs = nfts
+        .into_iter()
+        .map(|nft| -> StdResult<CosmosMsg> {
+            Ok(WasmMsg::Execute {
+                contract_addr: config.nft_address.to_string(),
+                msg: to_binary(&cw721::Cw721ExecuteMsg::TransferNft {
+                    recipient: info.sender.to_string(),
+                    token_id: nft,
+                })?,
+                funds: vec![],
+            }
+            .into())
+        })
+        .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(Response::new()
+    Ok(Response::default()
         .add_messages(msgs)
         .add_attribute("action", "claim_nfts")
         .add_attribute("from", info.sender.clone()))
-}
-
-pub fn execute_claim_rewards(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let reward_amount =
-        REWARD_CLAIMS.claim_tokens(deps.storage, &info.sender, &_env.block, None)?;
-
-    if reward_amount.is_zero() {
-        return Err(ContractError::NothingToClaim {});
-    }
-
-    if config.reward_token_address == None {
-        return Err(ContractError::NothingToFund {});
-    }
-
-    let cw_send_msg = cw20::Cw20ExecuteMsg::Transfer {
-        recipient: info.sender.to_string(),
-        amount: reward_amount,
-    };
-
-    let wasm_msg = cosmwasm_std::WasmMsg::Execute {
-        contract_addr: config.reward_token_address.unwrap().to_string(),
-        msg: to_binary(&cw_send_msg)?,
-        funds: vec![],
-    };
-
-    Ok(Response::new()
-        .add_message(wasm_msg)
-        .add_attribute("action", "claim_reward")
-        .add_attribute("from", info.sender)
-        .add_attribute("amount", reward_amount))
 }
 
 pub fn execute_update_config(
@@ -403,7 +265,7 @@ pub fn execute_update_config(
     config.unstaking_duration = duration;
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new()
+    Ok(Response::default()
         .add_attribute("action", "update_config")
         .add_attribute(
             "owner",
@@ -435,7 +297,7 @@ pub fn execute_add_hook(
 
     HOOKS.add_hook(deps.storage, addr.clone())?;
 
-    Ok(Response::new()
+    Ok(Response::default()
         .add_attribute("action", "add_hook")
         .add_attribute("hook", addr))
 }
@@ -454,7 +316,7 @@ pub fn execute_remove_hook(
 
     HOOKS.remove_hook(deps.storage, addr.clone())?;
 
-    Ok(Response::new()
+    Ok(Response::default()
         .add_attribute("action", "remove_hook")
         .add_attribute("hook", addr))
 }
@@ -469,10 +331,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalStakedAtHeight { height } => {
             to_binary(&query_total_staked_at_height(deps, env, height)?)
         }
-        QueryMsg::StakedValue { address } => to_binary(&query_staked_value(deps, env, address)?),
-        QueryMsg::TotalValue {} => to_binary(&query_total_value(deps, env)?),
         QueryMsg::NftClaims { address } => to_binary(&query_nft_claims(deps, address)?),
-        QueryMsg::RewardClaims { address } => to_binary(&query_reward_claims(deps, address)?),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
     }
 }
@@ -511,36 +370,6 @@ pub fn query_total_staked_at_height(
     })
 }
 
-pub fn query_staked_value(
-    deps: Deps,
-    _env: Env,
-    address: String,
-) -> StdResult<StakedValueResponse> {
-    let address = deps.api.addr_validate(&address)?;
-    let balance = REWARD_BALANCE.load(deps.storage).unwrap_or_default();
-    let staked = STAKED_NFTS_PER_OWNER
-        .load(deps.storage, &address)
-        .unwrap_or_default();
-    let total = TOTAL_STAKED_NFTS.load(deps.storage).unwrap_or_default();
-    if balance == Uint128::zero() || staked.is_empty() || total.is_empty() {
-        Ok(StakedValueResponse {
-            value: Uint128::zero(),
-        })
-    } else {
-        let value = Uint128::from(u128::try_from(staked.len()).unwrap())
-            .checked_mul(balance)
-            .map_err(StdError::overflow)?
-            .checked_div(Uint128::from(u128::try_from(total.len()).unwrap()))
-            .map_err(StdError::divide_by_zero)?;
-        Ok(StakedValueResponse { value })
-    }
-}
-
-pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse> {
-    let balance = REWARD_BALANCE.load(deps.storage).unwrap_or_default();
-    Ok(TotalValueResponse { total: balance })
-}
-
 pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(GetConfigResponse {
@@ -548,16 +377,11 @@ pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
         manager: config.manager.map(|a| a.to_string()),
         unstaking_duration: config.unstaking_duration,
         nft_address: config.nft_address.to_string(),
-        reward_token_address: Some(config.reward_token_address.unwrap().to_string()),
     })
 }
 
 pub fn query_nft_claims(deps: Deps, address: String) -> StdResult<NftClaimsResponse> {
     NFT_CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
-}
-
-pub fn query_reward_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
-    REWARD_CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
 }
 
 pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
@@ -578,9 +402,7 @@ mod tests {
     use anyhow::Result as AnyResult;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
-    use cw20::Cw20Coin;
     use cw721_controllers::NftClaim;
-    use cw_controllers::{Claim, ClaimsResponse};
     use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
     use cw_utils::Duration;
     use cw_utils::Expiration::AtHeight;
@@ -596,7 +418,7 @@ mod tests {
     const NFT_ID3: &str = "fake_nft3";
     const NFT_ID4: &str = "fake_nft4";
 
-    pub fn contract_staking() -> Box<dyn Contract<Empty>> {
+    fn contract_staking() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             crate::contract::execute,
             crate::contract::instantiate,
@@ -605,7 +427,7 @@ mod tests {
         Box::new(contract)
     }
 
-    pub fn contract_cw721() -> Box<dyn Contract<Empty>> {
+    fn contract_cw721() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             cw721_base::entry::execute,
             cw721_base::entry::instantiate,
@@ -614,30 +436,8 @@ mod tests {
         Box::new(contract)
     }
 
-    pub fn contract_cw20() -> Box<dyn Contract<Empty>> {
-        let contract = ContractWrapper::new(
-            cw20_base::contract::execute,
-            cw20_base::contract::instantiate,
-            cw20_base::contract::query,
-        );
-        Box::new(contract)
-    }
-
     fn mock_app() -> App {
         App::default()
-    }
-
-    fn get_reward_token_balance<T: Into<String>, U: Into<String>>(
-        app: &App,
-        contract_addr: T,
-        address: U,
-    ) -> Uint128 {
-        let msg = cw20::Cw20QueryMsg::Balance {
-            address: address.into(),
-        };
-        let result: cw20::BalanceResponse =
-            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-        result.balance
     }
 
     fn get_nft_balance<T: Into<String>, U: Into<String>>(
@@ -655,21 +455,6 @@ mod tests {
         Uint128::from(u128::try_from(result.tokens.len()).unwrap())
     }
 
-    fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
-        let cw20_id = app.store_code(contract_cw20());
-        let msg = cw20_base::msg::InstantiateMsg {
-            name: String::from("Test"),
-            symbol: String::from("Test"),
-            decimals: 6,
-            initial_balances,
-            mint: None,
-            marketing: None,
-        };
-
-        app.instantiate_contract(cw20_id, Addr::unchecked(ADDR1), &msg, &[], "cw20", None)
-            .unwrap()
-    }
-
     fn instantiate_cw721(app: &mut App) -> Addr {
         let cw721_id = app.store_code(contract_cw721());
         let msg = cw721_base::msg::InstantiateMsg {
@@ -684,7 +469,6 @@ mod tests {
 
     fn instantiate_staking(
         app: &mut App,
-        cw20: Addr,
         cw721: Addr,
         unstaking_duration: Option<Duration>,
     ) -> Addr {
@@ -693,7 +477,6 @@ mod tests {
             owner: Some("owner".to_string()),
             manager: Some("manager".to_string()),
             nft_address: cw721.to_string(),
-            reward_token_address: Some(cw20.to_string()),
             unstaking_duration,
         };
         app.instantiate_contract(
@@ -707,25 +490,14 @@ mod tests {
         .unwrap()
     }
 
-    fn setup_test_case(
-        app: &mut App,
-        initial_balances: Vec<Cw20Coin>,
-        unstaking_duration: Option<Duration>,
-    ) -> (Addr, Addr, Addr) {
-        // Instantiate cw20 contract
-        let cw20_addr = instantiate_cw20(app, initial_balances);
+    fn setup_test_case(app: &mut App, unstaking_duration: Option<Duration>) -> (Addr, Addr) {
         // Instantiate cw721 contract
         let cw721_addr = instantiate_cw721(app);
         app.update_block(next_block);
         // Instantiate staking contract
-        let staking_addr = instantiate_staking(
-            app,
-            cw20_addr.clone(),
-            cw721_addr.clone(),
-            unstaking_duration,
-        );
+        let staking_addr = instantiate_staking(app, cw721_addr.clone(), unstaking_duration);
         app.update_block(next_block);
-        (staking_addr, cw20_addr, cw721_addr)
+        (staking_addr, cw721_addr)
     }
 
     fn query_staked_balance<T: Into<String>, U: Into<String>>(
@@ -752,18 +524,6 @@ mod tests {
         let result: TotalStakedAtHeightResponse =
             app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.total
-    }
-
-    fn query_reward_claims<T: Into<String>, U: Into<String>>(
-        app: &App,
-        contract_addr: T,
-        address: U,
-    ) -> Vec<Claim> {
-        let msg = QueryMsg::RewardClaims {
-            address: address.into(),
-        };
-        let result: ClaimsResponse = app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-        result.claims
     }
 
     fn query_nft_claims<T: Into<String>, U: Into<String>>(
@@ -831,12 +591,8 @@ mod tests {
         staking_addr: &Addr,
         info: MessageInfo,
         token_id: String,
-        reward_wallet_address: Option<String>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::Unstake {
-            token_id,
-            reward_wallet_address,
-        };
+        let msg = ExecuteMsg::Unstake { token_id };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
@@ -845,23 +601,12 @@ mod tests {
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
-    fn claim_rewards(
-        app: &mut App,
-        staking_addr: &Addr,
-        info: MessageInfo,
-    ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::ClaimRewards {};
-        app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
-    }
-
     #[test]
     fn test_update_config() {
         let _deps = mock_dependencies();
 
         let mut app = mock_app();
-        let initial_balances = vec![];
-        let (staking_addr, _cw20_addr, _cw721_addr) =
-            setup_test_case(&mut app, initial_balances, None);
+        let (staking_addr, _cw721_addr) = setup_test_case(&mut app, None);
 
         let info = mock_info("owner", &[]);
         let _env = mock_env();
@@ -1006,9 +751,7 @@ mod tests {
 
         let mut app = mock_app();
         let _token_address = Addr::unchecked("token_address");
-        let initial_balances = vec![];
-        let (staking_addr, cw20_addr, cw721_addr) =
-            setup_test_case(&mut app, initial_balances, None);
+        let (staking_addr, cw721_addr) = setup_test_case(&mut app, None);
 
         let info = mock_info(ADDR1, &[]);
         let _env = mock_env();
@@ -1113,20 +856,14 @@ mod tests {
             query_total_staked(&app, &staking_addr),
             Uint128::from(2u128)
         );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR2),
-            Uint128::zero()
-        );
 
         // Can't unstake other's staked
         let info = mock_info(ADDR2, &[]);
-        let _err =
-            unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string(), None).unwrap_err();
+        let _err = unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap_err();
 
         // Successful unstake
         let info = mock_info(ADDR2, &[]);
-        let _res =
-            unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string(), None).unwrap();
+        let _res = unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
         app.update_block(next_block);
 
         assert_eq!(
@@ -1137,36 +874,20 @@ mod tests {
             query_total_staked(&app, &staking_addr),
             Uint128::from(1u128)
         );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR2),
-            Uint128::from(0u128)
-        );
 
         assert_eq!(
             query_staked_balance(&app, &staking_addr, ADDR1),
             Uint128::from(1u128)
-        );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(0u128)
         );
     }
 
     #[test]
     fn test_max_claims() {
         let mut app = mock_app();
-        let amount1 = Uint128::from(MAX_CLAIMS + 1);
         let unstaking_blocks = 1u64;
         let _token_address = Addr::unchecked("token_address");
-        let initial_balances = vec![Cw20Coin {
-            address: ADDR1.to_string(),
-            amount: amount1,
-        }];
-        let (staking_addr, _, cw721_addr) = setup_test_case(
-            &mut app,
-            initial_balances,
-            Some(Duration::Height(unstaking_blocks)),
-        );
+        let (staking_addr, cw721_addr) =
+            setup_test_case(&mut app, Some(Duration::Height(unstaking_blocks)));
 
         let info = mock_info(ADDR1, &[]);
 
@@ -1188,14 +909,7 @@ mod tests {
                 info.clone(),
             )
             .unwrap();
-            unstake_tokens(
-                &mut app,
-                &staking_addr,
-                info.clone(),
-                claim.to_string(),
-                None,
-            )
-            .unwrap();
+            unstake_tokens(&mut app, &staking_addr, info.clone(), claim.to_string()).unwrap();
         }
 
         mint_nft(
@@ -1232,30 +946,16 @@ mod tests {
         .unwrap();
 
         // Additional unstaking attempts ought to fail.
-        unstake_tokens(
-            &mut app,
-            &staking_addr,
-            info.clone(),
-            NFT_ID1.to_string(),
-            None,
-        )
-        .unwrap_err();
+        unstake_tokens(&mut app, &staking_addr, info.clone(), NFT_ID1.to_string()).unwrap_err();
 
         // Clear out the claims list.
         app.update_block(next_block);
         claim_nfts(&mut app, &staking_addr, info.clone()).unwrap();
 
         // Unstaking now allowed again.
-        unstake_tokens(
-            &mut app,
-            &staking_addr,
-            info.clone(),
-            NFT_ID1.to_string(),
-            None,
-        )
-        .unwrap();
+        unstake_tokens(&mut app, &staking_addr, info.clone(), NFT_ID1.to_string()).unwrap();
         app.update_block(next_block);
-        unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string(), None).unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
 
         assert_eq!(
             get_nft_balance(&app, &cw721_addr, ADDR1),
@@ -1268,29 +968,12 @@ mod tests {
         let _deps = mock_dependencies();
 
         let mut app = mock_app();
-        let amount1 = Uint128::from(100u128);
         let unstaking_blocks = 10u64;
         let _token_address = Addr::unchecked("token_address");
-        let initial_balances = vec![Cw20Coin {
-            address: ADDR1.to_string(),
-            amount: amount1,
-        }];
-        let (staking_addr, cw20_addr, cw721_addr) = setup_test_case(
-            &mut app,
-            initial_balances,
-            Some(Duration::Height(unstaking_blocks)),
-        );
+        let (staking_addr, cw721_addr) =
+            setup_test_case(&mut app, Some(Duration::Height(unstaking_blocks)));
 
         let info = mock_info(ADDR1, &[]);
-
-        let msg = cw20::Cw20ExecuteMsg::Send {
-            contract: staking_addr.to_string(),
-            amount: amount1,
-            msg: to_binary("Test").unwrap(),
-        };
-        app.borrow_mut()
-            .execute_contract(Addr::unchecked(ADDR1), cw20_addr.clone(), &msg, &[])
-            .unwrap();
 
         // Successful bond
         mint_nft(
@@ -1323,21 +1006,10 @@ mod tests {
             get_nft_balance(&app, &cw721_addr, ADDR1),
             Uint128::from(0u128)
         );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(0u128)
-        );
 
         // Unstake
         let info = mock_info(ADDR1, &[]);
-        let _res = unstake_tokens(
-            &mut app,
-            &staking_addr,
-            info,
-            NFT_ID1.to_string(),
-            Some(Addr::unchecked(ADDR1).to_string()),
-        )
-        .unwrap();
+        let _res = unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap();
         app.update_block(next_block);
 
         assert_eq!(
@@ -1352,10 +1024,6 @@ mod tests {
             get_nft_balance(&app, &cw721_addr, ADDR1),
             Uint128::from(0u128)
         );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(0u128)
-        );
 
         // Cannot claim when nothing is available
         let info = mock_info(ADDR1, &[]);
@@ -1368,8 +1036,8 @@ mod tests {
         // Successful claim
         app.update_block(|b| b.height += unstaking_blocks);
         let info = mock_info(ADDR1, &[]);
-        claim_nfts(&mut app, &staking_addr, info.clone()).unwrap();
-        claim_rewards(&mut app, &staking_addr, info).unwrap();
+        claim_nfts(&mut app, &staking_addr, info).unwrap();
+
         assert_eq!(
             query_staked_balance(&app, &staking_addr, ADDR1),
             Uint128::from(0u128)
@@ -1382,24 +1050,16 @@ mod tests {
             get_nft_balance(&app, &cw721_addr, ADDR1),
             Uint128::from(1u128)
         );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(100u128)
-        );
     }
 
     #[test]
     fn multiple_address_staking() {
-        let initial_balances = vec![];
         let mut app = mock_app();
         let amount1 = Uint128::from(1u128);
         let unstaking_blocks = 10u64;
         let _token_address = Addr::unchecked("token_address");
-        let (staking_addr, _, cw721_addr) = setup_test_case(
-            &mut app,
-            initial_balances,
-            Some(Duration::Height(unstaking_blocks)),
-        );
+        let (staking_addr, cw721_addr) =
+            setup_test_case(&mut app, Some(Duration::Height(unstaking_blocks)));
 
         let minter_info = mock_info(ADDR1, &[]);
         // Successful bond
@@ -1502,24 +1162,8 @@ mod tests {
         let _deps = mock_dependencies();
 
         let mut app = mock_app();
-        let amount1 = Uint128::from(100u128);
         let _token_address = Addr::unchecked("token_address");
-        let initial_balances = vec![Cw20Coin {
-            address: ADDR1.to_string(),
-            amount: amount1,
-        }];
-        let (staking_addr, cw20_addr, cw721_addr) =
-            setup_test_case(&mut app, initial_balances, Some(Duration::Height(1)));
-
-        // Fund Contract
-        let msg = cw20::Cw20ExecuteMsg::Send {
-            contract: staking_addr.to_string(),
-            amount: amount1,
-            msg: to_binary("Test").unwrap(),
-        };
-        app.borrow_mut()
-            .execute_contract(Addr::unchecked(ADDR1), cw20_addr.clone(), &msg, &[])
-            .unwrap();
+        let (staking_addr, cw721_addr) = setup_test_case(&mut app, Some(Duration::Height(1)));
 
         // Bond Address 1
         let minter_info = mock_info(ADDR1, &[]);
@@ -1569,40 +1213,16 @@ mod tests {
             query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
             Uint128::from(1u128)
         );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(0u128)
-        );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR2),
-            Uint128::from(0u128)
-        );
 
         // Unstake Addr1
         let info = mock_info(ADDR1, &[]);
         let _env = mock_env();
-        let reward_amount1 = Uint128::new(50);
-        unstake_tokens(
-            &mut app,
-            &staking_addr,
-            info,
-            NFT_ID1.to_string(),
-            Some(Addr::unchecked(ADDR1).to_string()),
-        )
-        .unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap();
 
         // Unstake Addr2
         let info = mock_info(ADDR2, &[]);
         let _env = mock_env();
-        let reward_amount2 = Uint128::new(50);
-        unstake_tokens(
-            &mut app,
-            &staking_addr,
-            info,
-            NFT_ID2.to_string(),
-            Some(Addr::unchecked(ADDR2).to_string()),
-        )
-        .unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
 
         app.update_block(next_block);
 
@@ -1630,45 +1250,19 @@ mod tests {
                 release_at: AtHeight(12349)
             }]
         );
-        assert_eq!(
-            query_reward_claims(&app, &staking_addr, ADDR1),
-            vec![Claim {
-                amount: reward_amount1,
-                release_at: AtHeight(12349)
-            }]
-        );
-        assert_eq!(
-            query_reward_claims(&app, &staking_addr, ADDR2),
-            vec![Claim {
-                amount: reward_amount2,
-                release_at: AtHeight(12349)
-            }]
-        );
 
         let info = mock_info(ADDR1, &[]);
-        claim_nfts(&mut app, &staking_addr, info.clone()).unwrap();
+        claim_nfts(&mut app, &staking_addr, info).unwrap();
         assert_eq!(
             get_nft_balance(&app, &cw721_addr, ADDR1),
             Uint128::from(1u128)
         );
 
-        claim_rewards(&mut app, &staking_addr, info).unwrap();
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            reward_amount1
-        );
-
         let info = mock_info(ADDR2, &[]);
-        claim_nfts(&mut app, &staking_addr, info.clone()).unwrap();
+        claim_nfts(&mut app, &staking_addr, info).unwrap();
         assert_eq!(
             get_nft_balance(&app, &cw721_addr, ADDR2),
             Uint128::from(1u128)
-        );
-
-        claim_rewards(&mut app, &staking_addr, info).unwrap();
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            reward_amount2
         );
     }
 
@@ -1678,9 +1272,7 @@ mod tests {
 
         let mut app = mock_app();
         let _token_address = Addr::unchecked("token_address");
-        let initial_balances = vec![];
-        let (staking_addr, cw20_addr, cw721_addr) =
-            setup_test_case(&mut app, initial_balances, Some(Duration::Height(1)));
+        let (staking_addr, cw721_addr) = setup_test_case(&mut app, Some(Duration::Height(1)));
 
         // Bond Address 1
         let minter_info = mock_info(ADDR1, &[]);
@@ -1730,38 +1322,16 @@ mod tests {
             query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
             Uint128::from(1u128)
         );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(0u128)
-        );
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR2),
-            Uint128::from(0u128)
-        );
 
         // Unstake Addr1
         let info = mock_info(ADDR1, &[]);
         let _env = mock_env();
-        unstake_tokens(
-            &mut app,
-            &staking_addr,
-            info,
-            NFT_ID1.to_string(),
-            Some(Addr::unchecked(ADDR1).to_string()),
-        )
-        .unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap();
 
         // Unstake Addr2
         let info = mock_info(ADDR2, &[]);
         let _env = mock_env();
-        unstake_tokens(
-            &mut app,
-            &staking_addr,
-            info,
-            NFT_ID2.to_string(),
-            Some(Addr::unchecked(ADDR2).to_string()),
-        )
-        .unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
 
         app.update_block(next_block);
 
@@ -1789,33 +1359,19 @@ mod tests {
                 release_at: AtHeight(12349)
             }]
         );
-        assert_eq!(query_reward_claims(&app, &staking_addr, ADDR1), vec![]);
-        assert_eq!(query_reward_claims(&app, &staking_addr, ADDR2), vec![]);
 
         let info = mock_info(ADDR1, &[]);
-        claim_nfts(&mut app, &staking_addr, info.clone()).unwrap();
+        claim_nfts(&mut app, &staking_addr, info).unwrap();
         assert_eq!(
             get_nft_balance(&app, &cw721_addr, ADDR1),
             Uint128::from(1u128)
         );
 
-        claim_rewards(&mut app, &staking_addr, info).unwrap_err();
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(0u128)
-        );
-
         let info = mock_info(ADDR2, &[]);
-        claim_nfts(&mut app, &staking_addr, info.clone()).unwrap();
+        claim_nfts(&mut app, &staking_addr, info).unwrap();
         assert_eq!(
             get_nft_balance(&app, &cw721_addr, ADDR2),
             Uint128::from(1u128)
-        );
-
-        claim_rewards(&mut app, &staking_addr, info).unwrap_err();
-        assert_eq!(
-            get_reward_token_balance(&app, &cw20_addr, ADDR1),
-            Uint128::from(0u128)
         );
     }
 }

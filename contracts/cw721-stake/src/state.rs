@@ -1,6 +1,6 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Addr;
 use cw721_controllers::NftClaims;
-use cw_controllers::{Claims, Hooks};
+use cw_controllers::Hooks;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 use schemars::JsonSchema;
@@ -12,7 +12,6 @@ pub struct Config {
     pub owner: Option<Addr>,
     pub manager: Option<Addr>,
     pub nft_address: Addr,
-    pub reward_token_address: Option<Addr>,
     pub unstaking_duration: Option<Duration>,
 }
 
@@ -34,12 +33,7 @@ pub const TOTAL_STAKED_NFTS: SnapshotItem<HashSet<String>> = SnapshotItem::new(
 
 /// The maximum number of claims that may be outstanding.
 pub const MAX_CLAIMS: u64 = 100;
-
-pub const REWARD_CLAIMS: Claims = Claims::new("reward_claims");
-
 pub const NFT_CLAIMS: NftClaims = NftClaims::new("nft_claims");
-
-pub const REWARD_BALANCE: Item<Uint128> = Item::new("balance");
 
 // Hooks to contracts that will receive staking and unstaking messages
 pub const HOOKS: Hooks = Hooks::new("hooks");

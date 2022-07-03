@@ -21,12 +21,6 @@
         "null"
       ]
     },
-    "reward_token_address": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "unstaking_duration": {
       "anyOf": [
         {
