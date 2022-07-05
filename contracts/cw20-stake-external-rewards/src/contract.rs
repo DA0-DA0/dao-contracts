@@ -1865,7 +1865,7 @@ mod tests {
                 owner.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*invalid_funding,
+                &invalid_funding,
             )
             .unwrap_err()
             .downcast()
@@ -1890,7 +1890,7 @@ mod tests {
                 owner.clone(),
                 reward_addr.clone(),
                 &fund_msg,
-                &*extra_funding,
+                &extra_funding,
             )
             .unwrap_err()
             .downcast()
@@ -1987,7 +1987,7 @@ mod tests {
 
         let err: ContractError = app
             .borrow_mut()
-            .execute_contract(admin, reward_addr, &fund_msg, &*invalid_funding)
+            .execute_contract(admin, reward_addr, &fund_msg, &invalid_funding)
             .unwrap_err()
             .downcast()
             .unwrap();
