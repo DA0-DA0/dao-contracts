@@ -1,7 +1,7 @@
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
 use crate::msg::{
-    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
+    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, Owner, QueryMsg,
     StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 use crate::state::{
@@ -26,13 +26,16 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
     let owner = msg
         .owner
         .as_ref()
-        .map(|h| deps.api.addr_validate(h))
+        .map(|owner| match owner {
+            Owner::Addr(address) => deps.api.addr_validate(address),
+            Owner::Instantiator {} => Ok(info.sender),
+        })
         .transpose()?;
     let manager = msg
         .manager
@@ -41,7 +44,7 @@ pub fn instantiate(
         .transpose()?;
 
     let config = Config {
-        owner,
+        owner: owner.clone(),
         manager,
         nft_address: deps.api.addr_validate(&msg.nft_address)?,
         unstaking_duration: msg.unstaking_duration,
@@ -53,7 +56,12 @@ pub fn instantiate(
     Ok(Response::default()
         .add_attribute("method", "instantiate")
         .add_attribute("nft_contract", msg.nft_address)
-        .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
+        .add_attribute(
+            "owner",
+            owner
+                .map(|a| a.into_string())
+                .unwrap_or_else(|| "None".to_string()),
+        )
         .add_attribute("manager", msg.manager.unwrap_or_else(|| "None".to_string())))
 }
 
@@ -432,7 +440,7 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 mod tests {
     use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::msg::{
-        ExecuteMsg, GetConfigResponse, QueryMsg, StakedBalanceAtHeightResponse,
+        ExecuteMsg, GetConfigResponse, Owner, QueryMsg, StakedBalanceAtHeightResponse,
         TotalStakedAtHeightResponse,
     };
     use crate::state::MAX_CLAIMS;
@@ -496,9 +504,9 @@ mod tests {
     fn instantiate_cw721(app: &mut App) -> Addr {
         let cw721_id = app.store_code(contract_cw721());
         let msg = cw721_base::msg::InstantiateMsg {
-            name: String::from("Test"),
-            symbol: String::from("Test"),
-            minter: Addr::unchecked(ADDR1).to_string(),
+            name: "Test".to_string(),
+            symbol: "Test".to_string(),
+            minter: ADDR1.to_string(),
         };
 
         app.instantiate_contract(cw721_id, Addr::unchecked(ADDR1), &msg, &[], "cw721", None)
@@ -512,7 +520,7 @@ mod tests {
     ) -> Addr {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
-            owner: Some("owner".to_string()),
+            owner: Some(Owner::Addr("owner".to_string())),
             manager: Some("manager".to_string()),
             nft_address: cw721.to_string(),
             unstaking_duration,
