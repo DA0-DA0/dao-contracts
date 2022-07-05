@@ -5,18 +5,6 @@
     {
       "type": "object",
       "required": [
-        "staking_contract"
-      ],
-      "properties": {
-        "staking_contract": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "dao"
       ],
       "properties": {
@@ -29,11 +17,31 @@
     {
       "type": "object",
       "required": [
-        "active_threshold"
+        "get_config"
       ],
       "properties": {
-        "active_threshold": {
+        "get_config": {
           "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "claims"
+      ],
+      "properties": {
+        "claims": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -95,30 +103,6 @@
       ],
       "properties": {
         "info": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "token_contract"
-      ],
-      "properties": {
-        "token_contract": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "is_active"
-      ],
-      "properties": {
-        "is_active": {
           "type": "object"
         }
       },
