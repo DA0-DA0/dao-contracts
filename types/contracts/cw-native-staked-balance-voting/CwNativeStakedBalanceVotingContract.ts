@@ -6,6 +6,27 @@
 
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
+export type Uint128 = string;
+export type Expiration = {
+  at_height: number;
+} | {
+  at_time: Timestamp;
+} | {
+  never: {
+    [k: string]: unknown;
+  };
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
+export interface ClaimsResponse {
+  claims: Claim[];
+  [k: string]: unknown;
+}
+export interface Claim {
+  amount: Uint128;
+  release_at: Expiration;
+  [k: string]: unknown;
+}
 export type DaoResponse = string;
 export type ExecuteMsg = {
   stake: {
@@ -28,7 +49,6 @@ export type ExecuteMsg = {
     [k: string]: unknown;
   };
 };
-export type Uint128 = string;
 export type Duration = {
   height: number;
 } | {
@@ -93,8 +113,6 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 };
-export type StakingContractResponse = string;
-export type TokenContractResponse = string;
 export interface TotalPowerAtHeightResponse {
   height: number;
   power: Uint128;
