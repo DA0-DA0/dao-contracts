@@ -55,6 +55,7 @@ pub struct Config {
     /// Information about the depost required to create a
     /// proposal. None if no deposit is required, Some otherwise.
     pub deposit_info: Option<CheckedDepositInfo>,
+    pub allow_to_retry_failed_proposals: bool,
 }
 
 /// A vote cast for a proposal.

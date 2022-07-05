@@ -27,6 +27,7 @@ pub fn new_vote_hooks(
     hooks: Hooks,
     storage: &dyn Storage,
     proposal_id: u64,
+    proposal_count: u64,
     voter: String,
     vote: String,
 ) -> StdResult<Vec<SubMsg>> {
@@ -42,7 +43,7 @@ pub fn new_vote_hooks(
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, index * 2 + 1);
+        let tmp = SubMsg::reply_on_error(execute, proposal_count + index * 2 + 1);
         index += 1;
         Ok(tmp)
     })

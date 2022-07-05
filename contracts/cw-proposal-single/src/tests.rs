@@ -741,6 +741,7 @@ fn test_propose() {
         allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
+        allow_to_retry_failed_proposals: false,
     };
     assert_eq!(config, expected);
 
@@ -1684,6 +1685,7 @@ fn test_update_config() {
         allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
+        allow_to_retry_failed_proposals: false,
     };
     assert_eq!(govmod_config, expected);
 
