@@ -724,8 +724,6 @@ dependencies = [
  "cw-storage-plus 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw-utils 0.13.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw2",
- "cw20",
- "cw20-base",
  "cw721",
  "cw721-base",
  "cw721-controllers",

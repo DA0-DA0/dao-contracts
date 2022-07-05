@@ -1,10 +1,6 @@
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use cw20::{
-    AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
-    TokenInfoResponse,
-};
 use cw721_stake::msg::{
-    ClaimsResponse, ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
+    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, NftClaimsResponse, QueryMsg,
     StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 use std::env::current_dir;
@@ -23,10 +19,5 @@ fn main() {
     export_schema(&schema_for!(TotalStakedAtHeightResponse), &out_dir);
     export_schema(&schema_for!(GetConfigResponse), &out_dir);
     export_schema(&schema_for!(GetHooksResponse), &out_dir);
-    export_schema(&schema_for!(ClaimsResponse), &out_dir);
-    export_schema(&schema_for!(AllowanceResponse), &out_dir);
-    export_schema(&schema_for!(BalanceResponse), &out_dir);
-    export_schema(&schema_for!(TokenInfoResponse), &out_dir);
-    export_schema(&schema_for!(AllAllowancesResponse), &out_dir);
-    export_schema(&schema_for!(AllAccountsResponse), &out_dir);
+    export_schema(&schema_for!(NftClaimsResponse), &out_dir);
 }

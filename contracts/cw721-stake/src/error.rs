@@ -5,8 +5,6 @@ use thiserror::Error;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
-    #[error("{0}")]
-    Cw20Error(#[from] cw20_base::ContractError),
     #[error("Nothing to claim")]
     NothingToClaim {},
     #[error("No reward token to fund")]

@@ -21,7 +21,6 @@ cosmwasm-storage = { version = "1.0.0" }
 cw-storage-plus = { version = "0.13" }
 cw-controllers = "0.13"
 cw721-controllers = { version = "0.1.0", path = "../../packages/cw721-controllers" }
-cw20 = { version = "0.13" }
 cw721 = { version = "0.13" }
 cw-utils = { version = "0.13" }
 cw721-base = "0.13"
@@ -29,7 +28,6 @@ cw2 = "0.13"
 schemars = "0.8.8"
 serde = { version = "1.0.132", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.30" }
-cw20-base = {  version = "0.13", features = ["library"] }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

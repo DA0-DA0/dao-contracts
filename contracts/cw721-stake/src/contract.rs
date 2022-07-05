@@ -10,7 +10,7 @@ use crate::state::{
 use crate::ContractError;
 use cosmwasm_std::{
     entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, Uint128, WasmMsg,
+    StdError, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::Cw721ReceiveMsg;
@@ -25,7 +25,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
@@ -47,6 +47,7 @@ pub fn instantiate(
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
+    TOTAL_STAKED_NFTS.save(deps.storage, &Uint128::zero(), env.block.height)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::default()
@@ -106,10 +107,11 @@ pub fn execute_stake(
     TOTAL_STAKED_NFTS.update(
         deps.storage,
         env.block.height,
-        |total_staked_nfts| -> StdResult<HashSet<String>> {
-            let mut updated_total_staked_nfts = total_staked_nfts.unwrap_or_default();
-            updated_total_staked_nfts.insert(wrapper.token_id.clone());
-            Ok(updated_total_staked_nfts)
+        |total_staked| -> StdResult<_> {
+            total_staked
+                .unwrap()
+                .checked_add(Uint128::new(1))
+                .map_err(StdError::overflow)
         },
     )?;
 
@@ -150,17 +152,11 @@ pub fn execute_unstake(
     TOTAL_STAKED_NFTS.update(
         deps.storage,
         env.block.height,
-        |total_staked_nfts| -> Result<HashSet<String>, ContractError> {
-            if let Some(mut total_staked_nfts) = total_staked_nfts {
-                let was_present = total_staked_nfts.remove(&token_id);
-                if was_present {
-                    Ok(total_staked_nfts)
-                } else {
-                    Err(ContractError::NotStaked {})
-                }
-            } else {
-                Err(ContractError::NotStaked {})
-            }
+        |total_staked| -> StdResult<_> {
+            total_staked
+                .unwrap()
+                .checked_sub(Uint128::new(1))
+                .map_err(StdError::overflow)
         },
     )?;
 
@@ -373,7 +369,7 @@ pub fn query_total_staked_at_height(
         .unwrap_or_default();
 
     Ok(TotalStakedAtHeightResponse {
-        total: Uint128::from(u128::try_from(total_staked_nfts.len()).unwrap()),
+        total: total_staked_nfts,
         height,
     })
 }

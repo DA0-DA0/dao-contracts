@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use cw_utils::Duration;
 
-pub use cw_controllers::ClaimsResponse;
+pub use cw721_controllers::NftClaimsResponse;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct InstantiateMsg {
@@ -24,7 +24,6 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
     Unstake {
-        // TODO(zeke): multiple NFTs at once?
         token_id: String,
     },
     ClaimNfts {},

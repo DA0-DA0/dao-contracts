@@ -1,4 +1,4 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use cw721_controllers::NftClaims;
 use cw_controllers::Hooks;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
@@ -24,7 +24,7 @@ pub const STAKED_NFTS_PER_OWNER: SnapshotMap<&Addr, HashSet<String>> = SnapshotM
     Strategy::EveryBlock,
 );
 
-pub const TOTAL_STAKED_NFTS: SnapshotItem<HashSet<String>> = SnapshotItem::new(
+pub const TOTAL_STAKED_NFTS: SnapshotItem<Uint128> = SnapshotItem::new(
     "total_staked_nfts",
     "total_staked_nfts__checkpoints",
     "total_staked_nfts__changelog",
