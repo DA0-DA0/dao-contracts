@@ -1,13 +1,13 @@
 name: coverage
-'on':
+"on":
   - push
 jobs:
   test:
     name: coverage
     runs-on: ubuntu-latest
     container:
-      image: 'xd009642/tarpaulin:develop-nightly'
-      options: '--security-opt seccomp=unconfined'
+      image: "xd009642/tarpaulin:develop-nightly"
+      options: "--security-opt seccomp=unconfined"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -18,3 +18,10 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           fail_ci_if_error: true
+
+ignore:
+  - "*test*.rs"
+  - "packages/testing"
+  - "packages/cw-core-macros/src/lib.rs"
+  - "legacy"
+  - "debug"
