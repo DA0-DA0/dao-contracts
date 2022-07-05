@@ -337,17 +337,22 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::NftClaims { address } => to_binary(&query_nft_claims(deps, address)?),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
+        QueryMsg::VotingPowerAtHeight { address, height } => {
+            query_voting_power_at_height(deps, env, address, height)
+        }
+        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
+        QueryMsg::Info {} => query_info(deps),
     }
 }
 
 pub fn query_staked_balance_at_height(
     deps: Deps,
-    _env: Env,
+    env: Env,
     address: String,
     height: Option<u64>,
 ) -> StdResult<StakedBalanceAtHeightResponse> {
     let address = deps.api.addr_validate(&address)?;
-    let height = height.unwrap_or(_env.block.height);
+    let height = height.unwrap_or(env.block.height);
     let nft_collection = STAKED_NFTS_PER_OWNER
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();
@@ -356,6 +361,22 @@ pub fn query_staked_balance_at_height(
         balance: Uint128::from(u128::try_from(nft_collection.len()).unwrap()),
         height,
     })
+}
+
+pub fn query_voting_power_at_height(
+    deps: Deps,
+    env: Env,
+    address: String,
+    height: Option<u64>,
+) -> StdResult<Binary> {
+    let address = deps.api.addr_validate(&address)?;
+    let height = height.unwrap_or(env.block.height);
+    let collection = STAKED_NFTS_PER_OWNER
+        .may_load_at_height(deps.storage, &address, height)?
+        .unwrap_or_default();
+    let power = Uint128::new(collection.len() as u128);
+
+    to_binary(&cw_core_interface::voting::VotingPowerAtHeightResponse { power, height })
 }
 
 pub fn query_total_staked_at_height(
@@ -372,6 +393,14 @@ pub fn query_total_staked_at_height(
         total: total_staked_nfts,
         height,
     })
+}
+
+pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) -> StdResult<Binary> {
+    let height = height.unwrap_or(env.block.height);
+    let power = TOTAL_STAKED_NFTS
+        .may_load_at_height(deps.storage, height)?
+        .unwrap_or_default();
+    to_binary(&cw_core_interface::voting::TotalPowerAtHeightResponse { power, height })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
@@ -394,9 +423,14 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
     })
 }
 
+pub fn query_info(deps: Deps) -> StdResult<Binary> {
+    let info = cw2::get_contract_version(deps.storage)?;
+    to_binary(&cw_core_interface::voting::InfoResponse { info })
+}
+
 #[cfg(test)]
 mod tests {
-
+    use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
     use crate::msg::{
         ExecuteMsg, GetConfigResponse, QueryMsg, StakedBalanceAtHeightResponse,
         TotalStakedAtHeightResponse,
@@ -518,6 +552,21 @@ mod tests {
         result.balance
     }
 
+    fn query_voting_power<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+        height: Option<u64>,
+    ) -> Uint128 {
+        let msg = QueryMsg::VotingPowerAtHeight {
+            height,
+            address: address.into(),
+        };
+        let result: cw_core_interface::voting::VotingPowerAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.power
+    }
+
     fn query_config<T: Into<String>>(app: &App, contract_addr: T) -> GetConfigResponse {
         let msg = QueryMsg::GetConfig {};
         app.wrap().query_wasm_smart(contract_addr, &msg).unwrap()
@@ -528,6 +577,17 @@ mod tests {
         let result: TotalStakedAtHeightResponse =
             app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
         result.total
+    }
+
+    fn query_total_power_at_height<T: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        height: Option<u64>,
+    ) -> Uint128 {
+        let msg = QueryMsg::TotalPowerAtHeight { height };
+        let result: cw_core_interface::voting::TotalPowerAtHeightResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.power
     }
 
     fn query_nft_claims<T: Into<String>, U: Into<String>>(
@@ -757,6 +817,12 @@ mod tests {
         let _token_address = Addr::unchecked("token_address");
         let (staking_addr, cw721_addr) = setup_test_case(&mut app, None);
 
+        // Ensure this is propoerly initialized to zero.
+        assert_eq!(
+            query_total_power_at_height(&app, &staking_addr, None),
+            Uint128::zero()
+        );
+
         let info = mock_info(ADDR1, &[]);
         let _env = mock_env();
 
@@ -786,11 +852,17 @@ mod tests {
         )
         .unwrap();
 
+        let start_block = app.block_info().height;
+
         // Very important that this balances is not reflected until
         // the next block. This protects us from flash loan hostile
         // takeovers.
         assert_eq!(
             query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+            Uint128::zero()
+        );
+        assert_eq!(
+            query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
             Uint128::zero()
         );
 
@@ -805,8 +877,23 @@ mod tests {
             Uint128::from(1u128)
         );
         assert_eq!(
+            query_total_power_at_height(&app, &staking_addr, None),
+            Uint128::new(1)
+        );
+
+        assert_eq!(
             get_nft_balance(&app, &cw721_addr, ADDR1.to_string()),
             Uint128::from(1u128)
+        );
+
+        assert_eq!(
+            query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
+            Uint128::from(1u128)
+        );
+        // Back in time query.
+        assert_eq!(
+            query_voting_power(&app, &staking_addr, ADDR1.to_string(), Some(start_block)),
+            Uint128::from(0u128)
         );
 
         // Can't transfer bonded amount
@@ -883,6 +970,28 @@ mod tests {
             query_staked_balance(&app, &staking_addr, ADDR1),
             Uint128::from(1u128)
         );
+    }
+
+    #[test]
+    fn test_info_query() {
+        let mut app = mock_app();
+        let unstaking_blocks = 1u64;
+        let _token_address = Addr::unchecked("token_address");
+        let (staking_addr, _) = setup_test_case(&mut app, Some(Duration::Height(unstaking_blocks)));
+        let info: cw_core_interface::voting::InfoResponse = app
+            .wrap()
+            .query_wasm_smart(staking_addr, &QueryMsg::Info {})
+            .unwrap();
+
+        assert_eq!(
+            info,
+            cw_core_interface::voting::InfoResponse {
+                info: cw2::ContractVersion {
+                    contract: CONTRACT_NAME.to_string(),
+                    version: CONTRACT_VERSION.to_string(),
+                }
+            }
+        )
     }
 
     #[test]

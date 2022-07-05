@@ -17,6 +17,14 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
+/// Maps addresses to the set of NFTs they have staked with this
+/// contract at a given height.
+///
+/// NOTE: we can get the length of this set in constant time as:
+/// - HashSet uses hashbrown::HashMap.
+/// - hashbrown::HashMap uses hashbrown::RawTable.
+/// - hashbrown::RawTable len calls are
+///   [constant time](https://docs.rs/hashbrown/latest/src/hashbrown/raw/mod.rs.html#921-923).
 pub const STAKED_NFTS_PER_OWNER: SnapshotMap<&Addr, HashSet<String>> = SnapshotMap::new(
     "staked_nfts_per_owner",
     "staked_nfts_per_owner__checkpoints",
@@ -24,6 +32,7 @@ pub const STAKED_NFTS_PER_OWNER: SnapshotMap<&Addr, HashSet<String>> = SnapshotM
     Strategy::EveryBlock,
 );
 
+/// The number of NFTs staked with this contract at a given height.
 pub const TOTAL_STAKED_NFTS: SnapshotItem<Uint128> = SnapshotItem::new(
     "total_staked_nfts",
     "total_staked_nfts__checkpoints",

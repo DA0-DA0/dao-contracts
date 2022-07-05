@@ -1,9 +1,9 @@
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
+use cw_core_macros::voting_query;
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use cw_utils::Duration;
 
 pub use cw721_controllers::NftClaimsResponse;
 
@@ -40,6 +40,7 @@ pub enum ExecuteMsg {
     },
 }
 
+#[voting_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
