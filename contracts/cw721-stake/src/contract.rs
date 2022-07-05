@@ -29,10 +29,15 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let owner = msg.owner.map(|h| deps.api.addr_validate(&h)).transpose()?;
+    let owner = msg
+        .owner
+        .as_ref()
+        .map(|h| deps.api.addr_validate(h))
+        .transpose()?;
     let manager = msg
         .manager
-        .map(|h| deps.api.addr_validate(&h))
+        .as_ref()
+        .map(|h| deps.api.addr_validate(h))
         .transpose()?;
 
     let config = Config {
@@ -44,8 +49,11 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // TODO(zeke): things here.
-    Ok(Response::default())
+    Ok(Response::default()
+        .add_attribute("method", "instantiate")
+        .add_attribute("nft_contract", msg.nft_address)
+        .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
+        .add_attribute("manager", msg.manager.unwrap_or_else(|| "None".to_string())))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
