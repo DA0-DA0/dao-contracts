@@ -19,9 +19,9 @@ jobs:
         with:
           fail_ci_if_error: true
 
-ignore:
-  - '*test*.rs'
-  - 'packages/testing'
-  - 'packages/cw-core-macros/src/lib.rs'
-  - 'legacy'
-  - 'debug'
+    ignore:
+      - '*test*.rs'
+      - 'packages/testing'
+      - 'packages/cw-core-macros/src/lib.rs'
+      - 'legacy'
+      - 'debug'
