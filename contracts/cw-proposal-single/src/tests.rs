@@ -554,6 +554,7 @@ where
         only_members_execute: false,
         allow_revoting: false,
         deposit_info,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -710,6 +711,7 @@ fn test_propose() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -741,7 +743,7 @@ fn test_propose() {
         allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
-        allow_to_retry_failed_proposals: false,
+        close_failed_proposal_executions: true,
     };
     assert_eq!(config, expected);
 
@@ -801,6 +803,7 @@ fn test_propose_supports_stargate_message() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -977,6 +980,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -1056,6 +1060,7 @@ fn test_different_token_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        close_failed_proposal_executions: true,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1113,6 +1118,7 @@ fn test_bad_token_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        close_failed_proposal_executions: true,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1138,6 +1144,7 @@ fn test_take_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -1484,6 +1491,7 @@ fn test_execute_expired_proposal() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -1685,7 +1693,7 @@ fn test_update_config() {
         allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
-        allow_to_retry_failed_proposals: false,
+        close_failed_proposal_executions: true,
     };
     assert_eq!(govmod_config, expected);
 
@@ -1786,6 +1794,7 @@ fn test_query_list_proposals() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![Cw20Coin {
             address: CREATOR_ADDR.to_string(),
@@ -1939,6 +1948,7 @@ fn test_hooks() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -2113,6 +2123,7 @@ fn test_active_threshold_absolute() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr = instantiate_with_staking_active_threshold(
@@ -2239,6 +2250,7 @@ fn test_active_threshold_percent() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     // 20% needed to be active, 20% of 100000000 is 20000000
@@ -2366,6 +2378,7 @@ fn test_active_threshold_none() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -2445,6 +2458,7 @@ fn test_active_threshold_none() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -2496,6 +2510,7 @@ fn test_revoting() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -2622,6 +2637,7 @@ fn test_allow_revoting_config_changes() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -2765,6 +2781,7 @@ fn test_revoting_same_vote_twice() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -2867,6 +2884,7 @@ fn test_three_of_five_multisig() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -2993,6 +3011,7 @@ fn test_three_of_five_multisig_reject() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3129,6 +3148,7 @@ fn test_voting_module_token_with_multisig_style_voting() {
                 deposit: Uint128::new(1),
                 refund_failed_proposals: true,
             }),
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3164,6 +3184,7 @@ fn test_three_of_five_multisig_revoting() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3397,6 +3418,7 @@ fn test_migrate() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
@@ -3455,6 +3477,7 @@ fn test_proposal_count_initialized_to_zero() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3501,6 +3524,7 @@ fn test_no_early_pass_with_min_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3589,6 +3613,7 @@ fn test_min_duration_units_missmatch() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3621,6 +3646,7 @@ fn test_min_duration_larger_than_proposal_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3652,6 +3678,7 @@ fn test_min_duration_same_as_proposal_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            close_failed_proposal_executions: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3748,6 +3775,7 @@ fn test_timestamp_updated() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -3932,4 +3960,135 @@ fn test_timestamp_updated() {
 
     assert_eq!(updated.proposal.last_updated, latest_time);
     assert_eq!(updated.proposal.status, Status::Closed);
+}
+
+#[test]
+fn test_close_failed_proposal() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(single_proposal_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        min_voting_period: None,
+        only_members_execute: false,
+        allow_revoting: false,
+        deposit_info: None,
+        close_failed_proposal_executions: true,
+    };
+
+    let governance_addr =
+        instantiate_with_staking_active_threshold(&mut app, govmod_id, instantiate, None, None);
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = govmod_config.dao;
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake some tokens so we can propose
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_contract.to_string(),
+        amount: Uint128::new(2000),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_contract.clone(),
+        &msg,
+        &[],
+    )
+    .unwrap();
+    app.update_block(next_block);
+
+    let msg = cw20::Cw20ExecuteMsg::Burn {
+        amount: Uint128::new(2000),
+    };
+    let binary_msg = to_binary(&msg).unwrap();
+
+    // Overburn tokens
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple burn tokens proposal".to_string(),
+            description: "Burning more tokens, than dao treasury have".to_string(),
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: token_contract.to_string(),
+                msg: binary_msg,
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Execute proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    // Status should have changed to 'Executed'
+    let updated: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+
+    // assert_eq!(updated.proposal.last_updated, latest_time);
+    assert_eq!(updated.proposal.status, Status::Executed);
 }

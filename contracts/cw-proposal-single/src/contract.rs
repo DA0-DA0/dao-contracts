@@ -33,6 +33,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Default limit for proposal pagination.
 const DEFAULT_LIMIT: u64 = 30;
 const MAX_PROPOSAL_SIZE: u64 = 30_000;
+const FAILED_PROPOSAL_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -62,7 +63,7 @@ pub fn instantiate(
         dao: dao.clone(),
         deposit_info,
         allow_revoting: msg.allow_revoting,
-        allow_to_retry_failed_proposals: false,
+        close_failed_proposal_executions: msg.close_failed_proposal_executions,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -217,12 +218,7 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-    let hooks = new_proposal_hooks(
-        PROPOSAL_HOOKS,
-        deps.storage,
-        id,
-        PROPOSAL_COUNT.load(deps.storage)?,
-    )?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
     Ok(Response::default()
         .add_messages(deposit_msg)
         .add_submessages(hooks)
@@ -278,8 +274,11 @@ pub fn execute_execute(
                 msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs: prop.msgs })?,
                 funds: vec![],
             };
-            match config.allow_to_retry_failed_proposals {
-                true => res.add_submessage(SubMsg::reply_on_error(execute_message, proposal_id)),
+            match config.close_failed_proposal_executions {
+                true => res.add_submessage(SubMsg::reply_on_error(
+                    execute_message,
+                    FAILED_PROPOSAL_REPLY_ID,
+                )),
                 false => res.add_message(execute_message),
             }
         } else {
@@ -291,7 +290,6 @@ pub fn execute_execute(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
-        PROPOSAL_COUNT.load(deps.storage)?,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
@@ -372,12 +370,10 @@ pub fn execute_vote(
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let new_status = prop.status;
-    let proposal_count = PROPOSAL_COUNT.load(deps.storage)?;
     let change_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
-        proposal_count,
         old_status.to_string(),
         new_status.to_string(),
     )?;
@@ -385,7 +381,6 @@ pub fn execute_vote(
         VOTE_HOOKS,
         deps.storage,
         proposal_id,
-        proposal_count,
         info.sender.to_string(),
         vote.to_string(),
     )?;
@@ -437,7 +432,6 @@ pub fn execute_close(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
-        PROPOSAL_COUNT.load(deps.storage)?,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
@@ -488,7 +482,7 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             deposit_info,
-            allow_to_retry_failed_proposals: false,
+            close_failed_proposal_executions: true,
         },
     )?;
 
@@ -732,31 +726,17 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
-    let proposals_count = PROPOSAL_COUNT.load(deps.storage)?;
-    let id = msg.id - proposals_count;
-    if msg.id < proposals_count {
-        let mut prop = PROPOSALS
-            .may_load(deps.storage, msg.id)?
-            .ok_or(ContractError::NoSuchProposal { id: msg.id })?;
-
-        // Just repeat execute actions, maybe check is redundant
-        prop.update_status(&env.block);
-        if prop.status != Status::Passed {
-            return Err(ContractError::NotPassed {});
-        }
-        prop.status = Status::Executed;
-        prop.last_updated = env.block.time;
-        PROPOSALS.save(deps.storage, msg.id, &prop)?;
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.id == FAILED_PROPOSAL_REPLY_ID {
         Ok(Response::new())
-    } else if id % 2 == 0 {
+    } else if msg.id % 2 == 0 {
         // Proposal hook so we can just divide by two for index
-        let idx = id / 2;
+        let idx = msg.id / 2 - 1;
         PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
         Ok(Response::new())
     } else {
         // Vote hook so we can minus one then divid by two for index
-        let idx = (id - 1) / 2;
+        let idx = (msg.id - 1) / 2 - 1;
         VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
         Ok(Response::new())
     }

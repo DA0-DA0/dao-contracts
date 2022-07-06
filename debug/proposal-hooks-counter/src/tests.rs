@@ -140,6 +140,7 @@ fn test_counters() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        close_failed_proposal_executions: true,
     };
 
     let governance_addr =
