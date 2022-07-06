@@ -104,12 +104,22 @@ pub fn execute_unstake(
         deps.storage,
         &info.sender,
         env.block.height,
-        |balance| -> StdResult<Uint128> { Ok(balance.unwrap_or_default().checked_sub(amount)?) },
+        |balance| -> Result<Uint128, ContractError> {
+            balance
+                .unwrap_or_default()
+                .checked_sub(amount)
+                .map_err(|_e| ContractError::InvalidUnstakeAmount {})
+        },
     )?;
     STAKED_TOTAL.update(
         deps.storage,
         env.block.height,
-        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_sub(amount)?) },
+        |total| -> Result<Uint128, ContractError> {
+            total
+                .unwrap_or_default()
+                .checked_sub(amount)
+                .map_err(|_e| ContractError::InvalidUnstakeAmount {})
+        },
     )?;
 
     match config.unstaking_duration {
@@ -153,16 +163,18 @@ pub fn execute_update_config(
     new_manager: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let new_owner = new_owner
         .map(|new_owner| deps.api.addr_validate(&new_owner))
         .transpose()?;
     let new_manager = new_manager
         .map(|new_manager| deps.api.addr_validate(&new_manager))
         .transpose()?;
-    let mut config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
-        return Err(ContractError::Unauthorized {});
-    };
+
     if Some(info.sender) != config.owner && new_owner != config.owner {
         return Err(ContractError::OnlyOwnerCanChangeOwner {});
     };

@@ -259,7 +259,7 @@ fn test_stake_valid_denom() {
 }
 
 #[test]
-#[should_panic(expected = "Overflow: Cannot Sub with 0 and 100")]
+#[should_panic(expected = "Can only unstake less than or equal to the amount you have staked")]
 fn test_unstake_none_staked() {
     let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
@@ -278,7 +278,7 @@ fn test_unstake_none_staked() {
 }
 
 #[test]
-#[should_panic(expected = "Overflow: Cannot Sub with 100 and 200")]
+#[should_panic(expected = "Can only unstake less than or equal to the amount you have staked")]
 fn test_unstake_invalid_balance() {
     let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());

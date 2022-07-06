@@ -21,4 +21,7 @@ pub enum ContractError {
 
     #[error("Only owner can change owner")]
     OnlyOwnerCanChangeOwner {},
+
+    #[error("Can only unstake less than or equal to the amount you have staked")]
+    InvalidUnstakeAmount {},
 }
