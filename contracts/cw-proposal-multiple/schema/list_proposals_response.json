@@ -1,7 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ListProposalsResponse",
-  "description": "A list of proposals returned by `ListProposals` and `ReverseProposals`.",
   "type": "object",
   "required": [
     "proposals"
@@ -108,6 +107,40 @@
               "$ref": "#/definitions/Addr"
             }
           ]
+        }
+      }
+    },
+    "CheckedMultipleChoiceOption": {
+      "type": "object",
+      "required": [
+        "description",
+        "index",
+        "option_type",
+        "vote_count"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "index": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "msgs": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/CosmosMsg_for_Empty"
+          }
+        },
+        "option_type": {
+          "$ref": "#/definitions/MultipleChoiceOptionType"
+        },
+        "vote_count": {
+          "$ref": "#/definitions/Uint128"
         }
       }
     },
@@ -526,6 +559,106 @@
         }
       }
     },
+    "MultipleChoiceOptionType": {
+      "type": "string",
+      "enum": [
+        "None",
+        "Standard"
+      ]
+    },
+    "MultipleChoiceProposal": {
+      "type": "object",
+      "required": [
+        "choices",
+        "description",
+        "expiration",
+        "proposer",
+        "start_height",
+        "status",
+        "title",
+        "total_power",
+        "votes",
+        "voting_strategy"
+      ],
+      "properties": {
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CheckedMultipleChoiceOption"
+          }
+        },
+        "deposit_info": {
+          "description": "Information about the deposit that was sent as part of this proposal. None if no deposit.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/CheckedDepositInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "expiration": {
+          "$ref": "#/definitions/Expiration"
+        },
+        "min_voting_period": {
+          "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expiration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "proposer": {
+          "$ref": "#/definitions/Addr"
+        },
+        "start_height": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "status": {
+          "$ref": "#/definitions/Status"
+        },
+        "title": {
+          "type": "string"
+        },
+        "total_power": {
+          "description": "The total power when the proposal started (used to calculate percentages)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "votes": {
+          "$ref": "#/definitions/MultipleChoiceVotes"
+        },
+        "voting_strategy": {
+          "$ref": "#/definitions/VotingStrategy"
+        }
+      }
+    },
+    "MultipleChoiceVotes": {
+      "type": "object",
+      "required": [
+        "vote_weights"
+      ],
+      "properties": {
+        "vote_weights": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Uint128"
+          }
+        }
+      }
+    },
     "PercentageThreshold": {
       "description": "A percentage of voting power that must vote yes for a proposal to pass. An example of why this is needed:\n\nIf a user specifies a 60% passing threshold, and there are 10 voters they likely expect that proposal to pass when there are 6 yes votes. This implies that the condition for passing should be `yes_votes >= total_votes * threshold`.\n\nWith this in mind, how should a user specify that they would like proposals to pass if the majority of voters choose yes? Selecting a 50% passing threshold with those rules doesn't properly cover that case as 5 voters voting yes out of 10 would pass the proposal. Selecting 50.0001% or or some variation of that also does not work as a very small yes vote which technically makes the majority yes may not reach that threshold.\n\nTo handle these cases we provide both a majority and percent option for all percentages. If majority is selected passing will be determined by `yes > total_votes * 0.5`. If percent is selected passing is determined by `yes >= total_votes * percent`.\n\nIn both of these cases a proposal with only abstain votes must fail. This requires a special case passing logic.",
       "oneOf": [
@@ -566,131 +699,12 @@
       ],
       "properties": {
         "id": {
-          "description": "The ID of the proposal being returned.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
         "proposal": {
-          "$ref": "#/definitions/SingleChoiceProposal"
-        }
-      }
-    },
-    "SingleChoiceProposal": {
-      "type": "object",
-      "required": [
-        "allow_revoting",
-        "created",
-        "description",
-        "expiration",
-        "last_updated",
-        "msgs",
-        "proposer",
-        "start_height",
-        "status",
-        "threshold",
-        "title",
-        "total_power",
-        "votes"
-      ],
-      "properties": {
-        "allow_revoting": {
-          "type": "boolean"
-        },
-        "created": {
-          "description": "The timestamp at which this proposal was created.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Timestamp"
-            }
-          ]
-        },
-        "deposit_info": {
-          "description": "Information about the deposit that was sent as part of this proposal. None if no deposit.",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/CheckedDepositInfo"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "description": {
-          "type": "string"
-        },
-        "expiration": {
-          "description": "The the time at which this proposal will expire and close for additional votes.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            }
-          ]
-        },
-        "last_updated": {
-          "description": "The timestamp at which this proposal's status last changed (e.g. Passed, Executed).",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Timestamp"
-            }
-          ]
-        },
-        "min_voting_period": {
-          "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "msgs": {
-          "description": "The messages that will be executed should this proposal pass.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CosmosMsg_for_Empty"
-          }
-        },
-        "proposer": {
-          "description": "The address that created this proposal.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            }
-          ]
-        },
-        "start_height": {
-          "description": "The block height at which this proposal was created. Voting power queries should query for voting power at this block height.",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "status": {
-          "$ref": "#/definitions/Status"
-        },
-        "threshold": {
-          "description": "The threshold at which this proposal will pass.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Threshold"
-            }
-          ]
-        },
-        "title": {
-          "type": "string"
-        },
-        "total_power": {
-          "description": "The total amount of voting power at the time of this proposal's creation.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            }
-          ]
-        },
-        "votes": {
-          "$ref": "#/definitions/Votes"
+          "$ref": "#/definitions/MultipleChoiceProposal"
         }
       }
     },
@@ -788,78 +802,6 @@
         "closed"
       ]
     },
-    "Threshold": {
-      "description": "The ways a proposal may reach its passing / failing threshold.",
-      "oneOf": [
-        {
-          "description": "Declares a percentage of the total weight that must cast Yes votes in order for a proposal to pass.  See `ThresholdResponse::AbsolutePercentage` in the cw3 spec for details.",
-          "type": "object",
-          "required": [
-            "absolute_percentage"
-          ],
-          "properties": {
-            "absolute_percentage": {
-              "type": "object",
-              "required": [
-                "percentage"
-              ],
-              "properties": {
-                "percentage": {
-                  "$ref": "#/definitions/PercentageThreshold"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Declares a `quorum` of the total votes that must participate in the election in order for the vote to be considered at all. See `ThresholdResponse::ThresholdQuorum` in the cw3 spec for details.",
-          "type": "object",
-          "required": [
-            "threshold_quorum"
-          ],
-          "properties": {
-            "threshold_quorum": {
-              "type": "object",
-              "required": [
-                "quorum",
-                "threshold"
-              ],
-              "properties": {
-                "quorum": {
-                  "$ref": "#/definitions/PercentageThreshold"
-                },
-                "threshold": {
-                  "$ref": "#/definitions/PercentageThreshold"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "An absolute number of votes needed for something to cross the threshold. Useful for multisig style voting.",
-          "type": "object",
-          "required": [
-            "absolute_count"
-          ],
-          "properties": {
-            "absolute_count": {
-              "type": "object",
-              "required": [
-                "threshold"
-              ],
-              "properties": {
-                "threshold": {
-                  "$ref": "#/definitions/Uint128"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
       "allOf": [
@@ -885,24 +827,30 @@
         "no_with_veto"
       ]
     },
-    "Votes": {
-      "type": "object",
-      "required": [
-        "abstain",
-        "no",
-        "yes"
-      ],
-      "properties": {
-        "abstain": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "no": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "yes": {
-          "$ref": "#/definitions/Uint128"
+    "VotingStrategy": {
+      "description": "Determines the way votes are counted.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "single_choice"
+          ],
+          "properties": {
+            "single_choice": {
+              "type": "object",
+              "required": [
+                "quorum"
+              ],
+              "properties": {
+                "quorum": {
+                  "$ref": "#/definitions/PercentageThreshold"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
         }
-      }
+      ]
     },
     "WasmMsg": {
       "description": "The message types of the wasm module.\n\nSee https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto",

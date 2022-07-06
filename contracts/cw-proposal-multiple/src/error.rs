@@ -3,6 +3,7 @@ use std::u64;
 use cosmwasm_std::StdError;
 use indexable_hooks::HookError;
 use thiserror::Error;
+use voting::threshold::ThresholdError;
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -16,7 +17,7 @@ pub enum ContractError {
     Unauthorized {},
 
     #[error("{0}")]
-    ThresholdError(#[from] voting::threshold::ThresholdError),
+    ThresholdError(#[from] ThresholdError),
 
     #[error("{0}")]
     VotingError(#[from] voting::error::VotingError),
@@ -39,30 +40,36 @@ pub enum ContractError {
     #[error("Not registered to vote (no voting power) at time of proposal creation.")]
     NotRegistered {},
 
-    #[error("Already voted. This proposal does not support revoting.")]
+    #[error("Already voted")]
     AlreadyVoted {},
 
-    #[error("Already cast a vote with that option. Change your vote to revote.")]
-    AlreadyCast {},
-
-    #[error("Proposal is not in 'passed' state.")]
+    #[error("Proposal must be in 'passed' state to be executed.")]
     NotPassed {},
 
-    #[error("Proposal has already been executed.")]
-    AlreadyExecuted {},
+    #[error("Proposal is in a tie: two or more options have the same number of votes.")]
+    Tie {},
 
-    #[error("Proposal is closed.")]
-    Closed {},
+    #[error("Proposal is not expired.")]
+    NotExpired {},
 
     #[error("Only rejected proposals may be closed.")]
     WrongCloseStatus {},
 
-    #[error("The DAO is currently inactive, you cannot create proposals")]
+    #[error("The DAO is currently inactive, you cannot create proposals.")]
     InactiveDao {},
 
-    #[error("min_voting_period and max_voting_period must have the same units (height or time)")]
-    DurationUnitsConflict {},
+    #[error("Proposal must have at least two choices.")]
+    WrongNumberOfChoices {},
 
-    #[error("Min voting period must be less than or equal to max voting period")]
-    InvalidMinVotingPeriod {},
+    #[error("Must have exactly one 'none of the above' option.")]
+    NoneOption {},
+
+    #[error("No vote weights found.")]
+    NoVoteWeights {},
+
+    #[error("Invalid vote selected.")]
+    InvalidVote {},
+
+    #[error("Must have voting power to propose.")]
+    MustHaveVotingPower {},
 }
