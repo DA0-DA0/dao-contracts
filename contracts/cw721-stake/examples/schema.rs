@@ -3,6 +3,7 @@ use cw721_stake::msg::{
     ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, NftClaimsResponse, QueryMsg,
     StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
+use cw_core_interface::voting::InfoResponse;
 use cw_core_interface::voting::TotalPowerAtHeightResponse;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use std::env::current_dir;
@@ -24,4 +25,5 @@ fn main() {
     export_schema(&schema_for!(GetHooksResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(VotingPowerAtHeightResponse), &out_dir);
+    export_schema(&schema_for!(InfoResponse), &out_dir);
 }

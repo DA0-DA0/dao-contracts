@@ -58,6 +58,15 @@ export interface GetHooksResponse {
   hooks: string[];
   [k: string]: unknown;
 }
+export interface InfoResponse {
+  info: ContractVersion;
+  [k: string]: unknown;
+}
+export interface ContractVersion {
+  contract: string;
+  version: string;
+  [k: string]: unknown;
+}
 export type Owner = {
   addr: string;
 } | {
