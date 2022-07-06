@@ -38,7 +38,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
@@ -59,6 +59,14 @@ pub fn instantiate(
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
+
+    // Initialize state to zero. We do this instead of using
+    // `unwrap_or_default` where this is used as it protects us
+    // against a scenerio where state is cleared by a bad actor and
+    // `unwrap_or_default` carries on.
+    STAKED_TOTAL.save(deps.storage, &Uint128::zero(), env.block.height)?;
+    BALANCE.save(deps.storage, &Uint128::zero())?;
+
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::new())
@@ -157,8 +165,8 @@ pub fn execute_stake(
     sender: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let balance = BALANCE.load(deps.storage).unwrap_or_default();
-    let staked_total = STAKED_TOTAL.load(deps.storage).unwrap_or_default();
+    let balance = BALANCE.load(deps.storage)?;
+    let staked_total = STAKED_TOTAL.load(deps.storage)?;
     let amount_to_stake = if staked_total == Uint128::zero() || balance == Uint128::zero() {
         amount
     } else {
@@ -178,7 +186,8 @@ pub fn execute_stake(
         deps.storage,
         env.block.height,
         |total| -> StdResult<Uint128> {
-            Ok(total.unwrap_or_default().checked_add(amount_to_stake)?)
+            // Initialized during instantiate - OK to unwrap.
+            Ok(total.unwrap().checked_add(amount_to_stake)?)
         },
     )?;
     BALANCE.save(
@@ -200,7 +209,7 @@ pub fn execute_unstake(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let balance = BALANCE.load(deps.storage).unwrap_or_default();
+    let balance = BALANCE.load(deps.storage)?;
     let staked_total = STAKED_TOTAL.load(deps.storage)?;
     let amount_to_claim = amount
         .checked_mul(balance)
@@ -216,7 +225,10 @@ pub fn execute_unstake(
     STAKED_TOTAL.update(
         deps.storage,
         env.block.height,
-        |total| -> StdResult<Uint128> { Ok(total.unwrap_or_default().checked_sub(amount)?) },
+        |total| -> StdResult<Uint128> {
+            // Initialized during instantiate - OK to unwrap.
+            Ok(total.unwrap().checked_sub(amount)?)
+        },
     )?;
     BALANCE.save(
         deps.storage,
@@ -298,11 +310,9 @@ pub fn execute_fund(
     sender: &Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let balance = BALANCE.load(deps.storage).unwrap_or_default();
-    BALANCE.save(
-        deps.storage,
-        &balance.checked_add(amount).map_err(StdError::overflow)?,
-    )?;
+    BALANCE.update(deps.storage, |balance| -> StdResult<_> {
+        balance.checked_add(amount).map_err(StdError::overflow)
+    })?;
     Ok(Response::new()
         .add_attribute("action", "fund")
         .add_attribute("from", sender)
@@ -396,7 +406,7 @@ pub fn query_staked_value(
     let staked = STAKED_BALANCES
         .load(deps.storage, &address)
         .unwrap_or_default();
-    let total = STAKED_TOTAL.load(deps.storage).unwrap_or_default();
+    let total = STAKED_TOTAL.load(deps.storage)?;
     if balance == Uint128::zero() || staked == Uint128::zero() || total == Uint128::zero() {
         Ok(StakedValueResponse {
             value: Uint128::zero(),
@@ -412,7 +422,7 @@ pub fn query_staked_value(
 }
 
 pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse> {
-    let balance = BALANCE.load(deps.storage).unwrap_or_default();
+    let balance = BALANCE.load(deps.storage)?;
     Ok(TotalValueResponse { total: balance })
 }
 
