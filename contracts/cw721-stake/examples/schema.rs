@@ -1,8 +1,9 @@
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use cw721_stake::msg::{
-    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, NftClaimsResponse, QueryMsg,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, NftClaimsResponse, QueryMsg,
     StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
+use cw721_stake::state::Config;
 use cw_core_interface::voting::InfoResponse;
 use cw_core_interface::voting::TotalPowerAtHeightResponse;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
@@ -20,7 +21,7 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(StakedBalanceAtHeightResponse), &out_dir);
     export_schema(&schema_for!(TotalStakedAtHeightResponse), &out_dir);
-    export_schema(&schema_for!(GetConfigResponse), &out_dir);
+    export_schema_with_title(&schema_for!(Config), &out_dir, "GetConfigResponse");
     export_schema(&schema_for!(NftClaimsResponse), &out_dir);
     export_schema(&schema_for!(GetHooksResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);

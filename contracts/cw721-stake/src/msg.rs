@@ -87,15 +87,6 @@ pub struct TotalStakedAtHeightResponse {
     pub height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct GetConfigResponse {
-    pub owner: Option<String>,
-    pub manager: Option<String>,
-    pub nft_address: String,
-    pub unstaking_duration: Option<Duration>,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct GetHooksResponse {

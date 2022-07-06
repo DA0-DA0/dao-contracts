@@ -21,7 +21,7 @@ pub fn stake_hook_msgs(
     ))?;
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
-            contract_addr: a.to_string(),
+            contract_addr: a.into_string(),
             msg: msg.clone(),
             funds: vec![],
         };
@@ -39,7 +39,7 @@ pub fn unstake_hook_msgs(
     ))?;
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
-            contract_addr: a.to_string(),
+            contract_addr: a.into_string(),
             msg: msg.clone(),
             funds: vec![],
         };

@@ -52,6 +52,29 @@ impl<'a> NftClaims<'a> {
         Ok(())
     }
 
+    /// Creates a number of NFT claims simeltaniously for a given
+    /// address. Similar to create_nft_claim but does only one storage
+    /// read and write for multiple claims.
+    pub fn create_nft_claims(
+        &self,
+        storage: &mut dyn Storage,
+        addr: &Addr,
+        token_ids: Vec<String>,
+        release_at: Expiration,
+    ) -> StdResult<()> {
+        self.0.update(storage, addr, |old| -> StdResult<_> {
+            Ok(old
+                .unwrap_or_default()
+                .into_iter()
+                .chain(token_ids.into_iter().map(|token_id| NftClaim {
+                    token_id,
+                    release_at,
+                }))
+                .collect::<Vec<NftClaim>>())
+        })?;
+        Ok(())
+    }
+
     /// This iterates over all mature claims for the address, and removes them, up to an optional cap.
     /// it removes the finished claims and returns the total amount of tokens to be released.
     pub fn claim_nfts(
@@ -62,11 +85,8 @@ impl<'a> NftClaims<'a> {
     ) -> StdResult<Vec<String>> {
         let mut to_send = vec![];
         self.0.update(storage, addr, |nft_claim| -> StdResult<_> {
-            let (_send, waiting): (Vec<_>, _) = nft_claim
-                .unwrap_or_default()
-                .iter()
-                .cloned()
-                .partition(|c| {
+            let (_send, waiting): (Vec<_>, _) =
+                nft_claim.unwrap_or_default().into_iter().partition(|c| {
                     // if mature and we can pay fully, then include in _send
                     if c.release_at.is_expired(block) {
                         // TODO: handle partial paying claims?
