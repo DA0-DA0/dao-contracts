@@ -74,7 +74,7 @@ pub fn execute(
 ) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::ReceiveNft(msg) => execute_stake(deps, env, info, msg),
-        ExecuteMsg::Unstake { token_id } => execute_unstake(deps, env, info, token_id),
+        ExecuteMsg::Unstake { token_ids } => execute_unstake(deps, env, info, token_ids),
         ExecuteMsg::ClaimNfts {} => execute_claim_nfts(deps, env, info),
         ExecuteMsg::UpdateConfig {
             owner,
@@ -135,8 +135,12 @@ pub fn execute_unstake(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    token_id: String,
+    token_ids: Vec<String>,
 ) -> Result<Response, ContractError> {
+    if token_ids.is_empty() {
+        return Err(ContractError::ZeroUnstake {});
+    }
+
     let config = CONFIG.load(deps.storage)?;
 
     STAKED_NFTS_PER_OWNER.update(
@@ -145,12 +149,19 @@ pub fn execute_unstake(
         env.block.height,
         |nft_collection| -> Result<HashSet<String>, ContractError> {
             if let Some(mut nft_collection) = nft_collection {
-                let was_present = nft_collection.remove(&token_id);
-                if was_present {
-                    Ok(nft_collection)
-                } else {
-                    Err(ContractError::NotStaked {})
+                // Some benchmarking suggests this is actually the
+                // fastest way to remove a list of items from a
+                // HashSet.
+                for token_id in token_ids.iter() {
+                    // This will implicitly check for duplicates in
+                    // the input vector as removing twice will fail
+                    // the second time around.
+                    let was_present = nft_collection.remove(token_id);
+                    if !was_present {
+                        return Err(ContractError::NotStaked {});
+                    }
                 }
+                Ok(nft_collection)
             } else {
                 Err(ContractError::NotStaked {})
             }
@@ -163,31 +174,33 @@ pub fn execute_unstake(
         |total_staked| -> StdResult<_> {
             total_staked
                 .unwrap()
-                .checked_sub(Uint128::new(1))
+                .checked_sub(Uint128::new(token_ids.len() as u128))
                 .map_err(StdError::overflow)
         },
     )?;
 
-    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), token_id.clone())?;
+    let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), token_ids.clone())?;
     match config.unstaking_duration {
         None => {
-            let return_nft_msg = cosmwasm_std::WasmMsg::Execute {
-                contract_addr: config.nft_address.to_string(),
-                msg: to_binary(
-                    &(cw721::Cw721ExecuteMsg::TransferNft {
-                        recipient: info.sender.to_string(),
-                        token_id: token_id.clone(),
-                    }),
-                )?,
-                funds: vec![],
-            };
+            let return_messages = token_ids
+                .into_iter()
+                .map(|token_id| -> StdResult<WasmMsg> {
+                    Ok(cosmwasm_std::WasmMsg::Execute {
+                        contract_addr: config.nft_address.to_string(),
+                        msg: to_binary(&cw721::Cw721ExecuteMsg::TransferNft {
+                            recipient: info.sender.to_string(),
+                            token_id,
+                        })?,
+                        funds: vec![],
+                    })
+                })
+                .collect::<StdResult<Vec<_>>>()?;
 
             Ok(Response::default()
-                .add_message(return_nft_msg)
+                .add_messages(return_messages)
                 .add_submessages(hook_msgs)
                 .add_attribute("action", "unstake")
                 .add_attribute("from", info.sender)
-                .add_attribute("token_id", token_id)
                 .add_attribute("claim_duration", "None"))
         }
 
@@ -199,18 +212,21 @@ pub fn execute_unstake(
                 return Err(ContractError::TooManyClaims {});
             }
 
-            NFT_CLAIMS.create_nft_claim(
-                deps.storage,
-                &info.sender,
-                token_id.clone(),
-                duration.after(&env.block),
-            )?;
+            // Out of gas here is fine - just try again with fewer
+            // tokens.
+            for token_id in token_ids.into_iter() {
+                NFT_CLAIMS.create_nft_claim(
+                    deps.storage,
+                    &info.sender,
+                    token_id.clone(),
+                    duration.after(&env.block),
+                )?;
+            }
 
             Ok(Response::default()
                 .add_attribute("action", "unstake")
                 .add_submessages(hook_msgs)
                 .add_attribute("from", info.sender)
-                .add_attribute("token_id", token_id)
                 .add_attribute("claim_duration", format!("{}", duration)))
         }
     }
@@ -662,9 +678,9 @@ mod tests {
         app: &mut App,
         staking_addr: &Addr,
         info: MessageInfo,
-        token_id: String,
+        token_ids: Vec<String>,
     ) -> AnyResult<AppResponse> {
-        let msg = ExecuteMsg::Unstake { token_id };
+        let msg = ExecuteMsg::Unstake { token_ids };
         app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
     }
 
@@ -958,11 +974,13 @@ mod tests {
 
         // Can't unstake other's staked
         let info = mock_info(ADDR2, &[]);
-        let _err = unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap_err();
+        let _err =
+            unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID1.to_string()]).unwrap_err();
 
         // Successful unstake
         let info = mock_info(ADDR2, &[]);
-        let _res = unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
+        let _res =
+            unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID2.to_string()]).unwrap();
         app.update_block(next_block);
 
         assert_eq!(
@@ -1030,8 +1048,15 @@ mod tests {
                 info.clone(),
             )
             .unwrap();
-            unstake_tokens(&mut app, &staking_addr, info.clone(), claim.to_string()).unwrap();
         }
+        // Unstake all together.
+        unstake_tokens(
+            &mut app,
+            &staking_addr,
+            info.clone(),
+            (0..MAX_CLAIMS).map(|i| i.to_string()).collect(),
+        )
+        .unwrap();
 
         mint_nft(
             &mut app,
@@ -1067,16 +1092,28 @@ mod tests {
         .unwrap();
 
         // Additional unstaking attempts ought to fail.
-        unstake_tokens(&mut app, &staking_addr, info.clone(), NFT_ID1.to_string()).unwrap_err();
+        unstake_tokens(
+            &mut app,
+            &staking_addr,
+            info.clone(),
+            vec![NFT_ID1.to_string()],
+        )
+        .unwrap_err();
 
         // Clear out the claims list.
         app.update_block(next_block);
         claim_nfts(&mut app, &staking_addr, info.clone()).unwrap();
 
         // Unstaking now allowed again.
-        unstake_tokens(&mut app, &staking_addr, info.clone(), NFT_ID1.to_string()).unwrap();
+        unstake_tokens(
+            &mut app,
+            &staking_addr,
+            info.clone(),
+            vec![NFT_ID1.to_string()],
+        )
+        .unwrap();
         app.update_block(next_block);
-        unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID2.to_string()]).unwrap();
 
         assert_eq!(
             get_nft_balance(&app, &cw721_addr, ADDR1),
@@ -1130,7 +1167,8 @@ mod tests {
 
         // Unstake
         let info = mock_info(ADDR1, &[]);
-        let _res = unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap();
+        let _res =
+            unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID1.to_string()]).unwrap();
         app.update_block(next_block);
 
         assert_eq!(
@@ -1338,12 +1376,12 @@ mod tests {
         // Unstake Addr1
         let info = mock_info(ADDR1, &[]);
         let _env = mock_env();
-        unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID1.to_string()]).unwrap();
 
         // Unstake Addr2
         let info = mock_info(ADDR2, &[]);
         let _env = mock_env();
-        unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID2.to_string()]).unwrap();
 
         app.update_block(next_block);
 
@@ -1447,12 +1485,12 @@ mod tests {
         // Unstake Addr1
         let info = mock_info(ADDR1, &[]);
         let _env = mock_env();
-        unstake_tokens(&mut app, &staking_addr, info, NFT_ID1.to_string()).unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID1.to_string()]).unwrap();
 
         // Unstake Addr2
         let info = mock_info(ADDR2, &[]);
         let _env = mock_env();
-        unstake_tokens(&mut app, &staking_addr, info, NFT_ID2.to_string()).unwrap();
+        unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID2.to_string()]).unwrap();
 
         app.update_block(next_block);
 

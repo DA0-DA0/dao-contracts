@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub enum StakeChangedHookMsg {
     Stake { addr: Addr, token_id: String },
-    Unstake { addr: Addr, token_id: String },
+    Unstake { addr: Addr, token_ids: Vec<String> },
 }
 
 pub fn stake_hook_msgs(
@@ -32,10 +32,10 @@ pub fn stake_hook_msgs(
 pub fn unstake_hook_msgs(
     storage: &dyn Storage,
     addr: Addr,
-    token_id: String,
+    token_ids: Vec<String>,
 ) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
-        StakeChangedHookMsg::Unstake { addr, token_id },
+        StakeChangedHookMsg::Unstake { addr, token_ids },
     ))?;
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
@@ -80,7 +80,7 @@ mod tests {
         let messages = unstake_hook_msgs(
             &deps.storage,
             Addr::unchecked("ekez"),
-            "ekez-token".to_string(),
+            vec!["ekez-token".to_string()],
         )
         .unwrap();
         assert_eq!(messages.len(), 0);
@@ -122,7 +122,7 @@ mod tests {
         let messages = unstake_hook_msgs(
             &deps.storage,
             Addr::unchecked("ekez"),
-            "ekez-token".to_string(),
+            vec!["ekez-token".to_string()],
         )
         .unwrap();
         assert_eq!(messages.len(), 1);
@@ -151,7 +151,7 @@ mod tests {
         let messages = unstake_hook_msgs(
             &deps.storage,
             Addr::unchecked("ekez"),
-            "ekez-token".to_string(),
+            vec!["ekez-token".to_string()],
         )
         .unwrap();
         assert_eq!(messages.len(), 0);

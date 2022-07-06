@@ -35,8 +35,11 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
+    /// Unstakes the specified token_ids on behalf of the
+    /// sender. token_ids must have unique values and have non-zero
+    /// length.
     Unstake {
-        token_id: String,
+        token_ids: Vec<String>,
     },
     ClaimNfts {},
     UpdateConfig {

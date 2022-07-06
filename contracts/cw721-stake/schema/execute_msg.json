@@ -15,6 +15,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Unstakes the specified token_ids on behalf of the sender. token_ids must have unique values and have non-zero length.",
       "type": "object",
       "required": [
         "unstake"
@@ -23,11 +24,14 @@
         "unstake": {
           "type": "object",
           "required": [
-            "token_id"
+            "token_ids"
           ],
           "properties": {
-            "token_id": {
-              "type": "string"
+            "token_ids": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
             }
           }
         }
