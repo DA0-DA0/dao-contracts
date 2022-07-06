@@ -4084,7 +4084,7 @@ fn test_close_failed_proposal() {
     let updated: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
-            govmod_single.clone(),
+            govmod_single,
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();
