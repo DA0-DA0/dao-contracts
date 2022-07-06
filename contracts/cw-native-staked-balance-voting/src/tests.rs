@@ -518,7 +518,7 @@ fn test_update_config_non_owner_changes_owner() {
 }
 
 #[test]
-fn test_update_config() {
+fn test_update_config_as_owner() {
     let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());
     let addr = instantiate_staking(
@@ -548,6 +548,44 @@ fn test_update_config() {
         GetConfigResponse {
             owner: Some(ADDR1.to_string()),
             manager: Some(DAO_ADDR.to_string()),
+            unstaking_duration: Some(Duration::Height(10)),
+            denom: DENOM.to_string(),
+        },
+        config
+    );
+}
+
+#[test]
+fn test_update_config_as_manager() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(DAO_ADDR.to_string()),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+        },
+    );
+
+    // Change duration and manager as manager cannot change owner
+    update_config(
+        &mut app,
+        addr.clone(),
+        ADDR1,
+        Some(DAO_ADDR.to_string()),
+        Some(ADDR2.to_string()),
+        Some(Duration::Height(10)),
+    )
+    .unwrap();
+
+    let config = get_config(&mut app, addr);
+    assert_eq!(
+        GetConfigResponse {
+            owner: Some(DAO_ADDR.to_string()),
+            manager: Some(ADDR2.to_string()),
             unstaking_duration: Some(Duration::Height(10)),
             denom: DENOM.to_string(),
         },
