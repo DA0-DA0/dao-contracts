@@ -47,10 +47,11 @@ export interface Cw721ReceiveMsg {
   token_id: string;
   [k: string]: unknown;
 }
+export type Addr = string;
 export interface GetConfigResponse {
-  manager?: string | null;
-  nft_address: string;
-  owner?: string | null;
+  manager?: Addr | null;
+  nft_address: Addr;
+  owner?: Addr | null;
   unstaking_duration?: Duration | null;
   [k: string]: unknown;
 }
