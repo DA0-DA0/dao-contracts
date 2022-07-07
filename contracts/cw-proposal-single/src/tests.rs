@@ -645,7 +645,7 @@ fn do_votes_staked_balances(
 }
 
 fn do_votes_nft_balances(
-    votes: Vec<TestVote>,
+    votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,

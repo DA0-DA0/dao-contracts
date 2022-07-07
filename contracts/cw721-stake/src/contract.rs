@@ -18,7 +18,7 @@ use cw_utils::Duration;
 use std::collections::HashSet;
 use std::convert::{From, TryFrom};
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:stake_cw721";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw721_stake";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

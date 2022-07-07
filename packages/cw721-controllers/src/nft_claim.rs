@@ -31,30 +31,8 @@ impl<'a> NftClaims<'a> {
         NftClaims(Map::new(storage_key))
     }
 
-    /// This creates an Nft claim, such that the given address can claim an Nft after
-    /// the release date.
-    pub fn create_nft_claim(
-        &self,
-        storage: &mut dyn Storage,
-        addr: &Addr,
-        token_id: String,
-        release_at: Expiration,
-    ) -> StdResult<()> {
-        // add a claim to this user to get their tokens after the unbonding period
-        self.0.update(storage, addr, |old| -> StdResult<_> {
-            let mut nft_claims = old.unwrap_or_default();
-            nft_claims.push(NftClaim {
-                token_id,
-                release_at,
-            });
-            Ok(nft_claims)
-        })?;
-        Ok(())
-    }
-
     /// Creates a number of NFT claims simeltaniously for a given
-    /// address. Similar to create_nft_claim but does only one storage
-    /// read and write for multiple claims.
+    /// address.
     pub fn create_nft_claims(
         &self,
         storage: &mut dyn Storage,
@@ -84,12 +62,11 @@ impl<'a> NftClaims<'a> {
         block: &BlockInfo,
     ) -> StdResult<Vec<String>> {
         let mut to_send = vec![];
-        self.0.update(storage, addr, |nft_claim| -> StdResult<_> {
+        self.0.update(storage, addr, |nft_claims| -> StdResult<_> {
             let (_send, waiting): (Vec<_>, _) =
-                nft_claim.unwrap_or_default().into_iter().partition(|c| {
+                nft_claims.unwrap_or_default().into_iter().partition(|c| {
                     // if mature and we can pay fully, then include in _send
                     if c.release_at.is_expired(block) {
-                        // TODO: handle partial paying claims?
                         to_send.push(c.token_id.clone());
                         true
                     } else {
@@ -153,10 +130,10 @@ mod test {
         let claims = NftClaims::new("claims");
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_BAYC_TOKEN_ID.into(),
+                vec![TEST_BAYC_TOKEN_ID.into()],
                 TEST_EXPIRATION,
             )
             .unwrap();
@@ -172,10 +149,10 @@ mod test {
 
         // Adding another claim to same address, make sure that both claims are saved.
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_CRYPTO_PUNKS_TOKEN_ID.into(),
+                vec![TEST_CRYPTO_PUNKS_TOKEN_ID.into()],
                 TEST_EXPIRATION,
             )
             .unwrap();
@@ -196,10 +173,10 @@ mod test {
 
         // Adding another claim to different address, make sure that other address only has one claim.
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr2"),
-                TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
+                vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 TEST_EXPIRATION,
             )
             .unwrap();
@@ -245,19 +222,19 @@ mod test {
         let claims = NftClaims::new("claims");
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
+                vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
             .unwrap();
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_BAYC_TOKEN_ID.to_string(),
+                vec![TEST_BAYC_TOKEN_ID.to_string()],
                 Expiration::AtHeight(100),
             )
             .unwrap();
@@ -291,19 +268,19 @@ mod test {
         let claims = NftClaims::new("claims");
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_BAYC_TOKEN_ID.to_string(),
+                vec![TEST_BAYC_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
             .unwrap();
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
+                vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(100),
             )
             .unwrap();
@@ -336,19 +313,19 @@ mod test {
         let claims = NftClaims::new("claims");
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_BAYC_TOKEN_ID.to_string(),
+                vec![TEST_BAYC_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
             .unwrap();
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
+                vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(100),
             )
             .unwrap();
@@ -381,10 +358,10 @@ mod test {
         let claims = NftClaims::new("claims");
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
+                vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
             .unwrap();
@@ -405,10 +382,10 @@ mod test {
         let claims = NftClaims::new("claims");
 
         claims
-            .create_nft_claim(
+            .create_nft_claims(
                 deps.as_mut().storage,
                 &Addr::unchecked("addr"),
-                TEST_CRYPTO_PUNKS_TOKEN_ID.to_string(),
+                vec![TEST_CRYPTO_PUNKS_TOKEN_ID.to_string()],
                 Expiration::AtHeight(10),
             )
             .unwrap();
