@@ -55,8 +55,9 @@ pub struct Config {
     /// Information about the depost required to create a
     /// proposal. None if no deposit is required, Some otherwise.
     pub deposit_info: Option<CheckedDepositInfo>,
-    /// Failed proposal executions will be considered executed if this feature is enabled
-    pub close_failed_proposal_executions: bool,
+    /// Failed proposal executions will be marked failed,
+    /// instead of reverted state, if this feature is enabled
+    pub close_proposal_on_execution_failure: bool,
 }
 
 /// A vote cast for a proposal.

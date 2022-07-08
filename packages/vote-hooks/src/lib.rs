@@ -27,6 +27,8 @@ pub fn new_vote_hooks(
     hooks: Hooks,
     storage: &dyn Storage,
     proposal_id: u64,
+    bit_mask: u64,
+    reserved_bits: u8,
     voter: String,
     vote: String,
 ) -> StdResult<Vec<SubMsg>> {
@@ -35,14 +37,14 @@ pub fn new_vote_hooks(
         voter,
         vote,
     }))?;
-    let mut index: u64 = 1;
+    let mut index: u64 = 0;
     hooks.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.to_string(),
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, index * 2 + 1);
+        let tmp = SubMsg::reply_on_error(execute, bit_mask | (index << reserved_bits));
         index += 1;
         Ok(tmp)
     })

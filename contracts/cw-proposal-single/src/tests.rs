@@ -743,7 +743,7 @@ fn test_propose() {
         allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
     assert_eq!(config, expected);
 
@@ -1654,6 +1654,7 @@ fn test_update_config() {
             allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
+            close_proposal_on_execution_failure: true,
         },
         &[],
     )
@@ -1673,6 +1674,7 @@ fn test_update_config() {
             allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
+            close_proposal_on_execution_failure: true,
         },
         &[],
     )
@@ -1693,7 +1695,7 @@ fn test_update_config() {
         allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
     assert_eq!(govmod_config, expected);
 
@@ -1712,6 +1714,7 @@ fn test_update_config() {
             allow_revoting: false,
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
+            close_proposal_on_execution_failure: true,
         },
         &[],
     )
@@ -2685,6 +2688,7 @@ fn test_allow_revoting_config_changes() {
             allow_revoting: false,
             deposit_info: None,
             dao: core_addr.to_string(),
+            close_proposal_on_execution_failure: true,
         },
         &[],
     )
@@ -4050,7 +4054,7 @@ fn test_close_failed_proposal() {
             description: "Burning more tokens, than dao treasury have".to_string(),
             msgs: vec![WasmMsg::Execute {
                 contract_addr: token_contract.to_string(),
-                msg: binary_msg,
+                msg: binary_msg.clone(),
                 funds: vec![],
             }
             .into()],
@@ -4084,11 +4088,118 @@ fn test_close_failed_proposal() {
     let updated: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
-            govmod_single,
+            govmod_single.clone(),
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();
 
-    // assert_eq!(updated.proposal.last_updated, latest_time);
-    assert_eq!(updated.proposal.status, Status::Executed);
+    assert_eq!(updated.proposal.status, Status::ExecutionFailed);
+
+    // With disabled feature
+    // Disable feature first
+    {
+        let original: Config = app
+            .wrap()
+            .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+            .unwrap();
+
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &ExecuteMsg::Propose {
+                title: "A simple burn tokens proposal".to_string(),
+                description: "Burning more tokens, than dao treasury have".to_string(),
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: govmod_single.to_string(),
+                    msg: to_binary(&ExecuteMsg::UpdateConfig {
+                        threshold: original.threshold,
+                        max_voting_period: original.max_voting_period,
+                        min_voting_period: original.min_voting_period,
+                        only_members_execute: original.only_members_execute,
+                        allow_revoting: original.allow_revoting,
+                        dao: original.dao.to_string(),
+                        deposit_info: None,
+                        close_proposal_on_execution_failure: false,
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap();
+
+        // Vote on proposal
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &ExecuteMsg::Vote {
+                proposal_id: 2,
+                vote: Vote::Yes,
+            },
+            &[],
+        )
+        .unwrap();
+
+        // Execute proposal
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &ExecuteMsg::Execute { proposal_id: 2 },
+            &[],
+        )
+        .unwrap();
+    }
+
+    // Overburn tokens (again), this time without reverting
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple burn tokens proposal".to_string(),
+            description: "Burning more tokens, than dao treasury have".to_string(),
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: token_contract.to_string(),
+                msg: binary_msg,
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Execute proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 3 },
+        &[],
+    )
+    .expect_err("Should be sub overflow");
+
+    // Status should have changed to 'Executed'
+    let updated: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single,
+            &QueryMsg::Proposal { proposal_id: 3 },
+        )
+        .unwrap();
+
+    // not reverted
+    assert_eq!(updated.proposal.status, Status::Passed);
 }

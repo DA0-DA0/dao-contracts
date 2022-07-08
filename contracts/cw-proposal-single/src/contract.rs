@@ -33,7 +33,14 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Default limit for proposal pagination.
 const DEFAULT_LIMIT: u64 = 30;
 const MAX_PROPOSAL_SIZE: u64 = 30_000;
-const FAILED_PROPOSAL_REPLY_ID: u64 = 0;
+
+/// Masks for reply id
+const FAILED_PROPOSAL_EXECUTION_MASK: u64 = 0b00;
+const FAILED_PROPOSAL_HOOK_MASK: u64 = 0b01;
+const FAILED_VOTE_HOOK_MASK: u64 = 0b11;
+
+const BITS_RESERVED_FOR_REPLY_TYPE: u8 = 2;
+const REPLY_TYPE_MASK: u64 = (1 << BITS_RESERVED_FOR_REPLY_TYPE) - 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -63,7 +70,7 @@ pub fn instantiate(
         dao: dao.clone(),
         deposit_info,
         allow_revoting: msg.allow_revoting,
-        close_failed_proposal_executions: msg.close_failed_proposal_executions,
+        close_proposal_on_execution_failure: msg.close_failed_proposal_executions,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -100,6 +107,7 @@ pub fn execute(
             allow_revoting,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         } => execute_update_config(
             deps,
             info,
@@ -110,6 +118,7 @@ pub fn execute(
             allow_revoting,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         ),
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
@@ -218,7 +227,13 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
+    let hooks = new_proposal_hooks(
+        PROPOSAL_HOOKS,
+        deps.storage,
+        id,
+        FAILED_PROPOSAL_HOOK_MASK,
+        BITS_RESERVED_FOR_REPLY_TYPE,
+    )?;
     Ok(Response::default()
         .add_messages(deposit_msg)
         .add_submessages(hooks)
@@ -274,10 +289,10 @@ pub fn execute_execute(
                 msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs: prop.msgs })?,
                 funds: vec![],
             };
-            match config.close_failed_proposal_executions {
+            match config.close_proposal_on_execution_failure {
                 true => res.add_submessage(SubMsg::reply_on_error(
                     execute_message,
-                    FAILED_PROPOSAL_REPLY_ID,
+                    proposal_id << BITS_RESERVED_FOR_REPLY_TYPE | FAILED_PROPOSAL_EXECUTION_MASK,
                 )),
                 false => res.add_message(execute_message),
             }
@@ -290,6 +305,8 @@ pub fn execute_execute(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
+        FAILED_PROPOSAL_HOOK_MASK,
+        BITS_RESERVED_FOR_REPLY_TYPE,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
@@ -374,6 +391,8 @@ pub fn execute_vote(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
+        FAILED_PROPOSAL_HOOK_MASK,
+        BITS_RESERVED_FOR_REPLY_TYPE,
         old_status.to_string(),
         new_status.to_string(),
     )?;
@@ -381,6 +400,8 @@ pub fn execute_vote(
         VOTE_HOOKS,
         deps.storage,
         proposal_id,
+        FAILED_VOTE_HOOK_MASK,
+        BITS_RESERVED_FOR_REPLY_TYPE,
         info.sender.to_string(),
         vote.to_string(),
     )?;
@@ -432,6 +453,8 @@ pub fn execute_close(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
+        FAILED_PROPOSAL_HOOK_MASK,
+        BITS_RESERVED_FOR_REPLY_TYPE,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
@@ -455,6 +478,7 @@ pub fn execute_update_config(
     allow_revoting: bool,
     dao: String,
     deposit_info: Option<DepositInfo>,
+    close_proposal_on_execution_failure: bool,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -482,7 +506,7 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             deposit_info,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure,
         },
     )?;
 
@@ -727,17 +751,25 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.id == FAILED_PROPOSAL_REPLY_ID {
-        Ok(Response::new())
-    } else if msg.id % 2 == 0 {
-        // Proposal hook so we can just divide by two for index
-        let idx = msg.id / 2 - 1;
-        PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-        Ok(Response::new())
-    } else {
-        // Vote hook so we can minus one then divid by two for index
-        let idx = (msg.id - 1) / 2 - 1;
-        VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-        Ok(Response::new())
+    let reply_type = msg.id & REPLY_TYPE_MASK;
+    let idx = msg.id >> BITS_RESERVED_FOR_REPLY_TYPE;
+    match reply_type {
+        FAILED_PROPOSAL_EXECUTION_MASK => {
+            let mut prop = PROPOSALS
+                .may_load(deps.storage, idx)?
+                .ok_or(ContractError::NoSuchProposal { id: idx })?;
+            prop.status = Status::ExecutionFailed;
+            PROPOSALS.save(deps.storage, idx, &prop)?;
+            Ok(Response::new())
+        }
+        FAILED_PROPOSAL_HOOK_MASK => {
+            PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new())
+        }
+        FAILED_VOTE_HOOK_MASK => {
+            VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new())
+        }
+        _ => unreachable!(),
     }
 }

@@ -128,6 +128,9 @@ pub enum ExecuteMsg {
         /// Information about the deposit required to make a
         /// proposal. None if no deposit, Some otherwise.
         deposit_info: Option<DepositInfo>,
+        /// Failed proposal executions will be marked failed,
+        /// instead of reverted state, if this feature is enabled
+        close_proposal_on_execution_failure: bool,
     },
     /// Adds an address as a consumer of proposal hooks. Consumers of
     /// proposal hooks have hook messages executed on them whenever

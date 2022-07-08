@@ -16,6 +16,8 @@ pub enum Status {
     /// The proposal has failed or expired and has been closed. A
     /// proposal deposit refund has been issued if applicable.
     Closed,
+    // The proposal has failed during execution
+    ExecutionFailed,
 }
 
 impl std::fmt::Display for Status {
@@ -26,6 +28,7 @@ impl std::fmt::Display for Status {
             Status::Passed => write!(f, "passed"),
             Status::Executed => write!(f, "executed"),
             Status::Closed => write!(f, "closed"),
+            Status::ExecutionFailed => write!(f, "execution_failed"),
         }
     }
 }
