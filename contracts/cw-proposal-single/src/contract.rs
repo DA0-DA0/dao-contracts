@@ -14,7 +14,8 @@ use vote_hooks::new_vote_hooks;
 
 use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
 use voting::proposal::{
-    BITS_RESERVED_FOR_REPLY_TYPE, DEFAULT_LIMIT, MAX_PROPOSAL_SIZE, REPLY_TYPE_MASK, FAILED_PROPOSAL_EXECUTION_MASK, FAILED_PROPOSAL_HOOK_MASK, FAILED_VOTE_HOOK_MASK,
+    BITS_RESERVED_FOR_REPLY_TYPE, DEFAULT_LIMIT, FAILED_PROPOSAL_EXECUTION_MASK,
+    FAILED_PROPOSAL_HOOK_MASK, FAILED_VOTE_HOOK_MASK, MAX_PROPOSAL_SIZE, REPLY_TYPE_MASK,
 };
 use voting::status::Status;
 use voting::threshold::Threshold;
