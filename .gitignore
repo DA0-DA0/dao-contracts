@@ -11,6 +11,7 @@ target/
 .vscode/
 .idea/
 *.iml
+**/.editorconfig
 
 # Auto-gen
 .cargo-ok

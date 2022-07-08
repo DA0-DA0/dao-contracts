@@ -2,17 +2,16 @@ use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::Vote;
+use voting::voting::Vote;
 
-use crate::proposal::Proposal;
+use crate::proposal::SingleChoiceProposal;
 
 /// Information about a proposal returned by proposal queries.
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ProposalResponse {
     /// The ID of the proposal being returned.
     pub id: u64,
-    /// The proposal data.
-    pub proposal: Proposal,
+    pub proposal: SingleChoiceProposal,
 }
 
 /// Information about a vote that was cast.

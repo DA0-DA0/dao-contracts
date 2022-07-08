@@ -15,12 +15,7 @@
       "minimum": 0.0
     },
     "proposal": {
-      "description": "The proposal data.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Proposal"
-        }
-      ]
+      "$ref": "#/definitions/SingleChoiceProposal"
     }
   },
   "definitions": {
@@ -566,7 +561,7 @@
         }
       ]
     },
-    "Proposal": {
+    "SingleChoiceProposal": {
       "type": "object",
       "required": [
         "allow_revoting",

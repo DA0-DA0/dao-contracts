@@ -320,10 +320,10 @@ export interface ListProposalsResponse {
 }
 export interface ProposalResponse {
   id: number;
-  proposal: Proposal;
+  proposal: SingleChoiceProposal;
   [k: string]: unknown;
 }
-export interface Proposal {
+export interface SingleChoiceProposal {
   allow_revoting: boolean;
   created: Timestamp;
   deposit_info?: CheckedDepositInfo | null;

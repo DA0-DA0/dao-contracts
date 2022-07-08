@@ -14,3 +14,19 @@ rand = "0.8"
 cosmwasm-std = { version = "1.0.0" }
 voting = { path = "../voting", version = "*" }
 cw-multi-test = {  version = "0.13" }
+cw20-base = "0.13"
+cw4 = "0.13"
+cw4-group = "0.13"
+cw-utils = "0.13"
+cw2 = "0.13"
+cw20 = "0.13"
+cw20-stake = { path = "../../contracts/cw20-stake", version = "*" }
+cw4-voting = { path = "../../contracts/cw4-voting", version = "*" }
+cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" }
+cw20-staked-balance-voting = { path = "../../contracts/cw20-staked-balance-voting", version = "*" }
+indexable-hooks = { version = "*", path = "../indexable-hooks" }
+cw-core = { path = "../../contracts/cw-core", version = "*", features = ["library"] }
+cosmwasm-schema = { version = "1.0.0" }
+cw-core-interface = { version = "*", path = "../cw-core-interface" }
+
+

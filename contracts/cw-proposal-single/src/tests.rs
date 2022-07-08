@@ -10,14 +10,19 @@ use cw_utils::Duration;
 
 use indexable_hooks::HooksResponse;
 
-use testing::{ShouldExecute, TestVote};
-use voting::{PercentageThreshold, Status, Threshold, Vote, Votes};
+use testing::{ShouldExecute, TestSingleChoiceVote};
+use voting::{
+    deposit::{CheckedDepositInfo, DepositInfo, DepositToken},
+    status::Status,
+    threshold::{PercentageThreshold, Threshold},
+    voting::{Vote, Votes},
+};
 
 use crate::{
-    msg::{DepositInfo, DepositToken, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    proposal::Proposal,
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    proposal::SingleChoiceProposal,
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
-    state::{CheckedDepositInfo, Config},
+    state::Config,
     ContractError,
 };
 
@@ -41,7 +46,7 @@ fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn single_proposal_contract() -> Box<dyn Contract<Empty>> {
+fn proposal_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -464,7 +469,7 @@ fn instantiate_with_cw20_balances_governance(
 }
 
 fn do_votes_cw20_balances(
-    votes: Vec<TestVote>,
+    votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
@@ -474,13 +479,13 @@ fn do_votes_cw20_balances(
         threshold,
         expected_status,
         total_supply,
-        None,
+        None::<DepositInfo>,
         instantiate_with_cw20_balances_governance,
     );
 }
 
 fn do_votes_staked_balances(
-    votes: Vec<TestVote>,
+    votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
@@ -490,13 +495,13 @@ fn do_votes_staked_balances(
         threshold,
         expected_status,
         total_supply,
-        None,
+        None::<DepositInfo>,
         instantiate_with_staked_balances_governance,
     );
 }
 
 fn do_votes_cw4_weights(
-    votes: Vec<TestVote>,
+    votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
@@ -506,13 +511,13 @@ fn do_votes_cw4_weights(
         threshold,
         expected_status,
         total_supply,
-        None,
+        None::<DepositInfo>,
         instantiate_with_cw4_groups_governance,
     );
 }
 
 fn do_test_votes<F>(
-    votes: Vec<TestVote>,
+    votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
@@ -523,11 +528,11 @@ where
     F: Fn(&mut App, u64, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
 {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let mut initial_balances = votes
         .iter()
-        .map(|TestVote { voter, weight, .. }| Cw20Coin {
+        .map(|TestSingleChoiceVote { voter, weight, .. }| Cw20Coin {
             address: voter.to_string(),
             amount: *weight,
         })
@@ -610,7 +615,7 @@ where
 
     // Cast votes.
     for vote in votes {
-        let TestVote {
+        let TestSingleChoiceVote {
             voter,
             position,
             weight,
@@ -679,7 +684,7 @@ where
 // the address of the governance contract that it has created so that
 // callers may do additional inspection of the contract's state.
 fn do_test_votes_cw20_balances(
-    votes: Vec<TestVote>,
+    votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
@@ -698,7 +703,7 @@ fn do_test_votes_cw20_balances(
 #[test]
 fn test_propose() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -765,7 +770,7 @@ fn test_propose() {
         .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
     let current_block = app.block_info();
-    let expected = Proposal {
+    let expected = SingleChoiceProposal {
         title: "A simple text proposal".to_string(),
         description: "This is a simple text proposal".to_string(),
         proposer: Addr::unchecked(CREATOR_ADDR),
@@ -790,7 +795,7 @@ fn test_propose() {
 #[test]
 fn test_propose_supports_stargate_message() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -843,7 +848,7 @@ fn test_propose_supports_stargate_message() {
         .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
     let current_block = app.block_info();
-    let expected = Proposal {
+    let expected = SingleChoiceProposal {
         title: "A simple text proposal".to_string(),
         description: "This is a simple text proposal".to_string(),
         proposer: Addr::unchecked(CREATOR_ADDR),
@@ -963,7 +968,7 @@ fn fuzz_voting() {
 #[test]
 fn test_voting_module_token_proposal_deposit_instantiate() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -1023,7 +1028,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 #[test]
 fn test_different_token_proposal_deposit() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     let cw20_id = app.store_code(cw20_contract());
     let cw20_addr = app
         .instantiate_contract(
@@ -1073,7 +1078,7 @@ fn test_different_token_proposal_deposit() {
 #[should_panic(expected = "Error parsing into type cw20_balance_voting::msg::QueryMsg")]
 fn test_bad_token_proposal_deposit() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     let cw20_id = app.store_code(cw20_contract());
     let votemod_id = app.store_code(cw20_balances_voting());
 
@@ -1127,7 +1132,7 @@ fn test_bad_token_proposal_deposit() {
 #[test]
 fn test_take_proposal_deposit() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -1237,7 +1242,7 @@ fn test_deposit_return_on_execute() {
     // deposited to create said proposal, expectation is that the
     // token is then returned once the proposal is executed.
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(10),
@@ -1309,7 +1314,7 @@ fn test_deposit_return_on_execute() {
 #[test]
 fn test_close_open_proposal() {
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(10),
@@ -1383,7 +1388,7 @@ fn test_close_open_proposal() {
 #[test]
 fn test_zero_deposit() {
     do_test_votes_cw20_balances(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(10),
@@ -1405,7 +1410,7 @@ fn test_zero_deposit() {
 #[test]
 fn test_deposit_return_on_close() {
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(10),
@@ -1477,7 +1482,7 @@ fn test_deposit_return_on_close() {
 #[test]
 fn test_execute_expired_proposal() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
@@ -1598,7 +1603,7 @@ fn test_execute_expired_proposal() {
 #[test]
 fn test_update_config() {
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(10),
@@ -1724,7 +1729,7 @@ fn test_update_config() {
 #[test]
 fn test_no_return_if_no_refunds() {
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(10),
@@ -1783,7 +1788,7 @@ fn test_no_return_if_no_refunds() {
 #[test]
 fn test_query_list_proposals() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     let gov_addr = instantiate_with_cw20_balances_governance(
         &mut app,
         govmod_id,
@@ -1860,7 +1865,7 @@ fn test_query_list_proposals() {
 
     let expected = ProposalResponse {
         id: 1,
-        proposal: Proposal {
+        proposal: SingleChoiceProposal {
             title: "Text proposal 1.".to_string(),
             description: "This is a simple text proposal".to_string(),
             proposer: Addr::unchecked(CREATOR_ADDR),
@@ -1907,7 +1912,7 @@ fn test_query_list_proposals() {
 
     let expected = ProposalResponse {
         id: 4,
-        proposal: Proposal {
+        proposal: SingleChoiceProposal {
             title: "Text proposal 4.".to_string(),
             description: "This is a simple text proposal".to_string(),
             proposer: Addr::unchecked(CREATOR_ADDR),
@@ -1938,7 +1943,7 @@ fn test_query_list_proposals() {
 #[test]
 fn test_hooks() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -2113,7 +2118,7 @@ fn test_hooks() {
 #[test]
 fn test_active_threshold_absolute() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -2240,7 +2245,7 @@ fn test_active_threshold_absolute() {
 #[test]
 fn test_active_threshold_percent() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -2368,7 +2373,7 @@ fn test_active_threshold_percent() {
 #[test]
 fn test_active_threshold_none() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -2499,7 +2504,7 @@ fn test_active_threshold_none() {
 #[test]
 fn test_revoting() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         proposal_id,
@@ -2626,7 +2631,7 @@ fn test_revoting() {
 #[test]
 fn test_allow_revoting_config_changes() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         proposal_id,
@@ -2771,7 +2776,7 @@ fn test_allow_revoting_config_changes() {
 #[test]
 fn test_revoting_same_vote_twice() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         proposal_id,
@@ -2875,7 +2880,7 @@ fn test_revoting_same_vote_twice() {
 #[test]
 fn test_three_of_five_multisig() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_cw4_groups_governance(
         &mut app,
         proposal_id,
@@ -3002,7 +3007,7 @@ fn test_three_of_five_multisig() {
 #[test]
 fn test_three_of_five_multisig_reject() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_cw4_groups_governance(
         &mut app,
         proposal_id,
@@ -3135,7 +3140,7 @@ fn test_three_of_five_multisig_reject() {
 #[should_panic]
 fn test_voting_module_token_with_multisig_style_voting() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     instantiate_with_cw4_groups_governance(
         &mut app,
         proposal_id,
@@ -3175,7 +3180,7 @@ fn test_voting_module_token_with_multisig_style_voting() {
 #[test]
 fn test_three_of_five_multisig_revoting() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_cw4_groups_governance(
         &mut app,
         proposal_id,
@@ -3329,19 +3334,19 @@ fn test_three_of_five_multisig_revoting() {
 fn test_absolute_count_threshold_non_multisig() {
     do_votes_staked_balances(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "one".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "two".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(200),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "three".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(1),
@@ -3363,13 +3368,13 @@ fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
             // Instant rejection after this.
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "two".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "one".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
@@ -3385,13 +3390,13 @@ fn test_large_absolute_count_threshold() {
 
     do_votes_staked_balances(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "one".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "two".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
@@ -3409,7 +3414,7 @@ fn test_large_absolute_count_threshold() {
 #[test]
 fn test_migrate() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -3467,7 +3472,7 @@ fn test_migrate() {
 #[test]
 fn test_proposal_count_initialized_to_zero() {
     let mut app = App::default();
-    let proposal_id = app.store_code(single_proposal_contract());
+    let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         proposal_id,
@@ -3514,7 +3519,7 @@ fn test_proposal_count_initialized_to_zero() {
 #[test]
 fn test_no_early_pass_with_min_duration() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
@@ -3603,7 +3608,7 @@ fn test_no_early_pass_with_min_duration() {
 )]
 fn test_min_duration_units_missmatch() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
@@ -3636,7 +3641,7 @@ fn test_min_duration_units_missmatch() {
 #[should_panic(expected = "Min voting period must be less than or equal to max voting period")]
 fn test_min_duration_larger_than_proposal_duration() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
@@ -3668,7 +3673,7 @@ fn test_min_duration_larger_than_proposal_duration() {
 #[test]
 fn test_min_duration_same_as_proposal_duration() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
@@ -3766,7 +3771,7 @@ fn test_min_duration_same_as_proposal_duration() {
 #[test]
 fn test_timestamp_updated() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
@@ -3969,7 +3974,7 @@ fn test_timestamp_updated() {
 #[test]
 fn test_close_failed_proposal() {
     let mut app = App::default();
-    let govmod_id = app.store_code(single_proposal_contract());
+    let govmod_id = app.store_code(proposal_contract());
 
     let threshold = Threshold::AbsolutePercentage {
         percentage: PercentageThreshold::Majority {},
