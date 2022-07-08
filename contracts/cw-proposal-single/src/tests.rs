@@ -4199,10 +4199,7 @@ fn test_close_failed_proposal() {
     // Status should have changed to 'Executed'
     let updated: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(
-            govmod_single,
-            &QueryMsg::Proposal { proposal_id: 3 },
-        )
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 3 })
         .unwrap();
 
     // not reverted

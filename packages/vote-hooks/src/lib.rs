@@ -2,6 +2,7 @@ use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use voting::proposal::{BITS_RESERVED_FOR_REPLY_TYPE, FAILED_VOTE_HOOK_MASK};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -27,8 +28,6 @@ pub fn new_vote_hooks(
     hooks: Hooks,
     storage: &dyn Storage,
     proposal_id: u64,
-    bit_mask: u64,
-    reserved_bits: u8,
     voter: String,
     vote: String,
 ) -> StdResult<Vec<SubMsg>> {
@@ -44,7 +43,10 @@ pub fn new_vote_hooks(
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, bit_mask | (index << reserved_bits));
+        let tmp = SubMsg::reply_on_error(
+            execute,
+            FAILED_VOTE_HOOK_MASK | (index << BITS_RESERVED_FOR_REPLY_TYPE),
+        );
         index += 1;
         Ok(tmp)
     })

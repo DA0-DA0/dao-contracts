@@ -13,7 +13,9 @@ use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 
 use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
-use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
+use voting::proposal::{
+    BITS_RESERVED_FOR_REPLY_TYPE, DEFAULT_LIMIT, MAX_PROPOSAL_SIZE, REPLY_TYPE_MASK, FAILED_PROPOSAL_EXECUTION_MASK, FAILED_PROPOSAL_HOOK_MASK, FAILED_VOTE_HOOK_MASK,
+};
 use voting::status::Status;
 use voting::threshold::Threshold;
 use voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
@@ -32,14 +34,6 @@ use crate::{
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Masks for reply id
-const FAILED_PROPOSAL_EXECUTION_MASK: u64 = 0b00;
-const FAILED_PROPOSAL_HOOK_MASK: u64 = 0b01;
-const FAILED_VOTE_HOOK_MASK: u64 = 0b11;
-
-const BITS_RESERVED_FOR_REPLY_TYPE: u8 = 2;
-const REPLY_TYPE_MASK: u64 = (1 << BITS_RESERVED_FOR_REPLY_TYPE) - 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -226,13 +220,7 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-    let hooks = new_proposal_hooks(
-        PROPOSAL_HOOKS,
-        deps.storage,
-        id,
-        FAILED_PROPOSAL_HOOK_MASK,
-        BITS_RESERVED_FOR_REPLY_TYPE,
-    )?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
     Ok(Response::default()
         .add_messages(deposit_msg)
         .add_submessages(hooks)
@@ -304,8 +292,6 @@ pub fn execute_execute(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
-        FAILED_PROPOSAL_HOOK_MASK,
-        BITS_RESERVED_FOR_REPLY_TYPE,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
@@ -390,8 +376,6 @@ pub fn execute_vote(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
-        FAILED_PROPOSAL_HOOK_MASK,
-        BITS_RESERVED_FOR_REPLY_TYPE,
         old_status.to_string(),
         new_status.to_string(),
     )?;
@@ -399,8 +383,6 @@ pub fn execute_vote(
         VOTE_HOOKS,
         deps.storage,
         proposal_id,
-        FAILED_VOTE_HOOK_MASK,
-        BITS_RESERVED_FOR_REPLY_TYPE,
         info.sender.to_string(),
         vote.to_string(),
     )?;
@@ -452,8 +434,6 @@ pub fn execute_close(
         PROPOSAL_HOOKS,
         deps.storage,
         proposal_id,
-        FAILED_PROPOSAL_HOOK_MASK,
-        BITS_RESERVED_FOR_REPLY_TYPE,
         old_status.to_string(),
         prop.status.to_string(),
     )?;

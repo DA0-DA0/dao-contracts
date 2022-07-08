@@ -2,6 +2,7 @@ use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use voting::proposal::{BITS_RESERVED_FOR_REPLY_TYPE, FAILED_PROPOSAL_HOOK_MASK};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -25,13 +26,7 @@ pub enum ProposalHookExecuteMsg {
 /// Prepares new proposal hook messages. These messages reply on error
 /// and have even reply IDs.
 /// IDs are set to even numbers to then be interleaved with the vote hooks.
-pub fn new_proposal_hooks(
-    hooks: Hooks,
-    storage: &dyn Storage,
-    id: u64,
-    bit_mask: u64,
-    reserved_bits: u8,
-) -> StdResult<Vec<SubMsg>> {
+pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::NewProposal { id },
     ))?;
@@ -42,7 +37,10 @@ pub fn new_proposal_hooks(
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, bit_mask | (index << reserved_bits));
+        let tmp = SubMsg::reply_on_error(
+            execute,
+            FAILED_PROPOSAL_HOOK_MASK | (index << BITS_RESERVED_FOR_REPLY_TYPE),
+        );
         index += 1;
         Ok(tmp)
     })
@@ -55,8 +53,6 @@ pub fn proposal_status_changed_hooks(
     hooks: Hooks,
     storage: &dyn Storage,
     id: u64,
-    bit_mask: u64,
-    reserved_bits: u8,
     old_status: String,
     new_status: String,
 ) -> StdResult<Vec<SubMsg>> {
@@ -78,7 +74,10 @@ pub fn proposal_status_changed_hooks(
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, bit_mask | (index << reserved_bits));
+        let tmp = SubMsg::reply_on_error(
+            execute,
+            FAILED_PROPOSAL_HOOK_MASK | (index << BITS_RESERVED_FOR_REPLY_TYPE),
+        );
         index += 1;
         Ok(tmp)
     })

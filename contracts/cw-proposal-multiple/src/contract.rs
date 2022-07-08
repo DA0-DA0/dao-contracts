@@ -13,7 +13,10 @@ use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 use voting::{
     deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo},
-    proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
+    proposal::{
+        BITS_RESERVED_FOR_REPLY_TYPE, DEFAULT_LIMIT, FAILED_PROPOSAL_EXECUTION_MASK,
+        FAILED_PROPOSAL_HOOK_MASK, FAILED_VOTE_HOOK_MASK, MAX_PROPOSAL_SIZE, REPLY_TYPE_MASK,
+    },
     status::Status,
     voting::{
         get_total_power, get_voting_power, validate_voting_period, MultipleChoiceVote,
@@ -696,16 +699,27 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.id % 2 == 0 {
-        // Proposal hook so we can just divide by two for index
-        let idx = msg.id / 2;
-        PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-    } else {
-        // Vote hook so we can minus one then divid by two for index
-        let idx = (msg.id - 1) / 2;
-        VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+    let reply_type = msg.id & REPLY_TYPE_MASK;
+    let idx = msg.id >> BITS_RESERVED_FOR_REPLY_TYPE;
+    match reply_type {
+        FAILED_PROPOSAL_EXECUTION_MASK => {
+            let mut prop = PROPOSALS
+                .may_load(deps.storage, idx)?
+                .ok_or(ContractError::NoSuchProposal { id: idx })?;
+            prop.status = Status::ExecutionFailed;
+            PROPOSALS.save(deps.storage, idx, &prop)?;
+            Ok(Response::new())
+        }
+        FAILED_PROPOSAL_HOOK_MASK => {
+            PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new())
+        }
+        FAILED_VOTE_HOOK_MASK => {
+            VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new())
+        }
+        _ => unreachable!(),
     }
-    Ok(Response::new())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

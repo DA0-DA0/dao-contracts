@@ -945,6 +945,7 @@ dependencies = [
  "indexable-hooks",
  "schemars",
  "serde",
+ "voting",
 ]
 
 [[package]]
@@ -1326,6 +1327,7 @@ dependencies = [
  "indexable-hooks",
  "schemars",
  "serde",
+ "voting",
 ]
 
 [[package]]
