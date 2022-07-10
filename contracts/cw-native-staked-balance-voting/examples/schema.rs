@@ -24,11 +24,11 @@ fn main() {
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(VotingPowerAtHeightResponse), &out_dir);
-    export_schema(&schema_for!(Config), &out_dir);
     export_schema(&schema_for!(IsActiveResponse), &out_dir);
     export_schema(&schema_for!(ClaimsResponse), &out_dir);
 
     // Auto TS code generation expects the query return type as QueryNameResponse
     // Here we map query resonses to the correct name
     export_schema_with_title(&schema_for!(Addr), &out_dir, "DaoResponse");
+    export_schema_with_title(&schema_for!(Config), &out_dir, "GetConfigResponse");
 }
