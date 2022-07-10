@@ -625,6 +625,34 @@ fn test_update_config_as_manager() {
 }
 
 #[test]
+#[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
+fn test_update_config_invalid_duration() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(DAO_ADDR.to_string()),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+        },
+    );
+
+    // Change duration and manager as manager cannot change owner
+    update_config(
+        &mut app,
+        addr,
+        ADDR1,
+        Some(DAO_ADDR.to_string()),
+        Some(ADDR2.to_string()),
+        Some(Duration::Height(0)),
+    )
+    .unwrap();
+}
+
+#[test]
 fn test_query_dao() {
     let mut app = mock_app();
     let staking_id = app.store_code(staking_contract());

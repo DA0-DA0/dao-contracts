@@ -16,6 +16,24 @@ use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STA
 const CONTRACT_NAME: &str = "crates.io:cw-native-staked-balance-voting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
+    if let Some(unstaking_duration) = duration {
+        match unstaking_duration {
+            Duration::Height(height) => {
+                if height == 0 {
+                    return Err(ContractError::InvalidUnstakingDuration {});
+                }
+            }
+            Duration::Time(time) => {
+                if time == 0 {
+                    return Err(ContractError::InvalidUnstakingDuration {});
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -34,20 +52,7 @@ pub fn instantiate(
         None => None,
     };
 
-    if let Some(unstaking_duration) = msg.unstaking_duration {
-        match unstaking_duration {
-            Duration::Height(height) => {
-                if height == 0 {
-                    return Err(ContractError::InvalidUnstakingDuration {});
-                }
-            }
-            Duration::Time(time) => {
-                if time == 0 {
-                    return Err(ContractError::InvalidUnstakingDuration {});
-                }
-            }
-        }
-    }
+    validate_duration(msg.unstaking_duration)?;
 
     let config = Config {
         owner,
@@ -189,6 +194,8 @@ pub fn execute_update_config(
     let new_manager = new_manager
         .map(|new_manager| deps.api.addr_validate(&new_manager))
         .transpose()?;
+
+    validate_duration(duration)?;
 
     if Some(info.sender) != config.owner && new_owner != config.owner {
         return Err(ContractError::OnlyOwnerCanChangeOwner {});
