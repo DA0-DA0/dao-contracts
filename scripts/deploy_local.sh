@@ -177,6 +177,11 @@ CW_CORE_DAO_CONTRACT=$($BINARY q wasm list-contract-by-code $cw_core_CODE_ID --o
 # actions like executing proposals that require it to pay gas fees.
 $BINARY tx bank send validator $CW_CORE_DAO_CONTRACT 9000000$DENOM --chain-id testing $TXFLAG -y
 
+# Instantiate cw-admin-factory
+echo xxxxxxxxx | $BINARY tx wasm instantiate "$cw_admin_factory_CODE_ID" "{}" --from validator --label "cw admin factory" $TXFLAG --output json --no-admin
+
+CW_ADMIN_FACTORY_CONTRACT=$($BINARY q wasm list-contract-by-code $cw_admin_factory_CODE_ID --output json | jq -r '.contracts[-1]')
+
 
 # Print out config variables
 printf "\n ------------------------ \n"
@@ -190,3 +195,4 @@ echo "NEXT_PUBLIC_CW4VOTING_CODE_ID=$cw4_voting_CODE_ID"
 echo "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=$cw20_staked_balance_voting_CODE_ID"
 echo "NEXT_PUBLIC_STAKECW20_CODE_ID=$stake_cw20_CODE_ID"
 echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW_CORE_DAO_CONTRACT"
+echo "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS=$CW_ADMIN_FACTORY_CONTRACT"
