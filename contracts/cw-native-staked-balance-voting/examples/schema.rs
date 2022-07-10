@@ -7,9 +7,7 @@ use cw_controllers::ClaimsResponse;
 use cw_core_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use cw_native_staked_balance_voting::msg::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
+use cw_native_staked_balance_voting::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use cw_native_staked_balance_voting::state::Config;
 
 fn main() {

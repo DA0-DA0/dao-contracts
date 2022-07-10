@@ -220,6 +220,36 @@ fn test_instantiate() {
 }
 
 #[test]
+#[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
+fn test_instantiate_invalid_unstaking_duration() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    // Populated fields
+    let _addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(DAO_ADDR.to_string()),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(0)),
+        },
+    );
+
+    // Non populated fields
+    let _addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: None,
+            manager: None,
+            denom: DENOM.to_string(),
+            unstaking_duration: None,
+        },
+    );
+}
+
+#[test]
 #[should_panic(expected = "Must send reserve token 'ujuno'")]
 fn test_stake_invalid_denom() {
     let mut app = mock_app();
