@@ -10,7 +10,7 @@ use cw_core_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightR
 use cw_utils::{must_pay, Duration};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, GetConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
 const CONTRACT_NAME: &str = "crates.io:cw-native-staked-balance-voting";
@@ -33,6 +33,21 @@ pub fn instantiate(
         Some(manager) => Some(deps.api.addr_validate(&manager)?),
         None => None,
     };
+
+    if let Some(unstaking_duration) = msg.unstaking_duration {
+        match unstaking_duration {
+            Duration::Height(height) => {
+                if height == 0 {
+                    return Err(ContractError::InvalidUnstakingDuration {});
+                }
+            }
+            Duration::Time(time) => {
+                if time == 0 {
+                    return Err(ContractError::InvalidUnstakingDuration {});
+                }
+            }
+        }
+    }
 
     let config = Config {
         owner,
@@ -72,7 +87,7 @@ pub fn execute_stake(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    let amount = must_pay(&info, &config.denom).map_err(ContractError::PaymentError)?;
+    let amount = must_pay(&info, &config.denom)?;
 
     STAKED_BALANCES.update(
         deps.storage,
@@ -238,7 +253,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
-        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
+        QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
     }
 }
 
@@ -276,16 +291,6 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
     to_binary(&dao)
-}
-
-pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(GetConfigResponse {
-        owner: config.owner.map(|a| a.to_string()),
-        manager: config.manager.map(|a| a.to_string()),
-        unstaking_duration: config.unstaking_duration,
-        denom: config.denom,
-    })
 }
 
 pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {

@@ -8,8 +8,9 @@ use cw_core_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
 use cw_native_staked_balance_voting::msg::{
-    ExecuteMsg, GetConfigResponse, InstantiateMsg, MigrateMsg, QueryMsg,
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
+use cw_native_staked_balance_voting::state::Config;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -25,7 +26,7 @@ fn main() {
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(VotingPowerAtHeightResponse), &out_dir);
-    export_schema(&schema_for!(GetConfigResponse), &out_dir);
+    export_schema(&schema_for!(Config), &out_dir);
     export_schema(&schema_for!(IsActiveResponse), &out_dir);
     export_schema(&schema_for!(ClaimsResponse), &out_dir);
 

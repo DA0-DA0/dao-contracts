@@ -13,6 +13,9 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
+    InvalidUnstakingDuration {},
+
     #[error("Nothing to claim")]
     NothingToClaim {},
 

@@ -42,12 +42,3 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct MigrateMsg {}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct GetConfigResponse {
-    pub owner: Option<String>,
-    pub manager: Option<String>,
-    pub unstaking_duration: Option<Duration>,
-    pub denom: String,
-}

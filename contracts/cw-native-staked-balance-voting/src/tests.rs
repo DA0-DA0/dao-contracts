@@ -1,4 +1,5 @@
-use crate::msg::{ExecuteMsg, GetConfigResponse, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::Config;
 use cosmwasm_std::{coins, Addr, Coin, Empty, Uint128};
 use cw_controllers::ClaimsResponse;
 use cw_core_interface::voting::{
@@ -173,7 +174,7 @@ fn get_total_power_at_height(
         .unwrap()
 }
 
-fn get_config(app: &mut App, staking_addr: Addr) -> GetConfigResponse {
+fn get_config(app: &mut App, staking_addr: Addr) -> Config {
     app.wrap()
         .query_wasm_smart(staking_addr, &QueryMsg::GetConfig {})
         .unwrap()
@@ -545,9 +546,9 @@ fn test_update_config_as_owner() {
 
     let config = get_config(&mut app, addr);
     assert_eq!(
-        GetConfigResponse {
-            owner: Some(ADDR1.to_string()),
-            manager: Some(DAO_ADDR.to_string()),
+        Config {
+            owner: Some(Addr::unchecked(ADDR1)),
+            manager: Some(Addr::unchecked(DAO_ADDR)),
             unstaking_duration: Some(Duration::Height(10)),
             denom: DENOM.to_string(),
         },
@@ -583,9 +584,9 @@ fn test_update_config_as_manager() {
 
     let config = get_config(&mut app, addr);
     assert_eq!(
-        GetConfigResponse {
-            owner: Some(DAO_ADDR.to_string()),
-            manager: Some(ADDR2.to_string()),
+        Config {
+            owner: Some(Addr::unchecked(DAO_ADDR)),
+            manager: Some(Addr::unchecked(ADDR2)),
             unstaking_duration: Some(Duration::Height(10)),
             denom: DENOM.to_string(),
         },
@@ -690,9 +691,9 @@ fn test_query_get_config() {
     let config = get_config(&mut app, addr);
     assert_eq!(
         config,
-        GetConfigResponse {
-            owner: Some(DAO_ADDR.to_string()),
-            manager: Some(ADDR1.to_string()),
+        Config {
+            owner: Some(Addr::unchecked(DAO_ADDR)),
+            manager: Some(Addr::unchecked(ADDR1)),
             unstaking_duration: Some(Duration::Height(5)),
             denom: DENOM.to_string(),
         }

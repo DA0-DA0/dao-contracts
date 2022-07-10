@@ -27,6 +27,19 @@ export interface Claim {
   release_at: Expiration;
   [k: string]: unknown;
 }
+export type Addr = string;
+export type Duration = {
+  height: number;
+} | {
+  time: number;
+};
+export interface Config {
+  denom: string;
+  manager?: Addr | null;
+  owner?: Addr | null;
+  unstaking_duration?: Duration | null;
+  [k: string]: unknown;
+}
 export type DaoResponse = string;
 export type ExecuteMsg = {
   stake: {
@@ -49,18 +62,6 @@ export type ExecuteMsg = {
     [k: string]: unknown;
   };
 };
-export type Duration = {
-  height: number;
-} | {
-  time: number;
-};
-export interface GetConfigResponse {
-  denom: string;
-  manager?: string | null;
-  owner?: string | null;
-  unstaking_duration?: Duration | null;
-  [k: string]: unknown;
-}
 export interface InfoResponse {
   info: ContractVersion;
   [k: string]: unknown;
