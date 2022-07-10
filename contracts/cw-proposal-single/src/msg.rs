@@ -1,10 +1,10 @@
-use cosmwasm_std::{CosmosMsg, Empty, Uint128};
+use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_core_macros::govmod_query;
-use voting::Threshold;
+use voting::{deposit::DepositInfo, threshold::Threshold, voting::Vote};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -49,19 +49,6 @@ pub enum DepositToken {
     VotingModuleToken {},
 }
 
-/// Information about the deposit required to create a proposal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct DepositInfo {
-    /// The address of the cw20 token to be used for proposal
-    /// deposits.
-    pub token: DepositToken,
-    /// The number of tokens that must be deposited to create a
-    /// proposal.
-    pub deposit: Uint128,
-    /// If failed proposals should have their deposits refunded.
-    pub refund_failed_proposals: bool,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
@@ -81,7 +68,7 @@ pub enum ExecuteMsg {
         /// The ID of the proposal to vote on.
         proposal_id: u64,
         /// The senders position on the proposal.
-        vote: voting::Vote,
+        vote: Vote,
     },
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.

@@ -557,7 +557,26 @@
         }
       ]
     },
-    "Proposal": {
+    "ProposalResponse": {
+      "description": "Information about a proposal returned by proposal queries.",
+      "type": "object",
+      "required": [
+        "id",
+        "proposal"
+      ],
+      "properties": {
+        "id": {
+          "description": "The ID of the proposal being returned.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "proposal": {
+          "$ref": "#/definitions/SingleChoiceProposal"
+        }
+      }
+    },
+    "SingleChoiceProposal": {
       "type": "object",
       "required": [
         "allow_revoting",
@@ -672,30 +691,6 @@
         },
         "votes": {
           "$ref": "#/definitions/Votes"
-        }
-      }
-    },
-    "ProposalResponse": {
-      "description": "Information about a proposal returned by proposal queries.",
-      "type": "object",
-      "required": [
-        "id",
-        "proposal"
-      ],
-      "properties": {
-        "id": {
-          "description": "The ID of the proposal being returned.",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "proposal": {
-          "description": "The proposal data.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Proposal"
-            }
-          ]
         }
       }
     },

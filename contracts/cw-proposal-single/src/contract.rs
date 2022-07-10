@@ -12,27 +12,26 @@ use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 
-use voting::{Status, Threshold, Vote, Votes};
+use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
+use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
+use voting::status::Status;
+use voting::threshold::Threshold;
+use voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
+use crate::msg::MigrateMsg;
+use crate::proposal::SingleChoiceProposal;
+use crate::state::Config;
 use crate::{
     error::ContractError,
-    msg::{DepositInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    proposal::{advance_proposal_id, Proposal},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    proposal::advance_proposal_id,
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
-    state::{
-        get_deposit_msg, get_return_deposit_msg, Ballot, Config, BALLOTS, CONFIG, PROPOSALS,
-        PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
-    },
-    utils::{get_total_power, get_voting_power, validate_voting_period},
+    state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Default limit for proposal pagination.
-const DEFAULT_LIMIT: u64 = 30;
-const MAX_PROPOSAL_SIZE: u64 = 30_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -167,7 +166,7 @@ pub fn execute_propose(
 
     let proposal = {
         // Limit mutability to this block.
-        let mut proposal = Proposal {
+        let mut proposal = SingleChoiceProposal {
             title,
             description,
             proposer: sender.clone(),
@@ -630,7 +629,7 @@ pub fn query_list_proposals(
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
         .take(limit as usize)
-        .collect::<Result<Vec<(u64, Proposal)>, _>>()?
+        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
         .collect();
@@ -649,7 +648,7 @@ pub fn query_reverse_proposals(
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, None, max, cosmwasm_std::Order::Descending)
         .take(limit as usize)
-        .collect::<Result<Vec<(u64, Proposal)>, _>>()?
+        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
         .collect();
