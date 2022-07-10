@@ -36,11 +36,11 @@ docker run --rm -d --name $CONTAINER_NAME \
     ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/setup_and_run.sh $1
 
 # Compile code
- docker run --rm -v "$(pwd)":/code \
-   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-   --platform linux/amd64 \
-   cosmwasm/workspace-optimizer:0.12.6
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  --platform linux/amd64 \
+  cosmwasm/workspace-optimizer:0.12.6
 
 # Download cw20_base.wasm
 curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm
