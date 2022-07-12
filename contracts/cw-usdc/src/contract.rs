@@ -9,11 +9,18 @@ use osmo_bindings::{OsmosisMsg, OsmosisQuery};
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
-use crate::state::{State, STATE, MINTER_ALLOWANCES};
+use crate::state::{State, STATE, MINTER_ALLOWANCES, CONFIG};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+
+pub fn getDenom(deps: Deps) -> StdResult<String> {
+    let config = CONFIG.load(deps.Storage)?;
+    return Ok(config.denom)
+}
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -38,19 +45,20 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         // ExecuteMsg::AddMinter { address, allowance } => execute
-        ExecuteMsg::Mint { to_address, amount } => execute_mint(deps,info, to_address, amount),
+        ExecuteMsg::Mint { to_address, amount } => execute_mint(deps,env, info, to_address, amount),
         // ExecuteMsg::Burn { amount } => try_reset(deps, info, count),
     }
 }
 
 pub fn execute_mint(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     to_address: String,
     amount: Uint128,
@@ -61,6 +69,7 @@ pub fn execute_mint(
     // })?;
 
     deps.api.addr_validate(&to_address)?;
+    let denom = getDenom(deps)?;
 
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
@@ -68,7 +77,7 @@ pub fn execute_mint(
 
     MINTER_ALLOWANCES.load(&deps.storage, info.sender);
 
-    let mint_tokens_msg = OsmosisMsg::mint_contract_tokens(denom, amount, mint_to_address);
+    let mint_tokens_msg = OsmosisMsg::mint_contract_tokens(denom, amount, env.contract.address);
 
     let res = Response::new()
         .add_attribute("method", "mint_tokens")
@@ -125,6 +134,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
     }
+}
+
+pub fn is_frozen(deps: Deps) -> bool {
+    let config = CONFIG.load(deps)?;
+    return config.fr
 }
 
 fn query_count(deps: Deps) -> StdResult<CountResponse> {

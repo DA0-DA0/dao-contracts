@@ -47,7 +47,8 @@ cw2 = "0.13.2"
 schemars = "0.8.8"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
-osmo-bindings = { version = "0.6.0", path = "../../packages/bindings" }
+osmo-bindings = { git = "https://github.com/osmosis-labs/bindings", branch = "main" }
+
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"
