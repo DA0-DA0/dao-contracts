@@ -5,9 +5,49 @@ name: Gas Benchmark
 # TODO: Make this actually a diff, rn its just posting the current PR's gas usage
 
 jobs:
+  compile-contracts:
+    name: Compile contracts using optimized rust compiler
+    runs-on: ubuntu-latest
+    container:
+      image: cosmwasm/workspace-optimizer:0.12.6
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Store contracts in cache
+        id: contracts-cache
+        uses: actions/cache@v1
+        with:
+          path: artifacts
+          key: artifacts-contracts
+
+  build-gas:
+    name: Build Gas Benchmarker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
+      - name: Create binary
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly
+          command: build
+          args: --release
+      - name: Store binary in cache
+        id: contracts-cache
+        uses: actions/cache@v1
+        with:
+          path: target/release/
+          key: gas-release
+
   gas:
     name: Calculate gas costs in local juno
     runs-on: ubuntu-latest
+    needs: [compile-contracts, build-gas]
     defaults:
       run:
         working-directory: ./ci/gas_benchmarks
@@ -28,8 +68,20 @@ jobs:
       - name: Setup Juno Node
         run: cd /opt && /opt/setup_and_run.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg > /dev/null 2>&1 &
 
+      - name: Restore gas binary
+        uses: actions/cache@v1
+        with:
+          path: ./
+          key: gas-release
+
+      - name: Restore optimized contracts from cache
+        uses: actions/cache@v1
+        with:
+          path: ../../artifacts
+          key: artifacts-contracts
+
       - name: Calculate gas costs
-        run: RUST_LOG=DEBUG cargo run
+        run: RUST_LOG=DEBUG ./gas-benchmarks
 
       - name: Raw gas report
         run: cat ./gas_report.json
