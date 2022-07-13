@@ -1,0 +1,41 @@
+on: [pull_request]
+
+name: Gas Benchmark
+
+# TODO: Make this actually a diff, rn its just posting the current PR's gas usage
+
+jobs:
+  gas:
+    name: Calculate gas costs in local juno
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ci/gas_benchmarks
+    container:
+      image: ghcr.io/cosmoscontracts/juno:v8.0.0
+      env:
+        PASSWORD: xxxxxxxxx
+        STAKE_TOKEN: ujunox
+        GAS_LIMIT: -1
+        UNSAFE_CORS: true
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install deps
+        run: apk --no-cache add rustup cargo
+
+      - name: Setup Juno Node
+        run: cd /opt && /opt/setup_and_run.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg > /dev/null 2>&1 &
+
+      - name: Calculate gas costs
+        run: RUST_LOG=DEBUG cargo run
+
+      - name: Raw gas report
+        run: cat ./gas_report.json
+
+      - name: Post gas diff to PR
+        uses: de-husk/cosm-orc-gas-diff-action@v0.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          current_json: "./ci/gas_benchmarks/gas_report.json"
