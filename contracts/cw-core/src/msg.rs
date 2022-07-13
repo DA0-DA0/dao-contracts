@@ -164,19 +164,19 @@ pub enum QueryMsg {
     /// Gets the token balance for each cw20 registered with the
     /// contract.
     Cw20Balances {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw20 tokens in this contract's
     /// treasury.
     Cw20TokenList {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw721 tokens in this contract's
     /// treasury.
     Cw721TokenList {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Dumps all of the core contract's state in a single
@@ -191,13 +191,13 @@ pub enum QueryMsg {
     /// this query would return `[("group", "foo"), ("subdao",
     /// "bar")]`.
     ListItems {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Gets the proposal modules assocaited with the
     /// contract. Returns Vec<Addr>.
     ProposalModules {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Returns information about if the contract is currently paused.

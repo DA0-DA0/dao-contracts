@@ -1,10 +1,13 @@
 use crate::state::HOOKS;
 use cosmwasm_std::{to_binary, Addr, StdResult, Storage, SubMsg, WasmMsg};
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+use schemars::JsonSchema;
+
 // This is just a helper to properly serialize the above message
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq, JsonSchema, Debug))]
 #[serde(rename_all = "snake_case")]
 pub enum StakeChangedHookMsg {
     Stake { addr: Addr, token_id: String },
@@ -48,7 +51,8 @@ pub fn unstake_hook_msgs(
 }
 
 // This is just a helper to properly serialize the above message
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(PartialEq, Eq, JsonSchema, Debug))]
 #[serde(rename_all = "snake_case")]
 enum StakeChangedExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),

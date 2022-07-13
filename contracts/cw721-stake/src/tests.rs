@@ -1099,3 +1099,94 @@ fn test_simple_unstaking_without_rewards_with_duration() {
         Uint128::from(1u128)
     );
 }
+
+#[test]
+fn test_unstake_that_which_you_do_not_own() {
+    let mut app = mock_app();
+    let (staking_addr, cw721_addr) = setup_test_case(&mut app, None);
+
+    let info = mock_info(ADDR1, &[]);
+
+    // Mint and stake an NFT for addr1.
+    mint_nft(
+        &mut app,
+        &cw721_addr,
+        NFT_ID1.to_string(),
+        ADDR1.to_string(),
+        info.clone(),
+    )
+    .unwrap();
+    mint_nft(
+        &mut app,
+        &cw721_addr,
+        NFT_ID2.to_string(),
+        ADDR1.to_string(),
+        info.clone(),
+    )
+    .unwrap();
+
+    stake_nft(
+        &mut app,
+        &staking_addr,
+        &cw721_addr,
+        NFT_ID1.to_string(),
+        info.clone(),
+    )
+    .unwrap();
+    stake_nft(
+        &mut app,
+        &staking_addr,
+        &cw721_addr,
+        NFT_ID2.to_string(),
+        info,
+    )
+    .unwrap();
+
+    app.update_block(next_block);
+
+    let info = mock_info(ADDR2, &[]);
+    let err: ContractError =
+        unstake_tokens(&mut app, &staking_addr, info, vec![NFT_ID1.to_string()])
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+
+    assert_eq!(err, ContractError::NotStaked {});
+
+    // Try to unstaking the same token more than once as the owner of
+    // the token.
+    let info = mock_info(ADDR1, &[]);
+    let res: ContractError = unstake_tokens(
+        &mut app,
+        &staking_addr,
+        info,
+        vec![NFT_ID1.to_string(), NFT_ID1.to_string()],
+    )
+    .unwrap_err()
+    .downcast()
+    .unwrap();
+
+    assert_eq!(res, ContractError::NotStaked {});
+
+    let total_staked = query_total_staked(&app, &staking_addr);
+    assert_eq!(total_staked, Uint128::new(2));
+
+    // Legally unstake more than one token at once and make sure the
+    // count decreases as expected.
+    let info = mock_info(ADDR1, &[]);
+    unstake_tokens(
+        &mut app,
+        &staking_addr,
+        info,
+        vec![NFT_ID1.to_string(), NFT_ID2.to_string()],
+    )
+    .unwrap();
+
+    app.update_block(next_block);
+
+    let voting_power = query_voting_power(&app, &staking_addr, ADDR1, None);
+    assert_eq!(voting_power, Uint128::zero());
+
+    let total_staked = query_total_staked(&app, &staking_addr);
+    assert_eq!(total_staked, Uint128::zero());
+}

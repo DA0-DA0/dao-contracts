@@ -374,19 +374,19 @@ export type QueryMsg = {
 } | {
   cw20_balances: {
     limit?: number | null;
-    start_at?: string | null;
+    start_after?: string | null;
     [k: string]: unknown;
   };
 } | {
   cw20_token_list: {
     limit?: number | null;
-    start_at?: string | null;
+    start_after?: string | null;
     [k: string]: unknown;
   };
 } | {
   cw721_token_list: {
     limit?: number | null;
-    start_at?: string | null;
+    start_after?: string | null;
     [k: string]: unknown;
   };
 } | {
@@ -401,13 +401,13 @@ export type QueryMsg = {
 } | {
   list_items: {
     limit?: number | null;
-    start_at?: string | null;
+    start_after?: string | null;
     [k: string]: unknown;
   };
 } | {
   proposal_modules: {
     limit?: number | null;
-    start_at?: string | null;
+    start_after?: string | null;
     [k: string]: unknown;
   };
 } | {
@@ -452,24 +452,24 @@ export interface CwCoreReadOnlyInterface {
   config: () => Promise<ConfigResponse>;
   cw20Balances: ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }) => Promise<Cw20BalancesResponse>;
   cw20TokenList: ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }) => Promise<Cw20TokenListResponse>;
   cw721TokenList: ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }) => Promise<Cw721TokenListResponse>;
   dumpState: () => Promise<DumpStateResponse>;
   getItem: ({
@@ -479,17 +479,17 @@ export interface CwCoreReadOnlyInterface {
   }) => Promise<GetItemResponse>;
   listItems: ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }) => Promise<ListItemsResponse>;
   proposalModules: ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }) => Promise<ProposalModulesResponse>;
   pauseInfo: () => Promise<PauseInfoResponse>;
   votingModule: () => Promise<VotingModuleResponse>;
@@ -548,43 +548,43 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
   };
   cw20Balances = async ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }): Promise<Cw20BalancesResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       cw20_balances: {
         limit,
-        start_at: startAt
+        start_after: startAfter
       }
     });
   };
   cw20TokenList = async ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }): Promise<Cw20TokenListResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       cw20_token_list: {
         limit,
-        start_at: startAt
+        start_after: startAfter
       }
     });
   };
   cw721TokenList = async ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }): Promise<Cw721TokenListResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       cw721_token_list: {
         limit,
-        start_at: startAt
+        start_after: startAfter
       }
     });
   };
@@ -606,29 +606,29 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
   };
   listItems = async ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }): Promise<ListItemsResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_items: {
         limit,
-        start_at: startAt
+        start_after: startAfter
       }
     });
   };
   proposalModules = async ({
     limit,
-    startAt
+    startAfter
   }: {
     limit?: number;
-    startAt?: string;
+    startAfter?: string;
   }): Promise<ProposalModulesResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       proposal_modules: {
         limit,
-        start_at: startAt
+        start_after: startAfter
       }
     });
   };

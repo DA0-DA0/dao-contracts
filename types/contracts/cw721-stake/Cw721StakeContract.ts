@@ -127,6 +127,19 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
+  list_stakers: {
+    limit?: number | null;
+    start_after?: string | null;
+    [k: string]: unknown;
+  };
+} | {
+  staked_nfts: {
+    address: string;
+    limit?: number | null;
+    start_after?: string | null;
+    [k: string]: unknown;
+  };
+} | {
   voting_power_at_height: {
     address: string;
     height?: number | null;
@@ -148,6 +161,7 @@ export interface StakedBalanceAtHeightResponse {
   height: number;
   [k: string]: unknown;
 }
+export type StakedNftsResponse = string[];
 export interface TotalPowerAtHeightResponse {
   height: number;
   power: Uint128;
@@ -184,6 +198,22 @@ export interface Cw721StakeReadOnlyInterface {
     address: string;
   }) => Promise<NftClaimsResponse>;
   getHooks: () => Promise<GetHooksResponse>;
+  listStakers: ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ListStakersResponse>;
+  stakedNfts: ({
+    address,
+    limit,
+    startAfter
+  }: {
+    address: string;
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<StakedNftsResponse>;
   votingPowerAtHeight: ({
     address,
     height
@@ -210,6 +240,8 @@ export class Cw721StakeQueryClient implements Cw721StakeReadOnlyInterface {
     this.getConfig = this.getConfig.bind(this);
     this.nftClaims = this.nftClaims.bind(this);
     this.getHooks = this.getHooks.bind(this);
+    this.listStakers = this.listStakers.bind(this);
+    this.stakedNfts = this.stakedNfts.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
     this.info = this.info.bind(this);
@@ -259,6 +291,37 @@ export class Cw721StakeQueryClient implements Cw721StakeReadOnlyInterface {
   getHooks = async (): Promise<GetHooksResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       get_hooks: {}
+    });
+  };
+  listStakers = async ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ListStakersResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_stakers: {
+        limit,
+        start_after: startAfter
+      }
+    });
+  };
+  stakedNfts = async ({
+    address,
+    limit,
+    startAfter
+  }: {
+    address: string;
+    limit?: number;
+    startAfter?: string;
+  }): Promise<StakedNftsResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      staked_nfts: {
+        address,
+        limit,
+        start_after: startAfter
+      }
     });
   };
   votingPowerAtHeight = async ({

@@ -22,6 +22,7 @@ fn main() {
     export_schema(&schema_for!(StakedBalanceAtHeightResponse), &out_dir);
     export_schema(&schema_for!(TotalStakedAtHeightResponse), &out_dir);
     export_schema_with_title(&schema_for!(Config), &out_dir, "GetConfigResponse");
+    export_schema_with_title(&schema_for!(Vec<String>), &out_dir, "StakedNftsResponse");
     export_schema(&schema_for!(NftClaimsResponse), &out_dir);
     export_schema(&schema_for!(GetHooksResponse), &out_dir);
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);

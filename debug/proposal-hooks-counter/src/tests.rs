@@ -152,7 +152,7 @@ fn test_counters() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
