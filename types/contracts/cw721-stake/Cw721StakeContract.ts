@@ -82,6 +82,7 @@ export interface InstantiateMsg {
   unstaking_duration?: Duration | null;
   [k: string]: unknown;
 }
+export type ListStakersResponse = string[];
 export type Expiration = {
   at_height: number;
 } | {
