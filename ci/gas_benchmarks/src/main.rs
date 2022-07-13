@@ -127,7 +127,7 @@ fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::AdminNomination {}),
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::AcceptAdminNomination {}),
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::NominateAdmin {
-            admin: Some(admin_addr.clone()),
+            admin: Some(admin_addr),
         }),
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::WithdrawAdminNomination {}),
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::AdminNomination {}),
