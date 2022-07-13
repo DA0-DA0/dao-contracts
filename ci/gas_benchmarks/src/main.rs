@@ -8,6 +8,7 @@ use cosmwasm_std::{to_binary, CosmosMsg, Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 use serde_json::Value;
+use std::env;
 use std::fs;
 use voting::{
     deposit::DepositInfo, deposit::DepositToken, threshold::PercentageThreshold,
@@ -19,16 +20,16 @@ use voting::{
 // TODO: Can I use codecov to show the coverage of just the gas profiler separate from the unit tests?
 
 fn main() -> Result<()> {
-    // TODO: Make both of these envvars instead of hardcoding
-    let gas_report_out = "./gas_report.json";
-    let admin_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
+    let gas_report_out = env::var("GAS_REPORT_OUT")?;
+    let admin_addr = env::var("ADMIN_ADDR")?;
+    let contract_dir = env::var("CONTRACT_DIR")?;
 
     env_logger::init();
 
     let mut cosm_orc =
         CosmOrc::new(Config::from_yaml("config.yaml")?).add_profiler(Box::new(GasProfiler::new()));
 
-    cosm_orc.store_contracts("../../artifacts")?;
+    cosm_orc.store_contracts(&contract_dir)?;
 
     // ### CW-CORE ###
     cw_core_admin_benchmark(&mut cosm_orc, admin_addr)?;

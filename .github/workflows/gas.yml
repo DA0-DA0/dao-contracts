@@ -8,89 +8,92 @@ jobs:
   compile-contracts:
     name: Compile contracts using optimized rust compiler
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./ci/gas_benchmarks
     container:
       image: cosmwasm/workspace-optimizer:0.12.6
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-      - name: Store contracts in cache
-        id: contracts-cache
-        uses: actions/cache@v1
+      - name: Optimize
+        run: optimize_workspace.sh
+      - name: Upload contracts
+        uses: actions/upload-artifact@v3
         with:
+          name: dao-dao-contract-artifacts-${{ github.event.number }}
           path: artifacts
-          key: artifacts-contracts
+          retention-days: 1
 
   build-gas:
     name: Build Gas Benchmarker
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
           override: true
-          components: rustfmt, clippy
       - name: Create binary
         uses: actions-rs/cargo@v1
         with:
           toolchain: nightly
           command: build
-          args: --release
-      - name: Store binary in cache
-        id: contracts-cache
-        uses: actions/cache@v1
+          args: --release --manifest-path=ci/gas_benchmarks/Cargo.toml
+      - name: Upload gas binary
+        uses: actions/upload-artifact@v3
         with:
-          path: target/release/
-          key: gas-release
+          name: dao-dao-gas-bin-${{ github.event.number }}
+          path: ci/gas_benchmarks/target/release/gas-benchmarks
+          retention-days: 1
 
-  gas:
+  calc-gas:
     name: Calculate gas costs in local juno
     runs-on: ubuntu-latest
     needs: [compile-contracts, build-gas]
-    defaults:
-      run:
-        working-directory: ./ci/gas_benchmarks
-    container:
-      image: ghcr.io/cosmoscontracts/juno:v8.0.0
-      env:
-        PASSWORD: xxxxxxxxx
-        STAKE_TOKEN: ujunox
-        GAS_LIMIT: -1
-        UNSAFE_CORS: true
+    env:
+      ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
+      GAS_REPORT_OUT: ./gas_report.json
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install deps
-        run: apk --no-cache add rustup cargo
-
-      - name: Setup Juno Node
-        run: cd /opt && /opt/setup_and_run.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg > /dev/null 2>&1 &
+      # TODO: This is dumb, but:
+      # * We cant run this juno node as a `service` because services cant have custom entrypoint overrides
+      # * We cant run this juno node as a container of the job, because juno image uses alpine which cant compile `cw-core-macros` for some fun reason
+      - name: Run Local Juno Node
+        run: docker run --rm -d --name juno -e PASSWORD=xxxxxxxxx -e STAKE_TOKEN=ujunox -e GAS_LIMIT=-1 -e UNSAFE_CORS=true -p 1317:1317 -p 26656:26656 -p 26657:26657 ghcr.io/cosmoscontracts/juno:v8.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
 
       - name: Restore gas binary
-        uses: actions/cache@v1
+        uses: actions/download-artifact@v3
         with:
-          path: ./
-          key: gas-release
+          name: dao-dao-gas-bin-${{ github.event.number }}
+          path: ci/gas_benchmarks/
 
-      - name: Restore optimized contracts from cache
-        uses: actions/cache@v1
+      - name: Restore optimized contracts
+        uses: actions/download-artifact@v3
         with:
-          path: ../../artifacts
-          key: artifacts-contracts
+          name: dao-dao-contract-artifacts-${{ github.event.number }}
+          path: ci/gas_benchmarks/artifacts
+
+      - name: Debug
+        run: ls -la ci/gas_benchmarks/
+
+      - name: Debug
+        run: ls -la ci/gas_benchmarks/artifacts
+
+      - name: Fix gas bin perms
+        run: chmod +x ci/gas_benchmarks/gas-benchmarks
 
       - name: Calculate gas costs
-        run: RUST_LOG=DEBUG ./gas-benchmarks
+        run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" ./gas-benchmarks
 
       - name: Raw gas report
-        run: cat ./gas_report.json
+        run: cat ./ci/gas_benchmarks/gas_report.json
 
       - name: Post gas diff to PR
-        uses: de-husk/cosm-orc-gas-diff-action@v0.1
+        uses: de-husk/cosm-orc-gas-diff-action@v0.3
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           current_json: "./ci/gas_benchmarks/gas_report.json"
+          #old_json: "./ci/gas_benchmarks/old_gas_report.json"
