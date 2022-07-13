@@ -5,44 +5,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub subdenom: String,
-    pub admin: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    ChangeOwner {
-        new_owner: String,
-    },
-    AddMinter {
-        address: String,
-        allowance: Option(Uint128),
-    },
-    AddBurner {
-        address: String,
-        allowance: Option(Uint128),
-    },
-    AddBlacklister {
-        address: String,
-    },
-    AddFreezer {
-        address: String,
-    },
-    Mint {
-        to_address: String,
-        amount: Uint128,
-    },
-    Burn {
-        amount: Uint128,
-    },
-    Blacklist {
-        address: String,
-    },
-    Unblacklist {
-        address: String,
-    },
-    Freeze {},
-    Unfreeze {},
+    ChangeTokenFactoryAdmin { new_admin: String },
+    ChangeContractOwner { new_owner: String },
+    SetMinter { address: String, allowance: Uint128 },
+    SetBurner { address: String, allowance: Uint128 },
+    SetBlacklister { address: String, status: bool },
+    SetFreezer { address: String, status: bool },
+    Mint { to_address: String, amount: Uint128 },
+    Burn { amount: Uint128 },
+    Blacklist { address: String, status: bool },
+    Freeze { status: bool },
 }
 
 /// SudoMsg is only exposed for internal Cosmos SDK modules to call.
@@ -61,12 +38,20 @@ pub enum SudoMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // GetCount returns the current count as a json-encoded number
-    GetCount {},
+    // IsFrozen returns if the entire token transfer functionality is frozen
+    IsFrozen {},
+    // Denom returns the token denom that this contract is the admin for
+    Denom {},
 }
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CountResponse {
-    pub count: i32,
+pub struct IsFrozenResponse {
+    pub is_frozen: bool,
+}
+
+// We define a custom struct for each query response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DenomResponse {
+    pub denom: String,
 }

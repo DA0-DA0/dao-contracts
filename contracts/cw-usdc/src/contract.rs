@@ -6,21 +6,15 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use osmo_bindings::{OsmosisMsg, OsmosisQuery};
+use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
-use crate::state::{State, STATE, MINTER_ALLOWANCES, CONFIG};
+use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg};
+use crate::state::{Config, CONFIG, MINTER_ALLOWANCES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-
-pub fn getDenom(deps: Deps) -> StdResult<String> {
-    let config = CONFIG.load(deps.Storage)?;
-    return Ok(config.denom)
-}
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -29,17 +23,24 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let state = State {
-        count: msg.count,
-        owner: info.sender.clone(),
-    };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &state)?;
+
+    // TODO trigger CreateDenom msg
+    OsmosisMsg::CreateDenom {
+        subdenom: msg.subdenom,
+    };
+
+    let config = Config {
+        owner: info.sender.clone(),
+        is_frozen: false,
+        denom: String::from("TODO"), // TODO: use denom from actual message
+    };
+
+    CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender)
-        .add_attribute("count", msg.count.to_string()))
+        .add_attribute("owner", info.sender))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -51,8 +52,9 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         // ExecuteMsg::AddMinter { address, allowance } => execute
-        ExecuteMsg::Mint { to_address, amount } => execute_mint(deps,env, info, to_address, amount),
-        // ExecuteMsg::Burn { amount } => try_reset(deps, info, count),
+        ExecuteMsg::Mint { to_address, amount } => {
+            execute_mint(deps, env, info, to_address, amount)
+        } // ExecuteMsg::Burn { amount } => try_reset(deps, info, count),
     }
 }
 
@@ -69,21 +71,27 @@ pub fn execute_mint(
     // })?;
 
     deps.api.addr_validate(&to_address)?;
-    let denom = getDenom(deps)?;
+    let denom = query_denom(deps.as_ref())?;
 
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
     }
 
-    MINTER_ALLOWANCES.load(&deps.storage, info.sender);
+    let allowance = MINTER_ALLOWANCES.update(
+        deps.storage,
+        info.sender,
+        |allowance| -> StdResult<Uint128> {
+            Ok(allowance.unwrap_or_default().checked_sub(amount)?)
+        },
+    )?;
 
-    let mint_tokens_msg = OsmosisMsg::mint_contract_tokens(denom, amount, env.contract.address);
+    // TODO execute actual MintMsg
+    let mint_tokens_msg =
+        OsmosisMsg::mint_contract_tokens(denom, amount, env.contract.address.into_string());
 
     let res = Response::new()
         .add_attribute("method", "mint_tokens")
         .add_message(mint_tokens_msg);
-
-    Ok(res)
 
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
@@ -109,41 +117,44 @@ pub fn beforesend_hook(
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
 
-pub fn try_increment(deps: DepsMut) -> Result<Response, ContractError> {
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.count += 1;
-        Ok(state)
-    })?;
+// pub fn try_increment(deps: DepsMut) -> Result<Response, ContractError> {
+//     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+//         state.count += 1;
+//         Ok(state)
+//     })?;
 
-    Ok(Response::new().add_attribute("method", "try_increment"))
-}
+//     Ok(Response::new().add_attribute("method", "try_increment"))
+// }
 
-pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Response, ContractError> {
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.owner {
-            return Err(ContractError::Unauthorized {});
-        }
-        state.count = count;
-        Ok(state)
-    })?;
-    Ok(Response::new().add_attribute("method", "reset"))
-}
+// pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Response, ContractError> {
+//     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
+//         if info.sender != state.owner {
+//             return Err(ContractError::Unauthorized {});
+//         }
+//         state.count = count;
+//         Ok(state)
+//     })?;
+//     Ok(Response::new().add_attribute("method", "reset"))
+// }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::IsFrozen {} => to_binary(&query_is_frozen(deps)?),
+        QueryMsg::Denom {} => to_binary(&query_denom(deps)?),
     }
 }
 
-pub fn is_frozen(deps: Deps) -> bool {
-    let config = CONFIG.load(deps)?;
-    return config.fr
+pub fn query_denom(deps: Deps) -> StdResult<String> {
+    let config = CONFIG.load(deps.storage)?;
+    return Ok(config.denom);
 }
 
-fn query_count(deps: Deps) -> StdResult<CountResponse> {
-    let state = STATE.load(deps.storage)?;
-    Ok(CountResponse { count: state.count })
+pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
+    let config = CONFIG.load(deps.storage)?;
+    Ok(IsFrozenResponse {
+        is_frozen: config.is_frozen,
+    })
 }
 
 #[cfg(test)]
@@ -156,7 +167,9 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { count: 17 };
+        let msg = InstantiateMsg {
+            subdenom: String::from("uusdc"),
+        };
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
