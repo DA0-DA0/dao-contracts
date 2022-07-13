@@ -1,5 +1,4 @@
 [alias]
-# TODO: How can we setup these exludes in the cargo.toml instead of manually excluding here
-wasm = "build --release --target wasm32-unknown-unknown --exclude gas-benchmarks --workspace"
-wasm-debug = "build --target wasm32-unknown-unknown --exclude gas-benchmarks --workspace"
+wasm = "build --release --target wasm32-unknown-unknown"
+wasm-debug = "build --target wasm32-unknown-unknown"
 unit-test = "test --lib"

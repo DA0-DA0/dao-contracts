@@ -8,6 +8,9 @@ jobs:
   compile-contracts:
     name: Compile contracts using optimized rust compiler
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ci/gas_benchmarks
     container:
       image: cosmwasm/workspace-optimizer:0.12.6
     steps:
