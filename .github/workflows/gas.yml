@@ -155,8 +155,10 @@ jobs:
             GAS_REPORT_OUT="./old_gas_report.json" \
             ./gas-benchmarks
 
-      - name: Raw gas report
-        run: cat ./ci/gas_benchmarks/gas_report.json
+      - name: Raw gas reports
+        run: |
+          cat ./ci/gas_benchmarks/gas_report.json
+          cat ./ci/gas_benchmarks/old_gas_report.json
 
       - name: Post gas diff to PR
         uses: de-husk/cosm-orc-gas-diff-action@v0.3
