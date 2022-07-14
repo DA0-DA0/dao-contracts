@@ -80,6 +80,11 @@ jobs:
           name: dao-dao-contract-artifacts-${{ github.event.number }}
           path: ci/gas_benchmarks/artifacts
 
+      - name: Download smart contract dependencies
+        run: |
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm -O ci/gas_benchmarks/artifacts/cw20_base.wasm
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm -O ci/gas_benchmarks/artifacts/cw4_group.wasm
+
       - name: Debug
         run: ls -la ci/gas_benchmarks/
 

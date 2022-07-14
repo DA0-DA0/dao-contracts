@@ -64,15 +64,11 @@ fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result
                 code_id: cosm_orc
                     .contract_map
                     .get("cw20_staked_balance_voting")
-                    .context("not deployed")?
+                    .unwrap()
                     .code_id,
                 msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
                     token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
-                        code_id: cosm_orc
-                            .contract_map
-                            .get("cw20_base")
-                            .context("not deployed")?
-                            .code_id,
+                        code_id: cosm_orc.contract_map.get("cw20_base").unwrap().code_id,
                         label: "DAO DAO Gov token".to_string(),
                         name: "DAO".to_string(),
                         symbol: "DAO".to_string(),
@@ -82,11 +78,7 @@ fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result
                             amount: Uint128::new(1000000000000000),
                         }],
                         marketing: None,
-                        staking_code_id: cosm_orc
-                            .contract_map
-                            .get("cw20_stake")
-                            .context("not deployed")?
-                            .code_id,
+                        staking_code_id: cosm_orc.contract_map.get("cw20_stake").unwrap().code_id,
                         unstaking_duration: Some(Duration::Time(1209600)),
                         initial_dao_balance: None,
                     },
@@ -99,7 +91,7 @@ fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result
                 code_id: cosm_orc
                     .contract_map
                     .get("cw_proposal_single")
-                    .context("not deployed")?
+                    .unwrap()
                     .code_id,
                 msg: to_binary(&cw_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
@@ -151,10 +143,10 @@ fn cw_core_item_benchmark(cosm_orc: &mut CosmOrc) -> Result<()> {
                 contract_addr: cosm_orc
                     .contract_map
                     .get("cw_core")
-                    .context("not stored")?
+                    .unwrap()
                     .address
                     .as_ref()
-                    .context("not deployed")?
+                    .unwrap()
                     .to_string(),
                 msg: to_binary(&cw_core::msg::ExecuteMsg::SetItem {
                     key: "meme".to_string(),
@@ -183,10 +175,10 @@ fn cw_core_pause_benchmark(cosm_orc: &mut CosmOrc) -> Result<()> {
                 contract_addr: cosm_orc
                     .contract_map
                     .get("cw_core")
-                    .context("not stored")?
+                    .unwrap()
                     .address
                     .as_ref()
-                    .context("not deployed")?
+                    .unwrap()
                     .to_string(),
                 msg: to_binary(&cw_core::msg::ExecuteMsg::Pause {
                     duration: Duration::Time(1),
