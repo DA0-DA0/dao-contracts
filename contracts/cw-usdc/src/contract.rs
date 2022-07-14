@@ -5,7 +5,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use cw_storage_plus::Map;
 use osmo_bindings::{OsmosisMsg, OsmosisQuery};
 use osmo_bindings_test::OsmosisModule;
 
@@ -60,7 +59,9 @@ pub fn execute(
         ExecuteMsg::SetMinter { address, allowance } => todo!(),
         ExecuteMsg::SetBurner { address, allowance } => todo!(),
         ExecuteMsg::SetBlacklister { address, status } => todo!(),
-        ExecuteMsg::SetFreezer { address, status } => todo!(),
+        ExecuteMsg::SetFreezer { address, status } => {
+            execute_set_freezer(deps, env, info, address, status)
+        },
         ExecuteMsg::Burn { amount } => todo!(),
         ExecuteMsg::Blacklist { address, status } => {
             execute_blacklist(deps, env, info, address, status)
@@ -107,6 +108,30 @@ pub fn execute_mint(
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
 
+fn execute_set_freezer(
+    deps: DepsMut,
+    env: Env,
+    info:MessageInfo,
+    address: String,
+    status: bool,
+) -> Result<Response, ContractError> {
+    // TODO: Check if sender is authorised to set freezer
+
+    FREEZER_ALLOWANCES.update(deps.storage, deps.api.addr_validate(address.as_str())?, |mut stat| -> Result<_, ContractError> {
+        if let Some(current_status) = stat {
+            if current_status == status {
+                return Err(ContractError::FreezerStatusUnchangedError { status });
+            }
+        }
+        stat = Some(status);
+        Ok(status)
+    })?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_freezer")
+        .add_attribute("freezer", address))
+}
+
 fn execute_freeze(
     deps: DepsMut,
     _env: Env,
@@ -146,7 +171,7 @@ fn execute_blacklist(
     address: String,
     status: bool,
 ) -> Result<Response, ContractError> {
-    // TODO: check if sender is address
+    // TODO: check if sender is authorized 
 
     // update blacklisted status
     BLACKLISTED_ADDRESSES.update(
@@ -297,17 +322,58 @@ mod tests {
             _ => panic!("Must return unauthorized error"),
         }
 
+        // Test if the contract is unfrozen
         let query_msg = QueryMsg::IsFrozen {};
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
 
         let value: IsFrozenResponse = from_binary(&res).unwrap();
         assert_eq!(value.is_frozen, false);
 
-        // TODO: Test if the contract is properly frozen
+        //  test if the contract throws the right error for freezer, but unauthorized
+        set_freezer(deps.as_mut(), "false_freezer".to_string(), false);
+        let info = mock_info("false_freezer", &coins(1000, "uusdc"));
+        let freeze_msg = ExecuteMsg::Freeze { status: true };
+        let err = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap_err();
+        match err {
+            ContractError::Unauthorized {} => {},
+            _ => panic!("False freezer should generate a unauthorized error, but got {}", err)
+        }
 
-        // TODO: test if the contract throws the right error for freezer, but unauthorized
-        // TODO: test if the contract throws the right error for unchanged
-        // TODO: test if the contract throws the right error for
+
+        // test if the contract allows a authorized freezer to freeze the contract
+        set_freezer(deps.as_mut(), "true_freezer".to_string(), true);
+        let info = mock_info("true_freezer", &coins(1000,"uusdc"));
+        let freeze_msg = ExecuteMsg::Freeze { status: true };
+        let _res = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap();
+        
+        // test if the contract allows a authorized freezer to unfreeze the contract
+        set_freezer(deps.as_mut(), "true_freezer".to_string(), true);
+        let info = mock_info("true_freezer", &coins(1000,"uusdc"));
+        let freeze_msg = ExecuteMsg::Freeze { status: false };
+        let _res = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap();
+        
+        
+        // test if the contract throws the right error for unchanged
+        set_contract_config(deps.as_mut(), true);
+        let info = mock_info("true_freezer", &coins(1000,"uusdc"));
+        let freeze_msg = ExecuteMsg::Freeze { status: true };
+        let err = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap_err();
+        match err {
+            ContractError::ContractFrozenStatusUnchangedError { .. } => {},
+            _ => panic!("non-changing freeze msg should return FrozenStatusUnchangedError, but returns {}", err)
+        }
+
+
+        
+    }
+
+    // test helper func
+    fn set_freezer(deps:DepsMut, address: String, status: bool) {
+        FREEZER_ALLOWANCES.update(deps.storage, deps.api.addr_validate(&address.to_string()).unwrap(), |mut current_status| -> Result<_, ContractError>  {
+            current_status = Some(status);
+            
+            return Ok(status)
+        }).unwrap();
     }
 
     #[test]
@@ -329,15 +395,7 @@ mod tests {
         let _res = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
 
         // Test frozen contract
-        CONFIG
-            .update(
-                &mut deps.storage,
-                |mut config: Config| -> Result<_, ContractError> {
-                    config.is_frozen = true;
-                    Ok(config)
-                },
-            )
-            .unwrap();
+        set_contract_config(deps.as_mut(), true);
 
         // Test if contract is frozen, Sudo msg with frozen coins will be blocked
         let sudo_msg = SudoMsg::BeforeSend {
@@ -361,6 +419,19 @@ mod tests {
             amount: coins(1000, "non-frozen"),
         };
         let _res = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
+    }
+
+    // test helper
+    fn set_contract_config(deps:DepsMut, is_frozen: bool) {
+        CONFIG
+        .update(
+            deps.storage,
+            |mut config: Config| -> Result<_, ContractError> {
+                config.is_frozen = is_frozen;
+                Ok(config)
+            },
+        )
+        .unwrap();
     }
 
     #[test]

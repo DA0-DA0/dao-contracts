@@ -36,4 +36,7 @@ pub enum ContractError {
 
     #[error("Frozen status is already {status:?}")]
     ContractFrozenStatusUnchangedError { status: bool },
+
+    #[error("Freezer status is already {status:?}")]
+    FreezerStatusUnchangedError {status: bool}
 }
