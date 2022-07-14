@@ -11,7 +11,7 @@ use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg};
-use crate::state::{Config, CONFIG, MINTER_ALLOWANCES, BLACKLISTED_ADDRESSES, FREEZER_ALLOWANCES};
+use crate::state::{Config, BLACKLISTED_ADDRESSES, CONFIG, FREEZER_ALLOWANCES, MINTER_ALLOWANCES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
@@ -52,7 +52,9 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Mint{to_address,amount}=>{execute_mint(deps,env,info,to_address,amount)}
+        ExecuteMsg::Mint { to_address, amount } => {
+            execute_mint(deps, env, info, to_address, amount)
+        }
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => todo!(),
         ExecuteMsg::ChangeContractOwner { new_owner } => todo!(),
         ExecuteMsg::SetMinter { address, allowance } => todo!(),
@@ -60,7 +62,9 @@ pub fn execute(
         ExecuteMsg::SetBlacklister { address, status } => todo!(),
         ExecuteMsg::SetFreezer { address, status } => todo!(),
         ExecuteMsg::Burn { amount } => todo!(),
-        ExecuteMsg::Blacklist { address, status } => execute_blacklist(deps, env, info, address, status),
+        ExecuteMsg::Blacklist { address, status } => {
+            execute_blacklist(deps, env, info, address, status)
+        }
         ExecuteMsg::Freeze { status } => execute_freeze(deps, env, info, status),
     }
 }
@@ -108,37 +112,52 @@ fn execute_freeze(
     _env: Env,
     info: MessageInfo,
     status: bool,
-) -> Result<Response,ContractError> {
+) -> Result<Response, ContractError> {
     // check if the sender is allowed to freeze
     if let Some(freezer_status) = FREEZER_ALLOWANCES.may_load(deps.storage, info.sender)? {
-        if freezer_status == false { return Err(ContractError::Unauthorized {}) }
+        if freezer_status == false {
+            return Err(ContractError::Unauthorized {});
+        }
 
         // check if the status of the contract is already the same as the update
         let config = CONFIG.load(deps.storage)?;
-        if config.is_frozen == status { 
-            return Err(ContractError::ContractFrozenStatusUnchangedError { status: status }) 
+        if config.is_frozen == status {
+            return Err(ContractError::ContractFrozenStatusUnchangedError { status: status });
         } else {
-            CONFIG.update(deps.storage, |mut config: Config| -> Result<_, ContractError>{
-                config.is_frozen = status;
-                Ok(config)
-            })?;
+            CONFIG.update(
+                deps.storage,
+                |mut config: Config| -> Result<_, ContractError> {
+                    config.is_frozen = status;
+                    Ok(config)
+                },
+            )?;
 
-            Ok(Response::new()
-                .add_attribute("method", "execute_freeze"))
+            Ok(Response::new().add_attribute("method", "execute_freeze"))
         }
-    } else { return Err(ContractError::Unauthorized {})}
+    } else {
+        return Err(ContractError::Unauthorized {});
+    }
 }
 
-fn execute_blacklist(deps: DepsMut, env: Env, info: MessageInfo, address: String, status: bool) -> Result<Response, ContractError> {
-    
+fn execute_blacklist(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    address: String,
+    status: bool,
+) -> Result<Response, ContractError> {
     // TODO: check if sender is address
 
     // update blacklisted status
-    BLACKLISTED_ADDRESSES.update(deps.storage, deps.api.addr_validate(address.as_str())?, |mut stat| -> Result<_,ContractError> {
-        stat = Some(status);
-        Ok(status)
-    })?;
-    
+    BLACKLISTED_ADDRESSES.update(
+        deps.storage,
+        deps.api.addr_validate(address.as_str())?,
+        |mut stat| -> Result<_, ContractError> {
+            stat = Some(status);
+            Ok(status)
+        },
+    )?;
+
     Ok(Response::new()
         .add_attribute("method", "blacklist")
         .add_attribute("address", address)
@@ -158,27 +177,33 @@ pub fn beforesend_hook(
     to: String,
     amount: Vec<Coin>,
 ) -> Result<Response, ContractError> {
-
     let config = CONFIG.load(deps.storage)?;
-    
 
     if config.is_frozen {
         // is it neccesary to check each coin? or just always return error
         for coin in amount {
-            if coin.denom == config.denom { return Err(ContractError::ContractFrozenError { denom: config.denom }) }
+            if coin.denom == config.denom {
+                return Err(ContractError::ContractFrozenError {
+                    denom: config.denom,
+                });
+            }
         }
     }
-    
+
     // Check if 'from' address is blacklisted
     let from_address = deps.api.addr_validate(from.as_str())?;
     if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, from_address)? {
-        if is_blacklisted { return Err(ContractError::BlacklistedError { address: from })}
+        if is_blacklisted {
+            return Err(ContractError::BlacklistedError { address: from });
+        }
     };
-    
+
     // Check if 'to' address is blacklisted
     let to_address = deps.api.addr_validate(to.as_str())?;
     if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, to_address)? {
-        if is_blacklisted { return Err(ContractError::BlacklistedError { address: to })}
+        if is_blacklisted {
+            return Err(ContractError::BlacklistedError { address: to });
+        }
     };
 
     Ok(Response::new().add_attribute("method", "try_increment"))
@@ -203,7 +228,6 @@ pub fn beforesend_hook(
 //     })?;
 //     Ok(Response::new().add_attribute("method", "reset"))
 // }
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -264,17 +288,16 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-
         // tests if the contract throws the right error for non-freezers
         let unauthorized_info = mock_info("anyone", &coins(1000, "earth"));
         let freeze_msg = ExecuteMsg::Freeze { status: true };
         let res = execute(deps.as_mut(), mock_env(), unauthorized_info, freeze_msg);
         match res {
-            Err(ContractError::Unauthorized{})  => {},
-            _ => panic!("Must return unauthorized error")
+            Err(ContractError::Unauthorized {}) => {}
+            _ => panic!("Must return unauthorized error"),
         }
 
-        let query_msg = QueryMsg::IsFrozen {  };
+        let query_msg = QueryMsg::IsFrozen {};
         let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
 
         let value: IsFrozenResponse = from_binary(&res).unwrap();
@@ -282,10 +305,9 @@ mod tests {
 
         // TODO: Test if the contract is properly frozen
 
-
         // TODO: test if the contract throws the right error for freezer, but unauthorized
         // TODO: test if the contract throws the right error for unchanged
-        // TODO: test if the contract throws the right error for 
+        // TODO: test if the contract throws the right error for
     }
 
     #[test]
@@ -299,27 +321,45 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // Test unfrozen contract
-        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "uusdc") };
+        let sudo_msg = SudoMsg::BeforeSend {
+            from: "from_address".to_string(),
+            to: "to_address".to_string(),
+            amount: coins(1000, "uusdc"),
+        };
         let _res = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
 
-
         // Test frozen contract
-        CONFIG.update(&mut deps.storage, |mut config: Config| -> Result<_, ContractError>{
-            config.is_frozen = true;
-            Ok(config)
-        }).unwrap();
+        CONFIG
+            .update(
+                &mut deps.storage,
+                |mut config: Config| -> Result<_, ContractError> {
+                    config.is_frozen = true;
+                    Ok(config)
+                },
+            )
+            .unwrap();
 
         // Test if contract is frozen, Sudo msg with frozen coins will be blocked
-        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
+        let sudo_msg = SudoMsg::BeforeSend {
+            from: "from_address".to_string(),
+            to: "to_address".to_string(),
+            amount: coins(1000, "TODO"),
+        };
         let res = sudo(deps.as_mut(), mock_env(), sudo_msg);
         let err = res.unwrap_err();
         match err {
-            ContractError::ContractFrozenError { .. } => { },
-            _ => {panic!("contract should be frozen, but is {}", err)}
+            ContractError::ContractFrozenError { .. } => {}
+            _ => {
+                panic!("contract should be frozen, but is {}", err)
+            }
         }
 
         // Test if contract is frozen, Sudo msg with non-frozen coins will not be blocked
-        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "non-frozen") };
+        let sudo_msg = SudoMsg::BeforeSend {
+            from: "from_address".to_string(),
+            to: "to_address".to_string(),
+            amount: coins(1000, "non-frozen"),
+        };
         let _res = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
     }
 
@@ -331,25 +371,42 @@ mod tests {
             subdenom: String::from("uusdc"),
         };
         let info = mock_info("creator", &coins(1000, "earth"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap(); 
-        
-        let blacklist_msg = ExecuteMsg::Blacklist { address: "blacklisted".to_string(), status: true };
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let blacklist_msg = ExecuteMsg::Blacklist {
+            address: "blacklisted".to_string(),
+            status: true,
+        };
         let res = execute(deps.as_mut(), mock_env(), info, blacklist_msg).unwrap();
 
         // test when sender is blacklisted
-        let sudo_msg = SudoMsg::BeforeSend { from: "blacklisted".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
+        let sudo_msg = SudoMsg::BeforeSend {
+            from: "blacklisted".to_string(),
+            to: "to_address".to_string(),
+            amount: coins(1000, "TODO"),
+        };
         let err = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap_err();
         match err {
-            ContractError::BlacklistedError { .. } => {},
-            _ => panic!("Blacklisted sender should generate blacklistedError, not {}", err),
+            ContractError::BlacklistedError { .. } => {}
+            _ => panic!(
+                "Blacklisted sender should generate blacklistedError, not {}",
+                err
+            ),
         }
 
         // test when receiver is blacklisted
-        let sudo_msg = SudoMsg::BeforeSend { from: "blacklisted".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
+        let sudo_msg = SudoMsg::BeforeSend {
+            from: "blacklisted".to_string(),
+            to: "to_address".to_string(),
+            amount: coins(1000, "TODO"),
+        };
         let err = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap_err();
         match err {
-            ContractError::BlacklistedError { .. } => {},
-            _ => panic!("Blacklisted receiver should generate blacklistedError, not {}", err),
+            ContractError::BlacklistedError { .. } => {}
+            _ => panic!(
+                "Blacklisted receiver should generate blacklistedError, not {}",
+                err
+            ),
         }
     }
     // #[test]

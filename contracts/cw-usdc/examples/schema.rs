@@ -3,8 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use cw_usdc::msg::{SudoMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw_usdc::state::{Config};
+use cw_usdc::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
+use cw_usdc::state::Config;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

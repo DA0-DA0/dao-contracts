@@ -3,12 +3,11 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "count"
+    "subdenom"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
+    "subdenom": {
+      "type": "string"
     }
   }
 }

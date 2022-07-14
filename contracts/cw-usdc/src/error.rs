@@ -32,8 +32,8 @@ pub enum ContractError {
     BlacklistedError { address: String },
 
     #[error("The contract is frozen for denom {denom:?}")]
-    ContractFrozenError {denom: String},
+    ContractFrozenError { denom: String },
 
     #[error("Frozen status is already {status:?}")]
-    ContractFrozenStatusUnchangedError {status: bool },
+    ContractFrozenStatusUnchangedError { status: bool },
 }
