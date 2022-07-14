@@ -10,7 +10,7 @@ use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg};
-use crate::state::{Config, CONFIG, MINTER_ALLOWANCES};
+use crate::state::{Config, CONFIG, MINTER_ALLOWANCES, BLACKLISTED_ADDRESSES, FREEZER_ALLOWANCES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
@@ -51,10 +51,16 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        // ExecuteMsg::AddMinter { address, allowance } => execute
-        ExecuteMsg::Mint { to_address, amount } => {
-            execute_mint(deps, env, info, to_address, amount)
-        } // ExecuteMsg::Burn { amount } => try_reset(deps, info, count),
+        ExecuteMsg::Mint{to_address,amount}=>{execute_mint(deps,env,info,to_address,amount)}
+        ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => todo!(),
+        ExecuteMsg::ChangeContractOwner { new_owner } => todo!(),
+        ExecuteMsg::SetMinter { address, allowance } => todo!(),
+        ExecuteMsg::SetBurner { address, allowance } => todo!(),
+        ExecuteMsg::SetBlacklister { address, status } => todo!(),
+        ExecuteMsg::SetFreezer { address, status } => todo!(),
+        ExecuteMsg::Burn { amount } => todo!(),
+        ExecuteMsg::Blacklist { address, status } => todo!(),
+        ExecuteMsg::Freeze { status } => execute_freeze(deps, env, info, status),
     }
 }
 
@@ -96,6 +102,35 @@ pub fn execute_mint(
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
 
+fn execute_freeze(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    status: bool,
+) -> Result<Response,ContractError> {
+    // check if the sender is allowed to freeze
+    if let Some(freezer_status) = FREEZER_ALLOWANCES.may_load(deps.storage, info.sender)? {
+        if freezer_status == false { return Err(ContractError::Unauthorized {}) }
+
+        // check if the status of the contract is already the same as the update
+        let config = CONFIG.load(deps.storage)?;
+        if config.is_frozen == status { 
+            return Err(ContractError::ContractFrozenStatusUnchangedError { status: status }) 
+        } else {
+            CONFIG.update(deps.storage, |mut config: Config| -> Result<_, ContractError>{
+                config.is_frozen = status;
+                Ok(config)
+            })?;
+
+            Ok(Response::new().add_attribute("method", "execute_freeze"))
+        }
+    } else { return Err(ContractError::Unauthorized {})}
+    
+
+    // update 
+    
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
@@ -109,10 +144,33 @@ pub fn beforesend_hook(
     to: String,
     amount: Vec<Coin>,
 ) -> Result<Response, ContractError> {
+
+    let config = CONFIG.load(deps.storage)?;
+    
+
+    if config.is_frozen {
+        // is this neccesary? or just always return error
+        for coin in amount {
+            if coin.denom == config.denom { return Err(ContractError::ContractFrozenError { denom: config.denom }) }
+        }
+    }
+
     // STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
     //     state.count += 1;
     //     Ok(state)
     // })?;
+    
+    // Check if 'from' address is blacklisted
+    let from_address = deps.api.addr_validate(from.as_str())?;
+    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, from_address)? {
+        if is_blacklisted { return Err(ContractError::BlacklistedError { address: from })}
+    };
+    
+    // Check if 'to' address is blacklisted
+    let to_address = deps.api.addr_validate(to.as_str())?;
+    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, to_address)? {
+        if is_blacklisted { return Err(ContractError::BlacklistedError { address: to })}
+    };
 
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
@@ -137,6 +195,7 @@ pub fn beforesend_hook(
 //     Ok(Response::new().add_attribute("method", "reset"))
 // }
 
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -159,6 +218,8 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
 
 #[cfg(test)]
 mod tests {
+    use crate::msg::DenomResponse;
+
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary};
@@ -177,55 +238,92 @@ mod tests {
         assert_eq!(0, res.messages.len());
 
         // it worked, let's query the state
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(17, value.count);
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::Denom {}).unwrap();
+        let value: DenomResponse = from_binary(&res).unwrap();
+        assert_eq!("uusdc", value.denom);
     }
 
     #[test]
-    fn increment() {
+    fn freeze_contract() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = InstantiateMsg {
+            subdenom: String::from("uusdc"),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
 
-        // beneficiary can release it
-        let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Increment {};
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+ 
+        // TODO: Test if the contract is properly frozen
 
-        // should increase counter by 1
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(18, value.count);
+        // TODO: test if the contract throws the right error for freezer, but unauthorized
+        // TODO: test if the contract throws the right error for non-freezers
+        // TODO: test if the contract throws the right error for unchanged
+        // TODO: test if the contract throws the right error for 
     }
 
     #[test]
-    fn reset() {
+    fn frozen_contract() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let msg = InstantiateMsg {
+            subdenom: String::from("uusdc"),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
 
-        // beneficiary can release it
-        let unauth_info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Must return unauthorized error"),
-        }
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        // only the original creator can reset the counter
-        let auth_info = mock_info("creator", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
 
-        // should now be 5
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(5, value.count);
+        // TODO: Test if contract is frozen, Sudo msg with frozen coins will be blocked
+        
+        // TODO: Test if contract is frozen, Sudo msg with non-frozen coins will not be blocked
+
     }
+
+    // #[test]
+    // fn increment() {
+    //     let mut deps = mock_dependencies();
+
+    //     let msg = InstantiateMsg { subdenom: "token".to_string() };
+    //     let info = mock_info("creator", &coins(2, "token"));
+    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    //     // beneficiary can release it
+    //     let info = mock_info("anyone", &coins(2, "token"));
+    //     let msg = ExecuteMsg::Increment {};
+    //     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    //     // should increase counter by 1
+    //     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
+    //     let value: CountResponse = from_binary(&res).unwrap();
+    //     assert_eq!(18, value.count);
+    // }
+
+    // #[test]
+    // fn reset() {
+    //     let mut deps = mock_dependencies();
+
+    //     let msg = InstantiateMsg { count: 17 };
+    //     let info = mock_info("creator", &coins(2, "token"));
+    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    //     // beneficiary can release it
+    //     let unauth_info = mock_info("anyone", &coins(2, "token"));
+    //     let msg = ExecuteMsg::Reset { count: 5 };
+    //     let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
+    //     match res {
+    //         Err(ContractError::Unauthorized {}) => {}
+    //         _ => panic!("Must return unauthorized error"),
+    //     }
+
+    //     // only the original creator can reset the counter
+    //     let auth_info = mock_info("creator", &coins(2, "token"));
+    //     let msg = ExecuteMsg::Reset { count: 5 };
+    //     let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
+
+    //     // should now be 5
+    //     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
+    //     let value: CountResponse = from_binary(&res).unwrap();
+    //     assert_eq!(5, value.count);
+    // }
 }
