@@ -42,15 +42,15 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let owner = match msg.owner {
-        Some(owner) => Some(deps.api.addr_validate(&owner)?),
-        None => None,
-    };
 
-    let manager = match msg.manager {
-        Some(manager) => Some(deps.api.addr_validate(&manager)?),
-        None => None,
-    };
+    let owner = msg
+        .owner
+        .map(|owner| deps.api.addr_validate(&owner))
+        .transpose()?;
+    let manager = msg
+        .manager
+        .map(|manager| deps.api.addr_validate(&manager))
+        .transpose()?;
 
     validate_duration(msg.unstaking_duration)?;
 
@@ -64,7 +64,22 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
     DAO.save(deps.storage, &info.sender)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    Ok(Response::new()
+        .add_attribute("action", "instantiate")
+        .add_attribute(
+            "owner",
+            config
+                .owner
+                .map(|a| a.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+        )
+        .add_attribute(
+            "manager",
+            config
+                .manager
+                .map(|a| a.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+        ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
