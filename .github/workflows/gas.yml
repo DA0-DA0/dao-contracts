@@ -113,6 +113,8 @@ jobs:
         run: |
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm -O ci/gas_benchmarks/artifacts/cw20_base.wasm
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm -O ci/gas_benchmarks/artifacts/cw4_group.wasm
+          cp ci/gas_benchmarks/artifacts/cw20_base.wasm  ci/gas_benchmarks/old-artifacts/cw20_base.wasm
+          cp ci/gas_benchmarks/artifacts/cw4_group.wasm  ci/gas_benchmarks/old-artifacts/cw4_group.wasm
 
       - name: Fix gas bin perms
         run: chmod +x ci/gas_benchmarks/gas-benchmarks
@@ -131,7 +133,7 @@ jobs:
       - name: Calculate gas costs
         run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" ./gas-benchmarks
 
-      - name: Calculate gas costs
+      - name: Calculate old gas costs
         run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="old-artifacts" GAS_REPORT_OUT="./old_gas_report.json" ./gas-benchmarks
 
       - name: Raw gas report
