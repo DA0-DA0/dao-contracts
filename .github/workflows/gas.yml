@@ -2,9 +2,27 @@ on: [pull_request]
 
 name: Gas Benchmark
 
-# TODO: Make this actually a diff, rn its just posting the current PR's gas usage
-
 jobs:
+  compile-old-contracts:
+    name: Compile contracts using optimized rust compiler
+    runs-on: ubuntu-latest
+    container:
+      image: cosmwasm/workspace-optimizer:0.12.6
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - name: Optimize
+        run: optimize_workspace.sh
+      - name: Upload contracts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dao-dao-contract-old-artifacts-${{ github.event.number }}
+          path: old-artifacts
+          retention-days: 1
+
   compile-contracts:
     name: Compile contracts using optimized rust compiler
     runs-on: ubuntu-latest
@@ -80,16 +98,16 @@ jobs:
           name: dao-dao-contract-artifacts-${{ github.event.number }}
           path: ci/gas_benchmarks/artifacts
 
+      - name: Restore old optimized contracts
+        uses: actions/download-artifact@v3
+        with:
+          name: dao-dao-contract-old-artifacts-${{ github.event.number }}
+          path: ci/gas_benchmarks/old-artifacts
+
       - name: Download smart contract dependencies
         run: |
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm -O ci/gas_benchmarks/artifacts/cw20_base.wasm
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm -O ci/gas_benchmarks/artifacts/cw4_group.wasm
-
-      - name: Debug
-        run: ls -la ci/gas_benchmarks/
-
-      - name: Debug
-        run: ls -la ci/gas_benchmarks/artifacts
 
       - name: Fix gas bin perms
         run: chmod +x ci/gas_benchmarks/gas-benchmarks
@@ -105,11 +123,11 @@ jobs:
           junod config keyring-backend test
           tail -n 1 default-account.txt | junod keys add $KEY_NAME --recover
 
-      - name: Test junod
-        run: junod keys list
-
       - name: Calculate gas costs
         run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" ./gas-benchmarks
+
+      - name: Calculate gas costs
+        run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="old-artifacts" GAS_REPORT_OUT="./old_gas_report.json" ./gas-benchmarks
 
       - name: Raw gas report
         run: cat ./ci/gas_benchmarks/gas_report.json
@@ -119,4 +137,4 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           current_json: "./ci/gas_benchmarks/gas_report.json"
-          #old_json: "./ci/gas_benchmarks/old_gas_report.json"
+          old_json: "./ci/gas_benchmarks/old_gas_report.json"
