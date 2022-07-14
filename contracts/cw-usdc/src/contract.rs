@@ -5,6 +5,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
+use cw_storage_plus::Map;
 use osmo_bindings::{OsmosisMsg, OsmosisQuery};
 use osmo_bindings_test::OsmosisModule;
 
@@ -122,13 +123,26 @@ fn execute_freeze(
                 Ok(config)
             })?;
 
-            Ok(Response::new().add_attribute("method", "execute_freeze"))
+            Ok(Response::new()
+                .add_attribute("method", "execute_freeze"))
         }
     } else { return Err(ContractError::Unauthorized {})}
-    
+}
 
-    // update 
+fn execute_blacklist(deps: DepsMut, env: Env, info: MessageInfo, address: String, status: bool) -> Result<Response, ContractError> {
     
+    // TODO: check if sender is address
+
+    // update blacklisted status
+    BLACKLISTED_ADDRESSES.update(deps.storage, deps.api.addr_validate(address.as_str())?, |mut stat| -> Result<_,ContractError> {
+        stat = Some(status);
+        Ok(status)
+    })?;
+    
+    Ok(Response::new()
+        .add_attribute("method", "blacklist")
+        .add_attribute("address", address)
+        .add_attribute("new_value", status.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -149,16 +163,11 @@ pub fn beforesend_hook(
     
 
     if config.is_frozen {
-        // is this neccesary? or just always return error
+        // is it neccesary to check each coin? or just always return error
         for coin in amount {
             if coin.denom == config.denom { return Err(ContractError::ContractFrozenError { denom: config.denom }) }
         }
     }
-
-    // STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-    //     state.count += 1;
-    //     Ok(state)
-    // })?;
     
     // Check if 'from' address is blacklisted
     let from_address = deps.api.addr_validate(from.as_str())?;
@@ -218,11 +227,12 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
 
 #[cfg(test)]
 mod tests {
+
     use crate::msg::DenomResponse;
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary};
+    use cosmwasm_std::{coins, from_binary, Addr};
 
     #[test]
     fn proper_initialization() {
@@ -252,12 +262,28 @@ mod tests {
         };
         let info = mock_info("creator", &coins(1000, "earth"));
 
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
- 
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+
+        // tests if the contract throws the right error for non-freezers
+        let unauthorized_info = mock_info("anyone", &coins(1000, "earth"));
+        let freeze_msg = ExecuteMsg::Freeze { status: true };
+        let res = execute(deps.as_mut(), mock_env(), unauthorized_info, freeze_msg);
+        match res {
+            Err(ContractError::Unauthorized{})  => {},
+            _ => panic!("Must return unauthorized error")
+        }
+
+        let query_msg = QueryMsg::IsFrozen {  };
+        let res = query(deps.as_ref(), mock_env(), query_msg).unwrap();
+
+        let value: IsFrozenResponse = from_binary(&res).unwrap();
+        assert_eq!(value.is_frozen, false);
+
         // TODO: Test if the contract is properly frozen
 
+
         // TODO: test if the contract throws the right error for freezer, but unauthorized
-        // TODO: test if the contract throws the right error for non-freezers
         // TODO: test if the contract throws the right error for unchanged
         // TODO: test if the contract throws the right error for 
     }
@@ -270,16 +296,49 @@ mod tests {
             subdenom: String::from("uusdc"),
         };
         let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+        // Test unfrozen contract
+        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "uusdc") };
+        let _res = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
 
 
-        // TODO: Test if contract is frozen, Sudo msg with frozen coins will be blocked
-        
-        // TODO: Test if contract is frozen, Sudo msg with non-frozen coins will not be blocked
+        // Test frozen contract
+        CONFIG.update(&mut deps.storage, |mut config: Config| -> Result<_, ContractError>{
+            config.is_frozen = true;
+            Ok(config)
+        }).unwrap();
 
+        // Test if contract is frozen, Sudo msg with frozen coins will be blocked
+        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
+        let res = sudo(deps.as_mut(), mock_env(), sudo_msg);
+        let err = res.unwrap_err();
+        match err {
+            ContractError::ContractFrozenError { .. } => { },
+            _ => {panic!("contract should be frozen, but is {}", err)}
+        }
+
+        // Test if contract is frozen, Sudo msg with non-frozen coins will not be blocked
+        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "non-frozen") };
+        let _res = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
     }
 
+    #[test]
+    fn blacklist() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            subdenom: String::from("uusdc"),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap(); 
+        
+        // BLACKLISTED_ADDRESSES.load(deps.storage, "from_address", ||)
+        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
+        let res = sudo(deps.as_mut(), mock_env(), sudo_msg);
+
+
+    }
     // #[test]
     // fn increment() {
     //     let mut deps = mock_dependencies();
