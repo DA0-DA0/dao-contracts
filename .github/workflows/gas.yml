@@ -83,13 +83,26 @@ jobs:
         uses: actions/checkout@v3
 
       # TODO: This is dumb, but:
-      # * We cant run this juno node as a `service` because services cant have custom entrypoint overrides
-      # * We cant run this juno node as a container of the job, because juno image uses alpine which cant compile `cw-core-macros` for some fun reason
+      # * We cant run this juno node as a `service` because services
+      #   cant have custom entrypoint overrides
+      # * We cant run this juno node as a container of the job, because juno image
+      #   uses alpine which cant compile `cw-core-macros` for some fun reason
       - name: Run Local Juno Node
-        run: docker run --rm -d --name juno -e PASSWORD=xxxxxxxxx -e STAKE_TOKEN=ujunox -e GAS_LIMIT=-1 -e UNSAFE_CORS=true -p 1317:1317 -p 26656:26656 -p 26657:26657 ghcr.io/cosmoscontracts/juno:v8.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
+        run: |
+          docker run --rm -d --name juno \
+            -e PASSWORD=xxxxxxxxx \
+            -e STAKE_TOKEN=ujunox \
+            -e GAS_LIMIT=-1 \
+            -e UNSAFE_CORS=true \
+            -p 1317:1317 \
+            -p 26656:26656 \
+            -p 26657:26657 \
+            ghcr.io/cosmoscontracts/juno:v8.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
 
+      # HACK: We should be polling until a certain height is reached
+      # (it would be cool if cosm-orc could do this for us)
       - name: Let Juno catch up
-        run: sleep 30 # TODO: this is a hack. We should be polling until a certain height is reached (it would be cool if cosm-orc could do this for us)
+        run: sleep 30
 
       - name: Restore gas binary
         uses: actions/download-artifact@v3
@@ -111,10 +124,12 @@ jobs:
 
       - name: Download smart contract dependencies
         run: |
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm -O ci/gas_benchmarks/artifacts/cw20_base.wasm
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm -O ci/gas_benchmarks/artifacts/cw4_group.wasm
-          cp ci/gas_benchmarks/artifacts/cw20_base.wasm  ci/gas_benchmarks/old-artifacts/cw20_base.wasm
-          cp ci/gas_benchmarks/artifacts/cw4_group.wasm  ci/gas_benchmarks/old-artifacts/cw4_group.wasm
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
+            -O ci/gas_benchmarks/artifacts/cw20_base.wasm
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
+            -O ci/gas_benchmarks/artifacts/cw4_group.wasm
+          cp ci/gas_benchmarks/artifacts/cw20_base.wasm ci/gas_benchmarks/old-artifacts/cw20_base.wasm
+          cp ci/gas_benchmarks/artifacts/cw4_group.wasm ci/gas_benchmarks/old-artifacts/cw4_group.wasm
 
       - name: Fix gas bin perms
         run: chmod +x ci/gas_benchmarks/gas-benchmarks
@@ -134,7 +149,11 @@ jobs:
         run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" ./gas-benchmarks
 
       - name: Calculate old gas costs
-        run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="old-artifacts" GAS_REPORT_OUT="./old_gas_report.json" ./gas-benchmarks
+        run: |
+          cd ci/gas_benchmarks/ && RUST_LOG=DEBUG \
+            CONTRACT_DIR="old-artifacts" \
+            GAS_REPORT_OUT="./old_gas_report.json" \
+            ./gas-benchmarks
 
       - name: Raw gas report
         run: cat ./ci/gas_benchmarks/gas_report.json
