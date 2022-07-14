@@ -61,7 +61,7 @@ pub fn execute(
         ExecuteMsg::SetBlacklister { address, status } => todo!(),
         ExecuteMsg::SetFreezer { address, status } => {
             execute_set_freezer(deps, env, info, address, status)
-        },
+        }
         ExecuteMsg::Burn { amount } => todo!(),
         ExecuteMsg::Blacklist { address, status } => {
             execute_blacklist(deps, env, info, address, status)
@@ -111,21 +111,29 @@ pub fn execute_mint(
 fn execute_set_freezer(
     deps: DepsMut,
     env: Env,
-    info:MessageInfo,
+    info: MessageInfo,
     address: String,
     status: bool,
 ) -> Result<Response, ContractError> {
-    // TODO: Check if sender is authorised to set freezer
+    // Check if sender is authorised to set freezer
+    let config = CONFIG.load(deps.storage).unwrap();
+    if config.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
 
-    FREEZER_ALLOWANCES.update(deps.storage, deps.api.addr_validate(address.as_str())?, |mut stat| -> Result<_, ContractError> {
-        if let Some(current_status) = stat {
-            if current_status == status {
-                return Err(ContractError::FreezerStatusUnchangedError { status });
+    FREEZER_ALLOWANCES.update(
+        deps.storage,
+        deps.api.addr_validate(address.as_str())?,
+        |mut stat| -> Result<_, ContractError> {
+            if let Some(current_status) = stat {
+                if current_status == status {
+                    return Err(ContractError::FreezerStatusUnchangedError { status });
+                }
             }
-        }
-        stat = Some(status);
-        Ok(status)
-    })?;
+            stat = Some(status);
+            Ok(status)
+        },
+    )?;
 
     Ok(Response::new()
         .add_attribute("method", "set_freezer")
@@ -171,7 +179,7 @@ fn execute_blacklist(
     address: String,
     status: bool,
 ) -> Result<Response, ContractError> {
-    // TODO: check if sender is authorized 
+    // TODO: check if sender is authorized
 
     // update blacklisted status
     BLACKLISTED_ADDRESSES.update(
@@ -278,6 +286,7 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
 mod tests {
 
     use crate::msg::DenomResponse;
+    use crate::state::BLACKLISTER_ALLOWANCES;
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -330,50 +339,58 @@ mod tests {
         assert_eq!(value.is_frozen, false);
 
         //  test if the contract throws the right error for freezer, but unauthorized
-        set_freezer(deps.as_mut(), "false_freezer".to_string(), false);
+        add_freezer(deps.as_mut(), "false_freezer".to_string(), false);
         let info = mock_info("false_freezer", &coins(1000, "uusdc"));
         let freeze_msg = ExecuteMsg::Freeze { status: true };
         let err = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap_err();
         match err {
-            ContractError::Unauthorized {} => {},
-            _ => panic!("False freezer should generate a unauthorized error, but got {}", err)
+            ContractError::Unauthorized {} => {}
+            _ => panic!(
+                "False freezer should generate a unauthorized error, but got {}",
+                err
+            ),
         }
 
-
         // test if the contract allows a authorized freezer to freeze the contract
-        set_freezer(deps.as_mut(), "true_freezer".to_string(), true);
-        let info = mock_info("true_freezer", &coins(1000,"uusdc"));
+        add_freezer(deps.as_mut(), "true_freezer".to_string(), true);
+        let info = mock_info("true_freezer", &coins(1000, "uusdc"));
         let freeze_msg = ExecuteMsg::Freeze { status: true };
         let _res = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap();
-        
+
         // test if the contract allows a authorized freezer to unfreeze the contract
-        set_freezer(deps.as_mut(), "true_freezer".to_string(), true);
-        let info = mock_info("true_freezer", &coins(1000,"uusdc"));
+        add_freezer(deps.as_mut(), "true_freezer".to_string(), true);
+        let info = mock_info("true_freezer", &coins(1000, "uusdc"));
         let freeze_msg = ExecuteMsg::Freeze { status: false };
         let _res = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap();
-        
-        
+
         // test if the contract throws the right error for unchanged
         set_contract_config(deps.as_mut(), true);
-        let info = mock_info("true_freezer", &coins(1000,"uusdc"));
+        let info = mock_info("true_freezer", &coins(1000, "uusdc"));
         let freeze_msg = ExecuteMsg::Freeze { status: true };
         let err = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap_err();
         match err {
-            ContractError::ContractFrozenStatusUnchangedError { .. } => {},
-            _ => panic!("non-changing freeze msg should return FrozenStatusUnchangedError, but returns {}", err)
+            ContractError::ContractFrozenStatusUnchangedError { .. } => {}
+            _ => panic!(
+                "non-changing freeze msg should return FrozenStatusUnchangedError, but returns {}",
+                err
+            ),
         }
-
-
-        
     }
 
     // test helper func
-    fn set_freezer(deps:DepsMut, address: String, status: bool) {
-        FREEZER_ALLOWANCES.update(deps.storage, deps.api.addr_validate(&address.to_string()).unwrap(), |mut current_status| -> Result<_, ContractError>  {
-            current_status = Some(status);
-            
-            return Ok(status)
-        }).unwrap();
+    #[allow(unused_assignments)]
+    fn add_freezer(deps: DepsMut, address: String, status: bool) {
+        FREEZER_ALLOWANCES
+            .update(
+                deps.storage,
+                deps.api.addr_validate(&address.to_string()).unwrap(),
+                |mut current_status| -> Result<_, ContractError> {
+                    current_status = Some(status);
+
+                    return Ok(status);
+                },
+            )
+            .unwrap();
     }
 
     #[test]
@@ -422,20 +439,74 @@ mod tests {
     }
 
     // test helper
-    fn set_contract_config(deps:DepsMut, is_frozen: bool) {
+    fn set_contract_config(deps: DepsMut, is_frozen: bool) {
         CONFIG
-        .update(
-            deps.storage,
-            |mut config: Config| -> Result<_, ContractError> {
-                config.is_frozen = is_frozen;
-                Ok(config)
-            },
-        )
-        .unwrap();
+            .update(
+                deps.storage,
+                |mut config: Config| -> Result<_, ContractError> {
+                    config.is_frozen = is_frozen;
+                    Ok(config)
+                },
+            )
+            .unwrap();
     }
 
     #[test]
-    fn blacklist() {
+    fn set_freezer() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            subdenom: String::from("udoge"),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // test setting freezers. set 2 because why not
+        let set_freezer_msg = ExecuteMsg::SetFreezer {
+            address: "freezer1".to_string(),
+            status: true,
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), set_freezer_msg).unwrap();
+        let set_freezer_msg = ExecuteMsg::SetFreezer {
+            address: "freezer2".to_string(),
+            status: true,
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info, set_freezer_msg).unwrap();
+
+        // test if freezer1 can freeze
+        let freeze_msg = ExecuteMsg::Freeze { status: true };
+        let info = mock_info("freezer1", &coins(1000, "udoge"));
+        let _res = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap();
+
+        // test if freezer can be unset
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let set_freezer_msg = ExecuteMsg::SetFreezer {
+            address: "freezer1".to_string(),
+            status: false,
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), set_freezer_msg).unwrap();
+
+        let freeze_msg = ExecuteMsg::Freeze { status: false };
+        let info = mock_info("freezer1", &coins(1000, "udoge"));
+        let err = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap_err();
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("should throw Unauthorized error but throws {}", err),
+        }
+
+        let info = mock_info("anyone", &coins(1000, "udoge"));
+        let set_freezer_msg = ExecuteMsg::SetFreezer {
+            address: "freezer2".to_string(),
+            status: false,
+        };
+        let err = execute(deps.as_mut(), mock_env(), info, set_freezer_msg).unwrap_err();
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("should throw Unauthorized error but throws {}", err),
+        }
+    }
+
+    #[test]
+    fn beforesend() {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
@@ -444,11 +515,7 @@ mod tests {
         let info = mock_info("creator", &coins(1000, "earth"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let blacklist_msg = ExecuteMsg::Blacklist {
-            address: "blacklisted".to_string(),
-            status: true,
-        };
-        let res = execute(deps.as_mut(), mock_env(), info, blacklist_msg).unwrap();
+        add_to_blacklist(deps.as_mut(), "blacklisted".to_string(), true);
 
         // test when sender is blacklisted
         let sudo_msg = SudoMsg::BeforeSend {
@@ -479,51 +546,40 @@ mod tests {
                 err
             ),
         }
+
+        // TODO: test when sender and receiver are not on the blacklist
+        // TODO: test when the contract is frozen
+        // TODO: test when the contract is frozen and the sender is blacklisted
     }
-    // #[test]
-    // fn increment() {
-    //     let mut deps = mock_dependencies();
 
-    //     let msg = InstantiateMsg { subdenom: "token".to_string() };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+    // test helper
+    #[allow(unused_assignments)]
+    fn set_blacklister(deps: DepsMut, address: String, status: bool) {
+        BLACKLISTER_ALLOWANCES
+            .update(
+                deps.storage,
+                deps.api.addr_validate(&address.to_string()).unwrap(),
+                |mut current_status| -> Result<_, ContractError> {
+                    current_status = Some(status);
+                    return Ok(status);
+                },
+            )
+            .unwrap();
+    }
 
-    //     // beneficiary can release it
-    //     let info = mock_info("anyone", &coins(2, "token"));
-    //     let msg = ExecuteMsg::Increment {};
-    //     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    // test helper
+    #[allow(unused_assignments)]
+    fn add_to_blacklist(deps: DepsMut, address: String, status: bool) {
+        BLACKLISTED_ADDRESSES
+            .update(
+                deps.storage,
+                deps.api.addr_validate(&address.to_string()).unwrap(),
+                |mut current_status| -> Result<_, ContractError> {
+                    current_status = Some(status);
 
-    //     // should increase counter by 1
-    //     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    //     let value: CountResponse = from_binary(&res).unwrap();
-    //     assert_eq!(18, value.count);
-    // }
-
-    // #[test]
-    // fn reset() {
-    //     let mut deps = mock_dependencies();
-
-    //     let msg = InstantiateMsg { count: 17 };
-    //     let info = mock_info("creator", &coins(2, "token"));
-    //     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    //     // beneficiary can release it
-    //     let unauth_info = mock_info("anyone", &coins(2, "token"));
-    //     let msg = ExecuteMsg::Reset { count: 5 };
-    //     let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-    //     match res {
-    //         Err(ContractError::Unauthorized {}) => {}
-    //         _ => panic!("Must return unauthorized error"),
-    //     }
-
-    //     // only the original creator can reset the counter
-    //     let auth_info = mock_info("creator", &coins(2, "token"));
-    //     let msg = ExecuteMsg::Reset { count: 5 };
-    //     let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-    //     // should now be 5
-    //     let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    //     let value: CountResponse = from_binary(&res).unwrap();
-    //     assert_eq!(5, value.count);
-    // }
+                    return Ok(status);
+                },
+            )
+            .unwrap();
+    }
 }
