@@ -90,7 +90,7 @@ jobs:
         run: |
           wget https://github.com/CosmosContracts/juno/releases/download/v8.0.0/junod -O junod
           chmod +x ./junod
-          tail -n 1 default-account.txt |  ./junod keys add $KEY_NAME --recover
+          tail -n 1 default-account.txt |  ./junod keys add $KEY_NAME --recover --keyring-backend test
           mv junod /usr/local/bin
       
       - name: Test junod
