@@ -9,7 +9,7 @@ jobs:
   # * Can we use github action cache to cache the individual wasm files if their source code dirs dont change?
 
   compile-old-contracts:
-    name: Compile contracts using optimized rust compiler
+    name: Compile old contracts using optimized rust compiler
     runs-on: ubuntu-latest
     container:
       image: cosmwasm/workspace-optimizer:0.12.6
@@ -25,7 +25,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: dao-dao-contract-old-artifacts-${{ github.event.number }}
-          path: old-artifacts
+          path: artifacts
           retention-days: 1
 
   compile-contracts:
