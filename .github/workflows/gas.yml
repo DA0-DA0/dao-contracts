@@ -53,6 +53,7 @@ jobs:
     needs: [compile-contracts, build-gas]
     env:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
+      KEY_NAME: validator
       GAS_REPORT_OUT: ./gas_report.json
     steps:
       - name: Checkout sources
@@ -84,6 +85,19 @@ jobs:
 
       - name: Fix gas bin perms
         run: chmod +x ci/gas_benchmarks/gas-benchmarks
+
+      - name: Install local junod + Add validator key
+        run: |
+          wget https://github.com/CosmosContracts/juno/releases/download/v8.0.0/junod -O junod
+          chmod +x ./junod
+          tail -n 1 default-account.txt |  ./junod keys add $KEY_NAME --recover
+          mv junod /usr/local/bin
+      
+      - name: Test junod
+        run: /usr/local/bin/junod keys list
+  
+      - name: Test junod
+        run: junod keys list
 
       - name: Calculate gas costs
         run: cd ci/gas_benchmarks/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" ./gas-benchmarks
