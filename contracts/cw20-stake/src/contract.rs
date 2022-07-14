@@ -10,8 +10,8 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, MigrateMsg, QueryMsg,
-    ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg,
+    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,
 };
 use crate::state::{
@@ -35,6 +35,24 @@ use cw_utils::Duration;
 const CONTRACT_NAME: &str = "crates.io:cw20-stake";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
+    if let Some(unstaking_duration) = duration {
+        match unstaking_duration {
+            Duration::Height(height) => {
+                if height == 0 {
+                    return Err(ContractError::InvalidUnstakingDuration {});
+                }
+            }
+            Duration::Time(time) => {
+                if time == 0 {
+                    return Err(ContractError::InvalidUnstakingDuration {});
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -52,6 +70,7 @@ pub fn instantiate(
         None => None,
     };
 
+    validate_duration(msg.unstaking_duration)?;
     let config = Config {
         owner,
         manager,
@@ -105,6 +124,8 @@ pub fn execute_update_config(
     if Some(info.sender) != config.owner && new_owner != config.owner {
         return Err(ContractError::OnlyOwnerCanChangeOwner {});
     };
+
+    validate_duration(duration)?;
 
     config.owner = new_owner;
     config.manager = new_manager;
@@ -416,14 +437,9 @@ pub fn query_total_value(deps: Deps, _env: Env) -> StdResult<TotalValueResponse>
     Ok(TotalValueResponse { total: balance })
 }
 
-pub fn query_config(deps: Deps) -> StdResult<GetConfigResponse> {
+pub fn query_config(deps: Deps) -> StdResult<Config> {
     let config = CONFIG.load(deps.storage)?;
-    Ok(GetConfigResponse {
-        owner: config.owner.map(|a| a.to_string()),
-        manager: config.manager.map(|a| a.to_string()),
-        unstaking_duration: config.unstaking_duration,
-        token_address: config.token_address.to_string(),
-    })
+    Ok(config)
 }
 
 pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
@@ -474,10 +490,10 @@ mod tests {
     use std::borrow::BorrowMut;
 
     use crate::msg::{
-        ExecuteMsg, GetConfigResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-        StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+        ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse,
+        TotalStakedAtHeightResponse, TotalValueResponse,
     };
-    use crate::state::MAX_CLAIMS;
+    use crate::state::{Config, MAX_CLAIMS};
     use crate::ContractError;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
@@ -597,7 +613,7 @@ mod tests {
         result.balance
     }
 
-    fn query_config<T: Into<String>>(app: &App, contract_addr: T) -> GetConfigResponse {
+    fn query_config<T: Into<String>>(app: &App, contract_addr: T) -> Config {
         let msg = QueryMsg::GetConfig {};
         app.wrap().query_wasm_smart(contract_addr, &msg).unwrap()
     }
@@ -690,6 +706,20 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
+    fn test_instantiate_invalid_unstaking_duration() {
+        let mut app = mock_app();
+        let amount1 = Uint128::from(100u128);
+        let _token_address = Addr::unchecked("token_address");
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: amount1,
+        }];
+        let (_staking_addr, _cw20_addr) =
+            setup_test_case(&mut app, initial_balances, Some(Duration::Height(0)));
+    }
+
+    #[test]
     fn test_update_config() {
         let _deps = mock_dependencies();
 
@@ -716,7 +746,7 @@ mod tests {
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some("owner2".to_string()));
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
         assert_eq!(config.unstaking_duration, Some(Duration::Height(100)));
 
         // Try updating owner with original owner, which is now invalid
@@ -745,8 +775,8 @@ mod tests {
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some("owner2".to_string()));
-        assert_eq!(config.manager, Some("manager".to_string()));
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+        assert_eq!(config.manager, Some(Addr::unchecked("manager")));
 
         // Manager can update unstaking duration
         let info = mock_info("manager", &[]);
@@ -761,7 +791,7 @@ mod tests {
         )
         .unwrap();
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some("owner2".to_string()));
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
         assert_eq!(config.unstaking_duration, Some(Duration::Height(50)));
 
         // Manager cannot update owner
@@ -791,8 +821,24 @@ mod tests {
         .unwrap();
 
         let config = query_config(&app, &staking_addr);
-        assert_eq!(config.owner, Some("owner2".to_string()));
+        assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
         assert_eq!(config.manager, None);
+
+        // Invalid duration
+        let info = mock_info("owner2", &[]);
+        let _env = mock_env();
+        let err: ContractError = update_config(
+            &mut app,
+            &staking_addr,
+            info,
+            Some(Addr::unchecked("owner2")),
+            None,
+            Some(Duration::Height(0)),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+        assert_eq!(err, ContractError::InvalidUnstakingDuration {});
 
         // Remove owner
         let info = mock_info("owner2", &[]);

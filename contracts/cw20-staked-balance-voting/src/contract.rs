@@ -65,7 +65,7 @@ pub fn instantiate(
                 } => {
                     let staking_contract_address =
                         deps.api.addr_validate(&staking_contract_address)?;
-                    let resp: cw20_stake::msg::GetConfigResponse = deps.querier.query_wasm_smart(
+                    let resp: cw20_stake::state::Config = deps.querier.query_wasm_smart(
                         &staking_contract_address,
                         &cw20_stake::msg::QueryMsg::GetConfig {},
                     )?;

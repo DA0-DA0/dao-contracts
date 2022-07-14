@@ -21,4 +21,6 @@ pub enum ContractError {
     HookError(#[from] cw_controllers::HookError),
     #[error("Only owner can change owner")]
     OnlyOwnerCanChangeOwner {},
+    #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
+    InvalidUnstakingDuration {},
 }
