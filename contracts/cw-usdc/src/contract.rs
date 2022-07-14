@@ -60,7 +60,7 @@ pub fn execute(
         ExecuteMsg::SetBlacklister { address, status } => todo!(),
         ExecuteMsg::SetFreezer { address, status } => todo!(),
         ExecuteMsg::Burn { amount } => todo!(),
-        ExecuteMsg::Blacklist { address, status } => todo!(),
+        ExecuteMsg::Blacklist { address, status } => execute_blacklist(deps, env, info, address, status),
         ExecuteMsg::Freeze { status } => execute_freeze(deps, env, info, status),
     }
 }
@@ -331,13 +331,26 @@ mod tests {
             subdenom: String::from("uusdc"),
         };
         let info = mock_info("creator", &coins(1000, "earth"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap(); 
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap(); 
         
-        // BLACKLISTED_ADDRESSES.load(deps.storage, "from_address", ||)
-        let sudo_msg = SudoMsg::BeforeSend { from: "from_address".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
-        let res = sudo(deps.as_mut(), mock_env(), sudo_msg);
+        let blacklist_msg = ExecuteMsg::Blacklist { address: "blacklisted".to_string(), status: true };
+        let res = execute(deps.as_mut(), mock_env(), info, blacklist_msg).unwrap();
 
+        // test when sender is blacklisted
+        let sudo_msg = SudoMsg::BeforeSend { from: "blacklisted".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
+        let err = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap_err();
+        match err {
+            ContractError::BlacklistedError { .. } => {},
+            _ => panic!("Blacklisted sender should generate blacklistedError, not {}", err),
+        }
 
+        // test when receiver is blacklisted
+        let sudo_msg = SudoMsg::BeforeSend { from: "blacklisted".to_string(), to: "to_address".to_string(), amount: coins(1000, "TODO") };
+        let err = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap_err();
+        match err {
+            ContractError::BlacklistedError { .. } => {},
+            _ => panic!("Blacklisted receiver should generate blacklistedError, not {}", err),
+        }
     }
     // #[test]
     // fn increment() {
