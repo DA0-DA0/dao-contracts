@@ -86,16 +86,17 @@ jobs:
       - name: Fix gas bin perms
         run: chmod +x ci/gas_benchmarks/gas-benchmarks
 
-      - name: Install local junod + Add validator key
+      - name: Install local junod
         run: |
           wget https://github.com/CosmosContracts/juno/releases/download/v8.0.0/junod -O junod
           chmod +x ./junod
-          tail -n 1 default-account.txt |  ./junod keys add $KEY_NAME --recover --keyring-backend test
           mv junod /usr/local/bin
       
-      - name: Test junod
-        run: /usr/local/bin/junod keys list
-  
+      - name: Add Validator key
+        run: |
+          junod config keyring-backend test
+          tail -n 1 default-account.txt | junod keys add $KEY_NAME --recover
+
       - name: Test junod
         run: junod keys list
 
