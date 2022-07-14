@@ -276,7 +276,7 @@ pub fn execute_claim_nfts(
     Ok(Response::default()
         .add_messages(msgs)
         .add_attribute("action", "claim_nfts")
-        .add_attribute("from", info.sender.clone()))
+        .add_attribute("from", info.sender))
 }
 
 pub fn execute_update_config(
