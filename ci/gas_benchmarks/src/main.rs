@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use cosm_orc::{
     config::cfg::Config,
     orchestrator::cosm_orc::{CosmOrc, WasmMsg},
@@ -10,14 +10,11 @@ use cw_utils::Duration;
 use serde_json::Value;
 use std::env;
 use std::fs;
+use std::{thread, time};
 use voting::{
     deposit::DepositInfo, deposit::DepositToken, threshold::PercentageThreshold,
     threshold::Threshold,
 };
-
-// TODO: Make integration tests using cosm-orc in a similar fashion to these gas benchmarks
-
-// TODO: Can I use codecov to show the coverage of just the gas profiler separate from the unit tests?
 
 fn main() -> Result<()> {
     let gas_report_out = env::var("GAS_REPORT_OUT")?;
@@ -32,13 +29,12 @@ fn main() -> Result<()> {
     cosm_orc.store_contracts(&contract_dir)?;
 
     // ### CW-CORE ###
-    cw_core_admin_benchmark(&mut cosm_orc, admin_addr)?;
+    cw_core_admin_benchmark(&mut cosm_orc, admin_addr.clone())?;
     cw_core_item_benchmark(&mut cosm_orc)?;
     cw_core_pause_benchmark(&mut cosm_orc)?;
 
-    // TODO:
-    // * Do more cw-core benchmarks
-    // * Add benchmarks for the rests of the contracts
+    // ### CW20-STAKED-BALANCE-VOTING ###
+    cw20_stake_tokens_benchmark(&mut cosm_orc, admin_addr)?;
 
     // Write output file:
     let reports = cosm_orc.profiler_reports()?;
@@ -50,9 +46,7 @@ fn main() -> Result<()> {
 }
 
 fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result<()> {
-    let msgs: Vec<
-        WasmMsg<cw_core::msg::InstantiateMsg, cw_core::msg::ExecuteMsg, cw_core::msg::QueryMsg>,
-    > = vec![
+    let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::InstantiateMsg(cw_core::msg::InstantiateMsg {
             admin: Some(admin_addr.clone()),
             name: "DAO DAO".to_string(),
@@ -74,7 +68,7 @@ fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result
                         symbol: "DAO".to_string(),
                         decimals: 6,
                         initial_balances: vec![Cw20Coin {
-                            address: "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string(),
+                            address: admin_addr.clone(),
                             amount: Uint128::new(1000000000000000),
                         }],
                         marketing: None,
@@ -114,6 +108,7 @@ fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result
             initial_items: None,
         }),
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::DumpState {}),
+        WasmMsg::QueryMsg(cw_core::msg::QueryMsg::VotingModule {}),
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::NominateAdmin {
             admin: Some(admin_addr.clone()),
         }),
@@ -134,9 +129,7 @@ fn cw_core_admin_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result
 fn cw_core_item_benchmark(cosm_orc: &mut CosmOrc) -> Result<()> {
     // Uses `cw_core` deployed contract address, to avoid re-initializing it on chain.
     // If you wish to make a new `cw_core`, simply pass in an `InstantiateMsg` again.
-    let msgs: Vec<
-        WasmMsg<cw_core::msg::InstantiateMsg, cw_core::msg::ExecuteMsg, cw_core::msg::QueryMsg>,
-    > = vec![
+    let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::DumpState {}),
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -167,9 +160,7 @@ fn cw_core_item_benchmark(cosm_orc: &mut CosmOrc) -> Result<()> {
 }
 
 fn cw_core_pause_benchmark(cosm_orc: &mut CosmOrc) -> Result<()> {
-    let msgs: Vec<
-        WasmMsg<cw_core::msg::InstantiateMsg, cw_core::msg::ExecuteMsg, cw_core::msg::QueryMsg>,
-    > = vec![
+    let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                 contract_addr: cosm_orc
@@ -194,3 +185,85 @@ fn cw_core_pause_benchmark(cosm_orc: &mut CosmOrc) -> Result<()> {
 
     Ok(())
 }
+
+fn cw20_stake_tokens_benchmark(cosm_orc: &mut CosmOrc, admin_addr: String) -> Result<()> {
+    // Store contract addresses for new dao's staking and voting modules:
+
+    // TODO: Just parse these from the cw_core instantiate respone json instead
+    let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::VotingModule {});
+    let res = cosm_orc.process_msg("cw_core".to_string(), &msg)?;
+    let voting_module_addr = &res["data"].as_str().unwrap();
+
+    // TODO: make this all nicer to use in an integration test harness lib
+    cosm_orc
+        .contract_map
+        .get_mut(&"cw20_staked_balance_voting".to_string())
+        .unwrap()
+        .address = Some(voting_module_addr.to_string());
+
+    let msg: Cw20StakeBalanceWasmMsg =
+        WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::StakingContract {});
+    let res = cosm_orc.process_msg("cw20_staked_balance_voting".to_string(), &msg)?;
+    let staking_addr = &res["data"].as_str().unwrap();
+
+    cosm_orc
+        .contract_map
+        .get_mut(&"cw20_stake".to_string())
+        .unwrap()
+        .address = Some(staking_addr.to_string());
+
+    // Stake tokens:
+    let msgs: Vec<Cw20StakeWasmMsg> = vec![
+        WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
+            address: admin_addr.clone(),
+        }),
+        WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::GetConfig {}),
+    ];
+    let res = cosm_orc.process_msgs("cw20_stake".to_string(), &msgs)?;
+    let token_addr = &res[1]["data"]["token_address"].as_str().unwrap();
+
+    cosm_orc
+        .contract_map
+        .get_mut(&"cw20_base".to_string())
+        .unwrap()
+        .address = Some(token_addr.to_string());
+
+    let msgs: Vec<Cw20BaseWasmMsg> = vec![WasmMsg::ExecuteMsg(cw20_base::msg::ExecuteMsg::Send {
+        contract: staking_addr.to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+    })];
+    cosm_orc.process_msgs("cw20_base".to_string(), &msgs)?;
+
+    let msgs: Vec<Cw20StakeWasmMsg> =
+        vec![WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
+            address: admin_addr,
+        })];
+    cosm_orc.process_msgs("cw20_stake".to_string(), &msgs)?;
+
+    // Sleep to let staking block process:
+    thread::sleep(time::Duration::from_millis(5000));
+
+    // TODO: Unstake a token
+
+    Ok(())
+}
+
+// TODO: Use a macro for these type aliases? (put it in cosm-orc actually)
+type CoreWasmMsg =
+    WasmMsg<cw_core::msg::InstantiateMsg, cw_core::msg::ExecuteMsg, cw_core::msg::QueryMsg>;
+
+type Cw20StakeBalanceWasmMsg = WasmMsg<
+    cw20_staked_balance_voting::msg::InstantiateMsg,
+    cw20_staked_balance_voting::msg::ExecuteMsg,
+    cw20_staked_balance_voting::msg::QueryMsg,
+>;
+
+type Cw20StakeWasmMsg = WasmMsg<
+    cw20_stake::msg::InstantiateMsg,
+    cw20_stake::msg::ExecuteMsg,
+    cw20_stake::msg::QueryMsg,
+>;
+
+type Cw20BaseWasmMsg =
+    WasmMsg<cw20_base::msg::InstantiateMsg, cw20_base::msg::ExecuteMsg, cw20_base::msg::QueryMsg>;
