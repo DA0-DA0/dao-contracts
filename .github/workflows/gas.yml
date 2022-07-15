@@ -161,7 +161,7 @@ jobs:
           cat ./ci/gas_benchmarks/old_gas_report.json
 
       - name: Post gas diff to PR
-        uses: de-husk/cosm-orc-gas-diff-action@v0.3
+        uses: de-husk/cosm-orc-gas-diff-action@v0.5
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           current_json: "./ci/gas_benchmarks/gas_report.json"

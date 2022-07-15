@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-cosm-orc = { version = "0.5.1" }
+cosm-orc = { version = "0.5.2" }
 cw-core = { version = "0.1.0", path = "../../contracts/cw-core" }
 cw20-stake = { version = "*", path = "../../contracts/cw20-stake" }
 cw20-staked-balance-voting = { version = "0.1.0", path = "../../contracts/cw20-staked-balance-voting" }
