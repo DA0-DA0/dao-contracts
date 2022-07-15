@@ -27,4 +27,16 @@ pub enum ContractError {
 
     #[error("amount was zero, must be positive")]
     ZeroAmount {},
+
+    #[error("The address '{address}' is blacklisted")]
+    BlacklistedError { address: String },
+
+    #[error("The contract is frozen for denom {denom:?}")]
+    ContractFrozenError { denom: String },
+
+    #[error("Frozen status is already {status:?}")]
+    ContractFrozenStatusUnchangedError { status: bool },
+
+    #[error("Freezer status is already {status:?}")]
+    FreezerStatusUnchangedError { status: bool },
 }
