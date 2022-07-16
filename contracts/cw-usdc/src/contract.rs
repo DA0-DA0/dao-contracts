@@ -127,7 +127,7 @@ fn execute_set_freezer(
         |mut stat| -> Result<_, ContractError> {
             if let Some(current_status) = stat {
                 if current_status == status {
-                    return Err(ContractError::FreezerStatusUnchangedError { status });
+                    return Err(ContractError::FreezerStatusUnchanged { status });
                 }
             }
             stat = Some(status);
@@ -137,7 +137,8 @@ fn execute_set_freezer(
 
     Ok(Response::new()
         .add_attribute("method", "set_freezer")
-        .add_attribute("freezer", address))
+        .add_attribute("freezer", address)
+        .add_attribute("status", status.to_string()))
 }
 
 fn execute_freeze(
@@ -155,7 +156,7 @@ fn execute_freeze(
         // check if the status of the contract is already the same as the update
         let config = CONFIG.load(deps.storage)?;
         if config.is_frozen == status {
-            return Err(ContractError::ContractFrozenStatusUnchangedError { status: status });
+            return Err(ContractError::ContractFrozenStatusUnchanged { status: status });
         } else {
             CONFIG.update(
                 deps.storage,
@@ -165,7 +166,9 @@ fn execute_freeze(
                 },
             )?;
 
-            Ok(Response::new().add_attribute("method", "execute_freeze"))
+            Ok(Response::new()
+                .add_attribute("method", "execute_freeze")
+                .add_attribute("status", status.to_string()))
         }
     } else {
         return Err(ContractError::Unauthorized {});
@@ -216,7 +219,7 @@ pub fn beforesend_hook(
         // is it neccesary to check each coin? or just always return error
         for coin in amount {
             if coin.denom == config.denom {
-                return Err(ContractError::ContractFrozenError {
+                return Err(ContractError::ContractFrozen {
                     denom: config.denom,
                 });
             }
@@ -227,7 +230,7 @@ pub fn beforesend_hook(
     let from_address = deps.api.addr_validate(from.as_str())?;
     if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, from_address)? {
         if is_blacklisted {
-            return Err(ContractError::BlacklistedError { address: from });
+            return Err(ContractError::Blacklisted { address: from });
         }
     };
 
@@ -235,7 +238,7 @@ pub fn beforesend_hook(
     let to_address = deps.api.addr_validate(to.as_str())?;
     if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, to_address)? {
         if is_blacklisted {
-            return Err(ContractError::BlacklistedError { address: to });
+            return Err(ContractError::Blacklisted { address: to });
         }
     };
 
@@ -369,7 +372,7 @@ mod tests {
         let freeze_msg = ExecuteMsg::Freeze { status: true };
         let err = execute(deps.as_mut(), mock_env(), info, freeze_msg).unwrap_err();
         match err {
-            ContractError::ContractFrozenStatusUnchangedError { .. } => {}
+            ContractError::ContractFrozenStatusUnchanged { .. } => {}
             _ => panic!(
                 "non-changing freeze msg should return FrozenStatusUnchangedError, but returns {}",
                 err
@@ -423,7 +426,7 @@ mod tests {
         let res = sudo(deps.as_mut(), mock_env(), sudo_msg);
         let err = res.unwrap_err();
         match err {
-            ContractError::ContractFrozenError { .. } => {}
+            ContractError::ContractFrozen { .. } => {}
             _ => {
                 panic!("contract should be frozen, but is {}", err)
             }
@@ -525,7 +528,7 @@ mod tests {
         };
         let err = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap_err();
         match err {
-            ContractError::BlacklistedError { .. } => {}
+            ContractError::Blacklisted { .. } => {}
             _ => panic!(
                 "Blacklisted sender should generate blacklistedError, not {}",
                 err
@@ -540,7 +543,7 @@ mod tests {
         };
         let err = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap_err();
         match err {
-            ContractError::BlacklistedError { .. } => {}
+            ContractError::Blacklisted { .. } => {}
             _ => panic!(
                 "Blacklisted receiver should generate blacklistedError, not {}",
                 err

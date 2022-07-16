@@ -29,14 +29,14 @@ pub enum ContractError {
     ZeroAmount {},
 
     #[error("The address '{address}' is blacklisted")]
-    BlacklistedError { address: String },
+    Blacklisted { address: String },
 
     #[error("The contract is frozen for denom {denom:?}")]
-    ContractFrozenError { denom: String },
+    ContractFrozen { denom: String },
 
     #[error("Frozen status is already {status:?}")]
-    ContractFrozenStatusUnchangedError { status: bool },
+    ContractFrozenStatusUnchanged { status: bool },
 
     #[error("Freezer status is already {status:?}")]
-    FreezerStatusUnchangedError { status: bool },
+    FreezerStatusUnchanged { status: bool },
 }
