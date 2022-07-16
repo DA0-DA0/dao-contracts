@@ -3,11 +3,6 @@ on: [pull_request]
 name: Gas Benchmark
 
 jobs:
-  # TODO: The longest part of this workflow is by far the `compile-contracts` jobs.
-  # We should look into ways to speed this up:
-  # * Can we make workspace-optimizer compile and optimize each contract in parallel?
-  # * Can we use github action cache to cache the individual wasm files if their source code dirs dont change?
-
   compile-old-contracts:
     name: Compile old contracts using optimized rust compiler
     runs-on: ubuntu-latest
@@ -19,6 +14,18 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.base.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
+      - name: Install tar for cache upload
+        run: apk add --no-cache tar
+      - name: Rust Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Optimize
         run: optimize_workspace.sh
       - name: Upload contracts
@@ -36,6 +43,18 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
+      - name: Install tar for cache upload
+        run: apk add --no-cache tar
+      - name: Rust Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Optimize
         run: optimize_workspace.sh
       - name: Upload contracts
@@ -86,7 +105,8 @@ jobs:
       # * We cant run this juno node as a `service` because services
       #   cant have custom entrypoint overrides
       # * We cant run this juno node as a container of the job, because juno image
-      #   uses alpine which cant compile `cw-core-macros` for some fun reason
+      #   uses alpine which I couldnt get to compile `cw-core-macros`
+      #   (but rust optimizer uses alpine so I can look to see how they get that working later)
       - name: Run Local Juno Node
         run: |
           docker run --rm -d --name juno \
