@@ -107,7 +107,7 @@ pub fn get_deposit_msg(
 
 pub fn get_return_deposit_msg(
     deposit_info: &CheckedDepositInfo,
-    proposer: &Addr,
+    receiver: &Addr,
 ) -> StdResult<Vec<CosmosMsg>> {
     if deposit_info.deposit.is_zero() {
         return Ok(vec![]);
@@ -116,7 +116,7 @@ pub fn get_return_deposit_msg(
         contract_addr: deposit_info.token.to_string(),
         funds: vec![],
         msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-            recipient: proposer.to_string(),
+            recipient: receiver.to_string(),
             amount: deposit_info.deposit,
         })?,
     };
