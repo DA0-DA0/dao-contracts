@@ -1,0 +1,18 @@
+[package]
+name = "cw721-controllers"
+version = "0.1.0"
+authors = ["CypherApe cypherape@protonmail.com"]
+edition = "2018"
+description = "Common cw721 controllers we can reuse in many contracts"
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cosmwasm-std = { version = "1.0.0-beta6" }
+cw-utils = { version = "0.13.1" }
+cw-storage-plus = { version = "0.13.1" }
+schemars = "0.8.1"
+serde = { version = "1.0.103", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.21" }

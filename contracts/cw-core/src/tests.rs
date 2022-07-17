@@ -264,7 +264,7 @@ fn test_update_config() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -353,7 +353,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -367,7 +367,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             .query_wasm_smart(
                 gov_addr.clone(),
                 &QueryMsg::ProposalModules {
-                    start_at: None,
+                    start_after: None,
                     limit: None,
                 },
             )
@@ -410,7 +410,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             .query_wasm_smart(
                 gov_addr.clone(),
                 &QueryMsg::ProposalModules {
-                    start_at: None,
+                    start_after: None,
                     limit: None,
                 },
             )
@@ -491,7 +491,7 @@ fn test_removed_modules_can_not_execute() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -531,7 +531,7 @@ fn test_removed_modules_can_not_execute() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -642,7 +642,7 @@ fn test_swap_voting_module() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -842,7 +842,7 @@ fn test_admin_permissions() {
         .query_wasm_smart(
             core_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1324,7 +1324,13 @@ fn list_items(
     limit: Option<u32>,
 ) -> Vec<(String, String)> {
     app.wrap()
-        .query_wasm_smart(gov_addr, &QueryMsg::ListItems { start_at, limit })
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::ListItems {
+                start_after: start_at,
+                limit,
+            },
+        )
         .unwrap()
 }
 
@@ -1565,7 +1571,7 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20Balances {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1590,7 +1596,7 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1602,7 +1608,7 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20Balances {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1632,7 +1638,7 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr,
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1675,7 +1681,7 @@ fn test_cw20_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1698,7 +1704,7 @@ fn test_cw20_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr,
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1757,7 +1763,7 @@ fn test_cw721_receive() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw721TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1781,7 +1787,7 @@ fn test_cw721_receive() {
         .query_wasm_smart(
             gov_addr,
             &QueryMsg::Cw721TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1840,7 +1846,7 @@ fn test_cw721_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw721TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1868,7 +1874,7 @@ fn test_cw721_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr,
             &QueryMsg::Cw721TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1887,7 +1893,7 @@ fn test_pause() {
         .query_wasm_smart(
             core_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -2201,7 +2207,7 @@ fn test_execute_stargate_msg() {
         .query_wasm_smart(
             core_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )

@@ -77,6 +77,24 @@ fn cw20_staked_balances_voting() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn cw721_base() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw721_base::entry::execute,
+        cw721_base::entry::instantiate,
+        cw721_base::entry::query,
+    );
+    Box::new(contract)
+}
+
+fn cw721_stake() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw721_stake::contract::execute,
+        cw721_stake::contract::instantiate,
+        cw721_stake::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw_core::contract::execute,
@@ -125,10 +143,136 @@ fn cw4_voting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn instantiate_with_staked_cw721_governance(
+    app: &mut App,
+    proposal_module_code_id: u64,
+    proposal_module_instantiate: InstantiateMsg,
+    initial_balances: Option<Vec<Cw20Coin>>,
+) -> Addr {
+    let initial_balances = initial_balances.unwrap_or_else(|| {
+        vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            amount: Uint128::new(100_000_000),
+        }]
+    });
+
+    let initial_balances: Vec<Cw20Coin> = {
+        let mut already_seen = vec![];
+        initial_balances
+            .into_iter()
+            .filter(|Cw20Coin { address, amount: _ }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .collect()
+    };
+
+    let cw721_id = app.store_code(cw721_base());
+    let cw721_stake_id = app.store_code(cw721_stake());
+    let core_contract_id = app.store_code(cw_gov_contract());
+
+    let nft_address = app
+        .instantiate_contract(
+            cw721_id,
+            Addr::unchecked("ekez"),
+            &cw721_base::msg::InstantiateMsg {
+                minter: "ekez".to_string(),
+                symbol: "token".to_string(),
+                name: "ekez token best token".to_string(),
+            },
+            &[],
+            "nft-staking",
+            None,
+        )
+        .unwrap();
+
+    let instantiate_core = cw_core::msg::InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw721_stake_id,
+            msg: to_binary(&cw721_stake::msg::InstantiateMsg {
+                owner: Some(cw721_stake::msg::Owner::Instantiator {}),
+                manager: None,
+                unstaking_duration: None,
+                nft_address: nft_address.to_string(),
+            })
+            .unwrap(),
+            admin: cw_core::msg::Admin::None {},
+            label: "DAO DAO voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_module_code_id,
+            label: "DAO DAO governance module.".to_string(),
+            admin: cw_core::msg::Admin::CoreContract {},
+            msg: to_binary(&proposal_module_instantiate).unwrap(),
+        }],
+        initial_items: None,
+    };
+
+    let core_addr = app
+        .instantiate_contract(
+            core_contract_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &instantiate_core,
+            &[],
+            "DAO DAO",
+            None,
+        )
+        .unwrap();
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let staking_addr = core_state.voting_module;
+
+    for Cw20Coin { address, amount } in initial_balances {
+        for i in 0..amount.u128() {
+            app.execute_contract(
+                Addr::unchecked("ekez"),
+                nft_address.clone(),
+                &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+                    token_id: format!("{}_{}", address, i),
+                    owner: address.clone(),
+                    token_uri: None,
+                    extension: None,
+                }),
+                &[],
+            )
+            .unwrap();
+            app.execute_contract(
+                Addr::unchecked(address.clone()),
+                nft_address.clone(),
+                &cw721_base::msg::ExecuteMsg::SendNft::<Option<Empty>> {
+                    contract: staking_addr.to_string(),
+                    token_id: format!("{}_{}", address, i),
+                    msg: to_binary("").unwrap(),
+                },
+                &[],
+            )
+            .unwrap();
+        }
+    }
+
+    // Update the block so that staked balances appear.
+    app.update_block(|block| block.height += 1);
+
+    core_addr
+}
+
 fn instantiate_with_staked_balances_governance(
     app: &mut App,
-    governance_code_id: u64,
-    governance_instantiate: InstantiateMsg,
+    proposal_module_code_id: u64,
+    proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
 ) -> Addr {
     let initial_balances = initial_balances.unwrap_or_else(|| {
@@ -188,10 +332,10 @@ fn instantiate_with_staked_balances_governance(
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: governance_code_id,
+            code_id: proposal_module_code_id,
             label: "DAO DAO governance module.".to_string(),
             admin: cw_core::msg::Admin::CoreContract {},
-            msg: to_binary(&governance_instantiate).unwrap(),
+            msg: to_binary(&proposal_module_instantiate).unwrap(),
         }],
         initial_items: None,
     };
@@ -251,8 +395,8 @@ fn instantiate_with_staked_balances_governance(
 
 fn instantiate_with_staking_active_threshold(
     app: &mut App,
-    code_id: u64,
-    msg: InstantiateMsg,
+    proposal_module_code_id: u64,
+    proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
     active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
@@ -297,8 +441,8 @@ fn instantiate_with_staking_active_threshold(
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
-            code_id,
-            msg: to_binary(&msg).unwrap(),
+            code_id: proposal_module_code_id,
+            msg: to_binary(&proposal_module_instantiate).unwrap(),
             admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO governance module".to_string(),
         }],
@@ -318,8 +462,8 @@ fn instantiate_with_staking_active_threshold(
 
 fn instantiate_with_cw4_groups_governance(
     app: &mut App,
-    governance_code_id: u64,
-    governance_instantiate: InstantiateMsg,
+    proposal_module_code_id: u64,
+    proposal_module_instantiate: InstantiateMsg,
     initial_weights: Option<Vec<Cw20Coin>>,
 ) -> Addr {
     let cw4_id = app.store_code(cw4_contract());
@@ -366,8 +510,8 @@ fn instantiate_with_cw4_groups_governance(
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
-            code_id: governance_code_id,
-            msg: to_binary(&governance_instantiate).unwrap(),
+            code_id: proposal_module_code_id,
+            msg: to_binary(&proposal_module_instantiate).unwrap(),
             admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO governance module".to_string(),
         }],
@@ -393,8 +537,8 @@ fn instantiate_with_cw4_groups_governance(
 
 fn instantiate_with_cw20_balances_governance(
     app: &mut App,
-    governance_code_id: u64,
-    governance_instantiate: InstantiateMsg,
+    proposal_module_code_id: u64,
+    proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
 ) -> Addr {
     let cw20_id = app.store_code(cw20_contract());
@@ -449,8 +593,8 @@ fn instantiate_with_cw20_balances_governance(
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
-            code_id: governance_code_id,
-            msg: to_binary(&governance_instantiate).unwrap(),
+            code_id: proposal_module_code_id,
+            msg: to_binary(&proposal_module_instantiate).unwrap(),
             admin: cw_core::msg::Admin::CoreContract {},
             label: "DAO DAO governance module".to_string(),
         }],
@@ -497,6 +641,22 @@ fn do_votes_staked_balances(
         total_supply,
         None::<DepositInfo>,
         instantiate_with_staked_balances_governance,
+    );
+}
+
+fn do_votes_nft_balances(
+    votes: Vec<TestSingleChoiceVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+) {
+    do_test_votes(
+        votes,
+        threshold,
+        expected_status,
+        total_supply,
+        None,
+        instantiate_with_staked_cw721_governance,
     );
 }
 
@@ -569,7 +729,7 @@ where
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -724,7 +884,7 @@ fn test_propose() {
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -814,7 +974,7 @@ fn test_propose_supports_stargate_message() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -873,40 +1033,41 @@ fn test_propose_supports_stargate_message() {
 fn test_vote_simple() {
     testing::test_simple_votes(do_votes_cw20_balances);
     testing::test_simple_votes(do_votes_cw4_weights);
-    testing::test_simple_votes(do_votes_staked_balances)
+    testing::test_simple_votes(do_votes_staked_balances);
+    testing::test_simple_votes(do_votes_nft_balances)
 }
 
 #[test]
 fn test_simple_vote_no_overflow() {
     testing::test_simple_vote_no_overflow(do_votes_cw20_balances);
-    testing::test_simple_vote_no_overflow(do_votes_staked_balances)
+    testing::test_simple_vote_no_overflow(do_votes_staked_balances);
 }
 
 #[test]
 fn test_vote_no_overflow() {
     testing::test_vote_no_overflow(do_votes_cw20_balances);
-    testing::test_vote_no_overflow(do_votes_staked_balances)
+    testing::test_vote_no_overflow(do_votes_staked_balances);
 }
 
 #[test]
 fn test_simple_early_rejection() {
     testing::test_simple_early_rejection(do_votes_cw20_balances);
     testing::test_simple_early_rejection(do_votes_cw4_weights);
-    testing::test_simple_early_rejection(do_votes_staked_balances)
+    testing::test_simple_early_rejection(do_votes_staked_balances);
 }
 
 #[test]
 fn test_vote_abstain_only() {
     testing::test_vote_abstain_only(do_votes_cw20_balances);
     testing::test_vote_abstain_only(do_votes_cw4_weights);
-    testing::test_vote_abstain_only(do_votes_staked_balances)
+    testing::test_vote_abstain_only(do_votes_staked_balances);
 }
 
 #[test]
 fn test_tricky_rounding() {
     testing::test_tricky_rounding(do_votes_cw20_balances);
     testing::test_tricky_rounding(do_votes_cw4_weights);
-    testing::test_tricky_rounding(do_votes_staked_balances)
+    testing::test_tricky_rounding(do_votes_staked_balances);
 }
 
 #[test]
@@ -914,33 +1075,38 @@ fn test_no_double_votes() {
     testing::test_no_double_votes(do_votes_cw20_balances);
     testing::test_no_double_votes(do_votes_cw4_weights);
     testing::test_no_double_votes(do_votes_staked_balances);
+    testing::test_no_double_votes(do_votes_nft_balances);
 }
 
 #[test]
 fn test_votes_favor_yes() {
     testing::test_votes_favor_yes(do_votes_cw20_balances);
     testing::test_votes_favor_yes(do_votes_staked_balances);
+    testing::test_votes_favor_yes(do_votes_nft_balances);
 }
 
 #[test]
 fn test_votes_low_threshold() {
     testing::test_votes_low_threshold(do_votes_cw20_balances);
     testing::test_votes_low_threshold(do_votes_cw4_weights);
-    testing::test_votes_low_threshold(do_votes_staked_balances)
+    testing::test_votes_low_threshold(do_votes_staked_balances);
+    testing::test_votes_low_threshold(do_votes_nft_balances);
 }
 
 #[test]
 fn test_majority_vs_half() {
     testing::test_majority_vs_half(do_votes_cw20_balances);
     testing::test_majority_vs_half(do_votes_cw4_weights);
-    testing::test_majority_vs_half(do_votes_staked_balances)
+    testing::test_majority_vs_half(do_votes_staked_balances);
+    testing::test_majority_vs_half(do_votes_nft_balances);
 }
 
 #[test]
 fn test_pass_threshold_not_quorum() {
     testing::test_pass_threshold_not_quorum(do_votes_cw20_balances);
     testing::test_pass_threshold_not_quorum(do_votes_cw4_weights);
-    testing::test_pass_threshold_not_quorum(do_votes_staked_balances)
+    testing::test_pass_threshold_not_quorum(do_votes_staked_balances);
+    testing::test_pass_threshold_not_quorum(do_votes_nft_balances);
 }
 
 #[test]
@@ -948,6 +1114,7 @@ fn test_pass_threshold_exactly_quorum() {
     testing::test_pass_exactly_quorum(do_votes_cw20_balances);
     testing::test_pass_exactly_quorum(do_votes_cw4_weights);
     testing::test_pass_exactly_quorum(do_votes_staked_balances);
+    testing::test_pass_exactly_quorum(do_votes_nft_balances);
 }
 
 /// Generate some random voting selections and make sure they behave
@@ -1801,7 +1968,7 @@ fn test_query_list_proposals() {
         .query_wasm_smart(
             gov_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1951,7 +2118,7 @@ fn test_hooks() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -2132,7 +2299,7 @@ fn test_active_threshold_absolute() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -2259,7 +2426,7 @@ fn test_active_threshold_percent() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -2378,7 +2545,7 @@ fn test_active_threshold_none() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -2457,7 +2624,7 @@ fn test_active_threshold_none() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -3409,7 +3576,7 @@ fn test_migrate() {
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -3774,7 +3941,7 @@ fn test_timestamp_updated() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
