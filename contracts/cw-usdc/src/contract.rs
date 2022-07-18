@@ -652,6 +652,52 @@ mod tests {
     }
 
     #[test]
+    
+    fn set_burner() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            subdenom: "uakt".to_string(),
+        };
+        let info = mock_info("creator", &coins(1000, "uakt"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let burner_info = mock_info("minter", &coins(1000, "uakt"));
+        let set_burner_msg = ExecuteMsg::SetMinter { address: burner_info.sender.to_string(), allowance: Uint128::from(1000u64) };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), set_burner_msg).unwrap();
+
+        let burn_msg = ExecuteMsg::Burn { amount: Uint128::from(100u64) };
+        let res = execute(deps.as_mut(), mock_env(), burner_info.clone(), burn_msg).unwrap();
+
+        // mint more then allowance 
+        let burn_msg = ExecuteMsg::Burn { amount: Uint128::from(950u64) };
+        let err = execute(deps.as_mut(), mock_env(), burner_info.clone(), burn_msg).unwrap_err();
+        // TODO: match error
+    }
+    #[test]
+    fn set_minter() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            subdenom: "uakt".to_string(),
+        };
+        let info = mock_info("creator", &coins(1000, "uakt"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let minter_info = mock_info("minter", &coins(1000, "uakt"));
+        let set_mint_msg = ExecuteMsg::SetMinter { address: minter_info.sender.to_string(), allowance: Uint128::from(1000u64) };
+
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), set_mint_msg).unwrap();
+
+        let mint_msg = ExecuteMsg::Mint { to_address: minter_info.sender.to_string(), amount: Uint128::from(100u64) };
+        let res = execute(deps.as_mut(), mock_env(), minter_info.clone(), mint_msg).unwrap();
+
+        // mint more then allowance 
+        let mint_msg = ExecuteMsg::Mint { to_address: minter_info.sender.to_string(), amount: Uint128::from(950u64) };
+        let err = execute(deps.as_mut(), mock_env(), minter_info.clone(), mint_msg).unwrap_err();
+        // TODO: match error
+    }
+
+    #[test]
     fn beforesend() {
         let mut deps = mock_dependencies();
 
