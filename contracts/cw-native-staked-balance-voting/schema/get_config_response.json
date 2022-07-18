@@ -3,9 +3,12 @@
   "title": "GetConfigResponse",
   "type": "object",
   "required": [
-    "token_address"
+    "denom"
   ],
   "properties": {
+    "denom": {
+      "type": "string"
+    },
     "manager": {
       "anyOf": [
         {
@@ -25,9 +28,6 @@
           "type": "null"
         }
       ]
-    },
-    "token_address": {
-      "$ref": "#/definitions/Addr"
     },
     "unstaking_duration": {
       "anyOf": [

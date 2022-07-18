@@ -91,10 +91,11 @@ export interface Cw20ReceiveMsg {
   sender: string;
   [k: string]: unknown;
 }
+export type Addr = string;
 export interface GetConfigResponse {
-  manager?: string | null;
-  owner?: string | null;
-  token_address: string;
+  manager?: Addr | null;
+  owner?: Addr | null;
+  token_address: Addr;
   unstaking_duration?: Duration | null;
   [k: string]: unknown;
 }
