@@ -14,7 +14,7 @@ use vote_hooks::new_vote_hooks;
 
 use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
 use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
-use voting::reply::{mask_proposal_execution_proposal_id, MaskedReplyId};
+use voting::reply::{mask_proposal_execution_proposal_id, TaggedReplyId};
 use voting::status::Status;
 use voting::threshold::Threshold;
 use voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
@@ -729,9 +729,9 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    let repl = MaskedReplyId::new(msg.id);
+    let repl = TaggedReplyId::new(msg.id);
     match repl {
-        MaskedReplyId::FailedProposalExecution(proposal_id) => {
+        TaggedReplyId::FailedProposalExecution(proposal_id) => {
             let mut prop = PROPOSALS
                 .may_load(deps.storage, proposal_id)?
                 .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
@@ -739,11 +739,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             PROPOSALS.save(deps.storage, proposal_id, &prop)?;
             Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
         }
-        MaskedReplyId::FailedProposalHook(idx) => {
+        TaggedReplyId::FailedProposalHook(idx) => {
             let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
             Ok(Response::new().add_attribute("removed proposal hook", format!("{addr}:{idx}")))
         }
-        MaskedReplyId::FailedVoteHook(idx) => {
+        TaggedReplyId::FailedVoteHook(idx) => {
             let addr = VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
             Ok(Response::new().add_attribute("removed vote hook", format!("{addr}:{idx}")))
         }

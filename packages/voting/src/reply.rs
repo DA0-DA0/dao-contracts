@@ -9,13 +9,13 @@ const REPLY_TYPE_MASK: u64 = (1 << BITS_RESERVED_FOR_REPLY_TYPE) - 1;
 /// Since we can only pass `id`, and we need to perform different actions in reply,
 /// we decided to take few bits to identify "Reply Type".
 /// See <https://github.com/DA0-DA0/dao-contracts/pull/385#discussion_r916324843>
-pub enum MaskedReplyId {
+pub enum TaggedReplyId {
     FailedProposalExecution(u64),
     FailedProposalHook(u64),
     FailedVoteHook(u64),
 }
 
-impl MaskedReplyId {
+impl TaggedReplyId {
     /// Takes `Reply.id` and returns tagged version of it,
     /// depending on a first few bits.
     ///
@@ -24,9 +24,9 @@ impl MaskedReplyId {
         let reply_type = id & REPLY_TYPE_MASK;
         let id = id >> BITS_RESERVED_FOR_REPLY_TYPE;
         match reply_type {
-            FAILED_PROPOSAL_EXECUTION_MASK => MaskedReplyId::FailedProposalExecution(id),
-            FAILED_PROPOSAL_HOOK_MASK => MaskedReplyId::FailedProposalHook(id),
-            FAILED_VOTE_HOOK_MASK => MaskedReplyId::FailedVoteHook(id),
+            FAILED_PROPOSAL_EXECUTION_MASK => TaggedReplyId::FailedProposalExecution(id),
+            FAILED_PROPOSAL_HOOK_MASK => TaggedReplyId::FailedProposalHook(id),
+            FAILED_VOTE_HOOK_MASK => TaggedReplyId::FailedVoteHook(id),
             _ => unreachable!(),
         }
     }
