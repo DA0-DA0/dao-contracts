@@ -11,7 +11,7 @@ use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg};
-use crate::state::{Config, BLACKLISTED_ADDRESSES, CONFIG, FREEZER_ALLOWANCES, MINTER_ALLOWANCES, BLACKLISTER_ALLOWANCES, self};
+use crate::state::{Config, BLACKLISTED_ADDRESSES, CONFIG, FREEZER_ALLOWANCES, MINTER_ALLOWANCES, BLACKLISTER_ALLOWANCES, self, BURNER_ALLOWANCES};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
@@ -57,8 +57,12 @@ pub fn execute(
         }
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => todo!(),
         ExecuteMsg::ChangeContractOwner { new_owner } => todo!(),
-        ExecuteMsg::SetMinter { address, allowance } => todo!(),
-        ExecuteMsg::SetBurner { address, allowance } => todo!(),
+        ExecuteMsg::SetMinter { address, allowance } => {
+            execute_set_minter(deps, env, info, address, allowance)
+        },
+        ExecuteMsg::SetBurner { address, allowance } => {
+            execute_set_burner(deps, env, info, address, allowance)
+        },
         ExecuteMsg::SetBlacklister { address, status } => {
             execute_set_blacklister(deps, env, info, address, status)
         }
@@ -141,21 +145,6 @@ fn execute_set_freezer(
     check_contract_owner(deps.as_ref(), info.sender)?;
 
     set_bool_allowance(deps, &address, FREEZER_ALLOWANCES, status)?;
-    // let allowances: Map<Addr, bool>;
-
-    // allowances.update(
-    //     deps.storage,
-    //     deps.api.addr_validate(address.as_str())?,
-    //     |mut stat| -> Result<_, ContractError> {
-    //         if let Some(current_status) = stat {
-    //             if current_status == status {
-    //                 return Err(ContractError::FreezerStatusUnchanged { status });
-    //             }
-    //         }
-    //         stat = Some(status);
-    //         Ok(status)
-    //     },
-    // )?;
 
     Ok(Response::new()
         .add_attribute("method", "set_freezer")
@@ -197,14 +186,59 @@ fn check_contract_owner(
    }
 }
 
+fn set_int_allowance(
+    deps: DepsMut,
+    allowances: Map<Addr, Uint128>,
+    address: &String,
+    amount: Uint128,
+) -> Result<Uint128, ContractError> {
+    allowances.update(deps.storage, deps.api.addr_validate(address.as_str())?, |mut option_amount| -> Result<Uint128, ContractError> {
+        if let Some(mut current_amount) = option_amount {
+            current_amount += amount;
+            return Ok(current_amount)
+        } else {
+            option_amount = Some(amount);
+            return Ok(amount)
+        }
+    })
+}
+
+fn execute_set_burner(
+    deps:DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    check_contract_owner(deps.as_ref(), info.sender)?;
+
+    // Set minter allowance
+    set_int_allowance(deps, BURNER_ALLOWANCES, &address, amount)?;
+    
+    Ok(Response::new()
+        .add_attribute("method", "set_burner")
+        .add_attribute("burner", address)
+        .add_attribute("amount", amount)
+)       
+}
 
 fn execute_set_minter(
     deps:DepsMut,
     _env: Env,
     info: MessageInfo,
+    address: String,
     amount: Uint128,
-) {
+) -> Result<Response, ContractError> {
+    check_contract_owner(deps.as_ref(), info.sender)?;
 
+    // Set minter allowance
+    set_int_allowance(deps, MINTER_ALLOWANCES, &address, amount)?;
+    
+    Ok(Response::new()
+        .add_attribute("method", "set_minter")
+        .add_attribute("minter", address)
+        .add_attribute("amount", amount)
+)       
 }
 
 fn execute_freeze(
@@ -214,32 +248,23 @@ fn execute_freeze(
     status: bool,
 ) -> Result<Response, ContractError> {
     // check if the sender is allowed to freeze
-    // check_allowance(&deps, info.clone(), FREEZER_ALLOWANCES)?;
+    check_allowance(&deps, info.clone(), FREEZER_ALLOWANCES)?;
 
-    if let Some(freezer_status) = FREEZER_ALLOWANCES.may_load(deps.storage, info.sender)? {
-        if freezer_status == false {
-            return Err(ContractError::Unauthorized {});
-        }
-
-        // check if the status of the contract is already the same as the update
-        let config = CONFIG.load(deps.storage)?;
-        if config.is_frozen == status {
-            return Err(ContractError::ContractFrozenStatusUnchanged { status: status });
-        } else {
-            CONFIG.update(
-                deps.storage,
-                |mut config: Config| -> Result<_, ContractError> {
-                    config.is_frozen = status;
-                    Ok(config)
-                },
-            )?;
-
-            Ok(Response::new()
-                .add_attribute("method", "execute_freeze")
-                .add_attribute("status", status.to_string()))
-        }
+    let config = CONFIG.load(deps.storage)?;
+    if config.is_frozen == status {
+        return Err(ContractError::ContractFrozenStatusUnchanged { status });
     } else {
-        return Err(ContractError::Unauthorized {});
+        CONFIG.update(
+            deps.storage,
+            |mut config: Config| -> Result<_, ContractError> {
+                config.is_frozen = status;
+                Ok(config)
+            },
+        )?;
+
+        Ok(Response::new()
+            .add_attribute("method", "execute_freeze")
+            .add_attribute("status", status.to_string()))
     }
 }
 
