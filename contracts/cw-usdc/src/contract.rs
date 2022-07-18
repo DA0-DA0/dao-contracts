@@ -56,7 +56,9 @@ pub fn execute(
             execute_mint(deps, env, info, to_address, amount)
         }
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => todo!(),
-        ExecuteMsg::ChangeContractOwner { new_owner } => todo!(),
+        ExecuteMsg::ChangeContractOwner { new_owner } => {
+            execute_change_contract_owner(deps, env, info, new_owner)
+        },
         ExecuteMsg::SetMinter { address, allowance } => {
             execute_set_minter(deps, env, info, address, allowance)
         },
@@ -113,6 +115,29 @@ pub fn execute_mint(
         .add_message(mint_tokens_msg);
 
     Ok(Response::new().add_attribute("method", "try_increment"))
+}
+
+fn execute_change_contract_owner(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    // check_contract_owner(deps.as_ref(), info.sender)?;
+    let val_address = deps.api.addr_validate(address.as_str())?;
+
+    CONFIG.update(deps.storage, |mut config: Config| -> Result<Config, ContractError> {
+        if config.owner == info.sender {
+            config.owner = val_address;
+            return Ok(config)
+
+        } 
+            
+        return Err(ContractError::Unauthorized {  })
+    })?;
+
+
+    Ok(Response::new().add_attribute("method", "change_contract_owner"))
 }
 
 fn execute_set_blacklister(
@@ -401,6 +426,27 @@ mod tests {
         let value: DenomResponse = from_binary(&res).unwrap();
         assert_eq!("uusdc", value.denom);
     }
+
+
+    #[test]
+    fn change_contract_owner() {
+        let mut deps = mock_dependencies();
+
+        let msg = InstantiateMsg {
+            subdenom: String::from("uusdc"),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let new_info = mock_info("new_owner", &coins(1000, "ueeur"));
+        let change_msg = ExecuteMsg::ChangeContractOwner { new_owner: new_info.sender.clone().into_string() };
+        let res = execute(deps.as_mut(), mock_env(), info, change_msg).unwrap();
+
+        let res = check_contract_owner(deps.as_ref(), new_info.sender.clone()).unwrap();
+
+        // TODO: test for if non owner tries to change owner
+    }
+
 
     #[test]
     fn freeze_contract() {
