@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, WasmMsg,
+    StdResult, Storage, SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -13,10 +13,8 @@ use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 use voting::{
     deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo},
-    proposal::{
-        BITS_RESERVED_FOR_REPLY_TYPE, DEFAULT_LIMIT, FAILED_PROPOSAL_EXECUTION_MASK,
-        FAILED_PROPOSAL_HOOK_MASK, FAILED_VOTE_HOOK_MASK, MAX_PROPOSAL_SIZE, REPLY_TYPE_MASK,
-    },
+    proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
+    reply::{mask_proposal_execution_proposal_id, MaskedReplyId},
     status::Status,
     voting::{
         get_total_power, get_voting_power, validate_voting_period, MultipleChoiceVote,
@@ -65,6 +63,7 @@ pub fn instantiate(
         only_members_execute: msg.only_members_execute,
         dao,
         deposit_info,
+        close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
     };
 
     // Initialize proposal count to zero.
@@ -99,6 +98,7 @@ pub fn execute(
             only_members_execute,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         } => execute_update_config(
             deps,
             info,
@@ -108,6 +108,7 @@ pub fn execute(
             only_members_execute,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         ),
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
@@ -338,6 +339,7 @@ pub fn execute_execute(
         VoteResult::SingleWinner(winning_choice) => {
             let response = match winning_choice.msgs {
                 Some(msgs) => {
+                    let res = Response::default();
                     if !msgs.is_empty() {
                         let execute_message = WasmMsg::Execute {
                             contract_addr: config.dao.to_string(),
@@ -346,9 +348,19 @@ pub fn execute_execute(
                             })?,
                             funds: vec![],
                         };
-                        Response::<Empty>::default().add_message(execute_message)
+                        match config.close_proposal_on_execution_failure {
+                            true => {
+                                let masked_proposal_id =
+                                    mask_proposal_execution_proposal_id(proposal_id);
+                                res.add_submessage(SubMsg::reply_on_error(
+                                    execute_message,
+                                    masked_proposal_id,
+                                ))
+                            }
+                            false => res.add_message(execute_message),
+                        }
                     } else {
-                        Response::default()
+                        res
                     }
                 }
                 None => Response::default(),
@@ -427,6 +439,7 @@ pub fn execute_update_config(
     only_members_execute: bool,
     dao: String,
     deposit_info: Option<DepositInfo>,
+    close_proposal_on_execution_failure: bool,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -454,6 +467,7 @@ pub fn execute_update_config(
             only_members_execute,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         },
     )?;
 
@@ -699,26 +713,24 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    let reply_type = msg.id & REPLY_TYPE_MASK;
-    let idx = msg.id >> BITS_RESERVED_FOR_REPLY_TYPE;
-    match reply_type {
-        FAILED_PROPOSAL_EXECUTION_MASK => {
+    let repl = MaskedReplyId::new(msg.id);
+    match repl {
+        MaskedReplyId::FailedProposalExecution(proposal_id) => {
             let mut prop = PROPOSALS
-                .may_load(deps.storage, idx)?
-                .ok_or(ContractError::NoSuchProposal { id: idx })?;
+                .may_load(deps.storage, proposal_id)?
+                .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
             prop.status = Status::ExecutionFailed;
-            PROPOSALS.save(deps.storage, idx, &prop)?;
-            Ok(Response::new())
+            PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+            Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
         }
-        FAILED_PROPOSAL_HOOK_MASK => {
-            PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-            Ok(Response::new())
+        MaskedReplyId::FailedProposalHook(idx) => {
+            let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new().add_attribute("removed proposal hook", format!("{addr}:{idx}")))
         }
-        FAILED_VOTE_HOOK_MASK => {
-            VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-            Ok(Response::new())
+        MaskedReplyId::FailedVoteHook(idx) => {
+            let addr = VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new().add_attribute("removed vote hook", format!("{addr}:{idx}")))
         }
-        _ => unreachable!(),
     }
 }
 

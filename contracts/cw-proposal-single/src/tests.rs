@@ -559,7 +559,7 @@ where
         only_members_execute: false,
         allow_revoting: false,
         deposit_info,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -716,7 +716,7 @@ fn test_propose() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -808,7 +808,7 @@ fn test_propose_supports_stargate_message() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -985,7 +985,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -1065,7 +1065,7 @@ fn test_different_token_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1123,7 +1123,7 @@ fn test_bad_token_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1149,7 +1149,7 @@ fn test_take_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -1496,7 +1496,7 @@ fn test_execute_expired_proposal() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -1802,7 +1802,7 @@ fn test_query_list_proposals() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![Cw20Coin {
             address: CREATOR_ADDR.to_string(),
@@ -1956,7 +1956,7 @@ fn test_hooks() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -2131,7 +2131,7 @@ fn test_active_threshold_absolute() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr = instantiate_with_staking_active_threshold(
@@ -2258,7 +2258,7 @@ fn test_active_threshold_percent() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     // 20% needed to be active, 20% of 100000000 is 20000000
@@ -2386,7 +2386,7 @@ fn test_active_threshold_none() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -2466,7 +2466,7 @@ fn test_active_threshold_none() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -2518,7 +2518,7 @@ fn test_revoting() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -2645,7 +2645,7 @@ fn test_allow_revoting_config_changes() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -2790,7 +2790,7 @@ fn test_revoting_same_vote_twice() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -2893,7 +2893,7 @@ fn test_three_of_five_multisig() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3020,7 +3020,7 @@ fn test_three_of_five_multisig_reject() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3157,7 +3157,7 @@ fn test_voting_module_token_with_multisig_style_voting() {
                 deposit: Uint128::new(1),
                 refund_failed_proposals: true,
             }),
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3193,7 +3193,7 @@ fn test_three_of_five_multisig_revoting() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3427,7 +3427,7 @@ fn test_migrate() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =
@@ -3486,7 +3486,7 @@ fn test_proposal_count_initialized_to_zero() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3533,7 +3533,7 @@ fn test_no_early_pass_with_min_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3622,7 +3622,7 @@ fn test_min_duration_units_missmatch() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3655,7 +3655,7 @@ fn test_min_duration_larger_than_proposal_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3687,7 +3687,7 @@ fn test_min_duration_same_as_proposal_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
-            close_failed_proposal_executions: true,
+            close_proposal_on_execution_failure: true,
         },
         Some(vec![
             Cw20Coin {
@@ -3784,7 +3784,7 @@ fn test_timestamp_updated() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -3987,7 +3987,7 @@ fn test_close_failed_proposal() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
-        close_failed_proposal_executions: true,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr =

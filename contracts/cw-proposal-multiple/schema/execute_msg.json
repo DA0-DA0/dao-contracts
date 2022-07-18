@@ -129,12 +129,17 @@
         "update_config": {
           "type": "object",
           "required": [
+            "close_proposal_on_execution_failure",
             "dao",
             "max_voting_period",
             "only_members_execute",
             "voting_strategy"
           ],
           "properties": {
+            "close_proposal_on_execution_failure": {
+              "description": "Failed proposal executions will be marked failed, instead of reverted state, if this feature is enabled",
+              "type": "boolean"
+            },
             "dao": {
               "description": "The address if tge DAO that this governance module is associated with.",
               "type": "string"

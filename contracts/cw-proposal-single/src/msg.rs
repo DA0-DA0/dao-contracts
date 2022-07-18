@@ -32,8 +32,9 @@ pub struct InstantiateMsg {
     /// proposal. None if there is no deposit requirement, Some
     /// otherwise.
     pub deposit_info: Option<DepositInfo>,
-    /// Failed proposal executions will be considered executed if this feature is enabled
-    pub close_failed_proposal_executions: bool,
+    /// Failed proposal executions will be marked failed,
+    /// instead of reverted state, if this feature is enabled
+    pub close_proposal_on_execution_failure: bool,
 }
 
 /// Information about the token to use for proposal deposits.

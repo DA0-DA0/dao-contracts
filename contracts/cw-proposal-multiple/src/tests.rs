@@ -151,6 +151,7 @@ where
         only_members_execute: false,
         deposit_info,
         voting_strategy,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr = setup_governance(
@@ -765,6 +766,7 @@ fn test_propose() {
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -801,6 +803,7 @@ fn test_propose() {
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
     };
 
     assert_eq!(config, expected);
@@ -870,6 +873,7 @@ fn test_propose_wrong_num_choices() {
 
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
@@ -905,6 +909,7 @@ fn test_propose_wrong_num_choices() {
 
     let expected = Config {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         dao: governance_addr,
@@ -1055,6 +1060,7 @@ fn test_migrate() {
         },
         max_voting_period: Duration::Time(10),
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         only_members_execute: true,
         deposit_info: None,
     };
@@ -1112,6 +1118,7 @@ fn test_proposal_count_initialized_to_zero() {
         },
         max_voting_period: Duration::Height(10),
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         only_members_execute: true,
         deposit_info: None,
     };
@@ -1151,6 +1158,7 @@ fn test_no_early_pass_with_min_duration() {
         min_voting_period: Some(Duration::Height(2)),
         only_members_execute: true,
         deposit_info: None,
+        close_proposal_on_execution_failure: true,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -1244,6 +1252,7 @@ fn test_propose_with_messages() {
         },
         max_voting_period: Duration::Height(10),
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         only_members_execute: true,
         deposit_info: None,
     };
@@ -1278,6 +1287,7 @@ fn test_propose_with_messages() {
             quorum: PercentageThreshold::Majority {},
         },
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period: cw_utils::Duration::Height(20),
         only_members_execute: false,
         dao: "dao".to_string(),
@@ -1365,6 +1375,7 @@ fn test_min_duration_units_missmatch() {
         min_voting_period: Some(Duration::Time(2)),
         only_members_execute: true,
         deposit_info: None,
+        close_proposal_on_execution_failure: true,
     };
     instantiate_with_staked_balances_governance(
         &mut app,
@@ -1396,6 +1407,7 @@ fn test_min_duration_larger_than_proposal_duration() {
         min_voting_period: Some(Duration::Height(11)),
         only_members_execute: true,
         deposit_info: None,
+        close_proposal_on_execution_failure: true,
     };
     instantiate_with_staked_balances_governance(
         &mut app,
@@ -1426,6 +1438,7 @@ fn test_min_duration_same_as_proposal_duration() {
         min_voting_period: Some(Duration::Time(10)),
         only_members_execute: true,
         deposit_info: None,
+        close_proposal_on_execution_failure: true,
     };
 
     let core_addr = instantiate_with_staked_balances_governance(
@@ -1539,6 +1552,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info,
@@ -1614,6 +1628,7 @@ fn test_different_token_proposal_deposit() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
@@ -1682,6 +1697,7 @@ fn test_bad_token_proposal_deposit() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info,
@@ -1712,6 +1728,7 @@ fn test_take_proposal_deposit() {
 
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info,
@@ -2135,6 +2152,7 @@ fn test_cant_propose_zero_power() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: Some(DepositInfo {
@@ -2300,6 +2318,7 @@ fn test_cant_execute_not_member() {
 
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: true,
         deposit_info: None,
@@ -2637,6 +2656,7 @@ fn test_execute_expired_proposal() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
@@ -2811,6 +2831,7 @@ fn test_update_config() {
                 quorum: PercentageThreshold::Majority {},
             },
             min_voting_period: None,
+            close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
             dao: dao.to_string(),
@@ -2829,6 +2850,7 @@ fn test_update_config() {
                 quorum: PercentageThreshold::Majority {},
             },
             min_voting_period: None,
+            close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
@@ -2848,6 +2870,7 @@ fn test_update_config() {
             quorum: PercentageThreshold::Majority {},
         },
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period: cw_utils::Duration::Height(10),
         only_members_execute: false,
         dao: Addr::unchecked(CREATOR_ADDR),
@@ -2865,6 +2888,7 @@ fn test_update_config() {
                 quorum: PercentageThreshold::Majority {},
             },
             min_voting_period: None,
+            close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
@@ -2944,6 +2968,7 @@ fn test_query_list_proposals() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
@@ -3105,6 +3130,7 @@ fn test_hooks() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
@@ -3261,6 +3287,7 @@ fn test_active_threshold_absolute() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
@@ -3397,6 +3424,7 @@ fn test_active_threshold_percent() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
@@ -3534,6 +3562,7 @@ fn test_active_threshold_none() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
+        close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
         deposit_info: None,
