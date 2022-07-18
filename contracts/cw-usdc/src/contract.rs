@@ -1,16 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, Addr,
 };
 use cw2::set_contract_version;
 
+use cw_storage_plus::Map;
 use osmo_bindings::{OsmosisMsg, OsmosisQuery};
 use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg};
-use crate::state::{Config, BLACKLISTED_ADDRESSES, CONFIG, FREEZER_ALLOWANCES, MINTER_ALLOWANCES};
+use crate::state::{Config, BLACKLISTED_ADDRESSES, CONFIG, FREEZER_ALLOWANCES, MINTER_ALLOWANCES, BLACKLISTER_ALLOWANCES, self};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
@@ -58,7 +59,9 @@ pub fn execute(
         ExecuteMsg::ChangeContractOwner { new_owner } => todo!(),
         ExecuteMsg::SetMinter { address, allowance } => todo!(),
         ExecuteMsg::SetBurner { address, allowance } => todo!(),
-        ExecuteMsg::SetBlacklister { address, status } => todo!(),
+        ExecuteMsg::SetBlacklister { address, status } => {
+            execute_set_blacklister(deps, env, info, address, status)
+        }
         ExecuteMsg::SetFreezer { address, status } => {
             execute_set_freezer(deps, env, info, address, status)
         }
@@ -108,6 +111,25 @@ pub fn execute_mint(
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
 
+fn execute_set_blacklister(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    address: String, 
+    status: bool,
+) -> Result<Response, ContractError> {
+    check_contract_owner(deps.as_ref(), info.sender)?;
+
+    set_bool_allowance(deps, &address, BLACKLISTER_ALLOWANCES, status)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_blacklister")
+        .add_attribute("blacklister", address)
+        .add_attribute("status", status.to_string())
+    )   
+
+}
+
 fn execute_set_freezer(
     deps: DepsMut,
     env: Env,
@@ -116,12 +138,39 @@ fn execute_set_freezer(
     status: bool,
 ) -> Result<Response, ContractError> {
     // Check if sender is authorised to set freezer
-    let config = CONFIG.load(deps.storage).unwrap();
-    if config.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
+    check_contract_owner(deps.as_ref(), info.sender)?;
 
-    FREEZER_ALLOWANCES.update(
+    set_bool_allowance(deps, &address, FREEZER_ALLOWANCES, status)?;
+    // let allowances: Map<Addr, bool>;
+
+    // allowances.update(
+    //     deps.storage,
+    //     deps.api.addr_validate(address.as_str())?,
+    //     |mut stat| -> Result<_, ContractError> {
+    //         if let Some(current_status) = stat {
+    //             if current_status == status {
+    //                 return Err(ContractError::FreezerStatusUnchanged { status });
+    //             }
+    //         }
+    //         stat = Some(status);
+    //         Ok(status)
+    //     },
+    // )?;
+
+    Ok(Response::new()
+        .add_attribute("method", "set_freezer")
+        .add_attribute("freezer", address)
+        .add_attribute("status", status.to_string()))
+}
+
+fn set_bool_allowance(
+    deps: DepsMut,
+    address: &String,
+    allowances: Map<Addr, bool>,
+    status: bool,
+) -> Result<bool, ContractError>{
+
+    return allowances.update(
         deps.storage,
         deps.api.addr_validate(address.as_str())?,
         |mut stat| -> Result<_, ContractError> {
@@ -133,12 +182,29 @@ fn execute_set_freezer(
             stat = Some(status);
             Ok(status)
         },
-    )?;
+    )
+}
 
-    Ok(Response::new()
-        .add_attribute("method", "set_freezer")
-        .add_attribute("freezer", address)
-        .add_attribute("status", status.to_string()))
+fn check_contract_owner(
+    deps:Deps,
+    sender: Addr,
+) -> Result<(), ContractError> {
+    let config = CONFIG.load(deps.storage).unwrap();
+    if config.owner != sender {
+        return Err(ContractError::Unauthorized {});
+   } else {
+    Ok(())
+   }
+}
+
+
+fn execute_set_minter(
+    deps:DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+) {
+
 }
 
 fn execute_freeze(
@@ -148,6 +214,8 @@ fn execute_freeze(
     status: bool,
 ) -> Result<Response, ContractError> {
     // check if the sender is allowed to freeze
+    // check_allowance(&deps, info.clone(), FREEZER_ALLOWANCES)?;
+
     if let Some(freezer_status) = FREEZER_ALLOWANCES.may_load(deps.storage, info.sender)? {
         if freezer_status == false {
             return Err(ContractError::Unauthorized {});
@@ -182,7 +250,8 @@ fn execute_blacklist(
     address: String,
     status: bool,
 ) -> Result<Response, ContractError> {
-    // TODO: check if sender is authorized
+
+    check_allowance(&deps, info, BLACKLISTER_ALLOWANCES)?;
 
     // update blacklisted status
     BLACKLISTED_ADDRESSES.update(
@@ -198,6 +267,21 @@ fn execute_blacklist(
         .add_attribute("method", "blacklist")
         .add_attribute("address", address)
         .add_attribute("new_value", status.to_string()))
+}
+
+fn check_allowance(deps: &DepsMut, info: MessageInfo, allowances: Map<Addr, bool>) -> Result<(), ContractError> {
+    let res = allowances.load(deps.storage, info.sender);
+    match res {
+        Ok(authorized) => {
+            if !authorized {
+                return Err(ContractError::Unauthorized {})
+            }
+        }
+        Err(_error) => {
+            return Err(ContractError::Unauthorized{})
+        }
+    }
+    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -245,26 +329,6 @@ pub fn beforesend_hook(
     Ok(Response::new().add_attribute("method", "try_increment"))
 }
 
-// pub fn try_increment(deps: DepsMut) -> Result<Response, ContractError> {
-//     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-//         state.count += 1;
-//         Ok(state)
-//     })?;
-
-//     Ok(Response::new().add_attribute("method", "try_increment"))
-// }
-
-// pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Response, ContractError> {
-//     STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-//         if info.sender != state.owner {
-//             return Err(ContractError::Unauthorized {});
-//         }
-//         state.count = count;
-//         Ok(state)
-//     })?;
-//     Ok(Response::new().add_attribute("method", "reset"))
-// }
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -289,7 +353,6 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
 mod tests {
 
     use crate::msg::DenomResponse;
-    use crate::state::BLACKLISTER_ALLOWANCES;
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -509,6 +572,61 @@ mod tests {
     }
 
     #[test]
+    fn set_blacklister() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg {
+            subdenom: String::from("udoge"),
+        };
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        // test setting freezers. set 2 because why not
+        let set_blacklister_msg = ExecuteMsg::SetBlacklister {
+            address: "blacklister1".to_string(),
+            status: true,
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), set_blacklister_msg).unwrap();
+
+        let set_blacklister_msg = ExecuteMsg::SetBlacklister {
+            address: "blacklister2".to_string(),
+            status: true,
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info, set_blacklister_msg).unwrap();
+
+        // test if blacklister1 can freeze
+        let blacklist_msg = ExecuteMsg::Blacklist { address: "someone".to_string(), status: true };
+        let info = mock_info("blacklister1", &coins(1000, "udoge"));
+        let _res = execute(deps.as_mut(), mock_env(), info, blacklist_msg).unwrap();
+
+        // test if freezer can be unset
+        let info = mock_info("creator", &coins(1000, "earth"));
+        let set_blacklister_msg = ExecuteMsg::SetBlacklister {
+            address: "blacklister1".to_string(),
+            status: false,
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info.clone(), set_blacklister_msg).unwrap();
+
+        let blacklist_msg = ExecuteMsg::Blacklist {address: "anyone2".to_string(), status: false };
+        let info = mock_info("blacklister1", &coins(1000, "udoge"));
+        let err = execute(deps.as_mut(), mock_env(), info, blacklist_msg).unwrap_err();
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("should throw Unauthorized error but throws {}", err),
+        }
+
+        let info = mock_info("anyone", &coins(1000, "udoge"));
+        let set_blacklister_msg = ExecuteMsg::SetBlacklister {
+            address: "blacklister2".to_string(),
+            status: false,
+        };
+        let err = execute(deps.as_mut(), mock_env(), info, set_blacklister_msg).unwrap_err();
+        match err {
+            ContractError::Unauthorized {} => {}
+            _ => panic!("should throw Unauthorized error but throws {}", err),
+        }
+    }
+
+    #[test]
     fn beforesend() {
         let mut deps = mock_dependencies();
 
@@ -557,7 +675,7 @@ mod tests {
 
     // test helper
     #[allow(unused_assignments)]
-    fn set_blacklister(deps: DepsMut, address: String, status: bool) {
+    fn add_blacklister(deps: DepsMut, address: String, status: bool) {
         BLACKLISTER_ALLOWANCES
             .update(
                 deps.storage,
