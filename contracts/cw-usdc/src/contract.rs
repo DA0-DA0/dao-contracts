@@ -55,6 +55,9 @@ pub fn execute(
         ExecuteMsg::Mint { to_address, amount } => {
             execute_mint(deps, env, info, to_address, amount)
         }
+        ExecuteMsg::Burn { amount } => {
+            execute_burn(deps, env, info, amount)
+        },
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => todo!(),
         ExecuteMsg::ChangeContractOwner { new_owner } => {
             execute_change_contract_owner(deps, env, info, new_owner)
@@ -71,7 +74,6 @@ pub fn execute(
         ExecuteMsg::SetFreezer { address, status } => {
             execute_set_freezer(deps, env, info, address, status)
         }
-        ExecuteMsg::Burn { amount } => todo!(),
         ExecuteMsg::Blacklist { address, status } => {
             execute_blacklist(deps, env, info, address, status)
         }
@@ -115,6 +117,39 @@ pub fn execute_mint(
         .add_message(mint_tokens_msg);
 
     Ok(Response::new().add_attribute("method", "try_increment"))
+}
+
+fn execute_burn(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    
+    let denom = query_denom(deps.as_ref())?;
+
+    if amount.eq(&Uint128::new(0_u128)) {
+        return Result::Err(ContractError::ZeroAmount {});
+    } 
+
+    let allowance = BURNER_ALLOWANCES.update(
+        deps.storage,
+        info.sender.clone(),
+        |allowance| -> StdResult<Uint128> {
+            Ok(allowance.unwrap_or_default().checked_sub(amount)?)
+        },
+    )?;
+
+    // TODO execute actual BurnMsg
+    let burn_tokens_msg =
+        OsmosisMsg::burn_contract_tokens(denom, amount, info.sender.to_string());
+
+
+    Ok(Response::new()
+        .add_attribute("method", "execute_burn")
+        .add_attribute("amount", amount.to_string())
+        // .add_message(burn_tokens_msg)
+)
 }
 
 fn execute_change_contract_owner(
@@ -237,7 +272,7 @@ fn execute_set_burner(
 ) -> Result<Response, ContractError> {
     check_contract_owner(deps.as_ref(), info.sender)?;
 
-    // Set minter allowance
+    // Set Burner allowance
     set_int_allowance(deps, BURNER_ALLOWANCES, &address, amount)?;
     
     Ok(Response::new()
@@ -273,7 +308,7 @@ fn execute_freeze(
     status: bool,
 ) -> Result<Response, ContractError> {
     // check if the sender is allowed to freeze
-    check_allowance(&deps, info.clone(), FREEZER_ALLOWANCES)?;
+    check_allowance(&deps.as_ref(), info.clone(), FREEZER_ALLOWANCES)?;
 
     let config = CONFIG.load(deps.storage)?;
     if config.is_frozen == status {
@@ -301,7 +336,7 @@ fn execute_blacklist(
     status: bool,
 ) -> Result<Response, ContractError> {
 
-    check_allowance(&deps, info, BLACKLISTER_ALLOWANCES)?;
+    check_allowance(&deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
     // update blacklisted status
     BLACKLISTED_ADDRESSES.update(
@@ -316,10 +351,10 @@ fn execute_blacklist(
     Ok(Response::new()
         .add_attribute("method", "blacklist")
         .add_attribute("address", address)
-        .add_attribute("new_value", status.to_string()))
+        .add_attribute("status", status.to_string()))
 }
 
-fn check_allowance(deps: &DepsMut, info: MessageInfo, allowances: Map<Addr, bool>) -> Result<(), ContractError> {
+fn check_allowance(deps: &Deps, info: MessageInfo, allowances: Map<Addr, bool>) -> Result<(), ContractError> {
     let res = allowances.load(deps.storage, info.sender);
     match res {
         Ok(authorized) => {
@@ -327,8 +362,12 @@ fn check_allowance(deps: &DepsMut, info: MessageInfo, allowances: Map<Addr, bool
                 return Err(ContractError::Unauthorized {})
             }
         }
-        Err(_error) => {
-            return Err(ContractError::Unauthorized{})
+        Err(error) => {
+            if let cosmwasm_std::StdError::NotFound { .. } = error {
+                return Err(ContractError::Unauthorized{})
+            } else {
+                return Err(ContractError::Std(error))
+            }
         }
     }
     Ok(())
@@ -707,8 +746,8 @@ mod tests {
         let info = mock_info("creator", &coins(1000, "uakt"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let burner_info = mock_info("minter", &coins(1000, "uakt"));
-        let set_burner_msg = ExecuteMsg::SetMinter { address: burner_info.sender.to_string(), allowance: Uint128::from(1000u64) };
+        let burner_info = mock_info("burner", &coins(1000, "uakt"));
+        let set_burner_msg = ExecuteMsg::SetBurner { address: burner_info.sender.to_string(), allowance: Uint128::from(1000u64) };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), set_burner_msg).unwrap();
 
