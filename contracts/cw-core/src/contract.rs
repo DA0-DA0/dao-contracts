@@ -468,18 +468,20 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Admin {} => query_admin(deps),
         QueryMsg::AdminNomination {} => query_admin_nomination(deps),
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Cw20TokenList { start_at, limit } => query_cw20_list(deps, start_at, limit),
-        QueryMsg::Cw20Balances { start_at, limit } => {
-            query_cw20_balances(deps, env, start_at, limit)
+        QueryMsg::Cw20TokenList { start_after, limit } => query_cw20_list(deps, start_after, limit),
+        QueryMsg::Cw20Balances { start_after, limit } => {
+            query_cw20_balances(deps, env, start_after, limit)
         }
-        QueryMsg::Cw721TokenList { start_at, limit } => query_cw721_list(deps, start_at, limit),
+        QueryMsg::Cw721TokenList { start_after, limit } => {
+            query_cw721_list(deps, start_after, limit)
+        }
         QueryMsg::DumpState {} => query_dump_state(deps, env),
         QueryMsg::GetItem { key } => query_get_item(deps, key),
         QueryMsg::Info {} => query_info(deps),
-        QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
+        QueryMsg::ListItems { start_after, limit } => query_list_items(deps, start_after, limit),
         QueryMsg::PauseInfo {} => query_paused(deps, env),
-        QueryMsg::ProposalModules { start_at, limit } => {
-            query_proposal_modules(deps, start_at, limit)
+        QueryMsg::ProposalModules { start_after, limit } => {
+            query_proposal_modules(deps, start_after, limit)
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
         QueryMsg::VotingModule {} => query_voting_module(deps),
@@ -511,7 +513,7 @@ pub fn query_voting_module(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_proposal_modules(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     // This query is will run out of gas due to the size of the
@@ -530,7 +532,9 @@ pub fn query_proposal_modules(
     to_binary(&paginate_map_keys(
         deps,
         &PROPOSAL_MODULES,
-        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -605,13 +609,13 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_list_items(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     to_binary(&paginate_map(
         deps,
         &ITEMS,
-        start_at,
+        start_after,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -619,13 +623,15 @@ pub fn query_list_items(
 
 pub fn query_cw20_list(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     to_binary(&paginate_map_keys(
         deps,
         &CW20_LIST,
-        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -633,13 +639,15 @@ pub fn query_cw20_list(
 
 pub fn query_cw721_list(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     to_binary(&paginate_map_keys(
         deps,
         &CW721_LIST,
-        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -648,13 +656,15 @@ pub fn query_cw721_list(
 pub fn query_cw20_balances(
     deps: Deps,
     env: Env,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     let addrs = paginate_map_keys(
         deps,
         &CW20_LIST,
-        start_at.map(|a| deps.api.addr_validate(&a)).transpose()?,
+        start_after
+            .map(|a| deps.api.addr_validate(&a))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?;

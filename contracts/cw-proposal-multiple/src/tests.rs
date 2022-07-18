@@ -166,7 +166,7 @@ where
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -781,7 +781,7 @@ fn test_propose() {
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -892,7 +892,7 @@ fn test_propose_wrong_num_choices() {
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1076,7 +1076,7 @@ fn test_migrate() {
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -2340,7 +2340,7 @@ fn test_cant_execute_not_member() {
         .query_wasm_smart(
             governance_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -2989,7 +2989,7 @@ fn test_query_list_proposals() {
         .query_wasm_smart(
             gov_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -3148,7 +3148,7 @@ fn test_hooks() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -3308,7 +3308,7 @@ fn test_active_threshold_absolute() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -3446,7 +3446,7 @@ fn test_active_threshold_percent() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -3581,7 +3581,7 @@ fn test_active_threshold_none() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -3669,7 +3669,7 @@ fn test_active_threshold_none() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )

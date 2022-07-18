@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "nft_address"
+  ],
+  "properties": {
+    "manager": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nft_address": {
+      "type": "string"
+    },
+    "owner": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Owner"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unstaking_duration": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Duration"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Duration": {
+      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Time in seconds",
+          "type": "object",
+          "required": [
+            "time"
+          ],
+          "properties": {
+            "time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Owner": {
+      "oneOf": [
+        {
+          "description": "Set the owner to a specific address.",
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Set the owner to the address that instantiates this contract. This is useful for DAOs that instantiate this contract as part of their creation process and would like to set themselces as the admin.",
+          "type": "object",
+          "required": [
+            "instantiator"
+          ],
+          "properties": {
+            "instantiator": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

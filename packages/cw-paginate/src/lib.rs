@@ -1,12 +1,12 @@
 use cosmwasm_std::{Deps, Order, StdResult};
-use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map};
+use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map, SnapshotMap};
 
 /// Generic function for paginating a list of (K, V) pairs in a
 /// CosmWasm Map.
 pub fn paginate_map<'a, K, V>(
     deps: Deps,
     map: &Map<'a, K, V>,
-    start_at: Option<K>,
+    start_after: Option<K>,
     limit: Option<u32>,
     order: Order,
 ) -> StdResult<Vec<(K, V)>>
@@ -14,7 +14,7 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let items = map.range(deps.storage, start_at.map(Bound::inclusive), None, order);
+    let items = map.range(deps.storage, start_after.map(Bound::exclusive), None, order);
     match limit {
         Some(limit) => Ok(items
             .take(limit.try_into().unwrap())
@@ -27,7 +27,7 @@ where
 pub fn paginate_map_keys<'a, K, V>(
     deps: Deps,
     map: &Map<'a, K, V>,
-    start_at: Option<K>,
+    start_after: Option<K>,
     limit: Option<u32>,
     order: Order,
 ) -> StdResult<Vec<K>>
@@ -35,7 +35,29 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let items = map.keys(deps.storage, start_at.map(Bound::inclusive), None, order);
+    let items = map.keys(deps.storage, start_after.map(Bound::exclusive), None, order);
+    match limit {
+        Some(limit) => Ok(items
+            .take(limit.try_into().unwrap())
+            .collect::<StdResult<_>>()?),
+        None => Ok(items.collect::<StdResult<_>>()?),
+    }
+}
+
+/// Same as `paginate_map` but only returns the keys. For use with
+/// `SnaphotMap`.
+pub fn paginate_snapshot_map_keys<'a, K, V>(
+    deps: Deps,
+    map: &SnapshotMap<'a, K, V>,
+    start_after: Option<K>,
+    limit: Option<u32>,
+    order: Order,
+) -> StdResult<Vec<K>>
+where
+    K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
+    V: serde::de::DeserializeOwned + serde::Serialize,
+{
+    let items = map.keys(deps.storage, start_after.map(Bound::exclusive), None, order);
     match limit {
         Some(limit) => Ok(items
             .take(limit.try_into().unwrap())
@@ -80,7 +102,7 @@ mod tests {
         let items = paginate_map(
             deps.as_ref(),
             &map,
-            Some("2".to_string()),
+            Some("1".to_string()),
             None,
             Order::Ascending,
         )
@@ -110,7 +132,7 @@ mod tests {
         let items = paginate_map_keys(
             deps.as_ref(),
             &map,
-            Some("2".to_string()),
+            Some("1".to_string()),
             None,
             Order::Ascending,
         )
