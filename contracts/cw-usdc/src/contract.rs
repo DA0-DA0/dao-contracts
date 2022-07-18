@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, Addr,
+    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 
@@ -11,7 +11,10 @@ use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg};
-use crate::state::{Config, BLACKLISTED_ADDRESSES, CONFIG, FREEZER_ALLOWANCES, MINTER_ALLOWANCES, BLACKLISTER_ALLOWANCES, self, BURNER_ALLOWANCES};
+use crate::state::{
+    self, Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
+    FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
+};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
@@ -55,19 +58,17 @@ pub fn execute(
         ExecuteMsg::Mint { to_address, amount } => {
             execute_mint(deps, env, info, to_address, amount)
         }
-        ExecuteMsg::Burn { amount } => {
-            execute_burn(deps, env, info, amount)
-        },
+        ExecuteMsg::Burn { amount } => execute_burn(deps, env, info, amount),
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => todo!(),
         ExecuteMsg::ChangeContractOwner { new_owner } => {
             execute_change_contract_owner(deps, env, info, new_owner)
-        },
+        }
         ExecuteMsg::SetMinter { address, allowance } => {
             execute_set_minter(deps, env, info, address, allowance)
-        },
+        }
         ExecuteMsg::SetBurner { address, allowance } => {
             execute_set_burner(deps, env, info, address, allowance)
-        },
+        }
         ExecuteMsg::SetBlacklister { address, status } => {
             execute_set_blacklister(deps, env, info, address, status)
         }
@@ -125,12 +126,11 @@ fn execute_burn(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    
     let denom = query_denom(deps.as_ref())?;
 
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
-    } 
+    }
 
     let allowance = BURNER_ALLOWANCES.update(
         deps.storage,
@@ -141,15 +141,13 @@ fn execute_burn(
     )?;
 
     // TODO execute actual BurnMsg
-    let burn_tokens_msg =
-        OsmosisMsg::burn_contract_tokens(denom, amount, info.sender.to_string());
+    let burn_tokens_msg = OsmosisMsg::burn_contract_tokens(denom, amount, info.sender.to_string());
 
-
-    Ok(Response::new()
-        .add_attribute("method", "execute_burn")
-        .add_attribute("amount", amount.to_string())
-        // .add_message(burn_tokens_msg)
-)
+    Ok(
+        Response::new()
+            .add_attribute("method", "execute_burn")
+            .add_attribute("amount", amount.to_string()), // .add_message(burn_tokens_msg)
+    )
 }
 
 fn execute_change_contract_owner(
@@ -161,16 +159,17 @@ fn execute_change_contract_owner(
     // check_contract_owner(deps.as_ref(), info.sender)?;
     let val_address = deps.api.addr_validate(address.as_str())?;
 
-    CONFIG.update(deps.storage, |mut config: Config| -> Result<Config, ContractError> {
-        if config.owner == info.sender {
-            config.owner = val_address;
-            return Ok(config)
+    CONFIG.update(
+        deps.storage,
+        |mut config: Config| -> Result<Config, ContractError> {
+            if config.owner == info.sender {
+                config.owner = val_address;
+                return Ok(config);
+            }
 
-        } 
-            
-        return Err(ContractError::Unauthorized {  })
-    })?;
-
+            return Err(ContractError::Unauthorized {});
+        },
+    )?;
 
     Ok(Response::new().add_attribute("method", "change_contract_owner"))
 }
@@ -179,7 +178,7 @@ fn execute_set_blacklister(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    address: String, 
+    address: String,
     status: bool,
 ) -> Result<Response, ContractError> {
     check_contract_owner(deps.as_ref(), info.sender)?;
@@ -189,9 +188,7 @@ fn execute_set_blacklister(
     Ok(Response::new()
         .add_attribute("method", "set_blacklister")
         .add_attribute("blacklister", address)
-        .add_attribute("status", status.to_string())
-    )   
-
+        .add_attribute("status", status.to_string()))
 }
 
 fn execute_set_freezer(
@@ -217,8 +214,7 @@ fn set_bool_allowance(
     address: &String,
     allowances: Map<Addr, bool>,
     status: bool,
-) -> Result<bool, ContractError>{
-
+) -> Result<bool, ContractError> {
     return allowances.update(
         deps.storage,
         deps.api.addr_validate(address.as_str())?,
@@ -231,19 +227,16 @@ fn set_bool_allowance(
             stat = Some(status);
             Ok(status)
         },
-    )
+    );
 }
 
-fn check_contract_owner(
-    deps:Deps,
-    sender: Addr,
-) -> Result<(), ContractError> {
+fn check_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
     let config = CONFIG.load(deps.storage).unwrap();
     if config.owner != sender {
         return Err(ContractError::Unauthorized {});
-   } else {
-    Ok(())
-   }
+    } else {
+        Ok(())
+    }
 }
 
 fn set_int_allowance(
@@ -252,19 +245,23 @@ fn set_int_allowance(
     address: &String,
     amount: Uint128,
 ) -> Result<Uint128, ContractError> {
-    allowances.update(deps.storage, deps.api.addr_validate(address.as_str())?, |mut option_amount| -> Result<Uint128, ContractError> {
-        if let Some(mut current_amount) = option_amount {
-            current_amount += amount;
-            return Ok(current_amount)
-        } else {
-            option_amount = Some(amount);
-            return Ok(amount)
-        }
-    })
+    allowances.update(
+        deps.storage,
+        deps.api.addr_validate(address.as_str())?,
+        |mut option_amount| -> Result<Uint128, ContractError> {
+            if let Some(mut current_amount) = option_amount {
+                current_amount += amount;
+                return Ok(current_amount);
+            } else {
+                option_amount = Some(amount);
+                return Ok(amount);
+            }
+        },
+    )
 }
 
 fn execute_set_burner(
-    deps:DepsMut,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     address: String,
@@ -274,16 +271,15 @@ fn execute_set_burner(
 
     // Set Burner allowance
     set_int_allowance(deps, BURNER_ALLOWANCES, &address, amount)?;
-    
+
     Ok(Response::new()
         .add_attribute("method", "set_burner")
         .add_attribute("burner", address)
-        .add_attribute("amount", amount)
-)       
+        .add_attribute("amount", amount))
 }
 
 fn execute_set_minter(
-    deps:DepsMut,
+    deps: DepsMut,
     _env: Env,
     info: MessageInfo,
     address: String,
@@ -293,12 +289,11 @@ fn execute_set_minter(
 
     // Set minter allowance
     set_int_allowance(deps, MINTER_ALLOWANCES, &address, amount)?;
-    
+
     Ok(Response::new()
         .add_attribute("method", "set_minter")
         .add_attribute("minter", address)
-        .add_attribute("amount", amount)
-)       
+        .add_attribute("amount", amount))
 }
 
 fn execute_freeze(
@@ -335,7 +330,6 @@ fn execute_blacklist(
     address: String,
     status: bool,
 ) -> Result<Response, ContractError> {
-
     check_allowance(&deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
     // update blacklisted status
@@ -354,19 +348,23 @@ fn execute_blacklist(
         .add_attribute("status", status.to_string()))
 }
 
-fn check_allowance(deps: &Deps, info: MessageInfo, allowances: Map<Addr, bool>) -> Result<(), ContractError> {
+fn check_allowance(
+    deps: &Deps,
+    info: MessageInfo,
+    allowances: Map<Addr, bool>,
+) -> Result<(), ContractError> {
     let res = allowances.load(deps.storage, info.sender);
     match res {
         Ok(authorized) => {
             if !authorized {
-                return Err(ContractError::Unauthorized {})
+                return Err(ContractError::Unauthorized {});
             }
         }
         Err(error) => {
             if let cosmwasm_std::StdError::NotFound { .. } = error {
-                return Err(ContractError::Unauthorized{})
+                return Err(ContractError::Unauthorized {});
             } else {
-                return Err(ContractError::Std(error))
+                return Err(ContractError::Std(error));
             }
         }
     }
@@ -466,7 +464,6 @@ mod tests {
         assert_eq!("uusdc", value.denom);
     }
 
-
     #[test]
     fn change_contract_owner() {
         let mut deps = mock_dependencies();
@@ -478,14 +475,15 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let new_info = mock_info("new_owner", &coins(1000, "ueeur"));
-        let change_msg = ExecuteMsg::ChangeContractOwner { new_owner: new_info.sender.clone().into_string() };
+        let change_msg = ExecuteMsg::ChangeContractOwner {
+            new_owner: new_info.sender.clone().into_string(),
+        };
         let res = execute(deps.as_mut(), mock_env(), info, change_msg).unwrap();
 
         let res = check_contract_owner(deps.as_ref(), new_info.sender.clone()).unwrap();
 
         // TODO: test for if non owner tries to change owner
     }
-
 
     #[test]
     fn freeze_contract() {
@@ -704,7 +702,10 @@ mod tests {
         let _res = execute(deps.as_mut(), mock_env(), info, set_blacklister_msg).unwrap();
 
         // test if blacklister1 can freeze
-        let blacklist_msg = ExecuteMsg::Blacklist { address: "someone".to_string(), status: true };
+        let blacklist_msg = ExecuteMsg::Blacklist {
+            address: "someone".to_string(),
+            status: true,
+        };
         let info = mock_info("blacklister1", &coins(1000, "udoge"));
         let _res = execute(deps.as_mut(), mock_env(), info, blacklist_msg).unwrap();
 
@@ -716,7 +717,10 @@ mod tests {
         };
         let _res = execute(deps.as_mut(), mock_env(), info.clone(), set_blacklister_msg).unwrap();
 
-        let blacklist_msg = ExecuteMsg::Blacklist {address: "anyone2".to_string(), status: false };
+        let blacklist_msg = ExecuteMsg::Blacklist {
+            address: "anyone2".to_string(),
+            status: false,
+        };
         let info = mock_info("blacklister1", &coins(1000, "udoge"));
         let err = execute(deps.as_mut(), mock_env(), info, blacklist_msg).unwrap_err();
         match err {
@@ -737,7 +741,7 @@ mod tests {
     }
 
     #[test]
-    
+
     fn set_burner() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg {
@@ -747,15 +751,22 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let burner_info = mock_info("burner", &coins(1000, "uakt"));
-        let set_burner_msg = ExecuteMsg::SetBurner { address: burner_info.sender.to_string(), allowance: Uint128::from(1000u64) };
+        let set_burner_msg = ExecuteMsg::SetBurner {
+            address: burner_info.sender.to_string(),
+            allowance: Uint128::from(1000u64),
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), set_burner_msg).unwrap();
 
-        let burn_msg = ExecuteMsg::Burn { amount: Uint128::from(100u64) };
+        let burn_msg = ExecuteMsg::Burn {
+            amount: Uint128::from(100u64),
+        };
         let res = execute(deps.as_mut(), mock_env(), burner_info.clone(), burn_msg).unwrap();
 
-        // mint more then allowance 
-        let burn_msg = ExecuteMsg::Burn { amount: Uint128::from(950u64) };
+        // mint more then allowance
+        let burn_msg = ExecuteMsg::Burn {
+            amount: Uint128::from(950u64),
+        };
         let err = execute(deps.as_mut(), mock_env(), burner_info.clone(), burn_msg).unwrap_err();
         // TODO: match error
     }
@@ -769,15 +780,24 @@ mod tests {
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let minter_info = mock_info("minter", &coins(1000, "uakt"));
-        let set_mint_msg = ExecuteMsg::SetMinter { address: minter_info.sender.to_string(), allowance: Uint128::from(1000u64) };
+        let set_mint_msg = ExecuteMsg::SetMinter {
+            address: minter_info.sender.to_string(),
+            allowance: Uint128::from(1000u64),
+        };
 
         let res = execute(deps.as_mut(), mock_env(), info.clone(), set_mint_msg).unwrap();
 
-        let mint_msg = ExecuteMsg::Mint { to_address: minter_info.sender.to_string(), amount: Uint128::from(100u64) };
+        let mint_msg = ExecuteMsg::Mint {
+            to_address: minter_info.sender.to_string(),
+            amount: Uint128::from(100u64),
+        };
         let res = execute(deps.as_mut(), mock_env(), minter_info.clone(), mint_msg).unwrap();
 
-        // mint more then allowance 
-        let mint_msg = ExecuteMsg::Mint { to_address: minter_info.sender.to_string(), amount: Uint128::from(950u64) };
+        // mint more then allowance
+        let mint_msg = ExecuteMsg::Mint {
+            to_address: minter_info.sender.to_string(),
+            amount: Uint128::from(950u64),
+        };
         let err = execute(deps.as_mut(), mock_env(), minter_info.clone(), mint_msg).unwrap_err();
         // TODO: match error
     }
