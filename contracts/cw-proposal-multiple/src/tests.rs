@@ -3663,3 +3663,67 @@ fn test_active_threshold_none() {
         )
         .unwrap();
 }
+
+#[test]
+fn test_return_deposit_to_dao_on_proposal_failure() {
+    let (mut app, core_addr) = do_test_votes_cw20_balances(
+        vec![TestMultipleChoiceVote {
+            voter: "blue".to_string(),
+            position: MultipleChoiceVote { option_id: 2 },
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        VotingStrategy::SingleChoice {
+            quorum: PercentageThreshold::Majority {},
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: false,
+        }),
+        false,
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_modules = core_state.proposal_modules;
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_multiple = proposal_modules.into_iter().next().unwrap();
+
+    // Make the proposal expire. It has now failed.
+    app.update_block(|block| block.height += 10);
+
+    // Close the proposal, this should work as the proposal is now
+    // open and expired.
+    app.execute_contract(
+        Addr::unchecked("keze"),
+        proposal_multiple.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    // Check that a refund was issued to the DAO.
+    let proposal_config: Config = app
+        .wrap()
+        .query_wasm_smart(proposal_multiple, &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo { token, .. } = proposal_config.deposit_info.unwrap();
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: core_addr.into_string(),
+            },
+        )
+        .unwrap();
+
+    // Deposit should now belong to the DAO.
+    assert_eq!(balance.balance, Uint128::new(1));
+}

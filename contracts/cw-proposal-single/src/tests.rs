@@ -1539,7 +1539,7 @@ fn test_close_open_proposal() {
         )
         .unwrap();
 
-    // Proposal has not been closed so deposit has not been
+    // Proposal has not been closed so deposit has been
     // refunded.
     assert_eq!(balance.balance, Uint128::new(10));
 }
@@ -4102,4 +4102,67 @@ fn test_timestamp_updated() {
 
     assert_eq!(updated.proposal.last_updated, latest_time);
     assert_eq!(updated.proposal.status, Status::Closed);
+}
+
+#[test]
+fn test_return_deposit_to_dao_on_proposal_failure() {
+    let (mut app, core_addr) = do_test_votes_cw20_balances(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: false,
+        }),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_modules = core_state.proposal_modules;
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_single = proposal_modules.into_iter().next().unwrap();
+
+    // Make the proposal expire. It has now failed.
+    app.update_block(|block| block.height += 10);
+
+    // Close the proposal, this should work as the proposal is now
+    // open and expired.
+    app.execute_contract(
+        Addr::unchecked("keze"),
+        proposal_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    // Check that a refund was issued.
+    let proposal_config: Config = app
+        .wrap()
+        .query_wasm_smart(proposal_single, &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo { token, .. } = proposal_config.deposit_info.unwrap();
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: core_addr.into_string(),
+            },
+        )
+        .unwrap();
+
+    // Deposit should now belong to the DAO.
+    assert_eq!(balance.balance, Uint128::new(1));
 }
