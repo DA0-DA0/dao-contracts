@@ -1,16 +1,18 @@
+
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, SubMsg, CosmosMsg, BankMsg,
 };
 use cw2::set_contract_version;
 
 use cw_storage_plus::Map;
 use osmo_bindings::{OsmosisMsg, OsmosisQuery};
-use osmo_bindings_test::OsmosisModule;
+// use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg, DenomResponse};
 use crate::state::{
     self, Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
     FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
@@ -26,25 +28,26 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // TODO trigger CreateDenom msg
-    OsmosisMsg::CreateDenom {
-        subdenom: msg.subdenom,
+    let create_denom_msg = OsmosisMsg::CreateDenom {
+        subdenom: msg.subdenom.clone(),
     };
 
     let config = Config {
         owner: info.sender.clone(),
         is_frozen: false,
-        denom: String::from("TODO"), // TODO: use denom from actual message
+        denom: msg.subdenom, // TODO: use denom from actual message // check with Sunn
     };
 
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender))
+        .add_attribute("owner", info.sender)
+        .add_message(create_denom_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -53,7 +56,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     match msg {
         ExecuteMsg::Mint { to_address, amount } => {
             execute_mint(deps, env, info, to_address, amount)
@@ -88,14 +91,15 @@ pub fn execute_mint(
     info: MessageInfo,
     to_address: String,
     amount: Uint128,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     // STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
     //     state.count += 1;
     //     Ok(state)
     // })?;
 
     deps.api.addr_validate(&to_address)?;
-    let denom = query_denom(deps.as_ref())?;
+    let denom = CONFIG.load(deps.storage).unwrap().denom;
+    // let denom = query_denom(deps.as_ref())?; TODO: Ask sunny
 
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
@@ -116,8 +120,9 @@ pub fn execute_mint(
     let res = Response::new()
         .add_attribute("method", "mint_tokens")
         .add_message(mint_tokens_msg);
+    Ok(res)
 
-    Ok(Response::new().add_attribute("method", "try_increment"))
+    // Ok(Response::new().add_attribute("method", "try_increment"))
 }
 
 fn execute_burn(
@@ -125,8 +130,8 @@ fn execute_burn(
     _env: Env,
     info: MessageInfo,
     amount: Uint128,
-) -> Result<Response, ContractError> {
-    let denom = query_denom(deps.as_ref())?;
+) -> Result<Response<OsmosisMsg>, ContractError> {
+    let denom = CONFIG.load(deps.storage).unwrap().denom;
 
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
@@ -141,12 +146,14 @@ fn execute_burn(
     )?;
 
     // TODO execute actual BurnMsg
-    let burn_tokens_msg = OsmosisMsg::burn_contract_tokens(denom, amount, info.sender.to_string());
+    let burn_tokens_msg = 
+        OsmosisMsg::burn_contract_tokens(denom, amount, info.sender.to_string());
 
     Ok(
         Response::new()
             .add_attribute("method", "execute_burn")
-            .add_attribute("amount", amount.to_string()), // .add_message(burn_tokens_msg)
+            .add_attribute("amount", amount.to_string())
+            .add_message(burn_tokens_msg)
     )
 }
 
@@ -155,8 +162,9 @@ fn execute_change_contract_owner(
     _env: Env,
     info: MessageInfo,
     address: String,
-) -> Result<Response, ContractError> {
-    // check_contract_owner(deps.as_ref(), info.sender)?;
+) -> Result<Response<OsmosisMsg>, ContractError> {
+    // TODO: check using the comment below and save state instead of update
+    // check_contract_owner(deps.as_ref(), info.sender)?; 
     let val_address = deps.api.addr_validate(address.as_str())?;
 
     CONFIG.update(
@@ -180,7 +188,7 @@ fn execute_set_blacklister(
     info: MessageInfo,
     address: String,
     status: bool,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     check_contract_owner(deps.as_ref(), info.sender)?;
 
     set_bool_allowance(deps, &address, BLACKLISTER_ALLOWANCES, status)?;
@@ -197,7 +205,7 @@ fn execute_set_freezer(
     info: MessageInfo,
     address: String,
     status: bool,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     // Check if sender is authorised to set freezer
     check_contract_owner(deps.as_ref(), info.sender)?;
 
@@ -244,20 +252,26 @@ fn set_int_allowance(
     allowances: Map<Addr, Uint128>,
     address: &String,
     amount: Uint128,
-) -> Result<Uint128, ContractError> {
-    allowances.update(
+) -> Result<(), ContractError> {
+    // TODO: Check strategy with sunny
+    // allowances.update(
+    //     deps.storage,
+    //     deps.api.addr_validate(address.as_str())?,
+    //     |mut option_amount| -> Result<Uint128, ContractError> {
+    //             option_amount = Some(amount);
+    //             return Ok(amount);
+    //     },
+    // )
+    
+    let res = allowances.save(
         deps.storage,
         deps.api.addr_validate(address.as_str())?,
-        |mut option_amount| -> Result<Uint128, ContractError> {
-            if let Some(mut current_amount) = option_amount {
-                current_amount += amount;
-                return Ok(current_amount);
-            } else {
-                option_amount = Some(amount);
-                return Ok(amount);
-            }
-        },
-    )
+            &amount);
+    match res {
+        Ok(()) => Ok(()),
+        Err(error) => Err(ContractError::Std(error))
+    }
+    
 }
 
 fn execute_set_burner(
@@ -266,7 +280,7 @@ fn execute_set_burner(
     info: MessageInfo,
     address: String,
     amount: Uint128,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     check_contract_owner(deps.as_ref(), info.sender)?;
 
     // Set Burner allowance
@@ -284,7 +298,7 @@ fn execute_set_minter(
     info: MessageInfo,
     address: String,
     amount: Uint128,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     check_contract_owner(deps.as_ref(), info.sender)?;
 
     // Set minter allowance
@@ -301,7 +315,7 @@ fn execute_freeze(
     _env: Env,
     info: MessageInfo,
     status: bool,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     // check if the sender is allowed to freeze
     check_allowance(&deps.as_ref(), info.clone(), FREEZER_ALLOWANCES)?;
 
@@ -329,7 +343,7 @@ fn execute_blacklist(
     info: MessageInfo,
     address: String,
     status: bool,
-) -> Result<Response, ContractError> {
+) -> Result<Response<OsmosisMsg>, ContractError> {
     check_allowance(&deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
     // update blacklisted status
@@ -387,8 +401,8 @@ pub fn beforesend_hook(
     let config = CONFIG.load(deps.storage)?;
 
     if config.is_frozen {
-        // is it neccesary to check each coin? or just always return error
-        for coin in amount {
+        // TODO: is it neccesary to check each coin? or just always return error
+        for coin in amount.clone() {
             if coin.denom == config.denom {
                 return Err(ContractError::ContractFrozen {
                     denom: config.denom,
@@ -407,13 +421,19 @@ pub fn beforesend_hook(
 
     // Check if 'to' address is blacklisted
     let to_address = deps.api.addr_validate(to.as_str())?;
-    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, to_address)? {
+    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, to_address.clone())? {
         if is_blacklisted {
             return Err(ContractError::Blacklisted { address: to });
         }
     };
+    // TODO: Send token?
+    // let send_amount_msg = BankMsg::Send { to_address: to_address.to_string(), amount }; 
 
-    Ok(Response::new().add_attribute("method", "try_increment"))
+    Ok(Response::new()
+        .add_attribute("method", "before_send")
+        // .add_message(send_amount_msg))
+    )
+    
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -424,9 +444,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_denom(deps: Deps) -> StdResult<String> {
+pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
     let config = CONFIG.load(deps.storage)?;
-    return Ok(config.denom);
+    return Ok(DenomResponse {
+        denom: config.denom
+    });
+//    return Ok(config.denom);
 }
 
 pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
@@ -436,9 +459,10 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
     })
 }
 
+
 #[cfg(test)]
 mod tests {
-
+    use osmo_bindings_test::OsmosisModule;
     use crate::msg::DenomResponse;
 
     use super::*;
@@ -456,7 +480,7 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
+        assert_eq!(1, res.messages.len()); // TODO: Ask Sunny why this was 0. The create_denom message is now part of the response
 
         // it worked, let's query the state
         let res = query(deps.as_ref(), mock_env(), QueryMsg::Denom {}).unwrap();
@@ -478,11 +502,22 @@ mod tests {
         let change_msg = ExecuteMsg::ChangeContractOwner {
             new_owner: new_info.sender.clone().into_string(),
         };
-        let res = execute(deps.as_mut(), mock_env(), info, change_msg).unwrap();
+        let res = execute(deps.as_mut(), mock_env(), info.clone(), change_msg.clone()).unwrap();
 
         let res = check_contract_owner(deps.as_ref(), new_info.sender.clone()).unwrap();
 
-        // TODO: test for if non owner tries to change owner
+        // test for if non owner(previous owner) tries to change owner
+
+        let change_msg = ExecuteMsg::ChangeContractOwner {
+            new_owner: new_info.sender.clone().into_string(),
+        };
+        let err = execute(deps.as_mut(), mock_env(), info.clone(), change_msg.clone()).unwrap_err();
+        match err {
+            ContractError::Unauthorized {  } => (),
+            error => panic!("should generate Unauthorised but returns {}", error)
+        }
+
+        
     }
 
     #[test]
@@ -592,7 +627,7 @@ mod tests {
         let sudo_msg = SudoMsg::BeforeSend {
             from: "from_address".to_string(),
             to: "to_address".to_string(),
-            amount: coins(1000, "TODO"),
+            amount: coins(1000, "uusdc"),
         };
         let res = sudo(deps.as_mut(), mock_env(), sudo_msg);
         let err = res.unwrap_err();

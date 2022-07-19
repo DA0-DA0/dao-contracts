@@ -22,3 +22,12 @@ Cargo.lock
 
 # VS code 
 *.code-workspace
+
+# node 
+node_modules
+**/package-lock.json
+
+# yarn 
+**/yarn.lock
+
+
