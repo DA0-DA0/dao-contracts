@@ -23,7 +23,7 @@ use crate::helpers::build_denom;
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const CREATE_DENOM_COST: Uint128 = Uint128::new(1000u128);
+const CREATE_DENOM_COST: Uint128 = Uint128::new(1000u128); // TEMPORARILY for the lack of a better solution (gRPC queries)
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -34,31 +34,24 @@ pub fn instantiate(
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    if let Some(osmo) = info.funds.iter().find(|c| c.denom == "uosmo") {
-        if osmo.amount < CREATE_DENOM_COST {
-            return Err(ContractError::NotEnoughFunds { funds: osmo.amount.u128(), needed: CREATE_DENOM_COST.u128() })
-        }
-    } else {
-        return Err(ContractError::NotEnoughFunds { funds: 0u128, needed: CREATE_DENOM_COST.u128()  })    
-    }
+    // check info.funds
+    check_funds("uosmo".to_string(), &info.funds, CREATE_DENOM_COST)?;
     
     // create full denom from contract addres using OsmosisModule.full_denom copy
     let contract_address = env.contract.address;
     let full_denom = build_denom(&contract_address, &msg.subdenom)?;
 
-    let create_denom_msg = OsmosisMsg::CreateDenom {
-        subdenom: full_denom.clone(),
-    };
-
-
-
     let config = Config {
         owner: info.sender.clone(),
         is_frozen: false,
-        denom: full_denom, 
+        denom: full_denom.clone(), 
     };
-
+    
     CONFIG.save(deps.storage, &config)?;
+
+    let create_denom_msg = OsmosisMsg::CreateDenom {
+        subdenom: full_denom,
+    };
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -102,6 +95,21 @@ pub fn execute(
     }
 }
 
+fn check_funds(denom: String, funds: &Vec<Coin>, amount: Uint128) -> Result<(), ContractError>{
+    // TODO: Do we want to check for too much funds here? Otherwise all the excess funds will remain locked in the contract 4evers
+
+    if let Some(osmo) = funds.iter().find(|c| c.denom == denom) {
+        if osmo.amount < amount {
+            return Err(ContractError::NotEnoughFunds {denom, funds: osmo.amount.u128(), needed: amount.u128() })
+        } else {
+            return Ok(());
+        }
+    } else {
+        return Err(ContractError::NotEnoughFunds {denom, funds: 0u128, needed: CREATE_DENOM_COST.u128()  })    
+    }
+
+}
+
 pub fn execute_mint(
     deps: DepsMut,
     env: Env,
@@ -130,13 +138,11 @@ pub fn execute_mint(
 
     // TODO: Second msg that sends tokens to the to_address
 
-
-    let res = Response::new()
-        .add_attribute("method", "mint_tokens")
-        .add_message(mint_tokens_msg);
-    Ok(res)
-
-    // Ok(Response::new().add_attribute("method", "try_increment"))
+    Ok(
+        Response::new()
+            .add_attribute("method", "mint_tokens")
+            .add_message(mint_tokens_msg)
+    )
 }
 
 fn execute_burn(
@@ -152,7 +158,9 @@ fn execute_burn(
     }
 
     // Contract needs to own the coins it wants to burn 
-    // so need a message from sender.
+    check_funds(denom.clone(), &info.funds, amount)?;
+
+
 
     let _allowance = BURNER_ALLOWANCES.update(
         deps.storage,
@@ -163,8 +171,9 @@ fn execute_burn(
     )?;
 
     // TODO execute actual BurnMsg -> needs to be the contract address or maybe need to include in info.funds... see whats possible
+    // burns tokens that are owned by this contract.
     let burn_tokens_msg = 
-        OsmosisMsg::burn_contract_tokens(denom, amount, info.sender.to_string());
+        OsmosisMsg::burn_contract_tokens(denom, amount, "".to_string());
 
 
     Ok(
@@ -271,16 +280,7 @@ fn set_int_allowance(
     address: &String,
     amount: Uint128,
 ) -> Result<(), ContractError> {
-    // TODO: Check strategy with sunny -> GOOD
-    // allowances.update(
-    //     deps.storage,
-    //     deps.api.addr_validate(address.as_str())?,
-    //     |mut option_amount| -> Result<Uint128, ContractError> {
-    //             option_amount = Some(amount);
-    //             return Ok(amount);
-    //     },
-    // )
-    
+    // TODO What if the allowance doesnt change, like i check for at bool_allowance
     let res = allowances.save(
         deps.storage,
         deps.api.addr_validate(address.as_str())?,
@@ -495,7 +495,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: String::from("uusdc"),
         };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
 
         // we can just call .unwrap() to assert this was a success
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -504,7 +504,7 @@ mod tests {
         // it worked, let's query the state
         let res = query(deps.as_ref(), mock_env(), QueryMsg::Denom {}).unwrap();
         let value: DenomResponse = from_binary(&res).unwrap();
-        assert_eq!("uusdc", value.denom);
+        assert_eq!("factory/cosmos2contract/uusdc", value.denom);
     }
 
     #[test]
@@ -514,7 +514,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: String::from("uusdc"),
         };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let new_info = mock_info("new_owner", &coins(1000, "ueeur"));
@@ -546,7 +546,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: String::from("uusdc"),
         };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
 
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -628,7 +628,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: String::from("uusdc"),
         };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // Test unfrozen contract
@@ -685,7 +685,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: String::from("udoge"),
         };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // test setting freezers. set 2 because why not
@@ -739,7 +739,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: String::from("udoge"),
         };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         // test setting freezers. set 2 because why not
@@ -801,7 +801,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: "uakt".to_string(),
         };
-        let info = mock_info("creator", &coins(1000, "uakt"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let burner_info = mock_info("burner", &coins(1000, "uakt"));
@@ -830,7 +830,7 @@ mod tests {
         let msg = InstantiateMsg {
             subdenom: "uakt".to_string(),
         };
-        let info = mock_info("creator", &coins(1000, "uakt"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let minter_info = mock_info("minter", &coins(1000, "uakt"));
@@ -861,13 +861,12 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
-            subdenom: String::from("uusdc"),
+            subdenom: String::from("uquarks"),
         };
-        let info = mock_info("creator", &coins(1000, "earth"));
+        let info = mock_info("creator", &coins(1000, "uosmo"));
         let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         add_to_blacklist(deps.as_mut(), "blacklisted".to_string(), true);
-
         // test when sender is blacklisted
         let sudo_msg = SudoMsg::BeforeSend {
             from: "blacklisted".to_string(),

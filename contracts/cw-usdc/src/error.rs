@@ -22,6 +22,9 @@ pub enum ContractError {
     #[error("denom does not exist: {denom:?}")]
     DenomDoesNotExist { denom: String },
 
+    #[error("Not enough {denom:?} ({funds:?}) in funds. {needed:?} {denom:?} needed")]
+    NotEnoughFunds {denom: String, funds: u128, needed: u128},
+
     #[error("address is not supported yet, was: {address:?}")]
     BurnFromAddressNotSupported { address: String },
 
