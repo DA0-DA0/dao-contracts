@@ -3,43 +3,59 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, SubMsg, CosmosMsg, BankMsg,
+    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, 
 };
 use cw2::set_contract_version;
 
 use cw_storage_plus::Map;
-use osmo_bindings::{OsmosisMsg, OsmosisQuery};
+use osmo_bindings::{OsmosisMsg, OsmosisQuery };
+
 // use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg, DenomResponse};
 use crate::state::{
-    self, Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
+    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
     FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
 };
+use crate::helpers::build_denom;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+const CREATE_DENOM_COST: Uint128 = Uint128::new(1000u128);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // TODO trigger CreateDenom msg
+    if let Some(osmo) = info.funds.iter().find(|c| c.denom == "uosmo") {
+        if osmo.amount < CREATE_DENOM_COST {
+            return Err(ContractError::NotEnoughFunds { funds: osmo.amount.u128(), needed: CREATE_DENOM_COST.u128() })
+        }
+    } else {
+        return Err(ContractError::NotEnoughFunds { funds: 0u128, needed: CREATE_DENOM_COST.u128()  })    
+    }
+    
+    // create full denom from contract addres using OsmosisModule.full_denom copy
+    let contract_address = env.contract.address;
+    let full_denom = build_denom(&contract_address, &msg.subdenom)?;
+
     let create_denom_msg = OsmosisMsg::CreateDenom {
-        subdenom: msg.subdenom.clone(),
+        subdenom: full_denom.clone(),
     };
+
+
 
     let config = Config {
         owner: info.sender.clone(),
         is_frozen: false,
-        denom: msg.subdenom, // TODO: use denom from actual message // check with Sunn
+        denom: full_denom, 
     };
 
     CONFIG.save(deps.storage, &config)?;
@@ -47,6 +63,7 @@ pub fn instantiate(
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender)
+        .add_attribute("contract", contract_address.to_string())
         .add_message(create_denom_msg))
 }
 
@@ -92,20 +109,15 @@ pub fn execute_mint(
     to_address: String,
     amount: Uint128,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
-    // STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-    //     state.count += 1;
-    //     Ok(state)
-    // })?;
 
     deps.api.addr_validate(&to_address)?;
     let denom = CONFIG.load(deps.storage).unwrap().denom;
-    // let denom = query_denom(deps.as_ref())?; TODO: Ask sunny
 
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
     }
 
-    let allowance = MINTER_ALLOWANCES.update(
+    let _allowance = MINTER_ALLOWANCES.update(
         deps.storage,
         info.sender,
         |allowance| -> StdResult<Uint128> {
@@ -113,9 +125,11 @@ pub fn execute_mint(
         },
     )?;
 
-    // TODO execute actual MintMsg
     let mint_tokens_msg =
         OsmosisMsg::mint_contract_tokens(denom, amount, env.contract.address.into_string());
+
+    // TODO: Second msg that sends tokens to the to_address
+
 
     let res = Response::new()
         .add_attribute("method", "mint_tokens")
@@ -137,7 +151,10 @@ fn execute_burn(
         return Result::Err(ContractError::ZeroAmount {});
     }
 
-    let allowance = BURNER_ALLOWANCES.update(
+    // Contract needs to own the coins it wants to burn 
+    // so need a message from sender.
+
+    let _allowance = BURNER_ALLOWANCES.update(
         deps.storage,
         info.sender.clone(),
         |allowance| -> StdResult<Uint128> {
@@ -145,9 +162,10 @@ fn execute_burn(
         },
     )?;
 
-    // TODO execute actual BurnMsg
+    // TODO execute actual BurnMsg -> needs to be the contract address or maybe need to include in info.funds... see whats possible
     let burn_tokens_msg = 
         OsmosisMsg::burn_contract_tokens(denom, amount, info.sender.to_string());
+
 
     Ok(
         Response::new()
@@ -253,7 +271,7 @@ fn set_int_allowance(
     address: &String,
     amount: Uint128,
 ) -> Result<(), ContractError> {
-    // TODO: Check strategy with sunny
+    // TODO: Check strategy with sunny -> GOOD
     // allowances.update(
     //     deps.storage,
     //     deps.api.addr_validate(address.as_str())?,
@@ -271,7 +289,6 @@ fn set_int_allowance(
         Ok(()) => Ok(()),
         Err(error) => Err(ContractError::Std(error))
     }
-    
 }
 
 fn execute_set_burner(
@@ -401,7 +418,6 @@ pub fn beforesend_hook(
     let config = CONFIG.load(deps.storage)?;
 
     if config.is_frozen {
-        // TODO: is it neccesary to check each coin? or just always return error
         for coin in amount.clone() {
             if coin.denom == config.denom {
                 return Err(ContractError::ContractFrozen {
@@ -426,12 +442,9 @@ pub fn beforesend_hook(
             return Err(ContractError::Blacklisted { address: to });
         }
     };
-    // TODO: Send token?
-    // let send_amount_msg = BankMsg::Send { to_address: to_address.to_string(), amount }; 
 
     Ok(Response::new()
         .add_attribute("method", "before_send")
-        // .add_message(send_amount_msg))
     )
     
 }
@@ -460,9 +473,15 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
 }
 
 
+// TODO: QUERIES 
+// owner
+// allowances
+// blacklisted
+// see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473 
+
+
 #[cfg(test)]
 mod tests {
-    use osmo_bindings_test::OsmosisModule;
     use crate::msg::DenomResponse;
 
     use super::*;
@@ -480,7 +499,7 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(1, res.messages.len()); // TODO: Ask Sunny why this was 0. The create_denom message is now part of the response
+        assert_eq!(1, res.messages.len()); 
 
         // it worked, let's query the state
         let res = query(deps.as_ref(), mock_env(), QueryMsg::Denom {}).unwrap();
