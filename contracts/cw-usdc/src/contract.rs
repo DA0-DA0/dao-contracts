@@ -1,13 +1,14 @@
 
 
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, 
+    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, Order, 
 };
 use cw2::set_contract_version;
 
-use cw_storage_plus::Map;
+use cw_storage_plus::{Map, Bound};
 use osmo_bindings::{OsmosisMsg, OsmosisQuery };
 
 // use osmo_bindings_test::OsmosisModule;
@@ -465,6 +466,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+// Default settings for pagination
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
+
 pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
     let config = CONFIG.load(deps.storage)?;
     return Ok(DenomResponse {
@@ -481,50 +486,103 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
 }
 
 pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
-    todo!()
-}
+    let config = CONFIG.load(deps.storage)?;
+    Ok(OwnerResponse {
+        address: config.owner.into_string(),
+    })
+    }
 
 pub fn query_burn_allowance(deps: Deps, address: String)-> StdResult<AllowanceResponse> {
-    todo!()
+    // let allowance = BURNER_ALLOWANCES.may_load(deps.storage, deps.api.addr_validate(address.as_str())?)?;
+    
+    // let allowance = match allowance {
+    //     Some(it) => it.u128(),
+    //     None => 0u128,
+    // };
+    
+    // Which approach is better?
+    let allowance = BURNER_ALLOWANCES.load(deps.storage, deps.api.addr_validate(address.as_str())?)?.u128();
+    Ok(AllowanceResponse {
+        address :address,
+        allowance: allowance,
+    })
 }
 
 pub fn query_burn_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<AllowancesResponse> {
+    query_allowances(deps, start_after, limit, BURNER_ALLOWANCES)
+}
+
+pub fn query_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>, allowances: Map<Addr, Uint128>)  -> StdResult<AllowancesResponse> {
     todo!()
+
+
+    // TODO: Check discord for answer on &Addr or Addr as key for Map
+
+    // // this code is based on the code from mars protocol. needs Map<&Addr, Uint128>
+    // let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    // let start = start_after.map(Bound::exclusive);
+
+    // BURNER_ALLOWANCES
+    //     .range(deps.storage, start, None, Order::Ascending)
+    //     .take(limit)
+    //     .map(|item| {
+    //         let (k, v) = item?;
+    //         Ok(AllowanceResponse {
+    //             address: String::from_utf8(k)?,
+    //             allowance: _query_position(&deps.querier, &env, &config, &state, &v)?,
+    //         })
+    //     })
+    // }
 }
 
 pub fn query_mint_allowance(deps: Deps, address: String)-> StdResult<AllowanceResponse> {
-    todo!()
+    let allowance = MINTER_ALLOWANCES.load(deps.storage, deps.api.addr_validate(address.as_str())?)?.u128();
+    Ok(AllowanceResponse {
+        address :address,
+        allowance: allowance,
+    })
 }
 
 pub fn query_mint_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<AllowancesResponse>{
-    todo!()
+    query_allowances(deps, start_after, limit, MINTER_ALLOWANCES)
 }
 
 pub fn query_is_blacklisted(deps: Deps, address: String)-> StdResult<IsBlacklistedResponse> {
-    todo!()
+    let status = BLACKLISTED_ADDRESSES.load(deps.storage, deps.api.addr_validate(&address)?).unwrap_or(false);
+    Ok(IsBlacklistedResponse {
+        address,
+        status,
+    })
 }
 
 pub fn query_blacklist(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<BlacklistResponse> {
     todo!()
+    // TODO: Check with query allowances, probably the same requirements
 }
 
 pub fn query_is_blacklister(deps:Deps, address: String) -> StdResult<IsBlacklisterResponse> {
-    todo!()
+
+    let status = BLACKLISTER_ALLOWANCES.load(deps.storage, deps.api.addr_validate(&address)?).unwrap_or(false);
+    Ok(IsBlacklisterResponse {
+        address,
+        status,
+    })
 }
 
 pub fn query_blacklisters(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<BlacklistersResponse> {
     todo!()
+
+    // TODO: Check with query allowances, probably the same requirements
 }
 
 // TODO: QUERIES 
-// owner
 // allowances
 // blacklisted
 // see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473 
 
-
 #[cfg(test)]
 mod tests {
+
     use crate::msg::DenomResponse;
 
     use super::*;
@@ -540,9 +598,14 @@ mod tests {
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(1, res.messages.len()); 
+        let no_funds_info = mock_info("poor_guy", &coins(100u128, "uosmo"));
+        // the instantiate should fail if the required funds are not provided
+        let err = instantiate(deps.as_mut(), mock_env(),no_funds_info, msg.clone()).unwrap_err();
+        
+        // instantiate with enough funds provided should succeed
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
+        assert_eq!(1, res.messages.len());
+        
 
         // it worked, let's query the state
         let res = query(deps.as_ref(), mock_env(), QueryMsg::Denom {}).unwrap();
@@ -678,18 +741,20 @@ mod tests {
         let sudo_msg = SudoMsg::BeforeSend {
             from: "from_address".to_string(),
             to: "to_address".to_string(),
-            amount: coins(1000, "uusdc"),
+            amount: coins(1000, build_denom(&&mock_env().contract.address,"uusdc").unwrap()),
         };
         let _res = sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
 
         // Test frozen contract
         set_contract_config(deps.as_mut(), true);
+        let res: IsFrozenResponse = from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::IsFrozen {  }).unwrap()).unwrap();
+        assert!(res.is_frozen == true);
 
-        // Test if contract is frozen, Sudo msg with frozen coins will be blocked
+        // Test if contract is frozen, Sudo msg with frozen coins should be blocked
         let sudo_msg = SudoMsg::BeforeSend {
             from: "from_address".to_string(),
             to: "to_address".to_string(),
-            amount: coins(1000, "uusdc"),
+            amount: coins(1000, build_denom(&&mock_env().contract.address,"uusdc").unwrap()),
         };
         let res = sudo(deps.as_mut(), mock_env(), sudo_msg);
         let err = res.unwrap_err();
@@ -845,21 +910,23 @@ mod tests {
             subdenom: "uakt".to_string(),
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
 
-        let burner_info = mock_info("burner", &coins(1000, "uakt"));
+        let full_denom = build_denom(&mock_env().contract.address, &msg.subdenom.as_str()).unwrap();
+        let burner_info = mock_info("burner", &coins(1000, full_denom.as_str()));
         let set_burner_msg = ExecuteMsg::SetBurner {
             address: burner_info.sender.to_string(),
             allowance: Uint128::from(1000u64),
         };
-
+        
         let res = execute(deps.as_mut(), mock_env(), info.clone(), set_burner_msg).unwrap();
-
+        
         let burn_msg = ExecuteMsg::Burn {
             amount: Uint128::from(100u64),
         };
         let res = execute(deps.as_mut(), mock_env(), burner_info.clone(), burn_msg).unwrap();
-
+        
+        let burner_info = mock_info("burner", &coins(100, full_denom.as_str()));
         // mint more then allowance
         let burn_msg = ExecuteMsg::Burn {
             amount: Uint128::from(950u64),

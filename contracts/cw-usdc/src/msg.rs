@@ -44,7 +44,7 @@ pub enum QueryMsg {
     Denom {},
     // Owner returns the owner of the contract
     Owner {},
-    // Allowance returns the allowance of the specified user
+    // Allowance returns the allowance of the specified address
     BurnAllowance { address: String },
     // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
     BurnAllowances {start_after: Option<String>, limit: Option<u32>},
