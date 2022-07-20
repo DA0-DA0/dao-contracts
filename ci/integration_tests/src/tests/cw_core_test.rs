@@ -6,10 +6,8 @@ use crate::{
 };
 use cosm_orc::orchestrator::cosm_orc::WasmMsg;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
-use cw20_stake::msg::{GetConfigResponse, StakedValueResponse, TotalValueResponse};
+use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
 use cw_core::query::{GetItemResponse, PauseInfoResponse};
-
-use cw_proposal_single::state::Config;
 use cw_utils::Duration;
 use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, threshold::Threshold};
 
@@ -193,10 +191,11 @@ fn instantiate_with_admin() {
     let staked_res: StakedValueResponse = serde_json::from_value(res[0]["data"].clone()).unwrap();
     assert_eq!(staked_res.value, Uint128::new(0));
 
-    let config_res: GetConfigResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
+    let config_res: cw20_stake::state::Config =
+        serde_json::from_value(res[1]["data"].clone()).unwrap();
     assert_eq!(
         config_res.owner,
-        Some(Chain::deploy_code_addr("cw_core").to_string())
+        Some(Addr::unchecked(Chain::deploy_code_addr("cw_core")))
     );
     assert_eq!(config_res.manager, None);
 
@@ -215,7 +214,8 @@ fn instantiate_with_admin() {
     Chain::add_deploy_code_addr(proposal_contract, prop_addr);
     let msg: CwProposalWasmMsg = WasmMsg::QueryMsg(cw_proposal_single::msg::QueryMsg::Config {});
     let res = Chain::process_msg(proposal_contract.to_string(), &msg).unwrap();
-    let config_res: Config = serde_json::from_value(res["data"].clone()).unwrap();
+    let config_res: cw_proposal_single::state::Config =
+        serde_json::from_value(res["data"].clone()).unwrap();
 
     assert_eq!(config_res.min_voting_period, None);
     assert_eq!(config_res.max_voting_period, Duration::Time(432000));

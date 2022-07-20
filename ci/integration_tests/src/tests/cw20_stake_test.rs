@@ -9,7 +9,7 @@ use crate::{
 };
 use cosm_orc::orchestrator::cosm_orc::WasmMsg;
 use cosmwasm_std::{to_binary, Uint128};
-use cw20_stake::msg::{GetConfigResponse, StakedValueResponse};
+use cw20_stake::{msg::StakedValueResponse, state::Config};
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
 
 // #### ExecuteMsg #####
@@ -24,12 +24,11 @@ fn execute_stake_tokens() {
         None,
         user_addr.clone(),
         None,
-        "cw20_staked_balance_voting",
-        "cw_proposal_single",
+        voting_contract,
+        proposal_contract,
     );
 
     let voting_addr = dao.state.voting_module.as_str();
-    let prop_addr = dao.state.proposal_modules[0].as_str();
 
     // stake dao tokens:
     Chain::add_deploy_code_addr(voting_contract, voting_addr);
@@ -50,8 +49,8 @@ fn execute_stake_tokens() {
 
     assert_eq!(staked_value.value, Uint128::new(0));
 
-    let config: GetConfigResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
-    Chain::add_deploy_code_addr("cw20_base", &config.token_address);
+    let config: Config = serde_json::from_value(res[1]["data"].clone()).unwrap();
+    Chain::add_deploy_code_addr("cw20_base", config.token_address.as_str());
     let msg: Cw20BaseWasmMsg = WasmMsg::ExecuteMsg(cw20_base::msg::ExecuteMsg::Send {
         contract: staking_addr.to_string(),
         amount: Uint128::new(100),
