@@ -25,21 +25,19 @@ jobs:
         with:
           toolchain: nightly
           command: check
-          args: --tests
+          args: --tests --manifest-path ci/integration_tests/Cargo.toml
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:
           toolchain: nightly
           command: fmt
-          args: --all -- --check
-      # TODO: Uncomment after main is fixed
-      #- name: Run cargo clippy
-      #  uses: actions-rs/cargo@v1
-      #  with:
-      #    toolchain: nightly
-      #    command: clippy
-      #    args: --all-targets -- -D warnings
-      # TODO: Upload `target` dir to avoid having to recompile everything in last job
+          args: --all --manifest-path ci/integration_tests/Cargo.toml -- --check
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly
+          command: clippy
+          args: --all-targets --manifest-path ci/integration_tests/Cargo.toml -- -D warnings 
 
   compile-contracts:
     name: Compile contracts using optimized rust compiler
@@ -78,6 +76,8 @@ jobs:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
       KEY_NAME: localval
       GAS_REPORT_OUT: ./gas_report.json
+      CONFIG: configs/ci.yaml
+      CONTRACT_DIR: artifacts
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -121,16 +121,30 @@ jobs:
           junod config keyring-backend test
           tail -n 1 default-account.txt | junod keys add $KEY_NAME --recover
 
+      - name: Rust Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('ci/integration_tests/Cargo.lock') }}
+
       - name: Run Integration Tests
-        run: cd ci/integration_tests/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" cargo test
+        run: cd ci/integration_tests/ && RUST_LOG=DEBUG cargo test
 
       - name: Raw Gas Report
         run: cat ci/integration_tests/gas_report.json
 
+      - name: Set GIT_BRANCH
+        run: echo "GIT_BRANCH=$(echo ${{ github.ref }} | sed 's|/|-|g')" >> $GITHUB_ENV
+
       - name: Upload Gas Report
         uses: actions/upload-artifact@v3
         with:
-          name: dao-dao-gas-report-${{ github.ref_name }}
+          name: dao-dao-gas-report-${{ env.GIT_BRANCH }}
           path: ci/integration_tests/gas_report.json
           retention-days: 90
 

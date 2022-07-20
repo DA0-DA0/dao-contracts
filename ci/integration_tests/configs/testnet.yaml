@@ -1,0 +1,12 @@
+chain_cfg: 
+  binary: "junod"
+  denom: "ujunox"
+  chain_id: "uni-3"
+  rpc_endpoint: "https://rpc.uni.juno.deuslabs.fi:443"
+
+key_name: "testnet"
+
+# Add code ids if you dont need to store them:
+code_ids:
+  "cw20_base": "77"
+  "cw4_group": "78"

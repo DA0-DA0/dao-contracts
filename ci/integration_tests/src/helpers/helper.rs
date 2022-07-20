@@ -1,4 +1,5 @@
 use crate::test_harness::chain::Chain;
+use anyhow::Result;
 use cosm_orc::orchestrator::cosm_orc::WasmMsg;
 use cosmwasm_std::{to_binary, Decimal, Uint128};
 use cw20::Cw20Coin;
@@ -22,7 +23,7 @@ pub fn create_dao(
     user_addr: String,
     voting_contract: &str,
     proposal_contract: &str,
-) -> DaoState {
+) -> Result<DaoState> {
     let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::InstantiateMsg(cw_core::msg::InstantiateMsg {
             admin,
@@ -32,10 +33,10 @@ pub fn create_dao(
             automatically_add_cw20s: false,
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
-                code_id: Chain::deploy_code_id(voting_contract),
+                code_id: Chain::contract_code_id(voting_contract),
                 msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
                     token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
-                        code_id: Chain::deploy_code_id("cw20_base"),
+                        code_id: Chain::contract_code_id("cw20_base"),
                         label: "DAO DAO Gov token".to_string(),
                         name: "DAO".to_string(),
                         symbol: "DAO".to_string(),
@@ -45,18 +46,17 @@ pub fn create_dao(
                             amount: Uint128::new(100_000_000),
                         }],
                         marketing: None,
-                        staking_code_id: Chain::deploy_code_id("cw20_stake"),
+                        staking_code_id: Chain::contract_code_id("cw20_stake"),
                         unstaking_duration: Some(Duration::Time(1209600)),
                         initial_dao_balance: None,
                     },
                     active_threshold: None,
-                })
-                .unwrap(),
+                })?,
                 admin: Admin::CoreContract {},
                 label: "DAO DAO Voting Module".to_string(),
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-                code_id: Chain::deploy_code_id(proposal_contract),
+                code_id: Chain::contract_code_id(proposal_contract),
                 msg: to_binary(&cw_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
                     threshold: Threshold::ThresholdQuorum {
@@ -71,8 +71,7 @@ pub fn create_dao(
                         deposit: Uint128::new(1000000000),
                         refund_failed_proposals: true,
                     }),
-                })
-                .unwrap(),
+                })?,
                 admin: Admin::CoreContract {},
                 label: "DAO DAO Proposal Module".to_string(),
             }],
@@ -80,13 +79,13 @@ pub fn create_dao(
         }),
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::DumpState {}),
     ];
-    let res = Chain::process_msgs("cw_core".to_string(), &msgs).unwrap();
-    let state: DumpStateResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
+    let res = Chain::process_msgs("cw_core".to_string(), &msgs)?;
+    let state: DumpStateResponse = serde_json::from_value(res[1]["data"].clone())?;
 
-    DaoState {
-        addr: Chain::deploy_code_addr("cw_core"),
+    Ok(DaoState {
+        addr: Chain::contract_addr("cw_core"),
         state,
-    }
+    })
 }
 
 // TODO: Use a macro for these type aliases? (put this in cosm-orc)

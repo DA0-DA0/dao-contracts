@@ -1,0 +1,7 @@
+chain_cfg: 
+  binary: "junod"
+  denom: "ujunox"
+  chain_id: "testing"
+  rpc_endpoint: "http://localhost:26657/"
+
+key_name: "localval"

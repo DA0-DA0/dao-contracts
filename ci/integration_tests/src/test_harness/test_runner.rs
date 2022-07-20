@@ -65,8 +65,9 @@ fn setup() {
     env_logger::init();
     let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
     let gas_report_out = env::var("GAS_REPORT_OUT").expect("missing GAS_REPORT_OUT env var");
+    let config = env::var("CONFIG").expect("missing yaml CONFIG env var");
 
-    let cfg = Config::from_yaml("config.yaml").unwrap();
+    let cfg = Config::from_yaml(&config).unwrap();
     let cosm_orc = CosmOrc::new(cfg).add_profiler(Box::new(GasProfiler::new()));
 
     Chain::init(cosm_orc, contract_dir, gas_report_out);
