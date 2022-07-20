@@ -18,7 +18,6 @@ fn new_dao_has_no_items() {
      let dao = create_dao(
         Some(admin_addr.clone()),
         admin_addr,
-        None,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );

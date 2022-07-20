@@ -8,6 +8,7 @@ use std::{fs, sync::Mutex};
 static COSM_ORC: OnceCell<Mutex<Chain>> = OnceCell::new();
 
 // Chain gives all the tests access to a global CosmOrc singleton
+#[derive(Debug)]
 pub struct Chain {
     contract_dir: String,
     gas_report_out: String,
@@ -15,11 +16,13 @@ pub struct Chain {
 }
 impl Chain {
     pub fn init(cosm_orc: CosmOrc, contract_dir: String, gas_report_out: String) {
-        COSM_ORC.set(Mutex::new(Chain {
-            contract_dir,
-            gas_report_out,
-            cosm_orc,
-        }));
+        COSM_ORC
+            .set(Mutex::new(Chain {
+                contract_dir,
+                gas_report_out,
+                cosm_orc,
+            }))
+            .expect("error initializing cosm-orc");
     }
 
     fn get() -> &'static Mutex<Chain> {

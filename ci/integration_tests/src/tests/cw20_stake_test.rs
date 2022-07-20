@@ -2,7 +2,7 @@ use core::time;
 use std::thread;
 
 use crate::{
-    helpers::helpers::{
+    helpers::helper::{
         create_dao, CoreWasmMsg, Cw20BaseWasmMsg, Cw20StakeBalanceWasmMsg, Cw20StakeWasmMsg,
     },
     test_harness::chain::Chain,
@@ -20,13 +20,7 @@ fn execute_stake_tokens() {
     let voting_contract = "cw20_staked_balance_voting";
     let proposal_contract = "cw_proposal_single";
 
-    let dao = create_dao(
-        None,
-        user_addr.clone(),
-        None,
-        voting_contract,
-        proposal_contract,
-    );
+    let dao = create_dao(None, user_addr.clone(), voting_contract, proposal_contract);
 
     let voting_addr = dao.state.voting_module.as_str();
 
@@ -56,7 +50,7 @@ fn execute_stake_tokens() {
         amount: Uint128::new(100),
         msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     });
-    let res = Chain::process_msg("cw20_base".to_string(), &msg).unwrap();
+    Chain::process_msg("cw20_base".to_string(), &msg).unwrap();
 
     let msg: Cw20StakeWasmMsg = WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
         address: user_addr.clone(),
