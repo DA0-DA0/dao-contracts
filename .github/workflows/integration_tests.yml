@@ -48,12 +48,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      # TODO: This is dumb, but:
-      # * We cant run this juno node as a `service` because services
-      #   cant have custom entrypoint overrides
-      # * We cant run this juno node as a container of the job, because juno image
-      #   uses alpine which I couldnt get to compile `cw-core-macros`
-      #   (but rust optimizer uses alpine so I can look to see how they get that working later)
       - name: Run Local Juno Node
         run: |
           docker run --rm -d --name juno \
@@ -66,8 +60,6 @@ jobs:
             -p 26657:26657 \
             ghcr.io/cosmoscontracts/juno:v8.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
 
-      # TODO: We should be polling until a certain height is reached instead of sleeping
-      # (it would be cool if cosm-orc could do this for us)
       - name: Let Juno catch up
         run: sleep 30
 
@@ -101,6 +93,11 @@ jobs:
       - name: Raw Gas Report
         run: cat ci/integration_tests/gas_report.json
 
-      # TODO: 
-      # + Upload gas_report output as github artifact
-      # * Download main's gas_report artifact and diff
+      - name: Upload Gas Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dao-dao-gas-report-${{ github.ref }}
+          path: ci/integration_tests/gas_report.json
+          retention-days: 90
+
+      # TODO: Download main's gas_report artifact and diff
