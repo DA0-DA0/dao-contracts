@@ -390,6 +390,7 @@ pub fn execute_close(
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    let config = CONFIG.load(deps.storage)?;
 
     // Update status to ensure that proposals which were open and have
     // expired are moved to "rejected."
@@ -402,11 +403,14 @@ pub fn execute_close(
 
     let refund_message = match &prop.deposit_info {
         Some(deposit_info) => {
-            if deposit_info.refund_failed_proposals {
-                get_return_deposit_msg(deposit_info, &prop.proposer)?
+            let receiver = if deposit_info.refund_failed_proposals {
+                &prop.proposer
             } else {
-                vec![]
-            }
+                // If we aren't refunding failed proposals then return
+                // the depost to the DAO treasury on close.
+                &config.dao
+            };
+            get_return_deposit_msg(deposit_info, receiver)?
         }
         None => vec![],
     };
