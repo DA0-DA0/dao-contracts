@@ -44,18 +44,18 @@ pub enum QueryMsg {
     Denom {},
     // Owner returns the owner of the contract
     Owner {},
-    // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
-    BurnAllowances {start_after: Option<String>, limit: Option<u32>},
     // Allowance returns the allowance of the specified user
     BurnAllowance { address: String },
     // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
-    MintAllowances {start_after: Option<String>, limit: Option<u32>},
+    BurnAllowances {start_after: Option<String>, limit: Option<u32>},
     // Allowance returns the allowance of the specified user
     MintAllowance { address: String },
-    // Blacklist Enumerates over all blacklisted addresses
-    Blacklist { start_after: Option<String>, limit: Option<u32>},
+    // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
+    MintAllowances {start_after: Option<String>, limit: Option<u32>},
     // IsBlacklisted returns wether the user is blacklisted or not
     IsBlacklisted {address: String},
+    // Blacklist Enumerates over all blacklisted addresses
+    Blacklist { start_after: Option<String>, limit: Option<u32>},
     // IsBlacklister returns if the addres has blacklister privileges
     IsBlacklister { address: String},
     // Blacklisters Enumerates over all the addresses with blacklister privileges

@@ -13,7 +13,7 @@ use osmo_bindings::{OsmosisMsg, OsmosisQuery };
 // use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg, DenomResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg, DenomResponse, OwnerResponse, AllowanceResponse, AllowancesResponse, IsBlacklistedResponse, BlacklistResponse, IsBlacklisterResponse, BlacklistersResponse};
 use crate::state::{
     Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
     FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
@@ -451,9 +451,17 @@ pub fn beforesend_hook(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::IsFrozen {} => to_binary(&query_is_frozen(deps)?),
-        QueryMsg::Denom {} => to_binary(&query_denom(deps)?),
+    match msg {QueryMsg::IsFrozen{}=>to_binary(&query_is_frozen(deps)?),
+        QueryMsg::Denom{}=>to_binary(&query_denom(deps)?),
+        QueryMsg::Owner {  } => to_binary(&query_owner(deps)?),
+        QueryMsg::BurnAllowance { address } => to_binary(&query_burn_allowance(deps, address)?),
+        QueryMsg::BurnAllowances { start_after, limit } => to_binary(&query_burn_allowances(deps, start_after, limit)?),
+        QueryMsg::MintAllowance { address } => to_binary(&query_mint_allowance(deps, address)?),
+        QueryMsg::MintAllowances { start_after, limit } => to_binary(&query_mint_allowances(deps, start_after, limit)?),
+        QueryMsg::IsBlacklisted { address } => to_binary(&query_is_blacklisted(deps, address)?),
+        QueryMsg::Blacklist { start_after, limit } => to_binary(&query_blacklist(deps, start_after, limit)?),
+        QueryMsg::IsBlacklister { address } => to_binary(&query_is_blacklister(deps, address)?),
+        QueryMsg::Blacklisters { start_after, limit } => to_binary(&query_blacklisters(deps, start_after, limit)?), 
     }
 }
 
@@ -472,6 +480,41 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
     })
 }
 
+pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
+    todo!()
+}
+
+pub fn query_burn_allowance(deps: Deps, address: String)-> StdResult<AllowanceResponse> {
+    todo!()
+}
+
+pub fn query_burn_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<AllowancesResponse> {
+    todo!()
+}
+
+pub fn query_mint_allowance(deps: Deps, address: String)-> StdResult<AllowanceResponse> {
+    todo!()
+}
+
+pub fn query_mint_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<AllowancesResponse>{
+    todo!()
+}
+
+pub fn query_is_blacklisted(deps: Deps, address: String)-> StdResult<IsBlacklistedResponse> {
+    todo!()
+}
+
+pub fn query_blacklist(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<BlacklistResponse> {
+    todo!()
+}
+
+pub fn query_is_blacklister(deps:Deps, address: String) -> StdResult<IsBlacklisterResponse> {
+    todo!()
+}
+
+pub fn query_blacklisters(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<BlacklistersResponse> {
+    todo!()
+}
 
 // TODO: QUERIES 
 // owner
