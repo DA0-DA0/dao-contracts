@@ -40,6 +40,7 @@ export type PercentageThreshold = {
 export type Decimal = string;
 export interface ConfigResponse {
   allow_revoting: boolean;
+  close_proposal_on_execution_failure: boolean;
   dao: Addr;
   deposit_info?: CheckedDepositInfo | null;
   max_voting_period: Duration;
@@ -80,6 +81,7 @@ export type ExecuteMsg = {
 } | {
   update_config: {
     allow_revoting: boolean;
+    close_proposal_on_execution_failure: boolean;
     dao: string;
     deposit_info?: DepositInfo | null;
     max_voting_period: Duration;
@@ -297,6 +299,7 @@ export interface ContractVersion {
 }
 export interface InstantiateMsg {
   allow_revoting: boolean;
+  close_proposal_on_execution_failure: boolean;
   deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
@@ -313,7 +316,7 @@ export type Expiration = {
     [k: string]: unknown;
   };
 };
-export type Status = "open" | "rejected" | "passed" | "executed" | "closed";
+export type Status = "open" | "rejected" | "passed" | "executed" | "closed" | "execution_failed";
 export interface ListProposalsResponse {
   proposals: ProposalResponse[];
   [k: string]: unknown;
@@ -611,6 +614,7 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
     allowRevoting,
+    closeProposalOnExecutionFailure,
     dao,
     depositInfo,
     maxVotingPeriod,
@@ -619,6 +623,7 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     threshold
   }: {
     allowRevoting: boolean;
+    closeProposalOnExecutionFailure: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
@@ -723,6 +728,7 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
   };
   updateConfig = async ({
     allowRevoting,
+    closeProposalOnExecutionFailure,
     dao,
     depositInfo,
     maxVotingPeriod,
@@ -731,6 +737,7 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
     threshold
   }: {
     allowRevoting: boolean;
+    closeProposalOnExecutionFailure: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
@@ -741,6 +748,7 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
         allow_revoting: allowRevoting,
+        close_proposal_on_execution_failure: closeProposalOnExecutionFailure,
         dao,
         deposit_info: depositInfo,
         max_voting_period: maxVotingPeriod,

@@ -3692,3 +3692,277 @@ fn test_active_threshold_none() {
         )
         .unwrap();
 }
+
+#[test]
+fn test_close_failed_proposal() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+
+    let quorum = PercentageThreshold::Majority {};
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        max_voting_period,
+        voting_strategy,
+        min_voting_period: None,
+        only_members_execute: false,
+        deposit_info: None,
+        close_proposal_on_execution_failure: true,
+    };
+
+    let governance_addr = instantiate_with_staking_active_threshold(
+        &mut app,
+        govmod_id,
+        to_binary(&instantiate).unwrap(),
+        None,
+        None,
+    );
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = govmod_config.dao;
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake some tokens so we can propose
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_contract.to_string(),
+        amount: Uint128::new(2000),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_contract.clone(),
+        &msg,
+        &[],
+    )
+    .unwrap();
+    app.update_block(next_block);
+
+    let msg = cw20::Cw20ExecuteMsg::Burn {
+        amount: Uint128::new(2000),
+    };
+    let binary_msg = to_binary(&msg).unwrap();
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "Burn or burn".to_string(),
+            msgs: Some(vec![WasmMsg::Execute {
+                contract_addr: token_contract.to_string(),
+                msg: binary_msg,
+                funds: vec![],
+            }
+            .into()]),
+        },
+        MultipleChoiceOption {
+            description: "Don't burn".to_string(),
+            msgs: None,
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Overburn tokens
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple burn tokens proposal".to_string(),
+            description: "Burning more tokens, than dao treasury have".to_string(),
+            choices: mc_options.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Execute proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let failed: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+
+    assert_eq!(failed.proposal.status, Status::ExecutionFailed);
+
+    // Check we can close it after it failed
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let closed_after_fail: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+
+    assert_eq!(closed_after_fail.proposal.status, Status::Closed);
+
+    // With disabled feature
+    // Disable feature first
+    {
+        let original: Config = app
+            .wrap()
+            .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+            .unwrap();
+
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &ExecuteMsg::Propose {
+                title: "Disable closing failed proposals".to_string(),
+                description: "We want to re-execute failed proposals".to_string(),
+                choices: MultipleChoiceOptions {
+                    options: vec![
+                        MultipleChoiceOption {
+                            description: "Disable closing failed proposals".to_string(),
+                            msgs: Some(vec![WasmMsg::Execute {
+                                contract_addr: govmod_single.to_string(),
+                                msg: to_binary(&ExecuteMsg::UpdateConfig {
+                                    voting_strategy: VotingStrategy::SingleChoice { quorum },
+                                    max_voting_period: original.max_voting_period,
+                                    min_voting_period: original.min_voting_period,
+                                    only_members_execute: original.only_members_execute,
+                                    dao: original.dao.to_string(),
+                                    deposit_info: None,
+                                    close_proposal_on_execution_failure: false,
+                                })
+                                .unwrap(),
+                                funds: vec![],
+                            }
+                            .into()]),
+                        },
+                        MultipleChoiceOption {
+                            description: "Don't disable".to_string(),
+                            msgs: None,
+                        },
+                    ],
+                },
+            },
+            &[],
+        )
+        .unwrap();
+
+        // Vote on proposal
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &ExecuteMsg::Vote {
+                proposal_id: 2,
+                vote: MultipleChoiceVote { option_id: 0 },
+            },
+            &[],
+        )
+        .unwrap();
+
+        // Execute proposal
+        app.execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod_single.clone(),
+            &ExecuteMsg::Execute { proposal_id: 2 },
+            &[],
+        )
+        .unwrap();
+    }
+
+    // Overburn tokens (again), this time without reverting
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple burn tokens proposal".to_string(),
+            description: "Burning more tokens, than dao treasury have".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Execute proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 3 },
+        &[],
+    )
+    .expect_err("Should be sub overflow");
+
+    // Status should still be passed
+    let updated: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 3 })
+        .unwrap();
+
+    // not reverted
+    assert_eq!(updated.proposal.status, Status::Passed);
+}

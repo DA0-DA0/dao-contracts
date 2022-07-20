@@ -268,7 +268,6 @@ pub fn execute_execute(
     };
 
     let response = {
-        let res = Response::default();
         if !prop.msgs.is_empty() {
             let execute_message = WasmMsg::Execute {
                 contract_addr: config.dao.to_string(),
@@ -278,12 +277,13 @@ pub fn execute_execute(
             match config.close_proposal_on_execution_failure {
                 true => {
                     let masked_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
-                    res.add_submessage(SubMsg::reply_on_error(execute_message, masked_proposal_id))
+                    Response::default()
+                        .add_submessage(SubMsg::reply_on_error(execute_message, masked_proposal_id))
                 }
-                false => res.add_message(execute_message),
+                false => Response::default().add_message(execute_message),
             }
         } else {
-            res
+            Response::default()
         }
     };
 
@@ -407,7 +407,7 @@ pub fn execute_close(
     // Update status to ensure that proposals which were open and have
     // expired are moved to "rejected."
     prop.update_status(&env.block);
-    if prop.status != Status::Rejected {
+    if prop.status != Status::Rejected && prop.status != Status::ExecutionFailed {
         return Err(ContractError::WrongCloseStatus {});
     }
 
@@ -729,14 +729,16 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    let repl = TaggedReplyId::new(msg.id);
+    let repl = TaggedReplyId::new(msg.id)?;
     match repl {
         TaggedReplyId::FailedProposalExecution(proposal_id) => {
-            let mut prop = PROPOSALS
-                .may_load(deps.storage, proposal_id)?
-                .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
-            prop.status = Status::ExecutionFailed;
-            PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+            PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
+                Some(mut prop) => {
+                    prop.status = Status::ExecutionFailed;
+                    Ok(prop)
+                }
+                None => Err(ContractError::NoSuchProposal { id: proposal_id }),
+            })?;
             Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {

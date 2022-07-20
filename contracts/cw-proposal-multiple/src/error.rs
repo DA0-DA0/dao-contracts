@@ -3,7 +3,7 @@ use std::u64;
 use cosmwasm_std::StdError;
 use indexable_hooks::HookError;
 use thiserror::Error;
-use voting::threshold::ThresholdError;
+use voting::{reply::error::TagError, threshold::ThresholdError};
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -72,4 +72,7 @@ pub enum ContractError {
 
     #[error("Must have voting power to propose.")]
     MustHaveVotingPower {},
+
+    #[error("{0}")]
+    Tag(#[from] TagError),
 }

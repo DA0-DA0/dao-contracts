@@ -28,6 +28,7 @@ export type PercentageThreshold = {
 };
 export type Decimal = string;
 export interface ConfigResponse {
+  close_proposal_on_execution_failure: boolean;
   dao: Addr;
   deposit_info?: CheckedDepositInfo | null;
   max_voting_period: Duration;
@@ -67,6 +68,7 @@ export type ExecuteMsg = {
   };
 } | {
   update_config: {
+    close_proposal_on_execution_failure: boolean;
     dao: string;
     deposit_info?: DepositInfo | null;
     max_voting_period: Duration;
@@ -295,6 +297,7 @@ export interface ContractVersion {
   [k: string]: unknown;
 }
 export interface InstantiateMsg {
+  close_proposal_on_execution_failure: boolean;
   deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
@@ -312,7 +315,7 @@ export type Expiration = {
     [k: string]: unknown;
   };
 };
-export type Status = "open" | "rejected" | "passed" | "executed" | "closed";
+export type Status = "open" | "rejected" | "passed" | "executed" | "closed" | "execution_failed";
 export interface ListProposalsResponse {
   proposals: ProposalResponse[];
   [k: string]: unknown;
@@ -612,6 +615,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     proposalId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
+    closeProposalOnExecutionFailure,
     dao,
     depositInfo,
     maxVotingPeriod,
@@ -619,6 +623,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     onlyMembersExecute,
     votingStrategy
   }: {
+    closeProposalOnExecutionFailure: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
@@ -722,6 +727,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     }, fee, memo, funds);
   };
   updateConfig = async ({
+    closeProposalOnExecutionFailure,
     dao,
     depositInfo,
     maxVotingPeriod,
@@ -729,6 +735,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     onlyMembersExecute,
     votingStrategy
   }: {
+    closeProposalOnExecutionFailure: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
@@ -738,6 +745,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
+        close_proposal_on_execution_failure: closeProposalOnExecutionFailure,
         dao,
         deposit_info: depositInfo,
         max_voting_period: maxVotingPeriod,

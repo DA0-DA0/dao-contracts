@@ -20,14 +20,16 @@ impl TaggedReplyId {
     /// depending on a first few bits.
     ///
     /// We know it costs extra pattern match, but cleaner code in `reply` Methods
-    pub fn new(id: u64) -> Self {
+    pub fn new(id: u64) -> Result<Self, error::TagError> {
         let reply_type = id & REPLY_TYPE_MASK;
-        let id = id >> BITS_RESERVED_FOR_REPLY_TYPE;
+        let id_after_shift = id >> BITS_RESERVED_FOR_REPLY_TYPE;
         match reply_type {
-            FAILED_PROPOSAL_EXECUTION_MASK => TaggedReplyId::FailedProposalExecution(id),
-            FAILED_PROPOSAL_HOOK_MASK => TaggedReplyId::FailedProposalHook(id),
-            FAILED_VOTE_HOOK_MASK => TaggedReplyId::FailedVoteHook(id),
-            _ => unreachable!(),
+            FAILED_PROPOSAL_EXECUTION_MASK => {
+                Ok(TaggedReplyId::FailedProposalExecution(id_after_shift))
+            }
+            FAILED_PROPOSAL_HOOK_MASK => Ok(TaggedReplyId::FailedProposalHook(id_after_shift)),
+            FAILED_VOTE_HOOK_MASK => Ok(TaggedReplyId::FailedVoteHook(id_after_shift)),
+            _ => Err(error::TagError::UnknownReplyId { id }),
         }
     }
 }
@@ -43,4 +45,14 @@ pub fn mask_proposal_hook_index(index: u64) -> u64 {
 
 pub fn mask_vote_hook_index(index: u64) -> u64 {
     FAILED_VOTE_HOOK_MASK | (index << BITS_RESERVED_FOR_REPLY_TYPE)
+}
+
+pub mod error {
+    use thiserror::Error;
+
+    #[derive(Error, Debug, PartialEq)]
+    pub enum TagError {
+        #[error("Unknown reply id ({id}).")]
+        UnknownReplyId { id: u64 },
+    }
 }

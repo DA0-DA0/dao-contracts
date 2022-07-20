@@ -4256,16 +4256,32 @@ fn test_close_failed_proposal() {
     )
     .unwrap();
 
-    // Status should have changed to 'Executed'
-    let updated: ProposalResponse = app
+    let failed: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();
+    assert_eq!(failed.proposal.status, Status::ExecutionFailed);
 
-    assert_eq!(updated.proposal.status, Status::ExecutionFailed);
+    // Check we can close it after it failed
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod_single.clone(),
+        &ExecuteMsg::Close { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let closed_after_failed: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(closed_after_failed.proposal.status, Status::Closed);
 
     // With disabled feature
     // Disable feature first
@@ -4279,8 +4295,8 @@ fn test_close_failed_proposal() {
             Addr::unchecked(CREATOR_ADDR),
             govmod_single.clone(),
             &ExecuteMsg::Propose {
-                title: "A simple burn tokens proposal".to_string(),
-                description: "Burning more tokens, than dao treasury have".to_string(),
+                title: "Disable closing failed proposals".to_string(),
+                description: "We want to re-execute failed proposals".to_string(),
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: govmod_single.to_string(),
                     msg: to_binary(&ExecuteMsg::UpdateConfig {
@@ -4363,7 +4379,7 @@ fn test_close_failed_proposal() {
     )
     .expect_err("Should be sub overflow");
 
-    // Status should have changed to 'Executed'
+    // Status should still be passed
     let updated: ProposalResponse = app
         .wrap()
         .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 3 })
