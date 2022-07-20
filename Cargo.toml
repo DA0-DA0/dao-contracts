@@ -1,5 +1,6 @@
 [workspace]
 members = ["contracts/*", "packages/*", "debug/*"]
+exclude = ["ci/"]
 
 
 [profile.release.package.stake-cw20-external-rewards]
