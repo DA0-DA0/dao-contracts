@@ -1,3 +1,4 @@
+use core::num;
 use std::convert::TryInto;
 
 #[cfg(not(feature = "library"))]
@@ -25,7 +26,7 @@ use crate::state::{
     Config, ProposalModule, Status, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
     PAUSED, PROPOSAL_MODULES, VOTING_MODULE,
 };
-// use radix_fmt::radix_36;
+use radix_fmt::radix_36;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-core";
@@ -725,7 +726,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 .collect::<StdResult<Vec<Addr>>>()?
                 .len();
 
-            let prefix = derive_proposal_module_prefix(num_modules)?;
+            let prefix = derive_proposal_module_prefix(num_modules, "".to_string())?;
             let prop_module = ProposalModule {
                 address: prop_module_addr.clone(),
                 status: Status::Active,
@@ -763,38 +764,256 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
     }
 }
 
-fn derive_proposal_module_prefix(mut index: usize) -> StdResult<String> {
-    index += 1;
-    let mut prefix = "".to_owned();
-    while index > 0 {
-        let letter_index = ((index - 1) % 26) + 65;
-        let letter_index_u8 = letter_index as u8;
-        let letter_str = std::str::from_utf8(&[letter_index_u8])?.to_owned();
-        prefix = [letter_str, prefix].join("");
-        // index = index.checked_sub(letter_index).unwrap_or(0);
-        index = index / 26;
+// fn derive_proposal_module_prefix(mut index: usize) -> StdResult<String> {
+//     index += 1;
+//     let mut prefix = "".to_owned();
+//     while index > 0 {
+//         let letter_index = ((index - 1) % 26) + 65;
+//         let letter_index_u8 = letter_index as u8;
+//         let letter_str = std::str::from_utf8(&[letter_index_u8])?.to_owned();
+//         prefix = [letter_str, prefix].join("");
+//         index = index / 26;
+//     }
+//     Ok(prefix)
+// }
+
+// fn derive_proposal_module_prefix(mut index: usize, mut postfix: String) -> StdResult<String> {
+//     let quotient = index / 26;
+//     let remainder = index % 26;
+//     let rem_str = std::str::from_utf8(&[(remainder + 65) as u8])?.to_owned();
+//     let mut quotient_str = String::from("");
+//     if quotient <= 26 {
+//         if quotient > 0 {
+//             quotient_str = std::str::from_utf8(&[(quotient + 64) as u8])?.to_owned();
+//         }
+//         postfix = [quotient_str, rem_str, postfix].join("");
+//         return Ok(postfix);
+//     }
+//     postfix = [quotient_str, rem_str, postfix].join("");
+//     derive_proposal_module_prefix(quotient, postfix)
+// }
+
+// Convert to base26, where we only use the characters A-Z. Note that since 'A' maps to 0,
+// a prefix will never start with 'A' unless it is 0.
+// fn derive_proposal_module_prefix(mut index: usize, mut postfix: String) -> StdResult<String> {
+//     let mut quotient = index / 26;
+//     let remainder = index % 26;
+//     postfix = std::str::from_utf8(&[(remainder + 65) as u8])?.to_owned();
+//     let mut quotient_str = String::from("");
+//     while quotient >= 26 {
+//         let remainder: usize = (quotient % 26).checked_sub(1).unwrap_or(0);
+//         quotient = quotient / 26;
+//         let rem_str = std::str::from_utf8(&[(remainder + 65) as u8])?.to_owned();
+//         postfix = [rem_str, postfix].join("");
+//     }
+//     if quotient > 0 {
+//         quotient_str = std::str::from_utf8(&[(quotient + 65) as u8])?.to_owned();
+//     }
+//     postfix = [quotient_str, postfix].join("");
+//     Ok(postfix)
+// }
+
+// Convert to base26, where we only use the characters A-Z. Note that since 'A' maps to 0,
+// a prefix will never start with 'A' unless it is 0.
+fn derive_proposal_module_prefix(mut dividend: usize, mut postfix: String) -> StdResult<String> {
+    loop {
+        let remainder = dividend % 26;
+        dividend = dividend / 26;
+        let remainder_str = std::str::from_utf8(&[(remainder + 65) as u8])?.to_owned();
+        postfix = [remainder_str, postfix].join("");
+        if dividend == 0 {
+            break;
+        }
     }
-    Ok(prefix)
+    Ok(postfix)
 }
 
+// fn use_radix()
+
 mod test {
+    use std::{collections::HashSet, convert::TryInto, fs, thread::panicking};
+
     use crate::contract::derive_proposal_module_prefix;
 
     #[test]
     fn test_prefix_generation() {
         // [0..25]: A - Z
         // [26 - 51]: AA - AZ
-        println!("{}", derive_proposal_module_prefix(0).unwrap());
-        println!("{}", derive_proposal_module_prefix(1).unwrap());
-        println!("{}", derive_proposal_module_prefix(2).unwrap());
+        assert_eq!(
+            "A",
+            derive_proposal_module_prefix(0, String::new()).unwrap()
+        );
+        assert_eq!(
+            "B",
+            derive_proposal_module_prefix(1, String::new()).unwrap()
+        );
+        assert_eq!(
+            "C",
+            derive_proposal_module_prefix(2, String::new()).unwrap()
+        );
         // AA
-        println!("{}", derive_proposal_module_prefix(26).unwrap());
+        assert_eq!(
+            "BA",
+            derive_proposal_module_prefix(26 * 1 + 0, String::new()).unwrap()
+        );
         // AB
-        println!("{}", derive_proposal_module_prefix(27).unwrap());
+        assert_eq!(
+            "AB",
+            derive_proposal_module_prefix(26 * 1 + 1, String::new()).unwrap()
+        );
         // BA
-        println!("{}", derive_proposal_module_prefix(52).unwrap());
+        assert_eq!(
+            "BA",
+            derive_proposal_module_prefix(26 * 2, String::new()).unwrap()
+        );
         // BB
-        println!("{}", derive_proposal_module_prefix(53).unwrap());
-        // println!("{}", derive_proposal_module_prefix(26 * 26 * 26).unwrap());
+        assert_eq!(
+            "BB",
+            derive_proposal_module_prefix(26 * 2 + 1, String::new()).unwrap()
+        );
+        // CA
+        assert_eq!(
+            "CA",
+            derive_proposal_module_prefix(26 * 3, String::new()).unwrap()
+        );
+        // JA
+        assert_eq!(
+            "JA",
+            derive_proposal_module_prefix(26 * 10, String::new()).unwrap()
+        );
+
+        // YA
+        assert_eq!(
+            "YA",
+            derive_proposal_module_prefix(26 * 25, String::new()).unwrap()
+        );
+
+        // ZA
+        assert_eq!(
+            "ZA",
+            derive_proposal_module_prefix(26 * 26, String::new()).unwrap()
+        );
+
+        // ZZ
+        assert_eq!(
+            "ZZ",
+            derive_proposal_module_prefix(26 * 26 + 25, String::new()).unwrap()
+        );
+
+        assert_eq!(
+            "AAA",
+            derive_proposal_module_prefix(26 * 27, String::new()).unwrap()
+        );
+
+        // ZAA
+        assert_eq!(
+            "ZAA",
+            derive_proposal_module_prefix(26 * 26 * 26, String::new()).unwrap()
+        );
+
+        assert_eq!(
+            "ZAZ",
+            derive_proposal_module_prefix(26 * 26 * 26 + 25, String::new()).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_prefix_generation_2() {
+        assert_eq!(
+            "A",
+            derive_proposal_module_prefix(0, String::new()).unwrap()
+        );
+        assert_eq!(
+            "B",
+            derive_proposal_module_prefix(1, String::new()).unwrap()
+        );
+        assert_eq!(
+            "C",
+            derive_proposal_module_prefix(2, String::new()).unwrap()
+        );
+        assert_eq!(
+            "BA",
+            derive_proposal_module_prefix(26 * 1 + 0, String::new()).unwrap()
+        );
+        assert_eq!(
+            "BB",
+            derive_proposal_module_prefix(26 * 1 + 1, String::new()).unwrap()
+        );
+        assert_eq!(
+            "CA",
+            derive_proposal_module_prefix(26 * 2, String::new()).unwrap()
+        );
+        assert_eq!(
+            "CB",
+            derive_proposal_module_prefix(26 * 2 + 1, String::new()).unwrap()
+        );
+        assert_eq!(
+            "DA",
+            derive_proposal_module_prefix(26 * 3, String::new()).unwrap()
+        );
+        assert_eq!(
+            "KA",
+            derive_proposal_module_prefix(26 * 10, String::new()).unwrap()
+        );
+        assert_eq!(
+            "ZA",
+            derive_proposal_module_prefix(26 * 25, String::new()).unwrap()
+        );
+        assert_eq!(
+            "BAA",
+            derive_proposal_module_prefix(26 * 26, String::new()).unwrap()
+        );
+        assert_eq!(
+            "BAZ",
+            derive_proposal_module_prefix(26 * 26 + 25, String::new()).unwrap()
+        );
+
+        assert_eq!(
+            "BBA",
+            derive_proposal_module_prefix(26 * 26 + 26, String::new()).unwrap()
+        );
+
+        assert_eq!(
+            "ZAAA",
+            derive_proposal_module_prefix(26 * 26 * 26, String::new()).unwrap()
+        );
+
+        assert_eq!(
+            "ZAZ",
+            derive_proposal_module_prefix(26 * 26 + 25, String::new()).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_prefix_one() {
+        assert_eq!(
+            "BA",
+            derive_proposal_module_prefix(26, String::new()).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_prefixes_no_collisions() {
+        // assert_eq!(
+        //     "A",
+        //     derive_proposal_module_prefix(26 * 26 * 26, String::new()).unwrap()
+        // );
+
+        let mut seen = HashSet::<usize>::new();
+        let mut out_str: String = String::new();
+        for i in 0..25 * 25 * 25 + 25 {
+            // let num = 26_i32.pow(i);
+            // out_str.push_str("26");
+            // out_str.push_str("^");
+            if seen.contains(&i) {
+                panic!("already seen value")
+            }
+            seen.insert(i);
+            out_str.push_str(&i.to_string());
+            out_str.push_str(" ");
+            out_str.push_str(&derive_proposal_module_prefix(i, String::new()).unwrap());
+            out_str.push_str("\n");
+        }
+        fs::write("./output", out_str).unwrap();
     }
 }
