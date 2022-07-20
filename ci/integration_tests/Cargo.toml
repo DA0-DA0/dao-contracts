@@ -1,0 +1,24 @@
+[package]
+name = "integration_tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cosm-orc = { version = "0.5.4" }
+cw20 = "0.13"
+cw20-base = "0.13"
+cw-utils = "0.13"
+cosmwasm-std = { version = "1.0.0", features = ["ibc3"] }
+cw-core = { version = "0.1.0", path = "../../contracts/cw-core" }
+cw20-stake = { version = "*", path = "../../contracts/cw20-stake" }
+cw20-staked-balance-voting = { version = "0.1.0", path = "../../contracts/cw20-staked-balance-voting" }
+cw-proposal-single = { version = "0.1.0", path = "../../contracts/cw-proposal-single" }
+cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
+voting = { version = "*", path = "../../packages/voting" }
+
+anyhow = { version = "1.0.51"}
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = "1.0"
+once_cell = "1.13.0"
+
+env_logger = "0.9.0"

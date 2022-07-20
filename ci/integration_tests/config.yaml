@@ -1,0 +1,13 @@
+chain_cfg: 
+  binary: "junod"
+  denom: "ujunox"
+  chain_id: "testing"
+  rpc_endpoint: "http://localhost:26657/"
+
+key_name: "validator"
+
+# Add code ids if you dont need to store them:
+# code_ids:
+#   "cw20_base": "1"
+#   "cw4_group": "2"
+
