@@ -14,13 +14,27 @@ pub struct Config {
     pub description: String,
     /// An optional image URL for displaying alongside the contract.
     pub image_url: Option<String>,
-
     /// If true the contract will automatically add received cw20
     /// tokens to its treasury.
     pub automatically_add_cw20s: bool,
     /// If true the contract will automatically add received cw721
     /// tokens to its treasury.
     pub automatically_add_cw721s: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+/// Top level type describing a proposal module.
+pub struct ProposalModule {
+    pub address: Addr,
+    pub prefix: String,
+    pub status: Status,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+/// The status of a proposal module.
+pub enum Status {
+    Active,
+    Disabled,
 }
 
 /// The admin of the contract. Typically a DAO. The contract admin may
@@ -49,8 +63,9 @@ pub const PAUSED: Item<Expiration> = Item::new("paused");
 
 /// The voting module associated with this contract.
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
+
 /// The proposal modules assocaited with this contract.
-pub const PROPOSAL_MODULES: Map<Addr, Empty> = Map::new("proposal_modules");
+pub const PROPOSAL_MODULES: Map<Addr, ProposalModule> = Map::new("proposal_modules");
 
 // General purpose KV store for DAO associated state.
 pub const ITEMS: Map<String, String> = Map::new("items");

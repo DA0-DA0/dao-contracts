@@ -42,6 +42,7 @@ thiserror = { version = "1.0" }
 cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
 cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
 cw-paginate = { version = "0.1.0", path = "../../packages/cw-paginate" }
+radix_fmt = "1"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
