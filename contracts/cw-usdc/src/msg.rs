@@ -60,7 +60,10 @@ pub enum QueryMsg {
     IsBlacklister { address: String},
     // Blacklisters Enumerates over all the addresses with blacklister privileges
     Blacklisters { start_after: Option<String>, limit: Option<u32>},
-
+    // IsFreezer returns wether the address has freezerstatus 
+    IsFreezer { address: String },
+    // FreezerAllowances enumerates over all freezer addresses
+    FreezerAllowances { start_after: Option<String>, limit: Option<u32> }
 }
 
 // We define a custom struct for each query response
@@ -92,23 +95,22 @@ pub struct AllowanceResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IsBlacklistedResponse {
+pub struct StatusResponse {
     pub address: String,
     pub status: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BlacklistResponse {
-    pub blacklist: Vec<BlacklistResponse>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct IsBlacklisterResponse {
-    pub address: String,
-    pub status: bool,
+    pub blacklist: Vec<StatusResponse>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BlacklistersResponse {
-    pub blacklisters : Vec<BlacklistResponse>,
+    pub blacklisters : Vec<StatusResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct FreezerAllowancesResponse {
+    pub freezers: Vec<StatusResponse>
 }

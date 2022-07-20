@@ -3,6 +3,7 @@
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+use cosmwasm_std::testing::MockQuerierCustomHandlerResult;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, Order, 
 };
@@ -14,7 +15,7 @@ use osmo_bindings::{OsmosisMsg, OsmosisQuery };
 // use osmo_bindings_test::OsmosisModule;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg, DenomResponse, OwnerResponse, AllowanceResponse, AllowancesResponse, IsBlacklistedResponse, BlacklistResponse, IsBlacklisterResponse, BlacklistersResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, IsFrozenResponse, QueryMsg, SudoMsg, DenomResponse, OwnerResponse, AllowanceResponse, AllowancesResponse, BlacklistResponse, BlacklistersResponse, StatusResponse, FreezerAllowancesResponse};
 use crate::state::{
     Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
     FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
@@ -128,7 +129,7 @@ pub fn execute_mint(
 
     let _allowance = MINTER_ALLOWANCES.update(
         deps.storage,
-        info.sender,
+        &info.sender,
         |allowance| -> StdResult<Uint128> {
             Ok(allowance.unwrap_or_default().checked_sub(amount)?)
         },
@@ -165,7 +166,7 @@ fn execute_burn(
 
     let _allowance = BURNER_ALLOWANCES.update(
         deps.storage,
-        info.sender.clone(),
+        &info.sender.clone(),
         |allowance| -> StdResult<Uint128> {
             Ok(allowance.unwrap_or_default().checked_sub(amount)?)
         },
@@ -248,12 +249,12 @@ fn execute_set_freezer(
 fn set_bool_allowance(
     deps: DepsMut,
     address: &String,
-    allowances: Map<Addr, bool>,
+    allowances: Map<&Addr, bool>,
     status: bool,
 ) -> Result<bool, ContractError> {
     return allowances.update(
         deps.storage,
-        deps.api.addr_validate(address.as_str())?,
+        &deps.api.addr_validate(address.as_str())?,
         |mut stat| -> Result<_, ContractError> {
             if let Some(current_status) = stat {
                 if current_status == status {
@@ -277,14 +278,14 @@ fn check_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
 
 fn set_int_allowance(
     deps: DepsMut,
-    allowances: Map<Addr, Uint128>,
+    allowances: Map<&Addr, Uint128>,
     address: &String,
     amount: Uint128,
 ) -> Result<(), ContractError> {
     // TODO What if the allowance doesnt change, like i check for at bool_allowance
     let res = allowances.save(
         deps.storage,
-        deps.api.addr_validate(address.as_str())?,
+        &deps.api.addr_validate(address.as_str())?,
             &amount);
     match res {
         Ok(()) => Ok(()),
@@ -367,7 +368,7 @@ fn execute_blacklist(
     // update blacklisted status
     BLACKLISTED_ADDRESSES.update(
         deps.storage,
-        deps.api.addr_validate(address.as_str())?,
+        &deps.api.addr_validate(address.as_str())?,
         |mut stat| -> Result<_, ContractError> {
             stat = Some(status);
             Ok(status)
@@ -383,9 +384,9 @@ fn execute_blacklist(
 fn check_allowance(
     deps: &Deps,
     info: MessageInfo,
-    allowances: Map<Addr, bool>,
+    allowances: Map<&Addr, bool>,
 ) -> Result<(), ContractError> {
-    let res = allowances.load(deps.storage, info.sender);
+    let res = allowances.load(deps.storage, &info.sender);
     match res {
         Ok(authorized) => {
             if !authorized {
@@ -430,7 +431,7 @@ pub fn beforesend_hook(
 
     // Check if 'from' address is blacklisted
     let from_address = deps.api.addr_validate(from.as_str())?;
-    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, from_address)? {
+    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &from_address)? {
         if is_blacklisted {
             return Err(ContractError::Blacklisted { address: from });
         }
@@ -438,7 +439,7 @@ pub fn beforesend_hook(
 
     // Check if 'to' address is blacklisted
     let to_address = deps.api.addr_validate(to.as_str())?;
-    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, to_address.clone())? {
+    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &to_address)? {
         if is_blacklisted {
             return Err(ContractError::Blacklisted { address: to });
         }
@@ -463,6 +464,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Blacklist { start_after, limit } => to_binary(&query_blacklist(deps, start_after, limit)?),
         QueryMsg::IsBlacklister { address } => to_binary(&query_is_blacklister(deps, address)?),
         QueryMsg::Blacklisters { start_after, limit } => to_binary(&query_blacklisters(deps, start_after, limit)?), 
+        QueryMsg::IsFreezer { address } => to_binary(&query_freezer_allowance(deps, address)?),
+        QueryMsg::FreezerAllowances { start_after, limit } => to_binary(&query_freezer_allowances(deps, start_after, limit)?),
     }
 }
 
@@ -501,84 +504,118 @@ pub fn query_burn_allowance(deps: Deps, address: String)-> StdResult<AllowanceRe
     // };
     
     // Which approach is better?
-    let allowance = BURNER_ALLOWANCES.load(deps.storage, deps.api.addr_validate(address.as_str())?)?.u128();
+    let allowance = BURNER_ALLOWANCES.load(deps.storage, &deps.api.addr_validate(address.as_str())?)?.u128();
     Ok(AllowanceResponse {
         address :address,
         allowance: allowance,
     })
 }
 
-pub fn query_burn_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<AllowancesResponse> {
+pub fn query_burn_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<AllowanceResponse>> {
     query_allowances(deps, start_after, limit, BURNER_ALLOWANCES)
 }
 
-pub fn query_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>, allowances: Map<Addr, Uint128>)  -> StdResult<AllowancesResponse> {
-    todo!()
-
-
-    // TODO: Check discord for answer on &Addr or Addr as key for Map
-
-    // // this code is based on the code from mars protocol. needs Map<&Addr, Uint128>
-    // let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
-    // let start = start_after.map(Bound::exclusive);
-
-    // BURNER_ALLOWANCES
-    //     .range(deps.storage, start, None, Order::Ascending)
-    //     .take(limit)
-    //     .map(|item| {
-    //         let (k, v) = item?;
-    //         Ok(AllowanceResponse {
-    //             address: String::from_utf8(k)?,
-    //             allowance: _query_position(&deps.querier, &env, &config, &state, &v)?,
-    //         })
-    //     })
-    // }
+pub fn query_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>, allowances: Map<&Addr, Uint128>)  -> StdResult<Vec<AllowanceResponse>> {
+    // based on this query written by lary https://github.com/st4k3h0us3/steak-contracts/blob/854c15c8d1a62303b931a785494a6ecd4b6eaf2a/contracts/hub/src/queries.rs#L90
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let addr: Addr;
+    let start = match start_after {
+        None => None,
+        Some(addr_str) => {
+            addr = deps.api.addr_validate(&addr_str)?;
+            Some(Bound::exclusive(&addr))
+        },
+    };
+    
+    // this code is based on the code from mars protocol. https://github.com/mars-protocol/fields-of-mars/blob/598af9ff3de7fa9ce65db713a3125fb442ebcf5c/contracts/martian-field/src/queries.rs#L37
+    allowances
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| {
+            let (k, v) = item?;
+            Ok(AllowanceResponse {
+                address: k.to_string(),
+                allowance: v.u128(),
+            })
+        }).collect()
 }
 
 pub fn query_mint_allowance(deps: Deps, address: String)-> StdResult<AllowanceResponse> {
-    let allowance = MINTER_ALLOWANCES.load(deps.storage, deps.api.addr_validate(address.as_str())?)?.u128();
+    let allowance = MINTER_ALLOWANCES.load(deps.storage, &deps.api.addr_validate(address.as_str())?)?.u128();
     Ok(AllowanceResponse {
         address :address,
         allowance: allowance,
     })
 }
 
-pub fn query_mint_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<AllowancesResponse>{
+pub fn query_mint_allowances(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<Vec<AllowanceResponse>>{
     query_allowances(deps, start_after, limit, MINTER_ALLOWANCES)
 }
 
-pub fn query_is_blacklisted(deps: Deps, address: String)-> StdResult<IsBlacklistedResponse> {
-    let status = BLACKLISTED_ADDRESSES.load(deps.storage, deps.api.addr_validate(&address)?).unwrap_or(false);
-    Ok(IsBlacklistedResponse {
+pub fn query_is_blacklisted(deps: Deps, address: String)-> StdResult<StatusResponse> {
+    let status = BLACKLISTED_ADDRESSES.load(deps.storage, &deps.api.addr_validate(&address)?).unwrap_or(false);
+    Ok(StatusResponse {
         address,
         status,
     })
 }
 
-pub fn query_blacklist(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<BlacklistResponse> {
-    todo!()
-    // TODO: Check with query allowances, probably the same requirements
+pub fn query_status_map(deps: Deps, start_after: Option<String>, limit: Option<u32>, map: Map<&Addr, bool>) -> StdResult<Vec<StatusResponse>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let addr: Addr;
+    let start = match start_after {
+        None => None,
+        Some(addr_str) => {
+            addr = deps.api.addr_validate(&addr_str)?;
+            Some(Bound::exclusive(&addr))
+        },
+    };
+
+    map 
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item|{    
+            let(address, status) = item?;
+            Ok(StatusResponse { address: address.to_string(), status })
+        })
+        .collect()
 }
 
-pub fn query_is_blacklister(deps:Deps, address: String) -> StdResult<IsBlacklisterResponse> {
+pub fn query_blacklist(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<BlacklistResponse> {
+    Ok(BlacklistResponse {
+            blacklist: query_status_map(deps, start_after, limit, BLACKLISTED_ADDRESSES)?
+        })
+}
 
-    let status = BLACKLISTER_ALLOWANCES.load(deps.storage, deps.api.addr_validate(&address)?).unwrap_or(false);
-    Ok(IsBlacklisterResponse {
+pub fn query_is_blacklister(deps:Deps, address: String) -> StdResult<StatusResponse> {
+
+    let status = BLACKLISTER_ALLOWANCES.load(deps.storage, &deps.api.addr_validate(&address)?).unwrap_or(false);
+    Ok(StatusResponse {
         address,
         status,
     })
 }
 
 pub fn query_blacklisters(deps: Deps, start_after: Option<String>, limit: Option<u32>) -> StdResult<BlacklistersResponse> {
-    todo!()
-
-    // TODO: Check with query allowances, probably the same requirements
+    Ok(BlacklistersResponse {
+        blacklisters: query_status_map(deps, start_after, limit, BLACKLISTER_ALLOWANCES)?
+    })
 }
 
-// TODO: QUERIES 
-// allowances
-// blacklisted
-// see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473 
+pub fn query_freezer_allowances(deps: Deps, start_after: Option<String>, limit:Option<u32>) -> StdResult<FreezerAllowancesResponse> {
+    Ok(FreezerAllowancesResponse {
+        freezers: query_status_map(deps, start_after, limit, FREEZER_ALLOWANCES)?
+    })
+}
+
+pub fn query_freezer_allowance(deps: Deps, address: String) -> StdResult<StatusResponse> {
+    let status = FREEZER_ALLOWANCES.load(deps.storage, &deps.api.addr_validate(&address)?).unwrap_or(false);
+    Ok(StatusResponse {
+        address,
+        status,
+    })
+}
+// query inspiration see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473 
 
 #[cfg(test)]
 mod tests {
@@ -717,7 +754,7 @@ mod tests {
         FREEZER_ALLOWANCES
             .update(
                 deps.storage,
-                deps.api.addr_validate(&address.to_string()).unwrap(),
+                &deps.api.addr_validate(&address.to_string()).unwrap(),
                 |mut current_status| -> Result<_, ContractError> {
                     current_status = Some(status);
 
@@ -1018,7 +1055,7 @@ mod tests {
         BLACKLISTER_ALLOWANCES
             .update(
                 deps.storage,
-                deps.api.addr_validate(&address.to_string()).unwrap(),
+                &deps.api.addr_validate(&address.to_string()).unwrap(),
                 |mut current_status| -> Result<_, ContractError> {
                     current_status = Some(status);
                     return Ok(status);
@@ -1033,7 +1070,7 @@ mod tests {
         BLACKLISTED_ADDRESSES
             .update(
                 deps.storage,
-                deps.api.addr_validate(&address.to_string()).unwrap(),
+                &deps.api.addr_validate(&address.to_string()).unwrap(),
                 |mut current_status| -> Result<_, ContractError> {
                     current_status = Some(status);
 
