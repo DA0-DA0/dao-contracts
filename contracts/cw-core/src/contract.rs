@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -20,9 +22,10 @@ use crate::query::{
     PauseInfoResponse,
 };
 use crate::state::{
-    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
-    VOTING_MODULE,
+    Config, ProposalModule, Status, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
+    PAUSED, PROPOSAL_MODULES, VOTING_MODULE,
 };
+// use radix_fmt::radix_36;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-core";
@@ -717,7 +720,19 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         PROPOSAL_MODULE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let prop_module_addr = deps.api.addr_validate(&res.contract_address)?;
-            PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &Empty {})?;
+            let num_modules = PROPOSAL_MODULES
+                .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+                .collect::<StdResult<Vec<Addr>>>()?
+                .len();
+
+            let prefix = derive_proposal_module_prefix(num_modules)?;
+            let prop_module = ProposalModule {
+                address: prop_module_addr.clone(),
+                status: Status::Active,
+                prefix,
+            };
+
+            PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &prop_module)?;
 
             Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))
         }
@@ -745,5 +760,41 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
         }
         _ => Err(ContractError::UnknownReplyID {}),
+    }
+}
+
+fn derive_proposal_module_prefix(mut index: usize) -> StdResult<String> {
+    index += 1;
+    let mut prefix = "".to_owned();
+    while index > 0 {
+        let letter_index = ((index - 1) % 26) + 65;
+        let letter_index_u8 = letter_index as u8;
+        let letter_str = std::str::from_utf8(&[letter_index_u8])?.to_owned();
+        prefix = [letter_str, prefix].join("");
+        // index = index.checked_sub(letter_index).unwrap_or(0);
+        index = index / 26;
+    }
+    Ok(prefix)
+}
+
+mod test {
+    use crate::contract::derive_proposal_module_prefix;
+
+    #[test]
+    fn test_prefix_generation() {
+        // [0..25]: A - Z
+        // [26 - 51]: AA - AZ
+        println!("{}", derive_proposal_module_prefix(0).unwrap());
+        println!("{}", derive_proposal_module_prefix(1).unwrap());
+        println!("{}", derive_proposal_module_prefix(2).unwrap());
+        // AA
+        println!("{}", derive_proposal_module_prefix(26).unwrap());
+        // AB
+        println!("{}", derive_proposal_module_prefix(27).unwrap());
+        // BA
+        println!("{}", derive_proposal_module_prefix(52).unwrap());
+        // BB
+        println!("{}", derive_proposal_module_prefix(53).unwrap());
+        // println!("{}", derive_proposal_module_prefix(26 * 26 * 26).unwrap());
     }
 }
