@@ -213,6 +213,62 @@
     {
       "type": "object",
       "required": [
+        "find_proposals"
+      ],
+      "properties": {
+        "find_proposals": {
+          "type": "object",
+          "required": [
+            "wallet"
+          ],
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "status": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Status"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "wallet": {
+              "type": "string"
+            },
+            "wallet_vote": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Vote"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "info"
       ],
       "properties": {
@@ -222,5 +278,25 @@
       },
       "additionalProperties": false
     }
-  ]
+  ],
+  "definitions": {
+    "Status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "rejected",
+        "passed",
+        "executed",
+        "closed"
+      ]
+    },
+    "Vote": {
+      "type": "string",
+      "enum": [
+        "yes",
+        "no",
+        "abstain"
+      ]
+    }
+  }
 }
