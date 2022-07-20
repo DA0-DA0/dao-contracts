@@ -49,9 +49,10 @@ pub fn cosm_orc_test_runner(tests: &[&TestDescAndFn]) {
         Status::Fail
     };
 
-    let result_str = "\ntest result: {:?}. {} passed; {} failed; 0 ignored; 0 measured; 0 filtered out; finished in {:.2?}";
-    let results = format!(result_str, status, passed, failed, time.elapsed());
-    println!("{}", results);
+    println!(
+        "{}",
+        format!("\ntest result: {:?}. {} passed; {} failed; 0 ignored; 0 measured; 0 filtered out; finished in {:.2?}", status, passed, failed, time.elapsed())
+    );
 
     teardown();
 
@@ -74,4 +75,7 @@ fn setup() {
 
 fn teardown() {
     // TODO: Write gas output
+    // <--
+    // <--
+    // (Do this locally for now, just to prove that I broke it and then I can fix it for real)
 }
