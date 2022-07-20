@@ -98,6 +98,9 @@ jobs:
       - name: Run Integration Tests
         run: cd ci/integration_tests/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" cargo test
 
+      - name: Raw Gas Report
+        run: cat ci/integration_tests/gas_report.json
+
       # TODO: 
       # + Upload gas_report output as github artifact
       # * Download main's gas_report artifact and diff

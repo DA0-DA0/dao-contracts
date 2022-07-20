@@ -24,3 +24,6 @@ artifacts/
 
 # code coverage
 tarpaulin-report.*
+
+# integration tests
+gas_report.json
