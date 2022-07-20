@@ -42,6 +42,25 @@ pub enum QueryMsg {
     IsFrozen {},
     // Denom returns the token denom that this contract is the admin for
     Denom {},
+    // Owner returns the owner of the contract
+    Owner {},
+    // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
+    BurnAllowances {start_after: Option<String>, limit: Option<u32>},
+    // Allowance returns the allowance of the specified user
+    BurnAllowance { address: String },
+    // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
+    MintAllowances {start_after: Option<String>, limit: Option<u32>},
+    // Allowance returns the allowance of the specified user
+    MintAllowance { address: String },
+    // Blacklist Enumerates over all blacklisted addresses
+    Blacklist { start_after: Option<String>, limit: Option<u32>},
+    // IsBlacklisted returns wether the user is blacklisted or not
+    IsBlacklisted {address: String},
+    // IsBlacklister returns if the addres has blacklister privileges
+    IsBlacklister { address: String},
+    // Blacklisters Enumerates over all the addresses with blacklister privileges
+    Blacklisters { start_after: Option<String>, limit: Option<u32>},
+
 }
 
 // We define a custom struct for each query response
@@ -54,4 +73,42 @@ pub struct IsFrozenResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DenomResponse {
     pub denom: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct OwnerResponse {
+    pub address: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AllowancesResponse {
+    pub allowances: Vec<AllowanceResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AllowanceResponse {
+    pub address: String,
+    pub allowance: u128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IsBlacklistedResponse {
+    pub address: String,
+    pub status: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct BlacklistResponse {
+    pub blacklist: Vec<BlacklistResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IsBlacklisterResponse {
+    pub address: String,
+    pub status: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct BlacklistersResponse {
+    pub blacklisters : Vec<BlacklistResponse>,
 }
