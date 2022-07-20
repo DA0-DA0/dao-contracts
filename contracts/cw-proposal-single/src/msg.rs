@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_core_macros::govmod_query;
-use voting::{deposit::DepositInfo, threshold::Threshold, voting::Vote};
+use voting::{deposit::DepositInfo, status::Status, threshold::Threshold, voting::Vote};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -188,6 +188,13 @@ pub enum QueryMsg {
     /// Lists all of the consumers of vote hooks for this
     /// module. Returns indexable_hooks::HooksResponse.
     VoteHooks {},
+    FindProposals {
+        wallet: String,
+        status: Option<Status>,
+        wallet_vote: Option<Vote>,
+        start_after: Option<u64>,
+        limit: Option<u64>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

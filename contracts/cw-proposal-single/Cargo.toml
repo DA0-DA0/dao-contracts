@@ -60,3 +60,4 @@ cw20-stake = { path= "../cw20-stake", version = "*" }
 cw20-base = "0.13"
 cw4 = "0.13"
 cw4-group = "0.13"
+cosmwasm-vm = "1.0.0"

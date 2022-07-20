@@ -4103,3 +4103,276 @@ fn test_timestamp_updated() {
     assert_eq!(updated.proposal.last_updated, latest_time);
     assert_eq!(updated.proposal.status, Status::Closed);
 }
+
+#[test]
+fn test_find_proposals() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(proposal_contract());
+    let core_addr = instantiate_with_cw4_groups_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::AbsoluteCount {
+                threshold: Uint128::new(3),
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: None,
+            only_members_execute: true,
+            allow_revoting: true,
+            deposit_info: None,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "four".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "five".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("three"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("three"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(|b| b.height += 10);
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 3 },
+        &[],
+    )
+    .unwrap();
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 2, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: Some(Status::Open),
+                wallet_vote: None,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 2]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: Some(Status::Executed),
+                wallet_vote: None,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: Some(Vote::Yes),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: Some(Status::Open),
+                wallet_vote: Some(Vote::Yes),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1]
+    );
+}
