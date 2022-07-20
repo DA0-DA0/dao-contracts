@@ -37,7 +37,7 @@ jobs:
           retention-days: 1
 
   test:
-    name: Runs integration tests against local juno node
+    name: Run integration tests against local juno node
     runs-on: ubuntu-latest
     needs: compile-contracts
     env:
@@ -83,8 +83,6 @@ jobs:
             -O ci/integration_tests/artifacts/cw20_base.wasm
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
             -O ci/integration_tests/artifacts/cw4_group.wasm
-          cp ci/integration_tests/artifacts/cw20_base.wasm ci/integration_tests/old-artifacts/cw20_base.wasm
-          cp ci/integration_tests/artifacts/cw4_group.wasm ci/integration_tests/old-artifacts/cw4_group.wasm
 
       - name: Install local junod
         run: |
@@ -101,5 +99,5 @@ jobs:
         run: cd ci/integration_tests/ && RUST_LOG=DEBUG CONTRACT_DIR="artifacts" cargo test
 
       # TODO: 
-      # * Upload gas_report output as github artifact
+      # + Upload gas_report output as github artifact
       # * Download main's gas_report artifact and diff
