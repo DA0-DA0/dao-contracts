@@ -19,13 +19,15 @@ use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, thresh
 fn execute_execute_admin_msgs() {
     let user_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
-    // dao without an admin cannot execute admin msgs:
-    let dao = create_dao(
+    // if you are not the admin, you cant execute admin msgs:
+    let res = create_dao(
         None,
         user_addr.clone(),
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
+    assert!(res.is_ok());
+    let dao = res.unwrap();
 
     let msg: CoreWasmMsg = WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
         msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -40,13 +42,21 @@ fn execute_execute_admin_msgs() {
     let res = Chain::process_msg("cw_core".to_string(), &msg);
     assert!(res.is_err());
 
-    // dao with admin can execute admin msgs:
-    let dao = create_dao(
+    let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::PauseInfo {});
+    let res = Chain::process_msg("cw_core".to_string(), &msg).unwrap();
+    let res: PauseInfoResponse = serde_json::from_value(res["data"].clone()).unwrap();
+
+    assert_eq!(res, PauseInfoResponse::Unpaused {});
+
+    // if you are the admin you can execute admin msgs:
+    let res = create_dao(
         Some(user_addr.clone()),
         user_addr,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
+    assert!(res.is_ok());
+    let dao = res.unwrap();
 
     let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
@@ -70,12 +80,15 @@ fn execute_execute_admin_msgs() {
 fn execute_items() {
     let admin_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
-    let dao = create_dao(
+    // add item:
+    let res = create_dao(
         Some(admin_addr.clone()),
         admin_addr,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
+    assert!(res.is_ok());
+    let dao = res.unwrap();
 
     let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::GetItem {
         key: "meme".to_string(),
@@ -88,7 +101,7 @@ fn execute_items() {
     let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
-                contract_addr: dao.addr,
+                contract_addr: dao.addr.clone(),
                 msg: to_binary(&cw_core::msg::ExecuteMsg::SetItem {
                     key: "meme".to_string(),
                     addr: "foobar".to_string(),
@@ -107,7 +120,27 @@ fn execute_items() {
 
     assert_eq!(res.item, Some("foobar".to_string()));
 
-    // TODO: remove item
+    // remove item:
+    let msgs: Vec<CoreWasmMsg> = vec![
+        WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
+                contract_addr: dao.addr,
+                msg: to_binary(&cw_core::msg::ExecuteMsg::RemoveItem {
+                    key: "meme".to_string(),
+                })
+                .unwrap(),
+                funds: vec![],
+            })],
+        }),
+        WasmMsg::QueryMsg(cw_core::msg::QueryMsg::GetItem {
+            key: "meme".to_string(),
+        }),
+    ];
+
+    let res = Chain::process_msgs("cw_core".to_string(), &msgs).unwrap();
+    let res: GetItemResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
+
+    assert_eq!(res.item, None);
 }
 
 // #### InstantiateMsg #####
@@ -116,15 +149,17 @@ fn execute_items() {
 fn instantiate_with_no_admin() {
     let user_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
-    let dao = create_dao(
+    let res = create_dao(
         None,
-        user_addr.clone(),
+        user_addr,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
+    assert!(res.is_ok());
+    let dao = res.unwrap();
 
     // ensure the dao is the admin:
-    assert_eq!(dao.state.admin, Chain::deploy_code_addr("cw_core"));
+    assert_eq!(dao.state.admin, dao.addr);
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -144,12 +179,14 @@ fn instantiate_with_admin() {
     let voting_contract = "cw20_staked_balance_voting";
     let proposal_contract = "cw_proposal_single";
 
-    let dao = create_dao(
+    let res = create_dao(
         Some(admin_addr.clone()),
         admin_addr.clone(),
         voting_contract,
         proposal_contract,
     );
+    assert!(res.is_ok());
+    let dao = res.unwrap();
 
     // general dao info is valid:
     assert_eq!(dao.state.admin, admin_addr);
@@ -169,15 +206,15 @@ fn instantiate_with_admin() {
     let prop_addr = dao.state.proposal_modules[0].as_str();
 
     // voting module config is valid:
-    Chain::add_deploy_code_addr(voting_contract, voting_addr);
+    Chain::add_contract_addr(voting_contract, voting_addr);
     let msg: Cw20StakeBalanceWasmMsg =
         WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::StakingContract {});
     let staking_addr = &Chain::process_msg(voting_contract.to_string(), &msg).unwrap()["data"];
 
-    Chain::add_deploy_code_addr("cw20_stake", staking_addr.as_str().unwrap());
+    Chain::add_contract_addr("cw20_stake", staking_addr.as_str().unwrap());
     let msgs: Vec<Cw20StakeWasmMsg> = vec![
         WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
-            address: admin_addr.to_string(),
+            address: admin_addr,
         }),
         WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::GetConfig {}),
         WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::TotalValue {}),
@@ -190,7 +227,7 @@ fn instantiate_with_admin() {
         serde_json::from_value(res[1]["data"].clone()).unwrap();
     assert_eq!(
         config_res.owner,
-        Some(Addr::unchecked(Chain::deploy_code_addr("cw_core")))
+        Some(Addr::unchecked(Chain::contract_addr("cw_core")))
     );
     assert_eq!(config_res.manager, None);
 
@@ -206,7 +243,7 @@ fn instantiate_with_admin() {
     assert_eq!(total_res.total, Uint128::new(0));
 
     // proposal module config is valid:
-    Chain::add_deploy_code_addr(proposal_contract, prop_addr);
+    Chain::add_contract_addr(proposal_contract, prop_addr);
     let msg: CwProposalWasmMsg = WasmMsg::QueryMsg(cw_proposal_single::msg::QueryMsg::Config {});
     let res = Chain::process_msg(proposal_contract.to_string(), &msg).unwrap();
     let config_res: cw_proposal_single::state::Config =
@@ -214,8 +251,8 @@ fn instantiate_with_admin() {
 
     assert_eq!(config_res.min_voting_period, None);
     assert_eq!(config_res.max_voting_period, Duration::Time(432000));
-    assert_eq!(config_res.allow_revoting, false);
-    assert_eq!(config_res.only_members_execute, true);
+    assert!(!config_res.allow_revoting);
+    assert!(config_res.only_members_execute);
     assert_eq!(
         config_res.deposit_info,
         Some(CheckedDepositInfo {
@@ -231,5 +268,5 @@ fn instantiate_with_admin() {
             quorum: PercentageThreshold::Percent(Decimal::percent(35)),
         }
     );
-    assert_eq!(config_res.dao, Chain::deploy_code_addr("cw_core"));
+    assert_eq!(config_res.dao, Chain::contract_addr("cw_core"));
 }
