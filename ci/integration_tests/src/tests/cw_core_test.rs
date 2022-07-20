@@ -1,5 +1,5 @@
 use crate::{
-    helpers::helpers::{
+    helpers::helper::{
         create_dao, CoreWasmMsg, Cw20StakeBalanceWasmMsg, Cw20StakeWasmMsg, CwProposalWasmMsg,
     },
     test_harness::chain::Chain,
@@ -23,7 +23,6 @@ fn execute_execute_admin_msgs() {
     let dao = create_dao(
         None,
         user_addr.clone(),
-        None,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
@@ -45,7 +44,6 @@ fn execute_execute_admin_msgs() {
     let dao = create_dao(
         Some(user_addr.clone()),
         user_addr,
-        None,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
@@ -75,7 +73,6 @@ fn execute_items() {
     let dao = create_dao(
         Some(admin_addr.clone()),
         admin_addr,
-        None,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
@@ -122,7 +119,6 @@ fn instantiate_with_no_admin() {
     let dao = create_dao(
         None,
         user_addr.clone(),
-        None,
         "cw20_staked_balance_voting",
         "cw_proposal_single",
     );
@@ -151,7 +147,6 @@ fn instantiate_with_admin() {
     let dao = create_dao(
         Some(admin_addr.clone()),
         admin_addr.clone(),
-        None,
         voting_contract,
         proposal_contract,
     );

@@ -50,8 +50,8 @@ pub fn cosm_orc_test_runner(tests: &[&TestDescAndFn]) {
     };
 
     println!(
-        "{}",
-        format!("\ntest result: {:?}. {} passed; {} failed; 0 ignored; 0 measured; 0 filtered out; finished in {:.2?}", status, passed, failed, time.elapsed())
+        "\ntest result: {:?}. {} passed; {} failed; 0 ignored; 0 measured; 0 filtered out; finished in {:.2?}",
+        status, passed, failed, time.elapsed()
     );
 
     teardown();
@@ -67,7 +67,7 @@ fn setup() {
     let gas_report_out = env::var("GAS_REPORT_OUT").expect("missing GAS_REPORT_OUT env var");
 
     let cfg = Config::from_yaml("config.yaml").unwrap();
-    let mut cosm_orc = CosmOrc::new(cfg).add_profiler(Box::new(GasProfiler::new()));
+    let cosm_orc = CosmOrc::new(cfg).add_profiler(Box::new(GasProfiler::new()));
 
     Chain::init(cosm_orc, contract_dir, gas_report_out);
 

@@ -20,13 +20,12 @@ pub struct DaoState {
 pub fn create_dao(
     admin: Option<String>,
     user_addr: String,
-    initial_balances: Option<Vec<Cw20Coin>>,
     voting_contract: &str,
     proposal_contract: &str,
 ) -> DaoState {
     let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::InstantiateMsg(cw_core::msg::InstantiateMsg {
-            admin: admin,
+            admin,
             name: "DAO DAO".to_string(),
             description: "A DAO that makes DAO tooling".to_string(),
             image_url: None,
@@ -85,7 +84,7 @@ pub fn create_dao(
     let state: DumpStateResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
 
     DaoState {
-        addr: Chain::deploy_code_addr("cw_core").to_string(),
+        addr: Chain::deploy_code_addr("cw_core"),
         state,
     }
 }
