@@ -709,14 +709,13 @@ pub fn query_cw20_balances(
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
         MigrateMsg::FromBeta {} => {
-            let keys_raw: Vec<(usize, Addr)> = PROPOSAL_MODULES
+            let keys = PROPOSAL_MODULES
                 .keys_raw(deps.storage, None, None, Order::Ascending)
                 .enumerate()
-                .map(|(idx, addr)| Ok((idx, from_slice(&addr)?)))
+                .map(|(idx, key_raw)| Ok((idx, Addr::unchecked(String::from_utf8(key_raw)?))))
                 .collect::<StdResult<Vec<(usize, Addr)>>>()?;
 
-            keys_raw
-                .into_iter()
+            keys.into_iter()
                 .try_for_each::<_, StdResult<()>>(|(index, key)| {
                     let path = PROPOSAL_MODULES.key(key.clone());
                     let prefix = derive_proposal_module_prefix(index)?;

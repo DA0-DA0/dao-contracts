@@ -2338,7 +2338,6 @@ fn test_from_slice() {
 
 #[test]
 fn test_migrate_only() {
-    // see if I can just call the migrate function
     let mut deps = mock_dependencies();
     let msg = MigrateMsg::FromBeta {};
     let env = mock_env();
@@ -2358,10 +2357,13 @@ fn test_migrate_only() {
     // };
     // deps.storage.set(&path, &to_binary(&proposal_mod).unwrap());
 
-    let res = migrate(deps.as_mut(), env, msg).unwrap();
+    migrate(deps.as_mut(), env, msg).unwrap();
 
     let prop_module_bytes = deps.storage.get(&path).unwrap();
     let module: ProposalModule = from_slice(&prop_module_bytes).unwrap();
+    assert_eq!(module.address, Addr::unchecked("addr"));
+    assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
+    assert_eq!(module.status, ProposalModuleStatus::Active {});
 }
 
 #[test]
