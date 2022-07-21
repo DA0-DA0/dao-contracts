@@ -149,7 +149,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
 }
 
 #[test]
-#[should_panic(expected = "Execution would result in no governance modules being present.")]
+#[should_panic(expected = "Execution would result in no governance modules being active.")]
 fn test_instantiate_with_zero_gov_modules() {
     test_instantiate_with_n_gov_modules(0)
 }
@@ -378,6 +378,12 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             )
             .unwrap();
 
+        let start_modules_active: Vec<ProposalModule> = start_modules
+            .clone()
+            .into_iter()
+            .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active {})
+            .collect();
+
         let to_add: Vec<_> = (0..add)
             .map(|n| ModuleInstantiateInfo {
                 code_id: propmod_id,
@@ -387,17 +393,16 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             })
             .collect();
 
-        let to_disable: Vec<_> = start_modules
+        let to_disable: Vec<_> = start_modules_active
             .iter()
             .rev()
-            .filter(|module| module.status == ProposalModuleStatus::Active)
             .take(remove as usize)
             .map(|a| a.address.to_string())
             .collect();
 
         app.execute_contract(
             Addr::unchecked(CREATOR_ADDR),
-            start_modules[0].address.clone(),
+            start_modules_active[0].address.clone(),
             &cw_proposal_sudo::msg::ExecuteMsg::Execute {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
