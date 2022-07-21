@@ -1,13 +1,13 @@
 use std::borrow::BorrowMut;
 
 use crate::msg::{
-    ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse,
-    TotalStakedAtHeightResponse, TotalValueResponse,
+    ExecuteMsg, MigrateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+    StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, MessageInfo, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 
@@ -28,7 +28,8 @@ pub fn contract_staking() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
-    );
+    )
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -86,7 +87,7 @@ fn instantiate_staking(app: &mut App, cw20: Addr, unstaking_duration: Option<Dur
         &msg,
         &[],
         "staking",
-        None,
+        Some("admin".to_string()),
     )
     .unwrap()
 }
@@ -385,6 +386,52 @@ fn test_update_config() {
     .downcast()
     .unwrap();
     assert_eq!(err, ContractError::Unauthorized {})
+}
+
+#[test]
+fn test_migrate() {
+    let _deps = mock_dependencies();
+
+    let mut app = mock_app();
+    let amount1 = Uint128::from(100u128);
+    let _token_address = Addr::unchecked("token_address");
+    let initial_balances = vec![Cw20Coin {
+        address: ADDR1.to_string(),
+        amount: amount1,
+    }];
+    let (staking_addr, _cw20_addr) = setup_test_case(&mut app, initial_balances, None);
+
+    // let info = mock_info("owner", &[]);
+    // let _env = mock_env();
+    // // Test update admin
+    // update_config(
+    //     &mut app,
+    //     &staking_addr,
+    //     info,
+    //     Some(Addr::unchecked("owner2")),
+    //     None,
+    //     Some(Duration::Height(100)),
+    // )
+    // .unwrap();
+
+    // let config = query_config(&app, &staking_addr);
+    // assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
+    // assert_eq!(config.unstaking_duration, Some(Duration::Height(100)));
+
+    // test migrate
+    let staking_code_id = app.store_code(contract_staking());
+    app.execute(
+        Addr::unchecked("admin"),
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: staking_addr.to_string(),
+            new_code_id: staking_code_id,
+            msg: to_binary(&MigrateMsg::FromBeta {
+                manager: Some("new_manager".to_string()),
+            })
+            .unwrap(),
+        }),
+    )
+    .unwrap();
 }
 
 #[test]
