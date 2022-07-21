@@ -15,9 +15,9 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const BLACKLISTED_ADDRESSES: Map<Addr, bool> = Map::new("blacklister_addresses");
+pub const BLACKLISTED_ADDRESSES: Map<&Addr, bool> = Map::new("blacklister_addresses");
 
-pub const MINTER_ALLOWANCES: Map<Addr, Uint128> = Map::new("minter_allowances");
-pub const BURNER_ALLOWANCES: Map<Addr, Uint128> = Map::new("burner_allowances");
-pub const BLACKLISTER_ALLOWANCES: Map<Addr, bool> = Map::new("blacklister_allowances");
-pub const FREEZER_ALLOWANCES: Map<Addr, bool> = Map::new("freezer_allowances");
+pub const MINTER_ALLOWANCES: Map<&Addr, Uint128> = Map::new("minter_allowances");
+pub const BURNER_ALLOWANCES: Map<&Addr, Uint128> = Map::new("burner_allowances");
+pub const BLACKLISTER_ALLOWANCES: Map<&Addr, bool> = Map::new("blacklister_allowances");
+pub const FREEZER_ALLOWANCES: Map<&Addr, bool> = Map::new("freezer_allowances");

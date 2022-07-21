@@ -3,7 +3,6 @@
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::testing::MockQuerierCustomHandlerResult;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, Order, 
 };
@@ -635,8 +634,12 @@ mod tests {
         };
         let info = mock_info("creator", &coins(1000, "uosmo"));
 
-        let no_funds_info = mock_info("poor_guy", &coins(100u128, "uosmo"));
         // the instantiate should fail if the required funds are not provided
+        let no_funds_info = mock_info("poor_guy", &[] );
+        let err = instantiate(deps.as_mut(), mock_env(),no_funds_info, msg.clone()).unwrap_err();
+        
+        // the instantiate should fail if the required funds not provided correctly
+        let no_funds_info = mock_info("poor_guy", &coins(100u128, "uosmo"));
         let err = instantiate(deps.as_mut(), mock_env(),no_funds_info, msg.clone()).unwrap_err();
         
         // instantiate with enough funds provided should succeed
