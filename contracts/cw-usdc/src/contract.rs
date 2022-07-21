@@ -51,14 +51,18 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     let create_denom_msg = OsmosisMsg::CreateDenom {
-        subdenom: full_denom,
+        subdenom: msg.subdenom,
     };
+
+    // hack to make sure a testable address is now admin
+    let set_hook_msg = OsmosisMsg::ChangeAdmin { denom: full_denom, new_admin_address: info.sender.to_string() };
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender)
         .add_attribute("contract", contract_address.to_string())
-        .add_message(create_denom_msg))
+        .add_message(create_denom_msg)
+        .add_message(set_hook_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
