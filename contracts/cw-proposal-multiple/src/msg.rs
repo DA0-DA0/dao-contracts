@@ -1,7 +1,7 @@
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{deposit::DepositInfo, voting::MultipleChoiceVote};
+use voting::{deposit::DepositInfo, status::Status, voting::MultipleChoiceVote};
 
 use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
 use cw_core_macros::govmod_query;
@@ -132,6 +132,13 @@ pub enum QueryMsg {
     },
     ProposalHooks {},
     VoteHooks {},
+    FindProposals {
+        wallet: String,
+        status: Option<Status>,
+        wallet_vote: Option<MultipleChoiceVote>,
+        start_after: Option<u64>,
+        limit: Option<u64>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

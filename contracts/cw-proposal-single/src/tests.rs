@@ -4438,4 +4438,89 @@ fn test_find_proposals() {
             .collect::<Vec<u64>>(),
         [1]
     );
+
+    // Pagination test
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: Some(1),
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [2, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: None,
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 2]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: Some(1),
+                limit: Some(10),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [2, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: Some(5),
+                limit: Some(5),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [] as [u64; 0]
+    );
 }

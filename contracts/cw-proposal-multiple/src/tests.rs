@@ -3727,3 +3727,428 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
     // Deposit should now belong to the DAO.
     assert_eq!(balance.balance, Uint128::new(1));
 }
+
+#[test]
+fn test_find_proposals() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+
+    let quorum = PercentageThreshold::Majority {};
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        min_voting_period: None,
+        max_voting_period,
+        only_members_execute: false,
+        deposit_info: None,
+        voting_strategy,
+    };
+
+    let governance_addr = instantiate_with_staking_active_threshold(
+        &mut app,
+        govmod_id,
+        to_binary(&instantiate).unwrap(),
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "four".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "five".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+        None,
+    );
+
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "Yes".to_string(),
+            msgs: None,
+        },
+        MultipleChoiceOption {
+            description: "No".to_string(),
+            msgs: None,
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = govmod_config.dao;
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake some tokens so we can propose and vote
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_contract.to_string(),
+        amount: Uint128::new(1),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(Addr::unchecked("one"), token_contract.clone(), &msg, &[])
+        .unwrap();
+    app.execute_contract(Addr::unchecked("two"), token_contract.clone(), &msg, &[])
+        .unwrap();
+    app.execute_contract(Addr::unchecked("three"), token_contract.clone(), &msg, &[])
+        .unwrap();
+    app.execute_contract(Addr::unchecked("four"), token_contract.clone(), &msg, &[])
+        .unwrap();
+    app.execute_contract(Addr::unchecked("five"), token_contract, &msg, &[])
+        .unwrap();
+    app.update_block(next_block);
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            choices: mc_options.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 1 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            choices: mc_options.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: MultipleChoiceVote { option_id: 1 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("two"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("three"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("three"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(|b| b.height += 10);
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 3 },
+        &[],
+    )
+    .unwrap();
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 2, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: Some(Status::Open),
+                wallet_vote: None,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 2]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: Some(Status::Executed),
+                wallet_vote: None,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: Some(Status::Open),
+                wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1]
+    );
+
+    // Pagination test
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: Some(1),
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [2, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: None,
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [1, 2]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: Some(1),
+                limit: Some(10),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [2, 3]
+    );
+
+    let answ: ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::FindProposals {
+                wallet: "one".into(),
+                status: None,
+                wallet_vote: None,
+                start_after: Some(5),
+                limit: Some(5),
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        answ.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [] as [u64; 0]
+    );
+}
