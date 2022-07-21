@@ -9,7 +9,7 @@ use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_core_interface::voting;
-use cw_paginate::{paginate_map, paginate_map_keys};
+use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
 
 use crate::error::ContractError;
 use crate::msg::{
@@ -180,7 +180,13 @@ pub fn execute_proposal_hook(
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
     // Check that the message has come from one of the proposal modules
-    if !PROPOSAL_MODULES.has(deps.storage, sender) {
+    if !PROPOSAL_MODULES.has(deps.storage, sender.clone()) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Check that the message has come from an active module
+    let module = PROPOSAL_MODULES.load(deps.storage, sender)?;
+    if module.status == ProposalModuleStatus::Disabled {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -325,8 +331,30 @@ pub fn execute_update_proposal_modules(
             .map_err(|_| ContractError::ProposalModuleDoesNotExist {
                 address: addr.clone(),
             })?;
+        // If module is already disabled, it will be a no-op.
         module.status = ProposalModuleStatus::Disabled {};
         PROPOSAL_MODULES.save(deps.storage, addr, &module)?;
+    }
+
+    let active_count = PROPOSAL_MODULES
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter_map(|kv| match kv {
+            Ok(kv) => {
+                let v = kv.1;
+                match v.status {
+                    ProposalModuleStatus::Active => return Some(v),
+                    ProposalModuleStatus::Disabled => return None,
+                }
+            }
+            Err(_) => None,
+        })
+        .count();
+
+    // If we disable all of our proposal modules and we are not adding
+    // any this operation would result in no proposal modules being
+    // active.
+    if active_count == 0 && to_add.is_empty() {
+        return Err(ContractError::NoProposalModule {});
     }
 
     let to_add: Vec<SubMsg<Empty>> = to_add
@@ -334,18 +362,6 @@ pub fn execute_update_proposal_modules(
         .map(|info| info.into_wasm_msg(env.contract.address.clone()))
         .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
-
-    // If we removed all of our proposal modules and we are not adding
-    // any this operation would result in no proposal modules being
-    // present.
-    if PROPOSAL_MODULES
-        .keys_raw(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .next()
-        .is_none()
-        && to_add.is_empty()
-    {
-        return Err(ContractError::NoProposalModule {});
-    }
 
     Ok(Response::default()
         .add_attribute("action", "execute_update_proposal_modules")
@@ -554,7 +570,7 @@ pub fn query_proposal_modules(
     //
     // Even if this does lock up one can determine the existing
     // proposal modules by looking at past transactions on chain.
-    to_binary(&paginate_map(
+    to_binary(&paginate_map_values(
         deps,
         &PROPOSAL_MODULES,
         start_after
