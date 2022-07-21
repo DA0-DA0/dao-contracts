@@ -27,12 +27,12 @@ pub struct Config {
 pub struct ProposalModule {
     pub address: Addr,
     pub prefix: String,
-    pub status: Status,
+    pub status: ProposalModuleStatus,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 /// The status of a proposal module.
-pub enum Status {
+pub enum ProposalModuleStatus {
     Active,
     Disabled,
 }

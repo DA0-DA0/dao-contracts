@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     from_slice,
-    testing::{mock_env, MockApi, MockStorage},
-    to_binary, to_vec, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
+    testing::{mock_dependencies, mock_env, MockApi, MockStorage},
+    to_binary, to_vec, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
@@ -10,6 +10,7 @@ use cw_storage_plus::Map;
 use cw_utils::{Duration, Expiration};
 
 use crate::{
+    contract::{derive_proposal_module_prefix, migrate},
     msg::{
         Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
     },
@@ -17,7 +18,7 @@ use crate::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
         PauseInfoResponse,
     },
-    state::Config,
+    state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
     ContractError,
 };
 
@@ -148,20 +149,17 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
     assert_eq!(state.proposal_modules.len(), n);
 }
 
-// fn mock_app() -> App {
-//     let env = mock_env();
-//     let api = Box::new(MockApi::default());
-//     let bank = BankKeeper::new();
+fn mock_app_with_beta_state() -> App {
+    let env = mock_env();
+    let api = Box::new(MockApi::default());
+    let bank = BankKeeper::new();
 
-//     let beta_proposal_modules: Map<Addr, Empty> = Map::new("proposal_modules");
-
-//     App::new(|_, _, storage| {
-//         storage.set(
-//             b"proposal_modules",
-//             &to_binary(&beta_proposal_modules).unwrap(),
-//         )
-//     })
-// }
+    App::new(|_, _, storage| {
+        let key = Addr::unchecked("addr");
+        let path = PROPOSAL_MODULES.key(key);
+        storage.set(&path, &to_binary(&Empty {}).unwrap())
+    })
+}
 
 #[test]
 #[should_panic(expected = "Execution would result in no governance modules being present.")]
@@ -2331,12 +2329,44 @@ fn test_from_slice() {
 
     let prefix_slice = to_vec("proposal_modules").unwrap();
     let prefix: String = from_slice(&prefix_slice).unwrap();
-    println!("{:?}", prefix)
+    // println!("{:?}", prefix)
+
+    let key_raw = &[97, 100, 100, 114];
+    let addr_key = Addr::unchecked("addr");
+    println!("{:?}", to_vec(&addr_key).unwrap())
 }
 
 #[test]
-fn test_migrate_from_beta_1() {
-    let mut app = App::default();
+fn test_migrate_only() {
+    // see if I can just call the migrate function
+    let mut deps = mock_dependencies();
+    let msg = MigrateMsg::FromBeta {};
+    let env = mock_env();
+
+    // write to storage in old data format
+    let key = Addr::unchecked("addr");
+    let path = PROPOSAL_MODULES.key(key);
+    deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
+
+    // write to storage in new data format to see if it gets read
+    // let key = Addr::unchecked("addr");
+    // let path = PROPOSAL_MODULES.key(key);
+    // let proposal_mod = ProposalModule {
+    //     address: Addr::unchecked("addr"),
+    //     prefix: "prefix".to_string(),
+    //     status: ProposalModuleStatus::Active {},
+    // };
+    // deps.storage.set(&path, &to_binary(&proposal_mod).unwrap());
+
+    let res = migrate(deps.as_mut(), env, msg).unwrap();
+
+    let prop_module_bytes = deps.storage.get(&path).unwrap();
+    let module: ProposalModule = from_slice(&prop_module_bytes).unwrap();
+}
+
+#[test]
+fn test_migrate_from_beta() {
+    let mut app = mock_app_with_beta_state();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
     let gov_id = app.store_code(cw_core_contract());
@@ -2394,11 +2424,6 @@ fn test_migrate_from_beta_1() {
         )
         .unwrap();
 
-    let state: DumpStateResponse = app
-        .wrap()
-        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
-        .unwrap();
-
     app.execute(
         Addr::unchecked(CREATOR_ADDR),
         CosmosMsg::Wasm(WasmMsg::Migrate {
@@ -2409,96 +2434,29 @@ fn test_migrate_from_beta_1() {
     )
     .unwrap();
 
-    // let new_state: DumpStateResponse = app
-    //     .wrap()
-    //     .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
-    //     .unwrap();
+    let proposal_modules: Vec<(Addr, ProposalModule)> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
 
-    // assert_eq!(new_state, state);
+    assert_eq!(
+        proposal_modules[0],
+        (
+            Addr::unchecked("addr"),
+            ProposalModule {
+                address: Addr::unchecked("addr"),
+                prefix: derive_proposal_module_prefix(0).unwrap(),
+                status: ProposalModuleStatus::Active {}
+            }
+        )
+    )
 }
-
-// #[test]
-// fn test_migrate_from_beta() {
-//     let mut app = mock_app();
-//     let govmod_id = app.store_code(sudo_proposal_contract());
-//     let voting_id = app.store_code(cw20_balances_voting());
-//     let gov_id = app.store_code(cw_core_contract());
-//     let cw20_id = app.store_code(cw20_contract());
-
-//     let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
-//         root: CREATOR_ADDR.to_string(),
-//     };
-//     let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
-//         token_info: cw20_balance_voting::msg::TokenInfo::New {
-//             code_id: cw20_id,
-//             label: "DAO DAO voting".to_string(),
-//             name: "DAO DAO".to_string(),
-//             symbol: "DAO".to_string(),
-//             decimals: 6,
-//             initial_balances: vec![cw20::Cw20Coin {
-//                 address: CREATOR_ADDR.to_string(),
-//                 amount: Uint128::from(2u64),
-//             }],
-//             marketing: None,
-//         },
-//     };
-
-//     // Instantiate the core module with an admin to do migrations.
-//     let gov_instantiate = InstantiateMsg {
-//         admin: None,
-//         name: "DAO DAO".to_string(),
-//         description: "A DAO that builds DAOs.".to_string(),
-//         image_url: None,
-//         automatically_add_cw20s: false,
-//         automatically_add_cw721s: false,
-//         voting_module_instantiate_info: ModuleInstantiateInfo {
-//             code_id: voting_id,
-//             msg: to_binary(&voting_instantiate).unwrap(),
-//             admin: Admin::CoreContract {},
-//             label: "voting module".to_string(),
-//         },
-//         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-//             code_id: govmod_id,
-//             msg: to_binary(&govmod_instantiate).unwrap(),
-//             admin: Admin::CoreContract {},
-//             label: "governance module".to_string(),
-//         }],
-//         initial_items: None,
-//     };
-
-//     let core_addr = app
-//         .instantiate_contract(
-//             gov_id,
-//             Addr::unchecked(CREATOR_ADDR),
-//             &gov_instantiate,
-//             &[],
-//             "cw-governance",
-//             Some(CREATOR_ADDR.to_string()),
-//         )
-//         .unwrap();
-
-//     let state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
-//         .unwrap();
-
-//     app.execute(
-//         Addr::unchecked(CREATOR_ADDR),
-//         CosmosMsg::Wasm(WasmMsg::Migrate {
-//             contract_addr: core_addr.to_string(),
-//             new_code_id: gov_id,
-//             msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
-//         }),
-//     )
-//     .unwrap();
-
-//     let new_state: DumpStateResponse = app
-//         .wrap()
-//         .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
-//         .unwrap();
-
-//     assert_eq!(new_state, state);
-// }
 
 #[test]
 fn test_execute_stargate_msg() {

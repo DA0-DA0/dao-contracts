@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_slice, to_binary, to_vec, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdResult, SubMsg,
+    Order, Reply, Response, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::{Map, Path};
@@ -20,8 +20,8 @@ use crate::query::{
     PauseInfoResponse,
 };
 use crate::state::{
-    Config, ProposalModule, Status, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN,
-    PAUSED, PROPOSAL_MODULES, VOTING_MODULE,
+    Config, ProposalModule, ProposalModuleStatus, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS,
+    NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, VOTING_MODULE,
 };
 
 // version info for migration info
@@ -548,7 +548,7 @@ pub fn query_proposal_modules(
     //
     // Even if this does lock up one can determine the existing
     // proposal modules by looking at past transactions on chain.
-    to_binary(&paginate_map_keys(
+    to_binary(&paginate_map(
         deps,
         &PROPOSAL_MODULES,
         start_after
@@ -707,55 +707,28 @@ pub fn query_cw20_balances(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    use cosmwasm_std::StdError;
     match msg {
         MigrateMsg::FromBeta {} => {
-            // let data = deps
-            //     .storage
-            //     .get(b"proposal_modules")
-            //     .ok_or_else(|| StdError::not_found("proposal_modules"))?;
+            let keys_raw: Vec<(usize, Addr)> = PROPOSAL_MODULES
+                .keys_raw(deps.storage, None, None, Order::Ascending)
+                .enumerate()
+                .map(|(idx, addr)| Ok((idx, from_slice(&addr)?)))
+                .collect::<StdResult<Vec<(usize, Addr)>>>()?;
 
-            // println!("{:?}", PROPOSAL_MODULES.key("proposal_modules"));
-            VOTING_MODULE.save(deps.storage, &Addr::unchecked("addr"))?;
+            keys_raw
+                .into_iter()
+                .try_for_each::<_, StdResult<()>>(|(index, key)| {
+                    let path = PROPOSAL_MODULES.key(key.clone());
+                    let prefix = derive_proposal_module_prefix(index)?;
+                    let proposal_module = to_vec(&ProposalModule {
+                        address: key,
+                        status: ProposalModuleStatus::Active {},
+                        prefix,
+                    })?;
+                    deps.storage.set(&path, &proposal_module);
+                    Ok(())
+                })?;
 
-            let key = PROPOSAL_MODULES.key(Addr::unchecked("addr"));
-            println!("{:?}", key);
-            PROPOSAL_MODULES.save(
-                deps.storage,
-                Addr::unchecked("Addr"),
-                &ProposalModule {
-                    address: Addr::unchecked("Addr"),
-                    prefix: "".to_string(),
-                    status: Status::Active {},
-                },
-            )?;
-            let loaded_mods = PROPOSAL_MODULES.load(deps.storage, Addr::unchecked("addr"));
-            println!("{}", loaded_mods.is_ok());
-
-            let data = deps
-                .storage
-                .get(b"voting_module")
-                .ok_or_else(|| StdError::not_found("proposal_modules"))?;
-
-            let namespace = to_vec("proposal_modules")?;
-            let key = to_vec(&Addr::unchecked("Addr"))?;
-            // let path = Path::<ProposalModule>::new(&namespace, &[&key]);
-            let path = PROPOSAL_MODULES.key(Addr::unchecked("Addr"));
-
-            // let path = &[
-            //     0, 16, 112, 114, 111, 112, 111, 115, 97, 108, 95, 109, 111, 100, 117, 108, 101,
-            //     115, 97, 100, 100, 114,
-            // ];
-
-            let data = deps
-                .storage
-                .get(&path)
-                .ok_or_else(|| StdError::not_found("proposal_modules"))?;
-
-            let loaded_prop: ProposalModule = from_slice(&data).unwrap();
-            println!("{:?}", loaded_prop);
-            // deps.storage.set(b"config", &to_vec(&new_config)?);
-            println!("{}", data.len());
             Ok(Response::default())
         }
         MigrateMsg::FromCompatible {} => Ok(Response::default()),
@@ -776,7 +749,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let prefix = derive_proposal_module_prefix(num_modules)?;
             let prop_module = ProposalModule {
                 address: prop_module_addr.clone(),
-                status: Status::Active,
+                status: ProposalModuleStatus::Active,
                 prefix,
             };
 
@@ -813,7 +786,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
 // Convert to base26, where we only use the characters A-Z. Note that since 'A' maps to 0,
 // a prefix will never start with 'A' unless it is 0.
-fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<String> {
+pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<String> {
     // Pre-allocate string
     let mut postfix = String::with_capacity(10);
     loop {
