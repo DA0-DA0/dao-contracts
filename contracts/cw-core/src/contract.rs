@@ -794,21 +794,22 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 // a prefix will never start with 'A' unless it is 0.
 pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<String> {
     // Pre-allocate string
-    let mut postfix = String::with_capacity(10);
+    let mut prefix = String::with_capacity(10);
     loop {
         let remainder = dividend % 26;
-        dividend = dividend / 26;
+        dividend /= 26;
         let remainder_str = std::str::from_utf8(&[(remainder + 65) as u8])?.to_owned();
-        postfix.push_str(&remainder_str);
+        prefix.push_str(&remainder_str);
         if dividend == 0 {
             break;
         }
     }
-    Ok(postfix.chars().rev().collect())
+    Ok(prefix.chars().rev().collect())
 }
 
+#[cfg(test)]
 mod test {
-    use std::{collections::HashSet, thread::panicking};
+    use std::collections::HashSet;
 
     use crate::contract::derive_proposal_module_prefix;
 
@@ -817,8 +818,10 @@ mod test {
         assert_eq!("A", derive_proposal_module_prefix(0).unwrap());
         assert_eq!("B", derive_proposal_module_prefix(1).unwrap());
         assert_eq!("C", derive_proposal_module_prefix(2).unwrap());
-        assert_eq!("BA", derive_proposal_module_prefix(26 * 1 + 0).unwrap());
-        assert_eq!("BB", derive_proposal_module_prefix(26 * 1 + 1).unwrap());
+        // 26 * 1 + 0
+        assert_eq!("BA", derive_proposal_module_prefix(26).unwrap());
+        // 26 * 1 + 1
+        assert_eq!("BB", derive_proposal_module_prefix(27).unwrap());
         assert_eq!("CA", derive_proposal_module_prefix(26 * 2).unwrap());
         assert_eq!("CB", derive_proposal_module_prefix(26 * 2 + 1).unwrap());
         assert_eq!("DA", derive_proposal_module_prefix(26 * 3).unwrap());

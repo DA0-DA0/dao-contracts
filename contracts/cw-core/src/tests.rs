@@ -1,12 +1,11 @@
 use cosmwasm_std::{
     from_slice,
-    testing::{mock_dependencies, mock_env, MockApi, MockStorage},
-    to_binary, to_vec, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
-use cw_multi_test::{App, BankKeeper, BasicApp, Contract, ContractWrapper, Executor};
-use cw_storage_plus::Map;
+use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::{Duration, Expiration};
 
 use crate::{
@@ -147,18 +146,6 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
     );
 
     assert_eq!(state.proposal_modules.len(), n);
-}
-
-fn mock_app_with_beta_state() -> App {
-    let env = mock_env();
-    let api = Box::new(MockApi::default());
-    let bank = BankKeeper::new();
-
-    App::new(|_, _, storage| {
-        let key = Addr::unchecked("addr");
-        let path = PROPOSAL_MODULES.key(key);
-        storage.set(&path, &to_binary(&Empty {}).unwrap())
-    })
 }
 
 #[test]
@@ -2252,7 +2239,7 @@ fn test_dump_state_proposal_modules() {
 
     let all_state: DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
         .unwrap();
     assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(all_state.proposal_modules.len(), 1);
@@ -2455,7 +2442,7 @@ fn test_module_prefixes() {
     let modules: Vec<(Addr, ProposalModule)> = app
         .wrap()
         .query_wasm_smart(
-            gov_addr.clone(),
+            gov_addr,
             &QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
