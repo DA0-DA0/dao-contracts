@@ -1,5 +1,6 @@
 use std::borrow::BorrowMut;
 
+use crate::contract::migrate;
 use crate::msg::{
     ExecuteMsg, MigrateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
     StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
@@ -7,7 +8,9 @@ use crate::msg::{
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, MessageInfo, Uint128, WasmMsg};
+use cosmwasm_std::{
+    from_slice, to_binary, Addr, CosmosMsg, Empty, MessageInfo, Storage, Uint128, WasmMsg,
+};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 
@@ -17,6 +20,7 @@ use anyhow::Result as AnyResult;
 
 use cw_controllers::{Claim, ClaimsResponse};
 use cw_utils::Expiration::AtHeight;
+use serde::{Deserialize, Serialize};
 
 const ADDR1: &str = "addr0001";
 const ADDR2: &str = "addr0002";
@@ -389,49 +393,39 @@ fn test_update_config() {
 }
 
 #[test]
-fn test_migrate() {
-    let _deps = mock_dependencies();
+fn test_migrate_from_beta() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let token_address = Addr::unchecked("token_address");
 
-    let mut app = mock_app();
-    let amount1 = Uint128::from(100u128);
-    let _token_address = Addr::unchecked("token_address");
-    let initial_balances = vec![Cw20Coin {
-        address: ADDR1.to_string(),
-        amount: amount1,
-    }];
-    let (staking_addr, _cw20_addr) = setup_test_case(&mut app, initial_balances, None);
+    // Write to storage in old config format
+    let key = b"config";
+    #[derive(Serialize, Deserialize, Clone)]
+    struct BetaConfig {
+        pub admin: Addr,
+        pub token_address: Addr,
+        pub unstaking_duration: Option<Duration>,
+    }
+    let beta_config = BetaConfig {
+        admin: Addr::unchecked("beta_admin"),
+        token_address: token_address.clone(),
+        unstaking_duration: None,
+    };
 
-    // let info = mock_info("owner", &[]);
-    // let _env = mock_env();
-    // // Test update admin
-    // update_config(
-    //     &mut app,
-    //     &staking_addr,
-    //     info,
-    //     Some(Addr::unchecked("owner2")),
-    //     None,
-    //     Some(Duration::Height(100)),
-    // )
-    // .unwrap();
+    deps.storage.set(key, &to_binary(&beta_config).unwrap());
 
-    // let config = query_config(&app, &staking_addr);
-    // assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
-    // assert_eq!(config.unstaking_duration, Some(Duration::Height(100)));
+    let migrate_msg = MigrateMsg::FromBeta {
+        manager: Some("new_manager".to_string()),
+    };
 
-    // test migrate
-    let staking_code_id = app.store_code(contract_staking());
-    app.execute(
-        Addr::unchecked("admin"),
-        CosmosMsg::Wasm(WasmMsg::Migrate {
-            contract_addr: staking_addr.to_string(),
-            new_code_id: staking_code_id,
-            msg: to_binary(&MigrateMsg::FromBeta {
-                manager: Some("new_manager".to_string()),
-            })
-            .unwrap(),
-        }),
-    )
-    .unwrap();
+    migrate(deps.as_mut(), env, migrate_msg).unwrap();
+
+    let config_bytes = deps.storage.get(key).unwrap();
+    let config: Config = from_slice(&config_bytes).unwrap();
+    assert_eq!(config.owner, Some(Addr::unchecked("beta_admin")));
+    assert_eq!(config.manager, Some(Addr::unchecked("new_manager")));
+    assert_eq!(config.unstaking_duration, None);
+    assert_eq!(config.token_address, token_address)
 }
 
 #[test]

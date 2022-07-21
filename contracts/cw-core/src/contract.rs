@@ -123,8 +123,8 @@ pub fn execute(
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
         }
-        ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
-            execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
+        ExecuteMsg::UpdateProposalModules { to_add, to_disable } => {
+            execute_update_proposal_modules(deps, env, info.sender, to_add, to_disable)
         }
         ExecuteMsg::NominateAdmin { admin } => {
             execute_nominate_admin(deps, env, info.sender, admin)
@@ -312,15 +312,21 @@ pub fn execute_update_proposal_modules(
     env: Env,
     sender: Addr,
     to_add: Vec<ModuleInstantiateInfo>,
-    to_remove: Vec<String>,
+    to_disable: Vec<String>,
 ) -> Result<Response, ContractError> {
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
 
-    for addr in to_remove {
+    for addr in to_disable {
         let addr = deps.api.addr_validate(&addr)?;
-        PROPOSAL_MODULES.remove(deps.storage, addr);
+        let mut module = PROPOSAL_MODULES
+            .load(deps.storage, addr.clone())
+            .map_err(|_| ContractError::ProposalModuleDoesNotExist {
+                address: addr.clone(),
+            })?;
+        module.status = ProposalModuleStatus::Disabled {};
+        PROPOSAL_MODULES.save(deps.storage, addr, &module)?;
     }
 
     let to_add: Vec<SubMsg<Empty>> = to_add
@@ -555,7 +561,7 @@ pub fn query_proposal_modules(
             .map(|s| deps.api.addr_validate(&s))
             .transpose()?,
         limit,
-        cosmwasm_std::Order::Descending,
+        cosmwasm_std::Order::Ascending,
     )?)
 }
 
@@ -581,8 +587,9 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
     let proposal_modules = PROPOSAL_MODULES
-        .keys(deps.storage, None, None, cosmwasm_std::Order::Descending)
-        .collect::<Result<Vec<Addr>, _>>()?;
+        .range(deps.storage, None, None, cosmwasm_std::Order::Descending)
+        .map::<StdResult<ProposalModule>, _>(|kv| Ok(kv?.1))
+        .collect::<Result<Vec<ProposalModule>, _>>()?;
     let pause_info = get_pause_info(deps, env)?;
     let version = get_contract_version(deps.storage)?;
     to_binary(&DumpStateResponse {

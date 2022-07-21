@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Addr, StdError};
 use cw_utils::ParseReplyError;
 use thiserror::Error;
 
@@ -41,4 +41,7 @@ pub enum ContractError {
         "The pending admin nomination must be withdrawn before a new nomination can be created."
     )]
     PendingNomination {},
+
+    #[error("Proposal module with address ({address}) does not exist.")]
+    ProposalModuleDoesNotExist { address: Addr },
 }
