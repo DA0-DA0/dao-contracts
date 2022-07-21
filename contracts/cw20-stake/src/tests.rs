@@ -8,9 +8,7 @@ use crate::msg::{
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{
-    from_slice, to_binary, Addr, CosmosMsg, Empty, MessageInfo, Storage, Uint128, WasmMsg,
-};
+use cosmwasm_std::{from_slice, to_binary, Addr, Empty, MessageInfo, Storage, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 
