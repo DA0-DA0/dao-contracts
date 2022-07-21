@@ -277,7 +277,7 @@ fn test_update_config() {
         )
         .unwrap();
 
-    let modules: Vec<Addr> = app
+    let modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             gov_addr.clone(),
@@ -300,7 +300,7 @@ fn test_update_config() {
 
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
-        modules[0].clone(),
+        modules[0].clone().address,
         &cw_proposal_sudo::msg::ExecuteMsg::Execute {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
@@ -400,7 +400,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             })
             .collect();
 
-        let to_remove: Vec<_> = start_modules
+        let to_disable: Vec<_> = start_modules
             .iter()
             .rev()
             .take(remove as usize)
@@ -414,7 +414,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
                     funds: vec![],
-                    msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove })
+                    msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable })
                         .unwrap(),
                 }
                 .into()],
@@ -526,7 +526,7 @@ fn test_removed_modules_can_not_execute() {
         label: "new governance module".to_string(),
     }];
 
-    let to_remove = vec![start_module.to_string()];
+    let to_disable = vec![start_module.to_string()];
 
     // Swap ourselves out.
     app.execute_contract(
@@ -536,7 +536,7 @@ fn test_removed_modules_can_not_execute() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove }).unwrap(),
+                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
             }
             .into()],
         },
@@ -565,7 +565,7 @@ fn test_removed_modules_can_not_execute() {
         admin: Admin::CoreContract {},
         label: "new governance module".to_string(),
     }];
-    let to_remove = vec![new_proposal_module.to_string()];
+    let to_disable = vec![new_proposal_module.to_string()];
 
     let err: ContractError = app
         .execute_contract(
@@ -577,7 +577,7 @@ fn test_removed_modules_can_not_execute() {
                     funds: vec![],
                     msg: to_binary(&ExecuteMsg::UpdateProposalModules {
                         to_add: to_add.clone(),
-                        to_remove: to_remove.clone(),
+                        to_disable: to_disable.clone(),
                     })
                     .unwrap(),
                 }
@@ -598,7 +598,7 @@ fn test_removed_modules_can_not_execute() {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove }).unwrap(),
+                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
             }
             .into()],
         },
@@ -770,7 +770,7 @@ fn test_permissions() {
         gov_addr.clone(),
         ExecuteMsg::UpdateProposalModules {
             to_add: vec![],
-            to_remove: vec![],
+            to_disable: vec![],
         },
     );
 
@@ -2234,6 +2234,240 @@ fn test_pause() {
 }
 
 #[test]
+fn test_pause() {
+    let (core_addr, mut app) = do_standard_instantiate(false, None);
+
+    let start_height = app.block_info().height;
+
+    let proposal_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(paused, PauseInfoResponse::Unpaused {});
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
+
+    // DAO is not paused. Check that we can execute things.
+    //
+    // Tests intentionally use the core address to send these
+    // messsages to simulate a worst case scenerio where the core
+    // contract has a vulnerability.
+    app.execute_contract(
+        core_addr.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateConfig {
+            config: Config {
+                name: "The Empire Strikes Back".to_string(),
+                description: "haha lol we have pwned your DAO".to_string(),
+                image_url: None,
+                automatically_add_cw20s: true,
+                automatically_add_cw721s: true,
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Oh no the DAO is under attack! Quick! Pause the DAO while we
+    // figure out what to do!
+    let err: ContractError = app
+        .execute_contract(
+            proposal_module.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::Pause {
+                duration: Duration::Height(10),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // Only the DAO may call this on itself. Proposal modules must use
+    // the execute hook.
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    app.execute_contract(
+        proposal_module.clone(),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(
+        all_state.pause_info,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+
+    let err: ContractError = app
+        .execute_contract(
+            core_addr.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::UpdateConfig {
+                config: Config {
+                    name: "The Empire Strikes Back Again".to_string(),
+                    description: "haha lol we have pwned your DAO again".to_string(),
+                    image_url: None,
+                    automatically_add_cw20s: true,
+                    automatically_add_cw721s: true,
+                },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::Paused { .. }));
+
+    let err: ContractError = app
+        .execute_contract(
+            proposal_module.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::ExecuteProposalHook {
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: core_addr.to_string(),
+                    msg: to_binary(&ExecuteMsg::Pause {
+                        duration: Duration::Height(10),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::Paused { .. }));
+
+    app.update_block(|mut block| block.height += 9);
+
+    // Still not unpaused.
+    let err: ContractError = app
+        .execute_contract(
+            proposal_module.clone(),
+            core_addr.clone(),
+            &ExecuteMsg::ExecuteProposalHook {
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: core_addr.to_string(),
+                    msg: to_binary(&ExecuteMsg::Pause {
+                        duration: Duration::Height(10),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::Paused { .. }));
+
+    app.update_block(|mut block| block.height += 1);
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(paused, PauseInfoResponse::Unpaused {});
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
+
+    // Now its unpaused so we should be able to pause again.
+    app.execute_contract(
+        proposal_module,
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteProposalHook {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 20)
+        }
+    );
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(
+        all_state.pause_info,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 20)
+        }
+    );
+}
+
+#[test]
 fn test_migrate_from_compatible() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
@@ -2317,46 +2551,17 @@ fn test_migrate_from_compatible() {
 }
 
 #[test]
-fn test_from_slice() {
-    let arr: &[u8] = &[
-        0, 4, 119, 97, 115, 109, 0, 23, 99, 111, 110, 116, 114, 97, 99, 116, 95, 100, 97, 116, 97,
-        47, 99, 111, 110, 116, 114, 97, 99, 116, 48,
-    ];
-    let arr2: &[u8] = &[
-        0, 16, 112, 114, 111, 112, 111, 115, 97, 108, 95, 109, 111, 100, 117, 108, 101, 115, 97,
-        100, 100, 114,
-    ];
-
-    let prefix_slice = to_vec("proposal_modules").unwrap();
-    let prefix: String = from_slice(&prefix_slice).unwrap();
-    // println!("{:?}", prefix)
-
-    let key_raw = &[97, 100, 100, 114];
-    let addr_key = Addr::unchecked("addr");
-    println!("{:?}", to_vec(&addr_key).unwrap())
-}
-
-#[test]
-fn test_migrate_only() {
+fn test_migrate_from_beta() {
     let mut deps = mock_dependencies();
     let msg = MigrateMsg::FromBeta {};
     let env = mock_env();
 
-    // write to storage in old data format
+    // Write to storage in old proposal module format
     let key = Addr::unchecked("addr");
     let path = PROPOSAL_MODULES.key(key);
     deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
 
-    // write to storage in new data format to see if it gets read
-    // let key = Addr::unchecked("addr");
-    // let path = PROPOSAL_MODULES.key(key);
-    // let proposal_mod = ProposalModule {
-    //     address: Addr::unchecked("addr"),
-    //     prefix: "prefix".to_string(),
-    //     status: ProposalModuleStatus::Active {},
-    // };
-    // deps.storage.set(&path, &to_binary(&proposal_mod).unwrap());
-
+    // Migrate to new data format
     migrate(deps.as_mut(), env, msg).unwrap();
 
     let prop_module_bytes = deps.storage.get(&path).unwrap();
@@ -2364,100 +2569,6 @@ fn test_migrate_only() {
     assert_eq!(module.address, Addr::unchecked("addr"));
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
     assert_eq!(module.status, ProposalModuleStatus::Active {});
-}
-
-#[test]
-fn test_migrate_from_beta() {
-    let mut app = mock_app_with_beta_state();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
-
-    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
-        root: CREATOR_ADDR.to_string(),
-    };
-    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
-        token_info: cw20_balance_voting::msg::TokenInfo::New {
-            code_id: cw20_id,
-            label: "DAO DAO voting".to_string(),
-            name: "DAO DAO".to_string(),
-            symbol: "DAO".to_string(),
-            decimals: 6,
-            initial_balances: vec![cw20::Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::from(2u64),
-            }],
-            marketing: None,
-        },
-    };
-
-    // Instantiate the core module with an admin to do migrations.
-    let gov_instantiate = InstantiateMsg {
-        admin: None,
-        name: "DAO DAO".to_string(),
-        description: "A DAO that builds DAOs.".to_string(),
-        image_url: None,
-        automatically_add_cw20s: false,
-        automatically_add_cw721s: false,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
-            label: "voting module".to_string(),
-        },
-        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: govmod_id,
-            msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
-            label: "governance module".to_string(),
-        }],
-        initial_items: None,
-    };
-
-    let core_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            Some(CREATOR_ADDR.to_string()),
-        )
-        .unwrap();
-
-    app.execute(
-        Addr::unchecked(CREATOR_ADDR),
-        CosmosMsg::Wasm(WasmMsg::Migrate {
-            contract_addr: core_addr.to_string(),
-            new_code_id: gov_id,
-            msg: to_binary(&MigrateMsg::FromBeta {}).unwrap(),
-        }),
-    )
-    .unwrap();
-
-    let proposal_modules: Vec<(Addr, ProposalModule)> = app
-        .wrap()
-        .query_wasm_smart(
-            core_addr.clone(),
-            &QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
-    assert_eq!(
-        proposal_modules[0],
-        (
-            Addr::unchecked("addr"),
-            ProposalModule {
-                address: Addr::unchecked("addr"),
-                prefix: derive_proposal_module_prefix(0).unwrap(),
-                status: ProposalModuleStatus::Active {}
-            }
-        )
-    )
 }
 
 #[test]
@@ -2488,6 +2599,92 @@ fn test_execute_stargate_msg() {
         },
         &[],
     );
-    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this result unwrap
-    res.unwrap_err();
+    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this test assert
+    assert!(res.is_err());
+}
+
+#[test]
+fn test_module_prefixes() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let gov_id = app.store_code(cw_core_contract());
+
+    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+
+    let gov_instantiate = InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Admin::CoreContract {},
+                label: "proposal module 1".to_string(),
+            },
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Admin::CoreContract {},
+                label: "proposal module 2".to_string(),
+            },
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Admin::CoreContract {},
+                label: "proposal module 2".to_string(),
+            },
+        ],
+        initial_items: None,
+    };
+
+    let gov_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            None,
+        )
+        .unwrap();
+
+    let modules: Vec<(Addr, ProposalModule)> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(modules.len(), 3);
+
+    let module_1 = &modules[0].1;
+    assert_eq!(module_1.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_1.prefix, "A");
+    assert_eq!(&module_1.address, &modules[0].0);
+
+    let module_2 = &modules[1].1;
+    assert_eq!(module_2.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_2.prefix, "B");
+    assert_eq!(&module_2.address, &modules[1].0);
+
+    let module_3 = &modules[2].1;
+    assert_eq!(module_3.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_3.prefix, "C");
+    assert_eq!(&module_3.address, &modules[2].0);
 }

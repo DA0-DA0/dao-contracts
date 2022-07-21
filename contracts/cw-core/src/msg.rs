@@ -142,7 +142,7 @@ pub enum ExecuteMsg {
     /// install them.
     UpdateProposalModules {
         to_add: Vec<ModuleInstantiateInfo>,
-        to_remove: Vec<String>,
+        to_disable: Vec<String>,
     },
     /// Callable by the core contract. Replaces the current
     /// voting module with a new one instantiated by the governance
