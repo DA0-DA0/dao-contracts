@@ -50,7 +50,7 @@ pub fn mask_vote_hook_index(index: u64) -> u64 {
 pub mod error {
     use thiserror::Error;
 
-    #[derive(Error, Debug, PartialEq)]
+    #[derive(Error, Debug, PartialEq, Eq)]
     pub enum TagError {
         #[error("Unknown reply id ({id}).")]
         UnknownReplyId { id: u64 },
