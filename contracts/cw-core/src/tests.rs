@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     from_slice,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    to_binary, Addr, CosmosMsg, Empty, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
@@ -378,11 +378,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             )
             .unwrap();
 
-        let start_modules_active: Vec<ProposalModule> = start_modules
-            .clone()
-            .into_iter()
-            .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active {})
-            .collect();
+        let start_modules_active: Vec<ProposalModule> = get_active_modules(&app, gov_addr.clone());
 
         let to_add: Vec<_> = (0..add)
             .map(|n| ModuleInstantiateInfo {
@@ -416,25 +412,11 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         )
         .unwrap();
 
-        let finish_modules: Vec<ProposalModule> = app
-            .wrap()
-            .query_wasm_smart(
-                gov_addr.clone(),
-                &QueryMsg::ProposalModules {
-                    start_after: None,
-                    limit: None,
-                },
-            )
-            .unwrap();
-
-        let finish_modules_active: Vec<ProposalModule> = finish_modules
-            .into_iter()
-            .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active {})
-            .collect();
+        let finish_modules_active = get_active_modules(&app, gov_addr.clone());
 
         assert_eq!(
             finish_modules_active.len() as u64,
-            start_modules.len() as u64 + add - remove
+            start_modules_active.len() as u64 + add - remove
         );
         for module in start_modules.into_iter().rev().take(remove as usize) {
             assert!(!finish_modules_active.contains(&module))
@@ -542,21 +524,7 @@ fn test_removed_modules_can_not_execute() {
     )
     .unwrap();
 
-    let finish_modules: Vec<ProposalModule> = app
-        .wrap()
-        .query_wasm_smart(
-            gov_addr.clone(),
-            &QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
-    let finish_modules_active: Vec<ProposalModule> = finish_modules
-        .into_iter()
-        .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active {})
-        .collect();
+    let finish_modules_active: Vec<ProposalModule> = get_active_modules(&app, gov_addr.clone());
 
     let new_proposal_module = finish_modules_active.into_iter().next().unwrap();
 
@@ -2482,4 +2450,22 @@ fn test_module_prefixes() {
     assert_eq!(module_3.status, ProposalModuleStatus::Active {});
     assert_eq!(module_3.prefix, "C");
     assert_eq!(&module_3.address, &modules[2].address);
+}
+
+fn get_active_modules(app: &App, gov_addr: Addr) -> Vec<ProposalModule> {
+    let modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    modules
+        .into_iter()
+        .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active {})
+        .collect()
 }
