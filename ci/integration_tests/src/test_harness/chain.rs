@@ -32,47 +32,28 @@ impl Chain {
     // returns the deployed code_id for the given contract name
     pub fn contract_code_id(contract_name: &str) -> u64 {
         let chain = Self::get().lock().unwrap();
-
-        chain
-            .cosm_orc
-            .contract_map
-            .get(contract_name)
-            .expect("contract not stored")
-            .code_id
+        chain.cosm_orc.contract_map.code_id(contract_name).unwrap()
     }
 
     // returns the deployed address for the given contract name
     pub fn contract_addr(contract_name: &str) -> String {
         let chain = Self::get().lock().unwrap();
-
-        chain
-            .cosm_orc
-            .contract_map
-            .get(contract_name)
-            .expect("contract not stored")
-            .address
-            .clone()
-            .expect("contract not deployed")
+        chain.cosm_orc.contract_map.address(contract_name).unwrap()
     }
 
     pub fn add_contract_addr(contract_name: &str, contract_addr: &str) {
         let mut chain = Self::get().lock().unwrap();
-
         chain
             .cosm_orc
             .contract_map
-            .get_mut(contract_name)
-            .expect("contract not stored")
-            .address = Some(contract_addr.to_string())
+            .add_address(contract_name, contract_addr.to_string())
+            .unwrap()
     }
 
     // Get a clean testing state by clearing out all configured contract addresses
     pub fn clear_deploys() {
         let mut chain = Self::get().lock().unwrap();
-        for (_contract, deploy) in chain.cosm_orc.contract_map.iter_mut() {
-            deploy.address = None
-        }
-        drop(chain);
+        chain.cosm_orc.contract_map.clear_addresses();
     }
 
     #[track_caller]
