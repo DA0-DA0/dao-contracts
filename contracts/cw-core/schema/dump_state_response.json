@@ -35,7 +35,7 @@
       "description": "The governance modules associated with the governance contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Addr"
+        "$ref": "#/definitions/ProposalModule"
       }
     },
     "version": {
@@ -193,6 +193,34 @@
           },
           "additionalProperties": false
         }
+      ]
+    },
+    "ProposalModule": {
+      "description": "Top level type describing a proposal module.",
+      "type": "object",
+      "required": [
+        "address",
+        "prefix",
+        "status"
+      ],
+      "properties": {
+        "address": {
+          "$ref": "#/definitions/Addr"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/definitions/ProposalModuleStatus"
+        }
+      }
+    },
+    "ProposalModuleStatus": {
+      "description": "The status of a proposal module.",
+      "type": "string",
+      "enum": [
+        "Active",
+        "Disabled"
       ]
     },
     "Timestamp": {

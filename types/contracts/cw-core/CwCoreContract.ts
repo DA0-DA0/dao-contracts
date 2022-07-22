@@ -49,11 +49,12 @@ export type Expiration = {
 };
 export type Timestamp = Uint64;
 export type Uint64 = string;
+export type ProposalModuleStatus = "Active" | "Disabled";
 export interface DumpStateResponse {
   admin: Addr;
   config: Config;
   pause_info: PauseInfoResponse;
-  proposal_modules: Addr[];
+  proposal_modules: ProposalModule[];
   version: ContractVersion;
   voting_module: Addr;
   [k: string]: unknown;
@@ -64,6 +65,12 @@ export interface Config {
   description: string;
   image_url?: string | null;
   name: string;
+  [k: string]: unknown;
+}
+export interface ProposalModule {
+  address: Addr;
+  prefix: string;
+  status: ProposalModuleStatus;
   [k: string]: unknown;
 }
 export interface ContractVersion {
@@ -134,7 +141,7 @@ export type ExecuteMsg = {
 } | {
   update_proposal_modules: {
     to_add: ModuleInstantiateInfo[];
-    to_remove: string[];
+    to_disable: string[];
     [k: string]: unknown;
   };
 } | {
@@ -355,9 +362,7 @@ export interface InitialItem {
   [k: string]: unknown;
 }
 export type ListItemsResponse = string[];
-export interface MigrateMsg {
-  [k: string]: unknown;
-}
+export type MigrateMsg = "FromBeta" | "FromCompatible";
 export type ProposalModulesResponse = Addr[];
 export type QueryMsg = {
   admin: {
@@ -749,10 +754,10 @@ export interface CwCoreInterface extends CwCoreReadOnlyInterface {
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateProposalModules: ({
     toAdd,
-    toRemove
+    toDisable
   }: {
     toAdd: ModuleInstantiateInfo[];
-    toRemove: string[];
+    toDisable: string[];
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateVotingModule: ({
     module
@@ -941,15 +946,15 @@ export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
   };
   updateProposalModules = async ({
     toAdd,
-    toRemove
+    toDisable
   }: {
     toAdd: ModuleInstantiateInfo[];
-    toRemove: string[];
+    toDisable: string[];
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_proposal_modules: {
         to_add: toAdd,
-        to_remove: toRemove
+        to_disable: toDisable
       }
     }, fee, memo, funds);
   };
