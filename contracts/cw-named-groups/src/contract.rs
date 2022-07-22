@@ -199,20 +199,13 @@ fn query_dump(deps: Deps) -> StdResult<DumpResponse> {
         .group_names
         .keys(deps.storage, None, None, Order::Ascending)
     {
-        if let Err(e) = group {
-            return Err(e);
-        }
-
-        let name = group.unwrap();
+        let name = group?;
         let addrs = GROUPS
             .groups_to_addresses
             .prefix(&name)
             .keys(deps.storage, None, None, Order::Ascending)
             .into_iter()
-            .map(|addr| match addr {
-                Ok(_) => Ok(addr.unwrap().to_string()),
-                Err(_) => Err(addr.unwrap_err()),
-            })
+            .map(|addr| addr.map(Into::into))
             .collect::<StdResult<Vec<String>>>()?;
 
         dump.push(Group {
