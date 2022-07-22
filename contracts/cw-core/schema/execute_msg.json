@@ -284,7 +284,7 @@
           "type": "object",
           "required": [
             "to_add",
-            "to_remove"
+            "to_disable"
           ],
           "properties": {
             "to_add": {
@@ -293,7 +293,7 @@
                 "$ref": "#/definitions/ModuleInstantiateInfo"
               }
             },
-            "to_remove": {
+            "to_disable": {
               "type": "array",
               "items": {
                 "type": "string"

@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     from_slice,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Empty, StdResult, Storage, Uint128, WasmMsg,
+    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;

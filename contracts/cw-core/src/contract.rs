@@ -342,8 +342,8 @@ pub fn execute_update_proposal_modules(
             Ok(kv) => {
                 let v = kv.1;
                 match v.status {
-                    ProposalModuleStatus::Active => return Some(v),
-                    ProposalModuleStatus::Disabled => return None,
+                    ProposalModuleStatus::Active => Some(v),
+                    ProposalModuleStatus::Disabled => None,
                 }
             }
             Err(_) => None,
