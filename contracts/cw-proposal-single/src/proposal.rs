@@ -48,6 +48,8 @@ pub struct SingleChoiceProposal {
     pub created: Timestamp,
     /// The timestamp at which this proposal's status last changed (e.g. Passed, Executed).
     pub last_updated: Timestamp,
+    /// Proposal was vetoed by the executor
+    pub vetoed: bool,
 }
 
 impl Proposal for SingleChoiceProposal {
@@ -303,6 +305,7 @@ mod test {
             deposit_info: None,
             created: block.time,
             last_updated: block.time,
+            vetoed: false,
         };
         (prop, block)
     }

@@ -30,7 +30,7 @@ use crate::{
     state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
 
-const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
+const CONTRACT_NAME: &str = "crates.io:cw-govmod-single-plus";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -61,6 +61,7 @@ pub fn instantiate(
         dao: dao.clone(),
         deposit_info,
         allow_revoting: msg.allow_revoting,
+        executor_addr: msg.executor_addr,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -87,6 +88,7 @@ pub fn execute(
             msgs,
         } => execute_propose(deps, env, info.sender, title, description, msgs),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
+        ExecuteMsg::Veto { proposal_id } => execute_veto(deps, env, info, proposal_id),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
         ExecuteMsg::UpdateConfig {
@@ -118,6 +120,7 @@ pub fn execute(
         ExecuteMsg::RemoveVoteHook { address } => {
             execute_remove_vote_hook(deps, env, info, address)
         }
+        ExecuteMsg::AssignExecutor { address } => execute_assign_executor(deps, env, info, address),
     }
 }
 
@@ -182,6 +185,7 @@ pub fn execute_propose(
             deposit_info: config.deposit_info.clone(),
             created: env.block.time,
             last_updated: env.block.time,
+            vetoed: false,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -383,6 +387,54 @@ pub fn execute_vote(
         .add_attribute("status", prop.status.to_string()))
 }
 
+// note - not in daodao
+pub fn execute_veto(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    proposal_id: u64,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+
+    if config.executor_addr.is_none() {
+        return Err(ContractError::NoExecutorAssigned {});
+    }
+
+    if config.executor_addr.unwrap() != info.sender.clone() {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let mut prop = PROPOSALS
+        .may_load(deps.storage, proposal_id)?
+        .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
+        
+    if prop.current_status(&env.block) != Status::Open {
+        return Err(ContractError::NotOpen { id: proposal_id });
+    }
+
+    let old_status = prop.status;
+
+    prop.vetoed = true;
+    prop.status = Status::Rejected;
+    // Update proposal's last updated timestamp.
+    prop.last_updated = env.block.time;
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+    let changed_hooks = proposal_status_changed_hooks(
+        PROPOSAL_HOOKS,
+        deps.storage,
+        proposal_id,
+        old_status.to_string(),
+        prop.status.to_string(),
+    )?;
+
+    Ok(Response::default()
+        .add_submessages(changed_hooks)
+        .add_attribute("action", "veto")
+        .add_attribute("sender", info.sender)
+        .add_attribute("proposal_id", proposal_id.to_string()))
+}
+
 pub fn execute_close(
     deps: DepsMut,
     env: Env,
@@ -474,6 +526,7 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             deposit_info,
+            executor_addr: config.executor_addr, // should NOT change via update config
         },
     )?;
 
@@ -585,6 +638,36 @@ pub fn execute_remove_vote_hook(
     Ok(Response::default()
         .add_attribute("action", "remove_vote_hook")
         .add_attribute("address", address))
+}
+
+pub fn execute_assign_executor(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: Option<String>,
+) -> Result<Response, ContractError> {
+    let mut config = CONFIG.load(deps.storage)?;
+
+    // Only the DAO via prop OR the executor directly may call this method.
+    if info.sender == config.dao 
+        || (config.executor_addr.is_some() && config.executor_addr.unwrap() == info.sender) {
+        // executor can be removed or reassigned to another address
+        let new_executor_addr: Option<Addr> = match address {
+            None => None,
+            Some(addr_str) => Some(deps.api.addr_validate(&addr_str).unwrap())
+        };
+
+        config.executor_addr = new_executor_addr;
+
+        CONFIG.save(deps.storage, &config)?;
+    }
+    else {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    Ok(Response::default()
+        .add_attribute("action", "assign_executor")
+        .add_attribute("sender", info.sender))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

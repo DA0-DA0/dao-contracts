@@ -65,4 +65,7 @@ pub enum ContractError {
 
     #[error("Min voting period must be less than or equal to max voting period")]
     InvalidMinVotingPeriod {},
+
+    #[error("Executor role not assigned")]
+    NoExecutorAssigned {},
 }

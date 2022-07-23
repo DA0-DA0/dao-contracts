@@ -1,4 +1,4 @@
-use cosmwasm_std::{CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty, Addr};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -32,6 +32,10 @@ pub struct InstantiateMsg {
     /// proposal. None if there is no deposit requirement, Some
     /// otherwise.
     pub deposit_info: Option<DepositInfo>,
+    /// This address will have special permission to veto
+    /// any proposal they deem malicious to the goals and
+    /// mission of the dao.
+    pub executor_addr: Option<Addr>,
 }
 
 /// Information about the token to use for proposal deposits.
@@ -69,6 +73,10 @@ pub enum ExecuteMsg {
         proposal_id: u64,
         /// The senders position on the proposal.
         vote: Vote,
+    },
+    /// Allows executor to veto proposals
+    Veto {
+        proposal_id: u64,
     },
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.
@@ -129,6 +137,7 @@ pub enum ExecuteMsg {
     AddVoteHook { address: String },
     /// Removed a consumer of vote hooks.
     RemoveVoteHook { address: String },
+    AssignExecutor { address: Option<String> },
 }
 
 #[govmod_query]

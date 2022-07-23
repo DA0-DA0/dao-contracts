@@ -47,6 +47,10 @@ pub struct Config {
     /// Information about the depost required to create a
     /// proposal. None if no deposit is required, Some otherwise.
     pub deposit_info: Option<CheckedDepositInfo>,
+    /// This address will have special permissions to veto
+    /// any proposal they deem malicious to the goals and
+    /// mission of the dao.
+    pub executor_addr: Option<Addr>,
 }
 
 /// The current top level config for the module.

@@ -676,6 +676,170 @@ fn do_votes_cw4_weights(
     );
 }
 
+// cloned because lazy
+fn do_test_votes_with_executor<F>(
+    votes: Vec<TestSingleChoiceVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+    deposit_info: Option<DepositInfo>,
+    setup_governance: F,
+    executor_addr: Option<Addr>,
+) -> (App, Addr)
+where
+    F: Fn(&mut App, u64, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
+{
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+
+    let mut initial_balances = votes
+        .iter()
+        .map(|TestSingleChoiceVote { voter, weight, .. }| Cw20Coin {
+            address: voter.to_string(),
+            amount: *weight,
+        })
+        .collect::<Vec<Cw20Coin>>();
+    let initial_balances_supply = votes.iter().fold(Uint128::zero(), |p, n| p + n.weight);
+    let to_fill = total_supply.map(|total_supply| total_supply - initial_balances_supply);
+    if let Some(fill) = to_fill {
+        initial_balances.push(Cw20Coin {
+            address: "filler".to_string(),
+            amount: fill,
+        })
+    }
+
+    let proposer = match votes.first() {
+        Some(vote) => vote.voter.clone(),
+        None => panic!("do_test_votes must have at least one vote."),
+    };
+
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        min_voting_period: None,
+        only_members_execute: false,
+        allow_revoting: false,
+        deposit_info,
+        executor_addr,
+    };
+
+    let governance_addr =
+        setup_governance(&mut app, govmod_id, instantiate, Some(initial_balances));
+
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // Allow a proposal deposit as needed.
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    if let Some(CheckedDepositInfo {
+        ref token, deposit, ..
+    }) = config.deposit_info
+    {
+        app.execute_contract(
+            Addr::unchecked(&proposer),
+            token.clone(),
+            &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+                spender: govmod_single.to_string(),
+                amount: deposit,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    app.execute_contract(
+        Addr::unchecked(&proposer),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Cast votes.
+    for vote in votes {
+        let TestSingleChoiceVote {
+            voter,
+            position,
+            weight,
+            should_execute,
+        } = vote;
+        // Vote on the proposal.
+        let res = app.execute_contract(
+            Addr::unchecked(voter.clone()),
+            govmod_single.clone(),
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: position,
+            },
+            &[],
+        );
+        match should_execute {
+            ShouldExecute::Yes => {
+                assert!(res.is_ok());
+                // Check that the vote was recorded correctly.
+                let vote: VoteResponse = app
+                    .wrap()
+                    .query_wasm_smart(
+                        govmod_single.clone(),
+                        &QueryMsg::GetVote {
+                            proposal_id: 1,
+                            voter: voter.clone(),
+                        },
+                    )
+                    .unwrap();
+                let expected = VoteResponse {
+                    vote: Some(VoteInfo {
+                        voter: Addr::unchecked(&voter),
+                        vote: position,
+                        power: match config.deposit_info {
+                            Some(CheckedDepositInfo { deposit, .. }) => {
+                                if proposer == voter {
+                                    weight - deposit
+                                } else {
+                                    weight
+                                }
+                            }
+                            None => weight,
+                        },
+                    }),
+                };
+                assert_eq!(vote, expected)
+            }
+            ShouldExecute::No => assert!(res.is_err()),
+            ShouldExecute::Meh => (),
+        }
+    }
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+
+    assert_eq!(proposal.proposal.status, expected_status);
+
+    (app, governance_addr)
+}
+
 fn do_test_votes<F>(
     votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
@@ -719,6 +883,7 @@ where
         only_members_execute: false,
         allow_revoting: false,
         deposit_info,
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -859,6 +1024,31 @@ fn do_test_votes_cw20_balances(
     )
 }
 
+// Creates a proposal and then executes a series of votes on those
+// proposals. Asserts both that those votes execute as expected and
+// that the final status of the proposal is what is expected. Returns
+// the address of the governance contract that it has created so that
+// callers may do additional inspection of the contract's state.
+// whiskey cloned because lazy
+fn do_test_votes_cw20_balances_with_executor(
+    votes: Vec<TestSingleChoiceVote>,
+    threshold: Threshold,
+    expected_status: Status,
+    total_supply: Option<Uint128>,
+    deposit_info: Option<DepositInfo>,
+    executor_addr: Option<Addr>,
+) -> (App, Addr) {
+    do_test_votes_with_executor(
+        votes,
+        threshold,
+        expected_status,
+        total_supply,
+        deposit_info,
+        instantiate_with_cw20_balances_governance,
+        executor_addr
+    )
+}
+
 #[test]
 fn test_propose() {
     let mut app = App::default();
@@ -875,6 +1065,7 @@ fn test_propose() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -906,6 +1097,7 @@ fn test_propose() {
         allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
+        executor_addr: None,
     };
     assert_eq!(config, expected);
 
@@ -943,6 +1135,7 @@ fn test_propose() {
         deposit_info: None,
         created: current_block.time,
         last_updated: current_block.time,
+        vetoed: false,
     };
 
     assert_eq!(created.proposal, expected);
@@ -965,6 +1158,7 @@ fn test_propose_supports_stargate_message() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -1023,6 +1217,7 @@ fn test_propose_supports_stargate_message() {
         deposit_info: None,
         created: current_block.time,
         last_updated: current_block.time,
+        vetoed: false,
     };
 
     assert_eq!(created.proposal, expected);
@@ -1148,6 +1343,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -1227,6 +1423,7 @@ fn test_different_token_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        executor_addr: None,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1284,6 +1481,7 @@ fn test_bad_token_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        executor_addr: None,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1309,6 +1507,7 @@ fn test_take_proposal_deposit() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
+        executor_addr: None,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -1655,6 +1854,7 @@ fn test_execute_expired_proposal() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -1856,6 +2056,7 @@ fn test_update_config() {
         allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
+        executor_addr: None,
     };
     assert_eq!(govmod_config, expected);
 
@@ -1956,6 +2157,7 @@ fn test_query_list_proposals() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![Cw20Coin {
             address: CREATOR_ADDR.to_string(),
@@ -2037,6 +2239,7 @@ fn test_query_list_proposals() {
             deposit_info: None,
             created: app.block_info().time,
             last_updated: app.block_info().time,
+            vetoed: false,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -2084,6 +2287,7 @@ fn test_query_list_proposals() {
             deposit_info: None,
             created: app.block_info().time,
             last_updated: app.block_info().time,
+            vetoed: false,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -2109,6 +2313,7 @@ fn test_hooks() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -2283,6 +2488,7 @@ fn test_active_threshold_absolute() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr = instantiate_with_staking_active_threshold(
@@ -2409,6 +2615,7 @@ fn test_active_threshold_percent() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     // 20% needed to be active, 20% of 100000000 is 20000000
@@ -2536,6 +2743,7 @@ fn test_active_threshold_none() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -2615,6 +2823,7 @@ fn test_active_threshold_none() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -2666,6 +2875,7 @@ fn test_revoting() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -2792,6 +3002,7 @@ fn test_allow_revoting_config_changes() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -2935,6 +3146,7 @@ fn test_revoting_same_vote_twice() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3037,6 +3249,7 @@ fn test_three_of_five_multisig() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3163,6 +3376,7 @@ fn test_three_of_five_multisig_reject() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3299,6 +3513,7 @@ fn test_voting_module_token_with_multisig_style_voting() {
                 deposit: Uint128::new(1),
                 refund_failed_proposals: true,
             }),
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3334,6 +3549,7 @@ fn test_three_of_five_multisig_revoting() {
             only_members_execute: true,
             allow_revoting: true,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3567,6 +3783,7 @@ fn test_migrate() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr =
@@ -3625,6 +3842,7 @@ fn test_proposal_count_initialized_to_zero() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3671,6 +3889,7 @@ fn test_no_early_pass_with_min_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3759,6 +3978,7 @@ fn test_min_duration_units_missmatch() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3791,6 +4011,7 @@ fn test_min_duration_larger_than_proposal_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3822,6 +4043,7 @@ fn test_min_duration_same_as_proposal_duration() {
             only_members_execute: true,
             allow_revoting: false,
             deposit_info: None,
+            executor_addr: None,
         },
         Some(vec![
             Cw20Coin {
@@ -3918,6 +4140,7 @@ fn test_timestamp_updated() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -4165,4 +4388,508 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
 
     // Deposit should now belong to the DAO.
     assert_eq!(balance.balance, Uint128::new(1));
+}
+
+/// check gov, rando cant veto
+#[test]
+fn test_veto_no_executor() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        None, // executor_addr
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // dao cant veto
+    app.execute_contract(
+        governance_addr,
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
+    // rando cant veto
+    app.execute_contract(
+        Addr::unchecked("keze"),
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, None);
+}
+
+/// double check rando, gov cant veto, but assigned address may
+#[test]
+fn test_veto_has_executor() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        Some(Addr::unchecked("whiskey")), // executor_addr
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, Some(Addr::unchecked("whiskey")));
+
+    // dao cant execute veto
+    app.execute_contract(
+        governance_addr,
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
+    // rando cant execute
+    app.execute_contract(
+        Addr::unchecked("whiskeyfakeaddress"),
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
+    // executor can execute veto
+    app.execute_contract(
+        Addr::unchecked("whiskey"),
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+    assert_eq!(proposal.proposal.vetoed, true);
+
+    // no longer open
+    app.execute_contract(
+        Addr::unchecked("whiskey"),
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+}
+
+/// check rando cannot assign executor, but gov may
+#[test]
+fn test_veto_assign_executor() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        None, // executor_addr
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.clone().proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // check no executor established
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, None);
+
+    // rando cant set
+    app.execute_contract(
+        Addr::unchecked("keze"),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: Some("whiskey".to_string()) },
+        &[],
+    )
+    .unwrap_err();
+
+    // success
+    app.execute_contract(
+        governance_addr.clone(),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: Some("whiskey".to_string()) },
+        &[],
+    )
+    .unwrap();
+
+    // check config
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, Some(Addr::unchecked("whiskey")));
+
+    // veto prop
+    app.execute_contract(
+        Addr::unchecked("whiskey"),
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+    assert_eq!(proposal.proposal.vetoed, true);
+}
+
+/// numerous checks on add/remove/reassign via gov
+#[test]
+fn test_executor_role_add_remove_executor_via_gov() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        None, // executor_addr
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.clone().proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // gov establish executor
+    app.execute_contract(
+        governance_addr.clone(),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: Some("whiskey".to_string()) },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, Some(Addr::unchecked("whiskey")));
+
+    // gov reassign executor
+    app.execute_contract(
+        governance_addr.clone(),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: Some("whiskey2".to_string()) },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, Some(Addr::unchecked("whiskey2")));
+
+    // first assignment cant execute veto
+    app.execute_contract(
+        Addr::unchecked("whiskey"),
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+
+    // gov can unassign executor to None
+    app.execute_contract(
+        governance_addr.clone(),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: None },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, None);
+
+    // no longer veto
+    app.execute_contract(
+        Addr::unchecked("whiskey"),
+        govmod_single.clone(),
+        &ExecuteMsg::Veto { proposal_id: 1 },
+        &[],
+    )
+    .unwrap_err();
+}
+
+/// numerous checks on add/remove/reassign via self
+#[test]
+fn test_executor_role_add_remove_executor_self() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        Some(Addr::unchecked("whiskey4")), // executor_addr
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.clone().proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // gov assign 
+    app.execute_contract(
+        governance_addr.clone(),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: Some("whiskey5".to_string()) },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, Some(Addr::unchecked("whiskey5")));
+
+    // executor reassign to someone else
+    app.execute_contract(
+        Addr::unchecked("whiskey5"),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: Some("whiskey3".to_string()) },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, Some(Addr::unchecked("whiskey3")));
+
+    // self unassign
+    app.execute_contract(
+        Addr::unchecked("whiskey3"),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: None },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, None);
+}
+
+/// contract init with executor, self remove
+#[test]
+fn test_executor_role_self_remove_quick() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        Some(Addr::unchecked("whiskey4")), // executor_addr
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.clone().proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // self unassign
+    app.execute_contract(
+        Addr::unchecked("whiskey4"),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: None },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, None);
+}
+
+/// contract init with executor, gov remove
+#[test]
+fn test_executor_role_gov_remove_quick() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        Some(Addr::unchecked("whiskey4")), // executor_addr
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.clone().proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // gov unassign
+    app.execute_contract(
+        governance_addr,
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: None },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, None);
 }
