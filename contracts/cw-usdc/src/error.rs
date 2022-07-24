@@ -22,6 +22,9 @@ pub enum ContractError {
     #[error("denom does not exist: {denom:?}")]
     DenomDoesNotExist { denom: String },
 
+    #[error("Not enough {denom:?} ({funds:?}) in funds. {needed:?} {denom:?} needed")]
+    NotEnoughFunds {denom: String, funds: u128, needed: u128},
+
     #[error("address is not supported yet, was: {address:?}")]
     BurnFromAddressNotSupported { address: String },
 
@@ -29,14 +32,14 @@ pub enum ContractError {
     ZeroAmount {},
 
     #[error("The address '{address}' is blacklisted")]
-    BlacklistedError { address: String },
+    Blacklisted { address: String },
 
     #[error("The contract is frozen for denom {denom:?}")]
-    ContractFrozenError { denom: String },
+    ContractFrozen { denom: String },
 
     #[error("Frozen status is already {status:?}")]
-    ContractFrozenStatusUnchangedError { status: bool },
+    ContractFrozenStatusUnchanged { status: bool },
 
     #[error("Freezer status is already {status:?}")]
-    FreezerStatusUnchangedError { status: bool },
+    FreezerStatusUnchanged { status: bool },
 }
