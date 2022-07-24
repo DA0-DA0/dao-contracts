@@ -76,7 +76,7 @@ pub enum QueryMsg {
         address: String,
     },
     // Blacklisters Enumerates over all the addresses with blacklister privileges
-    Blacklisters {
+    BlacklisterAllowances {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -109,33 +109,43 @@ pub struct OwnerResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AllowancesResponse {
-    pub allowances: Vec<AllowanceResponse>,
+pub struct AllowanceResponse {
+    pub allowance: u128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AllowanceResponse {
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct AllowanceInfo {
     pub address: String,
     pub allowance: u128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AllowancesResponse {
+    pub allowances: Vec<AllowanceInfo>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StatusResponse {
+    pub status: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct StatusInfo {
     pub address: String,
     pub status: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BlacklistResponse {
-    pub blacklist: Vec<StatusResponse>,
+    pub blacklist: Vec<StatusInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BlacklistersResponse {
-    pub blacklisters: Vec<StatusResponse>,
+pub struct BlacklisterAllowancesResponse {
+    pub blacklisters: Vec<StatusInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FreezerAllowancesResponse {
-    pub freezers: Vec<StatusResponse>,
+    pub freezers: Vec<StatusInfo>,
 }

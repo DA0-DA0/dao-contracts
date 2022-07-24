@@ -1,12 +1,10 @@
+use cosmwasm_std::{coins, BankMsg};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
 use osmo_bindings::OsmosisMsg;
 
 use crate::error::ContractError;
-use crate::helpers::{
-    check_bool_allowance, check_funds, check_is_contract_owner, set_bool_allowance,
-    set_int_allowance,
-};
+use crate::helpers::check_is_contract_owner;
 use crate::state::{
     Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
     FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
@@ -19,13 +17,16 @@ pub fn mint(
     to_address: String,
     amount: Uint128,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
+    // validate that to_address is a valid address
     deps.api.addr_validate(&to_address)?;
-    let denom = CONFIG.load(deps.storage).unwrap().denom;
 
+    // don't allow minting of 0 coins
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
     }
 
+    // decrease minter allowance
+    // if minter allowance goes negative, throw error
     let _allowance = MINTER_ALLOWANCES.update(
         deps.storage,
         &info.sender,
@@ -34,14 +35,24 @@ pub fn mint(
         },
     )?;
 
+    // get token denom from contract config
+    let denom = CONFIG.load(deps.storage).unwrap().denom;
+
+    // create tokenfactory MsgMint which mints coins to the contract address
     let mint_tokens_msg =
-        OsmosisMsg::mint_contract_tokens(denom, amount, env.contract.address.into_string());
+        OsmosisMsg::mint_contract_tokens(denom.clone(), amount, env.contract.address.into_string());
 
-    // TODO: Second msg that sends tokens to the to_address
+    // send newly minted coins from contract to designated recipient
+    let send_tokens_msg = BankMsg::Send {
+        to_address,
+        amount: coins(amount.u128(), denom),
+    };
 
+    // dispatch msgs
     Ok(Response::new()
         .add_attribute("method", "mint_tokens")
-        .add_message(mint_tokens_msg))
+        .add_message(mint_tokens_msg)
+        .add_message(send_tokens_msg))
 }
 
 pub fn burn(
@@ -50,27 +61,29 @@ pub fn burn(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
-    let denom = CONFIG.load(deps.storage).unwrap().denom;
-
+    // don't allow burning of 0 coins
     if amount.eq(&Uint128::new(0_u128)) {
         return Result::Err(ContractError::ZeroAmount {});
     }
 
-    // Contract needs to own the coins it wants to burn
-    check_funds(denom.clone(), &info.funds, amount)?;
-
+    // decrease burner allowance
+    // if burner allowance goes negative, throw error
     let _allowance = BURNER_ALLOWANCES.update(
         deps.storage,
-        &info.sender.clone(),
+        &info.sender,
         |allowance| -> StdResult<Uint128> {
             Ok(allowance.unwrap_or_default().checked_sub(amount)?)
         },
     )?;
 
-    // TODO execute actual BurnMsg -> needs to be the contract address or maybe need to include in info.funds... see whats possible
-    // burns tokens that are owned by this contract.
+    // get token denom from contract config
+    let denom = CONFIG.load(deps.storage).unwrap().denom;
+
+    // create tokenfactory MsgBurn which burns coins from the contract address
+    // NOTE: this requires the contract to own the tokens already
     let burn_tokens_msg = OsmosisMsg::burn_contract_tokens(denom, amount, "".to_string());
 
+    // dispatch msg
     Ok(Response::new()
         .add_attribute("method", "execute_burn")
         .add_attribute("amount", amount.to_string())
@@ -81,38 +94,72 @@ pub fn change_contract_owner(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    address: String,
+    new_owner: String,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
-    // TODO: check using the comment below and save state instead of update
-    // check_is_contract_owner(deps.as_ref(), info.sender)?;
-    let val_address = deps.api.addr_validate(address.as_str())?;
+    // Only allow current contract owner to change owner
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
 
+    // validate that new owner is a valid address
+    let new_owner_addr = deps.api.addr_validate(new_owner.as_str())?;
+
+    // update the contract owner in the contract config
     CONFIG.update(
         deps.storage,
         |mut config: Config| -> Result<Config, ContractError> {
-            if config.owner == info.sender {
-                config.owner = val_address;
-                return Ok(config);
-            }
-
-            return Err(ContractError::Unauthorized {});
+            config.owner = new_owner_addr;
+            Ok(config)
         },
     )?;
 
-    Ok(Response::new().add_attribute("method", "change_contract_owner"))
+    // return OK
+    Ok(Response::new()
+        .add_attribute("method", "change_contract_owner")
+        .add_attribute("new_owner", new_owner))
+}
+
+pub fn change_tokenfactory_admin(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_admin_address: String,
+) -> Result<Response<OsmosisMsg>, ContractError> {
+    // Only allow current contract owner to change tokenfactory admin
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
+
+    // validate that the new admin is a valid address
+    deps.api.addr_validate(new_admin_address.as_str())?;
+
+    // construct tokenfactory change admin msg
+    let change_admin_msg = OsmosisMsg::ChangeAdmin {
+        denom: CONFIG.load(deps.storage).unwrap().denom,
+        new_admin_address,
+    };
+
+    // dispatch change admin msg
+    Ok(Response::new()
+        .add_attribute("method", "change_tokenfactory_admin") // TODO: add more events
+        .add_message(change_admin_msg))
 }
 
 pub fn set_blacklister(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     address: String,
     status: bool,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
+    // Only allow current contract owner to set blacklister permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    set_bool_allowance(deps, &address, BLACKLISTER_ALLOWANCES, status)?;
+    // set blacklister status
+    // NOTE: Does not check if new status is same as old status
+    BLACKLISTER_ALLOWANCES.update(
+        deps.storage,
+        &deps.api.addr_validate(&address)?,
+        |_| -> StdResult<bool> { Ok(status) },
+    )?;
 
+    // Return OK
     Ok(Response::new()
         .add_attribute("method", "set_blacklister")
         .add_attribute("blacklister", address)
@@ -121,16 +168,23 @@ pub fn set_blacklister(
 
 pub fn set_freezer(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     address: String,
     status: bool,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
-    // Check if sender is authorised to set freezer
+    // Only allow current contract owner to set freezer permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    set_bool_allowance(deps, &address, FREEZER_ALLOWANCES, status)?;
+    // set freezer status
+    // NOTE: Does not check if new status is same as old status
+    FREEZER_ALLOWANCES.update(
+        deps.storage,
+        &deps.api.addr_validate(&address)?,
+        |_| -> StdResult<bool> { Ok(status) },
+    )?;
 
+    // return OK
     Ok(Response::new()
         .add_attribute("method", "set_freezer")
         .add_attribute("freezer", address)
@@ -142,17 +196,20 @@ pub fn set_burner(
     _env: Env,
     info: MessageInfo,
     address: String,
-    amount: Uint128,
+    allowance: Uint128,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
+    // Only allow current contract owner to set burner allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // Set Burner allowance
-    set_int_allowance(deps, BURNER_ALLOWANCES, &address, amount)?;
+    // update allowance of burner
+    // validate that burner is a valid address
+    BURNER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &allowance)?;
 
+    // return OK
     Ok(Response::new()
         .add_attribute("method", "set_burner")
         .add_attribute("burner", address)
-        .add_attribute("amount", amount))
+        .add_attribute("allowance", allowance))
 }
 
 pub fn set_minter(
@@ -160,17 +217,20 @@ pub fn set_minter(
     _env: Env,
     info: MessageInfo,
     address: String,
-    amount: Uint128,
+    allowance: Uint128,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
+    // Only allow current contract owner to set minter allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // Set minter allowance
-    set_int_allowance(deps, MINTER_ALLOWANCES, &address, amount)?;
+    // update allowance of minter
+    // validate that minter is a valid address
+    MINTER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &allowance)?;
 
+    // return OK
     Ok(Response::new()
         .add_attribute("method", "set_minter")
         .add_attribute("minter", address)
-        .add_attribute("amount", amount))
+        .add_attribute("amount", allowance))
 }
 
 pub fn freeze(
@@ -179,46 +239,56 @@ pub fn freeze(
     info: MessageInfo,
     status: bool,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
-    // check if the sender is allowed to freeze
-    check_bool_allowance(&deps.as_ref(), info.clone(), FREEZER_ALLOWANCES)?;
-
-    let config = CONFIG.load(deps.storage)?;
-    if config.is_frozen == status {
-        Err(ContractError::ContractFrozenStatusUnchanged { status })
-    } else {
-        CONFIG.update(
-            deps.storage,
-            |mut config: Config| -> Result<_, ContractError> {
-                config.is_frozen = status;
-                Ok(config)
-            },
-        )?;
-
-        Ok(Response::new()
-            .add_attribute("method", "execute_freeze")
-            .add_attribute("status", status.to_string()))
+    // check to make sure that the sender has freezer permissions
+    let res = FREEZER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
+    match res {
+        Some(true) => (),
+        _ => return Err(ContractError::Unauthorized {}),
     }
+
+    // Update config frozen status
+    // NOTE: Does not check if new status is same as old status
+    CONFIG.update(
+        deps.storage,
+        |mut config: Config| -> Result<_, ContractError> {
+            config.is_frozen = status;
+            Ok(config)
+        },
+    )?;
+
+    // return OK
+    Ok(Response::new()
+        .add_attribute("method", "execute_freeze")
+        .add_attribute("status", status.to_string()))
 }
 
 pub fn blacklist(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     address: String,
     status: bool,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
-    check_bool_allowance(&deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
+    // check to make sure that the sender has blacklister permissions
+    let res = BLACKLISTER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
+    match res {
+        Some(true) => (),
+        _ => return Err(ContractError::Unauthorized {}),
+    }
 
     // update blacklisted status
+    // validate that blacklisteed is a valid address
+    // NOTE: Does not check if new status is same as old status
     BLACKLISTED_ADDRESSES.update(
         deps.storage,
         &deps.api.addr_validate(address.as_str())?,
-        |mut stat| -> Result<_, ContractError> {
-            stat = Some(status);
+        |mut _stat| -> Result<_, ContractError> {
+            _stat = Some(status);
             Ok(status)
         },
     )?;
 
+    // return OK
     Ok(Response::new()
         .add_attribute("method", "blacklist")
         .add_attribute("address", address)

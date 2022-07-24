@@ -1,23 +1,8 @@
 #[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-};
-use cw2::set_contract_version;
-
-use cw_storage_plus::Map;
-use osmo_bindings::OsmosisMsg;
-
-// use osmo_bindings_test::OsmosisModule;
+use cosmwasm_std::{Coin, DepsMut, Response};
 
 use crate::error::ContractError;
-use crate::helpers::build_denom;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
-use crate::queries;
-use crate::state::{
-    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
-    FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
-};
+use crate::state::{BLACKLISTED_ADDRESSES, CONFIG};
 
 pub fn beforesend_hook(
     deps: DepsMut,
@@ -28,7 +13,7 @@ pub fn beforesend_hook(
     let config = CONFIG.load(deps.storage)?;
 
     if config.is_frozen {
-        for coin in amount.clone() {
+        for coin in amount {
             if coin.denom == config.denom {
                 return Err(ContractError::ContractFrozen {
                     denom: config.denom,

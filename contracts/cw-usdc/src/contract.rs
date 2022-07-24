@@ -1,11 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
-use cw_storage_plus::Map;
 use osmo_bindings::OsmosisMsg;
 
 use crate::error::ContractError;
@@ -14,15 +11,11 @@ use crate::helpers;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{
-    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
-    FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
-};
+use crate::state::{Config, CONFIG};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw-usdc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-const CREATE_DENOM_COST: Uint128 = Uint128::new(1000u128); // TEMPORARILY for the lack of a better solution (gRPC queries)
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -32,9 +25,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    // check info.funds
-    helpers::check_funds("uosmo".to_string(), &info.funds, CREATE_DENOM_COST)?;
 
     // create full denom from contract addres using OsmosisModule.full_denom copy
     let contract_address = env.contract.address;
@@ -85,7 +75,9 @@ pub fn execute(
         ExecuteMsg::Freeze { status } => execute::freeze(deps, env, info, status),
 
         // Admin functions
-        ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => todo!(), // TODO
+        ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => {
+            execute::change_tokenfactory_admin(deps, env, info, new_admin)
+        }
         ExecuteMsg::ChangeContractOwner { new_owner } => {
             execute::change_contract_owner(deps, env, info, new_owner)
         }
@@ -138,7 +130,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsBlacklister { address } => {
             to_binary(&queries::query_is_blacklister(deps, address)?)
         }
-        QueryMsg::Blacklisters { start_after, limit } => {
+        QueryMsg::BlacklisterAllowances { start_after, limit } => {
             to_binary(&queries::query_blacklisters(deps, start_after, limit)?)
         }
         QueryMsg::IsFreezer { address } => {
