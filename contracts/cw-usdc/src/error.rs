@@ -23,7 +23,11 @@ pub enum ContractError {
     DenomDoesNotExist { denom: String },
 
     #[error("Not enough {denom:?} ({funds:?}) in funds. {needed:?} {denom:?} needed")]
-    NotEnoughFunds {denom: String, funds: u128, needed: u128},
+    NotEnoughFunds {
+        denom: String,
+        funds: u128,
+        needed: u128,
+    },
 
     #[error("address is not supported yet, was: {address:?}")]
     BurnFromAddressNotSupported { address: String },
@@ -36,10 +40,4 @@ pub enum ContractError {
 
     #[error("The contract is frozen for denom {denom:?}")]
     ContractFrozen { denom: String },
-
-    #[error("Frozen status is already {status:?}")]
-    ContractFrozenStatusUnchanged { status: bool },
-
-    #[error("Freezer status is already {status:?}")]
-    FreezerStatusUnchanged { status: bool },
 }

@@ -82,7 +82,7 @@ func (suite *KeeperTestSuite) TestInstantiateCwUsdcContract() {
 			suite.Require().NoError(err, "test: %v", tc.desc)
 
 			for _, instTc := range tc.testCases {
-				instMsg := []byte(fmt.Sprintf("{ \"subdenom\": \"%v\" }", instTc.denom))
+				instMsg := []byte(fmt.Sprintf("{ \"subdenom\": \"%v\" }", instTc.subdenom))
 
 				_, _, err := suite.contractKeeper.Instantiate(suite.Ctx, codeID, suite.TestAccs[0], suite.TestAccs[0], instMsg, "", instTc.funds)
 				if instTc.expectPass {

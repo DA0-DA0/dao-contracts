@@ -1,11 +1,12 @@
+use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{
-    to_binary, Addr, CosmosMsg, CustomQuery, Querier, QuerierWrapper, StdResult, WasmMsg, WasmQuery,
+    to_binary, Addr, Coin, CosmosMsg, Deps, MessageInfo, StdResult, Uint128, WasmMsg,
 };
 
-use crate::{msg::{ExecuteMsg, QueryMsg}, ContractError};
+use crate::{msg::ExecuteMsg, state::CONFIG, ContractError};
 
 /// CwTemplateContract is a wrapper around Addr that provides a lot of helpers
 /// for working with this.
@@ -56,7 +57,66 @@ pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractErr
         || subdenom.len() > 44
         || creator.as_str().len() > 75
     {
-        return Err(ContractError::InvalidDenom { denom: full_denom, message: "".to_string() })
+        return Err(ContractError::InvalidDenom {
+            denom: full_denom,
+            message: "".to_string(),
+        });
     }
     Ok(full_denom)
+}
+
+pub fn check_contract_has_funds(
+    denom: String,
+    funds: &Vec<Coin>,
+    amount: Uint128,
+) -> Result<(), ContractError> {
+    if let Some(c) = funds.iter().find(|c| c.denom == denom) {
+        if c.amount < amount {
+            Err(ContractError::NotEnoughFunds {
+                denom,
+                funds: c.amount.u128(),
+                needed: amount.u128(),
+            })
+        } else {
+            Ok(())
+        }
+    } else {
+        Err(ContractError::NotEnoughFunds {
+            denom,
+            funds: 0u128,
+            needed: amount.u128(),
+        })
+    }
+}
+
+pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
+    let config = CONFIG.load(deps.storage).unwrap();
+    if config.owner != sender {
+        Err(ContractError::Unauthorized {})
+    } else {
+        Ok(())
+    }
+}
+
+pub fn check_bool_allowance(
+    deps: &Deps,
+    info: MessageInfo,
+    allowances: Map<&Addr, bool>,
+) -> Result<(), ContractError> {
+    let res = allowances.load(deps.storage, &info.sender);
+    match res {
+        Ok(authorized) => {
+            if !authorized {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+        Err(error) => {
+            if let cosmwasm_std::StdError::NotFound { .. } = error {
+                return Err(ContractError::Unauthorized {});
+            } else {
+                return Err(ContractError::Std(error));
+            }
+        }
+    }
+    Ok(())
 }
