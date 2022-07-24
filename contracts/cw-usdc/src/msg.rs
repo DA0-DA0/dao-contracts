@@ -45,25 +45,50 @@ pub enum QueryMsg {
     // Owner returns the owner of the contract
     Owner {},
     // Allowance returns the allowance of the specified address
-    BurnAllowance { address: String },
+    BurnAllowance {
+        address: String,
+    },
     // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
-    BurnAllowances {start_after: Option<String>, limit: Option<u32>},
+    BurnAllowances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     // Allowance returns the allowance of the specified user
-    MintAllowance { address: String },
+    MintAllowance {
+        address: String,
+    },
     // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
-    MintAllowances {start_after: Option<String>, limit: Option<u32>},
+    MintAllowances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     // IsBlacklisted returns wether the user is blacklisted or not
-    IsBlacklisted {address: String},
+    IsBlacklisted {
+        address: String,
+    },
     // Blacklist Enumerates over all blacklisted addresses
-    Blacklist { start_after: Option<String>, limit: Option<u32>},
+    Blacklist {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     // IsBlacklister returns if the addres has blacklister privileges
-    IsBlacklister { address: String},
+    IsBlacklister {
+        address: String,
+    },
     // Blacklisters Enumerates over all the addresses with blacklister privileges
-    Blacklisters { start_after: Option<String>, limit: Option<u32>},
-    // IsFreezer returns wether the address has freezerstatus 
-    IsFreezer { address: String },
+    Blacklisters {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    // IsFreezer returns wether the address has freezerstatus
+    IsFreezer {
+        address: String,
+    },
     // FreezerAllowances enumerates over all freezer addresses
-    FreezerAllowances { start_after: Option<String>, limit: Option<u32> }
+    FreezerAllowances {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 // We define a custom struct for each query response
@@ -107,10 +132,10 @@ pub struct BlacklistResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BlacklistersResponse {
-    pub blacklisters : Vec<StatusResponse>,
+    pub blacklisters: Vec<StatusResponse>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FreezerAllowancesResponse {
-    pub freezers: Vec<StatusResponse>
+    pub freezers: Vec<StatusResponse>,
 }

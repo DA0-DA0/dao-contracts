@@ -1,11 +1,17 @@
+use cw_storage_plus::Map;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{
-    to_binary, Addr, CosmosMsg, CustomQuery, Querier, QuerierWrapper, StdResult, WasmMsg, WasmQuery,
+    to_binary, Addr, Coin, CosmosMsg, CustomQuery, Deps, DepsMut, MessageInfo, Querier,
+    QuerierWrapper, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 
-use crate::{msg::{ExecuteMsg, QueryMsg}, ContractError};
+use crate::{
+    msg::{ExecuteMsg, QueryMsg},
+    state::CONFIG,
+    ContractError,
+};
 
 /// CwTemplateContract is a wrapper around Addr that provides a lot of helpers
 /// for working with this.
@@ -56,7 +62,103 @@ pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractErr
         || subdenom.len() > 44
         || creator.as_str().len() > 75
     {
-        return Err(ContractError::InvalidDenom { denom: full_denom, message: "".to_string() })
+        return Err(ContractError::InvalidDenom {
+            denom: full_denom,
+            message: "".to_string(),
+        });
     }
     Ok(full_denom)
+}
+
+pub fn check_funds(denom: String, funds: &Vec<Coin>, amount: Uint128) -> Result<(), ContractError> {
+    // TODO: Do we want to check for too much funds here? Otherwise all the excess funds will remain locked in the contract 4evers
+
+    if let Some(osmo) = funds.iter().find(|c| c.denom == denom) {
+        if osmo.amount < amount {
+            Err(ContractError::NotEnoughFunds {
+                denom,
+                funds: osmo.amount.u128(),
+                needed: amount.u128(),
+            })
+        } else {
+            Ok(())
+        }
+    } else {
+        Err(ContractError::NotEnoughFunds {
+            denom,
+            funds: 0u128,
+            needed: amount.u128(),
+        })
+    }
+}
+
+pub fn set_bool_allowance(
+    deps: DepsMut,
+    address: &String,
+    allowances: Map<&Addr, bool>,
+    status: bool,
+) -> Result<bool, ContractError> {
+    return allowances.update(
+        deps.storage,
+        &deps.api.addr_validate(address.as_str())?,
+        |mut stat| -> Result<_, ContractError> {
+            if let Some(current_status) = stat {
+                if current_status == status {
+                    return Err(ContractError::FreezerStatusUnchanged { status });
+                }
+            }
+            stat = Some(status);
+            Ok(status)
+        },
+    );
+}
+
+pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
+    let config = CONFIG.load(deps.storage).unwrap();
+    if config.owner != sender {
+        Err(ContractError::Unauthorized {})
+    } else {
+        Ok(())
+    }
+}
+
+pub fn set_int_allowance(
+    deps: DepsMut,
+    allowances: Map<&Addr, Uint128>,
+    address: &String,
+    amount: Uint128,
+) -> Result<(), ContractError> {
+    // TODO What if the allowance doesnt change, like i check for at bool_allowance
+    let res = allowances.save(
+        deps.storage,
+        &deps.api.addr_validate(address.as_str())?,
+        &amount,
+    );
+    match res {
+        Ok(()) => Ok(()),
+        Err(error) => Err(ContractError::Std(error)),
+    }
+}
+
+pub fn check_bool_allowance(
+    deps: &Deps,
+    info: MessageInfo,
+    allowances: Map<&Addr, bool>,
+) -> Result<(), ContractError> {
+    let res = allowances.load(deps.storage, &info.sender);
+    match res {
+        Ok(authorized) => {
+            if !authorized {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+        Err(error) => {
+            if let cosmwasm_std::StdError::NotFound { .. } = error {
+                return Err(ContractError::Unauthorized {});
+            } else {
+                return Err(ContractError::Std(error));
+            }
+        }
+    }
+    Ok(())
 }
