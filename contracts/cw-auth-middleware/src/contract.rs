@@ -110,7 +110,7 @@ fn execute_update_authorization_state(
 
         // If at least one authorization module authorized this message, we send the
         // Authorize execute message to all the authorizations so that they can update their
-        // stateif needed.
+        // state if needed.
         let response = Response::default()
             .add_attribute("action", "execute_authorize")
             .add_attribute("authorized", "true");

@@ -99,78 +99,112 @@ fn deep_partial_match(msg: &Value, authorization: &Value) -> bool {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::AddAuthorization { addr, msg } => {
-            let config = CONFIG.load(deps.storage)?;
-            if info.sender != config.dao {
-                return Err(AuthorizationError::Unauthorized {
-                    reason: Some("Only the dao can add authorizations".to_string()),
-                }
-                .into());
-            }
-
-            // If the message can't be converted to a string, we fail
-            str_to_value(&msg)?;
-            ALLOWED.update(
-                deps.storage,
-                addr.clone(),
-                |auth: Option<Vec<Authorization>>| -> Result<Vec<Authorization>, ContractError> {
-                    let new_auth = Authorization { addr, matcher: msg };
-                    match auth {
-                        Some(mut auth) => {
-                            auth.push(new_auth);
-                            Ok(auth)
-                        }
-                        None => Ok(vec![new_auth]),
-                    }
-                },
-            )?;
-
-            Ok(Response::default().add_attribute("action", "allow_message"))
+            execute_add_authorization(deps, info, addr, msg)
         }
+
         ExecuteMsg::RemoveAuthorization { addr, msg } => {
-            let config = CONFIG.load(deps.storage)?;
-            if info.sender != config.dao {
-                return Err(AuthorizationError::Unauthorized {
-                    reason: Some("Only the dao can add authorizations".to_string()),
-                }
-                .into());
-            }
+            execute_add_authorization(deps, info, addr.clone(), msg)
+        }
 
-            ALLOWED.update(
-                deps.storage,
-                addr.clone(),
-                |auth: Option<Vec<Authorization>>| -> Result<Vec<Authorization>, ContractError> {
-                    match auth {
-                        Some(mut auth) => {
-                            let i = auth.iter().position(|x| *x.matcher == msg);
-                            if i.is_none() {
-                                return Err(ContractError::NotFound {});
-                            }
-                            auth.remove(i.unwrap());
-                            Ok(auth)
-                        }
-                        None => Err(ContractError::NotFound {}),
-                    }
-                },
-            )?;
-            Ok(Response::default().add_attribute("action", "removed"))
-        }
         ExecuteMsg::UpdateExecutedAuthorizationState { msgs, sender } => {
-            let authorized = authorize_messages(deps.as_ref(), _env, msgs, sender)?;
-            if authorized {
-                Ok(Response::default().add_attribute("allowed", "true"))
-            } else {
-                Err(AuthorizationError::Unauthorized {
-                    reason: Some("Rejected by auth".to_string()),
-                }
-                .into())
-            }
+            execute_updated_auth_state(deps, env, sender, msgs)
         }
+    }
+}
+
+fn execute_add_authorization(
+    deps: DepsMut,
+    info: MessageInfo,
+    authorized_addr: Addr,
+    authorization_matcher: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.dao {
+        return Err(AuthorizationError::Unauthorized {
+            reason: Some("Only the dao can add authorizations".to_string()),
+        }
+        .into());
+    }
+
+    // If the message can't be converted to a string, we fail
+    str_to_value(&authorization_matcher)?;
+    ALLOWED.update(
+        deps.storage,
+        authorized_addr.clone(),
+        |auth: Option<Vec<Authorization>>| -> Result<Vec<Authorization>, ContractError> {
+            let new_auth = Authorization {
+                addr: authorized_addr,
+                matcher: authorization_matcher,
+            };
+            match auth {
+                Some(mut auth) => {
+                    auth.push(new_auth);
+                    Ok(auth)
+                }
+                None => Ok(vec![new_auth]),
+            }
+        },
+    )?;
+
+    Ok(Response::default().add_attribute("action", "allow_message"))
+}
+
+fn execute_remove_authorization(
+    deps: DepsMut,
+    info: MessageInfo,
+    authorized_addr: Addr,
+    authorization_matcher: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.dao {
+        return Err(AuthorizationError::Unauthorized {
+            reason: Some("Only the dao can add authorizations".to_string()),
+        }
+        .into());
+    }
+
+    ALLOWED.update(
+        deps.storage,
+        authorized_addr.clone(),
+        |auth: Option<Vec<Authorization>>| -> Result<Vec<Authorization>, ContractError> {
+            match auth {
+                Some(mut auth) => {
+                    let i = auth
+                        .iter()
+                        .position(|x| *x.matcher == authorization_matcher);
+                    if i.is_none() {
+                        return Err(ContractError::NotFound {});
+                    }
+                    auth.remove(i.unwrap());
+                    Ok(auth)
+                }
+                None => Err(ContractError::NotFound {}),
+            }
+        },
+    )?;
+    Ok(Response::default().add_attribute("action", "removed"))
+}
+
+fn execute_updated_auth_state(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    msgs: Vec<CosmosMsg>,
+) -> Result<Response, ContractError> {
+    let authorized = authorize_messages(deps.as_ref(), env, msgs, sender)?;
+    if authorized {
+        Ok(Response::default().add_attribute("allowed", "true"))
+    } else {
+        Err(AuthorizationError::Unauthorized {
+            reason: Some("Rejected by auth".to_string()),
+        }
+        .into())
     }
 }
 
