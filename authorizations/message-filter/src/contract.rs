@@ -109,7 +109,7 @@ pub fn execute(
         }
 
         ExecuteMsg::RemoveAuthorization { addr, msg } => {
-            execute_add_authorization(deps, info, addr.clone(), msg)
+            execute_remove_authorization(deps, info, addr.clone(), msg)
         }
 
         ExecuteMsg::UpdateExecutedAuthorizationState { msgs, sender } => {
