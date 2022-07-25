@@ -1,15 +1,22 @@
 use std::u128;
 
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Empty, Timestamp, Uint128, WasmMsg};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, CosmosMsg, Decimal, Empty, Order, Timestamp, Uint128, WasmMsg,
+};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
 use cw_core::{msg::ModuleInstantiateInfo, state::ProposalModule};
+use cw_storage_plus::Map;
 use cw_utils::Duration;
+use cw_utils::Expiration;
 
 use indexable_hooks::HooksResponse;
 
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use testing::{ShouldExecute, TestSingleChoiceVote};
 use voting::{
     deposit::{CheckedDepositInfo, DepositInfo, DepositToken},
@@ -19,6 +26,7 @@ use voting::{
 };
 
 use crate::{
+    contract::migrate,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::SingleChoiceProposal,
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
@@ -27,6 +35,40 @@ use crate::{
 };
 
 const CREATOR_ADDR: &str = "creator";
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+struct BetaProposal {
+    pub title: String,
+    pub description: String,
+    /// The address that created this proposal.
+    pub proposer: Addr,
+    /// The block height at which this proposal was created. Voting
+    /// power queries should query for voting power at this block
+    /// height.
+    pub start_height: u64,
+    /// The minimum amount of time this proposal must remain open for
+    /// voting. The proposal may not pass unless this is expired or
+    /// None.
+    pub min_voting_period: Option<Expiration>,
+    /// The the time at which this proposal will expire and close for
+    /// additional votes.
+    pub expiration: Expiration,
+    /// The threshold at which this proposal will pass.
+    pub threshold: Threshold,
+    /// The total amount of voting power at the time of this
+    /// proposal's creation.
+    pub total_power: Uint128,
+    /// The messages that will be executed should this proposal pass.
+    pub msgs: Vec<CosmosMsg<Empty>>,
+
+    pub status: Status,
+    pub votes: Votes,
+    pub allow_revoting: bool,
+
+    /// Information about the deposit that was sent as part of this
+    /// proposal. None if no deposit.
+    pub deposit_info: Option<CheckedDepositInfo>,
+}
 
 fn cw20_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -3625,7 +3667,7 @@ fn test_migrate() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: govmod_single.to_string(),
             new_code_id: govmod_id,
-            msg: to_binary(&MigrateMsg {}).unwrap(),
+            msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
         }),
     )
     .unwrap();
@@ -4195,4 +4237,58 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
 
     // Deposit should now belong to the DAO.
     assert_eq!(balance.balance, Uint128::new(1));
+}
+
+#[test]
+fn test_migrate_from_beta() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let current_block = &env.block;
+    let max_voting_period = cw_utils::Duration::Height(6);
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+
+    // Write to storage in old data format
+    let beta_map: Map<u64, BetaProposal> = Map::new("proposals");
+
+    let beta_proposal = BetaProposal {
+        title: "A simple text proposal".to_string(),
+        description: "This is a simple text proposal".to_string(),
+        proposer: Addr::unchecked(CREATOR_ADDR),
+        start_height: env.block.height,
+        expiration: max_voting_period.after(current_block),
+        min_voting_period: None,
+        threshold,
+        allow_revoting: false,
+        total_power: Uint128::new(100_000_000),
+        msgs: vec![],
+        status: Status::Open,
+        votes: Votes::zero(),
+        deposit_info: None,
+    };
+
+    beta_map.save(&mut deps.storage, 0, &beta_proposal).unwrap();
+
+    let msg = MigrateMsg::FromBeta {};
+    migrate(deps.as_mut(), env.clone(), msg).unwrap();
+
+    // Verify migration.
+    let new_map: Map<u64, SingleChoiceProposal> = Map::new("proposals_v1");
+    let proposals: Vec<(u64, SingleChoiceProposal)> = new_map
+        .range(&deps.storage, None, None, Order::Ascending)
+        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()
+        .unwrap();
+
+    let migrated_proposal = &proposals[0];
+    assert_eq!(migrated_proposal.0, 0);
+    assert_eq!(migrated_proposal.1.created, env.block.time);
+    assert_eq!(migrated_proposal.1.last_updated, env.block.time);
+
+    // ensure old map items have been removed
+    let old_map_count = beta_map
+        .keys_raw(&deps.storage, None, None, Order::Ascending)
+        .count();
+    assert_eq!(0, old_map_count);
 }

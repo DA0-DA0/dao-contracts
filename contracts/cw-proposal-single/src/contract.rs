@@ -1,18 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, WasmMsg,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdResult, Storage, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
-use cw_storage_plus::Bound;
-use cw_utils::Duration;
+use cw_storage_plus::{Bound, Map};
+use cw_utils::{Duration, Expiration};
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use vote_hooks::new_vote_hooks;
 
-use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
+use voting::deposit::{get_deposit_msg, get_return_deposit_msg, CheckedDepositInfo, DepositInfo};
 use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
 use voting::status::Status;
 use voting::threshold::Threshold;
@@ -711,9 +713,90 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Don't do any state migrations.
-    Ok(Response::default())
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+    struct BetaProposal {
+        pub title: String,
+        pub description: String,
+        /// The address that created this proposal.
+        pub proposer: Addr,
+        /// The block height at which this proposal was created. Voting
+        /// power queries should query for voting power at this block
+        /// height.
+        pub start_height: u64,
+        /// The minimum amount of time this proposal must remain open for
+        /// voting. The proposal may not pass unless this is expired or
+        /// None.
+        pub min_voting_period: Option<Expiration>,
+        /// The the time at which this proposal will expire and close for
+        /// additional votes.
+        pub expiration: Expiration,
+        /// The threshold at which this proposal will pass.
+        pub threshold: Threshold,
+        /// The total amount of voting power at the time of this
+        /// proposal's creation.
+        pub total_power: Uint128,
+        /// The messages that will be executed should this proposal pass.
+        pub msgs: Vec<CosmosMsg<Empty>>,
+
+        pub status: Status,
+        pub votes: Votes,
+        pub allow_revoting: bool,
+
+        /// Information about the deposit that was sent as part of this
+        /// proposal. None if no deposit.
+        pub deposit_info: Option<CheckedDepositInfo>,
+    }
+
+    match msg {
+        MigrateMsg::FromBeta {} => {
+            // Retrieve current map from storage
+            let current_map: Map<u64, BetaProposal> = Map::new("proposals");
+            let count = current_map
+                .keys(deps.storage, None, None, Order::Ascending)
+                .count();
+            println!("keys count {}", count);
+
+            let current = current_map
+                .range(deps.storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<(u64, BetaProposal)>>>()?;
+
+            // Add migrated entries to new map.
+            // TODO: determine whether this needs to be paginated
+            current
+                .into_iter()
+                .try_for_each::<_, StdResult<()>>(|(id, prop)| {
+                    let migrated_proposal = SingleChoiceProposal {
+                        title: prop.title,
+                        description: prop.description,
+                        proposer: prop.proposer,
+                        start_height: prop.start_height,
+                        min_voting_period: prop.min_voting_period,
+                        expiration: prop.expiration,
+                        threshold: prop.threshold,
+                        total_power: prop.total_power,
+                        msgs: prop.msgs,
+                        status: prop.status,
+                        votes: prop.votes,
+                        allow_revoting: prop.allow_revoting,
+                        deposit_info: prop.deposit_info,
+                        created: env.block.time,
+                        last_updated: env.block.time,
+                    };
+
+                    PROPOSALS.save(deps.storage, id, &migrated_proposal)?;
+
+                    // Remove entry from old map.
+                    current_map.remove(deps.storage, id);
+
+                    Ok(())
+                })?;
+
+            Ok(Response::default())
+        }
+
+        MigrateMsg::FromCompatible {} => Ok(Response::default()),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
