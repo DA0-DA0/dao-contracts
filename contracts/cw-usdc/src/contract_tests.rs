@@ -65,35 +65,69 @@ fn change_contract_owner() {
     let (original_owner, _) = initialize_contract(deps.as_mut());
 
     let new_owner_addr = "new_owner";
-    let change_msg = ExecuteMsg::ChangeContractOwner {
-        new_owner: String::from(new_owner_addr),
-    };
 
-    let res = contract::execute(
+    contract::execute(
         deps.as_mut(),
         mock_env(),
         mock_info(original_owner.as_str(), &[]),
-        change_msg.clone(),
+        ExecuteMsg::ChangeContractOwner {
+            new_owner: String::from(new_owner_addr),
+        },
     )
     .unwrap();
 
     check_is_contract_owner(deps.as_ref(), Addr::unchecked(new_owner_addr)).unwrap();
 
     // test for error if non owner (previous owner) tries to change owner
-    let change_msg = ExecuteMsg::ChangeContractOwner {
-        new_owner: String::from(new_owner_addr),
-    };
     let err = contract::execute(
         deps.as_mut(),
         mock_env(),
         mock_info(original_owner.as_str(), &[]),
-        change_msg.clone(),
+        ExecuteMsg::ChangeContractOwner {
+            new_owner: String::from(new_owner_addr),
+        },
     )
     .unwrap_err();
     match err {
         ContractError::Unauthorized {} => (),
         error => panic!("should generate Unauthorised but returns {}", error),
     }
+}
+
+#[test]
+fn change_tokenfactory_admin() {
+    let mut deps = mock_dependencies();
+
+    let (original_owner, _) = initialize_contract(deps.as_mut());
+
+    let new_admin_addr = "new_admin";
+
+    // don't allow anoyone other than contract admin to transfer tokenfactory adminship
+    let err = contract::execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("anyone", &[]),
+        ExecuteMsg::ChangeTokenFactoryAdmin {
+            new_admin: String::from(new_admin_addr),
+        },
+    )
+    .unwrap_err();
+    match err {
+        ContractError::Unauthorized {} => (),
+        error => panic!("should generate Unauthorised but returns {}", error),
+    }
+
+    // allow current contract owner to change tokenfactory admin
+    let res = contract::execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(original_owner.as_str(), &[]),
+        ExecuteMsg::ChangeTokenFactoryAdmin {
+            new_admin: String::from(new_admin_addr),
+        },
+    )
+    .unwrap();
+    assert!(res.messages.len() == 1);
 }
 
 #[test]
@@ -411,39 +445,6 @@ fn blacklists() {
         ),
     }
 }
-
-// #[test]
-// fn minting() {
-//     let mut deps = mock_dependencies();
-//     let msg = InstantiateMsg {
-//         subdenom: "uakt".to_string(),
-//     };
-//     let info = mock_info("creator", &coins(1000, "uosmo"));
-//     let _res = contract::instantiate(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
-
-//     let full_denom = build_denom(&mock_env().contract.address, msg.subdenom.as_str()).unwrap();
-//     let burner_info = mock_info("burner", &coins(1000, full_denom.as_str()));
-//     let set_burner_msg = ExecuteMsg::SetBurner {
-//         address: burner_info.sender.to_string(),
-//         allowance: Uint128::from(1000u64),
-//     };
-
-//     contract::execute(deps.as_mut(), mock_env(), info.clone(), set_burner_msg).unwrap();
-
-//     let burn_msg = ExecuteMsg::Burn {
-//         amount: Uint128::from(100u64),
-//     };
-//     contract::execute(deps.as_mut(), mock_env(), burner_info.clone(), burn_msg).unwrap();
-
-//     let burner_info = mock_info("burner", &coins(100, full_denom.as_str()));
-//     // mint more then allowance
-//     let burn_msg = ExecuteMsg::Burn {
-//         amount: Uint128::from(950u64),
-//     };
-//     let err =
-//         contract::execute(deps.as_mut(), mock_env(), burner_info.clone(), burn_msg).unwrap_err();
-//     // TODO: match error
-// }
 
 #[test]
 fn minting() {
