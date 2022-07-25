@@ -49,7 +49,7 @@ serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
 osmo-bindings = { git = "https://github.com/osmosis-labs/bindings", branch = "main" }
 # osmo-bindings-test = { git = "https://github.com/osmosis-labs/bindings", branch = "main" }
-cw-paginate = { git = "https://github.com/DA0-DA0/dao-contracts", branch = "main" }
+# cw-paginate = { git = "https://github.com/DA0-DA0/dao-contracts", branch = "main" }
 
 
 [dev-dependencies]

@@ -3,10 +3,10 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "subdenom"
+    "denom"
   ],
   "properties": {
-    "subdenom": {
+    "denom": {
       "type": "string"
     }
   }

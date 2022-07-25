@@ -1,6 +1,9 @@
 package cwusdc_test
 
 import (
+	"fmt"
+	"io/ioutil"
+	"strings"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -12,9 +15,14 @@ import (
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
-	"github.com/osmosis-labs/osmosis/v7/app/apptesting"
-	"github.com/osmosis-labs/osmosis/v7/x/tokenfactory/keeper"
-	"github.com/osmosis-labs/osmosis/v7/x/tokenfactory/types"
+	"github.com/osmosis-labs/osmosis/v10/app/apptesting"
+	"github.com/osmosis-labs/osmosis/v10/x/tokenfactory/keeper"
+	"github.com/osmosis-labs/osmosis/v10/x/tokenfactory/types"
+)
+
+var (
+	wasmFile = "../target/wasm32-unknown-unknown/release/cw_usdc.wasm"
+	// wasmFile = "../artifacts/cw_usdc.wasm"
 )
 
 type KeeperTestSuite struct {
@@ -24,8 +32,8 @@ type KeeperTestSuite struct {
 	msgServer      types.MsgServer
 	contractKeeper wasmtypes.ContractOpsKeeper
 	bankMsgServer  banktypes.MsgServer
-	// defaultDenom is on the suite, as it depends on the creator test address.
-	defaultDenom string
+
+	codeId uint64
 }
 
 func TestKeeperTestSuite(t *testing.T) {
@@ -63,9 +71,43 @@ func (suite *KeeperTestSuite) SetupTest() {
 	suite.msgServer = keeper.NewMsgServerImpl(*suite.App.TokenFactoryKeeper)
 
 	suite.bankMsgServer = bankkeeper.NewMsgServerImpl(suite.App.BankKeeper)
+
+	// upload wasm code
+	wasmCode, err := ioutil.ReadFile(wasmFile)
+	suite.Require().NoError(err)
+	suite.codeId, err = suite.contractKeeper.Create(suite.Ctx, suite.TestAccs[0], wasmCode, nil)
+	suite.Require().NoError(err)
 }
 
-func (suite *KeeperTestSuite) CreateDefaultDenom() {
-	res, _ := suite.msgServer.CreateDenom(sdk.WrapSDKContext(suite.Ctx), types.NewMsgCreateDenom(suite.TestAccs[0].String(), "bitcoin"))
-	suite.defaultDenom = res.GetNewTokenDenom()
+func (suite *KeeperTestSuite) InstantiateContract(subdenom string) (contractAddr sdk.AccAddress, fullDenom string) {
+	instantateMsg := []byte(fmt.Sprintf("{ \"subdenom\": \"%v\" }", subdenom))
+
+	fmt.Println("testAcc0")
+	fmt.Println(suite.TestAccs[0].String())
+
+	contractAddr, _, err := suite.contractKeeper.Instantiate(suite.Ctx, suite.codeId, suite.TestAccs[0], suite.TestAccs[0], instantateMsg, "", sdk.NewCoins(sdk.NewInt64Coin("uosmo", 10000000)))
+	suite.Require().NoError(err)
+
+	fullDenom = strings.Join([]string{"factory", contractAddr.String(), subdenom}, "/")
+
+	res, err := suite.queryClient.DenomAuthorityMetadata(suite.Ctx.Context(), &types.QueryDenomAuthorityMetadataRequest{Denom: fullDenom})
+	suite.Require().NoError(err)
+	suite.Require().Equal(res.AuthorityMetadata.GetAdmin(), contractAddr.String())
+
+	return contractAddr, fullDenom
 }
+
+// func ExcecuteMintMsg(mint) []byte {
+// 	return []byte(fmt.Sprintf("{ \"set_freezer\": { \"address\": \"%v\", \"status\": true } }", suite.TestAccs[0].String()))
+// }
+
+// ChangeTokenFactoryAdmin { new_admin: String },
+//     ChangeContractOwner { new_owner: String },
+//     SetMinter { address: String, allowance: Uint128 },
+//     SetBurner { address: String, allowance: Uint128 },
+//     SetBlacklister { address: String, status: bool },
+//     SetFreezer { address: String, status: bool },
+//     Mint { to_address: String, amount: Uint128 },
+//     Burn { amount: Uint128 },
+//     Blacklist { address: String, status: bool },
+//     Freeze { status: bool },
