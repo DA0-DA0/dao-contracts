@@ -46,3 +46,5 @@ cw-core = { version="*", path="../cw-core" }
 cosmwasm-schema = { version = "1.0.0-beta" }
 cw-multi-test = "0.13"
 testing = { version = "*", path = "../../packages/testing" }
+whitelist = { version = "*", path = "../../authorizations/whitelist" }
+message-filter = { version = "*", path = "../../authorizations/message-filter" }

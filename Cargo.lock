@@ -183,10 +183,12 @@ dependencies = [
  "cw20",
  "cw3",
  "indexable-hooks",
+ "message-filter",
  "schemars",
  "serde",
  "testing",
  "thiserror",
+ "whitelist",
 ]
 
 [[package]]
