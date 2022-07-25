@@ -44,8 +44,10 @@ fn authorize_messages(
     let config = CONFIG.load(deps.storage)?;
     let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
 
-    // If there aren't any authorizations, we consider the auth as not-configured and allow all
-    // messages
+    if auths.is_empty() {
+        return Ok(false);
+    }
+
     let authorized = auths.into_iter().all(|a| {
         deps.querier
             .query_wasm_smart(
