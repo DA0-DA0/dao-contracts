@@ -51,8 +51,6 @@ osmo-bindings = { git = "https://github.com/osmosis-labs/bindings", branch = "ma
 # osmo-bindings-test = { git = "https://github.com/osmosis-labs/bindings", branch = "main" }
 # cw-paginate = { git = "https://github.com/DA0-DA0/dao-contracts", branch = "main" }
 
-
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"
-cw-multi-test = "0.13.4"
-osmo-bindings-test = { git = "https://github.com/osmosis-labs/bindings", branch = "main" }
+cw-multi-test = "0.13.2"
