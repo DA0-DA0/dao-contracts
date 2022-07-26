@@ -7,7 +7,6 @@ use osmo_bindings::OsmosisMsg;
 
 use crate::error::ContractError;
 use crate::execute;
-use crate::helpers;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::queries;
@@ -108,18 +107,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::IsBlacklisted { address } => {
             to_binary(&queries::query_is_blacklisted(deps, address)?)
         }
-        QueryMsg::Blacklist { start_after, limit } => {
-            to_binary(&queries::query_blacklist(deps, start_after, limit)?)
+        QueryMsg::Blacklistees { start_after, limit } => {
+            to_binary(&queries::query_blacklistees(deps, start_after, limit)?)
         }
         QueryMsg::IsBlacklister { address } => {
             to_binary(&queries::query_is_blacklister(deps, address)?)
         }
-        QueryMsg::BlacklisterAllowances { start_after, limit } => {
-            to_binary(&queries::query_blacklisters(deps, start_after, limit)?)
-        }
-        QueryMsg::IsFreezer { address } => {
-            to_binary(&queries::query_freezer_allowance(deps, address)?)
-        }
+        QueryMsg::BlacklisterAllowances { start_after, limit } => to_binary(
+            &queries::query_blacklister_allowances(deps, start_after, limit)?,
+        ),
+        QueryMsg::IsFreezer { address } => to_binary(&queries::query_is_freezer(deps, address)?),
         QueryMsg::FreezerAllowances { start_after, limit } => to_binary(
             &queries::query_freezer_allowances(deps, start_after, limit)?,
         ),

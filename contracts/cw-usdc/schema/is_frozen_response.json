@@ -1,13 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InstantiateMsg",
+  "title": "IsFrozenResponse",
   "type": "object",
   "required": [
-    "denom"
+    "is_frozen"
   ],
   "properties": {
-    "denom": {
-      "type": "string"
+    "is_frozen": {
+      "type": "boolean"
     }
   }
 }

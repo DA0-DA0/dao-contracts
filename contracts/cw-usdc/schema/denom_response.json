@@ -1,14 +1,13 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GetCountResponse",
+  "title": "DenomResponse",
   "type": "object",
   "required": [
-    "count"
+    "denom"
   ],
   "properties": {
-    "count": {
-      "type": "integer",
-      "format": "int32"
+    "denom": {
+      "type": "string"
     }
   }
 }

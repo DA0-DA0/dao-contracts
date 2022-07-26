@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Deps, Order, StdResult, Uint128};
 use cw_storage_plus::{Bound, Map};
 
 use crate::msg::{
-    AllowanceInfo, AllowanceResponse, AllowancesResponse, BlacklistResponse,
+    AllowanceInfo, AllowanceResponse, AllowancesResponse, BlacklisteesResponse,
     BlacklisterAllowancesResponse, DenomResponse, FreezerAllowancesResponse, IsFrozenResponse,
     OwnerResponse, StatusInfo, StatusResponse,
 };
@@ -146,13 +146,13 @@ pub fn query_status_map(
         .collect()
 }
 
-pub fn query_blacklist(
+pub fn query_blacklistees(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<BlacklistResponse> {
-    Ok(BlacklistResponse {
-        blacklist: query_status_map(deps, start_after, limit, BLACKLISTED_ADDRESSES)?,
+) -> StdResult<BlacklisteesResponse> {
+    Ok(BlacklisteesResponse {
+        blacklistees: query_status_map(deps, start_after, limit, BLACKLISTED_ADDRESSES)?,
     })
 }
 
@@ -163,7 +163,7 @@ pub fn query_is_blacklister(deps: Deps, address: String) -> StdResult<StatusResp
     Ok(StatusResponse { status })
 }
 
-pub fn query_blacklisters(
+pub fn query_blacklister_allowances(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -183,7 +183,7 @@ pub fn query_freezer_allowances(
     })
 }
 
-pub fn query_freezer_allowance(deps: Deps, address: String) -> StdResult<StatusResponse> {
+pub fn query_is_freezer(deps: Deps, address: String) -> StdResult<StatusResponse> {
     let status = FREEZER_ALLOWANCES
         .load(deps.storage, &deps.api.addr_validate(&address)?)
         .unwrap_or(false);

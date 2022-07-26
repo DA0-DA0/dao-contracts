@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BlacklisterAllowancesResponse",
+  "type": "object",
+  "required": [
+    "blacklisters"
+  ],
+  "properties": {
+    "blacklisters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/StatusInfo"
+      }
+    }
+  },
+  "definitions": {
+    "StatusInfo": {
+      "type": "object",
+      "required": [
+        "address",
+        "status"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "status": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
