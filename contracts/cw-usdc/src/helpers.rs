@@ -67,7 +67,7 @@ pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractErr
 
 pub fn check_contract_has_funds(
     denom: String,
-    funds: &Vec<Coin>,
+    funds: &[Coin],
     amount: Uint128,
 ) -> Result<(), ContractError> {
     if let Some(c) = funds.iter().find(|c| c.denom == denom) {
