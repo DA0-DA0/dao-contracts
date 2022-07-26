@@ -30,7 +30,7 @@ fn execute_stake_tokens() {
     Chain::add_contract_addr(voting_contract, voting_addr);
     let msg: Cw20StakeBalanceWasmMsg =
         WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::StakingContract {});
-    let staking_addr = &Chain::process_msg(voting_contract.to_string(), &msg).unwrap()["data"];
+    let staking_addr = &Chain::process_msg(voting_contract, &msg).unwrap()["data"];
     let staking_addr = staking_addr.as_str().unwrap();
 
     Chain::add_contract_addr("cw20_stake", staking_addr);
@@ -40,7 +40,7 @@ fn execute_stake_tokens() {
         }),
         WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::GetConfig {}),
     ];
-    let res = Chain::process_msgs("cw20_stake".to_string(), &msgs).unwrap();
+    let res = Chain::process_msgs("cw20_stake", &msgs).unwrap();
     let staked_value: StakedValueResponse = serde_json::from_value(res[0]["data"].clone()).unwrap();
 
     assert_eq!(staked_value.value, Uint128::new(0));
@@ -52,12 +52,12 @@ fn execute_stake_tokens() {
         amount: Uint128::new(100),
         msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
     });
-    Chain::process_msg("cw20_base".to_string(), &msg).unwrap();
+    Chain::process_msg("cw20_base", &msg).unwrap();
 
     let msg: Cw20StakeWasmMsg = WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
         address: user_addr.clone(),
     });
-    let res = Chain::process_msg("cw20_stake".to_string(), &msg).unwrap();
+    let res = Chain::process_msg("cw20_stake", &msg).unwrap();
     let staked_value: StakedValueResponse = serde_json::from_value(res["data"].clone()).unwrap();
 
     assert_eq!(staked_value.value, Uint128::new(100));
@@ -69,7 +69,7 @@ fn execute_stake_tokens() {
         address: user_addr,
         height: None,
     });
-    let res = Chain::process_msg("cw_core".to_string(), &msg).unwrap();
+    let res = Chain::process_msg("cw_core", &msg).unwrap();
     let power: VotingPowerAtHeightResponse = serde_json::from_value(res["data"].clone()).unwrap();
 
     assert_eq!(power.power, Uint128::new(100));

@@ -74,7 +74,7 @@ pub fn create_dao(admin: Option<String>, user_addr: String) -> Result<DaoState> 
         }),
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::DumpState {}),
     ];
-    let res = Chain::process_msgs("cw_core".to_string(), &msgs)?;
+    let res = Chain::process_msgs("cw_core", &msgs)?;
     let state: DumpStateResponse = serde_json::from_value(res[1]["data"].clone())?;
 
     Ok(DaoState {
