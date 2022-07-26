@@ -10,14 +10,12 @@ pub struct Config {
     pub dao: Addr,
 }
 
-/// A contract
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Authorization {
-    //pub name: String,
     pub contract: Addr,
-    //pub expiration: DateTime
     // ...
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const AUTHORIZATIONS: Map<&Addr, Vec<Authorization>> = Map::new("authorizations");
+pub const GROUPS: Map<&str, Addr> = Map::new("groups");

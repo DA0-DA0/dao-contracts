@@ -1,17 +1,18 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply,
-    Response, StdResult,
+    to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
+    Reply, Response, StdResult,
 };
 use cw2::set_contract_version;
+use cw4::MemberListResponse;
 
 use crate::msg::IsAuthorizedResponse;
 use crate::state::Authorization;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{Config, AUTHORIZATIONS, CONFIG},
+    state::{Config, AUTHORIZATIONS, CONFIG, GROUPS},
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-auth-manager";
@@ -35,6 +36,26 @@ pub fn instantiate(
     Ok(Response::default().add_attribute("action", "instantiate"))
 }
 
+fn check_authorization(
+    deps: Deps,
+    auths: &Vec<Authorization>,
+    msgs: &Vec<CosmosMsg>,
+    sender: &Addr,
+) -> bool {
+    auths.into_iter().all(|a| {
+        deps.querier
+            .query_wasm_smart(
+                a.contract.clone(),
+                &QueryMsg::Authorize {
+                    msgs: msgs.clone(),
+                    sender: sender.clone(),
+                },
+            )
+            .unwrap_or(IsAuthorizedResponse { authorized: false })
+            .authorized
+    })
+}
+
 fn authorize_messages(
     deps: Deps,
     msgs: Vec<CosmosMsg>,
@@ -48,18 +69,36 @@ fn authorize_messages(
         return Ok(false);
     }
 
-    let authorized = auths.into_iter().all(|a| {
-        deps.querier
-            .query_wasm_smart(
-                a.contract.clone(),
-                &QueryMsg::Authorize {
-                    msgs: msgs.clone(),
-                    sender: sender.clone(),
-                },
-            )
-            .unwrap_or(IsAuthorizedResponse { authorized: false })
-            .authorized
-    });
+    // Check if the sender is authorized
+    if check_authorization(deps, &auths, &msgs, &sender) {
+        return Ok(true);
+    }
+
+    // If the sender isn't authorized, check if they belong to any groups are authorized
+    let groups: StdResult<Vec<_>> = GROUPS
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter(|r| !r.is_err())
+        .filter(|g| -> bool {
+            let addr = &g.as_ref().unwrap().1;
+            let members: MemberListResponse = deps
+                .querier
+                .query_wasm_smart(
+                    addr,
+                    &cw4_group::msg::QueryMsg::ListMembers {
+                        limit: None,
+                        start_after: None,
+                    },
+                )
+                .unwrap_or(MemberListResponse { members: vec![] });
+            members.members.into_iter().any(|a| a.addr == sender)
+        })
+        .collect();
+
+    let authorized = groups
+        .unwrap()
+        .into_iter()
+        .any(|(_name, addr)| check_authorization(deps, &auths, &msgs, &addr));
+
     Ok(authorized)
 }
 
@@ -75,6 +114,11 @@ pub fn execute(
             execute_add_authorization(deps, env, info, auth_contract)
         }
         ExecuteMsg::RemoveAuthorization { auth_contract: _ } => todo!(),
+        ExecuteMsg::AddGroup {
+            name,
+            cw4_group_contract,
+        } => execute_add_group(deps, env, info, &name, &cw4_group_contract),
+        ExecuteMsg::RemoveGroup { name: _ } => todo!(),
         ExecuteMsg::UpdateExecutedAuthorizationState { msgs, sender } => {
             execute_update_authorization_state(deps.as_ref(), msgs, sender, info.sender)
         }
@@ -131,6 +175,7 @@ fn execute_update_authorization_state(
                 )?))
             },
         )
+        // TODO: Deal with groups!!
     } else {
         Err(ContractError::Unauthorized { reason: None })
     }
@@ -196,6 +241,38 @@ pub fn execute_add_authorization(
             }
         },
     )?;
+
+    Ok(Response::default()
+        .add_attribute("action", "add_authorizations")
+        .add_attribute("address", address))
+}
+
+pub fn execute_add_group(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    name: &str,
+    address: &str,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can add groups
+        return Err(ContractError::Unauthorized {
+            reason: Some("Sender can't add group.".to_string()),
+        });
+    }
+
+    // ToDo: Verify that this is an group?
+    let validated_address = deps.api.addr_validate(&address)?;
+    GROUPS.update(deps.storage, name, |addr| -> Result<Addr, ContractError> {
+        if let Some(_existing) = addr {
+            Err(ContractError::Unauthorized {
+                reason: Some("Group already exsits".to_string()),
+            })
+        } else {
+            Ok(validated_address)
+        }
+    })?;
 
     Ok(Response::default()
         .add_attribute("action", "add_authorizations")

@@ -46,6 +46,15 @@ fn cw_message_filter_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn cw4_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw4_group::contract::execute,
+        cw4_group::contract::instantiate,
+        cw4_group::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn instantiate_dao(app: &mut App, auth_module_code_id: u64) -> Addr {
     let core_contract_id = app.store_code(cw_gov_contract());
 
@@ -85,8 +94,7 @@ fn instantiate_dao(app: &mut App, auth_module_code_id: u64) -> Addr {
     core_addr
 }
 
-#[test]
-fn test_direct_authorizations() {
+fn build_auth_dao() -> (App, Addr, Addr) {
     let init_funds = vec![coin(1000000, "juno"), coin(100, "other")];
     let mut app = App::new(|router, _, storage| {
         // initialization moved to App construction
@@ -121,6 +129,12 @@ fn test_direct_authorizations() {
 
     assert_eq!(proposal_modules.len(), 1);
     let auth_manager = proposal_modules.into_iter().next().unwrap();
+    (app, core_addr, auth_manager)
+}
+
+#[test]
+fn test_direct_authorizations() {
+    let (mut app, core_addr, auth_manager) = build_auth_dao();
 
     // Adding a simple authorization contract
     let whitelist_id = app.store_code(cw_whitelist_contract());
@@ -307,4 +321,101 @@ fn test_direct_authorizations() {
         &[],
     )
     .unwrap_err(); // This should fail!
+}
+
+#[test]
+fn test_group_authorizations() {
+    let (mut app, core_addr, auth_manager) = build_auth_dao();
+
+    // Adding a simple authorization contract
+    let whitelist_id = app.store_code(cw_whitelist_contract());
+    let whitelist_addr = app
+        .instantiate_contract(
+            whitelist_id,
+            Addr::unchecked("Shouldn't matter"),
+            &whitelist::msg::InstantiateMsg {
+                dao: core_addr.clone(),
+            },
+            &[],
+            "Whitelist auth",
+            None,
+        )
+        .unwrap();
+
+    let person1 = Addr::unchecked("person1");
+    let person2 = Addr::unchecked("person2");
+
+    // Create a group
+    let cw4_id = app.store_code(cw4_contract());
+    let cw4_addr1 = app
+        .instantiate_contract(
+            cw4_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw4_group::msg::InstantiateMsg {
+                admin: Some(core_addr.to_string()),
+                members: vec![cw4::Member {
+                    addr: person1.to_string(),
+                    weight: 0,
+                }],
+            },
+            &[],
+            "DAO DAO",
+            None,
+        )
+        .unwrap();
+
+    // Add the whitelist to the list of auths
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        auth_manager.clone(),
+        &ExecuteMsg::AddGroup {
+            name: "Sample group".to_string(),
+            cw4_group_contract: cw4_addr1.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Whitelist the group
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        whitelist_addr.clone(),
+        &whitelist::msg::ExecuteMsg::Allow {
+            addr: cw4_addr1.to_string(),
+        },
+        &[],
+    )
+    .unwrap(); // The address has been whitelisted
+
+    println!("Group addr: {:?}", cw4_addr1);
+
+    // Add the whitelist to the list of auths
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        auth_manager.clone(),
+        &ExecuteMsg::AddAuthorization {
+            auth_contract: whitelist_addr.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Create a proposal to spend some tokens
+    let amount = coins(1234, "juno");
+    let bank = BankMsg::Send {
+        to_address: "other_addr".to_string(),
+        amount,
+    };
+    let msg: CosmosMsg = bank.clone().into();
+
+    // Execute the proposal by someone who is whitelisted via the group
+    app.execute_contract(
+        person1.clone(),
+        auth_manager.clone(),
+        &ExecuteMsg::Execute { msgs: vec![msg] },
+        &[],
+    )
+    .unwrap();
+    // TODO: This is currently failing because the update messages are erroring. This is expected, as some of the checks fail (only the group checks pass)
+    //       To fix this, we need to ignore the reply on all messages coming from the update
 }

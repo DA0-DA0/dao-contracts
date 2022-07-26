@@ -15,6 +15,14 @@ pub enum ExecuteMsg {
     RemoveAuthorization {
         auth_contract: Addr,
     },
+    /// Since there isn't a central list of groups, the authorization manager keeps track of the groups it cares about
+    AddGroup {
+        name: String,
+        cw4_group_contract: String,
+    },
+    RemoveGroup {
+        name: String,
+    },
     /// Some authorizations may want to track information about the users or
     /// messages to determine if they authorize or not. This message should be
     /// sent every time the authorizations are successfully used so that
