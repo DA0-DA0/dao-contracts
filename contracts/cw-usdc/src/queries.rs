@@ -60,7 +60,7 @@ pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceR
     Ok(AllowanceResponse { allowance })
 }
 
-fn query_allowances(
+pub fn query_allowances(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -189,4 +189,5 @@ pub fn query_is_freezer(deps: Deps, address: String) -> StdResult<StatusResponse
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
+
 // query inspiration see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473
