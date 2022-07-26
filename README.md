@@ -42,17 +42,18 @@ It's recommended that you configure your `osmosisd` for usage with LocalOsmosis 
 osmosisd config keyring-backend test
 osmosisd config node http://localhost:26657
 osmosisd config chain-id localosmosis
+osmosisd config broadcast-mode block
 ```
 
-Next, we recommend importing the validator test account into your `osmosisd` test keyring backend.  This is the standard
-validator test account that is used by localosmosis, beaker, and other tooling.
+Next, we recommend importing the validator test account into your `osmosisd` test keyring backend.  [This is the standard
+validator test account that is used by localosmosis, beaker, and other tooling](https://docs.osmosis.zone/developing/tools/localosmosis.html#accounts).
 
 ```
-osmosisd keys add validator2 --recover
-satisfy adjust timber high purchase tuition stool faith fine install that you unaware feed domain license impose boss human eager hat rent enjoy dawn
+osmosisd keys add test1 --recover
+notice oak worry limit wrap speak medal online prefer cluster roof addict wrist behave treat actual wasp year salad speed social layer crew genius
 ```
 
-This should generate the address: `osmo1phaxpevm5wecex2jyaqty2a4v02qj7qmlmzk5a`
+This should generate the address: `osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks`
 
 #### Beaker
 
@@ -79,14 +80,14 @@ Now we will begin interacting with the chain to begin the instantiation process.
 Use osmosisd to create a new tokenfactory denom from your validator account. Here we will call the subdenom `uusdc`.
 
 ```
-osmosisd tx tokenfactory create-denom uusdc --from validator
+osmosisd tx tokenfactory create-denom uusdc --from test1
 ```
 
 If successful, you can query the base name of your new denom by using the `denoms-from-creator` query.
-Here we will assume the creator address was `osmo1phaxpevm5wecex2jyaqty2a4v02qj7qmlmzk5a`.
+Here we will assume the creator address was `osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks`.
 
 ```
-osmosisd q tokenfactory denoms-from-creator osmo1phaxpevm5wecex2jyaqty2a4v02qj7qmlmzk5a
+osmosisd q tokenfactory denoms-from-creator osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks
 ```
 
 #### Set Denom Metadata
@@ -100,12 +101,12 @@ Beaker provides a single command to compile your contracts, deploy wasm code, an
 To do this, you just need to use the following command from the root folder of the cw-usdc repo.  Note that you put the denom from the previous section in the InstantiateMsg raw json.
 
 ```
-beaker wasm deploy cw-usdc --signer-account validator  --raw '{"denom":"{factory/osmo1phaxpevm5wecex2jyaqty2a4v02qj7qmlmzk5a/uusdc}"}'
+beaker wasm deploy cw-usdc --signer-account test1  --raw '{"denom":"factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc"}'
 ```
 
 This process could take a little while to compile and download dependencies if it is your first time.  Once it is completed, it will give you the address that the contract was deployed to.  For the rest of this demo, we will assume it was deployed to the address `osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9`.
 
-The contract by default makes the instantiator of the contract the original owner. So the current owner of the contract is the `osmo1phaxpevm5wecex2jyaqty2a4v02qj7qmlmzk5a` account. We can transfer ownership later if we would like.
+The contract by default makes the instantiator of the contract the original owner. So the current owner of the contract is the `osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks` account. We can transfer ownership later if we would like.
 
 #### Set BeforeSend hook
 
@@ -115,7 +116,7 @@ in the CosmWasm contract.
 To do this we use the following command:
 
 ```
-osmosisd tx tokenfactory set-beforesend-hook factory/osmo1phaxpevm5wecex2jyaqty2a4v02qj7qmlmzk5a/uusdc osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9
+osmosisd tx tokenfactory set-beforesend-hook factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
 ```
 
 #### Transfer Admin Control
@@ -123,7 +124,7 @@ osmosisd tx tokenfactory set-beforesend-hook factory/osmo1phaxpevm5wecex2jyaqty2
 Finally we will transfer tokenfactory admin control over to the contract.
 
 ```
-osmosisd tx tokenfactory change-admin factory/osmo1phaxpevm5wecex2jyaqty2a4v02qj7qmlmzk5a/uusdc osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from validator
+osmosisd tx tokenfactory change-admin factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
 ```
 
 Great! Now we have a deployed contract with beforesend hook and admin control over a new tokenfactory denom!
@@ -142,4 +143,130 @@ beaker console
 
 If prompted to generate the project's typescript, select Yes.
 
+### Beaker Config
 
+We'll do a couple of variable setting in the beaker console to make the commands easier to type out.
+
+We'll set cw-usdc contract object to a variable called `sc`.
+```
+sc = contract['cw-usdc']
+```
+
+All the test accounts are in a variable called accounts.  We'll save the validator account to a variable called `owner`.
+
+```
+owner = account.test1
+```
+
+Because the validator account is the owner of the contract (having been the one that created it), we'll create a
+signer object for it and set that to a variable called signer.
+
+```
+signer = sc.signer(owner)
+```
+
+### Basic Queries
+
+We can do some basic queries right away.
+
+Query the denom that the contract is meant to control.
+
+```
+await sc.denom()
+```
+
+Query the owner of the contract.
+```
+await sc.owner()
+```
+
+### Minting
+
+Now we will try to do some minting.
+
+Although the test1 account is the owner of the contract, it doesn't yet have minting capabilities.
+Let's first give minting capabilities to it.
+
+```
+await signer.setMinter({ address: owner.address, allowance: "100000" })
+```
+
+Now we can mint tokens!
+```
+await signer.mint({ toAddress: owner.address, amount: "100" })
+```
+
+From outside beaker console (open a new tab), use `osmosisd` to query the balances of the test1 address.
+The balance of the tokenfactory denom should have increased!
+
+```
+osmosisd q bank balances osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks
+```
+
+Now let's make sure the minting allowance of the validator address actually successfully decreased.
+
+```
+await sc.mintAllowance({address: owner.address})
+```
+
+You can also query all the minter allowances that have been given.
+
+```
+await sc.mintAllowances({})
+```
+
+### Blacklisting
+
+Let's try using the blacklist functionality of the contract.
+
+First lets give the validator account blacklist capabilitities.
+```
+await signer.setBlacklister({address: owner.address, status: true})
+```
+
+Now use the owner account to blacklist itself!
+```
+await signer.blacklist({address: owner.address, status: true})
+```
+
+You can query the all the blacklisted addresses.
+```
+await sc.blacklistees({})
+```
+
+Use osmosisd to try to create a send tx from the owner account.  It should fail with a blacklist error.
+```
+osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc
+```
+
+Let's try to unblacklist the owner account.
+```
+await signer.blacklist({address: owner.address, status: false})
+```
+
+Now lets use osmosisd to try to create a send tx from the owner account again. It should pass this time!
+```
+osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc
+```
+
+### Freezing
+
+Now let's try the global freezing functionality.
+
+First give the owner freezing capability and then freeze the contract.
+
+```
+await signer.setFreezer({ address: owner.address, status: true })
+await signer.freeze({ status: true })
+```
+
+Query the frozen status of the contract.
+```
+await sc.isFrozen({})
+```
+
+
+Use osmosisd to try to create a send tx.  It should fail with a contract is frozen error.
+```
+osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc
+```
