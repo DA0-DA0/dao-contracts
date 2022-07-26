@@ -31,7 +31,7 @@ fn new_dao_has_no_items() {
     });
 
     // NOTE: `cw_core` wasm was stored in test_harness::test_runner.rs:setup()
-    let res = Chain::process_msg("cw_core".to_string(), &msg).unwrap();
+    let res = Chain::process_msg("cw_core", &msg).unwrap();
     let res: GetItemResponse = serde_json::from_value(res["data"].clone()).unwrap();
 
     assert_eq!(res.item, None);

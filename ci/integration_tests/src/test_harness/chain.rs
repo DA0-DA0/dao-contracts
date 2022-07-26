@@ -58,7 +58,7 @@ impl Chain {
 
     #[track_caller]
     pub fn process_msgs<X, Y, Z>(
-        contract_name: String,
+        contract_name: &str,
         msgs: &[WasmMsg<X, Y, Z>],
     ) -> Result<Vec<Value>>
     where
@@ -71,7 +71,7 @@ impl Chain {
     }
 
     #[track_caller]
-    pub fn process_msg<X, Y, Z>(contract_name: String, msg: &WasmMsg<X, Y, Z>) -> Result<Value>
+    pub fn process_msg<X, Y, Z>(contract_name: &str, msg: &WasmMsg<X, Y, Z>) -> Result<Value>
     where
         X: Serialize,
         Y: Serialize,
