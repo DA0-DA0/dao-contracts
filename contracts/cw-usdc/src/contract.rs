@@ -20,40 +20,24 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // create full denom from contract addres using OsmosisModule.full_denom copy
-    let contract_address = env.contract.address;
-    let full_denom = helpers::build_denom(&contract_address, &msg.subdenom)?;
-
     let config = Config {
         owner: info.sender.clone(),
         is_frozen: false,
-        denom: full_denom.clone(),
+        denom: msg.denom.clone(),
     };
 
     CONFIG.save(deps.storage, &config)?;
 
-    let create_denom_msg = OsmosisMsg::CreateDenom {
-        subdenom: msg.subdenom,
-    };
-
-    // hack to make sure a testable address is now admin
-    let set_hook_msg = OsmosisMsg::ChangeAdmin {
-        denom: full_denom,
-        new_admin_address: info.sender.to_string(),
-    };
-
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", info.sender)
-        .add_attribute("contract", contract_address.to_string())
-        .add_message(create_denom_msg)
-        .add_message(set_hook_msg))
+        .add_attribute("denom", msg.denom))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
