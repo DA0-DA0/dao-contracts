@@ -42,15 +42,17 @@ pub fn mint(
 
     // send newly minted coins from contract to designated recipient
     let send_tokens_msg = BankMsg::Send {
-        to_address,
+        to_address: to_address.clone(),
         amount: coins(amount.u128(), denom),
     };
 
     // dispatch msgs
     Ok(Response::new()
-        .add_attribute("action", "mint")
         .add_message(mint_tokens_msg)
-        .add_message(send_tokens_msg))
+        .add_message(send_tokens_msg)
+        .add_attribute("action", "mint")
+        .add_attribute("to", to_address)
+        .add_attribute("amount", amount))
 }
 
 pub fn burn(
@@ -82,9 +84,10 @@ pub fn burn(
 
     // dispatch msg
     Ok(Response::new()
+        .add_message(burn_tokens_msg)
         .add_attribute("action", "burn")
-        .add_attribute("amount", amount.to_string())
-        .add_message(burn_tokens_msg))
+        .add_attribute("from", info.sender)
+        .add_attribute("amount", amount))
 }
 
 pub fn change_contract_owner(
@@ -116,24 +119,25 @@ pub fn change_contract_owner(
 pub fn change_tokenfactory_admin(
     deps: DepsMut,
     info: MessageInfo,
-    new_admin_address: String,
+    new_admin: String,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     // Only allow current contract owner to change tokenfactory admin
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
     // validate that the new admin is a valid address
-    deps.api.addr_validate(&new_admin_address)?;
+    let new_admin_addr = deps.api.addr_validate(&new_admin)?;
 
     // construct tokenfactory change admin msg
     let change_admin_msg = OsmosisMsg::ChangeAdmin {
         denom: CONFIG.load(deps.storage)?.denom,
-        new_admin_address,
+        new_admin_address: new_admin_addr.into(),
     };
 
     // dispatch change admin msg
     Ok(Response::new()
-        .add_attribute("action", "change_tokenfactory_admin") // TODO: add more events
-        .add_message(change_admin_msg))
+        .add_message(change_admin_msg)
+        .add_attribute("action", "change_tokenfactory_admin")
+        .add_attribute("new_admin", new_admin))
 }
 
 pub fn set_blacklister(
