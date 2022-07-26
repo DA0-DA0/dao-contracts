@@ -2,7 +2,8 @@
 use cosmwasm_std::{Coin, DepsMut, Response};
 
 use crate::error::ContractError;
-use crate::state::{BLACKLISTED_ADDRESSES, CONFIG};
+use crate::state::CONFIG;
+use crate::helpers::check_is_not_blacklisted;
 
 pub fn beforesend_hook(
     deps: DepsMut,
@@ -22,21 +23,9 @@ pub fn beforesend_hook(
         }
     }
 
-    // Check if 'from' address is blacklisted
-    let from_address = deps.api.addr_validate(&from)?;
-    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &from_address)? {
-        if is_blacklisted {
-            return Err(ContractError::Blacklisted { address: from });
-        }
-    };
-
-    // Check if 'to' address is blacklisted
-    let to_address = deps.api.addr_validate(&to)?;
-    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &to_address)? {
-        if is_blacklisted {
-            return Err(ContractError::Blacklisted { address: to });
-        }
-    };
+    // assert that neither 'from' or 'to' address is blacklisted
+    check_is_not_blacklisted(deps.as_ref(), from)?;
+    check_is_not_blacklisted(deps.as_ref(), to)?;
 
     Ok(Response::new().add_attribute("action", "before_send"))
 }

@@ -1,7 +1,8 @@
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
 
-use crate::{state::CONFIG, ContractError};
+use crate::state::{BLACKLISTED_ADDRESSES, CONFIG};
+use crate::ContractError;
 
 pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractError> {
     // Minimum validation checks on the full denom.
@@ -75,5 +76,15 @@ pub fn check_bool_allowance(
             }
         }
     }
+    Ok(())
+}
+
+pub fn check_is_not_blacklisted(deps: Deps, address: String) -> Result<(), ContractError> {
+    let addr = deps.api.addr_validate(&address)?;
+    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &addr)? {
+        if is_blacklisted {
+            return Err(ContractError::Blacklisted { address });
+        }
+    };
     Ok(())
 }
