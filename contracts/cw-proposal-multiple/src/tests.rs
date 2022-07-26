@@ -3962,193 +3962,203 @@ fn test_find_proposals() {
     )
     .unwrap();
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: None,
-                wallet_vote: None,
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [1, 2, 3]
-    );
+    // Testing search
+    // wallet "one" voted options on proposals:
+    // 1 - "0"
+    // 2 - "1"
+    // 3 - "0"
+    // and 3 proposal is executed
+    {
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 2, 3]
+        );
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: Some(Status::Open),
-                wallet_vote: None,
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [1, 2]
-    );
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: Some(Status::Open),
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 2]
+        );
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: Some(Status::Executed),
-                wallet_vote: None,
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [3]
-    );
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: Some(Status::Executed),
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [3]
+        );
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: None,
-                wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [1, 3]
-    );
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 3]
+        );
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: Some(Status::Open),
-                wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [1]
-    );
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: Some(Status::Open),
+                    wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1]
+        );
+    }
 
     // Pagination test
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: None,
-                wallet_vote: None,
-                start_after: Some(1),
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [2, 3]
-    );
+    {
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: Some(1),
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [2, 3]
+        );
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: None,
-                wallet_vote: None,
-                start_after: None,
-                limit: Some(2),
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [1, 2]
-    );
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: Some(2),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 2]
+        );
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: None,
-                wallet_vote: None,
-                start_after: Some(1),
-                limit: Some(10),
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [2, 3]
-    );
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: Some(1),
+                    limit: Some(10),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [2, 3]
+        );
 
-    let answ: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::FindProposals {
-                wallet: "one".into(),
-                status: None,
-                wallet_vote: None,
-                start_after: Some(5),
-                limit: Some(5),
-            },
-        )
-        .unwrap();
-    assert_eq!(
-        answ.proposals
-            .into_iter()
-            .map(|p| p.id)
-            .collect::<Vec<u64>>(),
-        [] as [u64; 0]
-    );
+        let answ: ProposalListResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FindProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: Some(5),
+                    limit: Some(5),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [] as [u64; 0]
+        );
+    }
 }
