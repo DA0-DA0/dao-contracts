@@ -4514,7 +4514,7 @@ fn test_find_proposals() {
         let answ: ProposalListResponse = app
             .wrap()
             .query_wasm_smart(
-                proposal_module.clone(),
+                proposal_module,
                 &QueryMsg::FindProposals {
                     wallet: "one".into(),
                     status: None,
