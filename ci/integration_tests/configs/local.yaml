@@ -8,6 +8,10 @@ key_name: "localval"
 
 # Add code ids if you dont need to store them:
 code_ids:
-  "cw20_base": "1"
-  "cw4_group": "2"
-
+  "cw20_base": 1
+  "cw4_group": 2
+  "cw_core": 8
+  "cw_proposal_single": 13
+  "cw4_voting": 5
+  "cw20_staked_balance_voting": 4
+  "cw20_stake": 3

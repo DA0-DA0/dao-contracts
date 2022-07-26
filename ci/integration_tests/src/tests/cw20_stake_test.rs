@@ -18,9 +18,8 @@ use cw_core_interface::voting::VotingPowerAtHeightResponse;
 fn execute_stake_tokens() {
     let user_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
     let voting_contract = "cw20_staked_balance_voting";
-    let proposal_contract = "cw_proposal_single";
 
-    let res = create_dao(None, user_addr.clone(), voting_contract, proposal_contract);
+    let res = create_dao(None, user_addr.clone());
     assert!(res.is_ok());
 
     let dao = res.unwrap();
