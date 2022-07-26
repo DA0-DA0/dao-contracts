@@ -69,8 +69,13 @@ pub fn query_voting_power_at_height(
     let delegations = deps.querier.query_all_delegations(address)?;
     let power = delegations
         .iter()
-        .filter(|d| d.amount.denom == denom)
-        .map(|d| -> Uint128 { d.amount.amount })
+        .filter_map(|d| {
+            if d.amount.denom == denom {
+                Some(d.amount.amount)
+            } else {
+                None
+            }
+        })
         .reduce(|a, b| a.checked_add(b).unwrap())
         .unwrap_or_default();
 
