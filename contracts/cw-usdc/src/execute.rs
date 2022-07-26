@@ -96,7 +96,7 @@ pub fn change_contract_owner(
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
     // validate that new owner is a valid address
-    let new_owner_addr = deps.api.addr_validate(new_owner.as_str())?;
+    let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
     // update the contract owner in the contract config
     CONFIG.update(
@@ -122,7 +122,7 @@ pub fn change_tokenfactory_admin(
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
     // validate that the new admin is a valid address
-    deps.api.addr_validate(new_admin_address.as_str())?;
+    deps.api.addr_validate(&new_admin_address)?;
 
     // construct tokenfactory change admin msg
     let change_admin_msg = OsmosisMsg::ChangeAdmin {

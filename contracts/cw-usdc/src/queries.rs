@@ -38,7 +38,7 @@ pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
 
 pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance =
-        MINTER_ALLOWANCES.may_load(deps.storage, &deps.api.addr_validate(address.as_str())?)?;
+        MINTER_ALLOWANCES.may_load(deps.storage, &deps.api.addr_validate(&address)?)?;
 
     let allowance = match allowance {
         Some(it) => it.u128(),
@@ -50,7 +50,7 @@ pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceR
 
 pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance =
-        BURNER_ALLOWANCES.may_load(deps.storage, &deps.api.addr_validate(address.as_str())?)?;
+        BURNER_ALLOWANCES.may_load(deps.storage, &deps.api.addr_validate(&address)?)?;
 
     let allowance = match allowance {
         Some(it) => it.u128(),

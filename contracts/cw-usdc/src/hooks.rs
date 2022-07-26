@@ -23,7 +23,7 @@ pub fn beforesend_hook(
     }
 
     // Check if 'from' address is blacklisted
-    let from_address = deps.api.addr_validate(from.as_str())?;
+    let from_address = deps.api.addr_validate(&from)?;
     if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &from_address)? {
         if is_blacklisted {
             return Err(ContractError::Blacklisted { address: from });
@@ -31,7 +31,7 @@ pub fn beforesend_hook(
     };
 
     // Check if 'to' address is blacklisted
-    let to_address = deps.api.addr_validate(to.as_str())?;
+    let to_address = deps.api.addr_validate(&to)?;
     if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &to_address)? {
         if is_blacklisted {
             return Err(ContractError::Blacklisted { address: to });
