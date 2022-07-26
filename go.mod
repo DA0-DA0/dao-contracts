@@ -136,7 +136,7 @@ replace (
 	github.com/cosmos/iavl => github.com/osmosis-labs/iavl v0.17.3-osmo-v7
 	// use cosmos-compatible protobufs
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-	// branch: v0.27.0.rc3-osmo, current tag: v0.27.0.rc3-osmo
+	// branch: fullpowered_tokenfactory
 	github.com/osmosis-labs/osmosis/v10 => github.com/osmosis-labs/osmosis/v10 v10.0.0-20220724163334-f09305e60b5b
 	// use grpc compatible with cosmos protobufs
 	google.golang.org/grpc => google.golang.org/grpc v1.33.2

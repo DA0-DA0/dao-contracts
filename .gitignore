@@ -19,15 +19,3 @@ Cargo.lock
 
 # Ignores local beaker state
 **/state.local.json
-
-# VS code 
-*.code-workspace
-
-# node 
-node_modules
-**/package-lock.json
-
-# yarn 
-**/yarn.lock
-
-

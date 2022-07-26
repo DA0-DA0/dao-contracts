@@ -66,8 +66,8 @@ pub enum QueryMsg {
     IsBlacklisted {
         address: String,
     },
-    // Blacklist Enumerates over all blacklisted addresses
-    Blacklist {
+    // Blacklistees enumerates over all addresses on the blacklist
+    Blacklistees {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -136,8 +136,8 @@ pub struct StatusInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BlacklistResponse {
-    pub blacklist: Vec<StatusInfo>,
+pub struct BlacklisteesResponse {
+    pub blacklistees: Vec<StatusInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

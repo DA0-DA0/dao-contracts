@@ -1,0 +1,7 @@
+{
+  "out": "./docs",
+  "name": "cw-usdc",
+  "theme": "markdown",
+  "readme": "none",
+  "tsconfig": "./tsconfig.bundle.json"
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IsFrozenResponse",
+  "type": "object",
+  "required": [
+    "is_frozen"
+  ],
+  "properties": {
+    "is_frozen": {
+      "type": "boolean"
+    }
+  }
+}
