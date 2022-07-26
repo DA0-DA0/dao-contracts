@@ -21,7 +21,7 @@ pub fn mint(
     deps.api.addr_validate(&to_address)?;
 
     // don't allow minting of 0 coins
-    if amount.eq(&Uint128::new(0_u128)) {
+    if amount.is_zero() {
         return Result::Err(ContractError::ZeroAmount {});
     }
 
@@ -62,7 +62,7 @@ pub fn burn(
     amount: Uint128,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     // don't allow burning of 0 coins
-    if amount.eq(&Uint128::new(0_u128)) {
+    if amount.is_zero() {
         return Result::Err(ContractError::ZeroAmount {});
     }
 
