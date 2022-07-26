@@ -18,12 +18,7 @@ pub struct DaoState {
     pub state: DumpStateResponse,
 }
 
-pub fn create_dao(
-    admin: Option<String>,
-    user_addr: String,
-    voting_contract: &str,
-    proposal_contract: &str,
-) -> Result<DaoState> {
+pub fn create_dao(admin: Option<String>, user_addr: String) -> Result<DaoState> {
     let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::InstantiateMsg(cw_core::msg::InstantiateMsg {
             admin,
@@ -33,7 +28,7 @@ pub fn create_dao(
             automatically_add_cw20s: false,
             automatically_add_cw721s: false,
             voting_module_instantiate_info: ModuleInstantiateInfo {
-                code_id: Chain::contract_code_id(voting_contract),
+                code_id: Chain::contract_code_id("cw20_staked_balance_voting"),
                 msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
                     token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
                         code_id: Chain::contract_code_id("cw20_base"),
@@ -56,7 +51,7 @@ pub fn create_dao(
                 label: "DAO DAO Voting Module".to_string(),
             },
             proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-                code_id: Chain::contract_code_id(proposal_contract),
+                code_id: Chain::contract_code_id("cw_proposal_single"),
                 msg: to_binary(&cw_proposal_single::msg::InstantiateMsg {
                     min_voting_period: None,
                     threshold: Threshold::ThresholdQuorum {

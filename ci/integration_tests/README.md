@@ -14,7 +14,7 @@ TODO: Add a just file to make this all easy
 
 ### Hitting Testnet
 * `cd ci/integration_tests`
-* Configure `config.yaml` with your junod testnet key name
+* Configure `configs/testnet.yaml` with your junod testnet key name
 * `CONTRACT_DIR="../../artifacts" GAS_REPORT_OUT="gas_report.json" CONFIG="configs/testnet.yaml" RUST_LOG=debug cargo test`
 
 
@@ -23,12 +23,7 @@ TODO: Add a just file to make this all easy
 ```rust
 #[test]
 fn new_dao_has_no_items() {
-     let dao = create_dao(
-        Some(admin_addr.clone()),
-        admin_addr,
-        "cw20_staked_balance_voting",
-        "cw_proposal_single",
-    );
+     let dao = create_dao(Some(admin_addr.clone()), admin_addr);
 
     // use the native rust types to interact with the contract
     let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::GetItem {

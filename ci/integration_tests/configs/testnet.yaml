@@ -8,5 +8,5 @@ key_name: "testnet"
 
 # Add code ids if you dont need to store them:
 code_ids:
-  "cw20_base": "77"
-  "cw4_group": "78"
+  "cw20_base": 77
+  "cw4_group": 78

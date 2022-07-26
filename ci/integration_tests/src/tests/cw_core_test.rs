@@ -20,12 +20,7 @@ fn execute_execute_admin_msgs() {
     let user_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
     // if you are not the admin, you cant execute admin msgs:
-    let res = create_dao(
-        None,
-        user_addr.clone(),
-        "cw20_staked_balance_voting",
-        "cw_proposal_single",
-    );
+    let res = create_dao(None, user_addr.clone());
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -49,12 +44,7 @@ fn execute_execute_admin_msgs() {
     assert_eq!(res, PauseInfoResponse::Unpaused {});
 
     // if you are the admin you can execute admin msgs:
-    let res = create_dao(
-        Some(user_addr.clone()),
-        user_addr,
-        "cw20_staked_balance_voting",
-        "cw_proposal_single",
-    );
+    let res = create_dao(Some(user_addr.clone()), user_addr);
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -81,12 +71,7 @@ fn execute_items() {
     let admin_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
     // add item:
-    let res = create_dao(
-        Some(admin_addr.clone()),
-        admin_addr,
-        "cw20_staked_balance_voting",
-        "cw_proposal_single",
-    );
+    let res = create_dao(Some(admin_addr.clone()), admin_addr);
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -149,12 +134,7 @@ fn execute_items() {
 fn instantiate_with_no_admin() {
     let user_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
-    let res = create_dao(
-        None,
-        user_addr,
-        "cw20_staked_balance_voting",
-        "cw_proposal_single",
-    );
+    let res = create_dao(None, user_addr);
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -179,12 +159,7 @@ fn instantiate_with_admin() {
     let voting_contract = "cw20_staked_balance_voting";
     let proposal_contract = "cw_proposal_single";
 
-    let res = create_dao(
-        Some(admin_addr.clone()),
-        admin_addr.clone(),
-        voting_contract,
-        proposal_contract,
-    );
+    let res = create_dao(Some(admin_addr.clone()), admin_addr.clone());
     assert!(res.is_ok());
     let dao = res.unwrap();
 
