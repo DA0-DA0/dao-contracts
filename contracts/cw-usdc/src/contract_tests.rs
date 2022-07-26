@@ -1,7 +1,5 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::{DepsMut, Uint128};
-
-// use osmo_bindings_test::OsmosisModule;
+use cosmwasm_std::{coin, coins, from_binary, Addr, DepsMut, Uint128};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use crate::contract;
 use crate::error::ContractError;
@@ -10,9 +8,6 @@ use crate::msg::{
     AllowanceResponse, DenomResponse, ExecuteMsg, InstantiateMsg, IsFrozenResponse, OwnerResponse,
     QueryMsg, StatusResponse, SudoMsg,
 };
-
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coin, coins, from_binary, Addr};
 
 static CREATOR_ADDRESS: &str = "creator";
 

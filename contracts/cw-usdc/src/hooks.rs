@@ -38,5 +38,5 @@ pub fn beforesend_hook(
         }
     };
 
-    Ok(Response::new().add_attribute("method", "before_send"))
+    Ok(Response::new().add_attribute("action", "before_send"))
 }
