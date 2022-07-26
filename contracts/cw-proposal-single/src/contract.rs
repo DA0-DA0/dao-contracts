@@ -408,7 +408,7 @@ pub fn execute_close(
     // Update status to ensure that proposals which were open and have
     // expired are moved to "rejected."
     prop.update_status(&env.block);
-    if prop.status != Status::Rejected && prop.status != Status::ExecutionFailed {
+    if prop.status != Status::Rejected {
         return Err(ContractError::WrongCloseStatus {});
     }
 
