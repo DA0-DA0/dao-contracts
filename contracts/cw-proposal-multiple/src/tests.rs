@@ -4143,7 +4143,7 @@ fn test_find_proposals() {
         let answ: ProposalListResponse = app
             .wrap()
             .query_wasm_smart(
-                govmod_single.clone(),
+                govmod_single,
                 &QueryMsg::FindProposals {
                     wallet: "one".into(),
                     status: None,
