@@ -57,7 +57,6 @@ pub fn mint(
 
 pub fn burn(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
@@ -92,7 +91,6 @@ pub fn burn(
 
 pub fn change_contract_owner(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     new_owner: String,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
@@ -119,7 +117,6 @@ pub fn change_contract_owner(
 
 pub fn change_tokenfactory_admin(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     new_admin_address: String,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
@@ -143,7 +140,6 @@ pub fn change_tokenfactory_admin(
 
 pub fn set_blacklister(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     address: String,
     status: bool,
@@ -164,7 +160,6 @@ pub fn set_blacklister(
 
 pub fn set_freezer(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     address: String,
     status: bool,
@@ -185,7 +180,6 @@ pub fn set_freezer(
 
 pub fn set_burner(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     address: String,
     allowance: Uint128,
@@ -206,7 +200,6 @@ pub fn set_burner(
 
 pub fn set_minter(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     address: String,
     allowance: Uint128,
@@ -227,7 +220,6 @@ pub fn set_minter(
 
 pub fn freeze(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     status: bool,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
@@ -252,7 +244,6 @@ pub fn freeze(
 
 pub fn blacklist(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     address: String,
     status: bool,
