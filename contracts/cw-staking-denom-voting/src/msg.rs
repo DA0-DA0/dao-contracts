@@ -2,7 +2,7 @@ use cw_core_macros::voting_query;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
     /// Address for the chain's staking module, the
     /// balance of this address will be the amount of
@@ -10,7 +10,7 @@ pub struct InstantiateMsg {
     pub staking_module_address: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {}
 
