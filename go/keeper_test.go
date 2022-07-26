@@ -3,7 +3,6 @@ package cwusdc_test
 import (
 	"fmt"
 	"io/ioutil"
-	"strings"
 	"testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -21,8 +20,8 @@ import (
 )
 
 var (
-	wasmFile = "../target/wasm32-unknown-unknown/release/cw_usdc.wasm"
-	// wasmFile = "../artifacts/cw_usdc.wasm"
+	// wasmFile = "../target/wasm32-unknown-unknown/release/cw_usdc.wasm"
+	wasmFile = "../artifacts/cw_usdc.wasm"
 )
 
 type KeeperTestSuite struct {
@@ -79,22 +78,49 @@ func (suite *KeeperTestSuite) SetupTest() {
 	suite.Require().NoError(err)
 }
 
-func (suite *KeeperTestSuite) InstantiateContract(subdenom string) (contractAddr sdk.AccAddress, fullDenom string) {
-	instantateMsg := []byte(fmt.Sprintf("{ \"subdenom\": \"%v\" }", subdenom))
-
-	fmt.Println("testAcc0")
-	fmt.Println(suite.TestAccs[0].String())
-
-	contractAddr, _, err := suite.contractKeeper.Instantiate(suite.Ctx, suite.codeId, suite.TestAccs[0], suite.TestAccs[0], instantateMsg, "", sdk.NewCoins(sdk.NewInt64Coin("uosmo", 10000000)))
+func (suite *KeeperTestSuite) CreateTokenAndContract() (denom string, contractAddr sdk.AccAddress) {
+	// Create the new denom
+	denom, err := suite.App.TokenFactoryKeeper.CreateDenom(suite.Ctx, suite.TestAccs[0].String(), "bitcoin")
 	suite.Require().NoError(err)
 
-	fullDenom = strings.Join([]string{"factory", contractAddr.String(), subdenom}, "/")
+	// Instantiate a new contract to take over as admin of the new denom
+	contractAddr = suite.InstantiateContract(denom)
 
-	res, err := suite.queryClient.DenomAuthorityMetadata(suite.Ctx.Context(), &types.QueryDenomAuthorityMetadataRequest{Denom: fullDenom})
+	// Set the BeforeSendHook of the denom to the new contract
+	_, err = suite.msgServer.SetBeforeSendHook(sdk.WrapSDKContext(suite.Ctx), types.NewMsgSetBeforeSendHook(
+		suite.TestAccs[0].String(),
+		denom, contractAddr.String(),
+	))
 	suite.Require().NoError(err)
-	suite.Require().Equal(res.AuthorityMetadata.GetAdmin(), contractAddr.String())
 
-	return contractAddr, fullDenom
+	// Query to make sure the BeforeSendHook was set correctly
+	res, err := suite.queryClient.DenomBeforeSendHook(sdk.WrapSDKContext(suite.Ctx), &types.QueryDenomBeforeSendHookRequest{
+		Denom: denom,
+	})
+	suite.Require().NoError(err)
+	suite.Require().True(res.CosmwasmAddress == contractAddr.String())
+
+	// Set the admin of token to be the contract
+	_, err = suite.msgServer.ChangeAdmin(sdk.WrapSDKContext(suite.Ctx), types.NewMsgChangeAdmin(suite.TestAccs[0].String(), denom, contractAddr.String()))
+	suite.Require().NoError(err)
+
+	// Query to make sure the new admin was set correctly
+	res2, err := suite.queryClient.DenomAuthorityMetadata(sdk.WrapSDKContext(suite.Ctx), &types.QueryDenomAuthorityMetadataRequest{
+		Denom: denom,
+	})
+	suite.Require().NoError(err)
+	suite.Require().True(res2.AuthorityMetadata.Admin == contractAddr.String())
+
+	return denom, contractAddr
+}
+
+func (suite *KeeperTestSuite) InstantiateContract(denom string) (contractAddr sdk.AccAddress) {
+	instantateMsg := []byte(fmt.Sprintf("{ \"denom\": \"%v\" }", denom))
+
+	contractAddr, _, err := suite.contractKeeper.Instantiate(suite.Ctx, suite.codeId, suite.TestAccs[0], suite.TestAccs[0], instantateMsg, "", sdk.NewCoins())
+	suite.Require().NoError(err)
+
+	return contractAddr
 }
 
 // func ExcecuteMintMsg(mint) []byte {

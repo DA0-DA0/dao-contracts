@@ -5,13 +5,10 @@ use cosmwasm_std::{DepsMut, Uint128};
 
 use crate::contract;
 use crate::error::ContractError;
-use crate::helpers::{build_denom, check_is_contract_owner};
+use crate::helpers::check_is_contract_owner;
 use crate::msg::{
     AllowanceResponse, DenomResponse, ExecuteMsg, InstantiateMsg, IsFrozenResponse, OwnerResponse,
     QueryMsg, StatusResponse, SudoMsg,
-};
-use crate::state::{
-    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, CONFIG, FREEZER_ALLOWANCES,
 };
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};

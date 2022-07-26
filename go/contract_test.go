@@ -11,83 +11,92 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
-// type InstantiateTestCase struct {
-// 	desc       string
-// 	funds      sdk.Coins
-// 	subdenom   string
-// 	expectPass bool
-// }
+type mintMsgTest struct {
+	mintMsg    ExecuteMsg
+	sender     sdk.AccAddress
+	expectPass bool
+}
 
-// func (suite *KeeperTestSuite) TestInstantiateCwUsdcContract() {
+func (suite *KeeperTestSuite) TestMint() {
+	for _, tc := range []struct {
+		desc             string
+		minterAllowances map[string]uint64
+		mintMsgs         []mintMsgTest
+	}{
+		{
+			desc:             "no minting allowance cannot mint",
+			minterAllowances: map[string]uint64{},
+			mintMsgs: []mintMsgTest{
+				{
+					mintMsg: ExecuteMsg{Mint: &Mint{
+						ToAddress: suite.TestAccs[0].String(),
+						Amount:    stdMath.NewUint128FromUint64(1),
+					}},
+					sender:     suite.TestAccs[0],
+					expectPass: false,
+				},
+			},
+		},
+		{
+			desc:             "can mint up to allowance but not more",
+			minterAllowances: map[string]uint64{suite.TestAccs[0].String(): 1000},
+			mintMsgs: []mintMsgTest{
+				{
+					mintMsg: ExecuteMsg{Mint: &Mint{
+						ToAddress: suite.TestAccs[0].String(),
+						Amount:    stdMath.NewUint128FromUint64(900),
+					}},
+					sender:     suite.TestAccs[0],
+					expectPass: true,
+				},
+				{
+					mintMsg: ExecuteMsg{Mint: &Mint{
+						ToAddress: suite.TestAccs[0].String(),
+						Amount:    stdMath.NewUint128FromUint64(900),
+					}},
+					sender:     suite.TestAccs[0],
+					expectPass: false,
+				},
+			},
+		},
+	} {
+		suite.Run(fmt.Sprintf("Case %s", tc.desc), func() {
+			// setup test
+			suite.SetupTest()
+			denom, contractAddr := suite.CreateTokenAndContract()
 
-// 	for _, tc := range []struct {
-// 		desc      string
-// 		wasmFile  string
-// 		testCases []InstantiateTestCase
-// 	}{
-// 		{
-// 			desc:     "Contract should only successfully instantiate when the right funds are provided",
-// 			wasmFile: "../artifacts/cw_usdc.wasm",
-// 			testCases: []InstantiateTestCase{
+			// give minter allowances
+			for addr, allowance := range tc.minterAllowances {
+				setMinterMsg, err := json.Marshal(ExecuteMsg{SetMinter: &SetMinter{Address: addr, Allowance: stdMath.NewUint128FromUint64(allowance)}})
+				suite.Require().NoError(err, "test %v", tc.desc)
+				_, err = suite.contractKeeper.Execute(suite.Ctx, contractAddr, suite.TestAccs[0], setMinterMsg, sdk.NewCoins())
+				suite.Require().NoError(err, "test %v", tc.desc)
+			}
 
-// 				// currently the tokenfactory charges a cost of 10osmo for creating a new denom, but the contract only checks if you have more than 1000uosmo.
-// 				// this tests show the behaviour
-// 				{
-// 					desc:       "1000 uosmo at initialisation of should not give a contract error, but a tokenfactory error",
-// 					funds:      []sdk.Coin{sdk.NewCoin("uosmo", sdk.NewInt(1000))},
-// 					subdenom:   "uusdc",
-// 					expectPass: false,
-// 				},
-// 				{
-// 					desc:       "10000000 uosmo at initialisation should be enough for the tokenfactory",
-// 					funds:      []sdk.Coin{sdk.NewCoin("uosmo", sdk.NewInt(10000000))},
-// 					subdenom:   "uusdc",
-// 					expectPass: true,
-// 				},
-// 				{
-// 					desc:       "No funds at initialisation of contract should fail",
-// 					funds:      []sdk.Coin{},
-// 					subdenom:   "uusdc",
-// 					expectPass: false,
-// 				},
-// 				{
-// 					desc:       "wrong funds at initialisation of contract should fail",
-// 					funds:      []sdk.Coin{sdk.NewCoin("uakt", sdk.NewInt(10000000))},
-// 					subdenom:   "uusdc",
-// 					expectPass: false,
-// 				},
-// 				{
-// 					desc:       "Not enough funds should fail",
-// 					funds:      []sdk.Coin{sdk.NewCoin("uosmo", sdk.NewInt(100))},
-// 					subdenom:   "uusdc",
-// 					expectPass: false,
-// 				},
-// 			},
-// 		},
-// 	} {
-// 		suite.Run(fmt.Sprintf("Case %s", tc.desc), func() {
-// 			// setup test
-// 			suite.SetupTest()
+			balances := map[string]stdMath.Uint128{}
 
-// 			// upload and instantiate wasm code
-// 			wasmCode, err := ioutil.ReadFile(tc.wasmFile)
-// 			suite.Require().NoError(err, "test: %v", tc.desc)
-// 			codeID, err := suite.contractKeeper.Create(suite.Ctx, suite.TestAccs[0], wasmCode, nil)
-// 			suite.Require().NoError(err, "test: %v", tc.desc)
+			for _, msgTc := range tc.mintMsgs {
+				msg, err := json.Marshal(msgTc.mintMsg)
+				suite.Require().NoError(err, "test %v", tc.desc)
 
-// 			for _, instTc := range tc.testCases {
-// 				instMsg := []byte(fmt.Sprintf("{ \"subdenom\": \"%v\" }", instTc.subdenom))
+				_, err = suite.contractKeeper.Execute(suite.Ctx, contractAddr, msgTc.sender, msg, sdk.NewCoins())
+				if msgTc.expectPass {
+					suite.Require().NoError(err)
 
-// 				_, _, err := suite.contractKeeper.Instantiate(suite.Ctx, codeID, suite.TestAccs[0], suite.TestAccs[0], instMsg, "", instTc.funds)
-// 				if instTc.expectPass {
-// 					suite.Require().NoError(err, "test: %v", instTc.desc)
-// 				} else {
-// 					suite.Require().Error(err, "test: %v", instTc.desc)
-// 				}
-// 			}
-// 		})
-// 	}
-// }
+					// increment expected balance
+					balances[msgTc.mintMsg.Mint.ToAddress] = balances[msgTc.mintMsg.Mint.ToAddress].Add(msgTc.mintMsg.Mint.Amount)
+
+					// make sure queried balance equals expected balance
+					toAddr, _ := sdk.AccAddressFromBech32(msgTc.mintMsg.Mint.ToAddress)
+					bal := suite.App.BankKeeper.GetBalance(suite.Ctx, toAddr, denom).Amount.Uint64()
+					suite.Require().True(balances[msgTc.mintMsg.Mint.ToAddress].Equals64(bal))
+				} else {
+					suite.Require().Error(err)
+				}
+			}
+		})
+	}
+}
 
 func (suite *KeeperTestSuite) TestFreeze() {
 	for _, tc := range []struct {
@@ -151,13 +160,12 @@ func (suite *KeeperTestSuite) TestFreeze() {
 		suite.Run(fmt.Sprintf("Case %s", tc.desc), func() {
 			// setup test
 			suite.SetupTest()
-			contractAddr, fullDenom := suite.InstantiateContract("bitcoin")
+			denom, contractAddr := suite.CreateTokenAndContract()
 
 			// give mint permissions to testAcc0
 			setMinterMsg, err := json.Marshal(ExecuteMsg{SetMinter: &SetMinter{Address: suite.TestAccs[0].String(), Allowance: stdMath.MaxUint128()}})
 			suite.Require().NoError(err, "test %v", tc.desc)
 
-			fmt.Println(string(setMinterMsg))
 			_, err = suite.contractKeeper.Execute(suite.Ctx, contractAddr, suite.TestAccs[0], setMinterMsg, sdk.NewCoins())
 			suite.Require().NoError(err, "test %v", tc.desc)
 
@@ -179,26 +187,16 @@ func (suite *KeeperTestSuite) TestFreeze() {
 				freezeMsg, err := json.Marshal(ExecuteMsg{Freeze: &Freeze{Status: true}})
 				_, err = suite.contractKeeper.Execute(suite.Ctx, contractAddr, suite.TestAccs[0], freezeMsg, sdk.NewCoins())
 				suite.Require().NoError(err, "test %v", tc.desc)
-				// TODO: use query to asset is frozen
 			} else {
 				freezeMsg, err := json.Marshal(ExecuteMsg{Freeze: &Freeze{Status: false}})
 				_, err = suite.contractKeeper.Execute(suite.Ctx, contractAddr, suite.TestAccs[0], freezeMsg, sdk.NewCoins())
 				suite.Require().NoError(err, "test %v", tc.desc)
 			}
 
-			// // set beforesend hook to the new denom
-			// // TODO: THIS RESULTS IN A Unauthorized account while it should not. The latest version of the contract changes the admin to testAcc[0]
-			// _, err = suite.msgServer.SetBeforeSendHook(sdk.WrapSDKContext(suite.Ctx), types.NewMsgSetBeforeSendHook(suite.TestAccs[0].String(), fullDenom, cosmwasmAddress.String()))
-			// suite.Require().NoError(err, "test: %v", tc.desc)
-
-			// // freeze contract
-			// _, err = suite.contractKeeper.Execute(suite.Ctx, cosmwasmAddress, suite.TestAccs[0], []byte("{ \"freeze\": { \"status\": true } }"), sdk.NewCoins())
-			// suite.Require().NoError(err, "test %v", tc.desc)
-
-			// for _, instTc := range tc.testCases {
+			// // TODO: use query to make sure asset is frozen
 
 			_, err = suite.bankMsgServer.Send(sdk.WrapSDKContext(suite.Ctx),
-				tc.bankMsg(fullDenom),
+				tc.bankMsg(denom),
 			)
 
 			if tc.expectPass {
@@ -206,7 +204,6 @@ func (suite *KeeperTestSuite) TestFreeze() {
 			} else {
 				suite.Require().Error(err, "test: %v", tc.desc)
 			}
-			// }
 		})
 	}
 }
