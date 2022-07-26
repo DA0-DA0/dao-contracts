@@ -1,6 +1,4 @@
-use cosmwasm_std::{coins, BankMsg};
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use cosmwasm_std::{coins, BankMsg, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
 use osmo_bindings::OsmosisMsg;
 
 use crate::error::ContractError;
