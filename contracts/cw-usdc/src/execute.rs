@@ -27,7 +27,7 @@ pub fn mint(
 
     // decrease minter allowance
     // if minter allowance goes negative, throw error
-    let _allowance = MINTER_ALLOWANCES.update(
+    MINTER_ALLOWANCES.update(
         deps.storage,
         &info.sender,
         |allowance| -> StdResult<Uint128> {
@@ -68,7 +68,7 @@ pub fn burn(
 
     // decrease burner allowance
     // if burner allowance goes negative, throw error
-    let _allowance = BURNER_ALLOWANCES.update(
+    BURNER_ALLOWANCES.update(
         deps.storage,
         &info.sender,
         |allowance| -> StdResult<Uint128> {
@@ -153,11 +153,7 @@ pub fn set_blacklister(
 
     // set blacklister status
     // NOTE: Does not check if new status is same as old status
-    BLACKLISTER_ALLOWANCES.update(
-        deps.storage,
-        &deps.api.addr_validate(&address)?,
-        |_| -> StdResult<bool> { Ok(status) },
-    )?;
+    BLACKLISTER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
 
     // Return OK
     Ok(Response::new()
@@ -178,11 +174,7 @@ pub fn set_freezer(
 
     // set freezer status
     // NOTE: Does not check if new status is same as old status
-    FREEZER_ALLOWANCES.update(
-        deps.storage,
-        &deps.api.addr_validate(&address)?,
-        |_| -> StdResult<bool> { Ok(status) },
-    )?;
+    FREEZER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
 
     // return OK
     Ok(Response::new()
@@ -279,14 +271,7 @@ pub fn blacklist(
     // update blacklisted status
     // validate that blacklisteed is a valid address
     // NOTE: Does not check if new status is same as old status
-    BLACKLISTED_ADDRESSES.update(
-        deps.storage,
-        &deps.api.addr_validate(address.as_str())?,
-        |mut _stat| -> Result<_, ContractError> {
-            _stat = Some(status);
-            Ok(status)
-        },
-    )?;
+    BLACKLISTED_ADDRESSES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
 
     // return OK
     Ok(Response::new()
