@@ -271,7 +271,7 @@ fn freezing() {
 fn blacklists() {
     // initialize contracts
     let mut deps = mock_dependencies();
-    let (owner, denom) = initialize_contract(deps.as_mut());
+    let (_, denom) = initialize_contract(deps.as_mut());
     let blacklister_address = "blacklister";
     let blacklistee_address = "blacklistee";
 
@@ -447,7 +447,7 @@ fn blacklists() {
 fn minting() {
     let mut deps = mock_dependencies();
 
-    let (_, denom) = initialize_contract(deps.as_mut());
+    initialize_contract(deps.as_mut());
 
     let minter = "minter";
 
@@ -576,7 +576,7 @@ fn minting() {
 fn burning() {
     let mut deps = mock_dependencies();
 
-    let (_, denom) = initialize_contract(deps.as_mut());
+    initialize_contract(deps.as_mut());
 
     let burner = "burner";
 
