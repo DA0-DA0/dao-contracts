@@ -34,7 +34,7 @@ pub fn mint(
     )?;
 
     // get token denom from contract config
-    let denom = CONFIG.load(deps.storage).unwrap().denom;
+    let denom = CONFIG.load(deps.storage)?.denom;
 
     // create tokenfactory MsgMint which mints coins to the contract address
     let mint_tokens_msg =
@@ -74,7 +74,7 @@ pub fn burn(
     )?;
 
     // get token denom from contract config
-    let denom = CONFIG.load(deps.storage).unwrap().denom;
+    let denom = CONFIG.load(deps.storage)?.denom;
 
     // create tokenfactory MsgBurn which burns coins from the contract address
     // NOTE: this requires the contract to own the tokens already
@@ -126,7 +126,7 @@ pub fn change_tokenfactory_admin(
 
     // construct tokenfactory change admin msg
     let change_admin_msg = OsmosisMsg::ChangeAdmin {
-        denom: CONFIG.load(deps.storage).unwrap().denom,
+        denom: CONFIG.load(deps.storage)?.denom,
         new_admin_address,
     };
 
