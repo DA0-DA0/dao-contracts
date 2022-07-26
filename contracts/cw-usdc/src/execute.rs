@@ -50,7 +50,7 @@ pub fn mint(
 
     // dispatch msgs
     Ok(Response::new()
-        .add_attribute("method", "mint_tokens")
+        .add_attribute("action", "mint")
         .add_message(mint_tokens_msg)
         .add_message(send_tokens_msg))
 }
@@ -85,7 +85,7 @@ pub fn burn(
 
     // dispatch msg
     Ok(Response::new()
-        .add_attribute("method", "execute_burn")
+        .add_attribute("action", "burn")
         .add_attribute("amount", amount.to_string())
         .add_message(burn_tokens_msg))
 }
@@ -113,7 +113,7 @@ pub fn change_contract_owner(
 
     // return OK
     Ok(Response::new()
-        .add_attribute("method", "change_contract_owner")
+        .add_attribute("action", "change_contract_owner")
         .add_attribute("new_owner", new_owner))
 }
 
@@ -137,7 +137,7 @@ pub fn change_tokenfactory_admin(
 
     // dispatch change admin msg
     Ok(Response::new()
-        .add_attribute("method", "change_tokenfactory_admin") // TODO: add more events
+        .add_attribute("action", "change_tokenfactory_admin") // TODO: add more events
         .add_message(change_admin_msg))
 }
 
@@ -161,7 +161,7 @@ pub fn set_blacklister(
 
     // Return OK
     Ok(Response::new()
-        .add_attribute("method", "set_blacklister")
+        .add_attribute("action", "set_blacklister")
         .add_attribute("blacklister", address)
         .add_attribute("status", status.to_string()))
 }
@@ -186,7 +186,7 @@ pub fn set_freezer(
 
     // return OK
     Ok(Response::new()
-        .add_attribute("method", "set_freezer")
+        .add_attribute("action", "set_freezer")
         .add_attribute("freezer", address)
         .add_attribute("status", status.to_string()))
 }
@@ -207,7 +207,7 @@ pub fn set_burner(
 
     // return OK
     Ok(Response::new()
-        .add_attribute("method", "set_burner")
+        .add_attribute("action", "set_burner")
         .add_attribute("burner", address)
         .add_attribute("allowance", allowance))
 }
@@ -228,7 +228,7 @@ pub fn set_minter(
 
     // return OK
     Ok(Response::new()
-        .add_attribute("method", "set_minter")
+        .add_attribute("action", "set_minter")
         .add_attribute("minter", address)
         .add_attribute("amount", allowance))
 }
@@ -258,7 +258,7 @@ pub fn freeze(
 
     // return OK
     Ok(Response::new()
-        .add_attribute("method", "execute_freeze")
+        .add_attribute("action", "freeze")
         .add_attribute("status", status.to_string()))
 }
 
@@ -290,7 +290,7 @@ pub fn blacklist(
 
     // return OK
     Ok(Response::new()
-        .add_attribute("method", "blacklist")
+        .add_attribute("action", "blacklist")
         .add_attribute("address", address)
         .add_attribute("status", status.to_string()))
 }

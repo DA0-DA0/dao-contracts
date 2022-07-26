@@ -34,7 +34,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
-        .add_attribute("method", "instantiate")
+        .add_attribute("action", "instantiate")
         .add_attribute("owner", info.sender)
         .add_attribute("denom", msg.denom))
 }
