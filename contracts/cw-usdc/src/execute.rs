@@ -4,7 +4,7 @@ use cosmwasm_std::{DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
 use osmo_bindings::OsmosisMsg;
 
 use crate::error::ContractError;
-use crate::helpers::check_is_contract_owner;
+use crate::helpers::{check_bool_allowance, check_is_contract_owner};
 use crate::state::{
     Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
     FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
@@ -232,11 +232,7 @@ pub fn freeze(
     status: bool,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     // check to make sure that the sender has freezer permissions
-    let res = FREEZER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
-    match res {
-        Some(true) => (),
-        _ => return Err(ContractError::Unauthorized {}),
-    }
+    check_bool_allowance(deps.as_ref(), info, FREEZER_ALLOWANCES)?;
 
     // Update config frozen status
     // NOTE: Does not check if new status is same as old status
@@ -262,11 +258,7 @@ pub fn blacklist(
     status: bool,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     // check to make sure that the sender has blacklister permissions
-    let res = BLACKLISTER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
-    match res {
-        Some(true) => (),
-        _ => return Err(ContractError::Unauthorized {}),
-    }
+    check_bool_allowance(deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
     // update blacklisted status
     // validate that blacklisteed is a valid address

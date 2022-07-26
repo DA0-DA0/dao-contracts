@@ -99,7 +99,7 @@ pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractE
 }
 
 pub fn check_bool_allowance(
-    deps: &Deps,
+    deps: Deps,
     info: MessageInfo,
     allowances: Map<&Addr, bool>,
 ) -> Result<(), ContractError> {
