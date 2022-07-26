@@ -1045,7 +1045,7 @@ fn do_test_votes_cw20_balances_with_executor(
         total_supply,
         deposit_info,
         instantiate_with_cw20_balances_governance,
-        executor_addr
+        executor_addr,
     )
 }
 
@@ -4415,7 +4415,10 @@ fn test_veto_no_executor() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -4442,7 +4445,7 @@ fn test_veto_no_executor() {
 
     let config: Config = app
         .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
         .unwrap();
 
     assert_eq!(config.executor_addr, None);
@@ -4473,7 +4476,10 @@ fn test_veto_has_executor() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -4516,16 +4522,19 @@ fn test_veto_has_executor() {
 
     let proposal: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Proposal { proposal_id: 1 })
+        .query_wasm_smart(
+            govmod_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
         .unwrap();
 
     assert_eq!(proposal.proposal.status, Status::Rejected);
-    assert_eq!(proposal.proposal.vetoed, true);
+    assert!(proposal.proposal.vetoed);
 
     // no longer open
     app.execute_contract(
         Addr::unchecked("whiskey"),
-        govmod_single.clone(),
+        govmod_single,
         &ExecuteMsg::Veto { proposal_id: 1 },
         &[],
     )
@@ -4557,9 +4566,12 @@ fn test_veto_assign_executor() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
-    let governance_modules = gov_state.clone().proposal_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -4576,16 +4588,20 @@ fn test_veto_assign_executor() {
     app.execute_contract(
         Addr::unchecked("keze"),
         govmod_single.clone(),
-        &ExecuteMsg::AssignExecutor { address: Some("whiskey".to_string()) },
+        &ExecuteMsg::AssignExecutor {
+            address: Some("whiskey".to_string()),
+        },
         &[],
     )
     .unwrap_err();
 
     // success
     app.execute_contract(
-        governance_addr.clone(),
+        governance_addr,
         govmod_single.clone(),
-        &ExecuteMsg::AssignExecutor { address: Some("whiskey".to_string()) },
+        &ExecuteMsg::AssignExecutor {
+            address: Some("whiskey".to_string()),
+        },
         &[],
     )
     .unwrap();
@@ -4609,11 +4625,11 @@ fn test_veto_assign_executor() {
 
     let proposal: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Proposal { proposal_id: 1 })
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
 
     assert_eq!(proposal.proposal.status, Status::Rejected);
-    assert_eq!(proposal.proposal.vetoed, true);
+    assert!(proposal.proposal.vetoed);
 }
 
 /// numerous checks on add/remove/reassign via gov
@@ -4641,9 +4657,12 @@ fn test_executor_role_add_remove_executor_via_gov() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
-    let governance_modules = gov_state.clone().proposal_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -4652,7 +4671,9 @@ fn test_executor_role_add_remove_executor_via_gov() {
     app.execute_contract(
         governance_addr.clone(),
         govmod_single.clone(),
-        &ExecuteMsg::AssignExecutor { address: Some("whiskey".to_string()) },
+        &ExecuteMsg::AssignExecutor {
+            address: Some("whiskey".to_string()),
+        },
         &[],
     )
     .unwrap();
@@ -4668,7 +4689,9 @@ fn test_executor_role_add_remove_executor_via_gov() {
     app.execute_contract(
         governance_addr.clone(),
         govmod_single.clone(),
-        &ExecuteMsg::AssignExecutor { address: Some("whiskey2".to_string()) },
+        &ExecuteMsg::AssignExecutor {
+            address: Some("whiskey2".to_string()),
+        },
         &[],
     )
     .unwrap();
@@ -4691,7 +4714,7 @@ fn test_executor_role_add_remove_executor_via_gov() {
 
     // gov can unassign executor to None
     app.execute_contract(
-        governance_addr.clone(),
+        governance_addr,
         govmod_single.clone(),
         &ExecuteMsg::AssignExecutor { address: None },
         &[],
@@ -4708,7 +4731,7 @@ fn test_executor_role_add_remove_executor_via_gov() {
     // no longer veto
     app.execute_contract(
         Addr::unchecked("whiskey"),
-        govmod_single.clone(),
+        govmod_single,
         &ExecuteMsg::Veto { proposal_id: 1 },
         &[],
     )
@@ -4740,18 +4763,23 @@ fn test_executor_role_add_remove_executor_self() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
-    let governance_modules = gov_state.clone().proposal_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
 
-    // gov assign 
+    // gov assign
     app.execute_contract(
-        governance_addr.clone(),
+        governance_addr,
         govmod_single.clone(),
-        &ExecuteMsg::AssignExecutor { address: Some("whiskey5".to_string()) },
+        &ExecuteMsg::AssignExecutor {
+            address: Some("whiskey5".to_string()),
+        },
         &[],
     )
     .unwrap();
@@ -4767,7 +4795,9 @@ fn test_executor_role_add_remove_executor_self() {
     app.execute_contract(
         Addr::unchecked("whiskey5"),
         govmod_single.clone(),
-        &ExecuteMsg::AssignExecutor { address: Some("whiskey3".to_string()) },
+        &ExecuteMsg::AssignExecutor {
+            address: Some("whiskey3".to_string()),
+        },
         &[],
     )
     .unwrap();
@@ -4790,7 +4820,7 @@ fn test_executor_role_add_remove_executor_self() {
 
     let config: Config = app
         .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
         .unwrap();
 
     assert_eq!(config.executor_addr, None);
@@ -4821,9 +4851,9 @@ fn test_executor_role_self_remove_quick() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let governance_modules = gov_state.clone().proposal_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -4839,7 +4869,7 @@ fn test_executor_role_self_remove_quick() {
 
     let config: Config = app
         .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
         .unwrap();
 
     assert_eq!(config.executor_addr, None);
@@ -4870,9 +4900,12 @@ fn test_executor_role_gov_remove_quick() {
 
     let gov_state: cw_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
         .unwrap();
-    let governance_modules = gov_state.clone().proposal_modules;
+    let governance_modules = gov_state.proposal_modules;
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap();
@@ -4888,7 +4921,7 @@ fn test_executor_role_gov_remove_quick() {
 
     let config: Config = app
         .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
         .unwrap();
 
     assert_eq!(config.executor_addr, None);

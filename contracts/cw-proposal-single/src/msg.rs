@@ -1,4 +1,4 @@
-use cosmwasm_std::{CosmosMsg, Empty, Addr};
+use cosmwasm_std::{Addr, CosmosMsg, Empty};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -127,17 +127,27 @@ pub enum ExecuteMsg {
     /// the status of a proposal changes or a proposal is created. If
     /// a consumer contract errors when handling a hook message it
     /// will be removed from the list of consumers.
-    AddProposalHook { address: String },
+    AddProposalHook {
+        address: String,
+    },
     /// Removes a consumer of proposal hooks.
-    RemoveProposalHook { address: String },
+    RemoveProposalHook {
+        address: String,
+    },
     /// Adds an address as a consumer of vote hooks. Consumers of vote
     /// hooks have hook messages executed on them whenever the a vote
     /// is cast. If a consumer contract errors when handling a hook
     /// message it will be removed from the list of consumers.
-    AddVoteHook { address: String },
+    AddVoteHook {
+        address: String,
+    },
     /// Removed a consumer of vote hooks.
-    RemoveVoteHook { address: String },
-    AssignExecutor { address: Option<String> },
+    RemoveVoteHook {
+        address: String,
+    },
+    AssignExecutor {
+        address: Option<String>,
+    },
 }
 
 #[govmod_query]

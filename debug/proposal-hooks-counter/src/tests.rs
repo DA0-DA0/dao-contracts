@@ -143,6 +143,7 @@ fn test_counters() {
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
+        executor_addr: None,
     };
 
     let governance_addr =

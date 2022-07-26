@@ -400,14 +400,14 @@ pub fn execute_veto(
         return Err(ContractError::NoExecutorAssigned {});
     }
 
-    if config.executor_addr.unwrap() != info.sender.clone() {
+    if config.executor_addr.unwrap() != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
     let mut prop = PROPOSALS
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
-        
+
     if prop.current_status(&env.block) != Status::Open {
         return Err(ContractError::NotOpen { id: proposal_id });
     }
@@ -649,19 +649,19 @@ pub fn execute_assign_executor(
     let mut config = CONFIG.load(deps.storage)?;
 
     // Only the DAO via prop OR the executor directly may call this method.
-    if info.sender == config.dao 
-        || (config.executor_addr.is_some() && config.executor_addr.unwrap() == info.sender) {
+    if info.sender == config.dao
+        || (config.executor_addr.is_some() && config.executor_addr.unwrap() == info.sender)
+    {
         // executor can be removed or reassigned to another address
         let new_executor_addr: Option<Addr> = match address {
             None => None,
-            Some(addr_str) => Some(deps.api.addr_validate(&addr_str).unwrap())
+            Some(addr_str) => Some(deps.api.addr_validate(&addr_str).unwrap()),
         };
 
         config.executor_addr = new_executor_addr;
 
         CONFIG.save(deps.storage, &config)?;
-    }
-    else {
+    } else {
         return Err(ContractError::Unauthorized {});
     }
 
