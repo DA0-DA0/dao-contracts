@@ -66,7 +66,7 @@ fn query_allowances(
     limit: Option<u32>,
     allowances: Map<&Addr, Uint128>,
 ) -> StdResult<Vec<AllowanceInfo>> {
-    // based on this query written by lary https://github.com/st4k3h0us3/steak-contracts/blob/854c15c8d1a62303b931a785494a6ecd4b6eaf2a/contracts/hub/src/queries.rs#L90
+    // based on this query written by larry https://github.com/st4k3h0us3/steak-contracts/blob/854c15c8d1a62303b931a785494a6ecd4b6eaf2a/contracts/hub/src/queries.rs#L90
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let addr: Addr;
     let start = match start_after {
