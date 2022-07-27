@@ -35,6 +35,12 @@ make install
 make localnet-build
 make localnet-start
 ```
+#### M1 Mac
+There is a [known issue](https://github.com/osmosis-labs/osmosis/issues/2121) on M1 macs when running `make install`where the osmosisd binary does not get copied correctly. You can bypass this by runing the  build and manually copying the new binary.
+```
+make build
+sudo cp build/osmosisd /usr/local/bin
+```
 
 It's recommended that you configure your `osmosisd` for usage with LocalOsmosis as this will make it easier to interact.
 
