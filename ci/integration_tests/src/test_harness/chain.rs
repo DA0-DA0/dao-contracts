@@ -59,6 +59,7 @@ impl Chain {
     #[track_caller]
     pub fn process_msgs<X, Y, Z>(
         contract_name: &str,
+        op_name: &str,
         msgs: &[WasmMsg<X, Y, Z>],
     ) -> Result<Vec<Value>>
     where
@@ -67,18 +68,22 @@ impl Chain {
         Z: Serialize,
     {
         let mut chain = Self::get().lock().unwrap();
-        chain.cosm_orc.process_msgs(contract_name, msgs)
+        chain.cosm_orc.process_msgs(contract_name, op_name, msgs)
     }
 
     #[track_caller]
-    pub fn process_msg<X, Y, Z>(contract_name: &str, msg: &WasmMsg<X, Y, Z>) -> Result<Value>
+    pub fn process_msg<X, Y, Z>(
+        contract_name: &str,
+        op_name: &str,
+        msg: &WasmMsg<X, Y, Z>,
+    ) -> Result<Value>
     where
         X: Serialize,
         Y: Serialize,
         Z: Serialize,
     {
         let mut chain = Self::get().lock().unwrap();
-        chain.cosm_orc.process_msg(contract_name, msg)
+        chain.cosm_orc.process_msg(contract_name, op_name, msg)
     }
 
     #[track_caller]

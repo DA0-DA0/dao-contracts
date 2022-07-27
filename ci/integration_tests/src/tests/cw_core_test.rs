@@ -20,7 +20,7 @@ fn execute_execute_admin_msgs() {
     let user_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
     // if you are not the admin, you cant execute admin msgs:
-    let res = create_dao(None, user_addr.clone());
+    let res = create_dao(None, "exc_admin_msgs_create_dao", user_addr.clone());
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -34,17 +34,21 @@ fn execute_execute_admin_msgs() {
             funds: vec![],
         })],
     });
-    let res = Chain::process_msg("cw_core", &msg);
+    let res = Chain::process_msg("cw_core", "exc_admin_msgs_pause_dao_fail", &msg);
     assert!(res.is_err());
 
     let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::PauseInfo {});
-    let res = Chain::process_msg("cw_core", &msg).unwrap();
+    let res = Chain::process_msg("cw_core", "exc_admin_msgs_pause_dao_query", &msg).unwrap();
     let res: PauseInfoResponse = serde_json::from_value(res["data"].clone()).unwrap();
 
     assert_eq!(res, PauseInfoResponse::Unpaused {});
 
     // if you are the admin you can execute admin msgs:
-    let res = create_dao(Some(user_addr.clone()), user_addr);
+    let res = create_dao(
+        Some(user_addr.clone()),
+        "exc_admin_msgs_create_dao_with_admin",
+        user_addr,
+    );
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -61,7 +65,7 @@ fn execute_execute_admin_msgs() {
         }),
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::PauseInfo {}),
     ];
-    let res = Chain::process_msgs("cw_core", &msgs).unwrap();
+    let res = Chain::process_msgs("cw_core", "exc_admin_msgs_pause_dao", &msgs).unwrap();
     let res: PauseInfoResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
     assert_ne!(res, PauseInfoResponse::Unpaused {});
 }
@@ -71,14 +75,14 @@ fn execute_items() {
     let admin_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
     // add item:
-    let res = create_dao(Some(admin_addr.clone()), admin_addr);
+    let res = create_dao(Some(admin_addr.clone()), "exc_items_create_dao", admin_addr);
     assert!(res.is_ok());
     let dao = res.unwrap();
 
     let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::GetItem {
         key: "meme".to_string(),
     });
-    let res = Chain::process_msg("cw_core", &msg).unwrap();
+    let res = Chain::process_msg("cw_core", "exc_items_get", &msg).unwrap();
     let res: GetItemResponse = serde_json::from_value(res["data"].clone()).unwrap();
 
     assert_eq!(res.item, None);
@@ -100,7 +104,7 @@ fn execute_items() {
         }),
     ];
 
-    let res = Chain::process_msgs("cw_core", &msgs).unwrap();
+    let res = Chain::process_msgs("cw_core", "exc_items_set", &msgs).unwrap();
     let res: GetItemResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
 
     assert_eq!(res.item, Some("foobar".to_string()));
@@ -122,7 +126,7 @@ fn execute_items() {
         }),
     ];
 
-    let res = Chain::process_msgs("cw_core", &msgs).unwrap();
+    let res = Chain::process_msgs("cw_core", "exc_items_rm", &msgs).unwrap();
     let res: GetItemResponse = serde_json::from_value(res[1]["data"].clone()).unwrap();
 
     assert_eq!(res.item, None);
@@ -134,7 +138,7 @@ fn execute_items() {
 fn instantiate_with_no_admin() {
     let user_addr = "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg".to_string();
 
-    let res = create_dao(None, user_addr);
+    let res = create_dao(None, "inst_dao_no_admin", user_addr);
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -159,7 +163,11 @@ fn instantiate_with_admin() {
     let voting_contract = "cw20_staked_balance_voting";
     let proposal_contract = "cw_proposal_single";
 
-    let res = create_dao(Some(admin_addr.clone()), admin_addr.clone());
+    let res = create_dao(
+        Some(admin_addr.clone()),
+        "inst_admin_create_dao",
+        admin_addr.clone(),
+    );
     assert!(res.is_ok());
     let dao = res.unwrap();
 
@@ -184,7 +192,8 @@ fn instantiate_with_admin() {
     Chain::add_contract_addr(voting_contract, voting_addr);
     let msg: Cw20StakeBalanceWasmMsg =
         WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::StakingContract {});
-    let staking_addr = &Chain::process_msg(voting_contract, &msg).unwrap()["data"];
+    let staking_addr =
+        &Chain::process_msg(voting_contract, "inst_admin_q_stake", &msg).unwrap()["data"];
 
     Chain::add_contract_addr("cw20_stake", staking_addr.as_str().unwrap());
     let msgs: Vec<Cw20StakeWasmMsg> = vec![
@@ -194,7 +203,7 @@ fn instantiate_with_admin() {
         WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::GetConfig {}),
         WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::TotalValue {}),
     ];
-    let res = Chain::process_msgs("cw20_stake", &msgs).unwrap();
+    let res = Chain::process_msgs("cw20_stake", "inst_admin_q_val", &msgs).unwrap();
     let staked_res: StakedValueResponse = serde_json::from_value(res[0]["data"].clone()).unwrap();
     assert_eq!(staked_res.value, Uint128::new(0));
 
@@ -208,7 +217,8 @@ fn instantiate_with_admin() {
 
     let msg: Cw20StakeBalanceWasmMsg =
         WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::TokenContract {});
-    let token_addr = &Chain::process_msg(voting_contract, &msg).unwrap()["data"];
+    let token_addr =
+        &Chain::process_msg(voting_contract, "inst_admin_q_tok", &msg).unwrap()["data"];
     let token_addr = token_addr.as_str().unwrap().to_string();
     assert_eq!(config_res.token_address, token_addr);
 
@@ -220,7 +230,7 @@ fn instantiate_with_admin() {
     // proposal module config is valid:
     Chain::add_contract_addr(proposal_contract, prop_addr);
     let msg: CwProposalWasmMsg = WasmMsg::QueryMsg(cw_proposal_single::msg::QueryMsg::Config {});
-    let res = Chain::process_msg(proposal_contract, &msg).unwrap();
+    let res = Chain::process_msg(proposal_contract, "inst_admin_q_cfg", &msg).unwrap();
     let config_res: cw_proposal_single::state::Config =
         serde_json::from_value(res["data"].clone()).unwrap();
 
