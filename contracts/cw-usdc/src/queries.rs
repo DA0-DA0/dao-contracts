@@ -37,36 +37,28 @@ pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
 }
 
 pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
-    let allowance =
-        MINTER_ALLOWANCES.may_load(deps.storage, &deps.api.addr_validate(address.as_str())?)?;
-
-    let allowance = match allowance {
-        Some(it) => it.u128(),
-        None => 0u128,
-    };
-
+    let allowance = MINTER_ALLOWANCES
+        .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
+        .unwrap_or_else(Uint128::zero)
+        .u128();
     Ok(AllowanceResponse { allowance })
 }
 
 pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
-    let allowance =
-        BURNER_ALLOWANCES.may_load(deps.storage, &deps.api.addr_validate(address.as_str())?)?;
-
-    let allowance = match allowance {
-        Some(it) => it.u128(),
-        None => 0u128,
-    };
-
+    let allowance = BURNER_ALLOWANCES
+        .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
+        .unwrap_or_else(Uint128::zero)
+        .u128();
     Ok(AllowanceResponse { allowance })
 }
 
-fn query_allowances(
+pub fn query_allowances(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
     allowances: Map<&Addr, Uint128>,
 ) -> StdResult<Vec<AllowanceInfo>> {
-    // based on this query written by lary https://github.com/st4k3h0us3/steak-contracts/blob/854c15c8d1a62303b931a785494a6ecd4b6eaf2a/contracts/hub/src/queries.rs#L90
+    // based on this query written by larry https://github.com/st4k3h0us3/steak-contracts/blob/854c15c8d1a62303b931a785494a6ecd4b6eaf2a/contracts/hub/src/queries.rs#L90
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let addr: Addr;
     let start = match start_after {
@@ -189,4 +181,5 @@ pub fn query_is_freezer(deps: Deps, address: String) -> StdResult<StatusResponse
         .unwrap_or(false);
     Ok(StatusResponse { status })
 }
+
 // query inspiration see https://github.com/mars-protocol/fields-of-mars/blob/v1.0.0/packages/fields-of-mars/src/martian_field.rs#L465-L473

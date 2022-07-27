@@ -3,7 +3,6 @@ mod error;
 pub mod execute;
 pub mod helpers;
 pub mod hooks;
-pub mod integration_tests;
 pub mod msg;
 pub mod queries;
 pub mod state;

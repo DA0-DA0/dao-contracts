@@ -13,7 +13,7 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const BLACKLISTED_ADDRESSES: Map<&Addr, bool> = Map::new("blacklister_addresses");
+pub const BLACKLISTED_ADDRESSES: Map<&Addr, bool> = Map::new("blacklisted_addresses");
 
 pub const MINTER_ALLOWANCES: Map<&Addr, Uint128> = Map::new("minter_allowances");
 pub const BURNER_ALLOWANCES: Map<&Addr, Uint128> = Map::new("burner_allowances");

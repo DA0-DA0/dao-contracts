@@ -34,7 +34,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
-        .add_attribute("method", "instantiate")
+        .add_attribute("action", "instantiate")
         .add_attribute("owner", info.sender)
         .add_attribute("denom", msg.denom))
 }
@@ -51,30 +51,30 @@ pub fn execute(
         ExecuteMsg::Mint { to_address, amount } => {
             execute::mint(deps, env, info, to_address, amount)
         }
-        ExecuteMsg::Burn { amount } => execute::burn(deps, env, info, amount),
+        ExecuteMsg::Burn { amount } => execute::burn(deps, info, amount),
         ExecuteMsg::Blacklist { address, status } => {
-            execute::blacklist(deps, env, info, address, status)
+            execute::blacklist(deps, info, address, status)
         }
-        ExecuteMsg::Freeze { status } => execute::freeze(deps, env, info, status),
+        ExecuteMsg::Freeze { status } => execute::freeze(deps, info, status),
 
         // Admin functions
         ExecuteMsg::ChangeTokenFactoryAdmin { new_admin } => {
-            execute::change_tokenfactory_admin(deps, env, info, new_admin)
+            execute::change_tokenfactory_admin(deps, info, new_admin)
         }
         ExecuteMsg::ChangeContractOwner { new_owner } => {
-            execute::change_contract_owner(deps, env, info, new_owner)
+            execute::change_contract_owner(deps, info, new_owner)
         }
         ExecuteMsg::SetMinter { address, allowance } => {
-            execute::set_minter(deps, env, info, address, allowance)
+            execute::set_minter(deps, info, address, allowance)
         }
         ExecuteMsg::SetBurner { address, allowance } => {
-            execute::set_burner(deps, env, info, address, allowance)
+            execute::set_burner(deps, info, address, allowance)
         }
         ExecuteMsg::SetBlacklister { address, status } => {
-            execute::set_blacklister(deps, env, info, address, status)
+            execute::set_blacklister(deps, info, address, status)
         }
         ExecuteMsg::SetFreezer { address, status } => {
-            execute::set_freezer(deps, env, info, address, status)
+            execute::set_freezer(deps, info, address, status)
         }
     }
 }

@@ -1,50 +1,8 @@
+use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{
-    to_binary, Addr, Coin, CosmosMsg, Deps, MessageInfo, StdResult, Uint128, WasmMsg,
-};
-
-use crate::{msg::ExecuteMsg, state::CONFIG, ContractError};
-
-/// CwTemplateContract is a wrapper around Addr that provides a lot of helpers
-/// for working with this.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CwTemplateContract(pub Addr);
-
-impl CwTemplateContract {
-    pub fn addr(&self) -> Addr {
-        self.0.clone()
-    }
-
-    pub fn call<T: Into<ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
-        let msg = to_binary(&msg.into())?;
-        Ok(WasmMsg::Execute {
-            contract_addr: self.addr().into(),
-            msg,
-            funds: vec![],
-        }
-        .into())
-    }
-
-    // /// Get Count
-    // pub fn count<Q, T, CQ>(&self, querier: &Q) -> StdResult<CountResponse>
-    // where
-    //     Q: Querier,
-    //     T: Into<String>,
-    //     CQ: CustomQuery,
-    // {
-    //     let msg = QueryMsg::GetCount {};
-    //     let query = WasmQuery::Smart {
-    //         contract_addr: self.addr().into(),
-    //         msg: to_binary(&msg)?,
-    //     }
-    //     .into();
-    //     let res: CountResponse = QuerierWrapper::<CQ>::new(querier).query(&query)?;
-    //     Ok(res)
-    // }
-}
+use crate::state::{BLACKLISTED_ADDRESSES, CONFIG};
+use crate::ContractError;
 
 pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractError> {
     // Minimum validation checks on the full denom.
@@ -67,7 +25,7 @@ pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractErr
 
 pub fn check_contract_has_funds(
     denom: String,
-    funds: &Vec<Coin>,
+    funds: &[Coin],
     amount: Uint128,
 ) -> Result<(), ContractError> {
     if let Some(c) = funds.iter().find(|c| c.denom == denom) {
@@ -99,7 +57,7 @@ pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractE
 }
 
 pub fn check_bool_allowance(
-    deps: &Deps,
+    deps: Deps,
     info: MessageInfo,
     allowances: Map<&Addr, bool>,
 ) -> Result<(), ContractError> {
@@ -118,5 +76,15 @@ pub fn check_bool_allowance(
             }
         }
     }
+    Ok(())
+}
+
+pub fn check_is_not_blacklisted(deps: Deps, address: String) -> Result<(), ContractError> {
+    let addr = deps.api.addr_validate(&address)?;
+    if let Some(is_blacklisted) = BLACKLISTED_ADDRESSES.may_load(deps.storage, &addr)? {
+        if is_blacklisted {
+            return Err(ContractError::Blacklisted { address });
+        }
+    };
     Ok(())
 }

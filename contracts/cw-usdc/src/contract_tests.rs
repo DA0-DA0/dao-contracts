@@ -1,7 +1,5 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::{DepsMut, Uint128};
-
-// use osmo_bindings_test::OsmosisModule;
+use cosmwasm_std::{coin, coins, from_binary, Addr, DepsMut, Uint128};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use crate::contract;
 use crate::error::ContractError;
@@ -10,9 +8,6 @@ use crate::msg::{
     AllowanceResponse, DenomResponse, ExecuteMsg, InstantiateMsg, IsFrozenResponse, OwnerResponse,
     QueryMsg, StatusResponse, SudoMsg,
 };
-
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coin, coins, from_binary, Addr};
 
 static CREATOR_ADDRESS: &str = "creator";
 
@@ -124,7 +119,7 @@ fn change_tokenfactory_admin() {
         },
     )
     .unwrap();
-    assert!(res.messages.len() == 1);
+    assert_eq!(res.messages.len(), 1);
 }
 
 #[test]
@@ -271,7 +266,7 @@ fn freezing() {
 fn blacklists() {
     // initialize contracts
     let mut deps = mock_dependencies();
-    let (owner, denom) = initialize_contract(deps.as_mut());
+    let (_, denom) = initialize_contract(deps.as_mut());
     let blacklister_address = "blacklister";
     let blacklistee_address = "blacklistee";
 
@@ -447,7 +442,7 @@ fn blacklists() {
 fn minting() {
     let mut deps = mock_dependencies();
 
-    let (_, denom) = initialize_contract(deps.as_mut());
+    initialize_contract(deps.as_mut());
 
     let minter = "minter";
 
@@ -504,7 +499,7 @@ fn minting() {
         .unwrap(),
     )
     .unwrap();
-    assert!(res.allowance == 1000);
+    assert_eq!(res.allowance, 1000);
 
     // new minter can mint 500 coins
     let res = contract::execute(
@@ -517,7 +512,7 @@ fn minting() {
         },
     )
     .unwrap();
-    assert!(res.messages.len() == 2);
+    assert_eq!(res.messages.len(), 2);
 
     // query that minter allowance should have gone down to 500 remaining
     let res: AllowanceResponse = from_binary(
@@ -531,7 +526,7 @@ fn minting() {
         .unwrap(),
     )
     .unwrap();
-    assert!(res.allowance == 500);
+    assert_eq!(res.allowance, 500);
 
     // make sure that minter can't mint more than remaining allowance
     contract::execute(
@@ -569,14 +564,14 @@ fn minting() {
         .unwrap(),
     )
     .unwrap();
-    assert!(res.allowance == 100000);
+    assert_eq!(res.allowance, 100000);
 }
 
 #[test]
 fn burning() {
     let mut deps = mock_dependencies();
 
-    let (_, denom) = initialize_contract(deps.as_mut());
+    initialize_contract(deps.as_mut());
 
     let burner = "burner";
 
@@ -632,7 +627,7 @@ fn burning() {
         .unwrap(),
     )
     .unwrap();
-    assert!(res.allowance == 1000);
+    assert_eq!(res.allowance, 1000);
 
     // new burner can burn 500 coins
     let res = contract::execute(
@@ -644,7 +639,7 @@ fn burning() {
         },
     )
     .unwrap();
-    assert!(res.messages.len() == 1);
+    assert_eq!(res.messages.len(), 1);
 
     // query that burner allowance should have gone down to 500 remaining
     let res: AllowanceResponse = from_binary(
@@ -658,7 +653,7 @@ fn burning() {
         .unwrap(),
     )
     .unwrap();
-    assert!(res.allowance == 500);
+    assert_eq!(res.allowance, 500);
 
     // make sure that burner can't burn more than remaining allowance
     contract::execute(
@@ -695,5 +690,5 @@ fn burning() {
         .unwrap(),
     )
     .unwrap();
-    assert!(res.allowance == 100000);
+    assert_eq!(res.allowance, 100000);
 }

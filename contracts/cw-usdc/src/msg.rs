@@ -38,53 +38,53 @@ pub enum SudoMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // IsFrozen returns if the entire token transfer functionality is frozen
+    /// IsFrozen returns if the entire token transfer functionality is frozen. Response: IsFrozenResponse
     IsFrozen {},
-    // Denom returns the token denom that this contract is the admin for
+    /// Denom returns the token denom that this contract is the admin for. Response: DenomResponse
     Denom {},
-    // Owner returns the owner of the contract
+    /// Owner returns the owner of the contract. Response: OwnerResponse
     Owner {},
-    // Allowance returns the allowance of the specified address
+    /// Allowance returns the allowance of the specified address. Response: AllowanceResponse
     BurnAllowance {
         address: String,
     },
-    // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
+    /// Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
     BurnAllowances {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    // Allowance returns the allowance of the specified user
+    /// Allowance returns the allowance of the specified user. Response: AllowanceResponse
     MintAllowance {
         address: String,
     },
-    // Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
+    /// Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>
     MintAllowances {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    // IsBlacklisted returns wether the user is blacklisted or not
+    /// IsBlacklisted returns wether the user is blacklisted or not. Response: StatusResponse
     IsBlacklisted {
         address: String,
     },
-    // Blacklistees enumerates over all addresses on the blacklist
+    /// Blacklistees enumerates over all addresses on the blacklist. Response: BlacklisteesResponse
     Blacklistees {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    // IsBlacklister returns if the addres has blacklister privileges
+    /// IsBlacklister returns if the addres has blacklister privileges. Response: StatusResponse
     IsBlacklister {
         address: String,
     },
-    // Blacklisters Enumerates over all the addresses with blacklister privileges
+    /// Blacklisters Enumerates over all the addresses with blacklister privileges. Response: BlacklisterAllowancesResponse
     BlacklisterAllowances {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    // IsFreezer returns wether the address has freezerstatus
+    /// IsFreezer returns whether the address has freezer status. Response: StatusResponse
     IsFreezer {
         address: String,
     },
-    // FreezerAllowances enumerates over all freezer addresses
+    /// FreezerAllowances enumerates over all freezer addresses. Response: FreezerAllowancesResponse
     FreezerAllowances {
         start_after: Option<String>,
         limit: Option<u32>,
