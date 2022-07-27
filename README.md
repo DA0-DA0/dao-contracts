@@ -143,6 +143,9 @@ beaker console
 
 If prompted to generate the project's typescript, select Yes.
 
+Beaker console is a js console preloaded with tools for making it easy to interact with your contract.
+From within the console, you can use typical js commands.
+
 ### Beaker Config
 
 We'll do a couple of variable setting in the beaker console to make the commands easier to type out.
