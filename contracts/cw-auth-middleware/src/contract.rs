@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order,
-    Reply, Response, StdResult,
+    Reply, Response, StdResult, SubMsg,
 };
 use cw2::set_contract_version;
 use cw4::MemberListResponse;
@@ -17,6 +17,8 @@ use crate::{
 
 const CONTRACT_NAME: &str = "crates.io:cw-auth-manager";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const UPDATE_REPLY_ID: u64 = 1000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -118,7 +120,7 @@ pub fn execute(
             name,
             cw4_group_contract,
         } => execute_add_group(deps, env, info, &name, &cw4_group_contract),
-        ExecuteMsg::RemoveGroup { name: _ } => todo!(),
+        ExecuteMsg::RemoveGroup { name } => execute_remove_group(deps, env, info, &name),
         ExecuteMsg::UpdateExecutedAuthorizationState { msgs, sender } => {
             execute_update_authorization_state(deps.as_ref(), msgs, sender, info.sender)
         }
@@ -164,15 +166,17 @@ fn execute_update_authorization_state(
         auths.iter().fold(
             Ok(response),
             |acc, auth| -> Result<Response, ContractError> {
-                // TODO: Deal with the reply here. Should ignore OnError, since the validation has already been done above.
-                Ok(acc?.add_message(wasm_execute(
+                // All errors from submessages are ignored since the validation has already been done above.
+                // In the future we may need a better way to handle updates
+                let exec = wasm_execute(
                     auth.contract.to_string(),
                     &ExecuteMsg::UpdateExecutedAuthorizationState {
                         msgs: msgs.clone(),
                         sender: sender.clone(),
                     },
                     vec![],
-                )?))
+                )?;
+                Ok(acc?.add_submessage(SubMsg::reply_on_error(exec, UPDATE_REPLY_ID)))
             },
         )
         // TODO: Deal with groups!!
@@ -275,8 +279,29 @@ pub fn execute_add_group(
     })?;
 
     Ok(Response::default()
-        .add_attribute("action", "add_authorizations")
+        .add_attribute("action", "add_group")
         .add_attribute("address", address))
+}
+
+pub fn execute_remove_group(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    name: &str,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can add groups
+        return Err(ContractError::Unauthorized {
+            reason: Some("Sender can't remove group.".to_string()),
+        });
+    }
+
+    GROUPS.remove(deps.storage, name);
+
+    Ok(Response::default()
+        .add_attribute("action", "remove_group")
+        .add_attribute("name", name))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -296,6 +321,19 @@ fn query_authorizations(deps: Deps, msgs: Vec<CosmosMsg>, sender: Addr) -> StdRe
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> Result<Response, ContractError> {
-    unimplemented!();
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    //let original = msg.result.into_result().map_err(|e| ContractError::Std(cosmwasm_std::StdError::GenericErr{ msg: e}));
+    match msg.id {
+        // Update reply errors are always ignored.
+        UPDATE_REPLY_ID => {
+            if msg.result.is_err() {
+                return Ok(Response::new().add_attribute("update_error", msg.result.unwrap_err()));
+            }
+            Ok(Response::new()
+                .add_attribute("update_success", format!("{:?}", msg.result.unwrap())))
+        }
+        id => Err(ContractError::Std(cosmwasm_std::StdError::GenericErr {
+            msg: format!("Unknown reply id: {}", id),
+        })),
+    }
 }

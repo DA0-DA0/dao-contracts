@@ -69,7 +69,8 @@ fn cw_authorization_middleware_contract() -> Box<dyn Contract<Empty>> {
         cw_auth_middleware::contract::execute,
         cw_auth_middleware::contract::instantiate,
         cw_auth_middleware::contract::query,
-    );
+    )
+    .with_reply(cw_auth_middleware::contract::reply);
     Box::new(contract)
 }
 

@@ -24,7 +24,8 @@ fn cw_auth_manager() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
-    );
+    )
+    .with_reply(crate::contract::reply);
     Box::new(contract)
 }
 
@@ -347,7 +348,7 @@ fn test_group_authorizations() {
 
     // Create a group
     let cw4_id = app.store_code(cw4_contract());
-    let cw4_addr1 = app
+    let cw4_addr = app
         .instantiate_contract(
             cw4_id,
             Addr::unchecked(CREATOR_ADDR),
@@ -370,7 +371,7 @@ fn test_group_authorizations() {
         auth_manager.clone(),
         &ExecuteMsg::AddGroup {
             name: "Sample group".to_string(),
-            cw4_group_contract: cw4_addr1.to_string(),
+            cw4_group_contract: cw4_addr.to_string(),
         },
         &[],
     )
@@ -381,13 +382,11 @@ fn test_group_authorizations() {
         Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
         whitelist_addr.clone(),
         &whitelist::msg::ExecuteMsg::Allow {
-            addr: cw4_addr1.to_string(),
+            addr: cw4_addr.to_string(),
         },
         &[],
     )
     .unwrap(); // The address has been whitelisted
-
-    println!("Group addr: {:?}", cw4_addr1);
 
     // Add the whitelist to the list of auths
     app.execute_contract(
@@ -412,10 +411,80 @@ fn test_group_authorizations() {
     app.execute_contract(
         person1.clone(),
         auth_manager.clone(),
-        &ExecuteMsg::Execute { msgs: vec![msg] },
+        &ExecuteMsg::Execute {
+            msgs: vec![msg.clone()],
+        },
         &[],
     )
     .unwrap();
-    // TODO: This is currently failing because the update messages are erroring. This is expected, as some of the checks fail (only the group checks pass)
-    //       To fix this, we need to ignore the reply on all messages coming from the update
+
+    // Execute the proposal by someone who is not whitelisted (neither directly nor via the group)
+    app.execute_contract(
+        person2.clone(),
+        auth_manager.clone(),
+        &ExecuteMsg::Execute {
+            msgs: vec![msg.clone()],
+        },
+        &[],
+    )
+    .unwrap_err(); // This should fail
+
+    // Add person2 to the group and remove person 1
+    app.execute_contract(
+        core_addr.clone(), // This is the group manager
+        cw4_addr,
+        &cw4_group::msg::ExecuteMsg::UpdateMembers {
+            add: vec![cw4::Member {
+                addr: person2.to_string(),
+                weight: 0,
+            }],
+            remove: vec![person1.to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // person1 should be unauthorized now
+    app.execute_contract(
+        person1.clone(),
+        auth_manager.clone(),
+        &ExecuteMsg::Execute {
+            msgs: vec![msg.clone()],
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    // ...and person2 allowed
+    app.execute_contract(
+        person2.clone(),
+        auth_manager.clone(),
+        &ExecuteMsg::Execute {
+            msgs: vec![msg.clone()],
+        },
+        &[],
+    )
+    .unwrap(); // This should fail
+
+    // Remove the group from the auth contract
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
+        auth_manager.clone(),
+        &ExecuteMsg::RemoveGroup {
+            name: "Sample group".to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // No one is allowed anymore even if person2 still belongs to the group
+    app.execute_contract(
+        person2.clone(),
+        auth_manager.clone(),
+        &ExecuteMsg::Execute {
+            msgs: vec![msg.clone()],
+        },
+        &[],
+    )
+    .unwrap_err(); // this should fail
 }
