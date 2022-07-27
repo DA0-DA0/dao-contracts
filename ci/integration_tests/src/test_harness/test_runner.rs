@@ -25,9 +25,15 @@ pub fn cosm_orc_test_runner(tests: &[&TestDescAndFn]) {
 
     let mut passed = 0;
     let mut failed = 0;
+    let mut filtered = 0;
     let time = Instant::now();
 
     for &test in tests {
+        if is_filtered(test) {
+            filtered += 1;
+            continue;
+        }
+
         if let test::TestFn::StaticTestFn(f) = test.testfn {
             let res = panic::catch_unwind(f);
             if res.is_err() {
@@ -35,8 +41,6 @@ pub fn cosm_orc_test_runner(tests: &[&TestDescAndFn]) {
             } else {
                 passed += 1;
             }
-        } else {
-            todo!()
         }
 
         // create a clean slate for next test
@@ -50,8 +54,8 @@ pub fn cosm_orc_test_runner(tests: &[&TestDescAndFn]) {
     };
 
     println!(
-        "\ntest result: {:?}. {} passed; {} failed; 0 ignored; 0 measured; 0 filtered out; finished in {:.2?}",
-        status, passed, failed, time.elapsed()
+        "\ntest result: {:?}. {} passed; {} failed; 0 ignored; 0 measured; {} filtered out; finished in {:.2?}",
+        status, passed, failed, filtered, time.elapsed()
     );
 
     teardown();
@@ -77,4 +81,21 @@ fn setup() {
 
 fn teardown() {
     Chain::save_gas_report();
+}
+
+fn is_filtered(test: &TestDescAndFn) -> bool {
+    let args: Vec<String> = env::args().collect();
+    let test_filter = args.get(1);
+
+    match test_filter {
+        Some(name) => {
+            let test_name = test.desc.name.as_slice();
+            if args.contains(&"--exact".to_string()) {
+                test_name != name
+            } else {
+                !test_name.contains(name)
+            }
+        }
+        None => false,
+    }
 }
