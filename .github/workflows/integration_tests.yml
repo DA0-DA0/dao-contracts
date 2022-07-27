@@ -7,38 +7,6 @@ on:
       - main
 
 jobs:
-  build:
-    name: Build Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - name: Install latest nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-          components: rustfmt, clippy
-      - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: check
-          args: --tests --manifest-path ci/integration_tests/Cargo.toml
-      - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: fmt
-          args: --all --manifest-path ci/integration_tests/Cargo.toml -- --check
-      - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: clippy
-          args: --all-targets --manifest-path ci/integration_tests/Cargo.toml -- -D warnings 
-
   compile-contracts:
     name: Compile contracts using optimized rust compiler
     runs-on: ubuntu-latest
@@ -71,11 +39,11 @@ jobs:
   test:
     name: Run integration tests against local juno node
     runs-on: ubuntu-latest
-    needs: [build, compile-contracts]
+    needs: compile-contracts
     env:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
       KEY_NAME: localval
-      GAS_REPORT_OUT: ./gas_report.json
+      GAS_OUT_DIR: gas_reports
       CONFIG: configs/ci.yaml
       CONTRACT_DIR: artifacts
     steps:
@@ -133,7 +101,10 @@ jobs:
           key: ${{ runner.os }}-cargo-integration-${{ hashFiles('ci/integration_tests/Cargo.lock') }}
 
       - name: Run Integration Tests
-        run: cd ci/integration_tests/ && RUST_LOG=DEBUG cargo test
+        run: cd ci/integration_tests/ && RUST_LOG=DEBUG cargo t
+
+      - name: Combine Test Gas Reports
+        run: jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
 
       - name: Raw Gas Report
         run: cat ci/integration_tests/gas_report.json

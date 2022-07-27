@@ -26,4 +26,4 @@ artifacts/
 tarpaulin-report.*
 
 # integration tests
-gas_report.json
+gas_reports/

@@ -3,8 +3,14 @@ name = "integration_tests"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
-cosm-orc = { version = "0.5.8" }
+# This crate depends on rand. These are not features in
+# wasm builds of cosmwasm. Despite this crate only being used as a dev
+# dependency, because it is part of the workspace it will always be
+# compiled. There is no good way to remove a member from a workspace
+# conditionally. As such, we don't compile anything here if we're
+# targeting wasm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cosm-orc = { version = "0.5.9" }
 cw20 = "0.13"
 cw20-base = "0.13"
 cw-utils = "0.13"
@@ -21,3 +27,6 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "1.0"
 once_cell = "1.13.0"
 env_logger = "0.9.0"
+test-context = "0.1.4"
+ctor = "0.1.22"
+rand = "0.8.5"
