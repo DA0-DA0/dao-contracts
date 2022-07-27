@@ -189,7 +189,7 @@ pub enum QueryMsg {
     ProposalCount {},
     /// Returns a voters position on a propsal. Returns
     /// `query::VoteResponse`.
-    GetVote { proposal_id: u64, voter: String },
+    Vote { proposal_id: u64, voter: String },
     /// Lists all of the votes that have been cast on a
     /// proposal. Returns `VoteListResponse`.
     ListVotes {

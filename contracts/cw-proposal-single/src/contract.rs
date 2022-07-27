@@ -684,7 +684,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_list_proposals(deps, env, start_after, limit)
         }
         QueryMsg::ProposalCount {} => query_proposal_count(deps),
-        QueryMsg::GetVote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
+        QueryMsg::Vote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
