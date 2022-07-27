@@ -147,21 +147,13 @@ If prompted to generate the project's typescript, select Yes.
 
 We'll do a couple of variable setting in the beaker console to make the commands easier to type out.
 
-We'll set cw-usdc contract object to a variable called `sc`.
+- Set the cw-usdc contract object to a variable called `sc`
+- All the test accounts are in a variable called accounts.  Because the test1 account is the owner of the contract (having been the one that created it), we'll save the validator account to a variable called `owner`.
+- We'll create a signer object for the owner account.
+
 ```
 sc = contract['cw-usdc']
-```
-
-All the test accounts are in a variable called accounts.  We'll save the validator account to a variable called `owner`.
-
-```
 owner = account.test1
-```
-
-Because the validator account is the owner of the contract (having been the one that created it), we'll create a
-signer object for it and set that to a variable called signer.
-
-```
 signer = sc.signer(owner)
 ```
 
