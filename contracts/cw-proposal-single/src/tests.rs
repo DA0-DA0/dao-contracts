@@ -684,7 +684,7 @@ fn do_test_votes_with_executor<F>(
     total_supply: Option<Uint128>,
     deposit_info: Option<DepositInfo>,
     setup_governance: F,
-    executor_addr: Option<Addr>,
+    executor_addr: Option<String>,
 ) -> (App, Addr)
 where
     F: Fn(&mut App, u64, InstantiateMsg, Option<Vec<Cw20Coin>>) -> Addr,
@@ -1036,7 +1036,7 @@ fn do_test_votes_cw20_balances_with_executor(
     expected_status: Status,
     total_supply: Option<Uint128>,
     deposit_info: Option<DepositInfo>,
-    executor_addr: Option<Addr>,
+    executor_addr: Option<String>,
 ) -> (App, Addr) {
     do_test_votes_with_executor(
         votes,
@@ -4471,7 +4471,7 @@ fn test_veto_has_executor() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        Some(Addr::unchecked("whiskey")), // executor_addr
+        Some("whiskey".to_string()), // executor_addr
     );
 
     let gov_state: cw_core::query::DumpStateResponse = app
@@ -4758,7 +4758,7 @@ fn test_executor_role_add_remove_executor_self() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        Some(Addr::unchecked("whiskey4")), // executor_addr
+        Some("whiskey4".to_string()), // executor_addr
     );
 
     let gov_state: cw_core::query::DumpStateResponse = app
@@ -4846,7 +4846,7 @@ fn test_executor_role_self_remove_quick() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        Some(Addr::unchecked("whiskey4")), // executor_addr
+        Some("whiskey4".to_string()), // executor_addr
     );
 
     let gov_state: cw_core::query::DumpStateResponse = app
@@ -4895,7 +4895,7 @@ fn test_executor_role_gov_remove_quick() {
             deposit: Uint128::new(1),
             refund_failed_proposals: true,
         }),
-        Some(Addr::unchecked("whiskey4")), // executor_addr
+        Some("whiskey4".to_string()), // executor_addr
     );
 
     let gov_state: cw_core::query::DumpStateResponse = app

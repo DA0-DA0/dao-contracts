@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -35,7 +35,7 @@ pub struct InstantiateMsg {
     /// This address will have special permission to veto
     /// any proposal they deem malicious to the goals and
     /// mission of the dao.
-    pub executor_addr: Option<Addr>,
+    pub executor_addr: Option<String>,
 }
 
 /// Information about the token to use for proposal deposits.

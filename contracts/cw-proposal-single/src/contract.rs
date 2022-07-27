@@ -53,6 +53,11 @@ pub fn instantiate(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(msg.min_voting_period, msg.max_voting_period)?;
 
+    let executor_addr: Option<Addr> = match msg.executor_addr {
+        None => None,
+        Some(addr) => Some(deps.api.addr_validate(&addr)?),
+    };
+
     let config = Config {
         threshold: msg.threshold,
         max_voting_period,
@@ -61,7 +66,7 @@ pub fn instantiate(
         dao: dao.clone(),
         deposit_info,
         allow_revoting: msg.allow_revoting,
-        executor_addr: msg.executor_addr,
+        executor_addr,
     };
 
     // Initialize proposal count to zero so that queries return zero
