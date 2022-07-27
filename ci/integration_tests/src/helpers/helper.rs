@@ -18,7 +18,7 @@ pub struct DaoState {
     pub state: DumpStateResponse,
 }
 
-pub fn create_dao(admin: Option<String>, user_addr: String) -> Result<DaoState> {
+pub fn create_dao(admin: Option<String>, op_name: &str, user_addr: String) -> Result<DaoState> {
     let msgs: Vec<CoreWasmMsg> = vec![
         WasmMsg::InstantiateMsg(cw_core::msg::InstantiateMsg {
             admin,
@@ -74,7 +74,7 @@ pub fn create_dao(admin: Option<String>, user_addr: String) -> Result<DaoState> 
         }),
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::DumpState {}),
     ];
-    let res = Chain::process_msgs("cw_core", &msgs)?;
+    let res = Chain::process_msgs("cw_core", op_name, &msgs)?;
     let state: DumpStateResponse = serde_json::from_value(res[1]["data"].clone())?;
 
     Ok(DaoState {
