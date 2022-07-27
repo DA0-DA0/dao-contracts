@@ -2,6 +2,10 @@
 
 Dao Dao e2e integration tests with gas profiling.
 
+`cargo test` to run all tests.
+
+`cargo test fn_test_name` to run individual integration tests.
+
 ## Running Locally
 
 TODO: Add a just file to make this all easy
