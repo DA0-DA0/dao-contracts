@@ -104,7 +104,7 @@ jobs:
         run: cd ci/integration_tests/ && RUST_LOG=DEBUG cargo t
 
       - name: Combine Test Gas Reports
-        run: jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
+        run: cd ci/integration_tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
 
       - name: Raw Gas Report
         run: cat ci/integration_tests/gas_report.json
