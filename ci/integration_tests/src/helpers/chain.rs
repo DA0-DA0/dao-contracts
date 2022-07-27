@@ -9,11 +9,17 @@ use std::fs;
 use std::path::Path;
 use test_context::TestContext;
 
-static CONFIG: OnceCell<Config> = OnceCell::new();
+static CONFIG: OnceCell<Cfg> = OnceCell::new();
+
+#[derive(Debug)]
+pub struct Cfg {
+    cfg: Config,
+    contract_dir: String,
+    gas_report_dir: String,
+}
 
 pub struct Chain {
     pub orc: CosmOrc,
-    gas_report_dir: String,
 }
 
 // TODO: Make tests run in parallel
@@ -22,46 +28,32 @@ pub struct Chain {
 
 impl TestContext for Chain {
     fn setup() -> Self {
-        let gas_report_dir = env::var("GAS_OUT_DIR").expect("missing GAS_OUT_DIR env var");
-
-        let cfg = CONFIG.get().unwrap().clone();
+        let cfg = CONFIG.get().unwrap().cfg.clone();
         let orc = CosmOrc::new(cfg).add_profiler(Box::new(GasProfiler::new()));
-        Self {
-            orc,
-            gas_report_dir,
-        }
+        Self { orc }
     }
 
     fn teardown(self) {
-        // save gas report for this test:
-        let reports = self
-            .orc
-            .profiler_reports()
-            .expect("error fetching profile reports");
-
-        let j: Value = serde_json::from_slice(&reports[0].json_data).unwrap();
-
-        let p = Path::new(&self.gas_report_dir);
-        if !p.exists() {
-            fs::create_dir(p).unwrap();
-        }
-
-        let mut rng = rand::thread_rng();
-        let file_name = format!("test-{}.json", rng.gen::<u32>());
-        fs::write(p.join(file_name), j.to_string()).unwrap();
+        let cfg = CONFIG.get().unwrap();
+        save_gas_report(&self.orc, &cfg.gas_report_dir);
     }
 }
 
+// global_setup() runs once before anything else
 #[ctor]
 fn global_setup() {
     env_logger::init();
     let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
     let config = env::var("CONFIG").expect("missing yaml CONFIG env var");
+    let gas_report_dir = env::var("GAS_OUT_DIR").expect("missing GAS_OUT_DIR env var");
 
     let mut cfg = Config::from_yaml(&config).unwrap();
     let mut orc = CosmOrc::new(cfg.clone()).add_profiler(Box::new(GasProfiler::new()));
 
     orc.store_contracts(&contract_dir).unwrap();
+
+    // save gas usage of wasm storages
+    save_gas_report(&orc, &gas_report_dir);
 
     // persist stored code_ids in CONFIG, so we can reuse for all tests
     cfg.code_ids = orc
@@ -71,5 +63,27 @@ fn global_setup() {
         .map(|(k, v)| (k.clone(), v.code_id))
         .collect();
 
-    CONFIG.set(cfg).expect("error initializing Config");
+    let config = Cfg {
+        cfg,
+        contract_dir,
+        gas_report_dir,
+    };
+    CONFIG.set(config).expect("error initializing Config");
+}
+
+fn save_gas_report(orc: &CosmOrc, gas_report_dir: &str) {
+    let reports = orc
+        .profiler_reports()
+        .expect("error fetching profile reports");
+
+    let j: Value = serde_json::from_slice(&reports[0].json_data).unwrap();
+
+    let p = Path::new(gas_report_dir);
+    if !p.exists() {
+        fs::create_dir(p).unwrap();
+    }
+
+    let mut rng = rand::thread_rng();
+    let file_name = format!("test-{}.json", rng.gen::<u32>());
+    fs::write(p.join(file_name), j.to_string()).unwrap();
 }
