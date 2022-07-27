@@ -262,8 +262,7 @@ pub fn execute_execute(
     //  * Return unauthorized if the query fails
     //  * Remove the authorization from the "update" on the sub authorizations
     //  * Add the update messages anyway but ignore the result
-    //  * Update all the tests to reflect the query changes
-    //  * Figure out a better way to add the auth to this proposal instead of using ReplaceOwner
+    //  * Figure out a better way to add the auth to this proposal instead of using ReplaceOwner. Maybe through instantiate?
     //  * Write proper tests for the auth, and more realistic tests for this proposal where we don't fake the sender
     //
     let response = Response::default();
