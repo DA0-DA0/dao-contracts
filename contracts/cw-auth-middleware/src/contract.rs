@@ -58,6 +58,30 @@ fn check_authorization(
     })
 }
 
+fn get_groups_for(sender: &Addr, deps: Deps) -> StdResult<Vec<(String, Addr)>> {
+    GROUPS
+        .range(deps.storage, None, None, Order::Ascending)
+        .filter(|r| !r.is_err())
+        .filter(|g| -> bool {
+            let addr = &g.as_ref().unwrap().1;
+            let members: MemberListResponse = deps
+                .querier
+                .query_wasm_smart(
+                    addr,
+                    &cw4_group::msg::QueryMsg::ListMembers {
+                        limit: None,
+                        start_after: None,
+                    },
+                )
+                .unwrap_or(MemberListResponse { members: vec![] });
+            members
+                .members
+                .into_iter()
+                .any(|a| a.addr == sender.to_string())
+        })
+        .collect()
+}
+
 fn authorize_messages(
     deps: Deps,
     msgs: Vec<CosmosMsg>,
@@ -77,27 +101,9 @@ fn authorize_messages(
     }
 
     // If the sender isn't authorized, check if they belong to any groups are authorized
-    let groups: StdResult<Vec<_>> = GROUPS
-        .range(deps.storage, None, None, Order::Ascending)
-        .filter(|r| !r.is_err())
-        .filter(|g| -> bool {
-            let addr = &g.as_ref().unwrap().1;
-            let members: MemberListResponse = deps
-                .querier
-                .query_wasm_smart(
-                    addr,
-                    &cw4_group::msg::QueryMsg::ListMembers {
-                        limit: None,
-                        start_after: None,
-                    },
-                )
-                .unwrap_or(MemberListResponse { members: vec![] });
-            members.members.into_iter().any(|a| a.addr == sender)
-        })
-        .collect();
+    let groups = get_groups_for(&sender, deps)?;
 
     let authorized = groups
-        .unwrap()
         .into_iter()
         .any(|(_name, addr)| check_authorization(deps, &auths, &msgs, &addr));
 
@@ -115,7 +121,9 @@ pub fn execute(
         ExecuteMsg::AddAuthorization { auth_contract } => {
             execute_add_authorization(deps, env, info, auth_contract)
         }
-        ExecuteMsg::RemoveAuthorization { auth_contract: _ } => todo!(),
+        ExecuteMsg::RemoveAuthorization { auth_contract } => {
+            execute_remove_authorization(deps, info, auth_contract.to_string())
+        }
         ExecuteMsg::AddGroup {
             name,
             cw4_group_contract,
@@ -156,30 +164,44 @@ fn execute_update_authorization_state(
     if authorize_messages(deps, msgs.clone(), sender.clone())? {
         let auths = AUTHORIZATIONS.load(deps.storage, &config.dao)?;
 
+        // gather all addresses checked by the auth
+        let groups = get_groups_for(&sender, deps)?;
+        let mut checked_addrs: Vec<Addr> = groups.into_iter().map(|g| g.1).collect();
+        checked_addrs.insert(0, sender.clone());
+
         // If at least one authorization module authorized this message, we send the
         // Authorize execute message to all the authorizations so that they can update their
         // state if needed.
+        // This response is the base. Submessages for the sender and all its groups are added bellow.
         let response = Response::default()
             .add_attribute("action", "execute_authorize")
             .add_attribute("authorized", "true");
 
-        auths.iter().fold(
+        checked_addrs.iter().fold(
             Ok(response),
-            |acc, auth| -> Result<Response, ContractError> {
-                // All errors from submessages are ignored since the validation has already been done above.
-                // In the future we may need a better way to handle updates
-                let exec = wasm_execute(
-                    auth.contract.to_string(),
-                    &ExecuteMsg::UpdateExecutedAuthorizationState {
-                        msgs: msgs.clone(),
-                        sender: sender.clone(),
-                    },
-                    vec![],
-                )?;
-                Ok(acc?.add_submessage(SubMsg::reply_on_error(exec, UPDATE_REPLY_ID)))
+            |acc, addr| -> Result<Response, ContractError> {
+                let msgs: Result<Vec<_>, _> = auths
+                    .iter()
+                    .map(|auth| -> Result<SubMsg, ContractError> {
+                        // All errors from submessages are ignored since the validation has already been done above.
+                        // In the future we may need a better way to handle updates
+                        Ok(SubMsg::reply_on_error(
+                            wasm_execute(
+                                auth.contract.to_string(),
+                                &ExecuteMsg::UpdateExecutedAuthorizationState {
+                                    msgs: msgs.clone(),
+                                    sender: addr.clone(),
+                                },
+                                vec![],
+                            )?,
+                            UPDATE_REPLY_ID,
+                        ))
+                    })
+                    .collect();
+
+                Ok(acc?.add_submessages(msgs?))
             },
         )
-        // TODO: Deal with groups!!
     } else {
         Err(ContractError::Unauthorized { reason: None })
     }
@@ -218,7 +240,6 @@ pub fn execute_add_authorization(
     address: String,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    // ToDo: Who can add and remove auths?
     if config.dao != info.sender {
         // Only DAO can add authorizations
         return Err(ContractError::Unauthorized {
@@ -248,6 +269,27 @@ pub fn execute_add_authorization(
 
     Ok(Response::default()
         .add_attribute("action", "add_authorizations")
+        .add_attribute("address", address))
+}
+
+pub fn execute_remove_authorization(
+    deps: DepsMut,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can remove authorizations
+        return Err(ContractError::Unauthorized {
+            reason: Some("Sender can't remove authorization.".to_string()),
+        });
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+    AUTHORIZATIONS.remove(deps.storage, &validated_address);
+
+    Ok(Response::default()
+        .add_attribute("action", "remove_authorization")
         .add_attribute("address", address))
 }
 
