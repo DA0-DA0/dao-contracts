@@ -48,20 +48,19 @@ fn global_setup() {
     let mut cfg = Config::from_yaml(&config).unwrap();
     let mut orc = CosmOrc::new(cfg.clone()).add_profiler(Box::new(GasProfiler::new()));
 
-    let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or("false".to_string());
+    let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
         let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
         orc.store_contracts(&contract_dir).unwrap();
         save_gas_report(&orc, &gas_report_dir);
+        // persist stored code_ids in CONFIG, so we can reuse for all tests
+        cfg.code_ids = orc
+            .contract_map
+            .deploy_info()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.code_id))
+            .collect();
     }
-
-    // persist stored code_ids in CONFIG, so we can reuse for all tests
-    cfg.code_ids = orc
-        .contract_map
-        .deploy_info()
-        .iter()
-        .map(|(k, v)| (k.clone(), v.code_id))
-        .collect();
 
     let config = Cfg {
         cfg,
