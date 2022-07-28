@@ -14,7 +14,6 @@ static CONFIG: OnceCell<Cfg> = OnceCell::new();
 #[derive(Debug)]
 pub struct Cfg {
     cfg: Config,
-    contract_dir: String,
     gas_report_dir: String,
 }
 
@@ -43,17 +42,18 @@ impl TestContext for Chain {
 #[ctor]
 fn global_setup() {
     env_logger::init();
-    let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
     let config = env::var("CONFIG").expect("missing yaml CONFIG env var");
     let gas_report_dir = env::var("GAS_OUT_DIR").expect("missing GAS_OUT_DIR env var");
 
     let mut cfg = Config::from_yaml(&config).unwrap();
     let mut orc = CosmOrc::new(cfg.clone()).add_profiler(Box::new(GasProfiler::new()));
 
-    orc.store_contracts(&contract_dir).unwrap();
-
-    // save gas usage of wasm storages
-    save_gas_report(&orc, &gas_report_dir);
+    let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or("false".to_string());
+    if !skip_storage.parse::<bool>().unwrap() {
+        let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
+        orc.store_contracts(&contract_dir).unwrap();
+        save_gas_report(&orc, &gas_report_dir);
+    }
 
     // persist stored code_ids in CONFIG, so we can reuse for all tests
     cfg.code_ids = orc
@@ -65,7 +65,6 @@ fn global_setup() {
 
     let config = Cfg {
         cfg,
-        contract_dir,
         gas_report_dir,
     };
     CONFIG.set(config).expect("error initializing Config");

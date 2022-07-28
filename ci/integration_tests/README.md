@@ -14,12 +14,12 @@ TODO: Add a just file to make this all easy
 * `./scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg`
 * `tail -n 1 default-account.txt | junod keys add localval --recover`
 * `cd ci/integration_tests`
-* `CONTRACT_DIR="../../artifacts" GAS_OUT_DIR="gas_reports" CONFIG="configs/local.yaml" RUST_LOG=debug cargo test`
+* `SKIP_CONTRACT_STORE=true GAS_OUT_DIR="gas_reports" CONFIG="configs/local.yaml" RUST_LOG=debug cargo t`
 
 ### Hitting Testnet
 * `cd ci/integration_tests`
 * Configure `configs/testnet.yaml` with your junod testnet key name
-* `CONTRACT_DIR="../../artifacts" GAS_OUT_DIR="gas_reports" CONFIG="configs/testnet.yaml" RUST_LOG=debug cargo test`
+* `SKIP_CONTRACT_STORE=true GAS_OUT_DIR="gas_reports" CONFIG="configs/testnet.yaml" RUST_LOG=debug cargo t`
 
 
 ## Adding New Integration Tests
