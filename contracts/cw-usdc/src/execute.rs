@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, BankMsg, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use cosmwasm_std::{coins, BankMsg, DepsMut, Env, MessageInfo, Response, StdError, Uint128};
 use osmo_bindings::OsmosisMsg;
 
 use crate::error::ContractError;
@@ -25,13 +25,12 @@ pub fn mint(
 
     // decrease minter allowance
     // if minter allowance goes negative, throw error
-    MINTER_ALLOWANCES.update(
-        deps.storage,
-        &info.sender,
-        |allowance| -> StdResult<Uint128> {
-            Ok(allowance.unwrap_or_default().checked_sub(amount)?)
-        },
-    )?;
+    MINTER_ALLOWANCES.update(deps.storage, &info.sender, |allowance| {
+        allowance
+            .unwrap_or_else(Uint128::zero)
+            .checked_sub(amount)
+            .map_err(StdError::overflow)
+    })?;
 
     // get token denom from contract config
     let denom = CONFIG.load(deps.storage)?.denom;
@@ -67,13 +66,12 @@ pub fn burn(
 
     // decrease burner allowance
     // if burner allowance goes negative, throw error
-    BURNER_ALLOWANCES.update(
-        deps.storage,
-        &info.sender,
-        |allowance| -> StdResult<Uint128> {
-            Ok(allowance.unwrap_or_default().checked_sub(amount)?)
-        },
-    )?;
+    BURNER_ALLOWANCES.update(deps.storage, &info.sender, |allowance| {
+        allowance
+            .unwrap_or_else(Uint128::zero)
+            .checked_sub(amount)
+            .map_err(StdError::overflow)
+    })?;
 
     // get token denom from contract config
     let denom = CONFIG.load(deps.storage)?.denom;
