@@ -16,9 +16,13 @@
       ]
     },
     "owner": {
-      "type": [
-        "string",
-        "null"
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Owner"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "unstaking_duration": {
@@ -61,6 +65,36 @@
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Owner": {
+      "oneOf": [
+        {
+          "description": "Set the owner to a specific address.",
+          "type": "object",
+          "required": [
+            "addr"
+          ],
+          "properties": {
+            "addr": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Set the owner to the address that instantiates this contract. This is useful for DAOs that instantiate this contract as part of their creation process and would like to set themselces as the admin.",
+          "type": "object",
+          "required": [
+            "instantiator"
+          ],
+          "properties": {
+            "instantiator": {
+              "type": "object"
             }
           },
           "additionalProperties": false
