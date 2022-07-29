@@ -1,7 +1,7 @@
 # CosmWasm Map Pagination
 
 This package provides generic convienence methods for paginating keys
-and values in a CosmWasm `Maop` or `SnapshotMap`. If you use these
+and values in a CosmWasm `Map` or `SnapshotMap`. If you use these
 methods to paginate the maps in your contract you may [make larry0x
 happy](https://twitter.com/larry0x/status/1530537243709939719).
 
