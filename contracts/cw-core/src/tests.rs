@@ -868,7 +868,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
     // Proposal mdoule can't call ExecuteAdminMsgs
     let res = app.execute_contract(
@@ -887,7 +887,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
     // Update Admin can't be called by non-admins
     let res = app.execute_contract(
@@ -898,7 +898,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
     // Nominate admin can be called by core contract as no admin was
     // specified so the admin defaulted to the core contract.
@@ -918,7 +918,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_ok());
+    res.unwrap();
 
     // Instantiate new DAO with an admin
     let (core_with_admin_addr, mut app) =
@@ -941,7 +941,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
     // Admin can call ExecuteAdminMsgs, here an admin pasues the DAO
     let res = app.execute_contract(
@@ -960,7 +960,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_ok());
+    res.unwrap();
 
     let paused: PauseInfoResponse = app
         .wrap()
@@ -985,7 +985,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_ok());
+    res.unwrap();
 
     let nomination: AdminNominationResponse = app
         .wrap()
@@ -1226,7 +1226,7 @@ fn test_admin_nomination() {
         },
         &[],
     );
-    assert!(res.is_ok());
+    res.unwrap();
 
     let paused: PauseInfoResponse = app
         .wrap()
@@ -2227,6 +2227,6 @@ fn test_execute_stargate_msg() {
         },
         &[],
     );
-    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this test assert
-    assert!(res.is_err());
+    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this result unwrap
+    res.unwrap_err();
 }
