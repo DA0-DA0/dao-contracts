@@ -22,6 +22,11 @@ pub struct InstantiateMsg {
     /// proposals. Otherwise, any address may execute a passed
     /// proposal.
     pub only_members_execute: bool,
+    /// Allows changing votes before the proposal expires. If this is
+    /// enabled proposals will not be able to complete early as final
+    /// vote information is not known until the time of proposal
+    /// expiration.
+    pub allow_revoting: bool,
     /// Information about the deposit required to create a
     /// proposal. None if there is no deposit requirement, Some
     /// otherwise.
@@ -88,6 +93,11 @@ pub enum ExecuteMsg {
         /// proposals. Otherwise, any address may execute a passed
         /// proposal. Applies to all outstanding and future proposals.
         only_members_execute: bool,
+        /// Allows changing votes before the proposal expires. If this is
+        /// enabled proposals will not be able to complete early as final
+        /// vote information is not known until the time of proposal
+        /// expiration.
+        allow_revoting: bool,
         /// The address if tge DAO that this governance module is
         /// associated with.
         dao: String,
