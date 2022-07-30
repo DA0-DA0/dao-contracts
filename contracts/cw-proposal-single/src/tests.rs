@@ -822,7 +822,9 @@ where
                 };
                 assert_eq!(vote, expected)
             }
-            ShouldExecute::No => assert!(res.is_err()),
+            ShouldExecute::No => {
+                res.unwrap_err();
+            }
             ShouldExecute::Meh => (),
         }
     }
