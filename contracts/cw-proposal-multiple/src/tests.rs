@@ -149,6 +149,7 @@ where
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
     };
@@ -762,6 +763,7 @@ fn test_propose() {
     let instantiate = InstantiateMsg {
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
         min_voting_period: None,
@@ -797,6 +799,7 @@ fn test_propose() {
     let expected = Config {
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
@@ -850,6 +853,7 @@ fn test_propose() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::zero(); 3],
         },
+        allow_revoting: false,
         deposit_info: None,
         min_voting_period: None,
     };
@@ -872,6 +876,7 @@ fn test_propose_wrong_num_choices() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
     };
@@ -907,6 +912,7 @@ fn test_propose_wrong_num_choices() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
         voting_strategy,
@@ -1056,6 +1062,7 @@ fn test_migrate() {
         max_voting_period: Duration::Time(10),
         min_voting_period: None,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -1113,6 +1120,7 @@ fn test_proposal_count_initialized_to_zero() {
         max_voting_period: Duration::Height(10),
         min_voting_period: None,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
     let core_addr = instantiate_with_staked_balances_governance(
@@ -1150,6 +1158,7 @@ fn test_no_early_pass_with_min_duration() {
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Height(2)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -1245,6 +1254,7 @@ fn test_propose_with_messages() {
         max_voting_period: Duration::Height(10),
         min_voting_period: None,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -1280,6 +1290,7 @@ fn test_propose_with_messages() {
         min_voting_period: None,
         max_voting_period: cw_utils::Duration::Height(20),
         only_members_execute: false,
+        allow_revoting: false,
         dao: "dao".to_string(),
         deposit_info: None,
     };
@@ -1364,6 +1375,7 @@ fn test_min_duration_units_missmatch() {
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Time(2)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
     instantiate_with_staked_balances_governance(
@@ -1395,6 +1407,7 @@ fn test_min_duration_larger_than_proposal_duration() {
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Height(11)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
     instantiate_with_staked_balances_governance(
@@ -1425,6 +1438,7 @@ fn test_min_duration_same_as_proposal_duration() {
         max_voting_period: Duration::Time(10),
         min_voting_period: Some(Duration::Time(10)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -1541,6 +1555,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
     };
@@ -1616,6 +1631,7 @@ fn test_different_token_proposal_deposit() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::Token {
                 address: cw20_addr.to_string(),
@@ -1684,6 +1700,7 @@ fn test_bad_token_proposal_deposit() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
     };
@@ -1714,6 +1731,7 @@ fn test_take_proposal_deposit() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
     };
@@ -2137,6 +2155,7 @@ fn test_cant_propose_zero_power() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
@@ -2302,6 +2321,7 @@ fn test_cant_execute_not_member() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -2639,6 +2659,7 @@ fn test_execute_expired_proposal() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -2813,6 +2834,7 @@ fn test_update_config() {
             min_voting_period: None,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: dao.to_string(),
             deposit_info: None,
         },
@@ -2831,6 +2853,7 @@ fn test_update_config() {
             min_voting_period: None,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
             deposit_info: None,
         },
@@ -2850,6 +2873,7 @@ fn test_update_config() {
         min_voting_period: None,
         max_voting_period: cw_utils::Duration::Height(10),
         only_members_execute: false,
+        allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
     };
@@ -2867,6 +2891,7 @@ fn test_update_config() {
             min_voting_period: None,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
             deposit_info: None,
         },
@@ -2946,6 +2971,7 @@ fn test_query_list_proposals() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
     };
@@ -3041,6 +3067,7 @@ fn test_query_list_proposals() {
             votes: MultipleChoiceVotes {
                 vote_weights: vec![Uint128::zero(); 3],
             },
+            allow_revoting: false,
             deposit_info: None,
             min_voting_period: None,
         },
@@ -3084,6 +3111,7 @@ fn test_query_list_proposals() {
             votes: MultipleChoiceVotes {
                 vote_weights: vec![Uint128::zero(); 3],
             },
+            allow_revoting: false,
             deposit_info: None,
             min_voting_period: None,
         },
@@ -3107,6 +3135,7 @@ fn test_hooks() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -3263,6 +3292,7 @@ fn test_active_threshold_absolute() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -3399,6 +3429,7 @@ fn test_active_threshold_percent() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -3536,6 +3567,7 @@ fn test_active_threshold_none() {
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };

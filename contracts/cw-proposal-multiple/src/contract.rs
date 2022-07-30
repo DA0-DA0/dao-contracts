@@ -60,6 +60,7 @@ pub fn instantiate(
         min_voting_period,
         max_voting_period,
         only_members_execute: msg.only_members_execute,
+        allow_revoting: msg.allow_revoting,
         dao,
         deposit_info,
     };
@@ -94,6 +95,7 @@ pub fn execute(
             min_voting_period,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
         } => execute_update_config(
@@ -103,6 +105,7 @@ pub fn execute(
             min_voting_period,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
         ),
@@ -172,6 +175,7 @@ pub fn execute_propose(
             total_power,
             status: Status::Open,
             votes: MultipleChoiceVotes::zero(checked_multiple_choice_options.len()),
+            allow_revoting: config.allow_revoting,
             deposit_info: config.deposit_info.clone(),
             choices: checked_multiple_choice_options,
         };
@@ -248,11 +252,29 @@ pub fn execute_vote(
         return Err(ContractError::NotRegistered {});
     }
 
+    let mut previous_ballot = None;
     BALLOTS.update(
         deps.storage,
         (proposal_id, info.sender.clone()),
         |bal| match bal {
-            Some(_) => Err(ContractError::AlreadyVoted {}),
+            Some(current_ballot) => {
+                if prop.allow_revoting {
+                    if current_ballot.vote == vote {
+                        // Don't allow casting the same vote more than
+                        // once. This seems liable to be confusing
+                        // behavior.
+                        Err(ContractError::AlreadyCast {})
+                    } else {
+                        previous_ballot = Some(current_ballot);
+                        Ok(Ballot {
+                            power: vote_power,
+                            vote,
+                        })
+                    }
+                } else {
+                    Err(ContractError::AlreadyVoted {})
+                }
+            },
             None => Ok(Ballot {
                 vote,
                 power: vote_power,
@@ -426,6 +448,7 @@ pub fn execute_update_config(
     min_voting_period: Option<Duration>,
     max_voting_period: Duration,
     only_members_execute: bool,
+    allow_revoting: bool,
     dao: String,
     deposit_info: Option<DepositInfo>,
 ) -> Result<Response, ContractError> {
@@ -453,6 +476,7 @@ pub fn execute_update_config(
             min_voting_period,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
         },
