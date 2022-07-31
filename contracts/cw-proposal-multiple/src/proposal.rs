@@ -695,4 +695,154 @@ mod tests {
         assert!(!prop.is_passed(&env.block).unwrap());
         assert!(prop.is_rejected(&env.block).unwrap());
     }
+
+    #[test]
+    fn test_majority_revote_pass() {
+        // Revoting being allowed means that proposals may not be
+        // passed or rejected before they expire.
+        let env = mock_env();
+        let voting_strategy = VotingStrategy::SingleChoice {
+            quorum: voting::threshold::PercentageThreshold::Majority {},
+        };
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(6), Uint128::new(0), Uint128::new(0)],
+        };
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(10),
+            false,
+            true,
+        );
+        // Quorum reached, but proposal is still active => no pass
+        assert!(!prop.is_passed(&env.block).unwrap());
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(10),
+            true,
+            true,
+        );
+        // Quorum reached & proposal has expired => pass
+        assert!(prop.is_passed(&env.block).unwrap());
+    }
+
+    #[test]
+    fn test_majority_revote_rejection() {
+        // Revoting being allowed means that proposals may not be
+        // passed or rejected before they expire.
+        let env = mock_env();
+        let voting_strategy = VotingStrategy::SingleChoice {
+            quorum: voting::threshold::PercentageThreshold::Majority {},
+        };
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(5), Uint128::new(0), Uint128::new(0)],
+        };
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(10),
+            false,
+            true,
+        );
+        // No quorum reached, but proposal is still active => no rejection
+        assert!(!prop.is_rejected(&env.block).unwrap());
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(10),
+            true,
+            true,
+        );
+        // No quorum reached & proposal has expired => rejection
+        assert!(prop.is_rejected(&env.block).unwrap());
+    }
+
+    #[test]
+    fn test_percentage_revote_pass() {
+        // Revoting being allowed means that proposals may not be
+        // passed or rejected before they expire.
+        let env = mock_env();
+        let voting_strategy = VotingStrategy::SingleChoice {
+            quorum: voting::threshold::PercentageThreshold::Percent(
+                cosmwasm_std::Decimal::percent(80),
+            ),
+        };
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(81), Uint128::new(0), Uint128::new(0)],
+        };
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(100),
+            false,
+            true,
+        );
+        // Quorum reached, but proposal is still active => no pass
+        assert!(!prop.is_passed(&env.block).unwrap());
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(100),
+            true,
+            true,
+        );
+        // Quorum reached & proposal has expired => pass
+        assert!(prop.is_passed(&env.block).unwrap());
+    }
+
+    #[test]
+    fn test_percentage_revote_rejection() {
+        // Revoting being allowed means that proposals may not be
+        // passed or rejected before they expire.
+        let env = mock_env();
+        let voting_strategy = VotingStrategy::SingleChoice {
+            quorum: voting::threshold::PercentageThreshold::Percent(
+                cosmwasm_std::Decimal::percent(80),
+            ),
+        };
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(90), Uint128::new(0), Uint128::new(0)],
+        };
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(100),
+            false,
+            true,
+        );
+        // Quorum reached, but proposal is still active => no rejection
+        assert!(!prop.is_rejected(&env.block).unwrap());
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(50), Uint128::new(0), Uint128::new(0)],
+        };
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes.clone(),
+            Uint128::new(100),
+            true,
+            true,
+        );
+        // No quorum reached & proposal has expired => rejection
+        assert!(prop.is_rejected(&env.block).unwrap());
+    }
 }
