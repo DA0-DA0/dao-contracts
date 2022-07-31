@@ -1553,6 +1553,25 @@ fn test_instantiate_with_items() {
 fn test_cw20_receive_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
+    let cw20_id = app.store_code(cw20_contract());
+    let another_cw20 = app
+        .instantiate_contract(
+            cw20_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw20_base::msg::InstantiateMsg {
+                name: "DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "another-token",
+            None,
+        )
+        .unwrap();
+
     let voting_module: Addr = app
         .wrap()
         .query_wasm_smart(gov_addr.clone(), &QueryMsg::VotingModule {})
@@ -1621,12 +1640,27 @@ fn test_cw20_receive_auto_add() {
         }]
     );
 
-    // Test removing and adding some new ones.
+    // Test removing and adding some new ones. Invalid should fail.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(gov_addr.clone()),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw20List {
+                to_add: vec!["new".to_string()],
+                to_remove: vec![gov_token.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Std(_)));
+
     app.execute_contract(
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
         &ExecuteMsg::UpdateCw20List {
-            to_add: vec!["new".to_string()],
+            to_add: vec![another_cw20.to_string()],
             to_remove: vec![gov_token.to_string()],
         },
         &[],
@@ -1643,12 +1677,31 @@ fn test_cw20_receive_auto_add() {
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new")]);
+    assert_eq!(cw20_list, vec![another_cw20]);
 }
 
 #[test]
 fn test_cw20_receive_no_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
+
+    let cw20_id = app.store_code(cw20_contract());
+    let another_cw20 = app
+        .instantiate_contract(
+            cw20_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw20_base::msg::InstantiateMsg {
+                name: "DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "another-token",
+            None,
+        )
+        .unwrap();
 
     let voting_module: Addr = app
         .wrap()
@@ -1692,7 +1745,7 @@ fn test_cw20_receive_no_auto_add() {
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
         &ExecuteMsg::UpdateCw20List {
-            to_add: vec!["new".to_string(), gov_token.to_string()],
+            to_add: vec![another_cw20.to_string(), gov_token.to_string()],
             to_remove: vec!["ok to remove non existent".to_string()],
         },
         &[],
@@ -1709,7 +1762,7 @@ fn test_cw20_receive_no_auto_add() {
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new"), gov_token]);
+    assert_eq!(cw20_list, vec![another_cw20, gov_token]);
 }
 
 #[test]
@@ -1719,6 +1772,21 @@ fn test_cw721_receive() {
     let cw721_id = app.store_code(cw721_contract());
 
     let cw721_addr = app
+        .instantiate_contract(
+            cw721_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: CREATOR_ADDR.to_string(),
+            },
+            &[],
+            "cw721",
+            None,
+        )
+        .unwrap();
+
+    let another_cw721 = app
         .instantiate_contract(
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
@@ -1770,12 +1838,28 @@ fn test_cw721_receive() {
         .unwrap();
     assert_eq!(cw721_list, vec![cw721_addr.clone()]);
 
-    // OK to add already added. Remove happens after add.
+    // Try to add an invalid cw721.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(gov_addr.clone()),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw721List {
+                to_add: vec!["new".to_string(), cw721_addr.to_string()],
+                to_remove: vec![cw721_addr.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Std(_)));
+
+    // Add a real cw721.
     app.execute_contract(
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
         &ExecuteMsg::UpdateCw721List {
-            to_add: vec!["new".to_string(), cw721_addr.to_string()],
+            to_add: vec![another_cw721.to_string(), cw721_addr.to_string()],
             to_remove: vec![cw721_addr.to_string()],
         },
         &[],
@@ -1792,7 +1876,7 @@ fn test_cw721_receive() {
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new")]);
+    assert_eq!(cw20_list, vec![another_cw721]);
 }
 
 #[test]
@@ -1802,6 +1886,21 @@ fn test_cw721_receive_no_auto_add() {
     let cw721_id = app.store_code(cw721_contract());
 
     let cw721_addr = app
+        .instantiate_contract(
+            cw721_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: CREATOR_ADDR.to_string(),
+            },
+            &[],
+            "cw721",
+            None,
+        )
+        .unwrap();
+
+    let another_cw721 = app
         .instantiate_contract(
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
@@ -1859,7 +1958,7 @@ fn test_cw721_receive_no_auto_add() {
         gov_addr.clone(),
         &ExecuteMsg::UpdateCw721List {
             to_add: vec![
-                "new".to_string(),
+                another_cw721.to_string(),
                 cw721_addr.to_string(),
                 cw721_addr.to_string(),
             ],
@@ -1879,7 +1978,7 @@ fn test_cw721_receive_no_auto_add() {
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new"), cw721_addr]);
+    assert_eq!(cw20_list, vec![another_cw721, cw721_addr]);
 }
 
 #[test]
