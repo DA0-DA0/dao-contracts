@@ -1,4 +1,4 @@
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, Owner, QueryMsg};
 use crate::state::Config;
 use cosmwasm_std::{coins, Addr, Coin, Empty, Uint128};
 use cw_controllers::ClaimsResponse;
@@ -199,7 +199,7 @@ fn test_instantiate() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -220,6 +220,27 @@ fn test_instantiate() {
 }
 
 #[test]
+fn test_instantiate_dao_owner() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    // Populated fields
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Owner::Instantiator {}),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+        },
+    );
+
+    let config = get_config(&mut app, addr);
+
+    assert_eq!(config.owner, Some(Addr::unchecked(DAO_ADDR)))
+}
+
+#[test]
 #[should_panic(expected = "Invalid unstaking duration, unstaking duration cannot be 0")]
 fn test_instantiate_invalid_unstaking_duration() {
     let mut app = mock_app();
@@ -229,7 +250,7 @@ fn test_instantiate_invalid_unstaking_duration() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(0)),
@@ -258,7 +279,7 @@ fn test_stake_invalid_denom() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -277,7 +298,7 @@ fn test_stake_valid_denom() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -298,7 +319,7 @@ fn test_unstake_none_staked() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -317,7 +338,7 @@ fn test_unstake_invalid_balance() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -340,7 +361,7 @@ fn test_unstake() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -375,7 +396,7 @@ fn test_unstake_no_unstaking_duration() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: None,
@@ -412,7 +433,7 @@ fn test_claim_no_claims() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -431,7 +452,7 @@ fn test_claim_claim_not_reached() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -458,7 +479,7 @@ fn test_claim() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -509,7 +530,7 @@ fn test_update_config_invalid_sender() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -537,7 +558,7 @@ fn test_update_config_non_owner_changes_owner() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -556,7 +577,7 @@ fn test_update_config_as_owner() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -594,7 +615,7 @@ fn test_update_config_as_manager() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -633,7 +654,7 @@ fn test_update_config_invalid_duration() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -660,7 +681,7 @@ fn test_query_dao() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -680,7 +701,7 @@ fn test_query_info() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -703,7 +724,7 @@ fn test_query_claims() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -739,7 +760,7 @@ fn test_query_get_config() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -766,7 +787,7 @@ fn test_voting_power_queries() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(DAO_ADDR.to_string()),
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),

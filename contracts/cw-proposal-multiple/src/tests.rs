@@ -277,7 +277,9 @@ where
                 };
                 assert_eq!(vote, expected)
             }
-            ShouldExecute::No => assert!(res.is_err()),
+            ShouldExecute::No => {
+                res.unwrap_err();
+            }
             ShouldExecute::Meh => (),
         }
     }
@@ -1041,10 +1043,18 @@ fn test_pass_exact_quorum() {
 }
 
 #[test]
-fn fuzz_votes() {
-    fuzz_voting(do_votes_cw20_balances);
-    fuzz_voting(do_votes_cw4_weights);
-    fuzz_voting(do_votes_staked_balances);
+fn fuzz_votes_cw20_balances() {
+    fuzz_voting(do_votes_cw20_balances)
+}
+
+#[test]
+fn fuzz_votes_cw4_weights() {
+    fuzz_voting(do_votes_cw4_weights)
+}
+
+#[test]
+fn fuzz_votes_staked_balances() {
+    fuzz_voting(do_votes_staked_balances)
 }
 
 #[test]

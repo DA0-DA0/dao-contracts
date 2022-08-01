@@ -4,10 +4,22 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum Owner {
+    /// Set the owner to a specific address.
+    Addr(String),
+    /// Set the owner to the address that instantiates this
+    /// contract. This is useful for DAOs that instantiate this
+    /// contract as part of their creation process and would like to
+    /// set themselces as the admin.
+    Instantiator {},
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This will generally be a DAO.
-    pub owner: Option<String>,
+    pub owner: Option<Owner>,
     // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
     pub manager: Option<String>,
     // Token denom e.g. ujuno, or some ibc denom
@@ -16,7 +28,7 @@ pub struct InstantiateMsg {
     pub unstaking_duration: Option<Duration>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Stake {},
@@ -32,7 +44,7 @@ pub enum ExecuteMsg {
 }
 
 #[voting_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Dao {},
