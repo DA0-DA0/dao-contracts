@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
-    Reply, Response, StdResult, Storage, WasmMsg,
+    Reply, Response, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
@@ -26,6 +26,8 @@ use crate::{
     },
     utils::{get_total_power, get_voting_power},
 };
+
+const UPDATE_REPLY_ID: u64 = 100_000_000;
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -256,17 +258,34 @@ pub fn execute_execute(
         None => vec![],
     };
 
-    // TODO: This is not ready. Next Steps:
-    //
-    //  * Turn this into a query
-    //  * Return unauthorized if the query fails
-    //  * Remove the authorization from the "update" on the sub authorizations
-    //  * Add the update messages anyway but ignore the result
-    //  * Figure out a better way to add the auth to this proposal instead of using ReplaceOwner. Maybe through instantiate?
-    //  * Write proper tests for the auth, and more realistic tests for this proposal where we don't fake the sender
-    //
+    // Check that the proposal is authorized if authorizations are configured
     let response = Response::default();
     let response = if let Some(auths) = AUTHORIZATION_MODULE.may_load(deps.storage)? {
+        let authorized = cw_auth_middleware::utils::check_authorization(
+            deps.as_ref(),
+            &vec![auths.clone()],
+            &prop.msgs.clone(),
+            &info.sender,
+        );
+
+        if !authorized {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        let response = response
+            .add_submessage(SubMsg::reply_on_error(
+                wasm_execute(
+                    auths.to_string(),
+                    &cw_auth_middleware::msg::ExecuteMsg::UpdateExecutedAuthorizationState {
+                        msgs: prop.msgs.clone(),
+                        sender: info.sender.clone(),
+                    },
+                    vec![],
+                )?,
+                UPDATE_REPLY_ID,
+            ))
+            .add_attribute("authorized_by", auths.to_string());
+
         response.add_message(wasm_execute(
             auths.to_string(),
             &cw_auth_middleware::msg::ExecuteMsg::UpdateExecutedAuthorizationState {
@@ -757,6 +776,19 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.id == UPDATE_REPLY_ID {
+        if PROPOSAL_HOOKS.query_hooks(deps.as_ref())?.hooks.len() >= UPDATE_REPLY_ID as usize {
+            return Err(ContractError::TooManyHooks {});
+        }
+
+        if msg.result.is_err() {
+            return Ok(Response::new().add_attribute("update_error", msg.result.unwrap_err()));
+        }
+        return Ok(
+            Response::new().add_attribute("update_success", format!("{:?}", msg.result.unwrap()))
+        );
+    }
+
     if msg.id % 2 == 0 {
         // Proposal hook so we can just divide by two for index
         let idx = msg.id / 2;

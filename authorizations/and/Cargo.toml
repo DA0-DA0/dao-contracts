@@ -1,5 +1,5 @@
 [package]
-name = "cw-auth-middleware"
+name = "and"
 version = "0.1.0"
 authors = ["Nicolas Lara <nicolaslara@gmail.com>"]
 edition = "2018"
@@ -15,6 +15,17 @@ exclude = [
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false
+overflow-checks = true
+
 [features]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
@@ -25,29 +36,19 @@ library = []
 optimize = """docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.12.5
+  cosmwasm/rust-optimizer:0.12.6
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta" }
-cosmwasm-storage = { version = "1.0.0-beta" }
-cw-storage-plus = "0.13"
-cw-utils = "0.13"
-cw2 = "0.13"
-cw20 = "0.13"
-cw3 = "0.13"
-schemars = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0" }
-indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
-cw-core = { version="*", path="../cw-core" }
-cw4 = "0.13"
-cw4-group = "0.13"
+cosmwasm-std = "1.0.0"
+cosmwasm-storage = "1.0.0"
+cw-storage-plus = "0.13.2"
+cw2 = "0.13.2"
+schemars = "0.8.8"
+serde = { version = "1.0.137", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.31" }
+cw-auth-middleware = { path = "../../contracts/cw-auth-middleware" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta" }
-cw-multi-test = "0.13"
-testing = { version = "*", path = "../../packages/testing" }
-whitelist = { version = "*", path = "../../authorizations/whitelist" }
-message-filter = { version = "*", path = "../../authorizations/message-filter" }
-and = { version = "*", path = "../../authorizations/and" }
+cosmwasm-schema = "1.0.0"
+cw-multi-test = "0.13.2"

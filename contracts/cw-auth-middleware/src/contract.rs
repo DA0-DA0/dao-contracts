@@ -8,11 +8,11 @@ use cw2::set_contract_version;
 use cw4::MemberListResponse;
 
 use crate::msg::IsAuthorizedResponse;
-use crate::state::Authorization;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{Config, AUTHORIZATIONS, CONFIG, GROUPS},
+    utils::check_authorization,
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-auth-manager";
@@ -31,31 +31,11 @@ pub fn instantiate(
     let config = Config {
         dao: info.sender.clone(),
     };
-    let empty: Vec<Authorization> = vec![];
+    let empty: Vec<Addr> = vec![];
     CONFIG.save(deps.storage, &config)?;
     AUTHORIZATIONS.save(deps.storage, &info.sender, &empty)?;
 
     Ok(Response::default().add_attribute("action", "instantiate"))
-}
-
-fn check_authorization(
-    deps: Deps,
-    auths: &Vec<Authorization>,
-    msgs: &Vec<CosmosMsg>,
-    sender: &Addr,
-) -> bool {
-    auths.into_iter().all(|a| {
-        deps.querier
-            .query_wasm_smart(
-                a.contract.clone(),
-                &QueryMsg::Authorize {
-                    msgs: msgs.clone(),
-                    sender: sender.clone(),
-                },
-            )
-            .unwrap_or(IsAuthorizedResponse { authorized: false })
-            .authorized
-    })
 }
 
 fn get_groups_for(sender: &Addr, deps: Deps) -> StdResult<Vec<(String, Addr)>> {
@@ -187,7 +167,7 @@ fn execute_update_authorization_state(
                         // In the future we may need a better way to handle updates
                         Ok(SubMsg::reply_on_error(
                             wasm_execute(
-                                auth.contract.to_string(),
+                                auth.to_string(),
                                 &ExecuteMsg::UpdateExecutedAuthorizationState {
                                     msgs: msgs.clone(),
                                     sender: addr.clone(),
@@ -252,17 +232,13 @@ pub fn execute_add_authorization(
     AUTHORIZATIONS.update(
         deps.storage,
         &config.dao,
-        |auths| -> Result<Vec<Authorization>, ContractError> {
-            let new_auth = Authorization {
-                //name: "test".to_string(),
-                contract: validated_address,
-            };
+        |auths| -> Result<Vec<Addr>, ContractError> {
             match auths {
                 Some(mut l) => {
-                    l.push(new_auth);
+                    l.push(validated_address);
                     Ok(l)
                 }
-                None => Ok(vec![new_auth]),
+                None => Ok(vec![validated_address]),
             }
         },
     )?;
@@ -364,7 +340,6 @@ fn query_authorizations(deps: Deps, msgs: Vec<CosmosMsg>, sender: Addr) -> StdRe
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    //let original = msg.result.into_result().map_err(|e| ContractError::Std(cosmwasm_std::StdError::GenericErr{ msg: e}));
     match msg.id {
         // Update reply errors are always ignored.
         UPDATE_REPLY_ID => {

@@ -1571,7 +1571,6 @@ fn test_execute_proposal_with_auth() {
     )
     .unwrap();
 
-    // TODO: This needs to be made better
     app.execute_contract(
         core_addr.clone(), // Cheating. This should go through a proposal.
         auth_middleware_addr.clone(),
@@ -1744,36 +1743,8 @@ fn test_execute_proposal_with_auth() {
     )
     .unwrap();
 
-    // Someone without bank permissions tries to execute the proposal
-    app.execute_contract(
-        whitelisted_addr.clone(),
-        proposal_single.clone(),
-        &ExecuteMsg::Execute { proposal_id: 2 },
-        &[],
-    )
-    .unwrap_err(); // This should fail
-
-    // The employee tries to execute the proposal... but they're not whitelisted!
-    app.execute_contract(
-        employee_addr.clone(),
-        proposal_single.clone(),
-        &ExecuteMsg::Execute { proposal_id: 2 },
-        &[],
-    )
-    .unwrap_err(); // This should fail
-
-    // Whitelist the employee
-    app.execute_contract(
-        Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
-        whitelist_addr.clone(),
-        &whitelist::msg::ExecuteMsg::Allow {
-            addr: employee_addr.to_string(),
-        },
-        &[],
-    )
-    .unwrap(); // The address has been whitelisted
-
-    // The employee tries to execute the proposal again. This time after being whitelisted
+    // The employee tries to execute the proposal. They are not whitelisted, but
+    // the message filter allows them to execute this specific message
     app.execute_contract(
         employee_addr.clone(),
         proposal_single.clone(),

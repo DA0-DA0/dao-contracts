@@ -56,4 +56,7 @@ pub enum ContractError {
 
     #[error("The DAO is currently inactive, you cannot create proposals")]
     InactiveDao {},
+
+    #[error("Too many hooks have been added to this proposal so we can't distinguish between proposal hooks and auth replies")]
+    TooManyHooks {},
 }

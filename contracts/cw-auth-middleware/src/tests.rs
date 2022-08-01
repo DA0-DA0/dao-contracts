@@ -47,6 +47,15 @@ fn cw_message_filter_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn cw_and_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        and::contract::execute,
+        and::contract::instantiate,
+        and::contract::query,
+    );
+    Box::new(contract)
+}
+
 fn cw4_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw4_group::contract::execute,
@@ -137,6 +146,25 @@ fn build_auth_dao() -> (App, Addr, Addr) {
 fn test_direct_authorizations() {
     let (mut app, core_addr, auth_manager) = build_auth_dao();
 
+    // Create the message that will go through the auth
+    let amount = coins(1234, "juno");
+    let bank = BankMsg::Send {
+        to_address: "other_addr".to_string(),
+        amount,
+    };
+    let msg: CosmosMsg = bank.clone().into();
+
+    // Try to execute the message when no auths are configured
+    app.execute_contract(
+        Addr::unchecked("Evil sender"),
+        auth_manager.clone(),
+        &ExecuteMsg::Execute {
+            msgs: vec![msg.clone()],
+        },
+        &[],
+    )
+    .unwrap_err(); // This should fail
+
     // Adding a simple authorization contract
     let whitelist_id = app.store_code(cw_whitelist_contract());
     let whitelist_addr = app
@@ -175,24 +203,32 @@ fn test_direct_authorizations() {
     )
     .unwrap(); // The address has been whitelisted
 
+    // Create an *and* contract so that we can build more complex auths
+    let and_id = app.store_code(cw_and_contract());
+    let and_addr = app
+        .instantiate_contract(
+            and_id,
+            Addr::unchecked("Shouldn't matter"),
+            &and::msg::InstantiateMsg {
+                parent: core_addr.clone(),
+                children: vec![whitelist_addr.clone()],
+            },
+            &[],
+            "And auth",
+            None,
+        )
+        .unwrap();
+
     // Add the whitelist to the list of auths
     app.execute_contract(
         Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
         auth_manager.clone(),
         &ExecuteMsg::AddAuthorization {
-            auth_contract: whitelist_addr.to_string(),
+            auth_contract: and_addr.to_string(),
         },
         &[],
     )
     .unwrap();
-
-    // Create a proposal to spend some tokens
-    let amount = coins(1234, "juno");
-    let bank = BankMsg::Send {
-        to_address: "other_addr".to_string(),
-        amount,
-    };
-    let msg: CosmosMsg = bank.clone().into();
 
     // Execute the proposal by someone who is not whitelisted
     app.execute_contract(
@@ -229,11 +265,12 @@ fn test_direct_authorizations() {
             None,
         )
         .unwrap();
+
     app.execute_contract(
         Addr::unchecked(core_addr.clone()), // Cheating here. This should go through a proposal
-        auth_manager.clone(),
-        &ExecuteMsg::AddAuthorization {
-            auth_contract: message_filter_addr.to_string(),
+        and_addr.clone(),
+        &and::msg::ExecuteMsg::AddChild {
+            addr: message_filter_addr.clone(),
         },
         &[],
     )
