@@ -346,11 +346,14 @@ pub fn execute_update_proposal_modules(
         .add_submessages(to_add))
 }
 
+/// Updates a set of addresses in state applying VERIFY to each item
+/// that will be added.
 fn do_update_addr_list(
     deps: DepsMut,
     map: Map<Addr, Empty>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
+    verify: impl Fn(&Addr, Deps) -> StdResult<()>,
 ) -> Result<(), ContractError> {
     let to_add = to_add
         .into_iter()
@@ -363,6 +366,7 @@ fn do_update_addr_list(
         .collect::<Result<Vec<_>, _>>()?;
 
     for addr in to_add {
+        verify(&addr, deps.as_ref())?;
         map.save(deps.storage, addr, &Empty {})?;
     }
     for addr in to_remove {
@@ -382,7 +386,17 @@ pub fn execute_update_cw20_list(
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
-    do_update_addr_list(deps, CW20_LIST, to_add, to_remove)?;
+    do_update_addr_list(deps, CW20_LIST, to_add, to_remove, |addr, deps| {
+        // Perform a balance query here as this is the query performed
+        // by the `Cw20Balances` query.
+        let _info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+            addr,
+            &cw20::Cw20QueryMsg::Balance {
+                address: env.contract.address.to_string(),
+            },
+        )?;
+        Ok(())
+    })?;
     Ok(Response::default().add_attribute("action", "update_cw20_list"))
 }
 
@@ -396,7 +410,12 @@ pub fn execute_update_cw721_list(
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
-    do_update_addr_list(deps, CW721_LIST, to_add, to_remove)?;
+    do_update_addr_list(deps, CW721_LIST, to_add, to_remove, |addr, deps| {
+        let _info: cw721::ContractInfoResponse = deps
+            .querier
+            .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;
+        Ok(())
+    })?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
 }
 

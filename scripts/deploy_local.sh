@@ -98,7 +98,7 @@ VOTING_MSG='{
           "amount": "1000000000000000"
         }
       ],
-      "staking_code_id": '$stake_cw20_CODE_ID',
+      "staking_code_id": '$cw20_stake_CODE_ID',
       "unstaking_duration": {
         "time": 1209600
       }
@@ -193,6 +193,6 @@ echo "NEXT_PUBLIC_CWCORE_CODE_ID=$cw_core_CODE_ID"
 echo "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID=$cw_proposal_single_CODE_ID"
 echo "NEXT_PUBLIC_CW4VOTING_CODE_ID=$cw4_voting_CODE_ID"
 echo "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=$cw20_staked_balance_voting_CODE_ID"
-echo "NEXT_PUBLIC_STAKECW20_CODE_ID=$stake_cw20_CODE_ID"
+echo "NEXT_PUBLIC_STAKECW20_CODE_ID=$cw20_stake_CODE_ID"
 echo "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=$CW_CORE_DAO_CONTRACT"
 echo "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS=$CW_ADMIN_FACTORY_CONTRACT"

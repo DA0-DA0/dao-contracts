@@ -10,7 +10,7 @@ use cw_core_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightR
 use cw_utils::{must_pay, Duration};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Owner, QueryMsg};
 use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
 const CONTRACT_NAME: &str = "crates.io:cw-native-staked-balance-voting";
@@ -45,7 +45,11 @@ pub fn instantiate(
 
     let owner = msg
         .owner
-        .map(|owner| deps.api.addr_validate(&owner))
+        .as_ref()
+        .map(|owner| match owner {
+            Owner::Addr(address) => deps.api.addr_validate(address),
+            Owner::Instantiator {} => Ok(info.sender.clone()),
+        })
         .transpose()?;
     let manager = msg
         .manager

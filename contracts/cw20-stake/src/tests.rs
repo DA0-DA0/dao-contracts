@@ -964,3 +964,83 @@ fn test_simple_unstaking_with_duration() {
     claim_tokens(&mut app, &staking_addr, info).unwrap();
     assert_eq!(get_balance(&app, &cw20_addr, ADDR2), Uint128::from(100u128));
 }
+
+#[test]
+fn test_double_unstake_at_height() {
+    let mut app = App::default();
+
+    let (staking_addr, cw20_addr) = setup_test_case(
+        &mut app,
+        vec![Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(10),
+        }],
+        None,
+    );
+
+    stake_tokens(
+        &mut app,
+        &staking_addr,
+        &cw20_addr,
+        mock_info("ekez", &[]),
+        Uint128::new(10),
+    )
+    .unwrap();
+
+    app.update_block(next_block);
+
+    unstake_tokens(
+        &mut app,
+        &staking_addr,
+        mock_info("ekez", &[]),
+        Uint128::new(1),
+    )
+    .unwrap();
+
+    unstake_tokens(
+        &mut app,
+        &staking_addr,
+        mock_info("ekez", &[]),
+        Uint128::new(9),
+    )
+    .unwrap();
+
+    app.update_block(next_block);
+
+    // Unstaked balances are not reflected until the following
+    // block. Same behavior as staked balances. This is important
+    // because otherwise weird things could happen like:
+    //
+    // 1. I create a proposal (and am allowed to because I have a
+    //    staked balance)
+    // 2. I unstake all my tokens in the same block.
+    //
+    // Now there is some strangeness as for part of the block I had a
+    // staked balance and was allowed to take actions as if I did, and
+    // part of it I did not.
+    let balance: StakedBalanceAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            staking_addr.clone(),
+            &QueryMsg::StakedBalanceAtHeight {
+                address: "ekez".to_string(),
+                height: Some(app.block_info().height - 1),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(balance.balance, Uint128::new(10));
+
+    let balance: StakedBalanceAtHeightResponse = app
+        .wrap()
+        .query_wasm_smart(
+            staking_addr,
+            &QueryMsg::StakedBalanceAtHeight {
+                address: "ekez".to_string(),
+                height: Some(app.block_info().height),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(balance.balance, Uint128::zero())
+}
