@@ -285,7 +285,8 @@ export type Expiration = {
   };
 };
 export type Status = "open" | "rejected" | "passed" | "executed" | "closed";
-export interface FindProposalsResponse {
+export interface FilterListProposalsResponse {
+  last_proposal_id: number;
   proposals: ProposalResponse[];
   [k: string]: unknown;
 }
@@ -412,7 +413,7 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
-  find_proposals: {
+  filter_list_proposals: {
     limit?: number | null;
     start_after?: number | null;
     status?: Status | null;
@@ -478,7 +479,7 @@ export interface CwProposalMultipleReadOnlyInterface {
   }) => Promise<ListVotesResponse>;
   proposalHooks: () => Promise<ProposalHooksResponse>;
   voteHooks: () => Promise<VoteHooksResponse>;
-  findProposals: ({
+  filterListProposals: ({
     limit,
     startAfter,
     status,
@@ -490,7 +491,7 @@ export interface CwProposalMultipleReadOnlyInterface {
     status?: Status;
     wallet: string;
     walletVote?: MultipleChoiceVote;
-  }) => Promise<FindProposalsResponse>;
+  }) => Promise<FilterListProposalsResponse>;
   info: () => Promise<InfoResponse>;
 }
 export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnlyInterface {
@@ -509,7 +510,7 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
     this.listVotes = this.listVotes.bind(this);
     this.proposalHooks = this.proposalHooks.bind(this);
     this.voteHooks = this.voteHooks.bind(this);
-    this.findProposals = this.findProposals.bind(this);
+    this.filterListProposals = this.filterListProposals.bind(this);
     this.info = this.info.bind(this);
   }
 
@@ -603,7 +604,7 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
       vote_hooks: {}
     });
   };
-  findProposals = async ({
+  filterListProposals = async ({
     limit,
     startAfter,
     status,
@@ -615,9 +616,9 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
     status?: Status;
     wallet: string;
     walletVote?: MultipleChoiceVote;
-  }): Promise<FindProposalsResponse> => {
+  }): Promise<FilterListProposalsResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
-      find_proposals: {
+      filter_list_proposals: {
         limit,
         start_after: startAfter,
         status,
