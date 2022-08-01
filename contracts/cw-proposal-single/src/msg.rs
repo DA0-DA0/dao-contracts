@@ -188,7 +188,7 @@ pub enum QueryMsg {
     /// Lists all of the consumers of vote hooks for this
     /// module. Returns indexable_hooks::HooksResponse.
     VoteHooks {},
-    FindProposals {
+    FilterListProposals {
         wallet: String,
         status: Option<Status>,
         wallet_vote: Option<Vote>,

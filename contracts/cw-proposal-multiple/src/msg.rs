@@ -132,7 +132,7 @@ pub enum QueryMsg {
     },
     ProposalHooks {},
     VoteHooks {},
-    FindProposals {
+    FilterListProposals {
         wallet: String,
         status: Option<Status>,
         wallet_vote: Option<MultipleChoiceVote>,

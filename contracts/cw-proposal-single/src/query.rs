@@ -44,3 +44,9 @@ pub struct VoteListResponse {
 pub struct ProposalListResponse {
     pub proposals: Vec<ProposalResponse>,
 }
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct FilterListProposalsResponse {
+    pub proposals: Vec<ProposalResponse>,
+    pub last_proposal_id: u64,
+}

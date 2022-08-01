@@ -38,3 +38,9 @@ pub struct VoterResponse {
 pub struct ConfigResponse {
     pub config: Config,
 }
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct FilterListProposalsResponse {
+    pub proposals: Vec<ProposalResponse>,
+    pub last_proposal_id: u64,
+}

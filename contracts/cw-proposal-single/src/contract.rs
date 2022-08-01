@@ -20,6 +20,7 @@ use voting::voting::{get_total_power, get_voting_power, validate_voting_period, 
 
 use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;
+use crate::query::FilterListProposalsResponse;
 use crate::state::Config;
 use crate::{
     error::ContractError,
@@ -609,17 +610,19 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => query_reverse_proposals(deps, env, start_before, limit),
         QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
-        QueryMsg::FindProposals {
+        QueryMsg::FilterListProposals {
             wallet,
             status,
             wallet_vote,
             start_after,
             limit,
-        } => query_find_proposals(deps, env, wallet, status, wallet_vote, start_after, limit),
+        } => {
+            query_filter_list_proposals(deps, env, wallet, status, wallet_vote, start_after, limit)
+        }
     }
 }
 
-fn query_find_proposals(
+fn query_filter_list_proposals(
     deps: Deps,
     env: Env,
     wallet: String,
@@ -633,7 +636,6 @@ fn query_find_proposals(
     let limit = limit.unwrap_or(DEFAULT_LIMIT);
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, min, None, Order::Ascending)
-        .take(limit as usize)
         .collect::<StdResult<Vec<(u64, SingleChoiceProposal)>>>()?
         .into_iter()
         .filter_map(|(p_id, prop)| {
@@ -646,8 +648,13 @@ fn query_find_proposals(
             }
             None
         })
+        .take(limit as usize)
         .collect();
-    to_binary(&ProposalListResponse { proposals: props })
+    let last_proposal_id = props.last().map_or(0, |res| res.id);
+    to_binary(&FilterListProposalsResponse {
+        proposals: props,
+        last_proposal_id,
+    })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {

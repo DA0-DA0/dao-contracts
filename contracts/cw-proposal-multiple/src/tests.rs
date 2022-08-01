@@ -15,7 +15,10 @@ use voting::{
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::MultipleChoiceProposal,
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
+    query::{
+        FilterListProposalsResponse, ProposalListResponse, ProposalResponse, VoteListResponse,
+        VoteResponse,
+    },
     state::{Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo, MAX_NUM_CHOICES},
     voting_strategy::VotingStrategy,
     ContractError,
@@ -3967,13 +3970,13 @@ fn test_find_proposals() {
     // 1 - "0"
     // 2 - "1"
     // 3 - "0"
-    // and 3 proposal is executed
+    // and 3rd proposal is executed
     {
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
                     wallet_vote: None,
@@ -3989,12 +3992,13 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [1, 2, 3]
         );
+        assert_eq!(answ.last_proposal_id, 3);
 
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: Some(Status::Open),
                     wallet_vote: None,
@@ -4010,12 +4014,13 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [1, 2]
         );
+        assert_eq!(answ.last_proposal_id, 2);
 
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: Some(Status::Executed),
                     wallet_vote: None,
@@ -4031,12 +4036,13 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [3]
         );
+        assert_eq!(answ.last_proposal_id, 3);
 
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
                     wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
@@ -4052,12 +4058,13 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [1, 3]
         );
+        assert_eq!(answ.last_proposal_id, 3);
 
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: Some(Status::Open),
                     wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
@@ -4073,15 +4080,16 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [1]
         );
+        assert_eq!(answ.last_proposal_id, 1);
     }
 
     // Pagination test
     {
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
                     wallet_vote: None,
@@ -4097,12 +4105,13 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [2, 3]
         );
+        assert_eq!(answ.last_proposal_id, 3);
 
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
                     wallet_vote: None,
@@ -4118,12 +4127,13 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [1, 2]
         );
+        assert_eq!(answ.last_proposal_id, 2);
 
-        let answ: ProposalListResponse = app
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single.clone(),
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
                     wallet_vote: None,
@@ -4139,12 +4149,37 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [2, 3]
         );
+        assert_eq!(answ.last_proposal_id, 3);
 
-        let answ: ProposalListResponse = app
+        // starting after {proposal_id: 2}, and limit 1
+        // we should get 3rd, and not empty list
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                govmod_single.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                    start_after: Some(1),
+                    limit: Some(1),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [3]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        let answ: FilterListProposalsResponse = app
             .wrap()
             .query_wasm_smart(
                 govmod_single,
-                &QueryMsg::FindProposals {
+                &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
                     wallet_vote: None,
@@ -4160,5 +4195,6 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [] as [u64; 0]
         );
+        assert_eq!(answ.last_proposal_id, 0);
     }
 }

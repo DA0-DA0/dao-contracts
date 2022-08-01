@@ -57,9 +57,4 @@ fn main() {
     );
     export_schema_with_title(&schema_for!(HooksResponse), &out_dir, "VoteHooksResponse");
     export_schema_with_title(&schema_for!(VoteResponse), &out_dir, "GetVoteResponse");
-    export_schema_with_title(
-        &schema_for!(ProposalListResponse),
-        &out_dir,
-        "FindProposalsResponse",
-    );
 }
