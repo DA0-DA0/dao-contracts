@@ -6,7 +6,10 @@ use cosmwasm_std::Addr;
 use cw_core_interface::voting::InfoResponse;
 use cw_proposal_multiple::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
+    query::{
+        FilterListProposalsResponse, ProposalListResponse, ProposalResponse, VoteListResponse,
+        VoteResponse,
+    },
     state::Config,
 };
 use indexable_hooks::HooksResponse;
@@ -25,6 +28,7 @@ fn main() {
     export_schema(&schema_for!(InfoResponse), &out_dir);
     export_schema(&schema_for!(ProposalResponse), &out_dir);
     export_schema(&schema_for!(VoteResponse), &out_dir);
+    export_schema(&schema_for!(FilterListProposalsResponse), &out_dir);
 
     // Auto TS code generation expects the query return type as QueryNameResponse
     // Here we map query resonses to the correct name

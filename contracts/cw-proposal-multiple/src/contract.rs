@@ -24,7 +24,10 @@ use voting::{
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::{MultipleChoiceProposal, VoteResult},
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
+    query::{
+        FilterListProposalsResponse, ProposalListResponse, ProposalResponse, VoteListResponse,
+        VoteResponse,
+    },
     state::{Config, MultipleChoiceOptions, CONFIG, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
     voting_strategy::VotingStrategy,
     ContractError,
@@ -597,7 +600,51 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => query_reverse_proposals(deps, env, start_before, limit),
         QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
+        QueryMsg::FilterListProposals {
+            wallet,
+            status,
+            wallet_vote,
+            start_after,
+            limit,
+        } => {
+            query_filter_list_proposals(deps, env, wallet, status, wallet_vote, start_after, limit)
+        }
     }
+}
+
+fn query_filter_list_proposals(
+    deps: Deps,
+    env: Env,
+    wallet: String,
+    status: Option<Status>,
+    wallet_vote: Option<MultipleChoiceVote>,
+    start_after: Option<u64>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    let wallet: Addr = deps.api.addr_validate(&wallet)?;
+    let min = start_after.map(Bound::exclusive);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let props: Vec<ProposalResponse> = PROPOSALS
+        .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
+        .collect::<StdResult<Vec<(u64, MultipleChoiceProposal)>>>()?
+        .into_iter()
+        .filter_map(|(p_id, prop)| {
+            if status.map_or(true, |st| st == prop.status) {
+                if let Ok(Some(ballot)) = BALLOTS.may_load(deps.storage, (p_id, wallet.clone())) {
+                    if wallet_vote.map_or(true, |v| v == ballot.vote) {
+                        return prop.into_response(&env.block, p_id).ok();
+                    }
+                }
+            }
+            None
+        })
+        .take(limit as usize)
+        .collect();
+    let last_proposal_id = props.last().map_or(0, |res| res.id);
+    to_binary(&FilterListProposalsResponse {
+        proposals: props,
+        last_proposal_id,
+    })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {

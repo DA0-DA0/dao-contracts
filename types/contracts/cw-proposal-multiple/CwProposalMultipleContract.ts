@@ -274,34 +274,6 @@ export interface DepositInfo {
   token: DepositToken;
   [k: string]: unknown;
 }
-export interface GetVoteResponse {
-  vote?: VoteInfo | null;
-  [k: string]: unknown;
-}
-export interface VoteInfo {
-  power: Uint128;
-  vote: MultipleChoiceVote;
-  voter: Addr;
-  [k: string]: unknown;
-}
-export type GovernanceModulesResponse = Addr[];
-export interface InfoResponse {
-  info: ContractVersion;
-  [k: string]: unknown;
-}
-export interface ContractVersion {
-  contract: string;
-  version: string;
-  [k: string]: unknown;
-}
-export interface InstantiateMsg {
-  deposit_info?: DepositInfo | null;
-  max_voting_period: Duration;
-  min_voting_period?: Duration | null;
-  only_members_execute: boolean;
-  voting_strategy: VotingStrategy;
-  [k: string]: unknown;
-}
 export type MultipleChoiceOptionType = "None" | "Standard";
 export type Expiration = {
   at_height: number;
@@ -313,7 +285,8 @@ export type Expiration = {
   };
 };
 export type Status = "open" | "rejected" | "passed" | "executed" | "closed";
-export interface ListProposalsResponse {
+export interface FilterListProposalsResponse {
+  last_proposal_id: number;
   proposals: ProposalResponse[];
   [k: string]: unknown;
 }
@@ -347,6 +320,38 @@ export interface CheckedMultipleChoiceOption {
 }
 export interface MultipleChoiceVotes {
   vote_weights: Uint128[];
+  [k: string]: unknown;
+}
+export interface GetVoteResponse {
+  vote?: VoteInfo | null;
+  [k: string]: unknown;
+}
+export interface VoteInfo {
+  power: Uint128;
+  vote: MultipleChoiceVote;
+  voter: Addr;
+  [k: string]: unknown;
+}
+export type GovernanceModulesResponse = Addr[];
+export interface InfoResponse {
+  info: ContractVersion;
+  [k: string]: unknown;
+}
+export interface ContractVersion {
+  contract: string;
+  version: string;
+  [k: string]: unknown;
+}
+export interface InstantiateMsg {
+  deposit_info?: DepositInfo | null;
+  max_voting_period: Duration;
+  min_voting_period?: Duration | null;
+  only_members_execute: boolean;
+  voting_strategy: VotingStrategy;
+  [k: string]: unknown;
+}
+export interface ListProposalsResponse {
+  proposals: ProposalResponse[];
   [k: string]: unknown;
 }
 export interface ListVotesResponse {
@@ -408,6 +413,15 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
+  filter_list_proposals: {
+    limit?: number | null;
+    start_after?: number | null;
+    status?: Status | null;
+    wallet: string;
+    wallet_vote?: MultipleChoiceVote | null;
+    [k: string]: unknown;
+  };
+} | {
   info: {
     [k: string]: unknown;
   };
@@ -465,6 +479,19 @@ export interface CwProposalMultipleReadOnlyInterface {
   }) => Promise<ListVotesResponse>;
   proposalHooks: () => Promise<ProposalHooksResponse>;
   voteHooks: () => Promise<VoteHooksResponse>;
+  filterListProposals: ({
+    limit,
+    startAfter,
+    status,
+    wallet,
+    walletVote
+  }: {
+    limit?: number;
+    startAfter?: number;
+    status?: Status;
+    wallet: string;
+    walletVote?: MultipleChoiceVote;
+  }) => Promise<FilterListProposalsResponse>;
   info: () => Promise<InfoResponse>;
 }
 export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnlyInterface {
@@ -483,6 +510,7 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
     this.listVotes = this.listVotes.bind(this);
     this.proposalHooks = this.proposalHooks.bind(this);
     this.voteHooks = this.voteHooks.bind(this);
+    this.filterListProposals = this.filterListProposals.bind(this);
     this.info = this.info.bind(this);
   }
 
@@ -574,6 +602,29 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
   voteHooks = async (): Promise<VoteHooksResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       vote_hooks: {}
+    });
+  };
+  filterListProposals = async ({
+    limit,
+    startAfter,
+    status,
+    wallet,
+    walletVote
+  }: {
+    limit?: number;
+    startAfter?: number;
+    status?: Status;
+    wallet: string;
+    walletVote?: MultipleChoiceVote;
+  }): Promise<FilterListProposalsResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      filter_list_proposals: {
+        limit,
+        start_after: startAfter,
+        status,
+        wallet,
+        wallet_vote: walletVote
+      }
     });
   };
   info = async (): Promise<InfoResponse> => {
