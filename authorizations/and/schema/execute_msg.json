@@ -5,17 +5,17 @@
     {
       "type": "object",
       "required": [
-        "allow"
+        "add_child"
       ],
       "properties": {
-        "allow": {
+        "add_child": {
           "type": "object",
           "required": [
             "addr"
           ],
           "properties": {
             "addr": {
-              "type": "string"
+              "$ref": "#/definitions/Addr"
             }
           }
         }
@@ -25,17 +25,17 @@
     {
       "type": "object",
       "required": [
-        "remove"
+        "remove_child"
       ],
       "properties": {
-        "remove": {
+        "remove_child": {
           "type": "object",
           "required": [
             "addr"
           ],
           "properties": {
             "addr": {
-              "type": "string"
+              "$ref": "#/definitions/Addr"
             }
           }
         }
@@ -45,10 +45,10 @@
     {
       "type": "object",
       "required": [
-        "authorize"
+        "update_executed_authorization_state"
       ],
       "properties": {
-        "authorize": {
+        "update_executed_authorization_state": {
           "type": "object",
           "required": [
             "msgs",

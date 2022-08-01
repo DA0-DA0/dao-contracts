@@ -68,6 +68,13 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum MigrateMsg {
+    FromBeta { manager: Option<String> },
+    FromCompatible {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct StakedBalanceAtHeightResponse {
     pub balance: Uint128,
     pub height: u64,
@@ -90,15 +97,6 @@ pub struct StakedValueResponse {
 #[serde(rename_all = "snake_case")]
 pub struct TotalValueResponse {
     pub total: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct GetConfigResponse {
-    pub owner: Option<String>,
-    pub manager: Option<String>,
-    pub token_address: String,
-    pub unstaking_duration: Option<Duration>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

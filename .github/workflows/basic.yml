@@ -70,15 +70,9 @@ jobs:
       - name: Generate Schema
         run: ./scripts/schema.sh
 
+      - name: Show Schema changes
+        run: git status --porcelain
+
       - name: Schema Changes
         # fails if any changes not committed
-        run: git diff --exit-code .
-
-      # TODO: we should check
-      # CHANGES_IN_REPO=$(git status --porcelain)
-      # after this, but I don't know how
-      # - name: Generate Schema
-      #   uses: actions-rs/cargo@v1
-      #   with:
-      #     command: schema
-      #     args: --locked
+        run: test -z "$(git status --porcelain)"

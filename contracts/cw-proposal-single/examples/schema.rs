@@ -56,4 +56,5 @@ fn main() {
         "ProposalHooksResponse",
     );
     export_schema_with_title(&schema_for!(HooksResponse), &out_dir, "VoteHooksResponse");
+    export_schema_with_title(&schema_for!(VoteResponse), &out_dir, "GetVoteResponse");
 }

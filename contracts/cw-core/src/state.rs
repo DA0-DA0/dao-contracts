@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::{Item, Map};
 
+/// Top level config type for core module.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct Config {
     /// The name of the contract.
@@ -22,13 +23,33 @@ pub struct Config {
     pub automatically_add_cw721s: bool,
 }
 
-pub const ADMIN: Item<Option<Addr>> = Item::new("admin");
+/// The admin of the contract. Typically a DAO. The contract admin may
+/// unilaterally execute messages on this contract.
+///
+/// In cases where no admin is wanted the admin should be set to the
+/// contract itself. This will happen by default if no admin is
+/// specified in `NominateAdmin` and instantiate messages.
+pub const ADMIN: Item<Addr> = Item::new("admin");
+
+/// A new admin that has been nominated by the current admin. The
+/// nominated admin must accept the proposal before becoming the admin
+/// themselves.
+///
+/// NOTE: If no admin is currently nominated this will not have a
+/// value set. To load this value, use
+/// `NOMINATED_ADMIN.may_load(deps.storage)`.
+pub const NOMINATED_ADMIN: Item<Addr> = Item::new("nominated_admin");
+
+/// The current configuration of the module.
 pub const CONFIG: Item<Config> = Item::new("config");
 
+/// The time the DAO will unpause. Here be dragons: this is not set if
+/// the DAO has never been paused.
 pub const PAUSED: Item<Expiration> = Item::new("paused");
 
 /// The voting module associated with this contract.
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
+/// The proposal modules assocaited with this contract.
 pub const PROPOSAL_MODULES: Map<Addr, Empty> = Map::new("proposal_modules");
 
 // General purpose KV store for DAO associated state.

@@ -162,6 +162,17 @@
                 }
               ]
             },
+            "min_voting_period": {
+              "description": "The minimum amount of time a proposal must be open before passing. A proposal may fail before this amount of time has elapsed, but it will not pass. This can be useful for preventing governance attacks wherein an attacker aquires a large number of tokens and forces a proposal through.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Duration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "only_members_execute": {
               "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal. Applies to all outstanding and future proposals.",
               "type": "boolean"
@@ -180,6 +191,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Adds an address as a consumer of proposal hooks. Consumers of proposal hooks have hook messages executed on them whenever the status of a proposal changes or a proposal is created. If a consumer contract errors when handling a hook message it will be removed from the list of consumers.",
       "type": "object",
       "required": [
         "add_proposal_hook"
@@ -200,6 +212,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Removes a consumer of proposal hooks.",
       "type": "object",
       "required": [
         "remove_proposal_hook"
@@ -220,6 +233,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Adds an address as a consumer of vote hooks. Consumers of vote hooks have hook messages executed on them whenever the a vote is cast. If a consumer contract errors when handling a hook message it will be removed from the list of consumers.",
       "type": "object",
       "required": [
         "add_vote_hook"
@@ -240,6 +254,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Removed a consumer of vote hooks.",
       "type": "object",
       "required": [
         "remove_vote_hook"

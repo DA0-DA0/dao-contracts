@@ -1,6 +1,8 @@
 use cosmwasm_std::{Decimal, Uint128};
 use rand::{prelude::SliceRandom, Rng};
-use voting::{PercentageThreshold, Status, Threshold, Vote};
+use voting::status::Status;
+use voting::threshold::{PercentageThreshold, Threshold};
+use voting::voting::Vote;
 
 /// If a test vote should execute. Used for fuzzing and checking that
 /// votes after a proposal has completed aren't allowed.
@@ -13,7 +15,7 @@ pub enum ShouldExecute {
     Meh,
 }
 
-pub struct TestVote {
+pub struct TestSingleChoiceVote {
     /// The address casting the vote.
     pub voter: String,
     /// Position on the vote.
@@ -26,10 +28,10 @@ pub struct TestVote {
 
 pub fn test_simple_votes<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(10),
@@ -43,7 +45,7 @@ where
     );
 
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(10),
@@ -59,10 +61,10 @@ where
 
 pub fn test_simple_vote_no_overflow<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(u128::max_value()),
@@ -78,10 +80,10 @@ where
 
 pub fn test_vote_no_overflow<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(u128::max_value()),
@@ -96,13 +98,13 @@ where
 
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "zeke".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::max_value() - 1),
@@ -119,17 +121,17 @@ where
 
 pub fn test_simple_early_rejection<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "zeke".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::max_value() - 1),
@@ -144,7 +146,7 @@ where
     );
 
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(1),
@@ -160,10 +162,10 @@ where
 
 pub fn test_vote_abstain_only<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Abstain,
             weight: Uint128::new(u64::max_value().into()),
@@ -180,7 +182,7 @@ where
     // rejected.
     for i in 0..101 {
         do_votes(
-            vec![TestVote {
+            vec![TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(u64::max_value().into()),
@@ -198,14 +200,14 @@ where
 
 pub fn test_tricky_rounding<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     // This tests the smallest possible round up for passing
     // thresholds we can have. Specifically, a 1% passing threshold
     // and 1 total vote. This should round up and only pass if there
     // are more than 1 yes votes.
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(1),
@@ -219,7 +221,7 @@ where
     );
 
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(10),
@@ -234,7 +236,7 @@ where
 
     // HIGH PERCISION
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(9999999),
@@ -248,7 +250,7 @@ where
     );
 
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Abstain,
             weight: Uint128::new(1),
@@ -264,17 +266,17 @@ where
 
 pub fn test_no_double_votes<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(2),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(2),
@@ -298,23 +300,23 @@ where
 
 pub fn test_votes_favor_yes<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "keze".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ezek".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
@@ -330,19 +332,19 @@ where
 
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Abstain,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "keze".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ezek".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(5),
@@ -359,23 +361,23 @@ where
 
 pub fn test_votes_low_threshold<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "keze".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ezek".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
@@ -393,17 +395,17 @@ where
 
 pub fn test_majority_vs_half<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "keze".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
@@ -420,13 +422,13 @@ where
 
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "keze".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
@@ -444,10 +446,10 @@ where
 
 pub fn test_pass_threshold_not_quorum<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(59),
@@ -461,7 +463,7 @@ where
         Some(Uint128::new(100)),
     );
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(59),
@@ -480,10 +482,10 @@ where
 
 pub fn test_pass_exactly_quorum<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::Yes,
             weight: Uint128::new(60),
@@ -498,7 +500,7 @@ where
     );
     do_votes(
         vec![
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "ekez".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(59),
@@ -511,7 +513,7 @@ where
             // no voters should effectively never vote if there is a
             // quorum higher than the threshold as it makes the
             // passing threshold the quorum threshold.
-            TestVote {
+            TestSingleChoiceVote {
                 voter: "keze".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
@@ -526,7 +528,7 @@ where
         Some(Uint128::new(100)),
     );
     do_votes(
-        vec![TestVote {
+        vec![TestSingleChoiceVote {
             voter: "ekez".to_string(),
             position: Vote::No,
             weight: Uint128::new(60),
@@ -543,7 +545,7 @@ where
 
 pub fn fuzz_voting<F>(do_votes: F)
 where
-    F: Fn(Vec<TestVote>, Threshold, Status, Option<Uint128>),
+    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     let mut rng = rand::thread_rng();
     let dist = rand::distributions::Uniform::<u64>::new(1, 200);
@@ -560,18 +562,24 @@ where
             std::cmp::Ordering::Greater => Status::Passed,
         };
 
-        let yes = yes.into_iter().enumerate().map(|(idx, weight)| TestVote {
-            voter: format!("yes_{}", idx),
-            position: Vote::Yes,
-            weight: Uint128::new(weight as u128),
-            should_execute: ShouldExecute::Meh,
-        });
-        let no = no.into_iter().enumerate().map(|(idx, weight)| TestVote {
-            voter: format!("no_{}", idx),
-            position: Vote::No,
-            weight: Uint128::new(weight as u128),
-            should_execute: ShouldExecute::Meh,
-        });
+        let yes = yes
+            .into_iter()
+            .enumerate()
+            .map(|(idx, weight)| TestSingleChoiceVote {
+                voter: format!("yes_{}", idx),
+                position: Vote::Yes,
+                weight: Uint128::new(weight as u128),
+                should_execute: ShouldExecute::Meh,
+            });
+        let no = no
+            .into_iter()
+            .enumerate()
+            .map(|(idx, weight)| TestSingleChoiceVote {
+                voter: format!("no_{}", idx),
+                position: Vote::No,
+                weight: Uint128::new(weight as u128),
+                should_execute: ShouldExecute::Meh,
+            });
         let mut votes = yes.chain(no).collect::<Vec<_>>();
         votes.shuffle(&mut rng);
 

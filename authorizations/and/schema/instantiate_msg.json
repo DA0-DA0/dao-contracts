@@ -3,10 +3,17 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "dao"
+    "children",
+    "parent"
   ],
   "properties": {
-    "dao": {
+    "children": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Addr"
+      }
+    },
+    "parent": {
       "$ref": "#/definitions/Addr"
     }
   },

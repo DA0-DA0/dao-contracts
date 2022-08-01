@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty};
+use cosmwasm_std::{Binary, CosmosMsg, Empty};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,6 +33,7 @@ pub struct ModuleInstantiateInfo {
     pub label: String,
 }
 
+/// Information about an item to be stored in the items list.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InitialItem {
     /// The name of the item.
@@ -43,8 +44,10 @@ pub struct InitialItem {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
-    /// Optional Admin with the ability to execute DAO messages directly
-    /// Useful for building SubDAOs completely controlled by a parent DAO.
+    /// Optional Admin with the ability to execute DAO messages
+    /// directly. Useful for building SubDAOs controlled by a parent
+    /// DAO. If no admin is specified the contract is set as its own
+    /// admin so that the admin may be updated later by governance.
     pub admin: Option<String>,
     /// The name of the core contract.
     pub name: String,
@@ -100,9 +103,27 @@ pub enum ExecuteMsg {
     /// item already exists the existing value is overriden. If the
     /// item does not exist a new item is added.
     SetItem { key: String, addr: String },
-    /// Callable by the Admin, if one is configured, changes the
-    /// current admin. Setting to None removes the Admin.
-    UpdateAdmin { admin: Option<Addr> },
+    /// Callable by the admin of the contract. If ADMIN is None the
+    /// admin is set as the contract itself so that it may be updated
+    /// later by vote. If ADMIN is Some a new admin is proposed and
+    /// that new admin may become the admin by executing the
+    /// `AcceptAdminNomination` message.
+    ///
+    /// If there is already a pending admin nomination the
+    /// `WithdrawAdminNomination` message must be executed before a
+    /// new admin may be nominated.
+    NominateAdmin { admin: Option<String> },
+    /// Callable by a nominated admin. Admins are nominated via the
+    /// `NominateAdmin` message. Accepting a nomination will make the
+    /// nominated address the new admin.
+    ///
+    /// Requiring that the new admin accepts the nomination before
+    /// becoming the admin protects against a typo causing the admin
+    /// to change to an invalid address.
+    AcceptAdminNomination {},
+    /// Callable by the current admin. Withdraws the current admin
+    /// nomination.
+    WithdrawAdminNomination {},
     /// Callable by the core contract. Replaces the current
     /// governance contract config with the provided config.
     UpdateConfig { config: Config },
@@ -133,26 +154,29 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    /// Get's the DAO's admin (if configured).
+    /// Get's the DAO's admin. Returns `Addr`.
     Admin {},
+    /// Get's the currently nominated admin (if any). Returns
+    /// `AdminNominationResponse`.
+    AdminNomination {},
     /// Gets the contract's config. Returns Config.
     Config {},
     /// Gets the token balance for each cw20 registered with the
     /// contract.
     Cw20Balances {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw20 tokens in this contract's
     /// treasury.
     Cw20TokenList {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw721 tokens in this contract's
     /// treasury.
     Cw721TokenList {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Dumps all of the core contract's state in a single
@@ -167,13 +191,13 @@ pub enum QueryMsg {
     /// this query would return `[("group", "foo"), ("subdao",
     /// "bar")]`.
     ListItems {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Gets the proposal modules assocaited with the
     /// contract. Returns Vec<Addr>.
     ProposalModules {
-        start_at: Option<String>,
+        start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Returns information about if the contract is currently paused.

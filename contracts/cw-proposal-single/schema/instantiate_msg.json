@@ -32,6 +32,17 @@
         }
       ]
     },
+    "min_voting_period": {
+      "description": "The minimum amount of time a proposal must be open before passing. A proposal may fail before this amount of time has elapsed, but it will not pass. This can be useful for preventing governance attacks wherein an attacker aquires a large number of tokens and forces a proposal through.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Duration"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "only_members_execute": {
       "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal.",
       "type": "boolean"

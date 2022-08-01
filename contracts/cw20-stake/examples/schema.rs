@@ -1,17 +1,18 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 
 use cw20::{
     AllAccountsResponse, AllAllowancesResponse, AllowanceResponse, BalanceResponse,
     TokenInfoResponse,
 };
 use cw20_stake::msg::{
-    ClaimsResponse, ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg,
+    ClaimsResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, QueryMsg,
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,
 };
+use cw20_stake::state::Config;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -26,7 +27,6 @@ fn main() {
     export_schema(&schema_for!(TotalStakedAtHeightResponse), &out_dir);
     export_schema(&schema_for!(StakedValueResponse), &out_dir);
     export_schema(&schema_for!(TotalValueResponse), &out_dir);
-    export_schema(&schema_for!(GetConfigResponse), &out_dir);
     export_schema(&schema_for!(GetHooksResponse), &out_dir);
     export_schema(&schema_for!(ClaimsResponse), &out_dir);
     export_schema(&schema_for!(AllowanceResponse), &out_dir);
@@ -34,4 +34,7 @@ fn main() {
     export_schema(&schema_for!(TokenInfoResponse), &out_dir);
     export_schema(&schema_for!(AllAllowancesResponse), &out_dir);
     export_schema(&schema_for!(AllAccountsResponse), &out_dir);
+
+    // Need to rename so it matches the TS pattern
+    export_schema_with_title(&schema_for!(Config), &out_dir, "GetConfigResponse");
 }

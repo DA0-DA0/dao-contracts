@@ -16,7 +16,10 @@ pub enum ContractError {
     Unauthorized {},
 
     #[error("{0}")]
-    ThresholdError(#[from] voting::ThresholdError),
+    ThresholdError(#[from] voting::threshold::ThresholdError),
+
+    #[error("{0}")]
+    VotingError(#[from] voting::error::VotingError),
 
     #[error("Suggested proposal expiration is larger than the maximum proposal duration")]
     InvalidExpiration {},
@@ -51,7 +54,7 @@ pub enum ContractError {
     #[error("Proposal is closed.")]
     Closed {},
 
-    #[error("Only rejected or expired proposals may be closed.")]
+    #[error("Only rejected proposals may be closed.")]
     WrongCloseStatus {},
 
     #[error("The DAO is currently inactive, you cannot create proposals")]
@@ -59,4 +62,10 @@ pub enum ContractError {
 
     #[error("Too many hooks have been added to this proposal so we can't distinguish between proposal hooks and auth replies")]
     TooManyHooks {},
+
+    #[error("min_voting_period and max_voting_period must have the same units (height or time)")]
+    DurationUnitsConflict {},
+
+    #[error("Min voting period must be less than or equal to max voting period")]
+    InvalidMinVotingPeriod {},
 }

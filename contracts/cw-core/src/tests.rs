@@ -8,7 +8,10 @@ use crate::{
     msg::{
         Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
     },
-    query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse},
+    query::{
+        AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
+        PauseInfoResponse,
+    },
     state::Config,
     ContractError,
 };
@@ -261,7 +264,7 @@ fn test_update_config() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -350,7 +353,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -364,7 +367,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             .query_wasm_smart(
                 gov_addr.clone(),
                 &QueryMsg::ProposalModules {
-                    start_at: None,
+                    start_after: None,
                     limit: None,
                 },
             )
@@ -407,7 +410,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             .query_wasm_smart(
                 gov_addr.clone(),
                 &QueryMsg::ProposalModules {
-                    start_at: None,
+                    start_after: None,
                     limit: None,
                 },
             )
@@ -488,7 +491,7 @@ fn test_removed_modules_can_not_execute() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -528,7 +531,7 @@ fn test_removed_modules_can_not_execute() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -639,7 +642,7 @@ fn test_swap_voting_module() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -839,7 +842,7 @@ fn test_admin_permissions() {
         .query_wasm_smart(
             core_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -865,7 +868,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
     // Proposal mdoule can't call ExecuteAdminMsgs
     let res = app.execute_contract(
@@ -884,28 +887,29 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
     // Update Admin can't be called by non-admins
     let res = app.execute_contract(
         Addr::unchecked("rando"),
         core_addr.clone(),
-        &ExecuteMsg::UpdateAdmin {
-            admin: Some(Addr::unchecked("rando")),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("rando".to_string()),
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
-    // Update Admin can't be called, even by the core module
+    // Nominate admin can be called by core contract as no admin was
+    // specified so the admin defaulted to the core contract.
     let res = app.execute_contract(
-        core_addr.clone(),
+        proposal_module.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: core_addr.to_string(),
-                msg: to_binary(&ExecuteMsg::UpdateAdmin {
-                    admin: Some(Addr::unchecked("meow")),
+                msg: to_binary(&ExecuteMsg::NominateAdmin {
+                    admin: Some("meow".to_string()),
                 })
                 .unwrap(),
                 funds: vec![],
@@ -914,7 +918,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap();
 
     // Instantiate new DAO with an admin
     let (core_with_admin_addr, mut app) =
@@ -937,7 +941,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_err());
+    res.unwrap_err();
 
     // Admin can call ExecuteAdminMsgs, here an admin pasues the DAO
     let res = app.execute_contract(
@@ -956,7 +960,7 @@ fn test_admin_permissions() {
         },
         &[],
     );
-    assert!(res.is_ok());
+    res.unwrap();
 
     let paused: PauseInfoResponse = app
         .wrap()
@@ -972,23 +976,295 @@ fn test_admin_permissions() {
     // DAO unpauses after 10 blocks
     app.update_block(|mut block| block.height += 11);
 
-    // Admin can update the admin.
+    // Admin can nominate a new admin.
     let res = app.execute_contract(
         Addr::unchecked("admin"),
         core_with_admin_addr.clone(),
-        &ExecuteMsg::UpdateAdmin {
-            admin: Some(Addr::unchecked("meow")),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("meow".to_string()),
         },
         &[],
     );
-    assert!(res.is_ok());
+    res.unwrap();
+
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(
+        nomination,
+        AdminNominationResponse {
+            nomination: Some(Addr::unchecked("meow"))
+        }
+    );
+
+    // Check that admin has not yet been updated
+    let res: Addr = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(res, Addr::unchecked("admin"));
+
+    // Only the nominated address may accept the nomination.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("random"),
+            core_with_admin_addr.clone(),
+            &ExecuteMsg::AcceptAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Accept the nomination.
+    app.execute_contract(
+        Addr::unchecked("meow"),
+        core_with_admin_addr.clone(),
+        &ExecuteMsg::AcceptAdminNomination {},
+        &[],
+    )
+    .unwrap();
 
     // Check that admin has been updated
-    let res: Option<Addr> = app
+    let res: Addr = app
         .wrap()
-        .query_wasm_smart(core_with_admin_addr, &QueryMsg::Admin {})
+        .query_wasm_smart(core_with_admin_addr.clone(), &QueryMsg::Admin {})
         .unwrap();
-    assert_eq!(res, Some(Addr::unchecked("meow")));
+    assert_eq!(res, Addr::unchecked("meow"));
+
+    // Check that the pending admin has been cleared.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_with_admin_addr, &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+}
+
+#[test]
+fn test_admin_nomination() {
+    let (core_addr, mut app) = do_standard_instantiate(true, Some("admin".to_string()));
+
+    // Check that there is no pending nominations.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+
+    // Nominate a new admin.
+    app.execute_contract(
+        Addr::unchecked("admin"),
+        core_addr.clone(),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("ekez".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Check that the nomination is in place.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(
+        nomination,
+        AdminNominationResponse {
+            nomination: Some(Addr::unchecked("ekez"))
+        }
+    );
+
+    // Non-admin can not withdraw.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            core_addr.clone(),
+            &ExecuteMsg::WithdrawAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    // Admin can withdraw.
+    app.execute_contract(
+        Addr::unchecked("admin"),
+        core_addr.clone(),
+        &ExecuteMsg::WithdrawAdminNomination {},
+        &[],
+    )
+    .unwrap();
+
+    // Check that the nomination is withdrawn.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+
+    // Can not withdraw if no nomination is pending.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("admin"),
+            core_addr.clone(),
+            &ExecuteMsg::WithdrawAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::NoAdminNomination {});
+
+    // Can not claim nomination b/c it has been withdrawn.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            core_addr.clone(),
+            &ExecuteMsg::AcceptAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::NoAdminNomination {});
+
+    // Nominate a new admin.
+    app.execute_contract(
+        Addr::unchecked("admin"),
+        core_addr.clone(),
+        &ExecuteMsg::NominateAdmin {
+            admin: Some("meow".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // A new nomination can not be created if there is already a
+    // pending nomination.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("admin"),
+            core_addr.clone(),
+            &ExecuteMsg::NominateAdmin {
+                admin: Some("arthur".to_string()),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::PendingNomination {});
+
+    // Only nominated admin may accept.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            core_addr.clone(),
+            &ExecuteMsg::AcceptAdminNomination {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    app.execute_contract(
+        Addr::unchecked("meow"),
+        core_addr.clone(),
+        &ExecuteMsg::AcceptAdminNomination {},
+        &[],
+    )
+    .unwrap();
+
+    // Check that meow is the new admin.
+    let admin: Addr = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(admin, Addr::unchecked("meow".to_string()));
+
+    let start_height = app.block_info().height;
+    // Check that the new admin can do admin things and the old can not.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("admin"),
+            core_addr.clone(),
+            &ExecuteMsg::ExecuteAdminMsgs {
+                msgs: vec![WasmMsg::Execute {
+                    contract_addr: core_addr.to_string(),
+                    msg: to_binary(&ExecuteMsg::Pause {
+                        duration: Duration::Height(10),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    let res = app.execute_contract(
+        Addr::unchecked("meow"),
+        core_addr.clone(),
+        &ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: core_addr.to_string(),
+                msg: to_binary(&ExecuteMsg::Pause {
+                    duration: Duration::Height(10),
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    );
+    res.unwrap();
+
+    let paused: PauseInfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::PauseInfo {})
+        .unwrap();
+    assert_eq!(
+        paused,
+        PauseInfoResponse::Paused {
+            expiration: Expiration::AtHeight(start_height + 10)
+        }
+    );
+
+    // DAO unpauses after 10 blocks
+    app.update_block(|mut block| block.height += 11);
+
+    // Remove the admin.
+    app.execute_contract(
+        Addr::unchecked("meow"),
+        core_addr.clone(),
+        &ExecuteMsg::NominateAdmin { admin: None },
+        &[],
+    )
+    .unwrap();
+
+    // Check that this has not caused an admin to be nominated.
+    let nomination: AdminNominationResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::AdminNomination {})
+        .unwrap();
+    assert_eq!(nomination, AdminNominationResponse { nomination: None });
+
+    // Check that admin has been updated. As there was no admin
+    // nominated the admin should revert back to the contract address.
+    let res: Addr = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &QueryMsg::Admin {})
+        .unwrap();
+    assert_eq!(res, core_addr);
 }
 
 #[test]
@@ -1048,7 +1324,13 @@ fn list_items(
     limit: Option<u32>,
 ) -> Vec<(String, String)> {
     app.wrap()
-        .query_wasm_smart(gov_addr, &QueryMsg::ListItems { start_at, limit })
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::ListItems {
+                start_after: start_at,
+                limit,
+            },
+        )
         .unwrap()
 }
 
@@ -1271,6 +1553,25 @@ fn test_instantiate_with_items() {
 fn test_cw20_receive_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(true, None);
 
+    let cw20_id = app.store_code(cw20_contract());
+    let another_cw20 = app
+        .instantiate_contract(
+            cw20_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw20_base::msg::InstantiateMsg {
+                name: "DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "another-token",
+            None,
+        )
+        .unwrap();
+
     let voting_module: Addr = app
         .wrap()
         .query_wasm_smart(gov_addr.clone(), &QueryMsg::VotingModule {})
@@ -1289,7 +1590,7 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20Balances {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1314,7 +1615,7 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1326,7 +1627,7 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20Balances {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1339,12 +1640,27 @@ fn test_cw20_receive_auto_add() {
         }]
     );
 
-    // Test removing and adding some new ones.
+    // Test removing and adding some new ones. Invalid should fail.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(gov_addr.clone()),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw20List {
+                to_add: vec!["new".to_string()],
+                to_remove: vec![gov_token.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Std(_)));
+
     app.execute_contract(
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
         &ExecuteMsg::UpdateCw20List {
-            to_add: vec!["new".to_string()],
+            to_add: vec![another_cw20.to_string()],
             to_remove: vec![gov_token.to_string()],
         },
         &[],
@@ -1356,17 +1672,36 @@ fn test_cw20_receive_auto_add() {
         .query_wasm_smart(
             gov_addr,
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new")]);
+    assert_eq!(cw20_list, vec![another_cw20]);
 }
 
 #[test]
 fn test_cw20_receive_no_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
+
+    let cw20_id = app.store_code(cw20_contract());
+    let another_cw20 = app
+        .instantiate_contract(
+            cw20_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw20_base::msg::InstantiateMsg {
+                name: "DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "another-token",
+            None,
+        )
+        .unwrap();
 
     let voting_module: Addr = app
         .wrap()
@@ -1399,7 +1734,7 @@ fn test_cw20_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1410,7 +1745,7 @@ fn test_cw20_receive_no_auto_add() {
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
         &ExecuteMsg::UpdateCw20List {
-            to_add: vec!["new".to_string(), gov_token.to_string()],
+            to_add: vec![another_cw20.to_string(), gov_token.to_string()],
             to_remove: vec!["ok to remove non existent".to_string()],
         },
         &[],
@@ -1422,12 +1757,12 @@ fn test_cw20_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr,
             &QueryMsg::Cw20TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new"), gov_token]);
+    assert_eq!(cw20_list, vec![another_cw20, gov_token]);
 }
 
 #[test]
@@ -1451,75 +1786,7 @@ fn test_cw721_receive() {
         )
         .unwrap();
 
-    app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
-            token_id: "ekez".to_string(),
-            owner: CREATOR_ADDR.to_string(),
-            token_uri: None,
-            extension: None,
-        }),
-        &[],
-    )
-    .unwrap();
-
-    app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
-            contract: gov_addr.to_string(),
-            token_id: "ekez".to_string(),
-            msg: to_binary("").unwrap(),
-        },
-        &[],
-    )
-    .unwrap();
-
-    let cw721_list: Vec<Addr> = app
-        .wrap()
-        .query_wasm_smart(
-            gov_addr.clone(),
-            &QueryMsg::Cw721TokenList {
-                start_at: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(cw721_list, vec![cw721_addr.clone()]);
-
-    // OK to add already added. Remove happens after add.
-    app.execute_contract(
-        Addr::unchecked(gov_addr.clone()),
-        gov_addr.clone(),
-        &ExecuteMsg::UpdateCw721List {
-            to_add: vec!["new".to_string(), cw721_addr.to_string()],
-            to_remove: vec![cw721_addr.to_string()],
-        },
-        &[],
-    )
-    .unwrap();
-
-    let cw20_list: Vec<Addr> = app
-        .wrap()
-        .query_wasm_smart(
-            gov_addr,
-            &QueryMsg::Cw721TokenList {
-                start_at: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new")]);
-}
-
-#[test]
-fn test_cw721_receive_no_auto_add() {
-    let (gov_addr, mut app) = do_standard_instantiate(false, None);
-
-    let cw721_id = app.store_code(cw721_contract());
-
-    let cw721_addr = app
+    let another_cw721 = app
         .instantiate_contract(
             cw721_id,
             Addr::unchecked(CREATOR_ADDR),
@@ -1564,7 +1831,121 @@ fn test_cw721_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr.clone(),
             &QueryMsg::Cw721TokenList {
-                start_at: None,
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw721_list, vec![cw721_addr.clone()]);
+
+    // Try to add an invalid cw721.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(gov_addr.clone()),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw721List {
+                to_add: vec!["new".to_string(), cw721_addr.to_string()],
+                to_remove: vec![cw721_addr.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Std(_)));
+
+    // Add a real cw721.
+    app.execute_contract(
+        Addr::unchecked(gov_addr.clone()),
+        gov_addr.clone(),
+        &ExecuteMsg::UpdateCw721List {
+            to_add: vec![another_cw721.to_string(), cw721_addr.to_string()],
+            to_remove: vec![cw721_addr.to_string()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw20_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::Cw721TokenList {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_list, vec![another_cw721]);
+}
+
+#[test]
+fn test_cw721_receive_no_auto_add() {
+    let (gov_addr, mut app) = do_standard_instantiate(false, None);
+
+    let cw721_id = app.store_code(cw721_contract());
+
+    let cw721_addr = app
+        .instantiate_contract(
+            cw721_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: CREATOR_ADDR.to_string(),
+            },
+            &[],
+            "cw721",
+            None,
+        )
+        .unwrap();
+
+    let another_cw721 = app
+        .instantiate_contract(
+            cw721_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &cw721_base::msg::InstantiateMsg {
+                name: "ekez".to_string(),
+                symbol: "ekez".to_string(),
+                minter: CREATOR_ADDR.to_string(),
+            },
+            &[],
+            "cw721",
+            None,
+        )
+        .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        cw721_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+            token_id: "ekez".to_string(),
+            owner: CREATOR_ADDR.to_string(),
+            token_uri: None,
+            extension: None,
+        }),
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        cw721_addr.clone(),
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
+            contract: gov_addr.to_string(),
+            token_id: "ekez".to_string(),
+            msg: to_binary("").unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let cw721_list: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw721TokenList {
+                start_after: None,
                 limit: None,
             },
         )
@@ -1577,7 +1958,7 @@ fn test_cw721_receive_no_auto_add() {
         gov_addr.clone(),
         &ExecuteMsg::UpdateCw721List {
             to_add: vec![
-                "new".to_string(),
+                another_cw721.to_string(),
                 cw721_addr.to_string(),
                 cw721_addr.to_string(),
             ],
@@ -1592,12 +1973,12 @@ fn test_cw721_receive_no_auto_add() {
         .query_wasm_smart(
             gov_addr,
             &QueryMsg::Cw721TokenList {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new"), cw721_addr]);
+    assert_eq!(cw20_list, vec![another_cw721, cw721_addr]);
 }
 
 #[test]
@@ -1611,7 +1992,7 @@ fn test_pause() {
         .query_wasm_smart(
             core_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1925,7 +2306,7 @@ fn test_execute_stargate_msg() {
         .query_wasm_smart(
             core_addr.clone(),
             &QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
@@ -1945,6 +2326,6 @@ fn test_execute_stargate_msg() {
         },
         &[],
     );
-    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this test assert
-    assert!(res.is_err());
+    // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this result unwrap
+    res.unwrap_err();
 }

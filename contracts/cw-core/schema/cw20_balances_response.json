@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Cw20BalancesResponse",
-  "description": "Returned by Cw20Balances query.",
+  "description": "Returned by the `Cw20Balances` query.",
   "type": "object",
   "required": [
     "addr",

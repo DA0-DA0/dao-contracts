@@ -13,8 +13,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Generate code coverage
         run: >
-          cargo +nightly tarpaulin --verbose --workspace --out Xml --exclude-files debug/*
+          cargo +nightly tarpaulin --verbose --workspace --out Xml --exclude-files debug/* *test*.rs packages/testing/* packages/cw-core-macros/* legacy/*
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           fail_ci_if_error: true

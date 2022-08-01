@@ -12,29 +12,31 @@ use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
 
-use voting::{Status, Threshold, Vote, Votes};
+use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
+use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
+use voting::status::Status;
+use voting::threshold::Threshold;
+use voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
+use crate::msg::MigrateMsg;
+use crate::proposal::SingleChoiceProposal;
+use crate::state::Config;
 use crate::{
     error::ContractError,
-    msg::{DepositInfo, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    proposal::{advance_proposal_id, Proposal},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    proposal::advance_proposal_id,
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
-        get_deposit_msg, get_return_deposit_msg, Ballot, Config, AUTHORIZATION_MODULE, BALLOTS,
-        CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
+        Ballot, AUTHORIZATION_MODULE, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS,
+        VOTE_HOOKS,
     },
-    utils::{get_total_power, get_voting_power},
 };
 
 const UPDATE_REPLY_ID: u64 = 100_000_000;
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-/// Default limit for proposal pagination.
-const DEFAULT_LIMIT: u64 = 30;
-const MAX_PROPOSAL_SIZE: u64 = 30_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -53,9 +55,13 @@ pub fn instantiate(
         .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
         .transpose()?;
 
+    let (min_voting_period, max_voting_period) =
+        validate_voting_period(msg.min_voting_period, msg.max_voting_period)?;
+
     let config = Config {
         threshold: msg.threshold,
-        max_voting_period: msg.max_voting_period,
+        max_voting_period,
+        min_voting_period,
         only_members_execute: msg.only_members_execute,
         dao: dao.clone(),
         deposit_info,
@@ -91,6 +97,7 @@ pub fn execute(
         ExecuteMsg::UpdateConfig {
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -100,6 +107,7 @@ pub fn execute(
             info,
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -167,11 +175,12 @@ pub fn execute_propose(
 
     let proposal = {
         // Limit mutability to this block.
-        let mut proposal = Proposal {
+        let mut proposal = SingleChoiceProposal {
             title,
             description,
             proposer: sender.clone(),
             start_height: env.block.height,
+            min_voting_period: config.min_voting_period.map(|min| min.after(&env.block)),
             expiration,
             threshold: config.threshold,
             total_power,
@@ -180,6 +189,8 @@ pub fn execute_propose(
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
             deposit_info: config.deposit_info.clone(),
+            created: env.block.time,
+            last_updated: env.block.time,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -251,6 +262,9 @@ pub fn execute_execute(
     }
 
     prop.status = Status::Executed;
+    // Update proposal's last updated timestamp.
+    prop.last_updated = env.block.time;
+
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let refund_message = match prop.deposit_info {
@@ -407,6 +421,7 @@ pub fn execute_vote(
         info.sender.to_string(),
         vote.to_string(),
     )?;
+
     Ok(Response::default()
         .add_submessages(change_hooks)
         .add_submessages(vote_hooks)
@@ -424,6 +439,7 @@ pub fn execute_close(
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
+    let config = CONFIG.load(deps.storage)?;
 
     // Update status to ensure that proposals which were open and have
     // expired are moved to "rejected."
@@ -436,16 +452,21 @@ pub fn execute_close(
 
     let refund_message = match &prop.deposit_info {
         Some(deposit_info) => {
-            if deposit_info.refund_failed_proposals {
-                get_return_deposit_msg(deposit_info, &prop.proposer)?
+            let receiver = if deposit_info.refund_failed_proposals {
+                &prop.proposer
             } else {
-                vec![]
-            }
+                // If we aren't refunding failed proposals then return
+                // the depost to the DAO treasury on close.
+                &config.dao
+            };
+            get_return_deposit_msg(deposit_info, receiver)?
         }
         None => vec![],
     };
 
     prop.status = Status::Closed;
+    // Update proposal's last updated timestamp.
+    prop.last_updated = env.block.time;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let changed_hooks = proposal_status_changed_hooks(
@@ -470,6 +491,7 @@ pub fn execute_update_config(
     info: MessageInfo,
     threshold: Threshold,
     max_voting_period: Duration,
+    min_voting_period: Option<Duration>,
     only_members_execute: bool,
     allow_revoting: bool,
     dao: String,
@@ -488,11 +510,15 @@ pub fn execute_update_config(
         .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
         .transpose()?;
 
+    let (min_voting_period, max_voting_period) =
+        validate_voting_period(min_voting_period, max_voting_period)?;
+
     CONFIG.save(
         deps.storage,
         &Config {
             threshold,
             max_voting_period,
+            min_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -654,7 +680,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_list_proposals(deps, env, start_after, limit)
         }
         QueryMsg::ProposalCount {} => query_proposal_count(deps),
-        QueryMsg::Vote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
+        QueryMsg::GetVote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
         QueryMsg::ListVotes {
             proposal_id,
             start_after,
@@ -691,7 +717,7 @@ pub fn query_list_proposals(
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
         .take(limit as usize)
-        .collect::<Result<Vec<(u64, Proposal)>, _>>()?
+        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
         .collect();
@@ -710,7 +736,7 @@ pub fn query_reverse_proposals(
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, None, max, cosmwasm_std::Order::Descending)
         .take(limit as usize)
-        .collect::<Result<Vec<(u64, Proposal)>, _>>()?
+        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
         .collect();

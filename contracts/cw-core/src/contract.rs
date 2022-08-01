@@ -15,9 +15,13 @@ use crate::error::ContractError;
 use crate::msg::{
     ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
 };
-use crate::query::{Cw20BalanceResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse};
+use crate::query::{
+    AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
+    PauseInfoResponse,
+};
 use crate::state::{
-    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, PAUSED, PROPOSAL_MODULES, VOTING_MODULE,
+    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
+    VOTING_MODULE,
 };
 
 // version info for migration info
@@ -49,7 +53,9 @@ pub fn instantiate(
     let admin = msg
         .admin
         .map(|human| deps.api.addr_validate(&human))
-        .transpose()?;
+        .transpose()?
+        // If no admin is specified, the contract is its own admin.
+        .unwrap_or_else(|| env.contract.address.clone());
     ADMIN.save(deps.storage, &admin)?;
 
     let vote_module_msg = msg
@@ -105,7 +111,6 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
         ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
-        ExecuteMsg::UpdateAdmin { admin } => execute_update_admin(deps, info.sender, admin),
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info.sender, config)
         }
@@ -120,6 +125,13 @@ pub fn execute(
         }
         ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
             execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
+        }
+        ExecuteMsg::NominateAdmin { admin } => {
+            execute_nominate_admin(deps, env, info.sender, admin)
+        }
+        ExecuteMsg::AcceptAdminNomination {} => execute_accept_admin_nomination(deps, info.sender),
+        ExecuteMsg::WithdrawAdminNomination {} => {
+            execute_withdraw_admin_nomination(deps, info.sender)
         }
     }
 }
@@ -152,19 +164,14 @@ pub fn execute_admin_msgs(
 ) -> Result<Response, ContractError> {
     let admin = ADMIN.load(deps.storage)?;
 
-    match admin {
-        Some(admin) => {
-            // Check if the sender is the DAO Admin
-            if sender != admin {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            Ok(Response::default()
-                .add_attribute("action", "execute_admin_msgs")
-                .add_messages(msgs))
-        }
-        None => Err(ContractError::NoAdmin {}),
+    // Check if the sender is the DAO Admin
+    if sender != admin {
+        return Err(ContractError::Unauthorized {});
     }
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_admin_msgs")
+        .add_messages(msgs))
 }
 
 pub fn execute_proposal_hook(
@@ -182,37 +189,79 @@ pub fn execute_proposal_hook(
         .add_messages(msgs))
 }
 
-pub fn execute_update_admin(
+pub fn execute_nominate_admin(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    nomination: Option<String>,
+) -> Result<Response, ContractError> {
+    let nomination = nomination.map(|h| deps.api.addr_validate(&h)).transpose()?;
+
+    let current_admin = ADMIN.load(deps.storage)?;
+    if current_admin != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let current_nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    if current_nomination.is_some() {
+        return Err(ContractError::PendingNomination {});
+    }
+
+    match &nomination {
+        Some(nomination) => NOMINATED_ADMIN.save(deps.storage, nomination)?,
+        // If no admin set to default of the contract. This allows the
+        // contract to later set a new admin via governance.
+        None => ADMIN.save(deps.storage, &env.contract.address)?,
+    }
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_nominate_admin")
+        .add_attribute(
+            "nomination",
+            nomination
+                .map(|n| n.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+        ))
+}
+
+pub fn execute_accept_admin_nomination(
     deps: DepsMut,
     sender: Addr,
-    admin: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    let current_admin = ADMIN.load(deps.storage)?;
-
-    match current_admin {
-        Some(current_admin) => {
-            // Check sender is the DAO Admin
-            if sender != current_admin {
-                return Err(ContractError::Unauthorized {});
-            }
-
-            // Save the new DAO Admin (which may be set to None)
-            ADMIN.save(deps.storage, &admin)?;
-
-            Ok(Response::default()
-                .add_attribute("action", "execute_update_admin")
-                .add_attribute(
-                    "new_admin",
-                    admin
-                        .map(|a| a.into_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                ))
-        }
-        None => {
-            // If no DAO admin is configured, return unauthorized
-            Err(ContractError::Unauthorized {})
-        }
+    let nomination = NOMINATED_ADMIN
+        .may_load(deps.storage)?
+        .ok_or(ContractError::NoAdminNomination {})?;
+    if sender != nomination {
+        return Err(ContractError::Unauthorized {});
     }
+    NOMINATED_ADMIN.remove(deps.storage);
+    ADMIN.save(deps.storage, &nomination)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_accept_admin_nomination")
+        .add_attribute("new_admin", sender))
+}
+
+pub fn execute_withdraw_admin_nomination(
+    deps: DepsMut,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let admin = ADMIN.load(deps.storage)?;
+    if admin != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Check that there is indeed a nomination to withdraw.
+    let current_nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    if current_nomination.is_none() {
+        return Err(ContractError::NoAdminNomination {});
+    }
+
+    NOMINATED_ADMIN.remove(deps.storage);
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_withdraw_admin_nomination")
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_update_config(
@@ -297,11 +346,14 @@ pub fn execute_update_proposal_modules(
         .add_submessages(to_add))
 }
 
+/// Updates a set of addresses in state applying VERIFY to each item
+/// that will be added.
 fn do_update_addr_list(
     deps: DepsMut,
     map: Map<Addr, Empty>,
     to_add: Vec<String>,
     to_remove: Vec<String>,
+    verify: impl Fn(&Addr, Deps) -> StdResult<()>,
 ) -> Result<(), ContractError> {
     let to_add = to_add
         .into_iter()
@@ -314,6 +366,7 @@ fn do_update_addr_list(
         .collect::<Result<Vec<_>, _>>()?;
 
     for addr in to_add {
+        verify(&addr, deps.as_ref())?;
         map.save(deps.storage, addr, &Empty {})?;
     }
     for addr in to_remove {
@@ -333,7 +386,17 @@ pub fn execute_update_cw20_list(
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
-    do_update_addr_list(deps, CW20_LIST, to_add, to_remove)?;
+    do_update_addr_list(deps, CW20_LIST, to_add, to_remove, |addr, deps| {
+        // Perform a balance query here as this is the query performed
+        // by the `Cw20Balances` query.
+        let _info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+            addr,
+            &cw20::Cw20QueryMsg::Balance {
+                address: env.contract.address.to_string(),
+            },
+        )?;
+        Ok(())
+    })?;
     Ok(Response::default().add_attribute("action", "update_cw20_list"))
 }
 
@@ -347,7 +410,12 @@ pub fn execute_update_cw721_list(
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
-    do_update_addr_list(deps, CW721_LIST, to_add, to_remove)?;
+    do_update_addr_list(deps, CW721_LIST, to_add, to_remove, |addr, deps| {
+        let _info: cw721::ContractInfoResponse = deps
+            .querier
+            .query_wasm_smart(addr, &cw721::Cw721QueryMsg::ContractInfo {})?;
+        Ok(())
+    })?;
     Ok(Response::default().add_attribute("action", "update_cw721_list"))
 }
 
@@ -417,19 +485,22 @@ pub fn execute_receive_cw721(deps: DepsMut, sender: Addr) -> Result<Response, Co
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Admin {} => query_admin(deps),
+        QueryMsg::AdminNomination {} => query_admin_nomination(deps),
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Cw20TokenList { start_at, limit } => query_cw20_list(deps, start_at, limit),
-        QueryMsg::Cw20Balances { start_at, limit } => {
-            query_cw20_balances(deps, env, start_at, limit)
+        QueryMsg::Cw20TokenList { start_after, limit } => query_cw20_list(deps, start_after, limit),
+        QueryMsg::Cw20Balances { start_after, limit } => {
+            query_cw20_balances(deps, env, start_after, limit)
         }
-        QueryMsg::Cw721TokenList { start_at, limit } => query_cw721_list(deps, start_at, limit),
+        QueryMsg::Cw721TokenList { start_after, limit } => {
+            query_cw721_list(deps, start_after, limit)
+        }
         QueryMsg::DumpState {} => query_dump_state(deps, env),
         QueryMsg::GetItem { key } => query_get_item(deps, key),
         QueryMsg::Info {} => query_info(deps),
-        QueryMsg::ListItems { start_at, limit } => query_list_items(deps, start_at, limit),
+        QueryMsg::ListItems { start_after, limit } => query_list_items(deps, start_after, limit),
         QueryMsg::PauseInfo {} => query_paused(deps, env),
-        QueryMsg::ProposalModules { start_at, limit } => {
-            query_proposal_modules(deps, start_at, limit)
+        QueryMsg::ProposalModules { start_after, limit } => {
+            query_proposal_modules(deps, start_after, limit)
         }
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, height),
         QueryMsg::VotingModule {} => query_voting_module(deps),
@@ -444,6 +515,11 @@ pub fn query_admin(deps: Deps) -> StdResult<Binary> {
     to_binary(&admin)
 }
 
+pub fn query_admin_nomination(deps: Deps) -> StdResult<Binary> {
+    let nomination = NOMINATED_ADMIN.may_load(deps.storage)?;
+    to_binary(&AdminNominationResponse { nomination })
+}
+
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     to_binary(&config)
@@ -456,7 +532,7 @@ pub fn query_voting_module(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_proposal_modules(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     // This query is will run out of gas due to the size of the
@@ -475,7 +551,9 @@ pub fn query_proposal_modules(
     to_binary(&paginate_map_keys(
         deps,
         &PROPOSAL_MODULES,
-        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -550,13 +628,13 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_list_items(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     to_binary(&paginate_map(
         deps,
         &ITEMS,
-        start_at,
+        start_after,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -564,13 +642,15 @@ pub fn query_list_items(
 
 pub fn query_cw20_list(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     to_binary(&paginate_map_keys(
         deps,
         &CW20_LIST,
-        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -578,13 +658,15 @@ pub fn query_cw20_list(
 
 pub fn query_cw721_list(
     deps: Deps,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     to_binary(&paginate_map_keys(
         deps,
         &CW721_LIST,
-        start_at.map(|s| deps.api.addr_validate(&s)).transpose()?,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?)
@@ -593,13 +675,15 @@ pub fn query_cw721_list(
 pub fn query_cw20_balances(
     deps: Deps,
     env: Env,
-    start_at: Option<String>,
+    start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<Binary> {
     let addrs = paginate_map_keys(
         deps,
         &CW20_LIST,
-        start_at.map(|a| deps.api.addr_validate(&a)).transpose()?,
+        start_after
+            .map(|a| deps.api.addr_validate(&a))
+            .transpose()?,
         limit,
         cosmwasm_std::Order::Descending,
     )?;

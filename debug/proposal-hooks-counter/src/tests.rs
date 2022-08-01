@@ -3,7 +3,10 @@ use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use indexable_hooks::HooksResponse;
 
-use voting::{PercentageThreshold, Threshold, Vote};
+use voting::{
+    threshold::{PercentageThreshold, Threshold},
+    voting::Vote,
+};
 
 use crate::msg::{CountResponse, InstantiateMsg, QueryMsg};
 use cw_proposal_single::state::Config;
@@ -136,6 +139,7 @@ fn test_counters() {
     let instantiate = cw_proposal_single::msg::InstantiateMsg {
         threshold,
         max_voting_period,
+        min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
         deposit_info: None,
@@ -148,7 +152,7 @@ fn test_counters() {
         .query_wasm_smart(
             governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
-                start_at: None,
+                start_after: None,
                 limit: None,
             },
         )
