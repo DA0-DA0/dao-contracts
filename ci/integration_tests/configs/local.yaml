@@ -1,0 +1,18 @@
+chain_cfg: 
+  binary: "junod"
+  denom: "ujunox"
+  prefix: "juno"
+  chain_id: "testing"
+  rpc_endpoint: "http://localhost:26657/"
+  gas_prices: 0.1
+  gas_adjustment: 1.5
+
+# Add code ids if you dont need to store them:
+code_ids:
+  "cw20_base": 1
+  "cw4_group": 2
+  "cw_core": 8
+  "cw_proposal_single": 13
+  "cw4_voting": 5
+  "cw20_staked_balance_voting": 4
+  "cw20_stake": 3
