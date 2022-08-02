@@ -55,7 +55,6 @@ fn test_account() -> SigningKey {
     SigningKey {
         name: "localval".to_string(),
         key: Key::Mnemonic("siren window salt bullet cream letter huge satoshi fade shiver permit offer happy immense wage fitness goose usual aim hammer clap about super trend".to_string()),
-        derivation_path : "m/44'/118'/0'/0/0".to_string(),
     }
 }
 
