@@ -13,6 +13,7 @@ use voting::{
     threshold::Threshold,
 };
 
+#[derive(Debug)]
 pub struct DaoState {
     pub addr: String,
     pub state: DumpStateResponse,
@@ -82,8 +83,11 @@ pub fn create_dao(
         }),
         WasmMsg::QueryMsg(cw_core::msg::QueryMsg::DumpState {}),
     ];
-    let res = chain.orc.process_msgs("cw_core", op_name, &msgs)?;
-    let state: DumpStateResponse = serde_json::from_value(res[1]["data"].clone())?;
+
+    let res = chain
+        .orc
+        .process_msgs("cw_core", op_name, &msgs, &chain.key)?;
+    let state: DumpStateResponse = serde_json::from_slice(res[1].data.as_ref().unwrap().value())?;
 
     Ok(DaoState {
         addr: chain.orc.contract_map.address("cw_core")?,

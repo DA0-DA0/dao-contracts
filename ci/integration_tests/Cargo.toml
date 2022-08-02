@@ -10,7 +10,7 @@ edition = "2021"
 # conditionally. As such, we don't compile anything here if we're
 # targeting wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cosm-orc = { version = "0.5.9" }
+cosm-orc = { version = "1.0.1" }
 cw20 = "0.13"
 cw20-base = "0.13"
 cw-utils = "0.13"
@@ -22,6 +22,7 @@ cw-proposal-single = { version = "0.1.0", path = "../../contracts/cw-proposal-si
 cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
 voting = { version = "*", path = "../../packages/voting" }
 
+assert_matches = "1.5"
 anyhow = { version = "1.0.51"}
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "1.0"

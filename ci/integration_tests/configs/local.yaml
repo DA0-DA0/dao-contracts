@@ -1,10 +1,11 @@
 chain_cfg: 
   binary: "junod"
   denom: "ujunox"
+  prefix: "juno"
   chain_id: "testing"
   rpc_endpoint: "http://localhost:26657/"
-
-key_name: "localval"
+  gas_prices: 0.1
+  gas_adjustment: 1.5
 
 # Add code ids if you dont need to store them:
 code_ids:

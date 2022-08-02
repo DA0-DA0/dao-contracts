@@ -78,17 +78,6 @@ jobs:
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
             -O ci/integration_tests/artifacts/cw4_group.wasm
 
-      - name: Install local junod
-        run: |
-          wget https://github.com/CosmosContracts/juno/releases/download/v8.0.0/junod -O junod
-          chmod +x ./junod
-          mv junod /usr/local/bin
-      
-      - name: Add Validator key
-        run: |
-          junod config keyring-backend test
-          tail -n 1 default-account.txt | junod keys add $KEY_NAME --recover
-
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
         with:

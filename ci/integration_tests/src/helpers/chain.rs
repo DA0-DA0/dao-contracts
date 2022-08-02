@@ -1,5 +1,8 @@
+use cosm_orc::config::key::Key;
 use cosm_orc::orchestrator::cosm_orc::CosmOrc;
-use cosm_orc::{config::cfg::Config, profilers::gas_profiler::GasProfiler};
+use cosm_orc::{
+    config::cfg::Config, config::key::SigningKey, profilers::gas_profiler::GasProfiler,
+};
 use ctor::ctor;
 use once_cell::sync::OnceCell;
 use rand::Rng;
@@ -18,7 +21,9 @@ pub struct Cfg {
 }
 
 pub struct Chain {
+    pub cfg: Config,
     pub orc: CosmOrc,
+    pub key: SigningKey,
 }
 
 // TODO: Make tests run in parallel
@@ -28,13 +33,29 @@ pub struct Chain {
 impl TestContext for Chain {
     fn setup() -> Self {
         let cfg = CONFIG.get().unwrap().cfg.clone();
-        let orc = CosmOrc::new(cfg).add_profiler(Box::new(GasProfiler::new()));
-        Self { orc }
+        let orc = CosmOrc::new(cfg.clone())
+            .unwrap()
+            .add_profiler(Box::new(GasProfiler::new()));
+
+        Self {
+            cfg,
+            orc,
+            key: test_account(),
+        }
     }
 
     fn teardown(self) {
         let cfg = CONFIG.get().unwrap();
         save_gas_report(&self.orc, &cfg.gas_report_dir);
+    }
+}
+
+fn test_account() -> SigningKey {
+    // TODO: Make this configurable + bootstrap the local env with many test accounts
+    SigningKey {
+        name: "localval".to_string(),
+        key: Key::Mnemonic("siren window salt bullet cream letter huge satoshi fade shiver permit offer happy immense wage fitness goose usual aim hammer clap about super trend".to_string()),
+        derivation_path : "m/44'/118'/0'/0/0".to_string(),
     }
 }
 
@@ -46,12 +67,16 @@ fn global_setup() {
     let gas_report_dir = env::var("GAS_OUT_DIR").expect("missing GAS_OUT_DIR env var");
 
     let mut cfg = Config::from_yaml(&config).unwrap();
-    let mut orc = CosmOrc::new(cfg.clone()).add_profiler(Box::new(GasProfiler::new()));
+    let mut orc = CosmOrc::new(cfg.clone())
+        .unwrap()
+        .add_profiler(Box::new(GasProfiler::new()));
+
+    let key = test_account();
 
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
         let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
-        orc.store_contracts(&contract_dir).unwrap();
+        orc.store_contracts(&contract_dir, &key).unwrap();
         save_gas_report(&orc, &gas_report_dir);
         // persist stored code_ids in CONFIG, so we can reuse for all tests
         cfg.code_ids = orc
