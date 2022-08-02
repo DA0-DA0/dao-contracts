@@ -59,6 +59,10 @@ impl MultipleChoiceVotes {
         self.vote_weights[vote.option_id as usize] += weight;
     }
 
+    pub fn remove_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) {
+        self.vote_weights[vote.option_id as usize] -= weight;
+    }
+
     pub fn zero(num_choices: usize) -> Self {
         Self {
             vote_weights: vec![Uint128::zero(); num_choices],
