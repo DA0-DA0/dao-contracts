@@ -287,6 +287,12 @@ pub fn execute_vote(
     )?;
 
     let old_status = prop.status;
+
+    // Remove the old vote if this is a re-vote.
+    if let Some(ballot) = previous_ballot {
+        prop.votes.remove_vote(ballot.vote, ballot.power)
+    }
+
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block)?;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
