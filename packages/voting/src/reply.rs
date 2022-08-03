@@ -9,6 +9,7 @@ const REPLY_TYPE_MASK: u64 = (1 << BITS_RESERVED_FOR_REPLY_TYPE) - 1;
 /// Since we can only pass `id`, and we need to perform different actions in reply,
 /// we decided to take few bits to identify "Reply Type".
 /// See <https://github.com/DA0-DA0/dao-contracts/pull/385#discussion_r916324843>
+#[cfg_attr(not(target_arch = "wasm32"), derive(Debug, PartialEq, Eq))]
 pub enum TaggedReplyId {
     FailedProposalExecution(u64),
     FailedProposalHook(u64),
@@ -54,5 +55,35 @@ pub mod error {
     pub enum TagError {
         #[error("Unknown reply id ({id}).")]
         UnknownReplyId { id: u64 },
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_tagged_reply_id() {
+        // max u62, change this if new reply types added
+        let proposal_id = 4611686018427387903;
+        let proposal_hook_idx = 1234;
+        let vote_hook_idx = 4321;
+
+        let m_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
+        let m_proposal_hook_idx = mask_proposal_hook_index(proposal_hook_idx);
+        let m_vote_hook_idx = mask_vote_hook_index(vote_hook_idx);
+
+        assert_eq!(
+            TaggedReplyId::new(m_proposal_id).unwrap(),
+            TaggedReplyId::FailedProposalExecution(proposal_id)
+        );
+        assert_eq!(
+            TaggedReplyId::new(m_proposal_hook_idx).unwrap(),
+            TaggedReplyId::FailedProposalHook(proposal_hook_idx)
+        );
+        assert_eq!(
+            TaggedReplyId::new(m_vote_hook_idx).unwrap(),
+            TaggedReplyId::FailedVoteHook(vote_hook_idx)
+        );
     }
 }

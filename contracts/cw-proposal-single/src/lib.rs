@@ -50,6 +50,9 @@ pub mod query;
 #[cfg(test)]
 mod staking_tests;
 
+#[cfg(test)]
+mod mock_tests;
+
 pub mod state;
 
 #[cfg(test)]
