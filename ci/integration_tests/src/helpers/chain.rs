@@ -26,9 +26,9 @@ pub struct Chain {
     pub key: SigningKey,
 }
 
-// TODO: Make tests run in parallel
-// Im getting the following cosmos-sdk error when running in parallel right now:
-//   `account sequence mismatch, expected 92, got 91: incorrect account sequence`
+// NOTE: we have to run the integration tests in one thread right now.
+// We get `account sequence mismatch` CosmosSDK error when we run in parallel.
+// We could either serialize the `account.sequence` per key, or use a different key per test.
 
 impl TestContext for Chain {
     fn setup() -> Self {

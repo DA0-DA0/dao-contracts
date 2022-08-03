@@ -75,6 +75,7 @@ pub fn create_dao(
                         deposit: Uint128::new(1000000000),
                         refund_failed_proposals: true,
                     }),
+                    close_proposal_on_execution_failure: false,
                 })?,
                 admin: Admin::CoreContract {},
                 label: "DAO DAO Proposal Module".to_string(),

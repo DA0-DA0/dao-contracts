@@ -42,7 +42,6 @@ jobs:
     needs: compile-contracts
     env:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
-      KEY_NAME: localval
       GAS_OUT_DIR: gas_reports
       CONFIG: configs/ci.yaml
       CONTRACT_DIR: artifacts
@@ -56,11 +55,12 @@ jobs:
             -e PASSWORD=xxxxxxxxx \
             -e STAKE_TOKEN=ujunox \
             -e GAS_LIMIT=100000000 \
+            -e MAX_BYTES=22020096 \
             -e UNSAFE_CORS=true \
             -p 1317:1317 \
             -p 26656:26656 \
             -p 26657:26657 \
-            ghcr.io/cosmoscontracts/juno:v8.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
+            ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
 
       - name: Let Juno catch up
         run: sleep 30
