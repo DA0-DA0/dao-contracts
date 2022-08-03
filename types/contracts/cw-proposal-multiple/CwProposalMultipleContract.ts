@@ -28,6 +28,7 @@ export type PercentageThreshold = {
 };
 export type Decimal = string;
 export interface ConfigResponse {
+  allow_revoting: boolean;
   close_proposal_on_execution_failure: boolean;
   dao: Addr;
   deposit_info?: CheckedDepositInfo | null;
@@ -68,6 +69,7 @@ export type ExecuteMsg = {
   };
 } | {
   update_config: {
+    allow_revoting: boolean;
     close_proposal_on_execution_failure: boolean;
     dao: string;
     deposit_info?: DepositInfo | null;
@@ -297,6 +299,7 @@ export interface ContractVersion {
   [k: string]: unknown;
 }
 export interface InstantiateMsg {
+  allow_revoting: boolean;
   close_proposal_on_execution_failure: boolean;
   deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
@@ -326,6 +329,7 @@ export interface ProposalResponse {
   [k: string]: unknown;
 }
 export interface MultipleChoiceProposal {
+  allow_revoting: boolean;
   choices: CheckedMultipleChoiceOption[];
   deposit_info?: CheckedDepositInfo | null;
   description: string;
@@ -615,6 +619,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     proposalId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
+    allowRevoting,
     closeProposalOnExecutionFailure,
     dao,
     depositInfo,
@@ -623,6 +628,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     onlyMembersExecute,
     votingStrategy
   }: {
+    allowRevoting: boolean;
     closeProposalOnExecutionFailure: boolean;
     dao: string;
     depositInfo?: DepositInfo;
@@ -727,6 +733,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     }, fee, memo, funds);
   };
   updateConfig = async ({
+    allowRevoting,
     closeProposalOnExecutionFailure,
     dao,
     depositInfo,
@@ -735,6 +742,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     onlyMembersExecute,
     votingStrategy
   }: {
+    allowRevoting: boolean;
     closeProposalOnExecutionFailure: boolean;
     dao: string;
     depositInfo?: DepositInfo;
@@ -745,6 +753,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
+        allow_revoting: allowRevoting,
         close_proposal_on_execution_failure: closeProposalOnExecutionFailure,
         dao,
         deposit_info: depositInfo,
