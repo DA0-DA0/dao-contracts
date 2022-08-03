@@ -54,7 +54,7 @@ fn test_reply_proposal_mock() {
         id: m_proposal_id,
         result: SubMsgResult::Err("error_msg".to_string()),
     };
-    let res = reply(deps.as_mut(), env.clone(), reply_msg).unwrap();
+    let res = reply(deps.as_mut(), env, reply_msg).unwrap();
     assert_eq!(
         res.attributes[0],
         Attribute {
@@ -101,7 +101,7 @@ fn test_reply_hooks_mock() {
         id: m_vote_hook_idx,
         result: SubMsgResult::Err("error_msg".to_string()),
     };
-    let res = reply(deps.as_mut(), env.clone(), reply_msg).unwrap();
+    let res = reply(deps.as_mut(), env, reply_msg).unwrap();
     assert_eq!(
         res.attributes[0],
         Attribute {
