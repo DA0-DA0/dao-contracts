@@ -26,6 +26,14 @@ pub struct InstantiateMsg {
     /// proposal. None if there is no deposit requirement, Some
     /// otherwise.
     pub deposit_info: Option<DepositInfo>,
+    /// If set to true proposals will be closed if their execution
+    /// fails. Otherwise, proposals will remain open after execution
+    /// failure. For example, with this enabled a proposal to send 5
+    /// tokens out of a DAO's treasury with 4 tokens would be closed when
+    /// it is executed. With this disabled, that same proposal would
+    /// remain open until the DAO's treasury was large enough for it to be
+    /// executed.
+    pub close_proposal_on_execution_failure: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -86,6 +94,14 @@ pub enum ExecuteMsg {
         /// Information about the deposit required to make a
         /// proposal. None if no deposit, Some otherwise.
         deposit_info: Option<DepositInfo>,
+        /// If set to true proposals will be closed if their execution
+        /// fails. Otherwise, proposals will remain open after execution
+        /// failure. For example, with this enabled a proposal to send 5
+        /// tokens out of a DAO's treasury with 4 tokens would be closed when
+        /// it is executed. With this disabled, that same proposal would
+        /// remain open until the DAO's treasury was large enough for it to be
+        /// executed.
+        close_proposal_on_execution_failure: bool,
     },
     AddProposalHook {
         address: String,

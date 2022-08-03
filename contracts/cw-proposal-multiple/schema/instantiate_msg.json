@@ -3,11 +3,16 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "close_proposal_on_execution_failure",
     "max_voting_period",
     "only_members_execute",
     "voting_strategy"
   ],
   "properties": {
+    "close_proposal_on_execution_failure": {
+      "description": "If set to true proposals will be closed if their execution fails. Otherwise, proposals will remain open after execution failure. For example, with this enabled a proposal to send 5 tokens out of a DAO's treasury with 4 tokens would be closed when it is executed. With this disabled, that same proposal would remain open until the DAO's treasury was large enough for it to be executed.",
+      "type": "boolean"
+    },
     "deposit_info": {
       "description": "Information about the deposit required to create a proposal. None if there is no deposit requirement, Some otherwise.",
       "anyOf": [

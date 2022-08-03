@@ -785,7 +785,8 @@
         "rejected",
         "passed",
         "executed",
-        "closed"
+        "closed",
+        "execution_failed"
       ]
     },
     "Timestamp": {
