@@ -410,7 +410,7 @@ mod tests {
             votes,
             Uint128::new(150),
             false,
-            false
+            false,
         );
 
         // Quorum was met but it is a tie but not expired and still voting power remains, should be open.
@@ -721,8 +721,8 @@ mod tests {
 
         let prop = create_proposal(
             &env.block,
-            voting_strategy.clone(),
-            votes.clone(),
+            voting_strategy,
+            votes,
             Uint128::new(10),
             true,
             true,
@@ -756,8 +756,8 @@ mod tests {
 
         let prop = create_proposal(
             &env.block,
-            voting_strategy.clone(),
-            votes.clone(),
+            voting_strategy,
+            votes,
             Uint128::new(10),
             true,
             true,
@@ -794,8 +794,8 @@ mod tests {
 
         let prop = create_proposal(
             &env.block,
-            voting_strategy.clone(),
-            votes.clone(),
+            voting_strategy,
+            votes,
             Uint128::new(100),
             true,
             true,
@@ -822,7 +822,7 @@ mod tests {
         let prop = create_proposal(
             &env.block,
             voting_strategy.clone(),
-            votes.clone(),
+            votes,
             Uint128::new(100),
             false,
             true,
@@ -836,8 +836,8 @@ mod tests {
 
         let prop = create_proposal(
             &env.block,
-            voting_strategy.clone(),
-            votes.clone(),
+            voting_strategy,
+            votes,
             Uint128::new(100),
             true,
             true,

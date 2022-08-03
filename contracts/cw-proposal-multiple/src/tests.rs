@@ -3735,12 +3735,12 @@ fn test_active_threshold_none() {
         .unwrap();
 }
 
-/// Basic prop-multiple revoting
+/// Basic test for revoting on prop-multiple
 #[test]
 fn test_revoting() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
-    let governance_addr = instantiate_with_staking_active_threshold(
+    let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
         to_binary(&InstantiateMsg {
@@ -3750,9 +3750,10 @@ fn test_revoting() {
             allow_revoting: true,
             deposit_info: None,
             voting_strategy: VotingStrategy::SingleChoice {
-                quorum: PercentageThreshold::Majority {}
+                quorum: PercentageThreshold::Majority {},
             },
-        }).unwrap(),
+        })
+        .unwrap(),
         Some(vec![
             Cw20Coin {
                 address: "a-1".to_string(),
@@ -3763,46 +3764,19 @@ fn test_revoting() {
                 amount: Uint128::new(100_000_000),
             },
         ]),
-        Some(ActiveThreshold::Percentage {
-            percent: Decimal::percent(20),
-        }),
     );
+
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr,
+            core_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
         )
         .unwrap();
-    let govmod = governance_modules.into_iter().next().unwrap();
-    let govmod_config: Config = app
-        .wrap()
-        .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
-        .unwrap();
-    let dao = govmod_config.dao;
-    let voting_module: Addr = app
-        .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
-        .unwrap();
-    let staking_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
-        )
-        .unwrap();
-    let token_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
-        )
-        .unwrap();
-
-    app.update_block(next_block);
+    let proposal_module = governance_modules.into_iter().next().unwrap();
 
     let options = vec![
         MultipleChoiceOption {
@@ -3816,49 +3790,23 @@ fn test_revoting() {
     ];
     let mc_options = MultipleChoiceOptions { options };
 
-    // Stake some tokens
-    let msg = cw20::Cw20ExecuteMsg::Send {
-        contract: staking_contract.to_string(),
-        amount: Uint128::new(20_000_000),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
-    };
-    app.execute_contract(
-        Addr::unchecked("a-1"),
-        token_contract.clone(),
-        &msg,
-        &[]
-    )
-    .unwrap();
-    app.execute_contract(
-        Addr::unchecked("a-2"),
-        token_contract.clone(),
-        &msg,
-        &[]
-    )
-    .unwrap();
-
-    app.update_block(next_block);
-
     // Create a basic proposal with 2 options
-    let _res = app
-        .execute_contract(
-            Addr::unchecked("a-1"),
-            govmod.clone(),
-            &ExecuteMsg::Propose {
-                title: "A simple text proposal".to_string(),
-                description: "A simple text proposal".to_string(),
-                choices: mc_options.clone(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    app.update_block(next_block);
-
-    // a-1 votes, vote_weights: [20000000, 0]
     app.execute_contract(
         Addr::unchecked("a-1"),
-        govmod.clone(),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // a-1 votes, vote_weights: [100_000_000, 0]
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
@@ -3867,10 +3815,10 @@ fn test_revoting() {
     )
     .unwrap();
 
-    // a-2 votes, vote_weights: [20000000, 20000000]
+    // a-2 votes, vote_weights: [100_000_000, 100_000_000]
     app.execute_contract(
         Addr::unchecked("a-2"),
-        govmod.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 1 },
@@ -3879,59 +3827,56 @@ fn test_revoting() {
     )
     .unwrap();
 
-    app.update_block(next_block);
+    // Time passes..
+    app.update_block(|b| b.height += 2);
 
     // Assert that both vote options have equal vote weights at some block
     let proposal: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
-            govmod.clone(),
+            proposal_module.clone(),
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();
     assert_eq!(proposal.proposal.status, Status::Open);
     assert_eq!(
         proposal.proposal.votes.vote_weights[0],
-        Uint128::new(20000000),
+        Uint128::new(100_000_000),
     );
     assert_eq!(
         proposal.proposal.votes.vote_weights[1],
-        Uint128::new(20000000),
+        Uint128::new(100_000_000),
     );
 
-    // Time passes..
+    // More time passes..
     app.update_block(|b| b.height += 3);
 
     // Last moment a-2 has a change of mind,
-    // votes shift to [40000000, 0]
+    // votes shift to [200_000_000, 0]
     app.execute_contract(
         Addr::unchecked("a-2"),
-        govmod.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     app.update_block(next_block);
 
+    // Assert that revote succeeded
     let proposal: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(
-            govmod.clone(),
-            &QueryMsg::Proposal { proposal_id: 1 },
-        )
+        .query_wasm_smart(proposal_module, &QueryMsg::Proposal { proposal_id: 1 })
         .unwrap();
     assert_eq!(proposal.proposal.status, Status::Passed);
     assert_eq!(
         proposal.proposal.votes.vote_weights[0],
-        Uint128::new(40000000),
+        Uint128::new(200_000_000),
     );
-    assert_eq!(
-        proposal.proposal.votes.vote_weights[1],
-        Uint128::new(0),
-    );
+    assert_eq!(proposal.proposal.votes.vote_weights[1], Uint128::new(0),);
 }
 
 /// Tests that revoting is stored at a per-proposal level.
@@ -3941,7 +3886,7 @@ fn test_revoting() {
 fn test_allow_revoting_config_changes() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
-    let governance_addr = instantiate_with_staking_active_threshold(
+    let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
         to_binary(&InstantiateMsg {
@@ -3951,9 +3896,10 @@ fn test_allow_revoting_config_changes() {
             allow_revoting: true,
             deposit_info: None,
             voting_strategy: VotingStrategy::SingleChoice {
-                quorum: PercentageThreshold::Majority {}
+                quorum: PercentageThreshold::Majority {},
             },
-        }).unwrap(),
+        })
+        .unwrap(),
         Some(vec![
             Cw20Coin {
                 address: "a-1".to_string(),
@@ -3964,46 +3910,19 @@ fn test_allow_revoting_config_changes() {
                 amount: Uint128::new(100_000_000),
             },
         ]),
-        Some(ActiveThreshold::Percentage {
-            percent: Decimal::percent(20),
-        }),
     );
+
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr.clone(),
+            core_addr.clone(),
             &cw_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
         )
         .unwrap();
-    let govmod = governance_modules.into_iter().next().unwrap();
-    let govmod_config: Config = app
-        .wrap()
-        .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
-        .unwrap();
-    let dao = govmod_config.dao;
-    let voting_module: Addr = app
-        .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
-        .unwrap();
-    let staking_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
-        )
-        .unwrap();
-    let token_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
-        )
-        .unwrap();
-
-    app.update_block(next_block);
+    let proposal_module = governance_modules.into_iter().next().unwrap();
 
     let options = vec![
         MultipleChoiceOption {
@@ -4017,56 +3936,32 @@ fn test_allow_revoting_config_changes() {
     ];
     let mc_options = MultipleChoiceOptions { options };
 
-    // Stake some tokens
-    let msg = cw20::Cw20ExecuteMsg::Send {
-        contract: staking_contract.to_string(),
-        amount: Uint128::new(20_000_000),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
-    };
+    // Create a basic proposal with 2 options that allows revoting
     app.execute_contract(
         Addr::unchecked("a-1"),
-        token_contract.clone(),
-        &msg,
-        &[]
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options.clone(),
+        },
+        &[],
     )
     .unwrap();
-    app.execute_contract(
-        Addr::unchecked("a-2"),
-        token_contract.clone(),
-        &msg,
-        &[]
-    )
-    .unwrap();
-
-    app.update_block(next_block);
-
-    // Create a basic proposal with 2 options that allows revoting
-    let _res = app
-        .execute_contract(
-            Addr::unchecked("a-1"),
-            govmod.clone(),
-            &ExecuteMsg::Propose {
-                title: "A simple text proposal".to_string(),
-                description: "A simple text proposal".to_string(),
-                choices: mc_options.clone(),
-            },
-            &[],
-        )
-        .unwrap();
 
     // Disable revoting
     app.execute_contract(
-        governance_addr.clone(),
-        govmod.clone(),
+        core_addr.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::UpdateConfig {
             min_voting_period: None,
             max_voting_period: Duration::Height(6),
             only_members_execute: false,
             allow_revoting: false,
-            dao: governance_addr.to_string(),
+            dao: core_addr.to_string(),
             deposit_info: None,
             voting_strategy: VotingStrategy::SingleChoice {
-                quorum: PercentageThreshold::Majority {}
+                quorum: PercentageThreshold::Majority {},
             },
         },
         &[],
@@ -4077,55 +3972,61 @@ fn test_allow_revoting_config_changes() {
     let proposal: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
-            govmod.clone(),
+            proposal_module.clone(),
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();
     assert!(proposal.proposal.allow_revoting);
+
     app.execute_contract(
         Addr::unchecked("a-1"),
-        govmod.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
     app.execute_contract(
         Addr::unchecked("a-1"),
-        govmod.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 1 },
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     // New proposals should not allow revoting
     app.execute_contract(
-            Addr::unchecked("a-2"),
-            govmod.clone(),
-            &ExecuteMsg::Propose {
-                title: "A very complex text proposal".to_string(),
-                description: "A very complex text proposal".to_string(),
-                choices: mc_options.clone(),
-            },
-            &[],
-        )
-        .unwrap();
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A very complex text proposal".to_string(),
+            description: "A very complex text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
     app.execute_contract(
         Addr::unchecked("a-2"),
-        govmod.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 2,
             vote: MultipleChoiceVote { option_id: 0 },
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
+
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked("a-2"),
-            govmod.clone(),
+            proposal_module,
             &ExecuteMsg::Vote {
                 proposal_id: 2,
                 vote: MultipleChoiceVote { option_id: 1 },
@@ -4145,7 +4046,7 @@ fn test_allow_revoting_config_changes() {
 fn test_revoting_same_vote_twice() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
-    let governance_addr = instantiate_with_staking_active_threshold(
+    let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
         to_binary(&InstantiateMsg {
@@ -4155,9 +4056,10 @@ fn test_revoting_same_vote_twice() {
             allow_revoting: true,
             deposit_info: None,
             voting_strategy: VotingStrategy::SingleChoice {
-                quorum: PercentageThreshold::Majority {}
+                quorum: PercentageThreshold::Majority {},
             },
-        }).unwrap(),
+        })
+        .unwrap(),
         Some(vec![
             Cw20Coin {
                 address: "a-1".to_string(),
@@ -4168,46 +4070,19 @@ fn test_revoting_same_vote_twice() {
                 amount: Uint128::new(100_000_000),
             },
         ]),
-        Some(ActiveThreshold::Percentage {
-            percent: Decimal::percent(5),
-        }),
     );
+
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr.clone(),
+            core_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
         )
         .unwrap();
-    let govmod = governance_modules.into_iter().next().unwrap();
-    let govmod_config: Config = app
-        .wrap()
-        .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
-        .unwrap();
-    let dao = govmod_config.dao;
-    let voting_module: Addr = app
-        .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
-        .unwrap();
-    let staking_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
-        )
-        .unwrap();
-    let token_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
-        )
-        .unwrap();
-
-    app.update_block(next_block);
+    let proposal_module = governance_modules.into_iter().next().unwrap();
 
     let options = vec![
         MultipleChoiceOption {
@@ -4221,52 +4096,36 @@ fn test_revoting_same_vote_twice() {
     ];
     let mc_options = MultipleChoiceOptions { options };
 
-    // Stake some tokens
-    let msg = cw20::Cw20ExecuteMsg::Send {
-        contract: staking_contract.to_string(),
-        amount: Uint128::new(20_000_000),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
-    };
+    // Create a basic proposal with 2 options that allows revoting
     app.execute_contract(
         Addr::unchecked("a-1"),
-        token_contract.clone(),
-        &msg,
-        &[]
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
     )
     .unwrap();
-
-    app.update_block(next_block);
-
-    // Create a basic proposal with 2 options that allows revoting
-    let _res = app
-        .execute_contract(
-            Addr::unchecked("a-1"),
-            govmod.clone(),
-            &ExecuteMsg::Propose {
-                title: "A simple text proposal".to_string(),
-                description: "A simple text proposal".to_string(),
-                choices: mc_options.clone(),
-            },
-            &[],
-        )
-        .unwrap();
 
     // Cast a vote
     app.execute_contract(
         Addr::unchecked("a-1"),
-        govmod.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     // Revote for the same option as currently voted
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked("a-1"),
-            govmod.clone(),
+            proposal_module,
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: MultipleChoiceVote { option_id: 0 },
@@ -4287,7 +4146,7 @@ fn test_revoting_same_vote_twice() {
 fn test_invalid_revote_does_not_invalidate_initial_vote() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
-    let governance_addr = instantiate_with_staking_active_threshold(
+    let core_addr = instantiate_with_staked_balances_governance(
         &mut app,
         govmod_id,
         to_binary(&InstantiateMsg {
@@ -4297,9 +4156,10 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
             allow_revoting: true,
             deposit_info: None,
             voting_strategy: VotingStrategy::SingleChoice {
-                quorum: PercentageThreshold::Majority {}
+                quorum: PercentageThreshold::Majority {},
             },
-        }).unwrap(),
+        })
+        .unwrap(),
         Some(vec![
             Cw20Coin {
                 address: "a-1".to_string(),
@@ -4310,46 +4170,19 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
                 amount: Uint128::new(100_000_000),
             },
         ]),
-        Some(ActiveThreshold::Percentage {
-            percent: Decimal::percent(20),
-        }),
     );
+
     let governance_modules: Vec<Addr> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr,
+            core_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
         )
         .unwrap();
-    let govmod = governance_modules.into_iter().next().unwrap();
-    let govmod_config: Config = app
-        .wrap()
-        .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
-        .unwrap();
-    let dao = govmod_config.dao;
-    let voting_module: Addr = app
-        .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
-        .unwrap();
-    let staking_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
-        )
-        .unwrap();
-    let token_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
-        )
-        .unwrap();
-
-    app.update_block(next_block);
+    let proposal_module = governance_modules.into_iter().next().unwrap();
 
     let options = vec![
         MultipleChoiceOption {
@@ -4363,68 +4196,42 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
     ];
     let mc_options = MultipleChoiceOptions { options };
 
-    // Stake some tokens
-    let msg = cw20::Cw20ExecuteMsg::Send {
-        contract: staking_contract.to_string(),
-        amount: Uint128::new(20_000_000),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
-    };
-    app.execute_contract(
-        Addr::unchecked("a-1"),
-        token_contract.clone(),
-        &msg,
-        &[]
-    )
-        .unwrap();
-    app.execute_contract(
-        Addr::unchecked("a-2"),
-        token_contract.clone(),
-        &msg,
-        &[]
-    )
-        .unwrap();
-
-    app.update_block(next_block);
-
     // Create a basic proposal with 2 options
-    let _res = app
-        .execute_contract(
-            Addr::unchecked("a-1"),
-            govmod.clone(),
-            &ExecuteMsg::Propose {
-                title: "A simple text proposal".to_string(),
-                description: "A simple text proposal".to_string(),
-                choices: mc_options.clone(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    app.update_block(next_block);
-
-    // a-1 votes, vote_weights: [20000000, 0]
     app.execute_contract(
         Addr::unchecked("a-1"),
-        govmod.clone(),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // a-1 votes, vote_weights: [100_000_000, 0]
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
-    // a-2 votes, vote_weights: [20000000, 20000000]
+    // a-2 votes, vote_weights: [100_000_000, 100_000_000]
     app.execute_contract(
         Addr::unchecked("a-2"),
-        govmod.clone(),
+        proposal_module.clone(),
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 1 },
         },
         &[],
     )
-        .unwrap();
+    .unwrap();
 
     app.update_block(next_block);
 
@@ -4432,18 +4239,18 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
     let proposal: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
-            govmod.clone(),
+            proposal_module.clone(),
             &QueryMsg::Proposal { proposal_id: 1 },
         )
         .unwrap();
     assert_eq!(proposal.proposal.status, Status::Open);
     assert_eq!(
         proposal.proposal.votes.vote_weights[0],
-        Uint128::new(20000000),
+        Uint128::new(100_000_000),
     );
     assert_eq!(
         proposal.proposal.votes.vote_weights[1],
-        Uint128::new(20000000),
+        Uint128::new(100_000_000),
     );
 
     // Time passes..
@@ -4454,7 +4261,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked("a-2"),
-            govmod.clone(),
+            proposal_module,
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: MultipleChoiceVote { option_id: 99 },
@@ -4464,13 +4271,14 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         .unwrap_err()
         .downcast()
         .unwrap();
+    // Assert that prior votes remained the same
     assert_eq!(
         proposal.proposal.votes.vote_weights[0],
-        Uint128::new(20000000),
+        Uint128::new(100_000_000),
     );
     assert_eq!(
         proposal.proposal.votes.vote_weights[1],
-        Uint128::new(20000000),
+        Uint128::new(100_000_000),
     );
     assert!(matches!(err, ContractError::InvalidVote {}));
 }

@@ -278,7 +278,7 @@ pub fn execute_vote(
                 } else {
                     Err(ContractError::AlreadyVoted {})
                 }
-            },
+            }
             None => Ok(Ballot {
                 vote,
                 power: vote_power,
