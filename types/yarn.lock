@@ -3466,6 +3466,11 @@ util@^0.10.3:
   dependencies:
     inherits "2.0.3"
 
+v8-compile-cache-lib@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/v8-compile-cache-lib/-/v8-compile-cache-lib-3.0.1.tgz#6336e8d71965cb3d35a1bbb7868445a7c05264bf"
+  integrity sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==
+
 wasm-ast-types@^0.3.5:
   version "0.3.5"
   resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.3.5.tgz#b46d7b5f4f9312f45278f731f9eb496fdf2f4ca3"

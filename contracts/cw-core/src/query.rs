@@ -4,7 +4,7 @@ use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::Config;
+use crate::state::{Config, ProposalModule};
 
 /// Relevant state for the governance module. Returned by the
 /// `DumpState` query.
@@ -20,7 +20,7 @@ pub struct DumpStateResponse {
     pub version: ContractVersion,
     /// The governance modules associated with the governance
     /// contract.
-    pub proposal_modules: Vec<Addr>,
+    pub proposal_modules: Vec<ProposalModule>,
     /// The voting module associated with the governance contract.
     pub voting_module: Addr,
 }

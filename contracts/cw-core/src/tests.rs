@@ -1,10 +1,15 @@
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{
+    from_slice,
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+};
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::{Duration, Expiration};
 
 use crate::{
+    contract::{derive_proposal_module_prefix, migrate},
     msg::{
         Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
     },
@@ -12,7 +17,7 @@ use crate::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
         PauseInfoResponse,
     },
-    state::Config,
+    state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
     ContractError,
 };
 
@@ -144,7 +149,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
 }
 
 #[test]
-#[should_panic(expected = "Execution would result in no governance modules being present.")]
+#[should_panic(expected = "Execution would result in no governance modules being active.")]
 fn test_instantiate_with_zero_gov_modules() {
     test_instantiate_with_n_gov_modules(0)
 }
@@ -259,7 +264,7 @@ fn test_update_config() {
         )
         .unwrap();
 
-    let modules: Vec<Addr> = app
+    let modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             gov_addr.clone(),
@@ -282,7 +287,7 @@ fn test_update_config() {
 
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
-        modules[0].clone(),
+        modules[0].clone().address,
         &cw_proposal_sudo::msg::ExecuteMsg::Execute {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
@@ -348,7 +353,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         )
         .unwrap();
 
-    let modules: Vec<Addr> = app
+    let modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             gov_addr.clone(),
@@ -362,7 +367,7 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
     assert_eq!(modules.len(), 1);
 
     for (add, remove) in swaps {
-        let start_modules: Vec<Addr> = app
+        let start_modules: Vec<ProposalModule> = app
             .wrap()
             .query_wasm_smart(
                 gov_addr.clone(),
@@ -372,6 +377,8 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
                 },
             )
             .unwrap();
+
+        let start_modules_active: Vec<ProposalModule> = get_active_modules(&app, gov_addr.clone());
 
         let to_add: Vec<_> = (0..add)
             .map(|n| ModuleInstantiateInfo {
@@ -382,21 +389,21 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
             })
             .collect();
 
-        let to_remove: Vec<_> = start_modules
+        let to_disable: Vec<_> = start_modules_active
             .iter()
             .rev()
             .take(remove as usize)
-            .map(|a| a.to_string())
+            .map(|a| a.address.to_string())
             .collect();
 
         app.execute_contract(
             Addr::unchecked(CREATOR_ADDR),
-            start_modules[0].clone(),
+            start_modules_active[0].address.clone(),
             &cw_proposal_sudo::msg::ExecuteMsg::Execute {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
                     funds: vec![],
-                    msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove })
+                    msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable })
                         .unwrap(),
                 }
                 .into()],
@@ -405,23 +412,14 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         )
         .unwrap();
 
-        let finish_modules: Vec<Addr> = app
-            .wrap()
-            .query_wasm_smart(
-                gov_addr.clone(),
-                &QueryMsg::ProposalModules {
-                    start_after: None,
-                    limit: None,
-                },
-            )
-            .unwrap();
+        let finish_modules_active = get_active_modules(&app, gov_addr.clone());
 
         assert_eq!(
-            finish_modules.len() as u64,
-            start_modules.len() as u64 + add - remove
+            finish_modules_active.len() as u64,
+            start_modules_active.len() as u64 + add - remove
         );
         for module in start_modules.into_iter().rev().take(remove as usize) {
-            assert!(!finish_modules.contains(&module))
+            assert!(!finish_modules_active.contains(&module))
         }
     }
 }
@@ -438,7 +436,7 @@ fn test_add_then_remove_governance() {
 }
 
 #[test]
-#[should_panic(expected = "Execution would result in no governance modules being present.")]
+#[should_panic(expected = "Execution would result in no governance modules being active.")]
 fn test_swap_governance_bad() {
     test_swap_governance(vec![(1, 1), (0, 1)])
 }
@@ -486,7 +484,7 @@ fn test_removed_modules_can_not_execute() {
         )
         .unwrap();
 
-    let modules: Vec<Addr> = app
+    let modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             gov_addr.clone(),
@@ -508,17 +506,17 @@ fn test_removed_modules_can_not_execute() {
         label: "new governance module".to_string(),
     }];
 
-    let to_remove = vec![start_module.to_string()];
+    let to_disable = vec![start_module.address.to_string()];
 
     // Swap ourselves out.
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
-        start_module.clone(),
+        start_module.address.clone(),
         &cw_proposal_sudo::msg::ExecuteMsg::Execute {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove }).unwrap(),
+                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
             }
             .into()],
         },
@@ -526,18 +524,9 @@ fn test_removed_modules_can_not_execute() {
     )
     .unwrap();
 
-    let finish_modules: Vec<Addr> = app
-        .wrap()
-        .query_wasm_smart(
-            gov_addr.clone(),
-            &QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
+    let finish_modules_active: Vec<ProposalModule> = get_active_modules(&app, gov_addr.clone());
 
-    let new_proposal_module = finish_modules.into_iter().next().unwrap();
+    let new_proposal_module = finish_modules_active.into_iter().next().unwrap();
 
     // Try to add a new module and remove the one we added
     // earlier. This should fail as we have been removed.
@@ -547,19 +536,19 @@ fn test_removed_modules_can_not_execute() {
         admin: Admin::CoreContract {},
         label: "new governance module".to_string(),
     }];
-    let to_remove = vec![new_proposal_module.to_string()];
+    let to_disable = vec![new_proposal_module.address.to_string()];
 
     let err: ContractError = app
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
-            start_module,
+            start_module.address,
             &cw_proposal_sudo::msg::ExecuteMsg::Execute {
                 msgs: vec![WasmMsg::Execute {
                     contract_addr: gov_addr.to_string(),
                     funds: vec![],
                     msg: to_binary(&ExecuteMsg::UpdateProposalModules {
                         to_add: to_add.clone(),
-                        to_remove: to_remove.clone(),
+                        to_disable: to_disable.clone(),
                     })
                     .unwrap(),
                 }
@@ -575,12 +564,12 @@ fn test_removed_modules_can_not_execute() {
     // The new proposal module should be able to perform actions.
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
-        new_proposal_module,
+        new_proposal_module.address,
         &cw_proposal_sudo::msg::ExecuteMsg::Execute {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
                 funds: vec![],
-                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_remove }).unwrap(),
+                msg: to_binary(&ExecuteMsg::UpdateProposalModules { to_add, to_disable }).unwrap(),
             }
             .into()],
         },
@@ -637,7 +626,7 @@ fn test_swap_voting_module() {
         .query_wasm_smart(gov_addr.clone(), &QueryMsg::VotingModule {})
         .unwrap();
 
-    let modules: Vec<Addr> = app
+    let modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             gov_addr.clone(),
@@ -652,7 +641,7 @@ fn test_swap_voting_module() {
 
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
-        modules[0].clone(),
+        modules[0].address.clone(),
         &cw_proposal_sudo::msg::ExecuteMsg::Execute {
             msgs: vec![WasmMsg::Execute {
                 contract_addr: gov_addr.to_string(),
@@ -752,7 +741,7 @@ fn test_permissions() {
         gov_addr.clone(),
         ExecuteMsg::UpdateProposalModules {
             to_add: vec![],
-            to_remove: vec![],
+            to_disable: vec![],
         },
     );
 
@@ -837,7 +826,7 @@ fn test_admin_permissions() {
     let (core_addr, mut app) = do_standard_instantiate(true, None);
 
     let start_height = app.block_info().height;
-    let proposal_modules: Vec<Addr> = app
+    let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
@@ -872,7 +861,7 @@ fn test_admin_permissions() {
 
     // Proposal mdoule can't call ExecuteAdminMsgs
     let res = app.execute_contract(
-        proposal_module.clone(),
+        proposal_module.address.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
@@ -903,7 +892,7 @@ fn test_admin_permissions() {
     // Nominate admin can be called by core contract as no admin was
     // specified so the admin defaulted to the core contract.
     let res = app.execute_contract(
-        proposal_module.clone(),
+        proposal_module.address.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
@@ -926,7 +915,7 @@ fn test_admin_permissions() {
 
     // Non admins still can't call ExecuteAdminMsgs
     let res = app.execute_contract(
-        proposal_module,
+        proposal_module.address,
         core_with_admin_addr.clone(),
         &ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![WasmMsg::Execute {
@@ -1987,7 +1976,7 @@ fn test_pause() {
 
     let start_height = app.block_info().height;
 
-    let proposal_modules: Vec<Addr> = app
+    let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
@@ -2037,7 +2026,7 @@ fn test_pause() {
     // figure out what to do!
     let err: ContractError = app
         .execute_contract(
-            proposal_module.clone(),
+            proposal_module.address.clone(),
             core_addr.clone(),
             &ExecuteMsg::Pause {
                 duration: Duration::Height(10),
@@ -2053,7 +2042,7 @@ fn test_pause() {
     assert_eq!(err, ContractError::Unauthorized {});
 
     app.execute_contract(
-        proposal_module.clone(),
+        proposal_module.address.clone(),
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
@@ -2114,7 +2103,7 @@ fn test_pause() {
 
     let err: ContractError = app
         .execute_contract(
-            proposal_module.clone(),
+            proposal_module.address.clone(),
             core_addr.clone(),
             &ExecuteMsg::ExecuteProposalHook {
                 msgs: vec![WasmMsg::Execute {
@@ -2140,7 +2129,7 @@ fn test_pause() {
     // Still not unpaused.
     let err: ContractError = app
         .execute_contract(
-            proposal_module.clone(),
+            proposal_module.address.clone(),
             core_addr.clone(),
             &ExecuteMsg::ExecuteProposalHook {
                 msgs: vec![WasmMsg::Execute {
@@ -2176,7 +2165,7 @@ fn test_pause() {
 
     // Now its unpaused so we should be able to pause again.
     app.execute_contract(
-        proposal_module,
+        proposal_module.address,
         core_addr.clone(),
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![WasmMsg::Execute {
@@ -2216,7 +2205,33 @@ fn test_pause() {
 }
 
 #[test]
-fn test_migrate() {
+fn test_dump_state_proposal_modules() {
+    let (core_addr, app) = do_standard_instantiate(false, None);
+    let proposal_modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_module = proposal_modules.into_iter().next().unwrap();
+
+    let all_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
+        .unwrap();
+    assert_eq!(all_state.pause_info, PauseInfoResponse::Unpaused {});
+    assert_eq!(all_state.proposal_modules.len(), 1);
+    assert_eq!(all_state.proposal_modules[0], proposal_module);
+}
+
+#[test]
+fn test_migrate_from_compatible() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
@@ -2285,7 +2300,7 @@ fn test_migrate() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: core_addr.to_string(),
             new_code_id: gov_id,
-            msg: to_binary(&MigrateMsg {}).unwrap(),
+            msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
         }),
     )
     .unwrap();
@@ -2299,9 +2314,30 @@ fn test_migrate() {
 }
 
 #[test]
+fn test_migrate_from_beta() {
+    let mut deps = mock_dependencies();
+    let msg = MigrateMsg::FromBeta {};
+    let env = mock_env();
+
+    // Write to storage in old proposal module format
+    let key = Addr::unchecked("addr");
+    let path = PROPOSAL_MODULES.key(key);
+    deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
+
+    // Migrate to new data format
+    migrate(deps.as_mut(), env, msg).unwrap();
+
+    let prop_module_bytes = deps.storage.get(&path).unwrap();
+    let module: ProposalModule = from_slice(&prop_module_bytes).unwrap();
+    assert_eq!(module.address, Addr::unchecked("addr"));
+    assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
+    assert_eq!(module.status, ProposalModuleStatus::Active {});
+}
+
+#[test]
 fn test_execute_stargate_msg() {
     let (core_addr, mut app) = do_standard_instantiate(true, None);
-    let proposal_modules: Vec<Addr> = app
+    let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
@@ -2316,7 +2352,7 @@ fn test_execute_stargate_msg() {
     let proposal_module = proposal_modules.into_iter().next().unwrap();
 
     let res = app.execute_contract(
-        proposal_module,
+        proposal_module.address,
         core_addr,
         &ExecuteMsg::ExecuteProposalHook {
             msgs: vec![CosmosMsg::Stargate {
@@ -2328,4 +2364,108 @@ fn test_execute_stargate_msg() {
     );
     // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this result unwrap
     res.unwrap_err();
+}
+
+#[test]
+fn test_module_prefixes() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let gov_id = app.store_code(cw_core_contract());
+
+    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+
+    let gov_instantiate = InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: govmod_id,
+            msg: to_binary(&govmod_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Admin::CoreContract {},
+                label: "proposal module 1".to_string(),
+            },
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Admin::CoreContract {},
+                label: "proposal module 2".to_string(),
+            },
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Admin::CoreContract {},
+                label: "proposal module 2".to_string(),
+            },
+        ],
+        initial_items: None,
+    };
+
+    let gov_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            None,
+        )
+        .unwrap();
+
+    let modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(modules.len(), 3);
+
+    let module_1 = &modules[0];
+    assert_eq!(module_1.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_1.prefix, "A");
+    assert_eq!(&module_1.address, &modules[0].address);
+
+    let module_2 = &modules[1];
+    assert_eq!(module_2.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_2.prefix, "B");
+    assert_eq!(&module_2.address, &modules[1].address);
+
+    let module_3 = &modules[2];
+    assert_eq!(module_3.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_3.prefix, "C");
+    assert_eq!(&module_3.address, &modules[2].address);
+}
+
+fn get_active_modules(app: &App, gov_addr: Addr) -> Vec<ProposalModule> {
+    let modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr,
+            &QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    modules
+        .into_iter()
+        .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active {})
+        .collect()
 }
