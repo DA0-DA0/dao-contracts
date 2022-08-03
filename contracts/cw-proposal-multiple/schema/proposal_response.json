@@ -573,6 +573,7 @@
     "MultipleChoiceProposal": {
       "type": "object",
       "required": [
+        "allow_revoting",
         "choices",
         "description",
         "expiration",
@@ -585,6 +586,9 @@
         "voting_strategy"
       ],
       "properties": {
+        "allow_revoting": {
+          "type": "boolean"
+        },
         "choices": {
           "type": "array",
           "items": {

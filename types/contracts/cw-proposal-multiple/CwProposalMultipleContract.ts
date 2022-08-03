@@ -28,6 +28,7 @@ export type PercentageThreshold = {
 };
 export type Decimal = string;
 export interface ConfigResponse {
+  allow_revoting: boolean;
   dao: Addr;
   deposit_info?: CheckedDepositInfo | null;
   max_voting_period: Duration;
@@ -67,6 +68,7 @@ export type ExecuteMsg = {
   };
 } | {
   update_config: {
+    allow_revoting: boolean;
     dao: string;
     deposit_info?: DepositInfo | null;
     max_voting_period: Duration;
@@ -295,6 +297,7 @@ export interface ContractVersion {
   [k: string]: unknown;
 }
 export interface InstantiateMsg {
+  allow_revoting: boolean;
   deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
@@ -323,6 +326,7 @@ export interface ProposalResponse {
   [k: string]: unknown;
 }
 export interface MultipleChoiceProposal {
+  allow_revoting: boolean;
   choices: CheckedMultipleChoiceOption[];
   deposit_info?: CheckedDepositInfo | null;
   description: string;
@@ -612,6 +616,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     proposalId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
+    allowRevoting,
     dao,
     depositInfo,
     maxVotingPeriod,
@@ -619,6 +624,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     onlyMembersExecute,
     votingStrategy
   }: {
+    allowRevoting: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
@@ -722,6 +728,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     }, fee, memo, funds);
   };
   updateConfig = async ({
+    allowRevoting,
     dao,
     depositInfo,
     maxVotingPeriod,
@@ -729,6 +736,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     onlyMembersExecute,
     votingStrategy
   }: {
+    allowRevoting: boolean;
     dao: string;
     depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
@@ -738,6 +746,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
+        allow_revoting: allowRevoting,
         dao,
         deposit_info: depositInfo,
         max_voting_period: maxVotingPeriod,
