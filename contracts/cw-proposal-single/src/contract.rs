@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, WasmMsg,
+    to_binary, wasm_execute, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    Reply, Response, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
@@ -27,8 +27,13 @@ use crate::{
     proposal::advance_proposal_id,
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
-    state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
+    state::{
+        Ballot, AUTHORIZATION_MODULE, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS,
+        VOTE_HOOKS,
+    },
 };
+
+const UPDATE_REPLY_ID: u64 = 100_000_000;
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -118,6 +123,10 @@ pub fn execute(
         ExecuteMsg::RemoveVoteHook { address } => {
             execute_remove_vote_hook(deps, env, info, address)
         }
+        ExecuteMsg::AddAuthorizationModule { address } => {
+            execute_add_auth_module(deps, env, info, address)
+        }
+        ExecuteMsg::RemoveAuthorizationModule {} => execute_remove_auth_module(deps, env, info),
     }
 }
 
@@ -263,15 +272,55 @@ pub fn execute_execute(
         None => vec![],
     };
 
+    // Check that the proposal is authorized if authorizations are configured
+    let response = Response::default();
+    let response = if let Some(auths) = AUTHORIZATION_MODULE.may_load(deps.storage)? {
+        let authorized = cw_auth_middleware::utils::check_authorization(
+            deps.as_ref(),
+            &vec![auths.clone()],
+            &prop.msgs.clone(),
+            &info.sender,
+        );
+
+        if !authorized {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        let response = response
+            .add_submessage(SubMsg::reply_on_error(
+                wasm_execute(
+                    auths.to_string(),
+                    &cw_auth_middleware::msg::ExecuteMsg::UpdateExecutedAuthorizationState {
+                        msgs: prop.msgs.clone(),
+                        sender: info.sender.clone(),
+                    },
+                    vec![],
+                )?,
+                UPDATE_REPLY_ID,
+            ))
+            .add_attribute("authorized_by", auths.to_string());
+
+        response.add_message(wasm_execute(
+            auths.to_string(),
+            &cw_auth_middleware::msg::ExecuteMsg::UpdateExecutedAuthorizationState {
+                msgs: prop.msgs.clone(),
+                sender: info.sender.clone(),
+            },
+            vec![],
+        )?)
+    } else {
+        response
+    };
+
     let response = if !prop.msgs.is_empty() {
         let execute_message = WasmMsg::Execute {
             contract_addr: config.dao.to_string(),
             msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs: prop.msgs })?,
             funds: vec![],
         };
-        Response::<Empty>::default().add_message(execute_message)
+        response.add_message(execute_message)
     } else {
-        Response::default()
+        response
     };
 
     let hooks = proposal_status_changed_hooks(
@@ -587,6 +636,41 @@ pub fn execute_remove_vote_hook(
         .add_attribute("address", address))
 }
 
+pub fn execute_add_auth_module(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can add auths
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let validated_address = deps.api.addr_validate(&address)?;
+
+    AUTHORIZATION_MODULE.save(deps.storage, &validated_address)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "add_auth_module")
+        .add_attribute("address", address))
+}
+
+pub fn execute_remove_auth_module(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        // Only DAO can remove auths
+        return Err(ContractError::Unauthorized {});
+    }
+    AUTHORIZATION_MODULE.remove(deps.storage);
+    Ok(Response::default().add_attribute("action", "remove_auth_module"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -718,6 +802,19 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    if msg.id == UPDATE_REPLY_ID {
+        if PROPOSAL_HOOKS.query_hooks(deps.as_ref())?.hooks.len() >= UPDATE_REPLY_ID as usize {
+            return Err(ContractError::TooManyHooks {});
+        }
+
+        if msg.result.is_err() {
+            return Ok(Response::new().add_attribute("update_error", msg.result.unwrap_err()));
+        }
+        return Ok(
+            Response::new().add_attribute("update_success", format!("{:?}", msg.result.unwrap()))
+        );
+    }
+
     if msg.id % 2 == 0 {
         // Proposal hook so we can just divide by two for index
         let idx = msg.id / 2;

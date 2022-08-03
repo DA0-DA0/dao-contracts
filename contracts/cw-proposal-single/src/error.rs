@@ -60,6 +60,9 @@ pub enum ContractError {
     #[error("The DAO is currently inactive, you cannot create proposals")]
     InactiveDao {},
 
+    #[error("Too many hooks have been added to this proposal so we can't distinguish between proposal hooks and auth replies")]
+    TooManyHooks {},
+
     #[error("min_voting_period and max_voting_period must have the same units (height or time)")]
     DurationUnitsConflict {},
 

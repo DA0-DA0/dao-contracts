@@ -1,7 +1,7 @@
 [package]
-name = "cw-proposal-single"
+name = "cw-auth-middleware"
 version = "0.1.0"
-authors = ["Zeke Medley <zekemedley@gmail.com>"]
+authors = ["Nicolas Lara <nicolaslara@gmail.com>"]
 edition = "2018"
 
 exclude = [
@@ -25,12 +25,12 @@ library = []
 optimize = """docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/workspace-optimizer:0.12.6
+  cosmwasm/rust-optimizer:0.12.5
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0", features = ["ibc3"] }
-cosmwasm-storage = { version = "1.0.0" }
+cosmwasm-std = { version = "1.0.0-beta" }
+cosmwasm-storage = { version = "1.0.0-beta" }
 cw-storage-plus = "0.13"
 cw-utils = "0.13"
 cw2 = "0.13"
@@ -39,29 +39,15 @@ cw3 = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core = { path = "../cw-core", version = "*", features = ["library"] }
-cw-core-macros = { path = "../../packages/cw-core-macros", version = "*" }
-cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
-voting = { version = "*", path = "../../packages/voting" }
 indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
-proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }
-vote-hooks = { version = "*", path = "../../packages/vote-hooks" }
-cw-auth-middleware = { path = "../../contracts/cw-auth-middleware", features = ["library"] }
-
-[dev-dependencies]
-cosmwasm-schema = { version = "1.0.0" }
-cw-multi-test = "0.13"
-cw4-voting = { path = "../cw4-voting", version = "*" }
-cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" }
-cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }
-cw-native-staked-balance-voting = { path = "../cw-native-staked-balance-voting", version = "*" }
-cw721-stake = { path = "../cw721-stake", version = "*" }
-cw721-base = "0.13"
-testing = { version = "*", path = "../../packages/testing" }
-cw20-stake = { path= "../cw20-stake", version = "*" }
-cw20-base = "0.13"
+cw-core = { version="*", path="../cw-core" }
 cw4 = "0.13"
 cw4-group = "0.13"
-cw-auth-middleware = { path = "../../contracts/cw-auth-middleware" }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "1.0.0-beta" }
+cw-multi-test = "0.13"
+testing = { version = "*", path = "../../packages/testing" }
 whitelist = { version = "*", path = "../../authorizations/whitelist" }
 message-filter = { version = "*", path = "../../authorizations/message-filter" }
+and = { version = "*", path = "../../authorizations/and" }
