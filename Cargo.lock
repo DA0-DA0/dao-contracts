@@ -305,9 +305,9 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cosm-orc"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "997c2741ed096a586d8ff6ff6c943e413b25bb326117ad7b44cb3202da647516"
+checksum = "bc45a26b560081f1fa24f3c72f8f415f691ca575ff2b7920db714fd142ecba8d"
 dependencies = [
  "backtrace",
  "config",

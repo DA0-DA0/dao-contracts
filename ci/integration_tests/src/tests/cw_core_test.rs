@@ -1,11 +1,8 @@
 use crate::helpers::chain::Chain;
-use crate::helpers::helper::{
-    create_dao, CoreWasmMsg, Cw20StakeBalanceWasmMsg, Cw20StakeWasmMsg, CwProposalWasmMsg,
-};
+use crate::helpers::helper::create_dao;
 use assert_matches::assert_matches;
 use cosm_orc::client::error::ClientError;
 use cosm_orc::config::SigningKey;
-use cosm_orc::orchestrator::cosm_orc::WasmMsg;
 use cosm_orc::orchestrator::error::ProcessError;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
@@ -37,19 +34,21 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     assert!(res.is_ok());
     let dao = res.unwrap();
 
-    let msg: CoreWasmMsg = WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
-        msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
-            contract_addr: dao.addr,
-            msg: to_binary(&cw_core::msg::ExecuteMsg::Pause {
-                duration: Duration::Time(100),
-            })
-            .unwrap(),
-            funds: vec![],
-        })],
-    });
-    let res = chain
-        .orc
-        .process_msg("cw_core", "exc_admin_msgs_pause_dao_fail", &msg, &chain.key);
+    let res = chain.orc.execute(
+        "cw_core",
+        "exc_admin_msgs_pause_dao_fail",
+        &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
+                contract_addr: dao.addr,
+                msg: to_binary(&cw_core::msg::ExecuteMsg::Pause {
+                    duration: Duration::Time(100),
+                })
+                .unwrap(),
+                funds: vec![],
+            })],
+        },
+        &chain.key,
+    );
 
     assert!(res.is_err());
     assert_matches!(
@@ -57,14 +56,12 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         ProcessError::ClientError(ClientError::CosmosSdk { .. })
     );
 
-    let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::PauseInfo {});
     let res = chain
         .orc
-        .process_msg(
+        .query(
             "cw_core",
             "exc_admin_msgs_pause_dao_query",
-            &msg,
-            &chain.key,
+            &cw_core::msg::QueryMsg::PauseInfo {},
         )
         .unwrap();
     let res: PauseInfoResponse = serde_json::from_slice(res.data.unwrap().value()).unwrap();
@@ -81,25 +78,36 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     assert!(res.is_ok());
     let dao = res.unwrap();
 
-    let msgs: Vec<CoreWasmMsg> = vec![
-        WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
-                contract_addr: dao.addr,
-                msg: to_binary(&cw_core::msg::ExecuteMsg::Pause {
-                    duration: Duration::Height(100),
-                })
-                .unwrap(),
-                funds: vec![],
-            })],
-        }),
-        WasmMsg::QueryMsg(cw_core::msg::QueryMsg::PauseInfo {}),
-    ];
+    chain
+        .orc
+        .execute(
+            "cw_core",
+            "exc_admin_msgs_pause_dao",
+            &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+                msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
+                    contract_addr: dao.addr,
+                    msg: to_binary(&cw_core::msg::ExecuteMsg::Pause {
+                        duration: Duration::Height(100),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })],
+            },
+            &chain.key,
+        )
+        .unwrap();
+
     let res = chain
         .orc
-        .process_msgs("cw_core", "exc_admin_msgs_pause_dao", &msgs, &chain.key)
+        .query(
+            "cw_core",
+            "exc_admin_msgs_pause_dao",
+            &cw_core::msg::QueryMsg::PauseInfo {},
+        )
         .unwrap();
+
     let res: PauseInfoResponse =
-        serde_json::from_slice(res[1].data.as_ref().unwrap().value()).unwrap();
+        serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
     assert_ne!(res, PauseInfoResponse::Unpaused {});
 }
 
@@ -123,66 +131,85 @@ fn execute_items(chain: &mut Chain) {
     assert!(res.is_ok());
     let dao = res.unwrap();
 
-    let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::GetItem {
-        key: "meme".to_string(),
-    });
     let res = chain
         .orc
-        .process_msg("cw_core", "exc_items_get", &msg, &chain.key)
+        .query(
+            "cw_core",
+            "exc_items_get",
+            &cw_core::msg::QueryMsg::GetItem {
+                key: "meme".to_string(),
+            },
+        )
         .unwrap();
     let res: GetItemResponse = serde_json::from_slice(res.data.unwrap().value()).unwrap();
 
     assert_eq!(res.item, None);
 
-    let msgs: Vec<CoreWasmMsg> = vec![
-        WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
-                contract_addr: dao.addr.clone(),
-                msg: to_binary(&cw_core::msg::ExecuteMsg::SetItem {
-                    key: "meme".to_string(),
-                    addr: "foobar".to_string(),
-                })
-                .unwrap(),
-                funds: vec![],
-            })],
-        }),
-        WasmMsg::QueryMsg(cw_core::msg::QueryMsg::GetItem {
-            key: "meme".to_string(),
-        }),
-    ];
+    chain
+        .orc
+        .execute(
+            "cw_core",
+            "exc_items_set",
+            &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+                msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
+                    contract_addr: dao.addr.clone(),
+                    msg: to_binary(&cw_core::msg::ExecuteMsg::SetItem {
+                        key: "meme".to_string(),
+                        addr: "foobar".to_string(),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })],
+            },
+            &chain.key,
+        )
+        .unwrap();
 
     let res = chain
         .orc
-        .process_msgs("cw_core", "exc_items_set", &msgs, &chain.key)
+        .query(
+            "cw_core",
+            "exc_items_set",
+            &cw_core::msg::QueryMsg::GetItem {
+                key: "meme".to_string(),
+            },
+        )
         .unwrap();
-    let res: GetItemResponse =
-        serde_json::from_slice(res[1].data.as_ref().unwrap().value()).unwrap();
+    let res: GetItemResponse = serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
 
     assert_eq!(res.item, Some("foobar".to_string()));
 
     // remove item:
-    let msgs: Vec<CoreWasmMsg> = vec![
-        WasmMsg::ExecuteMsg(cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
-            msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
-                contract_addr: dao.addr,
-                msg: to_binary(&cw_core::msg::ExecuteMsg::RemoveItem {
-                    key: "meme".to_string(),
-                })
-                .unwrap(),
-                funds: vec![],
-            })],
-        }),
-        WasmMsg::QueryMsg(cw_core::msg::QueryMsg::GetItem {
-            key: "meme".to_string(),
-        }),
-    ];
+    chain
+        .orc
+        .execute(
+            "cw_core",
+            "exc_items_rm",
+            &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+                msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
+                    contract_addr: dao.addr,
+                    msg: to_binary(&cw_core::msg::ExecuteMsg::RemoveItem {
+                        key: "meme".to_string(),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                })],
+            },
+            &chain.key,
+        )
+        .unwrap();
 
     let res = chain
         .orc
-        .process_msgs("cw_core", "exc_items_rm", &msgs, &chain.key)
+        .query(
+            "cw_core",
+            "exc_items_rm",
+            &cw_core::msg::QueryMsg::GetItem {
+                key: "meme".to_string(),
+            },
+        )
         .unwrap();
-    let res: GetItemResponse =
-        serde_json::from_slice(res[1].data.as_ref().unwrap().value()).unwrap();
+    let res: GetItemResponse = serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
 
     assert_eq!(res.item, None);
 }
@@ -260,11 +287,13 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .contract_map
         .add_address(voting_contract, voting_addr)
         .unwrap();
-    let msg: Cw20StakeBalanceWasmMsg =
-        WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::StakingContract {});
     let res = &chain
         .orc
-        .process_msg(voting_contract, "inst_admin_q_stake", &msg, &chain.key)
+        .query(
+            voting_contract,
+            "inst_admin_q_stake",
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
         .unwrap()
         .data
         .unwrap();
@@ -275,23 +304,30 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .contract_map
         .add_address("cw20_stake", staking_addr)
         .unwrap();
-    let msgs: Vec<Cw20StakeWasmMsg> = vec![
-        WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
-            address: account.to_string(),
-        }),
-        WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::GetConfig {}),
-        WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::TotalValue {}),
-    ];
     let res = chain
         .orc
-        .process_msgs("cw20_stake", "inst_admin_q_val", &msgs, &chain.key)
+        .query(
+            "cw20_stake",
+            "inst_admin_q_val",
+            &cw20_stake::msg::QueryMsg::StakedValue {
+                address: account.to_string(),
+            },
+        )
         .unwrap();
     let staked_res: StakedValueResponse =
-        serde_json::from_slice(res[0].data.as_ref().unwrap().value()).unwrap();
+        serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
     assert_eq!(staked_res.value, Uint128::new(0));
 
+    let res = chain
+        .orc
+        .query(
+            "cw20_stake",
+            "inst_admin_q_val",
+            &cw20_stake::msg::QueryMsg::GetConfig {},
+        )
+        .unwrap();
     let config_res: cw20_stake::state::Config =
-        serde_json::from_slice(res[1].data.as_ref().unwrap().value()).unwrap();
+        serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
     assert_eq!(
         config_res.owner,
         Some(Addr::unchecked(
@@ -300,11 +336,13 @@ fn instantiate_with_admin(chain: &mut Chain) {
     );
     assert_eq!(config_res.manager, None);
 
-    let msg: Cw20StakeBalanceWasmMsg =
-        WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::TokenContract {});
     let data = &chain
         .orc
-        .process_msg(voting_contract, "inst_admin_q_tok", &msg, &chain.key)
+        .query(
+            voting_contract,
+            "inst_admin_q_tok",
+            &cw20_staked_balance_voting::msg::QueryMsg::TokenContract {},
+        )
         .unwrap()
         .data
         .unwrap();
@@ -313,8 +351,16 @@ fn instantiate_with_admin(chain: &mut Chain) {
 
     assert_eq!(config_res.unstaking_duration, Some(Duration::Time(1209600)));
 
+    let res = chain
+        .orc
+        .query(
+            "cw20_stake",
+            "inst_admin_q_val",
+            &cw20_stake::msg::QueryMsg::TotalValue {},
+        )
+        .unwrap();
     let total_res: TotalValueResponse =
-        serde_json::from_slice(res[2].data.as_ref().unwrap().value()).unwrap();
+        serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
     assert_eq!(total_res.total, Uint128::new(0));
 
     // proposal module config is valid:
@@ -323,10 +369,13 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .contract_map
         .add_address(proposal_contract, prop_addr)
         .unwrap();
-    let msg: CwProposalWasmMsg = WasmMsg::QueryMsg(cw_proposal_single::msg::QueryMsg::Config {});
     let res = chain
         .orc
-        .process_msg(proposal_contract, "inst_admin_q_cfg", &msg, &chain.key)
+        .query(
+            proposal_contract,
+            "inst_admin_q_cfg",
+            &cw_proposal_single::msg::QueryMsg::Config {},
+        )
         .unwrap();
     let config_res: cw_proposal_single::state::Config =
         serde_json::from_slice(res.data.unwrap().value()).unwrap();

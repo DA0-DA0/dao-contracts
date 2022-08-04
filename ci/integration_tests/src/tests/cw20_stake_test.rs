@@ -1,11 +1,8 @@
 use core::time;
 use std::thread;
 
-use crate::helpers::{
-    chain::Chain,
-    helper::{create_dao, CoreWasmMsg, Cw20BaseWasmMsg, Cw20StakeBalanceWasmMsg, Cw20StakeWasmMsg},
-};
-use cosm_orc::{config::SigningKey, orchestrator::cosm_orc::WasmMsg};
+use crate::helpers::{chain::Chain, helper::create_dao};
+use cosm_orc::config::SigningKey;
 use cosmwasm_std::{to_binary, Uint128};
 use cw20_stake::{msg::StakedValueResponse, state::Config};
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
@@ -36,11 +33,13 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .contract_map
         .add_address(voting_contract, voting_addr)
         .unwrap();
-    let msg: Cw20StakeBalanceWasmMsg =
-        WasmMsg::QueryMsg(cw20_staked_balance_voting::msg::QueryMsg::StakingContract {});
     let staking_addr = &chain
         .orc
-        .process_msg(voting_contract, "exc_stake_q_stake", &msg, &chain.key)
+        .query(
+            voting_contract,
+            "exc_stake_q_stake",
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
         .unwrap()
         .data
         .unwrap();
@@ -51,43 +50,59 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .contract_map
         .add_address("cw20_stake", staking_addr.to_string())
         .unwrap();
-    let msgs: Vec<Cw20StakeWasmMsg> = vec![
-        WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
-            address: account.to_string(),
-        }),
-        WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::GetConfig {}),
-    ];
     let res = chain
         .orc
-        .process_msgs("cw20_stake", "exc_stake_q_cfg", &msgs, &chain.key)
+        .query(
+            "cw20_stake",
+            "exc_stake_q_cfg",
+            &cw20_stake::msg::QueryMsg::StakedValue {
+                address: account.to_string(),
+            },
+        )
         .unwrap();
     let staked_value: StakedValueResponse =
-        serde_json::from_slice(res[0].data.as_ref().unwrap().value()).unwrap();
+        serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
 
     assert_eq!(staked_value.value, Uint128::new(0));
 
-    let config: Config = serde_json::from_slice(res[1].data.as_ref().unwrap().value()).unwrap();
+    let res = chain
+        .orc
+        .query(
+            "cw20_stake",
+            "exc_stake_q_cfg",
+            &cw20_stake::msg::QueryMsg::GetConfig {},
+        )
+        .unwrap();
+    let config: Config = serde_json::from_slice(res.data.as_ref().unwrap().value()).unwrap();
+
     chain
         .orc
         .contract_map
         .add_address("cw20_base", config.token_address.as_str())
         .unwrap();
-    let msg: Cw20BaseWasmMsg = WasmMsg::ExecuteMsg(cw20_base::msg::ExecuteMsg::Send {
-        contract: staking_addr,
-        amount: Uint128::new(100),
-        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
-    });
     chain
         .orc
-        .process_msg("cw20_base", "exc_stake_stake_tokens", &msg, &chain.key)
+        .execute(
+            "cw20_base",
+            "exc_stake_stake_tokens",
+            &cw20_base::msg::ExecuteMsg::Send {
+                contract: staking_addr,
+                amount: Uint128::new(100),
+                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            },
+            &chain.key,
+        )
         .unwrap();
 
-    let msg: Cw20StakeWasmMsg = WasmMsg::QueryMsg(cw20_stake::msg::QueryMsg::StakedValue {
-        address: account.to_string(),
-    });
     let res = chain
         .orc
-        .process_msg("cw20_stake", "exc_stake_q_stake", &msg, &chain.key)
+        .query(
+            "cw20_stake",
+            "exc_stake_q_stake",
+            &cw20_stake::msg::QueryMsg::StakedValue {
+                address: account.to_string(),
+            },
+        )
         .unwrap();
     let staked_value: StakedValueResponse =
         serde_json::from_slice(res.data.unwrap().value()).unwrap();
@@ -97,13 +112,16 @@ fn execute_stake_tokens(chain: &mut Chain) {
     // Sleep to let staking block process, so we have voting power:
     thread::sleep(time::Duration::from_millis(5000));
 
-    let msg: CoreWasmMsg = WasmMsg::QueryMsg(cw_core::msg::QueryMsg::VotingPowerAtHeight {
-        address: account.to_string(),
-        height: None,
-    });
     let res = chain
         .orc
-        .process_msg("cw_core", "exc_stake_q_power", &msg, &chain.key)
+        .query(
+            "cw_core",
+            "exc_stake_q_power",
+            &cw_core::msg::QueryMsg::VotingPowerAtHeight {
+                address: account.to_string(),
+                height: None,
+            },
+        )
         .unwrap();
     let power: VotingPowerAtHeightResponse =
         serde_json::from_slice(res.data.unwrap().value()).unwrap();
