@@ -90,7 +90,7 @@ jobs:
           key: ${{ runner.os }}-cargo-integration-${{ hashFiles('ci/integration_tests/Cargo.lock') }}
 
       - name: Run Integration Tests
-        run: cd ci/integration_tests/ && RUST_LOG=DEBUG cargo t
+        run: cd ci/integration_tests/ && cargo t
 
       - name: Combine Test Gas Reports
         run: cd ci/integration_tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
