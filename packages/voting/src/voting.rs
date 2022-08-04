@@ -56,11 +56,15 @@ impl MultipleChoiceVotes {
     }
 
     pub fn add_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) {
-        self.vote_weights[vote.option_id as usize] += weight;
+        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
+            .checked_add(weight)
+            .unwrap();
     }
 
     pub fn remove_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) {
-        self.vote_weights[vote.option_id as usize] -= weight;
+        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
+            .checked_sub(weight)
+            .unwrap();
     }
 
     pub fn zero(num_choices: usize) -> Self {

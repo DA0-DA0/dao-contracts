@@ -740,7 +740,7 @@ mod tests {
             quorum: voting::threshold::PercentageThreshold::Majority {},
         };
         let votes = MultipleChoiceVotes {
-            vote_weights: vec![Uint128::new(5), Uint128::new(0), Uint128::new(0)],
+            vote_weights: vec![Uint128::new(5), Uint128::new(5), Uint128::new(0)],
         };
 
         let prop = create_proposal(
@@ -751,7 +751,10 @@ mod tests {
             false,
             true,
         );
-        // No quorum reached, but proposal is still active => no rejection
+        // Everyone voted and proposal is in a tie...
+        assert_eq!(prop.total_power, prop.votes.total());
+        assert_eq!(prop.votes.vote_weights[0], prop.votes.vote_weights[1]);
+        // ... but proposal is still active => no rejection
         assert!(!prop.is_rejected(&env.block).unwrap());
 
         let prop = create_proposal(
@@ -762,7 +765,8 @@ mod tests {
             true,
             true,
         );
-        // No quorum reached & proposal has expired => rejection
+        // Proposal has expired and ended in a tie => rejection
+        assert_eq!(prop.votes.vote_weights[0], prop.votes.vote_weights[1]);
         assert!(prop.is_rejected(&env.block).unwrap());
     }
 
