@@ -192,13 +192,42 @@
       "additionalProperties": false
     },
     {
-      "description": "Gets the proposal modules assocaited with the contract. Returns Vec<Addr>.",
+      "description": "Gets all proposal modules associated with the contract. Returns Vec<ProposalModule>.",
       "type": "object",
       "required": [
         "proposal_modules"
       ],
       "properties": {
         "proposal_modules": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the active proposal modules associated with the contract. Returns Vec<ProposalModule>.",
+      "type": "object",
+      "required": [
+        "active_proposal_modules"
+      ],
+      "properties": {
+        "active_proposal_modules": {
           "type": "object",
           "properties": {
             "limit": {
