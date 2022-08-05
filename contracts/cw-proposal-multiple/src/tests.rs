@@ -3911,25 +3911,6 @@ fn test_close_failed_proposal() {
 
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
 
-    // Check we can close it after it failed
-    app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        govmod_single.clone(),
-        &ExecuteMsg::Close { proposal_id: 1 },
-        &[],
-    )
-    .unwrap();
-
-    let closed_after_fail: ProposalResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single.clone(),
-            &QueryMsg::Proposal { proposal_id: 1 },
-        )
-        .unwrap();
-
-    assert_eq!(closed_after_fail.proposal.status, Status::Closed);
-
     // With disabled feature
     // Disable feature first
     {
@@ -4039,4 +4020,227 @@ fn test_close_failed_proposal() {
 
     // not reverted
     assert_eq!(updated.proposal.status, Status::Passed);
+}
+
+#[test]
+fn test_no_double_refund_on_execute_fail_and_close() {
+    let mut app = App::default();
+    let proposal_module_id = app.store_code(proposal_contract());
+
+    let voting_strategy = VotingStrategy::SingleChoice {
+        quorum: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        voting_strategy,
+        max_voting_period,
+        min_voting_period: None,
+        only_members_execute: false,
+        deposit_info: Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            // Important to set to true here as we want to be sure
+            // that we don't get a second refund on close. Refunds on
+            // close only happen if this is true.
+            refund_failed_proposals: true,
+        }),
+        close_proposal_on_execution_failure: true,
+    };
+
+    let core_addr = instantiate_with_staking_active_threshold(
+        &mut app,
+        proposal_module_id,
+        to_binary(&instantiate).unwrap(),
+        Some(vec![Cw20Coin {
+            address: CREATOR_ADDR.to_string(),
+            // One token for sending to the DAO treasury, one token
+            // for staking, one token for paying the proposal deposit.
+            amount: Uint128::new(3),
+        }]),
+        None,
+    );
+    let proposal_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(proposal_modules.len(), 1);
+    let proposal_single = proposal_modules.into_iter().next().unwrap();
+
+    let proposal_config: Config = app
+        .wrap()
+        .query_wasm_smart(proposal_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = proposal_config.dao;
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake a token so we can propose.
+    let msg = cw20::Cw20ExecuteMsg::Send {
+        contract: staking_contract.to_string(),
+        amount: Uint128::new(1),
+        msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+    };
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_contract.clone(),
+        &msg,
+        &[],
+    )
+    .unwrap();
+    app.update_block(next_block);
+
+    // Send some tokens to the proposal module so it has the ability
+    // to double refund if the code is buggy.
+    let msg = cw20::Cw20ExecuteMsg::Transfer {
+        recipient: proposal_single.to_string(),
+        amount: Uint128::new(1),
+    };
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_contract.clone(),
+        &msg,
+        &[],
+    )
+    .unwrap();
+
+    let msg = cw20::Cw20ExecuteMsg::Burn {
+        amount: Uint128::new(2000),
+    };
+    let binary_msg = to_binary(&msg).unwrap();
+
+    // Increase allowance to pay the proposal deposit.
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_contract.clone(),
+        &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
+            spender: proposal_single.to_string(),
+            amount: Uint128::new(1),
+            expires: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let choices = MultipleChoiceOptions {
+        options: vec![
+            MultipleChoiceOption {
+                description: "Burning more tokens, than dao treasury have".to_string(),
+                msgs: Some(vec![WasmMsg::Execute {
+                    contract_addr: token_contract.to_string(),
+                    msg: binary_msg,
+                    funds: vec![],
+                }
+                .into()]),
+            },
+            MultipleChoiceOption {
+                description: "hi there".to_string(),
+                msgs: None,
+            },
+        ],
+    };
+    // proposal to overburn tokens
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        proposal_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple burn tokens proposal".to_string(),
+            description: "Burning more tokens, than dao treasury have".to_string(),
+            choices,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote on proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Execute proposal
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        proposal_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let failed: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(failed.proposal.status, Status::ExecutionFailed);
+
+    // Check that our deposit has been refunded.
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token_contract.to_string(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: CREATOR_ADDR.to_string(),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(balance.balance, Uint128::new(1));
+
+    // Close the proposal - this should fail as it was executed.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            proposal_single,
+            &ExecuteMsg::Close { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::WrongCloseStatus {}));
+
+    // Check that our deposit was not refunded a second time on close.
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token_contract.to_string(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: CREATOR_ADDR.to_string(),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(balance.balance, Uint128::new(1));
 }
