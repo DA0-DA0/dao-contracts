@@ -4426,6 +4426,54 @@ fn test_timestamp_updated() {
 }
 
 #[test]
+fn test_migrate_mock() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let current_block = &env.block;
+    let max_voting_period = cw_utils::Duration::Height(6);
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+
+    // Write to storage in old data format
+    let beta_map: Map<u64, BetaProposal> = Map::new("proposals");
+
+    let beta_proposal = BetaProposal {
+        title: "A simple text proposal".to_string(),
+        description: "This is a simple text proposal".to_string(),
+        proposer: Addr::unchecked(CREATOR_ADDR),
+        start_height: env.block.height,
+        expiration: max_voting_period.after(current_block),
+        min_voting_period: None,
+        threshold,
+        allow_revoting: false,
+        total_power: Uint128::new(100_000_000),
+        msgs: vec![],
+        status: Status::Open,
+        votes: Votes::zero(),
+        deposit_info: None,
+    };
+
+    beta_map.save(&mut deps.storage, 0, &beta_proposal).unwrap();
+
+    let msg = MigrateMsg::FromBeta {};
+    migrate(deps.as_mut(), env.clone(), msg).unwrap();
+
+    // Verify migration.
+    let new_map: Map<u64, SingleChoiceProposal> = Map::new("proposals_v1");
+    let proposals: Vec<(u64, SingleChoiceProposal)> = new_map
+        .range(&deps.storage, None, None, Order::Ascending)
+        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()
+        .unwrap();
+
+    let migrated_proposal = &proposals[0];
+    assert_eq!(migrated_proposal.0, 0);
+    assert_eq!(migrated_proposal.1.created, Timestamp::from_seconds(0));
+    assert_eq!(migrated_proposal.1.last_updated, env.block.time);
+}
+
+#[test]
 fn test_return_deposit_to_dao_on_proposal_failure() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
         vec![TestSingleChoiceVote {
@@ -4488,58 +4536,14 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
     assert_eq!(balance.balance, Uint128::new(1));
 }
 
-fn test_migrate_mock() {
-    let mut deps = mock_dependencies();
-    let env = mock_env();
-    let current_block = &env.block;
-    let max_voting_period = cw_utils::Duration::Height(6);
-
-    let threshold = Threshold::AbsolutePercentage {
-        percentage: PercentageThreshold::Majority {},
-    };
-
-    // Write to storage in old data format
-    let beta_map: Map<u64, BetaProposal> = Map::new("proposals");
-
-    let beta_proposal = BetaProposal {
-        title: "A simple text proposal".to_string(),
-        description: "This is a simple text proposal".to_string(),
-        proposer: Addr::unchecked(CREATOR_ADDR),
-        start_height: env.block.height,
-        expiration: max_voting_period.after(current_block),
-        min_voting_period: None,
-        threshold,
-        allow_revoting: false,
-        total_power: Uint128::new(100_000_000),
-        msgs: vec![],
-        status: Status::Open,
-        votes: Votes::zero(),
-        deposit_info: None,
-    };
-
-    beta_map.save(&mut deps.storage, 0, &beta_proposal).unwrap();
-
-    let msg = MigrateMsg::FromBeta {};
-    migrate(deps.as_mut(), env.clone(), msg).unwrap();
-
-    // Verify migration.
-    let new_map: Map<u64, SingleChoiceProposal> = Map::new("proposals_v1");
-    let proposals: Vec<(u64, SingleChoiceProposal)> = new_map
-        .range(&deps.storage, None, None, Order::Ascending)
-        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()
-        .unwrap();
-
-    let migrated_proposal = &proposals[0];
-    assert_eq!(migrated_proposal.0, 0);
-    assert_eq!(migrated_proposal.1.created, Timestamp::from_seconds(0));
-    assert_eq!(migrated_proposal.1.last_updated, env.block.time);
-}
-
 #[test]
 fn test_close_failed_proposal() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
 
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         threshold,
