@@ -2,7 +2,7 @@ use std::u128;
 
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Decimal, Empty, Order, Timestamp, Uint128, WasmMsg,
+    to_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Order, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
