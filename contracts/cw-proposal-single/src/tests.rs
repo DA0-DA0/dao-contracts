@@ -4658,7 +4658,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         }]),
         None,
     );
-    let proposal_modules: Vec<Addr> = app
+    let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr,
@@ -4670,7 +4670,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         .unwrap();
 
     assert_eq!(proposal_modules.len(), 1);
-    let proposal_single = proposal_modules.into_iter().next().unwrap();
+    let proposal_single = proposal_modules.into_iter().next().unwrap().address;
 
     let proposal_config: Config = app
         .wrap()

@@ -153,7 +153,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
 }
 
 #[test]
-#[should_panic(expected = "Execution would result in no governance modules being active.")]
+#[should_panic(expected = "Execution would result in no proposal modules being active.")]
 fn test_instantiate_with_zero_gov_modules() {
     test_instantiate_with_n_gov_modules(0)
 }
@@ -460,7 +460,7 @@ fn test_add_then_remove_governance() {
 }
 
 #[test]
-#[should_panic(expected = "Execution would result in no governance modules being active.")]
+#[should_panic(expected = "Execution would result in no proposal modules being active.")]
 fn test_swap_governance_bad() {
     test_swap_governance(vec![(1, 1), (0, 1)])
 }
@@ -2094,7 +2094,7 @@ fn test_cw721_receive_no_auto_add() {
             },
         )
         .unwrap();
-    assert_eq!(cw20_list, vec![Addr::unchecked("new"), cw721_addr]);
+    assert_eq!(cw20_list, vec![another_cw721, cw721_addr]);
 }
 
 #[test]
