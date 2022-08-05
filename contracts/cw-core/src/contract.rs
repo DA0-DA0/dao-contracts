@@ -789,12 +789,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         PROPOSAL_MODULE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let prop_module_addr = deps.api.addr_validate(&res.contract_address)?;
-            let num_modules = PROPOSAL_MODULES
-                .keys(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-                .collect::<StdResult<Vec<Addr>>>()?
-                .len();
+            let total_module_count = TOTAL_PROPOSAL_MODULE_COUNT
+                .may_load(deps.storage)?
+                .unwrap_or(0);
 
-            let prefix = derive_proposal_module_prefix(num_modules)?;
+            let prefix = derive_proposal_module_prefix(total_module_count as usize)?;
             let prop_module = ProposalModule {
                 address: prop_module_addr.clone(),
                 status: ProposalModuleStatus::Active,
@@ -810,13 +809,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 + 1;
 
             ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &active_count)?;
-
-            let total_count = TOTAL_PROPOSAL_MODULE_COUNT
-                .may_load(deps.storage)?
-                .unwrap_or(0)
-                + 1;
-
-            TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &total_count)?;
+            TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &(total_module_count + 1))?;
 
             Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))
         }
