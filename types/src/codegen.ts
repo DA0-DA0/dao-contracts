@@ -1,7 +1,7 @@
-import { exec } from "child_process";
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import { readSchemas, generate } from "@cosmwasm/ts-codegen";
 
 enum OutputType {
   contracts = "contracts",
@@ -64,29 +64,12 @@ const DEFAULT_CONFIG = {
   ]
 };
 
-async function run(cmd: string): Promise<boolean> {
-  log(cmd, LogLevels.Verbose);
-  return new Promise((resolve, reject) => {
-    exec(cmd, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`error: ${error.message}`);
-        reject(error);
-      }
-      if (stderr) {
-        console.error(`stderr: ${stderr}`);
-        reject(stderr);
-      }
-      resolve(true);
-    });
-  });
-}
+async function generateTs(spec: CompilationSpec): Promise<void> {
+  const out = `${spec.outputPath}/${spec.outputType}/${spec.contractName}`;
+  const name = spec.contractName;
 
-async function generateTs(spec: CompilationSpec): Promise<boolean> {
-  const script = "node_modules/cosmwasm-typescript-gen/main/cosmwasm-typescript-gen.js";
-  return run(`${script} generate \
-    --schema ${spec.schemaDir} \
-    --out ${spec.outputPath}/${spec.outputType}/${spec.contractName} \
-    --name ${spec.contractName}`)
+  const schemas = readSchemas({ schemaDir: spec.schemaDir, argv: { packed: false } });
+  return await generate(name, schemas, out);
 }
 
 
