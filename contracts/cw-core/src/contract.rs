@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, to_vec, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Reply, Response, StdResult, SubMsg,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Map;
@@ -20,8 +20,9 @@ use crate::query::{
     PauseInfoResponse,
 };
 use crate::state::{
-    Config, ProposalModule, ProposalModuleStatus, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS,
-    NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, VOTING_MODULE,
+    Config, ProposalModule, ProposalModuleStatus, ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG,
+    CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
+    TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
 // version info for migration info
@@ -71,7 +72,7 @@ pub fn instantiate(
         .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
     if proposal_module_msgs.is_empty() {
-        return Err(ContractError::NoProposalModule {});
+        return Err(ContractError::NoActiveProposalModules {});
     }
 
     for InitialItem { key, value } in msg.initial_items.unwrap_or_default() {
@@ -179,15 +180,13 @@ pub fn execute_proposal_hook(
     sender: Addr,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
-    // Check that the message has come from one of the proposal modules
-    if !PROPOSAL_MODULES.has(deps.storage, sender.clone()) {
-        return Err(ContractError::Unauthorized {});
-    }
+    let module = PROPOSAL_MODULES
+        .may_load(deps.storage, sender.clone())?
+        .ok_or(ContractError::Unauthorized {})?;
 
     // Check that the message has come from an active module
-    let module = PROPOSAL_MODULES.load(deps.storage, sender)?;
     if module.status == ProposalModuleStatus::Disabled {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::ModuleAlreadyDisabled { address: sender });
     }
 
     Ok(Response::default()
@@ -331,30 +330,25 @@ pub fn execute_update_proposal_modules(
             .map_err(|_| ContractError::ProposalModuleDoesNotExist {
                 address: addr.clone(),
             })?;
-        // If module is already disabled, it will be a no-op.
+
+        if module.status == ProposalModuleStatus::Disabled {
+            return Err(ContractError::ModuleAlreadyDisabled {
+                address: module.address,
+            });
+        }
+
+        // If disabling this module will cause there to be no active modules, return error.
+        // We don't check the active count before disabling because there may erroneously be
+        // modules in to_disable which are already disabled.
+        ACTIVE_PROPOSAL_MODULE_COUNT.update(deps.storage, |count| {
+            if count <= 1 && to_add.is_empty() {
+                return Err(ContractError::NoActiveProposalModules {});
+            }
+            Ok(count - 1)
+        })?;
+
         module.status = ProposalModuleStatus::Disabled {};
         PROPOSAL_MODULES.save(deps.storage, addr, &module)?;
-    }
-
-    let active_count = PROPOSAL_MODULES
-        .range(deps.storage, None, None, Order::Ascending)
-        .filter_map(|kv| match kv {
-            Ok(kv) => {
-                let v = kv.1;
-                match v.status {
-                    ProposalModuleStatus::Active => Some(v),
-                    ProposalModuleStatus::Disabled => None,
-                }
-            }
-            Err(_) => None,
-        })
-        .count();
-
-    // If we disable all of our proposal modules and we are not adding
-    // any this operation would result in no proposal modules being
-    // active.
-    if active_count == 0 && to_add.is_empty() {
-        return Err(ContractError::NoProposalModule {});
     }
 
     let to_add: Vec<SubMsg<Empty>> = to_add
@@ -529,6 +523,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, address, height)
         }
+        QueryMsg::ActiveProposalModules { start_after, limit } => {
+            query_active_proposal_modules(deps, start_after, limit)
+        }
     }
 }
 
@@ -563,7 +560,7 @@ pub fn query_proposal_modules(
     // the contract is still recoverable if too many items end up in
     // here.
     //
-    // Further, as the `keys` method on a map returns an iterator it
+    // Further, as the `range` method on a map returns an iterator it
     // is possible (though implementation dependent) that new keys are
     // loaded on demand as the iterator is moved. Should this be the
     // case we are only paying for what we need here.
@@ -579,6 +576,32 @@ pub fn query_proposal_modules(
         limit,
         cosmwasm_std::Order::Ascending,
     )?)
+}
+
+pub fn query_active_proposal_modules(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let values = paginate_map_values(
+        deps,
+        &PROPOSAL_MODULES,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
+        None,
+        cosmwasm_std::Order::Ascending,
+    )?;
+
+    let limit = limit.unwrap_or(values.len() as u32);
+
+    to_binary::<Vec<ProposalModule>>(
+        &values
+            .into_iter()
+            .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active)
+            .take(limit as usize)
+            .collect(),
+    )
 }
 
 fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
@@ -603,11 +626,13 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
     let proposal_modules = PROPOSAL_MODULES
-        .range(deps.storage, None, None, cosmwasm_std::Order::Descending)
-        .map::<StdResult<ProposalModule>, _>(|kv| Ok(kv?.1))
-        .collect::<Result<Vec<ProposalModule>, _>>()?;
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|kv| Ok(kv?.1))
+        .collect::<StdResult<Vec<ProposalModule>>>()?;
     let pause_info = get_pause_info(deps, env)?;
     let version = get_contract_version(deps.storage)?;
+    let active_proposal_module_count = ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
+    let total_proposal_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
     to_binary(&DumpStateResponse {
         admin,
         config,
@@ -615,6 +640,8 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
         pause_info,
         proposal_modules,
         voting_module,
+        active_proposal_module_count,
+        total_proposal_module_count,
     })
 }
 
@@ -732,25 +759,24 @@ pub fn query_cw20_balances(
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
         MigrateMsg::FromBeta {} => {
-            let keys = PROPOSAL_MODULES
-                .keys_raw(deps.storage, None, None, Order::Ascending)
-                .enumerate()
-                .map(|(idx, key_raw)| Ok((idx, Addr::unchecked(String::from_utf8(key_raw)?))))
-                .collect::<StdResult<Vec<(usize, Addr)>>>()?;
+            let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
+            let current_keys = current_map
+                .keys(deps.storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<Addr>>>()?;
 
-            keys.into_iter()
-                .try_for_each::<_, StdResult<()>>(|(index, key)| {
-                    let path = PROPOSAL_MODULES.key(key.clone());
-                    let prefix = derive_proposal_module_prefix(index)?;
-                    let proposal_module = to_vec(&ProposalModule {
-                        address: key,
+            current_keys
+                .into_iter()
+                .enumerate()
+                .try_for_each::<_, StdResult<()>>(|(idx, address)| {
+                    let prefix = derive_proposal_module_prefix(idx)?;
+                    let proposal_module = &ProposalModule {
+                        address: address.clone(),
                         status: ProposalModuleStatus::Active {},
                         prefix,
-                    })?;
-                    deps.storage.set(&path, &proposal_module);
+                    };
+                    PROPOSAL_MODULES.save(deps.storage, address, proposal_module)?;
                     Ok(())
                 })?;
-
             Ok(Response::default())
         }
         MigrateMsg::FromCompatible {} => Ok(Response::default()),
@@ -777,8 +803,24 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &prop_module)?;
 
+            // Save active and total proposal module counts.
+            let active_count = ACTIVE_PROPOSAL_MODULE_COUNT
+                .may_load(deps.storage)?
+                .unwrap_or(0)
+                + 1;
+
+            ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &active_count)?;
+
+            let total_count = TOTAL_PROPOSAL_MODULE_COUNT
+                .may_load(deps.storage)?
+                .unwrap_or(0)
+                + 1;
+
+            TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &total_count)?;
+
             Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))
         }
+
         VOTE_MODULE_INSTANTIATE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let vote_module_addr = deps.api.addr_validate(&res.contract_address)?;

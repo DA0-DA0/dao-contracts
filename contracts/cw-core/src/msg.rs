@@ -194,9 +194,15 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Gets the proposal modules assocaited with the
-    /// contract. Returns Vec<Addr>.
+    /// Gets all proposal modules associated with the
+    /// contract. Returns Vec<ProposalModule>.
     ProposalModules {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Gets the active proposal modules associated with the
+    /// contract. Returns Vec<ProposalModule>.
+    ActiveProposalModules {
         start_after: Option<String>,
         limit: Option<u32>,
     },
