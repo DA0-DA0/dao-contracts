@@ -53,4 +53,9 @@ fn main() {
     export_schema_with_title(&schema_for!(Vec<String>), &out_dir, "ListItemsResponse");
     export_schema_with_title(&schema_for!(Addr), &out_dir, "VotingModuleResponse");
     export_schema_with_title(&schema_for!(Vec<Addr>), &out_dir, "ProposalModulesResponse");
+    export_schema_with_title(
+        &schema_for!(Vec<Addr>),
+        &out_dir,
+        "ActiveProposalModulesResponse",
+    );
 }

@@ -7,6 +7,7 @@
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
 export type Addr = string;
+export type ActiveProposalModulesResponse = Addr[];
 export interface AdminNominationResponse {
   nomination?: Addr | null;
   [k: string]: unknown;
