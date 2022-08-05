@@ -17,7 +17,7 @@ pub enum ContractError {
     NoVotingModule {},
 
     #[error("Execution would result in no governance modules being active.")]
-    NoProposalModule {},
+    NoActiveProposalModules {},
 
     #[error("An unknown reply ID was received.")]
     UnknownReplyID {},
@@ -44,4 +44,7 @@ pub enum ContractError {
 
     #[error("Proposal module with address ({address}) does not exist.")]
     ProposalModuleDoesNotExist { address: Addr },
+
+    #[error("Proposal module with address ({address}) is already disabled.")]
+    ModuleAlreadyDisabled { address: Addr },
 }

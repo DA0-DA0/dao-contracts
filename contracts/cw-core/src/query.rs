@@ -23,6 +23,10 @@ pub struct DumpStateResponse {
     pub proposal_modules: Vec<ProposalModule>,
     /// The voting module associated with the governance contract.
     pub voting_module: Addr,
+    /// The number of active proposal modules.
+    pub active_proposal_module_count: u64,
+    /// The total number of proposal modules.
+    pub total_proposal_module_count: u64,
 }
 
 /// Information about if the contract is currently paused.
