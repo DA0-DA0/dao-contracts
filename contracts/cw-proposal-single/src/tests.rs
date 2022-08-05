@@ -1,13 +1,9 @@
 use std::u128;
 
-<<<<<<< HEAD
-use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Timestamp, Uint128, WasmMsg};
-=======
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
     to_binary, Addr, CosmosMsg, Decimal, Empty, Order, Timestamp, Uint128, WasmMsg,
 };
->>>>>>> c83b3d0 (add migrate method)
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
@@ -4502,7 +4498,6 @@ fn test_migrate_mock() {
         percentage: PercentageThreshold::Majority {},
     };
 
-
     // Write to storage in old data format
     let beta_map: Map<u64, BetaProposal> = Map::new("proposals");
 
@@ -4539,7 +4534,6 @@ fn test_migrate_mock() {
     assert_eq!(migrated_proposal.1.created, Timestamp::from_seconds(0));
     assert_eq!(migrated_proposal.1.last_updated, env.block.time);
 }
-
 
 #[test]
 fn test_close_failed_proposal() {
@@ -4982,4 +4976,3 @@ fn test_no_double_refund_on_execute_fail_and_close() {
 
     assert_eq!(balance.balance, Uint128::new(1));
 }
-

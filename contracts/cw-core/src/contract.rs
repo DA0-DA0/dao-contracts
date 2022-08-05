@@ -330,7 +330,6 @@ pub fn execute_update_proposal_modules(
             .map_err(|_| ContractError::ProposalModuleDoesNotExist {
                 address: addr.clone(),
             })?;
-<<<<<<< HEAD
 
         if module.status == ProposalModuleStatus::Disabled {
             return Err(ContractError::ModuleAlreadyDisabled {
@@ -348,8 +347,6 @@ pub fn execute_update_proposal_modules(
             Ok(count - 1)
         })?;
 
-=======
->>>>>>> 1e1f8db (add more tests)
         module.status = ProposalModuleStatus::Disabled {};
         PROPOSAL_MODULES.save(deps.storage, addr, &module)?;
     }
