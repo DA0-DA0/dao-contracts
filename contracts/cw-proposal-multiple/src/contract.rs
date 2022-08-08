@@ -394,7 +394,7 @@ pub fn execute_close(
     let config = CONFIG.load(deps.storage)?;
 
     prop.update_status(&env.block)?;
-    if prop.status != Status::Rejected && prop.status != Status::ExecutionFailed {
+    if prop.status != Status::Rejected {
         return Err(ContractError::WrongCloseStatus {});
     }
 
