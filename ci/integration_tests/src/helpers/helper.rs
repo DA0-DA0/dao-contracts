@@ -83,15 +83,14 @@ pub fn create_dao(
 
     chain
         .orc
-        .instantiate("cw_core", op_name, &msg, &chain.key)?;
+        .instantiate("cw_core", op_name, &msg, &chain.user.key)?;
 
     let res = chain
         .orc
         .query("cw_core", op_name, &cw_core::msg::QueryMsg::DumpState {})?;
-    let state: DumpStateResponse = serde_json::from_slice(res.data.as_ref().unwrap().value())?;
 
     Ok(DaoState {
         addr: chain.orc.contract_map.address("cw_core")?,
-        state,
+        state: res.data()?,
     })
 }

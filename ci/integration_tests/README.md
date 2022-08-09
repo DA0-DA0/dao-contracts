@@ -52,7 +52,7 @@ fn new_dao_has_no_items(chain: &mut Chain) {
             },
         )
         .unwrap();
-    let res: GetItemResponse = serde_json::from_slice(res.data.unwrap().value()).unwrap();
+    let res: GetItemResponse = res.data().unwrap();
 
     assert_eq!(res.item, None);
 }

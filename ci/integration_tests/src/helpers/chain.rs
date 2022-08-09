@@ -23,6 +23,11 @@ pub struct Cfg {
 pub struct Chain {
     pub cfg: Config,
     pub orc: CosmOrc,
+    pub user: Account,
+}
+
+pub struct Account {
+    pub addr: String,
     pub key: SigningKey,
 }
 
@@ -37,11 +42,9 @@ impl TestContext for Chain {
             .unwrap()
             .add_profiler(Box::new(GasProfiler::new()));
 
-        Self {
-            cfg,
-            orc,
-            key: test_account(),
-        }
+        let user = test_account(&cfg.chain_cfg.prefix);
+
+        Self { cfg, orc, user }
     }
 
     fn teardown(self) {
@@ -50,12 +53,15 @@ impl TestContext for Chain {
     }
 }
 
-fn test_account() -> SigningKey {
+fn test_account(prefix: &str) -> Account {
     // TODO: Make this configurable + bootstrap the local env with many test accounts
-    SigningKey {
+    let key = SigningKey {
         name: "localval".to_string(),
         key: Key::Mnemonic("siren window salt bullet cream letter huge satoshi fade shiver permit offer happy immense wage fitness goose usual aim hammer clap about super trend".to_string()),
-    }
+    };
+    let addr = key.to_account(prefix).unwrap().to_string();
+
+    Account { addr, key }
 }
 
 // global_setup() runs once before anything else
@@ -70,12 +76,12 @@ fn global_setup() {
         .unwrap()
         .add_profiler(Box::new(GasProfiler::new()));
 
-    let key = test_account();
+    let account = test_account(&cfg.chain_cfg.prefix);
 
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
         let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
-        orc.store_contracts(&contract_dir, &key).unwrap();
+        orc.store_contracts(&contract_dir, &account.key).unwrap();
         save_gas_report(&orc, &gas_report_dir);
         // persist stored code_ids in CONFIG, so we can reuse for all tests
         cfg.code_ids = orc
