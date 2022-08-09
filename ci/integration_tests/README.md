@@ -26,17 +26,11 @@ Add new tests in `src/tests`:
 #[test_context(Chain)]
 #[test]
 fn new_dao_has_no_items(chain: &mut Chain) {
-    let key: SigningKey = chain.key.clone().try_into().unwrap();
-    let account = key
-        .public_key()
-        .account_id(&chain.cfg.chain_cfg.prefix)
-        .unwrap();
-
     let res = create_dao(
         chain, 
-        Some(account.to_string()), 
+        Some(chain.user.addr.clone()),
         "ex_create_dao", 
-        account.to_string()
+       chain.user.addr.clone()
     );
     assert!(res.is_ok());
     let dao = res.unwrap();
