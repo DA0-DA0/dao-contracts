@@ -271,8 +271,6 @@ impl MultipleChoiceProposal {
 
 #[cfg(test)]
 mod tests {
-    use std::thread::current;
-
     use crate::state::{MultipleChoiceOption, MultipleChoiceOptions};
 
     use super::*;
