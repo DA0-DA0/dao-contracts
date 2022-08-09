@@ -1,5 +1,4 @@
 chain_cfg: 
-  binary: "junod"
   denom: "ujunox"
   prefix: "juno"
   chain_id: "uni-3"
