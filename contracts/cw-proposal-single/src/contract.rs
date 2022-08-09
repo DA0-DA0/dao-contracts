@@ -328,7 +328,6 @@ pub fn execute_vote(
         return Err(ContractError::NotRegistered {});
     }
 
-    let mut previous_ballot = None;
     BALLOTS.update(
         deps.storage,
         (proposal_id, info.sender.clone()),
@@ -341,7 +340,9 @@ pub fn execute_vote(
                         // behavior.
                         Err(ContractError::AlreadyCast {})
                     } else {
-                        previous_ballot = Some(current_ballot);
+                        // Remove the old vote if this is a re-vote.
+                        prop.votes
+                            .remove_vote(current_ballot.vote, current_ballot.power);
                         Ok(Ballot {
                             power: vote_power,
                             vote,
@@ -359,11 +360,6 @@ pub fn execute_vote(
     )?;
 
     let old_status = prop.status;
-
-    // Remove the old vote if this is a re-vote.
-    if let Some(ballot) = previous_ballot {
-        prop.votes.remove_vote(ballot.vote, ballot.power)
-    }
 
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
