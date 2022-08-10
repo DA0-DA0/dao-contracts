@@ -3752,6 +3752,7 @@ fn test_revoting() {
             voting_strategy: VotingStrategy::SingleChoice {
                 quorum: PercentageThreshold::Majority {},
             },
+            close_proposal_on_execution_failure: false,
         })
         .unwrap(),
         Some(vec![
@@ -3898,6 +3899,7 @@ fn test_allow_revoting_config_changes() {
             voting_strategy: VotingStrategy::SingleChoice {
                 quorum: PercentageThreshold::Majority {},
             },
+            close_proposal_on_execution_failure: false,
         })
         .unwrap(),
         Some(vec![
@@ -3963,6 +3965,7 @@ fn test_allow_revoting_config_changes() {
             voting_strategy: VotingStrategy::SingleChoice {
                 quorum: PercentageThreshold::Majority {},
             },
+            close_proposal_on_execution_failure: false,
         },
         &[],
     )
@@ -4058,6 +4061,7 @@ fn test_revoting_same_vote_twice() {
             voting_strategy: VotingStrategy::SingleChoice {
                 quorum: PercentageThreshold::Majority {},
             },
+            close_proposal_on_execution_failure: false,
         })
         .unwrap(),
         Some(vec![
@@ -4158,6 +4162,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
             voting_strategy: VotingStrategy::SingleChoice {
                 quorum: PercentageThreshold::Majority {},
             },
+            close_proposal_on_execution_failure: false,
         })
         .unwrap(),
         Some(vec![
@@ -4360,6 +4365,7 @@ fn test_close_failed_proposal() {
         voting_strategy,
         min_voting_period: None,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
     };
@@ -4516,6 +4522,7 @@ fn test_close_failed_proposal() {
                                     max_voting_period: original.max_voting_period,
                                     min_voting_period: original.min_voting_period,
                                     only_members_execute: original.only_members_execute,
+                                    allow_revoting: false,
                                     dao: original.dao.to_string(),
                                     deposit_info: None,
                                     close_proposal_on_execution_failure: false,
@@ -4616,6 +4623,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         max_voting_period,
         min_voting_period: None,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
