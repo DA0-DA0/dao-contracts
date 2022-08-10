@@ -731,7 +731,7 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     /// This is proposal version is from commit e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID 427.
     #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-    struct BetaProposal {
+    struct V1Proposal {
         pub title: String,
         pub description: String,
         pub proposer: Addr,
@@ -750,10 +750,10 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
     match msg {
         MigrateMsg::FromV1 {} => {
             // Retrieve current map from storage
-            let current_map: Map<u64, BetaProposal> = Map::new("proposals");
+            let current_map: Map<u64, V1Proposal> = Map::new("proposals");
             let current = current_map
                 .range(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<(u64, BetaProposal)>>>()?;
+                .collect::<StdResult<Vec<(u64, V1Proposal)>>>()?;
 
             // Add migrated entries to new map.
             // Based on gas usage testing, we estimate that we will be able to migrate ~4200
