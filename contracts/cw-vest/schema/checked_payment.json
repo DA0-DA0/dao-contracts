@@ -1,23 +1,47 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "PaymentState",
+  "title": "CheckedPayment",
   "type": "object",
   "required": [
-    "id",
-    "paid",
-    "payment"
+    "amount",
+    "recipient",
+    "state",
+    "vesting_time"
   ],
   "properties": {
-    "id": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+    "amount": {
+      "$ref": "#/definitions/Uint128"
     },
-    "paid": {
-      "type": "boolean"
+    "denom": {
+      "description": "A payment must have only one of either a denom or token_address.",
+      "type": [
+        "string",
+        "null"
+      ]
     },
-    "payment": {
-      "$ref": "#/definitions/Payment"
+    "recipient": {
+      "$ref": "#/definitions/Addr"
+    },
+    "state": {
+      "$ref": "#/definitions/PaymentState"
+    },
+    "token_address": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "vesting_time": {
+      "description": "The amount of time the payment will be locked before being paid.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expiration"
+        }
+      ]
     }
   },
   "definitions": {
@@ -27,7 +51,7 @@
     },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "AtHeight will expire when `env.block.height` >= height",
           "type": "object",
@@ -71,38 +95,13 @@
         }
       ]
     },
-    "Payment": {
-      "type": "object",
-      "required": [
-        "amount",
-        "denom",
-        "recipient",
-        "time"
-      ],
-      "properties": {
-        "amount": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "denom": {
-          "type": "string"
-        },
-        "recipient": {
-          "$ref": "#/definitions/Addr"
-        },
-        "time": {
-          "$ref": "#/definitions/Expiration"
-        },
-        "token_address": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        }
-      }
+    "PaymentState": {
+      "type": "string",
+      "enum": [
+        "Paused",
+        "Active",
+        "Claimed"
+      ]
     },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",

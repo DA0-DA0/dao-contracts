@@ -1,36 +1,29 @@
-use crate::state::PaymentState;
-use cosmwasm_std::{Addr, Uint128};
-use cw_utils::Expiration;
+use crate::state::{CheckedPayment, Payment};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub schedule: Vec<Payment>,
+    pub payments: Vec<Payment>,
+    pub admin_address: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Payment {
-    pub recipient: Addr,
-    pub amount: Uint128,
-    pub denom: String,
-    pub token_address: Option<Addr>,
-    pub time: Expiration,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Pay {},
+    Claim {},
+    SchedulePayments {},
+    PausePayments { recipient: String },
+    ResumePayments { recipient: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     GetPayments {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct PaymentsResponse {
-    pub payments: Vec<PaymentState>,
+pub struct GetPaymentsResponse {
+    pub payments: Vec<CheckedPayment>,
 }

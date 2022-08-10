@@ -3,10 +3,14 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "schedule"
+    "admin_address",
+    "payments"
   ],
   "properties": {
-    "schedule": {
+    "admin_address": {
+      "type": "string"
+    },
+    "payments": {
       "type": "array",
       "items": {
         "$ref": "#/definitions/Payment"
@@ -20,7 +24,7 @@
     },
     "Expiration": {
       "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
-      "anyOf": [
+      "oneOf": [
         {
           "description": "AtHeight will expire when `env.block.height` >= height",
           "type": "object",
@@ -68,22 +72,31 @@
       "type": "object",
       "required": [
         "amount",
-        "denom",
+        "num_payments",
         "recipient",
-        "time"
+        "vesting_time"
       ],
       "properties": {
         "amount": {
           "$ref": "#/definitions/Uint128"
         },
         "denom": {
-          "type": "string"
+          "description": "A payment must have only one of either a denom or token_address.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "num_payments": {
+          "description": "The number of times this paymount amount will occur. '1' indicates a one-time payment.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
         },
         "recipient": {
-          "$ref": "#/definitions/Addr"
-        },
-        "time": {
-          "$ref": "#/definitions/Expiration"
+          "type": "string"
         },
         "token_address": {
           "anyOf": [
@@ -92,6 +105,14 @@
             },
             {
               "type": "null"
+            }
+          ]
+        },
+        "vesting_time": {
+          "description": "The amount of time the payment will be locked before being paid.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expiration"
             }
           ]
         }
