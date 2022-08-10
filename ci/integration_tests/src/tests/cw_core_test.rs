@@ -24,7 +24,6 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         "exc_admin_msgs_create_dao",
         chain.user.addr.clone(),
     );
-    assert!(res.is_ok());
     let dao = res.unwrap();
 
     let res = chain.orc.execute(
@@ -43,7 +42,6 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         &chain.user.key,
     );
 
-    assert!(res.is_err());
     assert_matches!(
         res.unwrap_err(),
         ProcessError::ClientError(ClientError::CosmosSdk { .. })
@@ -68,7 +66,6 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         "exc_admin_msgs_create_dao_with_admin",
         chain.user.addr.clone(),
     );
-    assert!(res.is_ok());
     let dao = res.unwrap();
 
     chain
@@ -114,7 +111,6 @@ fn execute_items(chain: &mut Chain) {
         chain.user.addr.clone(),
     );
 
-    assert!(res.is_ok());
     let dao = res.unwrap();
 
     let res = chain
@@ -206,7 +202,6 @@ fn execute_items(chain: &mut Chain) {
 #[test]
 fn instantiate_with_no_admin(chain: &mut Chain) {
     let res = create_dao(chain, None, "inst_dao_no_admin", chain.user.addr.clone());
-    assert!(res.is_ok());
     let dao = res.unwrap();
 
     // ensure the dao is the admin:
@@ -236,7 +231,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         "inst_admin_create_dao",
         chain.user.addr.clone(),
     );
-    assert!(res.is_ok());
     let dao = res.unwrap();
 
     // general dao info is valid:

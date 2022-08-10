@@ -10,8 +10,11 @@ chain_cfg:
 code_ids:
   "cw20_base": 1
   "cw4_group": 2
-  "cw_core": 8
-  "cw_proposal_single": 13
-  "cw4_voting": 5
-  "cw20_staked_balance_voting": 4
-  "cw20_stake": 3
+  # NOTE: If you are using `SKIP_CONTRACT_STORE` you will need to put the up-to-date
+  # code ids for the contracts you need here.
+  # Something like this:
+  # "cw_core": 9
+  # "cw_proposal_single": 14
+  # "cw4_voting": 6
+  # "cw20_staked_balance_voting": 5
+  # "cw20_stake": 4

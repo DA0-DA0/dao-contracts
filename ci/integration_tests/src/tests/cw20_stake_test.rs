@@ -15,8 +15,6 @@ fn execute_stake_tokens(chain: &mut Chain) {
     let voting_contract = "cw20_staked_balance_voting";
 
     let res = create_dao(chain, None, "exc_stake_create_dao", chain.user.addr.clone());
-    assert!(res.is_ok());
-
     let dao = res.unwrap();
 
     let voting_addr = dao.state.voting_module.as_str();
