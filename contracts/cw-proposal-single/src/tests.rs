@@ -4461,7 +4461,7 @@ fn test_migrate_mock() {
     migrate(deps.as_mut(), env.clone(), msg).unwrap();
 
     // Verify migration.
-    let new_map: Map<u64, SingleChoiceProposal> = Map::new("proposals_v1");
+    let new_map: Map<u64, SingleChoiceProposal> = Map::new("proposals_v2");
     let proposals: Vec<(u64, SingleChoiceProposal)> = new_map
         .range(&deps.storage, None, None, Order::Ascending)
         .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()
