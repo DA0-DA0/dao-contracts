@@ -61,6 +61,7 @@ pub fn instantiate(
         min_voting_period,
         max_voting_period,
         only_members_execute: msg.only_members_execute,
+        allow_revoting: msg.allow_revoting,
         dao,
         deposit_info,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
@@ -96,6 +97,7 @@ pub fn execute(
             min_voting_period,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
             close_proposal_on_execution_failure,
@@ -106,6 +108,7 @@ pub fn execute(
             min_voting_period,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
             close_proposal_on_execution_failure,
@@ -176,6 +179,7 @@ pub fn execute_propose(
             total_power,
             status: Status::Open,
             votes: MultipleChoiceVotes::zero(checked_multiple_choice_options.len()),
+            allow_revoting: config.allow_revoting,
             deposit_info: config.deposit_info.clone(),
             choices: checked_multiple_choice_options,
         };
@@ -256,7 +260,26 @@ pub fn execute_vote(
         deps.storage,
         (proposal_id, info.sender.clone()),
         |bal| match bal {
-            Some(_) => Err(ContractError::AlreadyVoted {}),
+            Some(current_ballot) => {
+                if prop.allow_revoting {
+                    if current_ballot.vote == vote {
+                        // Don't allow casting the same vote more than
+                        // once. This seems liable to be confusing
+                        // behavior.
+                        Err(ContractError::AlreadyCast {})
+                    } else {
+                        // Remove the old vote if this is a re-vote.
+                        prop.votes
+                            .remove_vote(current_ballot.vote, current_ballot.power)?;
+                        Ok(Ballot {
+                            power: vote_power,
+                            vote,
+                        })
+                    }
+                } else {
+                    Err(ContractError::AlreadyVoted {})
+                }
+            }
             None => Ok(Ballot {
                 vote,
                 power: vote_power,
@@ -265,7 +288,8 @@ pub fn execute_vote(
     )?;
 
     let old_status = prop.status;
-    prop.votes.add_vote(vote, vote_power);
+
+    prop.votes.add_vote(vote, vote_power)?;
     prop.update_status(&env.block)?;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
     let new_status = prop.status;
@@ -440,6 +464,7 @@ pub fn execute_update_config(
     min_voting_period: Option<Duration>,
     max_voting_period: Duration,
     only_members_execute: bool,
+    allow_revoting: bool,
     dao: String,
     deposit_info: Option<DepositInfo>,
     close_proposal_on_execution_failure: bool,
@@ -468,6 +493,7 @@ pub fn execute_update_config(
             min_voting_period,
             max_voting_period,
             only_members_execute,
+            allow_revoting,
             dao,
             deposit_info,
             close_proposal_on_execution_failure,
