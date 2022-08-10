@@ -748,7 +748,7 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
     }
 
     match msg {
-        MigrateMsg::FromBeta {} => {
+        MigrateMsg::FromV1 {} => {
             // Retrieve current map from storage
             let current_map: Map<u64, BetaProposal> = Map::new("proposals");
             let current = current_map

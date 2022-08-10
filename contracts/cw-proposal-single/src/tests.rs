@@ -3901,7 +3901,7 @@ fn test_migrate_from_beta() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: govmod_single.to_string(),
             new_code_id: govmod_id,
-            msg: to_binary(&MigrateMsg::FromBeta {}).unwrap(),
+            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
         }),
     )
     .unwrap();
@@ -4457,7 +4457,7 @@ fn test_migrate_mock() {
 
     beta_map.save(&mut deps.storage, 0, &beta_proposal).unwrap();
 
-    let msg = MigrateMsg::FromBeta {};
+    let msg = MigrateMsg::FromV1 {};
     migrate(deps.as_mut(), env.clone(), msg).unwrap();
 
     // Verify migration.
