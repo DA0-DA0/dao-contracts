@@ -3,7 +3,7 @@
   "title": "MigrateMsg",
   "type": "string",
   "enum": [
-    "FromBeta",
+    "FromV1",
     "FromCompatible"
   ]
 }
