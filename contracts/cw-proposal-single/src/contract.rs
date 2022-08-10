@@ -30,7 +30,7 @@ use crate::{
     state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
 
-const CONTRACT_NAME: &str = "crates.io:cw-govmod-single-plus";
+const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -53,10 +53,10 @@ pub fn instantiate(
     let (min_voting_period, max_voting_period) =
         validate_voting_period(msg.min_voting_period, msg.max_voting_period)?;
 
-    let executor_addr: Option<Addr> = match msg.executor_addr {
-        None => None,
-        Some(addr) => Some(deps.api.addr_validate(&addr)?),
-    };
+    let executor_addr: Option<Addr> = msg
+        .executor_addr
+        .map(|human| deps.api.addr_validate(&human))
+        .transpose()?;
 
     let config = Config {
         threshold: msg.threshold,
@@ -401,11 +401,7 @@ pub fn execute_veto(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    if config.executor_addr.is_none() {
-        return Err(ContractError::NoExecutorAssigned {});
-    }
-
-    if config.executor_addr.unwrap() != info.sender {
+    if config.executor_addr != Some(info.sender.clone()) {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -654,14 +650,11 @@ pub fn execute_assign_executor(
     let mut config = CONFIG.load(deps.storage)?;
 
     // Only the DAO via prop OR the executor directly may call this method.
-    if info.sender == config.dao
-        || (config.executor_addr.is_some() && config.executor_addr.unwrap() == info.sender)
-    {
+    if info.sender == config.dao || config.executor_addr == Some(info.sender.clone()) {
         // executor can be removed or reassigned to another address
-        let new_executor_addr: Option<Addr> = match address {
-            None => None,
-            Some(addr_str) => Some(deps.api.addr_validate(&addr_str).unwrap()),
-        };
+        let new_executor_addr: Option<Addr> = address
+            .map(|human| deps.api.addr_validate(&human))
+            .transpose()?;
 
         config.executor_addr = new_executor_addr;
 

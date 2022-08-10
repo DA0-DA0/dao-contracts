@@ -929,7 +929,7 @@ where
                     .wrap()
                     .query_wasm_smart(
                         govmod_single.clone(),
-                        &QueryMsg::GetVote {
+                        &QueryMsg::Vote {
                             proposal_id: 1,
                             voter: voter.clone(),
                         },
@@ -1091,7 +1091,7 @@ where
                     .wrap()
                     .query_wasm_smart(
                         govmod_single.clone(),
-                        &QueryMsg::GetVote {
+                        &QueryMsg::Vote {
                             proposal_id: 1,
                             voter: voter.clone(),
                         },
@@ -5081,4 +5081,83 @@ fn test_executor_role_gov_remove_quick() {
         .unwrap();
 
     assert_eq!(config.executor_addr, None);
+}
+
+/// contract init with executor, self remove, added because rewrites made me nervous
+#[test]
+fn test_executor_role_no_init_() {
+    let (mut app, governance_addr) = do_test_votes_cw20_balances_with_executor(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Open,
+        Some(Uint128::new(100)),
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+        None,
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap();
+
+    // self rand unassign
+    app.execute_contract(
+        Addr::unchecked("whiskey4"),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: None },
+        &[],
+    )
+    .unwrap_err();
+
+    // gov unassign
+    app.execute_contract(
+        governance_addr.clone(),
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor { address: None },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, None);
+
+    // gov assign
+    app.execute_contract(
+        governance_addr,
+        govmod_single.clone(),
+        &ExecuteMsg::AssignExecutor {
+            address: Some("whiskey".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
+        .unwrap();
+
+    assert_eq!(config.executor_addr, Some(Addr::unchecked("whiskey")));
 }
