@@ -775,10 +775,10 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                         votes: prop.votes,
                         allow_revoting: prop.allow_revoting,
                         deposit_info: prop.deposit_info,
-                        // AFAIK, Cosmwasm does not expose a way to query the timestamp
-                        // of a block given block height.
-                        // We assign migrated proposals a created timestamp of 0 so that the frontend may
-                        // query for the true timestamp given _height.
+                        // Cosmwasm does not expose a way to query the timestamp
+                        // of a block given block height. As such, we assign migrated
+                        // proposals a created timestamp of 0 so that the frontend may
+                        // query for the true timestamp given `start_height`.
                         created: Timestamp::from_seconds(0),
                         last_updated: env.block.time,
                     };
