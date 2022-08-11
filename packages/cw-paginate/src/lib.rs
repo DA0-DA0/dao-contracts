@@ -381,8 +381,6 @@ mod tests {
         }
         assert_eq!(items, test_vec);
 
-        println!("{:?}", items);
-
         // max item from before was the 10th, so it'll go backwards from 9->1
         let items = paginate_snapshot_map_keys(
             deps.as_ref(),
@@ -392,14 +390,13 @@ mod tests {
             Order::Descending,
         )
         .unwrap();
-        println!("{:?}", items);
 
         // 3rd item in vec should be 006
         assert_eq!(items[3], Addr::unchecked("test_addr006".to_string()));
 
         let items =
             paginate_snapshot_map_keys(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
-        println!("{:?}", items);
+
         // 20th item (19 index) should be 80
         assert_eq!(items[19], Addr::unchecked("test_addr080".to_string()));
     }
@@ -443,8 +440,6 @@ mod tests {
         let items =
             paginate_snapshot_map_keys(deps.as_ref(), &map, Some(50), Some(10), Order::Descending)
                 .unwrap();
-
-        println!("{:?}", items);
 
         assert_eq!(items, vec![49, 48, 47, 46, 45, 44, 43, 42, 41, 40]);
     }
