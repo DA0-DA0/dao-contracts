@@ -4867,6 +4867,7 @@ fn test_timestamp_updated() {
         only_members_execute: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        allow_revoting: false,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
