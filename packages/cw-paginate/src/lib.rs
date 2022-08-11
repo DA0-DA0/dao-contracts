@@ -57,7 +57,19 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let items = map.range(deps.storage, start_after.map(Bound::exclusive), None, order);
+    let mut range_min: Option<Bound<'a, K>> = None;
+    let mut range_max: Option<Bound<'a, K>> = None;
+
+    match order {
+        Order::Ascending => {
+            range_min = start_after.map(Bound::exclusive);
+        }
+        Order::Descending => {
+            range_max = start_after.map(Bound::exclusive);
+        }
+    }
+
+    let items = map.range(deps.storage, range_min, range_max, order);
     match limit {
         Some(limit) => Ok(items
             .take(limit.try_into().unwrap())
@@ -111,7 +123,19 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let items = map.range(deps.storage, start_after.map(Bound::exclusive), None, order);
+    let mut range_min: Option<Bound<'a, K>> = None;
+    let mut range_max: Option<Bound<'a, K>> = None;
+
+    match order {
+        Order::Ascending => {
+            range_min = start_after.map(Bound::exclusive);
+        }
+        Order::Descending => {
+            range_max = start_after.map(Bound::exclusive);
+        }
+    }
+
+    let items = map.range(deps.storage, range_min, range_max, order);
     match limit {
         Some(limit) => Ok(items
             .take(limit.try_into().unwrap())
@@ -310,14 +334,8 @@ mod tests {
         assert_eq!(items[0].0, Addr::unchecked("test_addr011".to_string()));
         assert_eq!(items[0].1, Uint128::new(11));
 
-        let items = paginate_snapshot_map(
-            deps.as_ref(),
-            &map,
-            Some(&items[items.len() - 1].0),
-            None,
-            Order::Descending,
-        )
-        .unwrap();
+        let items =
+            paginate_snapshot_map(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
 
         // 20th item (19 index) should be 80
         assert_eq!(items[19].0, Addr::unchecked("test_addr080".to_string()));
@@ -429,5 +447,26 @@ mod tests {
         println!("{:?}", items);
 
         assert_eq!(items, vec![49, 48, 47, 46, 45, 44, 43, 42, 41, 40]);
+    }
+
+    #[test]
+    fn pagination_order_desc_tests() {
+        let mut deps = mock_dependencies();
+        let map: Map<u32, u32> = Map::new("items");
+
+        map.save(&mut deps.storage, 1, &40).unwrap();
+        map.save(&mut deps.storage, 2, &22).unwrap();
+        map.save(&mut deps.storage, 3, &77).unwrap();
+        map.save(&mut deps.storage, 4, &66).unwrap();
+        map.save(&mut deps.storage, 5, &0).unwrap();
+
+        let items = paginate_map(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
+        assert_eq!(items, vec![(5, 0), (4, 66), (3, 77), (2, 22), (1, 40)]);
+
+        let items = paginate_map(deps.as_ref(), &map, Some(3), None, Order::Descending).unwrap();
+        assert_eq!(items, vec![(2, 22), (1, 40)]);
+
+        let items = paginate_map(deps.as_ref(), &map, Some(1), None, Order::Descending).unwrap();
+        assert_eq!(items, vec![]);
     }
 }
