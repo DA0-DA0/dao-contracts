@@ -149,6 +149,7 @@ where
         min_voting_period: None,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
         close_proposal_on_execution_failure: true,
@@ -765,6 +766,7 @@ fn test_propose() {
     let instantiate = InstantiateMsg {
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
         min_voting_period: None,
@@ -801,6 +803,7 @@ fn test_propose() {
     let expected = Config {
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
@@ -855,6 +858,7 @@ fn test_propose() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::zero(); 3],
         },
+        allow_revoting: false,
         deposit_info: None,
         min_voting_period: None,
     };
@@ -878,6 +882,7 @@ fn test_propose_wrong_num_choices() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
     };
@@ -914,6 +919,7 @@ fn test_propose_wrong_num_choices() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         dao: governance_addr,
         deposit_info: None,
         voting_strategy,
@@ -1072,6 +1078,7 @@ fn test_migrate() {
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -1130,6 +1137,7 @@ fn test_proposal_count_initialized_to_zero() {
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
     let core_addr = instantiate_with_staked_balances_governance(
@@ -1167,6 +1175,7 @@ fn test_no_early_pass_with_min_duration() {
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Height(2)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
     };
@@ -1264,6 +1273,7 @@ fn test_propose_with_messages() {
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
     };
 
@@ -1300,6 +1310,7 @@ fn test_propose_with_messages() {
         close_proposal_on_execution_failure: true,
         max_voting_period: cw_utils::Duration::Height(20),
         only_members_execute: false,
+        allow_revoting: false,
         dao: "dao".to_string(),
         deposit_info: None,
     };
@@ -1384,6 +1395,7 @@ fn test_min_duration_units_missmatch() {
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Time(2)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
     };
@@ -1416,6 +1428,7 @@ fn test_min_duration_larger_than_proposal_duration() {
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Height(11)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
     };
@@ -1447,6 +1460,7 @@ fn test_min_duration_same_as_proposal_duration() {
         max_voting_period: Duration::Time(10),
         min_voting_period: Some(Duration::Time(10)),
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
     };
@@ -1565,6 +1579,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
     };
@@ -1641,6 +1656,7 @@ fn test_different_token_proposal_deposit() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::Token {
                 address: cw20_addr.to_string(),
@@ -1710,6 +1726,7 @@ fn test_bad_token_proposal_deposit() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
     };
@@ -1741,6 +1758,7 @@ fn test_take_proposal_deposit() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info,
         voting_strategy,
     };
@@ -2165,6 +2183,7 @@ fn test_cant_propose_zero_power() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
@@ -2331,6 +2350,7 @@ fn test_cant_execute_not_member() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: true,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -2669,6 +2689,7 @@ fn test_execute_expired_proposal() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -2844,6 +2865,7 @@ fn test_update_config() {
             close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: dao.to_string(),
             deposit_info: None,
         },
@@ -2863,6 +2885,7 @@ fn test_update_config() {
             close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
             deposit_info: None,
         },
@@ -2883,6 +2906,7 @@ fn test_update_config() {
         close_proposal_on_execution_failure: true,
         max_voting_period: cw_utils::Duration::Height(10),
         only_members_execute: false,
+        allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
     };
@@ -2901,6 +2925,7 @@ fn test_update_config() {
             close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
             only_members_execute: false,
+            allow_revoting: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
             deposit_info: None,
         },
@@ -2981,6 +3006,7 @@ fn test_query_list_proposals() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy: voting_strategy.clone(),
     };
@@ -3076,6 +3102,7 @@ fn test_query_list_proposals() {
             votes: MultipleChoiceVotes {
                 vote_weights: vec![Uint128::zero(); 3],
             },
+            allow_revoting: false,
             deposit_info: None,
             min_voting_period: None,
         },
@@ -3119,6 +3146,7 @@ fn test_query_list_proposals() {
             votes: MultipleChoiceVotes {
                 vote_weights: vec![Uint128::zero(); 3],
             },
+            allow_revoting: false,
             deposit_info: None,
             min_voting_period: None,
         },
@@ -3143,6 +3171,7 @@ fn test_hooks() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -3300,6 +3329,7 @@ fn test_active_threshold_absolute() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -3437,6 +3467,7 @@ fn test_active_threshold_percent() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -3575,6 +3606,7 @@ fn test_active_threshold_none() {
         close_proposal_on_execution_failure: true,
         max_voting_period,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         voting_strategy,
     };
@@ -3703,6 +3735,559 @@ fn test_active_threshold_none() {
         .unwrap();
 }
 
+/// Basic test for revoting on prop-multiple
+#[test]
+fn test_revoting() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        to_binary(&InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: true,
+            deposit_info: None,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+        })
+        .unwrap(),
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap();
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: None,
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: None,
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // a-1 votes, vote_weights: [100_000_000, 0]
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // a-2 votes, vote_weights: [100_000_000, 100_000_000]
+    app.execute_contract(
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 1 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Time passes..
+    app.update_block(|b| b.height += 2);
+
+    // Assert that both vote options have equal vote weights at some block
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Open);
+    assert_eq!(
+        proposal.proposal.votes.vote_weights[0],
+        Uint128::new(100_000_000),
+    );
+    assert_eq!(
+        proposal.proposal.votes.vote_weights[1],
+        Uint128::new(100_000_000),
+    );
+
+    // More time passes..
+    app.update_block(|b| b.height += 3);
+
+    // Last moment a-2 has a change of mind,
+    // votes shift to [200_000_000, 0]
+    app.execute_contract(
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(next_block);
+
+    // Assert that revote succeeded
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_module, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Passed);
+    assert_eq!(
+        proposal.proposal.votes.vote_weights[0],
+        Uint128::new(200_000_000),
+    );
+    assert_eq!(proposal.proposal.votes.vote_weights[1], Uint128::new(0),);
+}
+
+/// Tests that revoting is stored at a per-proposal level.
+/// Proposals created while revoting is enabled should not
+/// have it disabled if a config change turns if off.
+#[test]
+fn test_allow_revoting_config_changes() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        to_binary(&InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: true,
+            deposit_info: None,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+        })
+        .unwrap(),
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap();
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: None,
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: None,
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options that allows revoting
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options.clone(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Disable revoting
+    app.execute_contract(
+        core_addr.clone(),
+        proposal_module.clone(),
+        &ExecuteMsg::UpdateConfig {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            dao: core_addr.to_string(),
+            deposit_info: None,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Assert that proposal_id: 1 still allows revoting
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert!(proposal.proposal.allow_revoting);
+
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 1 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // New proposals should not allow revoting
+    app.execute_contract(
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A very complex text proposal".to_string(),
+            description: "A very complex text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("a-2"),
+            proposal_module,
+            &ExecuteMsg::Vote {
+                proposal_id: 2,
+                vote: MultipleChoiceVote { option_id: 1 },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(err, ContractError::AlreadyVoted {}));
+}
+
+/// Tests that we error if a revote casts the same vote as the
+/// previous vote.
+#[test]
+fn test_revoting_same_vote_twice() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        to_binary(&InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: true,
+            deposit_info: None,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+        })
+        .unwrap(),
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap();
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: None,
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: None,
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options that allows revoting
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Cast a vote
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Revote for the same option as currently voted
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("a-1"),
+            proposal_module,
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: MultipleChoiceVote { option_id: 0 },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // Can't cast the same vote twice.
+    assert!(matches!(err, ContractError::AlreadyCast {}));
+}
+
+/// Tests that revoting into a non-existing vote option
+/// does not invalidate the initial vote
+#[test]
+fn test_invalid_revote_does_not_invalidate_initial_vote() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        govmod_id,
+        to_binary(&InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: true,
+            deposit_info: None,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+        })
+        .unwrap(),
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let governance_modules: Vec<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr,
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap();
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: None,
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: None,
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // a-1 votes, vote_weights: [100_000_000, 0]
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // a-2 votes, vote_weights: [100_000_000, 100_000_000]
+    app.execute_contract(
+        Addr::unchecked("a-2"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 1 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(next_block);
+
+    // Assert that both vote options have equal vote weights at some block
+    let proposal: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module.clone(),
+            &QueryMsg::Proposal { proposal_id: 1 },
+        )
+        .unwrap();
+    assert_eq!(proposal.proposal.status, Status::Open);
+    assert_eq!(
+        proposal.proposal.votes.vote_weights[0],
+        Uint128::new(100_000_000),
+    );
+    assert_eq!(
+        proposal.proposal.votes.vote_weights[1],
+        Uint128::new(100_000_000),
+    );
+
+    // Time passes..
+    app.update_block(|b| b.height += 3);
+
+    // Last moment a-2 has a change of mind and attempts
+    // to vote for a non-existing option
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("a-2"),
+            proposal_module,
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: MultipleChoiceVote { option_id: 99 },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    // Assert that prior votes remained the same
+    assert_eq!(
+        proposal.proposal.votes.vote_weights[0],
+        Uint128::new(100_000_000),
+    );
+    assert_eq!(
+        proposal.proposal.votes.vote_weights[1],
+        Uint128::new(100_000_000),
+    );
+    assert!(matches!(err, ContractError::InvalidVote {}));
+}
+
 #[test]
 fn test_return_deposit_to_dao_on_proposal_failure() {
     let (mut app, core_addr) = do_test_votes_cw20_balances(
@@ -3780,6 +4365,7 @@ fn test_close_failed_proposal() {
         voting_strategy,
         min_voting_period: None,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
     };
@@ -3936,6 +4522,7 @@ fn test_close_failed_proposal() {
                                     max_voting_period: original.max_voting_period,
                                     min_voting_period: original.min_voting_period,
                                     only_members_execute: original.only_members_execute,
+                                    allow_revoting: false,
                                     dao: original.dao.to_string(),
                                     deposit_info: None,
                                     close_proposal_on_execution_failure: false,
@@ -4036,6 +4623,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         max_voting_period,
         min_voting_period: None,
         only_members_execute: false,
+        allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
