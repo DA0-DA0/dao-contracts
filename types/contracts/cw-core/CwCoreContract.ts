@@ -51,10 +51,12 @@ export type Timestamp = Uint64;
 export type Uint64 = string;
 export type ProposalModuleStatus = "Active" | "Disabled";
 export interface DumpStateResponse {
+  active_proposal_module_count: number;
   admin: Addr;
   config: Config;
   pause_info: PauseInfoResponse;
   proposal_modules: ProposalModule[];
+  total_proposal_module_count: number;
   version: ContractVersion;
   voting_module: Addr;
   [k: string]: unknown;
@@ -416,6 +418,12 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
+  active_proposal_modules: {
+    limit?: number | null;
+    start_after?: string | null;
+    [k: string]: unknown;
+  };
+} | {
   pause_info: {
     [k: string]: unknown;
   };
@@ -496,6 +504,13 @@ export interface CwCoreReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ProposalModulesResponse>;
+  activeProposalModules: ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ActiveProposalModulesResponse>;
   pauseInfo: () => Promise<PauseInfoResponse>;
   votingModule: () => Promise<VotingModuleResponse>;
   votingPowerAtHeight: ({
@@ -529,6 +544,7 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
     this.getItem = this.getItem.bind(this);
     this.listItems = this.listItems.bind(this);
     this.proposalModules = this.proposalModules.bind(this);
+    this.activeProposalModules = this.activeProposalModules.bind(this);
     this.pauseInfo = this.pauseInfo.bind(this);
     this.votingModule = this.votingModule.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
@@ -632,6 +648,20 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
   }): Promise<ProposalModulesResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       proposal_modules: {
+        limit,
+        start_after: startAfter
+      }
+    });
+  };
+  activeProposalModules = async ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ActiveProposalModulesResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      active_proposal_modules: {
         limit,
         start_after: startAfter
       }

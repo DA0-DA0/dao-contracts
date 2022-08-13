@@ -244,7 +244,7 @@
       "description": "The status of a proposal module.",
       "type": "string",
       "enum": [
-        "Active",
+        "Enabled",
         "Disabled"
       ]
     },
