@@ -7,6 +7,14 @@
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
 export type Addr = string;
+export type ProposalModuleStatus = "Enabled" | "Disabled";
+export type ActiveProposalModulesResponse = ProposalModule[];
+export interface ProposalModule {
+  address: Addr;
+  prefix: string;
+  status: ProposalModuleStatus;
+  [k: string]: unknown;
+}
 export interface AdminNominationResponse {
   nomination?: Addr | null;
   [k: string]: unknown;
@@ -49,7 +57,6 @@ export type Expiration = {
 };
 export type Timestamp = Uint64;
 export type Uint64 = string;
-export type ProposalModuleStatus = "Active" | "Disabled";
 export interface DumpStateResponse {
   active_proposal_module_count: number;
   admin: Addr;
@@ -67,12 +74,6 @@ export interface Config {
   description: string;
   image_url?: string | null;
   name: string;
-  [k: string]: unknown;
-}
-export interface ProposalModule {
-  address: Addr;
-  prefix: string;
-  status: ProposalModuleStatus;
   [k: string]: unknown;
 }
 export interface ContractVersion {
@@ -341,7 +342,6 @@ export interface GetItemResponse {
   item?: string | null;
   [k: string]: unknown;
 }
-export type GovernanceModulesResponse = Addr[];
 export interface InfoResponse {
   info: ContractVersion;
   [k: string]: unknown;
@@ -365,7 +365,7 @@ export interface InitialItem {
 }
 export type ListItemsResponse = string[];
 export type MigrateMsg = "FromBeta" | "FromCompatible";
-export type ProposalModulesResponse = Addr[];
+export type ProposalModulesResponse = ProposalModule[];
 export type QueryMsg = {
   admin: {
     [k: string]: unknown;

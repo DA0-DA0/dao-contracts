@@ -3471,10 +3471,10 @@ v8-compile-cache-lib@^3.0.1:
   resolved "https://registry.yarnpkg.com/v8-compile-cache-lib/-/v8-compile-cache-lib-3.0.1.tgz#6336e8d71965cb3d35a1bbb7868445a7c05264bf"
   integrity sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==
 
-wasm-ast-types@^0.3.5:
-  version "0.3.5"
-  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.3.5.tgz#b46d7b5f4f9312f45278f731f9eb496fdf2f4ca3"
-  integrity sha512-rzpP86SqVV3Rs24hG0ZSsFFrxp34J4U65z/3KWLZOxhe6ljuh3FFECbC6p0iyIkmG6hN5F6mQ+4Y2+QNP5GnAg==
+wasm-ast-types@^0.4.3:
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.4.3.tgz#bfc6de5ba1c8cb5aed8d41503904372490fbccb0"
+  integrity sha512-AbQe1uwzwyev3VR93coP3hAAIGqZ0ccNeyBHYtUFckHtfrsLwDF5wf3AMmnZ/PmQpxvC8PE/1aiYG8twcg9aGQ==
   dependencies:
     "@babel/runtime" "^7.18.3"
     "@babel/types" "7.18.4"

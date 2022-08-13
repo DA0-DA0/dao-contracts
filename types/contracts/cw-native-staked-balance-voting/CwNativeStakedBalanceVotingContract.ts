@@ -92,13 +92,6 @@ export interface IsActiveResponse {
 export interface MigrateMsg {
   [k: string]: unknown;
 }
-export type Owner = {
-  addr: string;
-} | {
-  instantiator: {
-    [k: string]: unknown;
-  };
-};
 export type QueryMsg = {
   dao: {
     [k: string]: unknown;

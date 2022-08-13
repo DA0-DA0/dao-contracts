@@ -3768,7 +3768,7 @@ fn test_revoting() {
         ]),
     );
 
-    let governance_modules: Vec<Addr> = app
+    let governance_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr,
@@ -3778,7 +3778,7 @@ fn test_revoting() {
             },
         )
         .unwrap();
-    let proposal_module = governance_modules.into_iter().next().unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap().address;
 
     let options = vec![
         MultipleChoiceOption {
@@ -3915,7 +3915,7 @@ fn test_allow_revoting_config_changes() {
         ]),
     );
 
-    let governance_modules: Vec<Addr> = app
+    let governance_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
@@ -3925,7 +3925,7 @@ fn test_allow_revoting_config_changes() {
             },
         )
         .unwrap();
-    let proposal_module = governance_modules.into_iter().next().unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap().address;
 
     let options = vec![
         MultipleChoiceOption {
@@ -4077,7 +4077,7 @@ fn test_revoting_same_vote_twice() {
         ]),
     );
 
-    let governance_modules: Vec<Addr> = app
+    let governance_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr,
@@ -4087,7 +4087,7 @@ fn test_revoting_same_vote_twice() {
             },
         )
         .unwrap();
-    let proposal_module = governance_modules.into_iter().next().unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap().address;
 
     let options = vec![
         MultipleChoiceOption {
@@ -4178,7 +4178,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         ]),
     );
 
-    let governance_modules: Vec<Addr> = app
+    let governance_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr,
@@ -4188,7 +4188,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
             },
         )
         .unwrap();
-    let proposal_module = governance_modules.into_iter().next().unwrap();
+    let proposal_module = governance_modules.into_iter().next().unwrap().address;
 
     let options = vec![
         MultipleChoiceOption {
@@ -4318,7 +4318,7 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
     let proposal_modules = core_state.proposal_modules;
 
     assert_eq!(proposal_modules.len(), 1);
-    let proposal_multiple = proposal_modules.into_iter().next().unwrap();
+    let proposal_multiple = proposal_modules.into_iter().next().unwrap().address;
 
     // Make the proposal expire. It has now failed.
     app.update_block(|block| block.height += 10);
@@ -4378,7 +4378,7 @@ fn test_close_failed_proposal() {
         None,
         None,
     );
-    let governance_modules: Vec<Addr> = app
+    let governance_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             governance_addr,
@@ -4390,7 +4390,7 @@ fn test_close_failed_proposal() {
         .unwrap();
 
     assert_eq!(governance_modules.len(), 1);
-    let govmod_single = governance_modules.into_iter().next().unwrap();
+    let govmod_single = governance_modules.into_iter().next().unwrap().address;
 
     let govmod_config: Config = app
         .wrap()
@@ -4648,7 +4648,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         }]),
         None,
     );
-    let proposal_modules: Vec<Addr> = app
+    let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             core_addr,
@@ -4660,7 +4660,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         .unwrap();
 
     assert_eq!(proposal_modules.len(), 1);
-    let proposal_single = proposal_modules.into_iter().next().unwrap();
+    let proposal_single = proposal_modules.into_iter().next().unwrap().address;
 
     let proposal_config: Config = app
         .wrap()
