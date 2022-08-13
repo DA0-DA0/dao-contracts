@@ -37,7 +37,7 @@ pub struct ProposalModule {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 /// The status of a proposal module.
 pub enum ProposalModuleStatus {
-    Active,
+    Enabled,
     Disabled,
 }
 

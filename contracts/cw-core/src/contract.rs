@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, SubMsg,
+    Response, StdError, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Map;
@@ -78,6 +78,10 @@ pub fn instantiate(
     for InitialItem { key, value } in msg.initial_items.unwrap_or_default() {
         ITEMS.save(deps.storage, key, &value)?;
     }
+
+    // Save total and active proposal module counts
+    TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
+    ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -185,7 +189,7 @@ pub fn execute_proposal_hook(
         .ok_or(ContractError::Unauthorized {})?;
 
     // Check that the message has come from an active module
-    if module.status == ProposalModuleStatus::Disabled {
+    if module.status != ProposalModuleStatus::Enabled {
         return Err(ContractError::ModuleAlreadyDisabled { address: sender });
     }
 
@@ -323,6 +327,7 @@ pub fn execute_update_proposal_modules(
         return Err(ContractError::Unauthorized {});
     }
 
+    let disable_count = to_disable.len() as u64;
     for addr in to_disable {
         let addr = deps.api.addr_validate(&addr)?;
         let mut module = PROPOSAL_MODULES
@@ -337,19 +342,19 @@ pub fn execute_update_proposal_modules(
             });
         }
 
-        // If disabling this module will cause there to be no active modules, return error.
-        // We don't check the active count before disabling because there may erroneously be
-        // modules in to_disable which are already disabled.
-        ACTIVE_PROPOSAL_MODULE_COUNT.update(deps.storage, |count| {
-            if count <= 1 && to_add.is_empty() {
-                return Err(ContractError::NoActiveProposalModules {});
-            }
-            Ok(count - 1)
-        })?;
-
         module.status = ProposalModuleStatus::Disabled {};
         PROPOSAL_MODULES.save(deps.storage, addr, &module)?;
     }
+
+    // If disabling this module will cause there to be no active modules, return error.
+    // We don't check the active count before disabling because there may erroneously be
+    // modules in to_disable which are already disabled.
+    ACTIVE_PROPOSAL_MODULE_COUNT.update(deps.storage, |count| {
+        if count <= disable_count && to_add.is_empty() {
+            return Err(ContractError::NoActiveProposalModules {});
+        }
+        Ok(count - disable_count)
+    })?;
 
     let to_add: Vec<SubMsg<Empty>> = to_add
         .into_iter()
@@ -600,7 +605,7 @@ pub fn query_active_proposal_modules(
     to_binary::<Vec<ProposalModule>>(
         &values
             .into_iter()
-            .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active)
+            .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Enabled)
             .take(limit as usize)
             .collect(),
     )
@@ -773,7 +778,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                     let prefix = derive_proposal_module_prefix(idx)?;
                     let proposal_module = &ProposalModule {
                         address: address.clone(),
-                        status: ProposalModuleStatus::Active {},
+                        status: ProposalModuleStatus::Enabled {},
                         prefix,
                     };
                     PROPOSAL_MODULES.save(deps.storage, address, proposal_module)?;
@@ -791,26 +796,20 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         PROPOSAL_MODULE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let prop_module_addr = deps.api.addr_validate(&res.contract_address)?;
-            let total_module_count = TOTAL_PROPOSAL_MODULE_COUNT
-                .may_load(deps.storage)?
-                .unwrap_or(0);
+            let total_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
 
             let prefix = derive_proposal_module_prefix(total_module_count as usize)?;
             let prop_module = ProposalModule {
                 address: prop_module_addr.clone(),
-                status: ProposalModuleStatus::Active,
+                status: ProposalModuleStatus::Enabled,
                 prefix,
             };
 
             PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &prop_module)?;
 
             // Save active and total proposal module counts.
-            let active_count = ACTIVE_PROPOSAL_MODULE_COUNT
-                .may_load(deps.storage)?
-                .unwrap_or(0)
-                + 1;
-
-            ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &active_count)?;
+            ACTIVE_PROPOSAL_MODULE_COUNT
+                .update::<_, StdError>(deps.storage, |count| Ok(count + 1))?;
             TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &(total_module_count + 1))?;
 
             Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))

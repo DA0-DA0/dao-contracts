@@ -2528,7 +2528,7 @@ fn test_migrate_from_beta() {
     for (idx, module) in proposal_modules.iter().enumerate() {
         let prefix = derive_proposal_module_prefix(idx).unwrap();
         assert_eq!(prefix, module.prefix);
-        assert_eq!(ProposalModuleStatus::Active, module.status);
+        assert_eq!(ProposalModuleStatus::Enabled, module.status);
     }
 }
 
@@ -2552,7 +2552,7 @@ fn test_migrate_mock() {
     let module: ProposalModule = from_slice(&prop_module_bytes).unwrap();
     assert_eq!(module.address, Addr::unchecked("addr"));
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
-    assert_eq!(module.status, ProposalModuleStatus::Active {});
+    assert_eq!(module.status, ProposalModuleStatus::Enabled {});
 }
 
 #[test]
@@ -2658,17 +2658,17 @@ fn test_module_prefixes() {
     assert_eq!(modules.len(), 3);
 
     let module_1 = &modules[0];
-    assert_eq!(module_1.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_1.status, ProposalModuleStatus::Enabled {});
     assert_eq!(module_1.prefix, "A");
     assert_eq!(&module_1.address, &modules[0].address);
 
     let module_2 = &modules[1];
-    assert_eq!(module_2.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_2.status, ProposalModuleStatus::Enabled {});
     assert_eq!(module_2.prefix, "B");
     assert_eq!(&module_2.address, &modules[1].address);
 
     let module_3 = &modules[2];
-    assert_eq!(module_3.status, ProposalModuleStatus::Active {});
+    assert_eq!(module_3.status, ProposalModuleStatus::Enabled {});
     assert_eq!(module_3.prefix, "C");
     assert_eq!(&module_3.address, &modules[2].address);
 }
@@ -2687,6 +2687,6 @@ fn get_active_modules(app: &App, gov_addr: Addr) -> Vec<ProposalModule> {
 
     modules
         .into_iter()
-        .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Active)
+        .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Enabled)
         .collect()
 }
