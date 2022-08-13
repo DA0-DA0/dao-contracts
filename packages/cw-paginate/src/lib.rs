@@ -57,17 +57,10 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let mut range_min: Option<Bound<'a, K>> = None;
-    let mut range_max: Option<Bound<'a, K>> = None;
-
-    match order {
-        Order::Ascending => {
-            range_min = start_after.map(Bound::exclusive);
-        }
-        Order::Descending => {
-            range_max = start_after.map(Bound::exclusive);
-        }
-    }
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
 
     let items = map.range(deps.storage, range_min, range_max, order);
     match limit {
@@ -90,17 +83,10 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let mut range_min: Option<Bound<'a, K>> = None;
-    let mut range_max: Option<Bound<'a, K>> = None;
-
-    match order {
-        Order::Ascending => {
-            range_min = start_after.map(Bound::exclusive);
-        }
-        Order::Descending => {
-            range_max = start_after.map(Bound::exclusive);
-        }
-    }
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
 
     let items = map.keys(deps.storage, range_min, range_max, order);
     match limit {
@@ -123,17 +109,10 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let mut range_min: Option<Bound<'a, K>> = None;
-    let mut range_max: Option<Bound<'a, K>> = None;
-
-    match order {
-        Order::Ascending => {
-            range_min = start_after.map(Bound::exclusive);
-        }
-        Order::Descending => {
-            range_max = start_after.map(Bound::exclusive);
-        }
-    }
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
 
     let items = map.range(deps.storage, range_min, range_max, order);
     match limit {
@@ -157,17 +136,10 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
-    let mut range_min: Option<Bound<'a, K>> = None;
-    let mut range_max: Option<Bound<'a, K>> = None;
-
-    match order {
-        Order::Ascending => {
-            range_min = start_after.map(Bound::exclusive);
-        }
-        Order::Descending => {
-            range_max = start_after.map(Bound::exclusive);
-        }
-    }
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
 
     let items = map.keys(deps.storage, range_min, range_max, order);
     match limit {
