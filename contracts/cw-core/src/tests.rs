@@ -1438,23 +1438,48 @@ fn test_list_items() {
         "barkey".to_string(),
         "baraddr".to_string(),
     );
+    set_item(
+        &mut app,
+        gov_addr.clone(),
+        "loremkey".to_string(),
+        "loremaddr".to_string(),
+    );
+    set_item(
+        &mut app,
+        gov_addr.clone(),
+        "ipsumkey".to_string(),
+        "ipsumaddr".to_string(),
+    );
 
     // Foo returned as we are only getting one item and items are in
     // decending order.
     let first_item = list_items(&mut app, gov_addr.clone(), None, Some(1));
     assert_eq!(first_item.len(), 1);
-    assert_eq!(first_item[0], ("fookey".to_string(), "fooaddr".to_string()));
+    assert_eq!(
+        first_item[0],
+        ("loremkey".to_string(), "loremaddr".to_string())
+    );
 
     let no_items = list_items(&mut app, gov_addr.clone(), None, Some(0));
     assert_eq!(no_items.len(), 0);
 
     // Items are retreived in decending order so asking for foo with
-    // no limit ought to give us a single item.
-    let second_item = list_items(&mut app, gov_addr, Some("foo".to_string()), None);
-    assert_eq!(second_item.len(), 1);
+    // no limit ought to give us the barkey k/v. this will be the last item
+    // note: the paginate map bound is exclusive, so fookey will be starting point
+    let last_item = list_items(&mut app, gov_addr.clone(), Some("foo".to_string()), None);
+    assert_eq!(last_item.len(), 1);
+    assert_eq!(last_item[0], ("barkey".to_string(), "baraddr".to_string()));
+
+    // Items are retreived in decending order so asking for ipsum with
+    // 4 limit ought to give us the fookey and barkey k/vs.
+    let after_foo_list = list_items(&mut app, gov_addr, Some("ipsum".to_string()), Some(4));
+    assert_eq!(after_foo_list.len(), 2);
     assert_eq!(
-        second_item[0],
-        ("fookey".to_string(), "fooaddr".to_string())
+        after_foo_list,
+        vec![
+            ("fookey".to_string(), "fooaddr".to_string()),
+            ("barkey".to_string(), "baraddr".to_string())
+        ]
     );
 }
 
