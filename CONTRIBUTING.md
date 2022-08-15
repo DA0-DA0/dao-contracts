@@ -64,12 +64,15 @@ execute messages. We use those schema files to generate Typescript
 code for interacting with those contracts via
 [ts-codegen](https://github.com/CosmWasm/ts-codegen). This generated
 Typescript code is then [used in the
-UI](https://github.com/DA0-DA0/dao-dao-ui/tree/40f3cbfe676a98bf7b9db7b646e74e5b2dae4502/packages/state/clients).
+UI](https://github.com/DA0-DA0/dao-dao-ui/tree/40f3cbfe676a98bf7b9db7b646e74e5b2dae4502/packages/state/clients)
+to interact with our contracts. Generating this code means that
+frontend developers don't have to manually write query and execute
+messages for each method on our contracts.
 
 To make sure these files are generated correctly, make sure to add any
 new data types used in contract messages to `examples/schema.rs`.
 
-If you are adding a new query ts-codegen expects:
+If you are adding a new query, ts-codegen expects:
 
 1. There is a corresponding query response type exported from
    `examples/schema.rs` for that contract.
@@ -101,6 +104,7 @@ To generate the Typescript interface, after generating the schema
 files, run:
 
 ```
+rm -rf types/contracts # Clear out any old or invalid state.
 yarn --cwd ./types install --frozen-lockfile
 yarn --cwd ./types build
 yarn --cwd ./types codegen
