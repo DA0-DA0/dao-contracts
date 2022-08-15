@@ -1,5 +1,12 @@
 # DAO DAO Contracts
+
 [![codecov](https://codecov.io/gh/DA0-DA0/dao-contracts/branch/main/graph/badge.svg?token=SCKOIPYZPV)](https://codecov.io/gh/DA0-DA0/dao-contracts)
+
+This is a collection for smart contracts for building composable,
+modular, and upgradable DAOs.
+
+For an overview of our contract design, see [our
+wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 
 | Audited contracts                                                        | Description                                                |
 | :----------------------------------------------------------------------- | :--------------------------------------------------------- |
@@ -8,75 +15,32 @@
 | [cw20-staked-balance-voting](contracts/cw20-staked-balance-voting)       | A voting power module for staked governance tokens.        |
 | [cw4-voting](contracts/cw4-voting)                                       | A voting power module for multisig-style voting.           |
 | [cw20-stake](contracts/cw20-stake)                                       | A contract for staking cw20 tokens.                        |
+| [stake-external-rewards](contracts/cw20-stake-external-rewards)          | A contract for providing external stakinig rewards.        |
+| [cw20-stake-reward-distributor](contracts/cw20-stake-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
 
 
 | Unaudited contracts                                                      | Description                                                |
 | :----------------------------------------------------------------------- | :--------------------------------------------------------- |
 | [cw-named-groups](contracts/cw-named-groups)                             | A contract for managing named groups of addresses.         |
-| [cw-proposal-sudo](contracts/cw-proposal-sudo)                           | A proposal module that allows an admin to control a DAO.   |
-| [cw20-balance-voting](contracts/cw20-balance-voting)                     | TESTING ONLY - a voting module based on cw20 balances.     |
-| [proposal-hooks-counter](contracts/proposal-hooks-counter)               | TESTING ONLY - a contract for testing proposal hooks.      |
-| [stake-external-rewards](contracts/cw20-stake-external-rewards)          | A contract for providing external stakinig rewards.        |
-| [cw20-stake-reward-distributor](contracts/cw20-stake-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
 | [cw-proposal-multiple](contracts/cw-proposal-multiple)                   | A proposal module for multiple choice proposals.           |
-Audited contracts have completed [an
-audit](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
-by security DAO. A second audit is forthcoming.
 
-## Contributing
+Audited contracts have completed audits by
+[securityDAO](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
+and [Oak
+Security](https://github.com/oak-security/audit-reports/blob/2377ba8cfcfd505283c789d706311b06771d6db4/DAO%20DAO/2022-06-22%20Audit%20Report%20-%20DAO%20DAO%20v1.0.pdf).
 
-Interested in contributing to DAO DAO? Check out [CONTRIBUTING.md](./CONTRIBUTING.md).
+## Developers
 
-## Deploying in a development environment
-
-_Note: this will deploy the legacy version of the contracts currently
-running at [daodao.zone](https://daodao.zone)._
-
-Build and deploy the contracts to a local chain running in Docker with:
-
-```sh
-bash scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
-```
-
-> Note: This Wasm account is from the [default account](default-account.txt), which you can use for testing (DO NOT store any real funds with this account). You can pass in any wasm account address you want to use.
-
-This will run a chain locally in a docker container, then build and deploy the contracts to that chain.
-
-The script will output something like:
-
-```sh
-NEXT_PUBLIC_CW20_CODE_ID=1
-NEXT_PUBLIC_CW4GROUP_CODE_ID=2
-NEXT_PUBLIC_CWCORE_CODE_ID=7
-NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID=11
-NEXT_PUBLIC_CW4VOTING_CODE_ID=5
-NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=4
-NEXT_PUBLIC_STAKECW20_CODE_ID=13
-NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=juno1zlmaky7753d2fneyhduwz0rn3u9ns8rse3tudhze8rc2g54w9ysqgjt23l
-NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS=juno1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucssml9ug
-```
-
-You can then instantiate and interact with contracts.
-
-Note, to send commands to the docker container:
-
-```sh
-docker exec -i cosmwasm junod status
-```
-
-Some commands require a password which defaults to `xxxxxxxxx`. You can use them like so:
-
-```sh
-echo xxxxxxxxx | docker exec -i cosmwasm  junod keys show validator -a
-```
-
-## Generating schema for all contracts
-As we have a workflow to check schema differences on commit, to quickly run `cargo schema` against all contracts
-simply run the following from the repo root:
-```sh
-./scripts/schema.sh
-```
+Information about our development workflow and how to contribute can
+be found in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Disclaimer
 
-DAO DAO TOOLING IS PROVIDED “AS IS”, AT YOUR OWN RISK, AND WITHOUT WARRANTIES OF ANY KIND. No developer or entity involved in creating the DAO DAO UI or smart contracts will be liable for any claims or damages whatsoever associated with your use, inability to use, or your interaction with other users of DAO DAO tooling, including any direct, indirect, incidental, special, exemplary, punitive or consequential damages, or loss of profits, cryptocurrencies, tokens, or anything else of value.
+DAO DAO TOOLING IS PROVIDED “AS IS”, AT YOUR OWN RISK, AND WITHOUT
+WARRANTIES OF ANY KIND. No developer or entity involved in creating
+the DAO DAO UI or smart contracts will be liable for any claims or
+damages whatsoever associated with your use, inability to use, or your
+interaction with other users of DAO DAO tooling, including any direct,
+indirect, incidental, special, exemplary, punitive or consequential
+damages, or loss of profits, cryptocurrencies, tokens, or anything
+else of value.

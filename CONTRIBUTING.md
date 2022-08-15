@@ -1,58 +1,121 @@
-# Welcome to the DAO DAO contributing guide <!-- omit in toc -->
+# Contributing to DAO DAO
 
-Thank you for investing your time in contributing to our project!
+Thanks for your interest in contributing. We're excited to welcome you
+into our community. :)
 
-Read our [Code of Conduct](./CODE_OF_CONDUCT.md) to keep our community approachable and respectable.
+We value kindness, humility, and low-ego communication. You can read
+our [Code of Conduct](./CODE_OF_CONDUCT.md) for a poetic version of
+this.
 
-All contributions will fall under our [our open-source license agreement](./LICENSE).
+There are many ways you can contribute.
 
-In this guide you will get an overview of the contribution workflow from opening an issue, creating a PR, reviewing, and merging the PR.
+- If you're interested in doing smart contract work, you're in the
+  right place.
+- If you want to work on our UI, check out the [dao-dao-ui
+  repo](https://github.com/DA0-DA0/dao-dao-ui).
+- If you want to contribute documentation, check out our [docs
+  repo](https://github.com/DA0-DA0/docs).
 
-## New contributor guide
+Getting started contributing to an open source project can be
+daunting. A great place to ask questions is the [DAO DAO
+Discord](https://discord.gg/sAaGuyW3D2).
 
-To get an overview of the project, read the [README](README.md). Here are some resources to help you get started with open source contributions:
+## Getting started
 
-- [Finding ways to contribute to open source on GitHub](https://docs.github.com/en/get-started/exploring-projects-on-github/finding-ways-to-contribute-to-open-source-on-github)
-- [Set up Git](https://docs.github.com/en/get-started/quickstart/set-up-git)
-- [GitHub flow](https://docs.github.com/en/get-started/quickstart/github-flow)
-- [Collaborating with pull requests](https://docs.github.com/en/github/collaborating-with-pull-requests)
+To work on the DAO DAO smart contracts you'll need a reasonable
+understanding of the Rust programming language. The [Rust
+book](https://doc.rust-lang.org/book/) is a really good place to pick
+this up.
 
-### Issues
+Before picking up any issues, you may also want to read our [design
+wiki
+page](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design)
+which gives an overview of how all of the DAO DAO smart contracts fit
+together.
 
-#### Create a new issue
+Our development workflow is just like a regular Rust project:
 
-If you spot a problem, [search if an issue already exists](https://docs.github.com/en/github/searching-for-information-on-github/searching-on-github/searching-issues-and-pull-requests#search-by-the-title-body-or-comments). If a related issue doesn't exist, you can open a new issue using a relevant [issue form](https://github.com/DA0-DA0/dao-contracts/issues/new/choose).
+- `cargo build` from the repository root to build the contracts.
+- `cargo test` from the repository root to test the contracts.
 
-#### Solve an issue
+To build WASM files for deploying on a blockchain, run:
 
-Scan through our [existing issues](https://github.com/DA0-DA0/dao-contracts/issues) to find one that interests you. You can narrow down the search using `labels` as filters. See [Labels](/contributing/how-to-use-labels.md) for more information. As a general rule, we don’t assign issues to anyone. If you find an issue to work on, you are welcome to open a PR with a fix.
+```
+docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  --platform linux/amd64 \
+  cosmwasm/workspace-optimizer:0.12.6
+```
 
-### Make Changes
+From the repository root.
 
-#### Make changes in the UI
+## Getting ready to make a PR
 
-1. [Install Git LFS](https://docs.github.com/en/github/managing-large-files/versioning-large-files/installing-git-large-file-storage).
+Before making a PR, you'll need to do two things to get CI passing:
 
-2. Fork the repository.
+1. Generate schema files for the contracts.
+2. Generate typescript interfaces from those schemas.
 
-3. Create a working branch and start with your changes!
+To generate schema files, run:
 
-### Commit your update
+```
+./scripts/schema.sh
+```
 
-Commit the changes once you are happy with them. See [Atom's contributing guide](https://github.com/atom/atom/blob/master/CONTRIBUTING.md#git-commit-messages) to know how to use emoji for commit messages.
+To generate the typescript interface, after generating the schema
+files, run:
 
-### Pull Request
+```
+yarn --cwd ./types install --frozen-lockfile
+yarn --cwd ./types build
+yarn --cwd ./types codegen
+```
 
-When you're finished with the changes, create a pull request, also known as a PR.
+To do this you'll need [yarn](https://yarnpkg.com/) installed.
 
-- Don't forget to [link the PR to an issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue) if you are solving one.
-  Once you submit your PR, a team member will review your proposal. We may ask questions or request for additional information.
-- We may ask for changes to be made before a PR can be merged, either using [suggested changes](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/incorporating-feedback-in-your-pull-request) or pull request comments. You can apply suggested changes directly through the UI. You can make any other changes in your fork, then commit them to your branch.
-- As you update your PR and apply changes, mark each conversation as [resolved](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/commenting-on-a-pull-request#resolving-conversations).
-- If you run into any merge issues, checkout this [git tutorial](https://lab.github.com/githubtraining/managing-merge-conflicts) to help you resolve merge conflicts and other issues.
+## Deploying in a development environment
 
-### Your PR is merged!
+Build and deploy the contracts to a local chain running in Docker with:
 
-Congratulations :tada::tada: DAO DAO thanks you :sparkles:.
+```sh
+bash scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
+```
 
-Once your PR is merged, your contributions will be publicly visible.
+> Note: This Wasm account is from the [default
+> account](default-account.txt), which you can use for testing (DO NOT
+> store any real funds with this account). You can pass in any wasm
+> account address you want to use.
+
+This will run a chain locally in a docker container, then build and
+deploy the contracts to that chain.
+
+The script will output something like:
+
+```sh
+NEXT_PUBLIC_CW20_CODE_ID=1
+NEXT_PUBLIC_CW4GROUP_CODE_ID=2
+NEXT_PUBLIC_CWCORE_CODE_ID=7
+NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID=11
+NEXT_PUBLIC_CW4VOTING_CODE_ID=5
+NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID=4
+NEXT_PUBLIC_STAKECW20_CODE_ID=13
+NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=juno1zlmaky7753d2fneyhduwz0rn3u9ns8rse3tudhze8rc2g54w9ysqgjt23l
+NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS=juno1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucssml9ug
+```
+
+This output can be directly copy and pased into a `.env` file in the
+[DAO DAO UI](https://github.com/DA0-DA0/dao-dao-ui) for local
+development.
+
+Note, to send commands to the docker container:
+
+```sh
+docker exec -i cosmwasm junod status
+```
+
+Some commands require a password which defaults to `xxxxxxxxx`. You can use them like so:
+
+```sh
+echo xxxxxxxxx | docker exec -i cosmwasm  junod keys show validator -a
+```
