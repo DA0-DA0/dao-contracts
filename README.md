@@ -34,6 +34,20 @@ Security](https://github.com/oak-security/audit-reports/blob/2377ba8cfcfd505283c
 Information about our development workflow and how to contribute can
 be found in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
+## Testing
+
+### Unit tests
+
+Run `cargo t` or `cargo unit-test` from the project root to run the unit tests.
+
+### Integration tests
+
+* `./scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg`
+* `cd ci/integration_tests`
+* `CONTRACT_DIR="../../artifacts" GAS_OUT_DIR="gas_reports" CONFIG="configs/local.yaml" cargo t`
+
+See [ci/integration_tests/README.md](ci/integration_tests/README.md) for more information.
+
 ## Disclaimer
 
 DAO DAO TOOLING IS PROVIDED “AS IS”, AT YOUR OWN RISK, AND WITHOUT
