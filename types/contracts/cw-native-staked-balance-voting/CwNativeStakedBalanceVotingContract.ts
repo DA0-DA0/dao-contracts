@@ -106,6 +106,12 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
+  list_stakers: {
+    limit?: number | null;
+    start_after?: string | null;
+    [k: string]: unknown;
+  };
+} | {
   voting_power_at_height: {
     address: string;
     height?: number | null;
@@ -140,6 +146,13 @@ export interface CwNativeStakedBalanceVotingReadOnlyInterface {
   }: {
     address: string;
   }) => Promise<ClaimsResponse>;
+  listStakers: ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ListStakersResponse>;
   votingPowerAtHeight: ({
     address,
     height
@@ -164,6 +177,7 @@ export class CwNativeStakedBalanceVotingQueryClient implements CwNativeStakedBal
     this.dao = this.dao.bind(this);
     this.getConfig = this.getConfig.bind(this);
     this.claims = this.claims.bind(this);
+    this.listStakers = this.listStakers.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
     this.info = this.info.bind(this);
@@ -187,6 +201,20 @@ export class CwNativeStakedBalanceVotingQueryClient implements CwNativeStakedBal
     return this.client.queryContractSmart(this.contractAddress, {
       claims: {
         address
+      }
+    });
+  };
+  listStakers = async ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ListStakersResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_stakers: {
+        limit,
+        start_after: startAfter
       }
     });
   };
