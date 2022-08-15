@@ -110,6 +110,15 @@ export interface InstantiateMsg {
   unstaking_duration?: Duration | null;
   [k: string]: unknown;
 }
+export interface ListStakersResponse {
+  stakers: StakerBalanceResponse[];
+  [k: string]: unknown;
+}
+export interface StakerBalanceResponse {
+  address: string;
+  balance: Uint128;
+  [k: string]: unknown;
+}
 export type QueryMsg = {
   staked_balance_at_height: {
     address: string;

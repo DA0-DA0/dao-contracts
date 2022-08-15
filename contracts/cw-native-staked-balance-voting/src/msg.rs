@@ -63,7 +63,7 @@ pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub struct StakersListResponse {
+pub struct ListStakersResponse {
     pub stakers: Vec<StakerBalanceResponse>,
 }
 

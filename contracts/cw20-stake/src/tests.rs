@@ -1,8 +1,8 @@
 use std::borrow::BorrowMut;
 
 use crate::msg::{
-    ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse,
-    StakerBalanceResponse, StakersListResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+    ExecuteMsg, ListStakersResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+    StakedValueResponse, StakerBalanceResponse, TotalStakedAtHeightResponse, TotalValueResponse,
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
@@ -1109,7 +1109,7 @@ fn test_query_list_stakers() {
     .unwrap();
 
     // check first 2
-    let stakers: StakersListResponse = app
+    let stakers: ListStakersResponse = app
         .wrap()
         .query_wasm_smart(
             staking_addr.clone(),
@@ -1120,7 +1120,7 @@ fn test_query_list_stakers() {
         )
         .unwrap();
 
-    let test_res = StakersListResponse {
+    let test_res = ListStakersResponse {
         stakers: vec![
             StakerBalanceResponse {
                 address: "ekez1".to_string(),
@@ -1136,7 +1136,7 @@ fn test_query_list_stakers() {
     assert_eq!(stakers, test_res);
 
     // skip first and grab 2
-    let stakers: StakersListResponse = app
+    let stakers: ListStakersResponse = app
         .wrap()
         .query_wasm_smart(
             staking_addr,
@@ -1147,7 +1147,7 @@ fn test_query_list_stakers() {
         )
         .unwrap();
 
-    let test_res = StakersListResponse {
+    let test_res = ListStakersResponse {
         stakers: vec![
             StakerBalanceResponse {
                 address: "ekez2".to_string(),

@@ -1,5 +1,5 @@
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, Owner, QueryMsg, StakerBalanceResponse, StakersListResponse,
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, Owner, QueryMsg, StakerBalanceResponse,
 };
 use crate::state::Config;
 use cosmwasm_std::{coins, Addr, Coin, Empty, Uint128};
@@ -909,7 +909,7 @@ fn test_query_list_stakers() {
     stake_tokens(&mut app, addr.clone(), ADDR2, 50, DENOM).unwrap();
 
     // check entire result set
-    let stakers: StakersListResponse = app
+    let stakers: ListStakersResponse = app
         .wrap()
         .query_wasm_smart(
             addr.clone(),
@@ -920,7 +920,7 @@ fn test_query_list_stakers() {
         )
         .unwrap();
 
-    let test_res = StakersListResponse {
+    let test_res = ListStakersResponse {
         stakers: vec![
             StakerBalanceResponse {
                 address: ADDR1.to_string(),
@@ -936,7 +936,7 @@ fn test_query_list_stakers() {
     assert_eq!(stakers, test_res);
 
     // skipped 1, check result
-    let stakers: StakersListResponse = app
+    let stakers: ListStakersResponse = app
         .wrap()
         .query_wasm_smart(
             addr.clone(),
@@ -947,7 +947,7 @@ fn test_query_list_stakers() {
         )
         .unwrap();
 
-    let test_res = StakersListResponse {
+    let test_res = ListStakersResponse {
         stakers: vec![StakerBalanceResponse {
             address: ADDR2.to_string(),
             balance: Uint128::new(50),
@@ -957,7 +957,7 @@ fn test_query_list_stakers() {
     assert_eq!(stakers, test_res);
 
     // skipped 2, check result. should be nothing
-    let stakers: StakersListResponse = app
+    let stakers: ListStakersResponse = app
         .wrap()
         .query_wasm_smart(
             addr,
@@ -968,5 +968,5 @@ fn test_query_list_stakers() {
         )
         .unwrap();
 
-    assert_eq!(stakers, StakersListResponse { stakers: vec![] });
+    assert_eq!(stakers, ListStakersResponse { stakers: vec![] });
 }

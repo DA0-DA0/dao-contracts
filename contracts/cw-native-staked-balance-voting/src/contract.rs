@@ -11,8 +11,8 @@ use cw_utils::{must_pay, Duration};
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, MigrateMsg, Owner, QueryMsg, StakerBalanceResponse,
-    StakersListResponse,
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, Owner, QueryMsg,
+    StakerBalanceResponse,
 };
 use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
@@ -354,7 +354,7 @@ pub fn query_list_stakers(
         })
         .collect();
 
-    to_binary(&StakersListResponse { stakers })
+    to_binary(&ListStakersResponse { stakers })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

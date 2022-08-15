@@ -10,8 +10,8 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    ExecuteMsg, GetHooksResponse, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse, StakersListResponse,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
     TotalStakedAtHeightResponse, TotalValueResponse,
 };
 use crate::state::{
@@ -490,7 +490,7 @@ pub fn query_list_stakers(
         })
         .collect();
 
-    to_binary(&StakersListResponse { stakers })
+    to_binary(&ListStakersResponse { stakers })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

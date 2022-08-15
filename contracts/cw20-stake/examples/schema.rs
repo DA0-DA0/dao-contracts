@@ -8,7 +8,7 @@ use cw20::{
     TokenInfoResponse,
 };
 use cw20_stake::msg::{
-    ClaimsResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, QueryMsg,
+    ClaimsResponse, ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, QueryMsg,
     StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,
 };
@@ -34,6 +34,7 @@ fn main() {
     export_schema(&schema_for!(TokenInfoResponse), &out_dir);
     export_schema(&schema_for!(AllAllowancesResponse), &out_dir);
     export_schema(&schema_for!(AllAccountsResponse), &out_dir);
+    export_schema(&schema_for!(ListStakersResponse), &out_dir);
 
     // Need to rename so it matches the TS pattern
     export_schema_with_title(&schema_for!(Config), &out_dir, "GetConfigResponse");
