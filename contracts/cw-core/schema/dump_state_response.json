@@ -17,7 +17,7 @@
     "active_proposal_module_count": {
       "description": "The number of active proposal modules.",
       "type": "integer",
-      "format": "uint64",
+      "format": "uint32",
       "minimum": 0.0
     },
     "admin": {
@@ -49,7 +49,7 @@
     "total_proposal_module_count": {
       "description": "The total number of proposal modules.",
       "type": "integer",
-      "format": "uint64",
+      "format": "uint32",
       "minimum": 0.0
     },
     "version": {
@@ -98,7 +98,10 @@
         },
         "image_url": {
           "description": "An optional image URL for displaying alongside the contract.",
-          "type": ["string", "null"]
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "name": {
           "description": "The name of the contract.",
@@ -108,7 +111,10 @@
     },
     "ContractVersion": {
       "type": "object",
-      "required": ["contract", "version"],
+      "required": [
+        "contract",
+        "version"
+      ],
       "properties": {
         "contract": {
           "description": "contract is the crate name of the implementing contract, eg. `crate:cw20-base` we will use other prefixes for other languages, and their standard global namespacing",
@@ -126,7 +132,9 @@
         {
           "description": "AtHeight will expire when `env.block.height` >= height",
           "type": "object",
-          "required": ["at_height"],
+          "required": [
+            "at_height"
+          ],
           "properties": {
             "at_height": {
               "type": "integer",
@@ -139,7 +147,9 @@
         {
           "description": "AtTime will expire when `env.block.time` >= time",
           "type": "object",
-          "required": ["at_time"],
+          "required": [
+            "at_time"
+          ],
           "properties": {
             "at_time": {
               "$ref": "#/definitions/Timestamp"
@@ -150,7 +160,9 @@
         {
           "description": "Never will never expire. Used to express the empty variant",
           "type": "object",
-          "required": ["never"],
+          "required": [
+            "never"
+          ],
           "properties": {
             "never": {
               "type": "object"
@@ -165,11 +177,15 @@
       "oneOf": [
         {
           "type": "object",
-          "required": ["Paused"],
+          "required": [
+            "Paused"
+          ],
           "properties": {
             "Paused": {
               "type": "object",
-              "required": ["expiration"],
+              "required": [
+                "expiration"
+              ],
               "properties": {
                 "expiration": {
                   "$ref": "#/definitions/Expiration"
@@ -181,7 +197,9 @@
         },
         {
           "type": "object",
-          "required": ["Unpaused"],
+          "required": [
+            "Unpaused"
+          ],
           "properties": {
             "Unpaused": {
               "type": "object"
@@ -194,7 +212,11 @@
     "ProposalModule": {
       "description": "Top level type describing a proposal module.",
       "type": "object",
-      "required": ["address", "prefix", "status"],
+      "required": [
+        "address",
+        "prefix",
+        "status"
+      ],
       "properties": {
         "address": {
           "description": "The address of the proposal module.",
@@ -221,7 +243,10 @@
     "ProposalModuleStatus": {
       "description": "The status of a proposal module.",
       "type": "string",
-      "enum": ["Enabled", "Disabled"]
+      "enum": [
+        "Enabled",
+        "Disabled"
+      ]
     },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",

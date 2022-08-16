@@ -2,11 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-<<<<<<< HEAD
     Response, StdError, StdResult, SubMsg,
-=======
-    Response, StdResult, SubMsg,
->>>>>>> jchalam/timestampMigration
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Map;
@@ -193,11 +189,7 @@ pub fn execute_proposal_hook(
         .ok_or(ContractError::Unauthorized {})?;
 
     // Check that the message has come from an active module
-<<<<<<< HEAD
     if module.status != ProposalModuleStatus::Enabled {
-=======
-    if module.status == ProposalModuleStatus::Disabled {
->>>>>>> jchalam/timestampMigration
         return Err(ContractError::ModuleAlreadyDisabled { address: sender });
     }
 
@@ -335,10 +327,7 @@ pub fn execute_update_proposal_modules(
         return Err(ContractError::Unauthorized {});
     }
 
-<<<<<<< HEAD
-    let disable_count = to_disable.len() as u64;
-=======
->>>>>>> jchalam/timestampMigration
+    let disable_count = to_disable.len() as u32;
     for addr in to_disable {
         let addr = deps.api.addr_validate(&addr)?;
         let mut module = PROPOSAL_MODULES
@@ -353,19 +342,6 @@ pub fn execute_update_proposal_modules(
             });
         }
 
-<<<<<<< HEAD
-=======
-        // If disabling this module will cause there to be no active modules, return error.
-        // We don't check the active count before disabling because there may erroneously be
-        // modules in to_disable which are already disabled.
-        ACTIVE_PROPOSAL_MODULE_COUNT.update(deps.storage, |count| {
-            if count <= 1 && to_add.is_empty() {
-                return Err(ContractError::NoActiveProposalModules {});
-            }
-            Ok(count - 1)
-        })?;
-
->>>>>>> jchalam/timestampMigration
         module.status = ProposalModuleStatus::Disabled {};
         PROPOSAL_MODULES.save(deps.storage, addr, &module)?;
     }
@@ -607,11 +583,8 @@ pub fn query_proposal_modules(
     )?)
 }
 
-<<<<<<< HEAD
 /// Note: this is not gas efficient as we need to potentially visit all modules in order to
 /// filter out the modules with active status.  
-=======
->>>>>>> jchalam/timestampMigration
 pub fn query_active_proposal_modules(
     deps: Deps,
     start_after: Option<String>,
@@ -792,11 +765,7 @@ pub fn query_cw20_balances(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
-<<<<<<< HEAD
         MigrateMsg::FromV1 {} => {
-=======
-        MigrateMsg::FromBeta {} => {
->>>>>>> jchalam/timestampMigration
             let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
             let current_keys = current_map
                 .keys(deps.storage, None, None, Order::Ascending)
@@ -809,11 +778,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                     let prefix = derive_proposal_module_prefix(idx)?;
                     let proposal_module = &ProposalModule {
                         address: address.clone(),
-<<<<<<< HEAD
                         status: ProposalModuleStatus::Enabled {},
-=======
-                        status: ProposalModuleStatus::Active {},
->>>>>>> jchalam/timestampMigration
                         prefix,
                     };
                     PROPOSAL_MODULES.save(deps.storage, address, proposal_module)?;
@@ -831,39 +796,20 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         PROPOSAL_MODULE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let prop_module_addr = deps.api.addr_validate(&res.contract_address)?;
-<<<<<<< HEAD
             let total_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
-=======
-            let total_module_count = TOTAL_PROPOSAL_MODULE_COUNT
-                .may_load(deps.storage)?
-                .unwrap_or(0);
->>>>>>> jchalam/timestampMigration
 
             let prefix = derive_proposal_module_prefix(total_module_count as usize)?;
             let prop_module = ProposalModule {
                 address: prop_module_addr.clone(),
-<<<<<<< HEAD
                 status: ProposalModuleStatus::Enabled,
-=======
-                status: ProposalModuleStatus::Active,
->>>>>>> jchalam/timestampMigration
                 prefix,
             };
 
             PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &prop_module)?;
 
             // Save active and total proposal module counts.
-<<<<<<< HEAD
             ACTIVE_PROPOSAL_MODULE_COUNT
                 .update::<_, StdError>(deps.storage, |count| Ok(count + 1))?;
-=======
-            let active_count = ACTIVE_PROPOSAL_MODULE_COUNT
-                .may_load(deps.storage)?
-                .unwrap_or(0)
-                + 1;
-
-            ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &active_count)?;
->>>>>>> jchalam/timestampMigration
             TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &(total_module_count + 1))?;
 
             Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))

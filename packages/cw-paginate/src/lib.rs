@@ -97,9 +97,15 @@ where
     K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
+
     let items = map
-        .range(deps.storage, start_after.map(Bound::exclusive), None, order)
+        .range(deps.storage, range_min, range_max, order)
         .map(|kv| Ok(kv?.1));
+
     match limit {
         Some(limit) => Ok(items
             .take(limit.try_into().unwrap())

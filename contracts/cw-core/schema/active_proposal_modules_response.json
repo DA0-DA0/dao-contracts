@@ -13,7 +13,11 @@
     "ProposalModule": {
       "description": "Top level type describing a proposal module.",
       "type": "object",
-      "required": ["address", "prefix", "status"],
+      "required": [
+        "address",
+        "prefix",
+        "status"
+      ],
       "properties": {
         "address": {
           "description": "The address of the proposal module.",
@@ -40,7 +44,10 @@
     "ProposalModuleStatus": {
       "description": "The status of a proposal module.",
       "type": "string",
-      "enum": ["Enabled", "Disabled"]
+      "enum": [
+        "Enabled",
+        "Disabled"
+      ]
     }
   }
 }

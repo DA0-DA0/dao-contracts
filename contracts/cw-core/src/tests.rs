@@ -148,12 +148,12 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
 
     assert_eq!(state.proposal_modules.len(), n);
 
-    assert_eq!(state.active_proposal_module_count, n as u64);
-    assert_eq!(state.total_proposal_module_count, n as u64);
+    assert_eq!(state.active_proposal_module_count, n as u32);
+    assert_eq!(state.total_proposal_module_count, n as u32);
 }
 
 #[test]
-#[should_panic(expected = "Execution would result in no governance modules being active.")]
+#[should_panic(expected = "Execution would result in no proposal modules being active.")]
 fn test_instantiate_with_zero_gov_modules() {
     test_instantiate_with_n_gov_modules(0)
 }
@@ -315,7 +315,7 @@ fn test_update_config() {
     assert_eq!(expected_config, config)
 }
 
-fn test_swap_governance(swaps: Vec<(u64, u64)>) {
+fn test_swap_governance(swaps: Vec<(u32, u32)>) {
     let mut app = App::default();
     let propmod_id = app.store_code(sudo_proposal_contract());
     let core_id = app.store_code(cw_core_contract());
@@ -419,8 +419,8 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
         let finish_modules_active = get_active_modules(&app, gov_addr.clone());
 
         assert_eq!(
-            finish_modules_active.len() as u64,
-            start_modules_active.len() as u64 + add - remove
+            finish_modules_active.len() as u32,
+            start_modules_active.len() as u32 + add - remove
         );
         for module in start_modules
             .clone()
@@ -438,12 +438,12 @@ fn test_swap_governance(swaps: Vec<(u64, u64)>) {
 
         assert_eq!(
             state.active_proposal_module_count,
-            finish_modules_active.len() as u64
+            finish_modules_active.len() as u32
         );
 
         assert_eq!(
             state.total_proposal_module_count,
-            start_modules.len() as u64 + add
+            start_modules.len() as u32 + add
         )
     }
 }
@@ -460,7 +460,7 @@ fn test_add_then_remove_governance() {
 }
 
 #[test]
-#[should_panic(expected = "Execution would result in no governance modules being active.")]
+#[should_panic(expected = "Execution would result in no proposal modules being active.")]
 fn test_swap_governance_bad() {
     test_swap_governance(vec![(1, 1), (0, 1)])
 }
