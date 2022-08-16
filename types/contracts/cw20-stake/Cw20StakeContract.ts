@@ -110,6 +110,15 @@ export interface InstantiateMsg {
   unstaking_duration?: Duration | null;
   [k: string]: unknown;
 }
+export interface ListStakersResponse {
+  stakers: StakerBalanceResponse[];
+  [k: string]: unknown;
+}
+export interface StakerBalanceResponse {
+  address: string;
+  balance: Uint128;
+  [k: string]: unknown;
+}
 export type QueryMsg = {
   staked_balance_at_height: {
     address: string;
@@ -141,6 +150,12 @@ export type QueryMsg = {
   };
 } | {
   get_hooks: {
+    [k: string]: unknown;
+  };
+} | {
+  list_stakers: {
+    limit?: number | null;
+    start_after?: string | null;
     [k: string]: unknown;
   };
 };
@@ -196,6 +211,13 @@ export interface Cw20StakeReadOnlyInterface {
     address: string;
   }) => Promise<ClaimsResponse>;
   getHooks: () => Promise<GetHooksResponse>;
+  listStakers: ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ListStakersResponse>;
 }
 export class Cw20StakeQueryClient implements Cw20StakeReadOnlyInterface {
   client: CosmWasmClient;
@@ -211,6 +233,7 @@ export class Cw20StakeQueryClient implements Cw20StakeReadOnlyInterface {
     this.getConfig = this.getConfig.bind(this);
     this.claims = this.claims.bind(this);
     this.getHooks = this.getHooks.bind(this);
+    this.listStakers = this.listStakers.bind(this);
   }
 
   stakedBalanceAtHeight = async ({
@@ -273,6 +296,20 @@ export class Cw20StakeQueryClient implements Cw20StakeReadOnlyInterface {
   getHooks = async (): Promise<GetHooksResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       get_hooks: {}
+    });
+  };
+  listStakers = async ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ListStakersResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_stakers: {
+        limit,
+        start_after: startAfter
+      }
     });
   };
 }

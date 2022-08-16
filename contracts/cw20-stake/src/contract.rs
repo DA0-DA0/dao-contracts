@@ -10,9 +10,9 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    ExecuteMsg, GetHooksResponse, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
-    TotalValueResponse,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
+    ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
+    TotalStakedAtHeightResponse, TotalValueResponse,
 };
 use crate::state::{
     Config, BALANCE, CLAIMS, CONFIG, HOOKS, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
@@ -388,6 +388,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalValue {} => to_binary(&query_total_value(deps, env)?),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetHooks {} => to_binary(&query_hooks(deps)?),
+        QueryMsg::ListStakers { start_after, limit } => {
+            query_list_stakers(deps, start_after, limit)
+        }
     }
 }
 
@@ -460,6 +463,34 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
     Ok(GetHooksResponse {
         hooks: HOOKS.query_hooks(deps)?.hooks,
     })
+}
+
+pub fn query_list_stakers(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let start_at = start_after
+        .map(|addr| deps.api.addr_validate(&addr))
+        .transpose()?;
+
+    let stakers = cw_paginate::paginate_snapshot_map(
+        deps,
+        &STAKED_BALANCES,
+        start_at.as_ref(),
+        limit,
+        cosmwasm_std::Order::Ascending,
+    )?;
+
+    let stakers = stakers
+        .into_iter()
+        .map(|(address, balance)| StakerBalanceResponse {
+            address: address.into_string(),
+            balance,
+        })
+        .collect();
+
+    to_binary(&ListStakersResponse { stakers })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
