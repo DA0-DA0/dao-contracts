@@ -117,8 +117,13 @@ jobs:
     steps:
       # TODO: Make this just not diff if we can't download this file because there hasnt been a commit in 90 days
       - name: Download main gas usage
-        uses: actions/download-artifact@v3
+        # NOTE: We can't use `actions/download-artifact` because it doesnt support
+        # downloading an artifact from the main workflow yet
+        # https://github.com/actions/download-artifact/issues/3
+        uses: dawidd6/action-download-artifact@v2
         with:
+          branch: main
+          workflow: integration_tests.yml
           name: dao-dao-gas-report-refs-heads-main
           path: ci/integration_tests/main_gas_report.json
       - name: Post gas diff to PR
