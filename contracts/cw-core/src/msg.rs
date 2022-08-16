@@ -214,6 +214,6 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum MigrateMsg {
-    FromBeta,
+    FromV1,
     FromCompatible,
 }

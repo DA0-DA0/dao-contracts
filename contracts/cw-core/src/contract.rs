@@ -765,7 +765,7 @@ pub fn query_cw20_balances(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
-        MigrateMsg::FromBeta {} => {
+        MigrateMsg::FromV1 {} => {
             let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
             let current_keys = current_map
                 .keys(deps.storage, None, None, Order::Ascending)
