@@ -116,7 +116,7 @@ jobs:
     if: github.ref != 'refs/heads/main'
     steps:
       # TODO: Make this just not diff if we can't download this file because there hasnt been a commit in 90 days
-      - name: Download main gas usage
+      - name: Download main gas report
         # NOTE: We can't use `actions/download-artifact` because it doesnt support
         # downloading an artifact from the main workflow yet
         # https://github.com/actions/download-artifact/issues/3
@@ -125,6 +125,11 @@ jobs:
           branch: main
           workflow: integration_tests.yml
           name: dao-dao-gas-report-refs-heads-main
+      - name: Download current gas report
+        uses: actions/download-artifact@v3
+        with:
+          name: dao-dao-contract-artifacts-${{ github.event.number }}
+          path: ci/integration_tests
       - name: Post gas diff to PR
         uses: de-husk/cosm-orc-gas-diff-action@v0.6
         with:
