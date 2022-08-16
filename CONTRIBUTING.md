@@ -55,24 +55,66 @@ From the repository root.
 Before making a PR, you'll need to do two things to get CI passing:
 
 1. Generate schema files for the contracts.
-2. Generate typescript interfaces from those schemas.
+2. Generate Typescript interfaces from those schemas.
 
-To generate schema files, run:
+### Generating schema files
+
+We generate JSON schema files for all of our contracts' query and
+execute messages. We use those schema files to generate Typescript
+code for interacting with those contracts via
+[ts-codegen](https://github.com/CosmWasm/ts-codegen). This generated
+Typescript code is then [used in the
+UI](https://github.com/DA0-DA0/dao-dao-ui/tree/40f3cbfe676a98bf7b9db7b646e74e5b2dae4502/packages/state/clients)
+to interact with our contracts. Generating this code means that
+frontend developers don't have to manually write query and execute
+messages for each method on our contracts.
+
+To make sure these files are generated correctly, make sure to add any
+new data types used in contract messages to `examples/schema.rs`.
+
+If you are adding a new query, ts-codegen expects:
+
+1. There is a corresponding query response type exported from
+   `examples/schema.rs` for that contract.
+2. The query response has a name in the form `<queryName>Response`.
+
+For example, if you added a `ListStakers {}` query, you'd also need to
+make sure to export a type from the schema file called
+`ListStakersResponse`.
+
+Most of the time, this will just be a struct with the same
+name. Occasionally though you may have queries that return types like
+`Vec<Addr>`. In these cases you'll still need to export a type from
+the schema file for this. You can do so with:
+
+```rust
+export_schema_with_title(&schema_for!(Vec<Addr>), &out_dir, "Cw20TokenListResponse");
+```
+
+Once you have exported these types, you can generate schema files for
+all the contracts by running:
 
 ```
-./scripts/schema.sh
+bash scripts/schema.sh
 ```
 
-To generate the typescript interface, after generating the schema
+### Generating the Typescript interface
+
+To generate the Typescript interface, after generating the schema
 files, run:
 
 ```
+rm -rf types/contracts # Clear out any old or invalid state.
 yarn --cwd ./types install --frozen-lockfile
 yarn --cwd ./types build
 yarn --cwd ./types codegen
 ```
 
 To do this you'll need [yarn](https://yarnpkg.com/) installed.
+
+If you get errors complaining about a missing query response type it
+is likely because you forgot to export that type from
+`examples/schema.rs` for that contract.
 
 ## Deploying in a development environment
 
