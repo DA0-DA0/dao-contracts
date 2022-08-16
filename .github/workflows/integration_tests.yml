@@ -125,10 +125,12 @@ jobs:
           branch: main
           workflow: integration_tests.yml
           name: dao-dao-gas-report-refs-heads-main
+      - name: Set GIT_BRANCH
+        run: echo "GIT_BRANCH=$(echo ${{ github.ref }} | sed 's|/|-|g')" >> $GITHUB_ENV
       - name: Download current gas report
         uses: actions/download-artifact@v3
         with:
-          name: dao-dao-contract-artifacts-${{ github.event.number }}
+          name: dao-dao-gas-report-${{ env.GIT_BRANCH }}
           path: ci/integration_tests
       - name: Post gas diff to PR
         uses: de-husk/cosm-orc-gas-diff-action@v0.6
