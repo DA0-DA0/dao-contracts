@@ -69,6 +69,7 @@ pub const PAUSED: Item<Expiration> = Item::new("paused");
 pub const VOTING_MODULE: Item<Addr> = Item::new("voting_module");
 
 /// The proposal modules associated with this contract.
+<<<<<<< HEAD
 /// When we change the data format of this map, we update the key (previously "proposal_modules")
 /// to create a new namespace for the changed state.
 pub const PROPOSAL_MODULES: Map<Addr, ProposalModule> = Map::new("proposal_modules_v1");
@@ -78,6 +79,15 @@ pub const ACTIVE_PROPOSAL_MODULE_COUNT: Item<u32> = Item::new("active_proposal_m
 
 /// The count of total proposal modules associated with this contract.
 pub const TOTAL_PROPOSAL_MODULE_COUNT: Item<u32> = Item::new("total_proposal_module_count");
+=======
+pub const PROPOSAL_MODULES: Map<Addr, ProposalModule> = Map::new("proposal_modules_v1");
+
+/// The count of active proposal modules associated with this contract.
+pub const ACTIVE_PROPOSAL_MODULE_COUNT: Item<u64> = Item::new("active_proposal_module_count");
+
+/// The count of total proposal modules associated with this contract.
+pub const TOTAL_PROPOSAL_MODULE_COUNT: Item<u64> = Item::new("total_proposal_module_count");
+>>>>>>> jchalam/timestampMigration
 
 // General purpose KV store for DAO associated state.
 pub const ITEMS: Map<String, String> = Map::new("items");

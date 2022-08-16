@@ -2513,7 +2513,7 @@ fn test_migrate_from_beta() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: core_addr.to_string(),
             new_code_id: gov_id,
-            msg: to_binary(&MigrateMsg::FromBeta {}).unwrap(),
+            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
         }),
     )
     .unwrap();
@@ -2535,7 +2535,7 @@ fn test_migrate_from_beta() {
 #[test]
 fn test_migrate_mock() {
     let mut deps = mock_dependencies();
-    let msg = MigrateMsg::FromBeta {};
+    let msg = MigrateMsg::FromV1 {};
     let env = mock_env();
 
     // Write to storage in old proposal module format

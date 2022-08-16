@@ -1,18 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, SubMsg, WasmMsg,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdResult, Storage, SubMsg, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
-use cw_storage_plus::Bound;
-use cw_utils::Duration;
+use cw_storage_plus::{Bound, Map};
+use cw_utils::{Duration, Expiration};
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use vote_hooks::new_vote_hooks;
 
-use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
+use voting::deposit::{get_deposit_msg, get_return_deposit_msg, CheckedDepositInfo, DepositInfo};
 use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
 use voting::reply::{mask_proposal_execution_proposal_id, TaggedReplyId};
 use voting::status::Status;
@@ -722,9 +724,71 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Don't do any state migrations.
-    Ok(Response::default())
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    /// This is proposal version is from commit e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID 427.
+    #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+    struct V1Proposal {
+        pub title: String,
+        pub description: String,
+        pub proposer: Addr,
+        pub start_height: u64,
+        pub min_voting_period: Option<Expiration>,
+        pub expiration: Expiration,
+        pub threshold: Threshold,
+        pub total_power: Uint128,
+        pub msgs: Vec<CosmosMsg<Empty>>,
+        pub status: Status,
+        pub votes: Votes,
+        pub allow_revoting: bool,
+        pub deposit_info: Option<CheckedDepositInfo>,
+    }
+
+    match msg {
+        MigrateMsg::FromV1 {} => {
+            // Retrieve current map from storage
+            let current_map: Map<u64, V1Proposal> = Map::new("proposals");
+            let current = current_map
+                .range(deps.storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<(u64, V1Proposal)>>>()?;
+
+            // Add migrated entries to new map.
+            // Based on gas usage testing, we estimate that we will be able to migrate ~4200
+            // proposals at a time before reaching the block max_gas limit.
+            current
+                .into_iter()
+                .try_for_each::<_, StdResult<()>>(|(id, prop)| {
+                    let migrated_proposal = SingleChoiceProposal {
+                        title: prop.title,
+                        description: prop.description,
+                        proposer: prop.proposer,
+                        start_height: prop.start_height,
+                        min_voting_period: prop.min_voting_period,
+                        expiration: prop.expiration,
+                        threshold: prop.threshold,
+                        total_power: prop.total_power,
+                        msgs: prop.msgs,
+                        status: prop.status,
+                        votes: prop.votes,
+                        allow_revoting: prop.allow_revoting,
+                        deposit_info: prop.deposit_info,
+                        // Cosmwasm does not expose a way to query the timestamp
+                        // of a block given block height. As such, we assign migrated
+                        // proposals a created timestamp of 0 so that the frontend may
+                        // query for the true timestamp given `start_height`.
+                        created: Timestamp::from_seconds(0),
+                        last_updated: env.block.time,
+                    };
+
+                    PROPOSALS.save(deps.storage, id, &migrated_proposal)?;
+
+                    Ok(())
+                })?;
+
+            Ok(Response::default())
+        }
+
+        MigrateMsg::FromCompatible {} => Ok(Response::default()),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

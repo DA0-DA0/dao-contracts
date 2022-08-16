@@ -57,6 +57,7 @@ export type Expiration = {
 };
 export type Timestamp = Uint64;
 export type Uint64 = string;
+export type ProposalModuleStatus = "Active" | "Disabled";
 export interface DumpStateResponse {
   active_proposal_module_count: number;
   admin: Addr;
@@ -74,6 +75,12 @@ export interface Config {
   description: string;
   image_url?: string | null;
   name: string;
+  [k: string]: unknown;
+}
+export interface ProposalModule {
+  address: Addr;
+  prefix: string;
+  status: ProposalModuleStatus;
   [k: string]: unknown;
 }
 export interface ContractVersion {
@@ -365,7 +372,11 @@ export interface InitialItem {
 }
 export type ListItemsResponse = string[];
 export type MigrateMsg = "FromBeta" | "FromCompatible";
+<<<<<<< HEAD
 export type ProposalModulesResponse = ProposalModule[];
+=======
+export type ProposalModulesResponse = Addr[];
+>>>>>>> jchalam/timestampMigration
 export type QueryMsg = {
   admin: {
     [k: string]: unknown;
