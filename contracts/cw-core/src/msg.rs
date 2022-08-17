@@ -213,7 +213,8 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum MigrateMsg {
-    FromV1,
-    FromCompatible,
+    FromV1 {},
+    FromCompatible {},
 }

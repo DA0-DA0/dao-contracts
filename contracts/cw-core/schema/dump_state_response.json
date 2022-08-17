@@ -17,7 +17,7 @@
     "active_proposal_module_count": {
       "description": "The number of active proposal modules.",
       "type": "integer",
-      "format": "uint32",
+      "format": "uint64",
       "minimum": 0.0
     },
     "admin": {
@@ -49,7 +49,7 @@
     "total_proposal_module_count": {
       "description": "The total number of proposal modules.",
       "type": "integer",
-      "format": "uint32",
+      "format": "uint64",
       "minimum": 0.0
     },
     "version": {
@@ -244,7 +244,7 @@
       "description": "The status of a proposal module.",
       "type": "string",
       "enum": [
-        "Enabled",
+        "Active",
         "Disabled"
       ]
     },
