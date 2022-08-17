@@ -584,7 +584,7 @@ pub fn query_proposal_modules(
 }
 
 /// Note: this is not gas efficient as we need to potentially visit all modules in order to
-/// filter out the modules with active status.  
+/// filter out the modules with active status.
 pub fn query_active_proposal_modules(
     deps: Deps,
     start_after: Option<String>,

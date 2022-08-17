@@ -4887,7 +4887,7 @@ fn test_timestamp_updated() {
         ]),
     );
 
-    let governance_modules: Vec<Addr> = app
+    let governance_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
             governance_addr,
@@ -4898,7 +4898,7 @@ fn test_timestamp_updated() {
         )
         .unwrap();
 
-    let govmod_single = governance_modules.into_iter().next().unwrap();
+    let govmod_single = governance_modules.into_iter().next().unwrap().address;
 
     let options = vec![
         MultipleChoiceOption {
