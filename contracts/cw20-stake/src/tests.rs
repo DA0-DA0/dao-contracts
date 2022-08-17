@@ -2,8 +2,9 @@ use std::borrow::BorrowMut;
 
 use crate::contract::migrate;
 use crate::msg::{
-    ExecuteMsg, MigrateMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-    StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+    ExecuteMsg, ListStakersResponse, MigrateMsg, QueryMsg, ReceiveMsg,
+    StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
+    TotalStakedAtHeightResponse, TotalValueResponse,
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
