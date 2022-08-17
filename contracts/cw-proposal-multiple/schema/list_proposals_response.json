@@ -571,8 +571,10 @@
       "required": [
         "allow_revoting",
         "choices",
+        "created",
         "description",
         "expiration",
+        "last_updated",
         "proposer",
         "start_height",
         "status",
@@ -591,6 +593,14 @@
             "$ref": "#/definitions/CheckedMultipleChoiceOption"
           }
         },
+        "created": {
+          "description": "The timestamp at which this proposal was created.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Timestamp"
+            }
+          ]
+        },
         "deposit_info": {
           "description": "Information about the deposit that was sent as part of this proposal. None if no deposit.",
           "anyOf": [
@@ -607,6 +617,14 @@
         },
         "expiration": {
           "$ref": "#/definitions/Expiration"
+        },
+        "last_updated": {
+          "description": "The timestamp at which this proposal's status last changed. Note that in the scenario when a proposal expires and passes upon expiration, this field will not be updated because it can only update upon actions on the contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Timestamp"
+            }
+          ]
         },
         "min_voting_period": {
           "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",

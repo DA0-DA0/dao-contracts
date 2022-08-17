@@ -46,7 +46,9 @@ pub struct SingleChoiceProposal {
     pub deposit_info: Option<CheckedDepositInfo>,
     /// The timestamp at which this proposal was created.
     pub created: Timestamp,
-    /// The timestamp at which this proposal's status last changed (e.g. Passed, Executed).
+    /// The timestamp at which this proposal's status last changed. Note that in the scenario when
+    /// a proposal expires and passes upon expiration, this field will not be updated because it can only update
+    /// upon actions on the contract.
     pub last_updated: Timestamp,
 }
 
