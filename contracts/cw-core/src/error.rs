@@ -47,4 +47,7 @@ pub enum ContractError {
 
     #[error("Proposal module with address ({address}) is already disabled.")]
     ModuleAlreadyDisabled { address: Addr },
+
+    #[error("Proposal module with address is disabled and cannot execute messages.")]
+    ModuleDisabledCannotExecute { address: Addr },
 }

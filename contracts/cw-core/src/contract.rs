@@ -190,7 +190,7 @@ pub fn execute_proposal_hook(
 
     // Check that the message has come from an active module
     if module.status != ProposalModuleStatus::Enabled {
-        return Err(ContractError::ModuleAlreadyDisabled { address: sender });
+        return Err(ContractError::ModuleDisabledCannotExecute { address: sender });
     }
 
     Ok(Response::default()
