@@ -354,7 +354,15 @@ export interface ListVotesResponse {
   votes: VoteInfo[];
   [k: string]: unknown;
 }
-export type MigrateMsg = "FromV1" | "FromCompatible";
+export type MigrateMsg = {
+  from_v1: {
+    [k: string]: unknown;
+  };
+} | {
+  from_compatible: {
+    [k: string]: unknown;
+  };
+};
 export type ProposalCountResponse = number;
 export interface ProposalHooksResponse {
   hooks: string[];

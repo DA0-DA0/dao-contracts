@@ -364,7 +364,15 @@ export interface InitialItem {
   [k: string]: unknown;
 }
 export type ListItemsResponse = string[];
-export type MigrateMsg = "FromV1" | "FromCompatible";
+export type MigrateMsg = {
+  from_v1: {
+    [k: string]: unknown;
+  };
+} | {
+  from_compatible: {
+    [k: string]: unknown;
+  };
+};
 export type ProposalModulesResponse = ProposalModule[];
 export type QueryMsg = {
   admin: {
