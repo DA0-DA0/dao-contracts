@@ -1,13 +1,15 @@
 use std::borrow::BorrowMut;
 
+use crate::contract::migrate;
 use crate::msg::{
-    ExecuteMsg, ListStakersResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
-    StakedValueResponse, StakerBalanceResponse, TotalStakedAtHeightResponse, TotalValueResponse,
+    ExecuteMsg, ListStakersResponse, MigrateMsg, QueryMsg, ReceiveMsg,
+    StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
+    TotalStakedAtHeightResponse, TotalValueResponse,
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
+use cosmwasm_std::{from_slice, to_binary, Addr, Empty, MessageInfo, Storage, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 
@@ -17,6 +19,7 @@ use anyhow::Result as AnyResult;
 
 use cw_controllers::{Claim, ClaimsResponse};
 use cw_utils::Expiration::AtHeight;
+use serde::{Deserialize, Serialize};
 
 const ADDR1: &str = "addr0001";
 const ADDR2: &str = "addr0002";
@@ -28,7 +31,8 @@ pub fn contract_staking() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
-    );
+    )
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -86,7 +90,7 @@ fn instantiate_staking(app: &mut App, cw20: Addr, unstaking_duration: Option<Dur
         &msg,
         &[],
         "staking",
-        None,
+        Some("admin".to_string()),
     )
     .unwrap()
 }
@@ -385,6 +389,42 @@ fn test_update_config() {
     .downcast()
     .unwrap();
     assert_eq!(err, ContractError::Unauthorized {})
+}
+
+#[test]
+fn test_migrate_from_beta() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let token_address = Addr::unchecked("token_address");
+
+    // Write to storage in old config format
+    let key = b"config";
+    #[derive(Serialize, Deserialize, Clone)]
+    struct BetaConfig {
+        pub admin: Addr,
+        pub token_address: Addr,
+        pub unstaking_duration: Option<Duration>,
+    }
+    let beta_config = BetaConfig {
+        admin: Addr::unchecked("beta_admin"),
+        token_address: token_address.clone(),
+        unstaking_duration: None,
+    };
+
+    deps.storage.set(key, &to_binary(&beta_config).unwrap());
+
+    let migrate_msg = MigrateMsg::FromBeta {
+        manager: Some("new_manager".to_string()),
+    };
+
+    migrate(deps.as_mut(), env, migrate_msg).unwrap();
+
+    let config_bytes = deps.storage.get(key).unwrap();
+    let config: Config = from_slice(&config_bytes).unwrap();
+    assert_eq!(config.owner, Some(Addr::unchecked("beta_admin")));
+    assert_eq!(config.manager, Some(Addr::unchecked("new_manager")));
+    assert_eq!(config.unstaking_duration, None);
+    assert_eq!(config.token_address, token_address)
 }
 
 #[test]

@@ -142,7 +142,7 @@ pub enum ExecuteMsg {
     /// install them.
     UpdateProposalModules {
         to_add: Vec<ModuleInstantiateInfo>,
-        to_remove: Vec<String>,
+        to_disable: Vec<String>,
     },
     /// Callable by the core contract. Replaces the current
     /// voting module with a new one instantiated by the governance
@@ -194,9 +194,15 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Gets the proposal modules assocaited with the
-    /// contract. Returns Vec<Addr>.
+    /// Gets all proposal modules associated with the
+    /// contract. Returns Vec<ProposalModule>.
     ProposalModules {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// Gets the active proposal modules associated with the
+    /// contract. Returns Vec<ProposalModule>.
+    ActiveProposalModules {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -207,4 +213,8 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct MigrateMsg {}
+#[serde(rename_all = "snake_case")]
+pub enum MigrateMsg {
+    FromV1 {},
+    FromCompatible {},
+}

@@ -7,6 +7,14 @@
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
 export type Addr = string;
+export type ProposalModuleStatus = "Enabled" | "Disabled";
+export type ActiveProposalModulesResponse = ProposalModule[];
+export interface ProposalModule {
+  address: Addr;
+  prefix: string;
+  status: ProposalModuleStatus;
+  [k: string]: unknown;
+}
 export interface AdminNominationResponse {
   nomination?: Addr | null;
   [k: string]: unknown;
@@ -50,10 +58,12 @@ export type Expiration = {
 export type Timestamp = Uint64;
 export type Uint64 = string;
 export interface DumpStateResponse {
+  active_proposal_module_count: number;
   admin: Addr;
   config: Config;
   pause_info: PauseInfoResponse;
-  proposal_modules: Addr[];
+  proposal_modules: ProposalModule[];
+  total_proposal_module_count: number;
   version: ContractVersion;
   voting_module: Addr;
   [k: string]: unknown;
@@ -134,7 +144,7 @@ export type ExecuteMsg = {
 } | {
   update_proposal_modules: {
     to_add: ModuleInstantiateInfo[];
-    to_remove: string[];
+    to_disable: string[];
     [k: string]: unknown;
   };
 } | {
@@ -332,7 +342,6 @@ export interface GetItemResponse {
   item?: string | null;
   [k: string]: unknown;
 }
-export type GovernanceModulesResponse = Addr[];
 export interface InfoResponse {
   info: ContractVersion;
   [k: string]: unknown;
@@ -355,10 +364,16 @@ export interface InitialItem {
   [k: string]: unknown;
 }
 export type ListItemsResponse = string[];
-export interface MigrateMsg {
-  [k: string]: unknown;
-}
-export type ProposalModulesResponse = Addr[];
+export type MigrateMsg = {
+  from_v1: {
+    [k: string]: unknown;
+  };
+} | {
+  from_compatible: {
+    [k: string]: unknown;
+  };
+};
+export type ProposalModulesResponse = ProposalModule[];
 export type QueryMsg = {
   admin: {
     [k: string]: unknown;
@@ -406,6 +421,12 @@ export type QueryMsg = {
   };
 } | {
   proposal_modules: {
+    limit?: number | null;
+    start_after?: string | null;
+    [k: string]: unknown;
+  };
+} | {
+  active_proposal_modules: {
     limit?: number | null;
     start_after?: string | null;
     [k: string]: unknown;
@@ -491,6 +512,13 @@ export interface CwCoreReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ProposalModulesResponse>;
+  activeProposalModules: ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ActiveProposalModulesResponse>;
   pauseInfo: () => Promise<PauseInfoResponse>;
   votingModule: () => Promise<VotingModuleResponse>;
   votingPowerAtHeight: ({
@@ -524,6 +552,7 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
     this.getItem = this.getItem.bind(this);
     this.listItems = this.listItems.bind(this);
     this.proposalModules = this.proposalModules.bind(this);
+    this.activeProposalModules = this.activeProposalModules.bind(this);
     this.pauseInfo = this.pauseInfo.bind(this);
     this.votingModule = this.votingModule.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
@@ -627,6 +656,20 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
   }): Promise<ProposalModulesResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       proposal_modules: {
+        limit,
+        start_after: startAfter
+      }
+    });
+  };
+  activeProposalModules = async ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ActiveProposalModulesResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      active_proposal_modules: {
         limit,
         start_after: startAfter
       }
@@ -749,10 +792,10 @@ export interface CwCoreInterface extends CwCoreReadOnlyInterface {
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateProposalModules: ({
     toAdd,
-    toRemove
+    toDisable
   }: {
     toAdd: ModuleInstantiateInfo[];
-    toRemove: string[];
+    toDisable: string[];
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateVotingModule: ({
     module
@@ -941,15 +984,15 @@ export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
   };
   updateProposalModules = async ({
     toAdd,
-    toRemove
+    toDisable
   }: {
     toAdd: ModuleInstantiateInfo[];
-    toRemove: string[];
+    toDisable: string[];
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_proposal_modules: {
         to_add: toAdd,
-        to_remove: toRemove
+        to_disable: toDisable
       }
     }, fee, memo, funds);
   };
