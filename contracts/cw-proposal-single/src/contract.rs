@@ -728,13 +728,15 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     let repl = TaggedReplyId::new(msg.id)?;
     match repl {
         TaggedReplyId::FailedProposalExecution(proposal_id) => {
             PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
                 Some(mut prop) => {
                     prop.status = Status::ExecutionFailed;
+                    // Update proposal's last updated timestamp.
+                    prop.last_updated = env.block.time;
                     Ok(prop)
                 }
                 None => Err(ContractError::NoSuchProposal { id: proposal_id }),
