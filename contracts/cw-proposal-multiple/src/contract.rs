@@ -624,23 +624,31 @@ fn query_filter_list_proposals(
     let wallet: Addr = deps.api.addr_validate(&wallet)?;
     let min = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let mut last_proposal_id = 0;
+
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
-        .collect::<StdResult<Vec<(u64, MultipleChoiceProposal)>>>()?
-        .into_iter()
-        .filter_map(|(p_id, prop)| {
-            if status.map_or(true, |st| st == prop.status) {
-                if let Ok(Some(ballot)) = BALLOTS.may_load(deps.storage, (p_id, wallet.clone())) {
-                    if wallet_vote.map_or(true, |v| v == ballot.vote) {
-                        return prop.into_response(&env.block, p_id).ok();
+        .filter_map(|res| match res {
+            Ok((p_id, prop)) => {
+                last_proposal_id = p_id;
+                if status.map_or(true, |st| st == prop.status) {
+                    match BALLOTS.may_load(deps.storage, (p_id, wallet.clone())) {
+                        Ok(Some(ballot)) => {
+                            if wallet_vote.map_or(true, |v| v == ballot.vote) {
+                                return Some(prop.into_response(&env.block, p_id));
+                            }
+                        }
+                        Err(err) => return Some(Err(err)),
+                        _ => (),
                     }
                 }
+                None
             }
-            None
+            Err(err) => Some(Err(err)),
         })
         .take(limit as usize)
-        .collect();
-    let last_proposal_id = props.last().map_or(0, |res| res.id);
+        .collect::<StdResult<_>>()?;
+
     to_binary(&FilterListProposalsResponse {
         proposals: props,
         last_proposal_id,

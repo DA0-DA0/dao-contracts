@@ -4024,7 +4024,7 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [1, 2]
         );
-        assert_eq!(answ.last_proposal_id, 2);
+        assert_eq!(answ.last_proposal_id, 3);
 
         let answ: FilterListProposalsResponse = app
             .wrap()
@@ -4090,7 +4090,7 @@ fn test_find_proposals() {
                 .collect::<Vec<u64>>(),
             [1]
         );
-        assert_eq!(answ.last_proposal_id, 1);
+        assert_eq!(answ.last_proposal_id, 3);
     }
 
     // Pagination test
