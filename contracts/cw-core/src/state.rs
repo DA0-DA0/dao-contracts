@@ -62,5 +62,5 @@ pub const CW20_LIST: Map<Addr, Empty> = Map::new("cw20s");
 /// treasury.
 pub const CW721_LIST: Map<Addr, Empty> = Map::new("cw721s");
 
-/// List of SubDAOs associated to this DAO
+/// List of SubDAOs associated to this DAO. Each SubDAO has an optional charter.
 pub const SUBDAO_LIST: Map<&Addr, Option<String>> = Map::new("sub_daos");
