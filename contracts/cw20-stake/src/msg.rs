@@ -64,6 +64,10 @@ pub enum QueryMsg {
         address: String,
     },
     GetHooks {},
+    ListStakers {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -103,4 +107,17 @@ pub struct TotalValueResponse {
 #[serde(rename_all = "snake_case")]
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ListStakersResponse {
+    pub stakers: Vec<StakerBalanceResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct StakerBalanceResponse {
+    pub address: String,
+    pub balance: Uint128,
 }

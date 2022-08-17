@@ -1,0 +1,20 @@
+chain_cfg: 
+  denom: "ujunox"
+  prefix: "juno"
+  chain_id: "testing"
+  rpc_endpoint: "http://localhost:26657/"
+  gas_prices: 0.1
+  gas_adjustment: 1.5
+
+# Add code ids if you dont need to store them:
+code_ids:
+  "cw20_base": 1
+  "cw4_group": 2
+  # NOTE: If you are using `SKIP_CONTRACT_STORE` you will need to put the up-to-date
+  # code ids for the contracts you need here.
+  # Something like this:
+  # "cw_core": 9
+  # "cw_proposal_single": 14
+  # "cw4_voting": 6
+  # "cw20_staked_balance_voting": 5
+  # "cw20_stake": 4

@@ -27,6 +27,7 @@ cw2 = "0.13"
 schemars = "0.8.8"
 serde = { version = "1.0.132", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.30" }
+cw-paginate = { version = "0.1.0", path = "../../packages/cw-paginate" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

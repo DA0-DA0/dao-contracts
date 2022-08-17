@@ -1,4 +1,6 @@
-use crate::msg::{ExecuteMsg, InstantiateMsg, Owner, QueryMsg};
+use crate::msg::{
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, Owner, QueryMsg, StakerBalanceResponse,
+};
 use crate::state::Config;
 use cosmwasm_std::{coins, Addr, Coin, Empty, Uint128};
 use cw_controllers::ClaimsResponse;
@@ -883,4 +885,88 @@ fn test_voting_power_queries() {
     // ADDR2 now has 50 power
     let resp = get_voting_power_at_height(&mut app, addr, ADDR2.to_string(), None);
     assert_eq!(resp.power, Uint128::new(50));
+}
+
+#[test]
+fn test_query_list_stakers() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Owner::Addr(DAO_ADDR.to_string())),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+        },
+    );
+
+    // ADDR1 stakes
+    stake_tokens(&mut app, addr.clone(), ADDR1, 100, DENOM).unwrap();
+
+    // ADDR2 stakes
+    stake_tokens(&mut app, addr.clone(), ADDR2, 50, DENOM).unwrap();
+
+    // check entire result set
+    let stakers: ListStakersResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::ListStakers {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    let test_res = ListStakersResponse {
+        stakers: vec![
+            StakerBalanceResponse {
+                address: ADDR1.to_string(),
+                balance: Uint128::new(100),
+            },
+            StakerBalanceResponse {
+                address: ADDR2.to_string(),
+                balance: Uint128::new(50),
+            },
+        ],
+    };
+
+    assert_eq!(stakers, test_res);
+
+    // skipped 1, check result
+    let stakers: ListStakersResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr.clone(),
+            &QueryMsg::ListStakers {
+                start_after: Some(ADDR1.to_string()),
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    let test_res = ListStakersResponse {
+        stakers: vec![StakerBalanceResponse {
+            address: ADDR2.to_string(),
+            balance: Uint128::new(50),
+        }],
+    };
+
+    assert_eq!(stakers, test_res);
+
+    // skipped 2, check result. should be nothing
+    let stakers: ListStakersResponse = app
+        .wrap()
+        .query_wasm_smart(
+            addr,
+            &QueryMsg::ListStakers {
+                start_after: Some(ADDR2.to_string()),
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(stakers, ListStakersResponse { stakers: vec![] });
 }

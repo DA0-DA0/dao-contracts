@@ -10,7 +10,10 @@ use cw_core_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightR
 use cw_utils::{must_pay, Duration};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, Owner, QueryMsg};
+use crate::msg::{
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, Owner, QueryMsg,
+    StakerBalanceResponse,
+};
 use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
 const CONTRACT_NAME: &str = "crates.io:cw-native-staked-balance-voting";
@@ -280,6 +283,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::Claims { address } => to_binary(&query_claims(deps, address)?),
         QueryMsg::GetConfig {} => to_binary(&CONFIG.load(deps.storage)?),
+        QueryMsg::ListStakers { start_after, limit } => {
+            query_list_stakers(deps, start_after, limit)
+        }
     }
 }
 
@@ -321,6 +327,34 @@ pub fn query_dao(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_claims(deps: Deps, address: String) -> StdResult<ClaimsResponse> {
     CLAIMS.query_claims(deps, &deps.api.addr_validate(&address)?)
+}
+
+pub fn query_list_stakers(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let start_at = start_after
+        .map(|addr| deps.api.addr_validate(&addr))
+        .transpose()?;
+
+    let stakers = cw_paginate::paginate_snapshot_map(
+        deps,
+        &STAKED_BALANCES,
+        start_at.as_ref(),
+        limit,
+        cosmwasm_std::Order::Ascending,
+    )?;
+
+    let stakers = stakers
+        .into_iter()
+        .map(|(address, balance)| StakerBalanceResponse {
+            address: address.into_string(),
+            balance,
+        })
+        .collect();
+
+    to_binary(&ListStakersResponse { stakers })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
