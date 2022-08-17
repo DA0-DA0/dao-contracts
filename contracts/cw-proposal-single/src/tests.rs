@@ -9,7 +9,7 @@ use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
 use cw_core::{msg::ModuleInstantiateInfo, state::ProposalModule};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use cw_utils::Expiration;
 
@@ -37,7 +37,7 @@ use crate::{
 const CREATOR_ADDR: &str = "creator";
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-struct BetaProposal {
+struct V1Proposal {
     pub title: String,
     pub description: String,
     pub proposer: Addr,
@@ -50,6 +50,17 @@ struct BetaProposal {
     pub status: Status,
     pub votes: Votes,
     pub allow_revoting: bool,
+    pub deposit_info: Option<CheckedDepositInfo>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct V1Config {
+    pub threshold: Threshold,
+    pub max_voting_period: Duration,
+    pub min_voting_period: Option<Duration>,
+    pub only_members_execute: bool,
+    pub allow_revoting: bool,
+    pub dao: Addr,
     pub deposit_info: Option<CheckedDepositInfo>,
 }
 
@@ -3848,82 +3859,6 @@ fn test_migrate_from_compatible() {
 }
 
 #[test]
-fn test_migrate_from_beta() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(proposal_contract());
-
-    let threshold = Threshold::AbsolutePercentage {
-        percentage: PercentageThreshold::Majority {},
-    };
-    let max_voting_period = cw_utils::Duration::Height(6);
-    let instantiate = InstantiateMsg {
-        threshold,
-        max_voting_period,
-        min_voting_period: None,
-        only_members_execute: false,
-        allow_revoting: false,
-        deposit_info: None,
-        close_proposal_on_execution_failure: false,
-    };
-
-    let governance_addr =
-        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
-    let governance_modules: Vec<ProposalModule> = app
-        .wrap()
-        .query_wasm_smart(
-            governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
-    assert_eq!(governance_modules.len(), 1);
-    let govmod_single = governance_modules.into_iter().next().unwrap().address;
-
-    // Create proposal
-    app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        govmod_single.clone(),
-        &ExecuteMsg::Propose {
-            title: "Text proposal".to_string(),
-            description: "This is a simple text proposal".to_string(),
-            msgs: vec![],
-        },
-        &[],
-    )
-    .unwrap();
-
-    // Migrate from beta
-    app.execute(
-        governance_addr,
-        CosmosMsg::Wasm(WasmMsg::Migrate {
-            contract_addr: govmod_single.to_string(),
-            new_code_id: govmod_id,
-            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
-        }),
-    )
-    .unwrap();
-
-    let proposals_response: ProposalListResponse = app
-        .wrap()
-        .query_wasm_smart(
-            govmod_single,
-            &QueryMsg::ListProposals {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
-    assert_eq!(proposals_response.proposals.len(), 1);
-    let prop = &proposals_response.proposals[0].proposal;
-    assert_eq!(prop.created, app.block_info().time);
-    assert_eq!(prop.last_updated, app.block_info().time);
-}
-
-#[test]
 fn test_proposal_count_initialized_to_zero() {
     let mut app = App::default();
     let proposal_id = app.store_code(proposal_contract());
@@ -4437,16 +4372,15 @@ fn test_migrate_mock() {
     };
 
     // Write to storage in old data format
-    let beta_map: Map<u64, BetaProposal> = Map::new("proposals");
-
-    let beta_proposal = BetaProposal {
+    let v1_map: Map<u64, V1Proposal> = Map::new("proposals");
+    let v1_proposal = V1Proposal {
         title: "A simple text proposal".to_string(),
         description: "This is a simple text proposal".to_string(),
         proposer: Addr::unchecked(CREATOR_ADDR),
         start_height: env.block.height,
         expiration: max_voting_period.after(current_block),
         min_voting_period: None,
-        threshold,
+        threshold: threshold.clone(),
         allow_revoting: false,
         total_power: Uint128::new(100_000_000),
         msgs: vec![],
@@ -4454,10 +4388,23 @@ fn test_migrate_mock() {
         votes: Votes::zero(),
         deposit_info: None,
     };
+    v1_map.save(&mut deps.storage, 0, &v1_proposal).unwrap();
 
-    beta_map.save(&mut deps.storage, 0, &beta_proposal).unwrap();
+    let v1_item: Item<V1Config> = Item::new("config");
+    let v1_config = V1Config {
+        threshold: threshold.clone(),
+        max_voting_period,
+        min_voting_period: None,
+        only_members_execute: true,
+        allow_revoting: false,
+        dao: Addr::unchecked("simple happy desert"),
+        deposit_info: None,
+    };
+    v1_item.save(&mut deps.storage, &v1_config).unwrap();
 
-    let msg = MigrateMsg::FromV1 {};
+    let msg = MigrateMsg::FromV1 {
+        close_proposal_on_execution_failure: true,
+    };
     migrate(deps.as_mut(), env.clone(), msg).unwrap();
 
     // Verify migration.
@@ -4471,6 +4418,22 @@ fn test_migrate_mock() {
     assert_eq!(migrated_proposal.0, 0);
     assert_eq!(migrated_proposal.1.created, Timestamp::from_seconds(0));
     assert_eq!(migrated_proposal.1.last_updated, env.block.time);
+
+    let new_item: Item<Config> = Item::new("config_v2");
+    let migrated_config = new_item.load(&deps.storage).unwrap();
+    assert_eq!(
+        migrated_config,
+        Config {
+            threshold,
+            max_voting_period,
+            min_voting_period: None,
+            only_members_execute: true,
+            allow_revoting: false,
+            dao: Addr::unchecked("simple happy desert"),
+            deposit_info: None,
+            close_proposal_on_execution_failure: true,
+        }
+    );
 }
 
 #[test]

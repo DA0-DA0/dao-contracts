@@ -356,6 +356,7 @@ export interface ListVotesResponse {
 }
 export type MigrateMsg = {
   from_v1: {
+    close_proposal_on_execution_failure: boolean;
     [k: string]: unknown;
   };
 } | {

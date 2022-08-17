@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
-use cw_storage_plus::{Bound, Map};
+use cw_storage_plus::{Bound, Item, Map};
 use cw_utils::{Duration, Expiration};
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
@@ -725,7 +725,9 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    /// This is proposal version is from commit e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID 427.
+    /// This proposal version is from commit
+    /// e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID
+    /// 427.
     #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
     struct V1Proposal {
         pub title: String,
@@ -743,8 +745,44 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
         pub deposit_info: Option<CheckedDepositInfo>,
     }
 
+    /// This config version is from commit
+    /// e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0).
+    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+    pub struct V1Config {
+        pub threshold: Threshold,
+        pub max_voting_period: Duration,
+        pub min_voting_period: Option<Duration>,
+        pub only_members_execute: bool,
+        pub allow_revoting: bool,
+        pub dao: Addr,
+        pub deposit_info: Option<CheckedDepositInfo>,
+    }
+
     match msg {
-        MigrateMsg::FromV1 {} => {
+        MigrateMsg::FromV1 {
+            close_proposal_on_execution_failure,
+        } => {
+            // Update the stored config to have the new
+            // `close_proposal_on_execution_falure` field.
+            let config_item: Item<V1Config> = Item::new("config");
+            let current_config = config_item.load(deps.storage)?;
+            CONFIG.save(
+                deps.storage,
+                &Config {
+                    threshold: current_config.threshold,
+                    max_voting_period: current_config.max_voting_period,
+                    min_voting_period: current_config.min_voting_period,
+                    only_members_execute: current_config.only_members_execute,
+                    allow_revoting: current_config.allow_revoting,
+                    dao: current_config.dao,
+                    deposit_info: current_config.deposit_info,
+                    // Loads of text, but we're only updating this field.
+                    close_proposal_on_execution_failure,
+                },
+            )?;
+
+            // Update the module's proposals to v2.
+
             // Retrieve current map from storage
             let current_map: Map<u64, V1Proposal> = Map::new("proposals");
             let current = current_map
@@ -771,7 +809,7 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                         votes: prop.votes,
                         allow_revoting: prop.allow_revoting,
                         deposit_info: prop.deposit_info,
-                        // Cosmwasm does not expose a way to query the timestamp
+                        // CosmWasm does not expose a way to query the timestamp
                         // of a block given block height. As such, we assign migrated
                         // proposals a created timestamp of 0 so that the frontend may
                         // query for the true timestamp given `start_height`.

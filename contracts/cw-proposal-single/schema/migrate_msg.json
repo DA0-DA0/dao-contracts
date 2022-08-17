@@ -9,7 +9,16 @@
       ],
       "properties": {
         "from_v1": {
-          "type": "object"
+          "type": "object",
+          "required": [
+            "close_proposal_on_execution_failure"
+          ],
+          "properties": {
+            "close_proposal_on_execution_failure": {
+              "description": "This field was not present in DAO DAO v1. To migrate, a value must be specified.\n\nIf set to true proposals will be closed if their execution fails. Otherwise, proposals will remain open after execution failure. For example, with this enabled a proposal to send 5 tokens out of a DAO's treasury with 4 tokens would be closed when it is executed. With this disabled, that same proposal would remain open until the DAO's treasury was large enough for it to be executed.",
+              "type": "boolean"
+            }
+          }
         }
       },
       "additionalProperties": false
