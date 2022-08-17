@@ -5084,6 +5084,8 @@ fn test_find_proposals() {
         only_members_execute: false,
         deposit_info: None,
         voting_strategy,
+        allow_revoting: false,
+        close_proposal_on_execution_failure: true,
     };
 
     let governance_addr = instantiate_with_staking_active_threshold(
