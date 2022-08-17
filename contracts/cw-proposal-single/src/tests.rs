@@ -4645,6 +4645,9 @@ fn test_close_failed_proposal() {
     )
     .unwrap();
 
+    let timestamp = Timestamp::from_seconds(300_000_000);
+    app.update_block(|block| block.time = timestamp);
+
     // Execute proposal
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
@@ -4662,6 +4665,7 @@ fn test_close_failed_proposal() {
         )
         .unwrap();
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
+    assert_eq!(failed.proposal.last_updated, app.block_info().time);
 
     // With disabled feature
     // Disable feature first
@@ -4922,6 +4926,9 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     )
     .unwrap();
 
+    let timestamp = Timestamp::from_seconds(300_000_000);
+    app.update_block(|block| block.time = timestamp);
+
     // Execute proposal
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
@@ -4939,6 +4946,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         )
         .unwrap();
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
+    assert_eq!(failed.proposal.last_updated, app.block_info().time);
 
     // Check that our deposit has been refunded.
     let balance: cw20::BalanceResponse = app

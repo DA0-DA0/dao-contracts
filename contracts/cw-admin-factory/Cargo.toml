@@ -1,7 +1,7 @@
 [package]
 name ="cw-admin-factory"
 version = "0.1.0"
-authors = ["janitachalam <janitachalam@gmail.com>"]
+authors = ["blue-note"]
 edition = "2018"
 
 exclude = [
