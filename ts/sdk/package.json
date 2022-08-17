@@ -1,5 +1,5 @@
 {
-  "name": "cw-usdc-sdk",
+  "name": "cw-tokenfactory-issuer-sdk",
   "version": " 0.0.1",
   "description": "",
   "cdn": "dist/index.umd.js",

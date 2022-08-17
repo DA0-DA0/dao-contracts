@@ -1,5 +1,5 @@
-use cosmwasm_std::{coin, coins, from_binary, Addr, DepsMut, Uint128};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::{coin, coins, from_binary, Addr, DepsMut, Uint128};
 
 use crate::contract;
 use crate::error::ContractError;
@@ -14,7 +14,7 @@ static CREATOR_ADDRESS: &str = "creator";
 // test helper
 #[allow(unused_assignments)]
 fn initialize_contract(deps: DepsMut) -> (Addr, String) {
-    let denom = String::from("factory/creator/uusdc");
+    let denom = String::from("factory/creator/uusd");
     let msg = InstantiateMsg {
         denom: denom.clone(),
     };

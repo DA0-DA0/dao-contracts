@@ -3,6 +3,7 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "IsFrozen returns if the entire token transfer functionality is frozen. Response: IsFrozenResponse",
       "type": "object",
       "required": [
         "is_frozen"
@@ -15,6 +16,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Denom returns the token denom that this contract is the admin for. Response: DenomResponse",
       "type": "object",
       "required": [
         "denom"
@@ -27,6 +29,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Owner returns the owner of the contract. Response: OwnerResponse",
       "type": "object",
       "required": [
         "owner"
@@ -39,6 +42,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Allowance returns the allowance of the specified address. Response: AllowanceResponse",
       "type": "object",
       "required": [
         "burn_allowance"
@@ -59,6 +63,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>",
       "type": "object",
       "required": [
         "burn_allowances"
@@ -87,6 +92,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Allowance returns the allowance of the specified user. Response: AllowanceResponse",
       "type": "object",
       "required": [
         "mint_allowance"
@@ -107,6 +113,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Allowances Enumerates over all allownances. Response: Vec<AllowanceResponse>",
       "type": "object",
       "required": [
         "mint_allowances"
@@ -135,6 +142,7 @@
       "additionalProperties": false
     },
     {
+      "description": "IsBlacklisted returns wether the user is blacklisted or not. Response: StatusResponse",
       "type": "object",
       "required": [
         "is_blacklisted"
@@ -155,6 +163,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Blacklistees enumerates over all addresses on the blacklist. Response: BlacklisteesResponse",
       "type": "object",
       "required": [
         "blacklistees"
@@ -183,6 +192,7 @@
       "additionalProperties": false
     },
     {
+      "description": "IsBlacklister returns if the addres has blacklister privileges. Response: StatusResponse",
       "type": "object",
       "required": [
         "is_blacklister"
@@ -203,6 +213,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Blacklisters Enumerates over all the addresses with blacklister privileges. Response: BlacklisterAllowancesResponse",
       "type": "object",
       "required": [
         "blacklister_allowances"
@@ -231,6 +242,7 @@
       "additionalProperties": false
     },
     {
+      "description": "IsFreezer returns whether the address has freezer status. Response: StatusResponse",
       "type": "object",
       "required": [
         "is_freezer"
@@ -251,6 +263,7 @@
       "additionalProperties": false
     },
     {
+      "description": "FreezerAllowances enumerates over all freezer addresses. Response: FreezerAllowancesResponse",
       "type": "object",
       "required": [
         "freezer_allowances"

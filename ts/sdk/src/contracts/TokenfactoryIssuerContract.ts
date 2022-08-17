@@ -218,7 +218,7 @@ export interface Coin {
   denom: string;
   [k: string]: unknown;
 }
-export interface CwUsdcReadOnlyInterface {
+export interface TokenfactoryIssuerReadOnlyInterface {
   contractAddress: string;
   isFrozen: () => Promise<IsFrozenResponse>;
   denom: () => Promise<DenomResponse>;
@@ -284,7 +284,7 @@ export interface CwUsdcReadOnlyInterface {
     startAfter?: string;
   }) => Promise<FreezerAllowancesResponse>;
 }
-export class CwUsdcQueryClient implements CwUsdcReadOnlyInterface {
+export class TokenfactoryIssuerQueryClient implements TokenfactoryIssuerReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -447,7 +447,7 @@ export class CwUsdcQueryClient implements CwUsdcReadOnlyInterface {
     });
   };
 }
-export interface CwUsdcInterface extends CwUsdcReadOnlyInterface {
+export interface TokenfactoryIssuerInterface extends TokenfactoryIssuerReadOnlyInterface {
   contractAddress: string;
   sender: string;
   changeTokenFactoryAdmin: ({
@@ -513,7 +513,7 @@ export interface CwUsdcInterface extends CwUsdcReadOnlyInterface {
     status: boolean;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class CwUsdcClient extends CwUsdcQueryClient implements CwUsdcInterface {
+export class TokenfactoryIssuerClient extends TokenfactoryIssuerQueryClient implements TokenfactoryIssuerInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;

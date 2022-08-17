@@ -1,6 +1,6 @@
 {
   "out": "./docs",
-  "name": "cw-usdc",
+  "name": "cw-tokenfactory-issuer",
   "theme": "markdown",
   "readme": "none",
   "tsconfig": "./tsconfig.bundle.json"

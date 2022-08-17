@@ -1,5 +1,5 @@
 /*!
- * cw-usdc-sdk v 0.0.1
+ * cw-tokenfactory-issuer-sdk v 0.0.1
  * (c) Sunny Aggarwal <sunnya97@protonmail.ch>
  * Released under the MIT OR Apache-2.0 License.
  */
@@ -84,8 +84,8 @@
     * DO NOT MODIFY IT BY HAND. Instead, modify the source JSONSchema file,
     * and run the cosmwasm-typescript-gen generate command to regenerate this file.
     */
-    var CwUsdcQueryClient = /** @class */ (function () {
-        function CwUsdcQueryClient(client, contractAddress) {
+    var TokenfactoryIssuerQueryClient = /** @class */ (function () {
+        function TokenfactoryIssuerQueryClient(client, contractAddress) {
             var _this = this;
             this.isFrozen = function () { return __awaiter(_this, void 0, void 0, function () {
                 return __generator(this, function (_a) {
@@ -249,11 +249,11 @@
             this.isFreezer = this.isFreezer.bind(this);
             this.freezerAllowances = this.freezerAllowances.bind(this);
         }
-        return CwUsdcQueryClient;
+        return TokenfactoryIssuerQueryClient;
     }());
-    var CwUsdcClient = /** @class */ (function (_super) {
-        __extends(CwUsdcClient, _super);
-        function CwUsdcClient(client, sender, contractAddress) {
+    var TokenfactoryIssuerClient = /** @class */ (function (_super) {
+        __extends(TokenfactoryIssuerClient, _super);
+        function TokenfactoryIssuerClient(client, sender, contractAddress) {
             var _this = _super.call(this, client, contractAddress) || this;
             _this.changeTokenFactoryAdmin = function (_a, fee, memo, funds) {
                 var newAdmin = _a.newAdmin;
@@ -436,16 +436,16 @@
             _this.freeze = _this.freeze.bind(_this);
             return _this;
         }
-        return CwUsdcClient;
-    }(CwUsdcQueryClient));
+        return TokenfactoryIssuerClient;
+    }(TokenfactoryIssuerQueryClient));
 
-    var CwUsdcContract = /*#__PURE__*/Object.freeze({
+    var TokenfactoryIssuerContract = /*#__PURE__*/Object.freeze({
         __proto__: null,
-        CwUsdcQueryClient: CwUsdcQueryClient,
-        CwUsdcClient: CwUsdcClient
+        TokenfactoryIssuerQueryClient: TokenfactoryIssuerQueryClient,
+        TokenfactoryIssuerClient: TokenfactoryIssuerClient
     });
 
-    exports.CwUsdcContract = CwUsdcContract;
+    exports.TokenfactoryIssuerContract = TokenfactoryIssuerContract;
 
     Object.defineProperty(exports, '__esModule', { value: true });
 

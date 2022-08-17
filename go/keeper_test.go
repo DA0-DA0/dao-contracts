@@ -1,4 +1,4 @@
-package cwusdc_test
+package tokenfactory_issuer_test
 
 import (
 	"fmt"
@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	// wasmFile = "../target/wasm32-unknown-unknown/release/cw_usdc.wasm"
-	wasmFile = "../artifacts/cw_usdc.wasm"
+	// wasmFile = "../target/wasm32-unknown-unknown/release/tokenfactory_issuer.wasm"
+	wasmFile = "../artifacts/tokenfactory_issuer.wasm"
 )
 
 type KeeperTestSuite struct {

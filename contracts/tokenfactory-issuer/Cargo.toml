@@ -1,5 +1,5 @@
 [package]
-name = "cw-usdc"
+name = "tokenfactory-issuer"
 version = "0.1.0"
 authors = ["Sunny Aggarwal <sunnya97@protonmail.ch>"]
 edition = "2018"

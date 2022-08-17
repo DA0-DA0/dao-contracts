@@ -3,12 +3,12 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 
-use cw_usdc::msg::{
+use tokenfactory_issuer::msg::{
     AllowanceResponse, AllowancesResponse, BlacklisteesResponse, BlacklisterAllowancesResponse,
     DenomResponse, ExecuteMsg, FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse,
     OwnerResponse, QueryMsg, StatusResponse, SudoMsg,
 };
-use cw_usdc::state::Config;
+use tokenfactory_issuer::state::Config;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

@@ -1,4 +1,4 @@
-module github.com/osmosis-labs/cw-usdc
+module github.com/osmosis-labs/cw-tokenfactory-issuer
 
 go 1.18
 

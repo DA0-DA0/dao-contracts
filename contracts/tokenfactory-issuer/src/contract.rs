@@ -13,7 +13,7 @@ use crate::queries;
 use crate::state::{Config, CONFIG};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw-usdc";
+const CONTRACT_NAME: &str = "crates.io:tokenfactory-issuer";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

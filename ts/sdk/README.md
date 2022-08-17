@@ -1,1 +1,1 @@
-# cw-usdc-sdk
+# cw-tokenfactory-issuer-sdk

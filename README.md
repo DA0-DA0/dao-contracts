@@ -1,4 +1,4 @@
-# cw-usdc
+# cw-tokenfactory-issuer
 
 This repo contains a set of contracts that when used in conjunction with the x/tokenfactory module
 in Osmosis will enable a centrally issued stablecoin with the ability to mint, burn, freeze, and blacklist.
@@ -73,8 +73,8 @@ cargo install -f beaker
 Please clone this repo if you have not already.
 
 ```
-git clone https://github.com/osmosis-labs/cw-usdc
-cd cw-usdc
+git clone https://github.com/osmosis-labs/cw-tokenfactory-issuer
+cd cw-tokenfactory-issuer
 ```
 
 ### Creating Token, Contract and Transferring Ownership 
@@ -83,10 +83,10 @@ Now we will begin interacting with the chain to begin the instantiation process.
 
 #### Creating tokenfactory denom
 
-Use osmosisd to create a new tokenfactory denom from your validator account. Here we will call the subdenom `uusdc`.
+Use osmosisd to create a new tokenfactory denom from your validator account. Here we will call the subdenom `uusd`.
 
 ```
-osmosisd tx tokenfactory create-denom uusdc --from test1
+osmosisd tx tokenfactory create-denom uusd --from test1
 ```
 
 If successful, you can query the base name of your new denom by using the `denoms-from-creator` query.
@@ -104,10 +104,10 @@ TODO
 
 Beaker provides a single command to compile your contracts, deploy wasm code, and instantiate your contract all in one.
 
-To do this, you just need to use the following command from the root folder of the cw-usdc repo.  Note that you put the denom from the previous section in the InstantiateMsg raw json.
+To do this, you just need to use the following command from the root folder of the cw-tokenfactory-issuer repo.  Note that you put the denom from the previous section in the InstantiateMsg raw json.
 
 ```
-beaker wasm deploy cw-usdc --signer-account test1  --raw '{"denom":"factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc"}'
+beaker wasm deploy tokenfactory-issuer --signer-account test1  --raw '{"denom":"factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd"}'
 ```
 
 This process could take a little while to compile and download dependencies if it is your first time.  Once it is completed, it will give you the address that the contract was deployed to.  For the rest of this demo, we will assume it was deployed to the address `osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9`.
@@ -122,7 +122,7 @@ in the CosmWasm contract.
 To do this we use the following command:
 
 ```
-osmosisd tx tokenfactory set-beforesend-hook factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
+osmosisd tx tokenfactory set-beforesend-hook factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
 ```
 
 #### Transfer Admin Control
@@ -130,7 +130,7 @@ osmosisd tx tokenfactory set-beforesend-hook factory/osmo1cyyzpxplxdzkeea7kwsyda
 Finally we will transfer tokenfactory admin control over to the contract.
 
 ```
-osmosisd tx tokenfactory change-admin factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
+osmosisd tx tokenfactory change-admin factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
 ```
 
 Great! Now we have a deployed contract with beforesend hook and admin control over a new tokenfactory denom!
@@ -141,7 +141,7 @@ Great! Now we have a deployed contract with beforesend hook and admin control ov
 Now that we have the contract deployed, it is time to start interacting with it. To do this, we will use beaker,
 which contains an easy to use tool to interact with CosmWasm contracts from the CLI.
 
-From in the cw-usdc repo, run
+From in the cw-tokenfactory-issuer repo, run
 
 ```
 beaker console
@@ -156,12 +156,12 @@ From within the console, you can use typical js commands.
 
 We'll do a couple of variable setting in the beaker console to make the commands easier to type out.
 
-- Set the cw-usdc contract object to a variable called `sc`
+- Set the tokenfactory-issuer contract object to a variable called `sc`
 - All the test accounts are in a variable called accounts.  Because the test1 account is the owner of the contract (having been the one that created it), we'll save the validator account to a variable called `owner`.
 - We'll create a signer object for the owner account.
 
 ```
-sc = contract['cw-usdc']
+sc = contract['tokenfactory-issuer']
 owner = account.test1
 signer = sc.signer(owner)
 ```
@@ -237,7 +237,7 @@ await sc.blacklistees({})
 
 Use osmosisd to try to create a send tx from the owner account.  It should fail with a blacklist error.
 ```
-osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc
+osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd
 ```
 
 Let's try to unblacklist the owner account.
@@ -247,7 +247,7 @@ await signer.blacklist({address: owner.address, status: false})
 
 Now lets use osmosisd to try to create a send tx from the owner account again. It should pass this time!
 ```
-osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc
+osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd
 ```
 
 ### Freezing
@@ -269,5 +269,5 @@ await sc.isFrozen({})
 
 Use osmosisd to try to create a send tx.  It should fail with a contract is frozen error.
 ```
-osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusdc
+osmosisd tx bank send test1 osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks 10factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd
 ```

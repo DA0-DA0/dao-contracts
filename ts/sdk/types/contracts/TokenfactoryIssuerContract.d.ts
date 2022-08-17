@@ -217,7 +217,7 @@ export interface Coin {
     denom: string;
     [k: string]: unknown;
 }
-export interface CwUsdcReadOnlyInterface {
+export interface TokenfactoryIssuerReadOnlyInterface {
     contractAddress: string;
     isFrozen: () => Promise<IsFrozenResponse>;
     denom: () => Promise<DenomResponse>;
@@ -258,7 +258,7 @@ export interface CwUsdcReadOnlyInterface {
         startAfter?: string;
     }) => Promise<FreezerAllowancesResponse>;
 }
-export declare class CwUsdcQueryClient implements CwUsdcReadOnlyInterface {
+export declare class TokenfactoryIssuerQueryClient implements TokenfactoryIssuerReadOnlyInterface {
     client: CosmWasmClient;
     contractAddress: string;
     constructor(client: CosmWasmClient, contractAddress: string);
@@ -301,7 +301,7 @@ export declare class CwUsdcQueryClient implements CwUsdcReadOnlyInterface {
         startAfter?: string;
     }) => Promise<FreezerAllowancesResponse>;
 }
-export interface CwUsdcInterface extends CwUsdcReadOnlyInterface {
+export interface TokenfactoryIssuerInterface extends TokenfactoryIssuerReadOnlyInterface {
     contractAddress: string;
     sender: string;
     changeTokenFactoryAdmin: ({ newAdmin }: {
@@ -341,7 +341,7 @@ export interface CwUsdcInterface extends CwUsdcReadOnlyInterface {
         status: boolean;
     }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export declare class CwUsdcClient extends CwUsdcQueryClient implements CwUsdcInterface {
+export declare class TokenfactoryIssuerClient extends TokenfactoryIssuerQueryClient implements TokenfactoryIssuerInterface {
     client: SigningCosmWasmClient;
     sender: string;
     contractAddress: string;
@@ -383,4 +383,4 @@ export declare class CwUsdcClient extends CwUsdcQueryClient implements CwUsdcInt
         status: boolean;
     }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-//# sourceMappingURL=CwUsdcContract.d.ts.map
+//# sourceMappingURL=TokenfactoryIssuerContract.d.ts.map

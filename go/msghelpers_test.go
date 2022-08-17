@@ -1,4 +1,4 @@
-package cwusdc_test
+package tokenfactory_issuer_test
 
 import (
 	stdMath "github.com/cosmwasm/cosmwasm-go/std/math"
