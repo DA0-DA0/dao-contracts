@@ -28,12 +28,25 @@ pub struct Config {
     /// proposals. Otherwise, any address may execute a passed
     /// proposal.
     pub only_members_execute: bool,
+    /// Allows changing votes before the proposal expires. If this is
+    /// enabled proposals will not be able to complete early as final
+    /// vote information is not known until the time of proposal
+    /// expiration.
+    pub allow_revoting: bool,
     /// The address of the DAO that this governance module is
     /// associated with.
     pub dao: Addr,
     /// Information about the depost required to create a
     /// proposal. None if no deposit is required, Some otherwise.
     pub deposit_info: Option<CheckedDepositInfo>,
+    /// If set to true proposals will be closed if their execution
+    /// fails. Otherwise, proposals will remain open after execution
+    /// failure. For example, with this enabled a proposal to send 5
+    /// tokens out of a DAO's treasury with 4 tokens would be closed when
+    /// it is executed. With this disabled, that same proposal would
+    /// remain open until the DAO's treasury was large enough for it to be
+    /// executed.
+    pub close_proposal_on_execution_failure: bool,
 }
 
 /// Information about a vote that was cast.

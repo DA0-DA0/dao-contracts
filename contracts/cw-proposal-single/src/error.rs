@@ -3,6 +3,7 @@ use std::u64;
 use cosmwasm_std::StdError;
 use indexable_hooks::HookError;
 use thiserror::Error;
+use voting::reply::error::TagError;
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -65,4 +66,7 @@ pub enum ContractError {
 
     #[error("Min voting period must be less than or equal to max voting period")]
     InvalidMinVotingPeriod {},
+
+    #[error("{0}")]
+    Tag(#[from] TagError),
 }

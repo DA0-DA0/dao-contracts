@@ -49,8 +49,27 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     Dao {},
     GetConfig {},
-    Claims { address: String },
+    Claims {
+        address: String,
+    },
+    ListStakers {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct MigrateMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ListStakersResponse {
+    pub stakers: Vec<StakerBalanceResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct StakerBalanceResponse {
+    pub address: String,
+    pub balance: Uint128,
+}

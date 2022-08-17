@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128, Uint256};
+use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128, Uint256};
 use cw_core_interface::voting;
 use cw_utils::Duration;
 use schemars::JsonSchema;
@@ -55,8 +55,18 @@ impl MultipleChoiceVotes {
         self.vote_weights.iter().sum()
     }
 
-    pub fn add_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) {
-        self.vote_weights[vote.option_id as usize] += weight;
+    pub fn add_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) -> StdResult<()> {
+        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
+            .checked_add(weight)
+            .map_err(StdError::overflow)?;
+        Ok(())
+    }
+
+    pub fn remove_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) -> StdResult<()> {
+        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
+            .checked_sub(weight)
+            .map_err(StdError::overflow)?;
+        Ok(())
     }
 
     pub fn zero(num_choices: usize) -> Self {

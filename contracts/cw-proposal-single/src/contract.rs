@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, Storage, WasmMsg,
+    Response, StdResult, Storage, WasmMsg, SubMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
@@ -14,6 +14,7 @@ use vote_hooks::new_vote_hooks;
 
 use voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
 use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
+use voting::reply::{mask_proposal_execution_proposal_id, TaggedReplyId};
 use voting::status::Status;
 use voting::threshold::Threshold;
 use voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
@@ -62,6 +63,7 @@ pub fn instantiate(
         dao: dao.clone(),
         deposit_info,
         allow_revoting: msg.allow_revoting,
+        close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -98,6 +100,7 @@ pub fn execute(
             allow_revoting,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         } => execute_update_config(
             deps,
             info,
@@ -108,6 +111,7 @@ pub fn execute(
             allow_revoting,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         ),
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
@@ -264,15 +268,24 @@ pub fn execute_execute(
         None => vec![],
     };
 
-    let response = if !prop.msgs.is_empty() {
-        let execute_message = WasmMsg::Execute {
-            contract_addr: config.dao.to_string(),
-            msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs: prop.msgs })?,
-            funds: vec![],
-        };
-        Response::<Empty>::default().add_message(execute_message)
-    } else {
-        Response::default()
+    let response = {
+        if !prop.msgs.is_empty() {
+            let execute_message = WasmMsg::Execute {
+                contract_addr: config.dao.to_string(),
+                msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook { msgs: prop.msgs })?,
+                funds: vec![],
+            };
+            match config.close_proposal_on_execution_failure {
+                true => {
+                    let masked_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
+                    Response::default()
+                        .add_submessage(SubMsg::reply_on_error(execute_message, masked_proposal_id))
+                }
+                false => Response::default().add_message(execute_message),
+            }
+        } else {
+            Response::default()
+        }
     };
 
     let hooks = proposal_status_changed_hooks(
@@ -316,7 +329,6 @@ pub fn execute_vote(
         return Err(ContractError::NotRegistered {});
     }
 
-    let mut previous_ballot = None;
     BALLOTS.update(
         deps.storage,
         (proposal_id, info.sender.clone()),
@@ -329,7 +341,9 @@ pub fn execute_vote(
                         // behavior.
                         Err(ContractError::AlreadyCast {})
                     } else {
-                        previous_ballot = Some(current_ballot);
+                        // Remove the old vote if this is a re-vote.
+                        prop.votes
+                            .remove_vote(current_ballot.vote, current_ballot.power);
                         Ok(Ballot {
                             power: vote_power,
                             vote,
@@ -347,11 +361,6 @@ pub fn execute_vote(
     )?;
 
     let old_status = prop.status;
-
-    // Remove the old vote if this is a re-vote.
-    if let Some(ballot) = previous_ballot {
-        prop.votes.remove_vote(ballot.vote, ballot.power)
-    }
 
     prop.votes.add_vote(vote, vote_power);
     prop.update_status(&env.block);
@@ -448,6 +457,7 @@ pub fn execute_update_config(
     allow_revoting: bool,
     dao: String,
     deposit_info: Option<DepositInfo>,
+    close_proposal_on_execution_failure: bool,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -475,6 +485,7 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             deposit_info,
+            close_proposal_on_execution_failure,
         },
     )?;
 
@@ -769,16 +780,28 @@ pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    if msg.id % 2 == 0 {
-        // Proposal hook so we can just divide by two for index
-        let idx = msg.id / 2;
-        PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-        Ok(Response::new())
-    } else {
-        // Vote hook so we can minus one then divid by two for index
-        let idx = (msg.id - 1) / 2;
-        VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-        Ok(Response::new())
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    let repl = TaggedReplyId::new(msg.id)?;
+    match repl {
+        TaggedReplyId::FailedProposalExecution(proposal_id) => {
+            PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
+                Some(mut prop) => {
+                    prop.status = Status::ExecutionFailed;
+                    // Update proposal's last updated timestamp.
+                    prop.last_updated = env.block.time;
+                    Ok(prop)
+                }
+                None => Err(ContractError::NoSuchProposal { id: proposal_id }),
+            })?;
+            Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
+        }
+        TaggedReplyId::FailedProposalHook(idx) => {
+            let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new().add_attribute("removed proposal hook", format!("{addr}:{idx}")))
+        }
+        TaggedReplyId::FailedVoteHook(idx) => {
+            let addr = VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
+            Ok(Response::new().add_attribute("removed vote hook", format!("{addr}:{idx}")))
+        }
     }
 }

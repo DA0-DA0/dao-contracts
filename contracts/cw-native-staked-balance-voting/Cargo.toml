@@ -33,6 +33,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 cw-core-macros = { version = "*", path = "../../packages/cw-core-macros" }
 cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
+cw-paginate = { version = "0.1.0", path = "../../packages/cw-paginate" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

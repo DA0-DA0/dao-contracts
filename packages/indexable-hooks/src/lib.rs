@@ -54,10 +54,11 @@ impl<'a> Hooks<'a> {
         &self,
         storage: &mut dyn Storage,
         index: u64,
-    ) -> Result<(), HookError> {
+    ) -> Result<Addr, HookError> {
         let mut hooks = self.0.load(storage)?;
-        hooks.remove(index as usize);
-        Ok(self.0.save(storage, &hooks)?)
+        let hook = hooks.remove(index as usize);
+        self.0.save(storage, &hooks)?;
+        Ok(hook)
     }
 
     pub fn prepare_hooks<F: FnMut(Addr) -> StdResult<SubMsg>>(

@@ -2,6 +2,7 @@ use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use voting::reply::mask_proposal_hook_index;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -36,7 +37,8 @@ pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdRe
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, index * 2);
+        let masked_index = mask_proposal_hook_index(index);
+        let tmp = SubMsg::reply_on_error(execute, masked_index);
         index += 1;
         Ok(tmp)
     })
@@ -70,7 +72,8 @@ pub fn proposal_status_changed_hooks(
             msg: msg.clone(),
             funds: vec![],
         };
-        let tmp = SubMsg::reply_on_error(execute, index * 2);
+        let masked_index = mask_proposal_hook_index(index);
+        let tmp = SubMsg::reply_on_error(execute, masked_index);
         index += 1;
         Ok(tmp)
     })

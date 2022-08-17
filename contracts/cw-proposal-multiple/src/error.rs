@@ -3,7 +3,7 @@ use std::u64;
 use cosmwasm_std::StdError;
 use indexable_hooks::HookError;
 use thiserror::Error;
-use voting::threshold::ThresholdError;
+use voting::{reply::error::TagError, threshold::ThresholdError};
 
 #[derive(Error, Debug)]
 pub enum ContractError {
@@ -40,8 +40,11 @@ pub enum ContractError {
     #[error("Not registered to vote (no voting power) at time of proposal creation.")]
     NotRegistered {},
 
-    #[error("Already voted")]
+    #[error("Already voted. This proposal does not support revoting.")]
     AlreadyVoted {},
+
+    #[error("Already cast a vote with that option. Change your vote to revote.")]
+    AlreadyCast {},
 
     #[error("Proposal must be in 'passed' state to be executed.")]
     NotPassed {},
@@ -72,4 +75,7 @@ pub enum ContractError {
 
     #[error("Must have voting power to propose.")]
     MustHaveVotingPower {},
+
+    #[error("{0}")]
+    Tag(#[from] TagError),
 }

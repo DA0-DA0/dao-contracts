@@ -1,8 +1,8 @@
 use std::borrow::BorrowMut;
 
 use crate::msg::{
-    ExecuteMsg, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse,
-    TotalStakedAtHeightResponse, TotalValueResponse,
+    ExecuteMsg, ListStakersResponse, QueryMsg, ReceiveMsg, StakedBalanceAtHeightResponse,
+    StakedValueResponse, StakerBalanceResponse, TotalStakedAtHeightResponse, TotalValueResponse,
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
@@ -1043,4 +1043,122 @@ fn test_double_unstake_at_height() {
         .unwrap();
 
     assert_eq!(balance.balance, Uint128::zero())
+}
+
+#[test]
+fn test_query_list_stakers() {
+    let mut app = App::default();
+
+    let (staking_addr, cw20_addr) = setup_test_case(
+        &mut app,
+        vec![
+            Cw20Coin {
+                address: "ekez1".to_string(),
+                amount: Uint128::new(10),
+            },
+            Cw20Coin {
+                address: "ekez2".to_string(),
+                amount: Uint128::new(20),
+            },
+            Cw20Coin {
+                address: "ekez3".to_string(),
+                amount: Uint128::new(30),
+            },
+            Cw20Coin {
+                address: "ekez4".to_string(),
+                amount: Uint128::new(40),
+            },
+        ],
+        None,
+    );
+
+    stake_tokens(
+        &mut app,
+        &staking_addr,
+        &cw20_addr,
+        mock_info("ekez1", &[]),
+        Uint128::new(10),
+    )
+    .unwrap();
+
+    stake_tokens(
+        &mut app,
+        &staking_addr,
+        &cw20_addr,
+        mock_info("ekez2", &[]),
+        Uint128::new(20),
+    )
+    .unwrap();
+
+    stake_tokens(
+        &mut app,
+        &staking_addr,
+        &cw20_addr,
+        mock_info("ekez3", &[]),
+        Uint128::new(30),
+    )
+    .unwrap();
+
+    stake_tokens(
+        &mut app,
+        &staking_addr,
+        &cw20_addr,
+        mock_info("ekez4", &[]),
+        Uint128::new(40),
+    )
+    .unwrap();
+
+    // check first 2
+    let stakers: ListStakersResponse = app
+        .wrap()
+        .query_wasm_smart(
+            staking_addr.clone(),
+            &QueryMsg::ListStakers {
+                start_after: None,
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+
+    let test_res = ListStakersResponse {
+        stakers: vec![
+            StakerBalanceResponse {
+                address: "ekez1".to_string(),
+                balance: Uint128::new(10),
+            },
+            StakerBalanceResponse {
+                address: "ekez2".to_string(),
+                balance: Uint128::new(20),
+            },
+        ],
+    };
+
+    assert_eq!(stakers, test_res);
+
+    // skip first and grab 2
+    let stakers: ListStakersResponse = app
+        .wrap()
+        .query_wasm_smart(
+            staking_addr,
+            &QueryMsg::ListStakers {
+                start_after: Some("ekez1".to_string()),
+                limit: Some(2),
+            },
+        )
+        .unwrap();
+
+    let test_res = ListStakersResponse {
+        stakers: vec![
+            StakerBalanceResponse {
+                address: "ekez2".to_string(),
+                balance: Uint128::new(20),
+            },
+            StakerBalanceResponse {
+                address: "ekez3".to_string(),
+                balance: Uint128::new(30),
+            },
+        ],
+    };
+
+    assert_eq!(stakers, test_res)
 }

@@ -22,10 +22,23 @@ pub struct InstantiateMsg {
     /// proposals. Otherwise, any address may execute a passed
     /// proposal.
     pub only_members_execute: bool,
+    /// Allows changing votes before the proposal expires. If this is
+    /// enabled proposals will not be able to complete early as final
+    /// vote information is not known until the time of proposal
+    /// expiration.
+    pub allow_revoting: bool,
     /// Information about the deposit required to create a
     /// proposal. None if there is no deposit requirement, Some
     /// otherwise.
     pub deposit_info: Option<DepositInfo>,
+    /// If set to true proposals will be closed if their execution
+    /// fails. Otherwise, proposals will remain open after execution
+    /// failure. For example, with this enabled a proposal to send 5
+    /// tokens out of a DAO's treasury with 4 tokens would be closed when
+    /// it is executed. With this disabled, that same proposal would
+    /// remain open until the DAO's treasury was large enough for it to be
+    /// executed.
+    pub close_proposal_on_execution_failure: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -80,12 +93,25 @@ pub enum ExecuteMsg {
         /// proposals. Otherwise, any address may execute a passed
         /// proposal. Applies to all outstanding and future proposals.
         only_members_execute: bool,
+        /// Allows changing votes before the proposal expires. If this is
+        /// enabled proposals will not be able to complete early as final
+        /// vote information is not known until the time of proposal
+        /// expiration.
+        allow_revoting: bool,
         /// The address if tge DAO that this governance module is
         /// associated with.
         dao: String,
         /// Information about the deposit required to make a
         /// proposal. None if no deposit, Some otherwise.
         deposit_info: Option<DepositInfo>,
+        /// If set to true proposals will be closed if their execution
+        /// fails. Otherwise, proposals will remain open after execution
+        /// failure. For example, with this enabled a proposal to send 5
+        /// tokens out of a DAO's treasury with 4 tokens would be closed when
+        /// it is executed. With this disabled, that same proposal would
+        /// remain open until the DAO's treasury was large enough for it to be
+        /// executed.
+        close_proposal_on_execution_failure: bool,
     },
     AddProposalHook {
         address: String,

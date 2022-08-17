@@ -1,0 +1,111 @@
+name: Integration Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  compile-contracts:
+    name: Compile contracts using optimized rust compiler
+    runs-on: ubuntu-latest
+    container:
+      image: cosmwasm/workspace-optimizer:0.12.6
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install tar for cache upload
+        run: apk add --no-cache tar
+      - name: Rust Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Optimize
+        run: optimize_workspace.sh
+      - name: Upload contracts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dao-dao-contract-artifacts-${{ github.event.number }}
+          path: artifacts
+          retention-days: 1
+
+  test:
+    name: Run integration tests against local juno node
+    runs-on: ubuntu-latest
+    needs: compile-contracts
+    env:
+      ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
+      GAS_OUT_DIR: gas_reports
+      CONFIG: configs/ci.yaml
+      CONTRACT_DIR: artifacts
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Run Local Juno Node
+        run: |
+          docker run --rm -d --name juno \
+            -e PASSWORD=xxxxxxxxx \
+            -e STAKE_TOKEN=ujunox \
+            -e GAS_LIMIT=100000000 \
+            -e MAX_BYTES=22020096 \
+            -e UNSAFE_CORS=true \
+            -p 1317:1317 \
+            -p 26656:26656 \
+            -p 26657:26657 \
+            ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
+
+      - name: Let Juno catch up
+        run: sleep 30
+
+      - name: Restore optimized contracts
+        uses: actions/download-artifact@v3
+        with:
+          name: dao-dao-contract-artifacts-${{ github.event.number }}
+          path: ci/integration_tests/artifacts
+
+      - name: Download smart contract dependencies
+        run: |
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
+            -O ci/integration_tests/artifacts/cw20_base.wasm
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
+            -O ci/integration_tests/artifacts/cw4_group.wasm
+
+      - name: Rust Dependencies Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('ci/integration_tests/Cargo.lock') }}
+
+      - name: Run Integration Tests
+        run: cd ci/integration_tests/ && cargo t
+
+      - name: Combine Test Gas Reports
+        run: cd ci/integration_tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
+
+      - name: Raw Gas Report
+        run: cat ci/integration_tests/gas_report.json
+
+      - name: Set GIT_BRANCH
+        run: echo "GIT_BRANCH=$(echo ${{ github.ref }} | sed 's|/|-|g')" >> $GITHUB_ENV
+
+      - name: Upload Gas Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: dao-dao-gas-report-${{ env.GIT_BRANCH }}
+          path: ci/integration_tests/gas_report.json
+          retention-days: 90
+
+      # TODO: Download main's gas_report artifact and diff

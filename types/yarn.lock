@@ -1158,6 +1158,35 @@
   resolved "https://registry.yarnpkg.com/@cosmjs/utils/-/utils-0.28.10.tgz#8cb8cb3381210bb498aa766ac26c9ec369a7bfbb"
   integrity sha512-S0t2kFRiAo1MvIrbXlfrGdsn2D3PApyO1d+GCze14Cg4QOOGWDcTsd6VhHcxKhETO1Z9ofEhE4soJ8ZldBlnpg==
 
+"@cosmwasm/ts-codegen@0.5.8":
+  version "0.5.8"
+  resolved "https://registry.yarnpkg.com/@cosmwasm/ts-codegen/-/ts-codegen-0.5.8.tgz#8c7efc91bdbb85637342329daa86342082f3b895"
+  integrity sha512-zd1u8YAghunLhkZAmQvoQIbvrnCW62zs0IZoP3VN23IQWVedycjQJxhoSNKGKdfyir693hSsSMAt3NC/1PrAQQ==
+  dependencies:
+    "@babel/core" "7.18.5"
+    "@babel/generator" "7.18.2"
+    "@babel/parser" "7.18.5"
+    "@babel/plugin-proposal-class-properties" "7.17.12"
+    "@babel/plugin-proposal-export-default-from" "7.17.12"
+    "@babel/plugin-proposal-object-rest-spread" "7.18.0"
+    "@babel/plugin-transform-runtime" "7.18.5"
+    "@babel/preset-env" "7.18.2"
+    "@babel/preset-typescript" "^7.17.12"
+    "@babel/runtime" "^7.18.3"
+    "@babel/traverse" "7.18.5"
+    "@babel/types" "7.18.4"
+    case "1.6.3"
+    dargs "7.0.0"
+    fuzzy "0.1.3"
+    glob "8.0.3"
+    inquirerer "0.1.3"
+    json-schema-to-typescript "10.1.5"
+    long "^5.2.0"
+    minimist "1.2.6"
+    mkdirp "1.0.4"
+    shelljs "0.8.5"
+    wasm-ast-types "^0.4.3"
+
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"
   resolved "https://registry.yarnpkg.com/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz#00629c35a688e05a88b1cda684fb9d5e73f000a1"
@@ -1803,35 +1832,6 @@ cosmjs-types@^0.4.0:
   dependencies:
     long "^4.0.0"
     protobufjs "~6.11.2"
-
-cosmwasm-typescript-gen@0.3.6:
-  version "0.3.6"
-  resolved "https://registry.yarnpkg.com/cosmwasm-typescript-gen/-/cosmwasm-typescript-gen-0.3.6.tgz#c863ce01335f53dd02c8ebc2c545be50828dfc3f"
-  integrity sha512-A+VfD9a59Y4LKhuuH2zN2Qdz5Re4P4qkf3DPMsCUaLiCzcdKSxj2QQCpRXsA4lXkJXbuXPop4WTpYGVX01xpjg==
-  dependencies:
-    "@babel/core" "7.18.5"
-    "@babel/generator" "7.18.2"
-    "@babel/parser" "7.18.5"
-    "@babel/plugin-proposal-class-properties" "7.17.12"
-    "@babel/plugin-proposal-export-default-from" "7.17.12"
-    "@babel/plugin-proposal-object-rest-spread" "7.18.0"
-    "@babel/plugin-transform-runtime" "7.18.5"
-    "@babel/preset-env" "7.18.2"
-    "@babel/preset-typescript" "^7.17.12"
-    "@babel/runtime" "^7.18.3"
-    "@babel/traverse" "7.18.5"
-    "@babel/types" "7.18.4"
-    case "1.6.3"
-    dargs "7.0.0"
-    fuzzy "0.1.3"
-    glob "8.0.3"
-    inquirerer "0.1.3"
-    json-schema-to-typescript "10.1.5"
-    long "^5.2.0"
-    minimist "1.2.6"
-    mkdirp "1.0.4"
-    shelljs "0.8.5"
-    wasm-ast-types "^0.3.5"
 
 create-require@^1.1.0:
   version "1.1.1"
@@ -3466,10 +3466,15 @@ util@^0.10.3:
   dependencies:
     inherits "2.0.3"
 
-wasm-ast-types@^0.3.5:
-  version "0.3.5"
-  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.3.5.tgz#b46d7b5f4f9312f45278f731f9eb496fdf2f4ca3"
-  integrity sha512-rzpP86SqVV3Rs24hG0ZSsFFrxp34J4U65z/3KWLZOxhe6ljuh3FFECbC6p0iyIkmG6hN5F6mQ+4Y2+QNP5GnAg==
+v8-compile-cache-lib@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/v8-compile-cache-lib/-/v8-compile-cache-lib-3.0.1.tgz#6336e8d71965cb3d35a1bbb7868445a7c05264bf"
+  integrity sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==
+
+wasm-ast-types@^0.4.3:
+  version "0.4.3"
+  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.4.3.tgz#bfc6de5ba1c8cb5aed8d41503904372490fbccb0"
+  integrity sha512-AbQe1uwzwyev3VR93coP3hAAIGqZ0ccNeyBHYtUFckHtfrsLwDF5wf3AMmnZ/PmQpxvC8PE/1aiYG8twcg9aGQ==
   dependencies:
     "@babel/runtime" "^7.18.3"
     "@babel/types" "7.18.4"
