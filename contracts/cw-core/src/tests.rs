@@ -10,7 +10,7 @@ use crate::{
     },
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-        ListSubDaosResponse, PauseInfoResponse, SubDao,
+        PauseInfoResponse, SubDao,
     },
     state::Config,
     ContractError,
@@ -2396,7 +2396,7 @@ fn test_add_remove_subdaos() {
     )
     .unwrap();
 
-    let res: ListSubDaosResponse = app
+    let res: Vec<SubDao> = app
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
@@ -2407,7 +2407,7 @@ fn test_add_remove_subdaos() {
         )
         .unwrap();
 
-    assert_eq!(res.subdaos.len(), 4);
+    assert_eq!(res.len(), 4);
 
     let to_remove: Vec<String> = vec!["subdao005".to_string()];
 
@@ -2422,7 +2422,7 @@ fn test_add_remove_subdaos() {
     )
     .unwrap();
 
-    let res: ListSubDaosResponse = app
+    let res: Vec<SubDao> = app
         .wrap()
         .query_wasm_smart(
             core_addr,
@@ -2433,14 +2433,14 @@ fn test_add_remove_subdaos() {
         )
         .unwrap();
 
-    assert_eq!(res.subdaos.len(), 3);
+    assert_eq!(res.len(), 3);
 
     let test_res: SubDao = SubDao {
         addr: "subdao002".to_string(),
         charter: Some("cool charter bro".to_string()),
     };
 
-    assert_eq!(res.subdaos[1], test_res);
+    assert_eq!(res[1], test_res);
 
     let full_result_set: Vec<SubDao> = vec![
         SubDao {
@@ -2457,5 +2457,5 @@ fn test_add_remove_subdaos() {
         },
     ];
 
-    assert_eq!(res.subdaos, full_result_set);
+    assert_eq!(res, full_result_set);
 }

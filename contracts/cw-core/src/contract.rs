@@ -17,7 +17,7 @@ use crate::msg::{
 };
 use crate::query::{
     AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-    ListSubDaosResponse, PauseInfoResponse, SubDao,
+    PauseInfoResponse, SubDao,
 };
 use crate::state::{
     Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
@@ -754,7 +754,7 @@ pub fn query_list_sub_daos(
         cosmwasm_std::Order::Ascending,
     )?;
 
-    let subdaos = subdaos
+    let subdaos: Vec<SubDao> = subdaos
         .into_iter()
         .map(|(address, charter)| SubDao {
             addr: address.into_string(),
@@ -762,7 +762,7 @@ pub fn query_list_sub_daos(
         })
         .collect();
 
-    to_binary(&ListSubDaosResponse { subdaos })
+    to_binary(&subdaos)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

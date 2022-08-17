@@ -57,12 +57,6 @@ pub struct AdminNominationResponse {
     pub nomination: Option<Addr>,
 }
 
-/// Returned by the `ListSubDaos` qry
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct ListSubDaosResponse {
-    pub subdaos: Vec<SubDao>,
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct SubDao {
     /// The contract address of the SubDAO
