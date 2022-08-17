@@ -585,7 +585,7 @@ fn test_removed_modules_can_not_execute() {
         .unwrap();
     assert!(matches!(
         err,
-        ContractError::ModuleAlreadyDisabled {
+        ContractError::ModuleDisabledCannotExecute {
             address: _gov_address
         }
     ));
