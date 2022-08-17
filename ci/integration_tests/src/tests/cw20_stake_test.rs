@@ -1,10 +1,6 @@
-use core::time;
-use std::thread;
-
 use crate::helpers::{chain::Chain, helper::create_dao};
 use cosmwasm_std::{to_binary, Uint128};
 use cw20_stake::{msg::StakedValueResponse, state::Config};
-use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use test_context::test_context;
 
 // #### ExecuteMsg #####
