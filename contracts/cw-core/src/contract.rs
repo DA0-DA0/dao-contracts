@@ -17,11 +17,11 @@ use crate::msg::{
 };
 use crate::query::{
     AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-    PauseInfoResponse,
+    ListSubDaosResponse, PauseInfoResponse, SubDao,
 };
 use crate::state::{
     Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
-    VOTING_MODULE,
+    SUBDAO_LIST, VOTING_MODULE,
 };
 
 // version info for migration info
@@ -132,6 +132,9 @@ pub fn execute(
         ExecuteMsg::AcceptAdminNomination {} => execute_accept_admin_nomination(deps, info.sender),
         ExecuteMsg::WithdrawAdminNomination {} => {
             execute_withdraw_admin_nomination(deps, info.sender)
+        }
+        ExecuteMsg::UpdateSubDaos { to_add, to_remove } => {
+            execute_update_sub_daos_list(deps, env, info.sender, to_add, to_remove)
         }
     }
 }
@@ -457,6 +460,32 @@ pub fn execute_remove_item(
     }
 }
 
+pub fn execute_update_sub_daos_list(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+    to_add: Vec<SubDao>,
+    to_remove: Vec<String>,
+) -> Result<Response, ContractError> {
+    if env.contract.address != sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    for addr in to_remove {
+        let addr = deps.api.addr_validate(&addr)?;
+        SUBDAO_LIST.remove(deps.storage, &addr);
+    }
+
+    for subdao in to_add {
+        let addr = deps.api.addr_validate(&subdao.addr)?;
+        SUBDAO_LIST.save(deps.storage, &addr, &subdao.charter)?;
+    }
+
+    Ok(Response::default()
+        .add_attribute("action", "execute_update_sub_daos_list")
+        .add_attribute("sender", sender))
+}
+
 pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw20s {
@@ -506,6 +535,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::VotingModule {} => query_voting_module(deps),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, address, height)
+        }
+        QueryMsg::ListSubDaos { start_after, limit } => {
+            query_list_sub_daos(deps, start_after, limit)
         }
     }
 }
@@ -703,6 +735,34 @@ pub fn query_cw20_balances(
         })
         .collect::<StdResult<Vec<_>>>()?;
     to_binary(&balances)
+}
+
+pub fn query_list_sub_daos(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let start_at = start_after
+        .map(|addr| deps.api.addr_validate(&addr))
+        .transpose()?;
+
+    let subdaos = cw_paginate::paginate_map(
+        deps,
+        &SUBDAO_LIST,
+        start_at.as_ref(),
+        limit,
+        cosmwasm_std::Order::Ascending,
+    )?;
+
+    let subdaos = subdaos
+        .into_iter()
+        .map(|(address, charter)| SubDao {
+            addr: address.into_string(),
+            charter,
+        })
+        .collect();
+
+    to_binary(&ListSubDaosResponse { subdaos })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

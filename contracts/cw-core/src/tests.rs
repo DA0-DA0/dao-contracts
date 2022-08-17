@@ -10,7 +10,7 @@ use crate::{
     },
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-        PauseInfoResponse,
+        ListSubDaosResponse, PauseInfoResponse, SubDao,
     },
     state::Config,
     ContractError,
@@ -2353,4 +2353,109 @@ fn test_execute_stargate_msg() {
     );
     // TODO: Once cw-multi-test supports executing stargate/ibc messages we can change this result unwrap
     res.unwrap_err();
+}
+
+#[test]
+fn test_add_remove_subdaos() {
+    let (core_addr, mut app) = do_standard_instantiate(false, None);
+
+    test_unauthorized(
+        &mut app,
+        core_addr.clone(),
+        ExecuteMsg::UpdateSubDaos {
+            to_add: vec![],
+            to_remove: vec![],
+        },
+    );
+
+    let to_add: Vec<SubDao> = vec![
+        SubDao {
+            addr: "subdao001".to_string(),
+            charter: None,
+        },
+        SubDao {
+            addr: "subdao002".to_string(),
+            charter: Some("cool charter bro".to_string()),
+        },
+        SubDao {
+            addr: "subdao005".to_string(),
+            charter: None,
+        },
+        SubDao {
+            addr: "subdao007".to_string(),
+            charter: None,
+        },
+    ];
+    let to_remove: Vec<String> = vec![];
+
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateSubDaos { to_add, to_remove },
+        &[],
+    )
+    .unwrap();
+
+    let res: ListSubDaosResponse = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ListSubDaos {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(res.subdaos.len(), 4);
+
+    let to_remove: Vec<String> = vec!["subdao005".to_string()];
+
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateSubDaos {
+            to_add: vec![],
+            to_remove,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let res: ListSubDaosResponse = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr,
+            &QueryMsg::ListSubDaos {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(res.subdaos.len(), 3);
+
+    let test_res: SubDao = SubDao {
+        addr: "subdao002".to_string(),
+        charter: Some("cool charter bro".to_string()),
+    };
+
+    assert_eq!(res.subdaos[1], test_res);
+
+    let full_result_set: Vec<SubDao> = vec![
+        SubDao {
+            addr: "subdao001".to_string(),
+            charter: None,
+        },
+        SubDao {
+            addr: "subdao002".to_string(),
+            charter: Some("cool charter bro".to_string()),
+        },
+        SubDao {
+            addr: "subdao007".to_string(),
+            charter: None,
+        },
+    ];
+
+    assert_eq!(res.subdaos, full_result_set);
 }

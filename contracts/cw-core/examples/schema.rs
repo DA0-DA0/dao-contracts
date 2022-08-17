@@ -7,7 +7,7 @@ use cw_core::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-        PauseInfoResponse,
+        PauseInfoResponse, SubDao,
     },
     state::Config,
 };
@@ -33,6 +33,7 @@ fn main() {
     export_schema(&schema_for!(TotalPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(VotingPowerAtHeightResponse), &out_dir);
     export_schema(&schema_for!(AdminNominationResponse), &out_dir);
+    export_schema(&schema_for!(SubDao), &out_dir);
 
     // Auto TS code generation expects the query return type as QueryNameResponse
     // Here we map query responses to the correct name
@@ -53,4 +54,5 @@ fn main() {
     export_schema_with_title(&schema_for!(Vec<String>), &out_dir, "ListItemsResponse");
     export_schema_with_title(&schema_for!(Addr), &out_dir, "VotingModuleResponse");
     export_schema_with_title(&schema_for!(Vec<Addr>), &out_dir, "ProposalModulesResponse");
+    export_schema_with_title(&schema_for!(Vec<SubDao>), &out_dir, "ListSubDaosResponse");
 }
