@@ -83,7 +83,7 @@ Now we will begin interacting with the chain to begin the instantiation process.
 
 #### Creating tokenfactory denom
 
-Use osmosisd to create a new tokenfactory denom from your validator account. Here we will call the subdenom `uusd`.
+Use osmosisd to create a new tokenfactory denom from your validator account. Here we will call the subdenom `uusd`. (the `u` prefix is a Cosmos standard to use a metric prefix to signal how many decimal places the asset has. `µ` stands for micro, so 6 decimals).
 
 ```
 osmosisd tx tokenfactory create-denom uusd --from test1
