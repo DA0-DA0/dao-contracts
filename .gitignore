@@ -27,3 +27,8 @@ tarpaulin-report.*
 
 # integration tests
 gas_reports/
+
+contracts/**/Cargo.lock
+packages/**/Cargo.lock
+debug/**/Cargo.lock
+ci/**/Cargo.lock
