@@ -29,7 +29,9 @@ use crate::{
     contract::migrate,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::SingleChoiceProposal,
-    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
+    query::{
+        FilterListProposalsResponse, ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse,
+    },
     state::Config,
     ContractError,
 };
@@ -4987,4 +4989,410 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         .unwrap();
 
     assert_eq!(balance.balance, Uint128::new(1));
+}
+
+#[test]
+fn test_find_proposals() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(proposal_contract());
+    let core_addr = instantiate_with_cw4_groups_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::AbsoluteCount {
+                threshold: Uint128::new(3),
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: None,
+            only_members_execute: true,
+            allow_revoting: true,
+            deposit_info: None,
+            close_proposal_on_execution_failure: true,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "four".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "five".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state
+        .proposal_modules
+        .into_iter()
+        .next()
+        .unwrap()
+        .address;
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::No,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("three"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("two"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked("three"),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 3,
+            vote: Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(|b| b.height += 10);
+
+    app.execute_contract(
+        Addr::unchecked("four"),
+        proposal_module.clone(),
+        &ExecuteMsg::Execute { proposal_id: 3 },
+        &[],
+    )
+    .unwrap();
+
+    // Testing search
+    // wallet "one" voted on proposals:
+    // 1 - Yes
+    // 2 - No
+    // 3 - Yes
+    // and 3 proposal is executed
+    {
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 2, 3]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: Some(Status::Open),
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 2]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: Some(Status::Executed),
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [3]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: Some(Vote::Yes),
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 3]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: Some(Status::Open),
+                    wallet_vote: Some(Vote::Yes),
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+    }
+    // Pagination test
+    {
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: Some(1),
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [2, 3]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: None,
+                    limit: Some(2),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [1, 2]
+        );
+        assert_eq!(answ.last_proposal_id, 2);
+
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: Some(1),
+                    limit: Some(10),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [2, 3]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        // starting after {proposal_id: 2}, and limit 1
+        // we should get 3rd, and not empty list
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module.clone(),
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: Some(Vote::Yes),
+                    start_after: Some(1),
+                    limit: Some(1),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [3]
+        );
+        assert_eq!(answ.last_proposal_id, 3);
+
+        let answ: FilterListProposalsResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module,
+                &QueryMsg::FilterListProposals {
+                    wallet: "one".into(),
+                    status: None,
+                    wallet_vote: None,
+                    start_after: Some(5),
+                    limit: Some(5),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            answ.proposals
+                .into_iter()
+                .map(|p| p.id)
+                .collect::<Vec<u64>>(),
+            [] as [u64; 0]
+        );
+        assert_eq!(answ.last_proposal_id, 0);
+    }
 }

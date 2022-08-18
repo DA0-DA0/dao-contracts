@@ -23,14 +23,15 @@ use voting::voting::{get_total_power, get_voting_power, validate_voting_period, 
 
 use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;
-use crate::state::Config;
+use crate::query::FilterListProposalsResponse;
+use crate::state::{Config, BALLOTS};
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::advance_proposal_id,
     query::ProposalListResponse,
     query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
-    state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
+    state::{Ballot, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";
@@ -622,7 +623,64 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => query_reverse_proposals(deps, env, start_before, limit),
         QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
+        QueryMsg::FilterListProposals {
+            wallet,
+            status,
+            wallet_vote,
+            start_after,
+            limit,
+        } => {
+            query_filter_list_proposals(deps, env, wallet, status, wallet_vote, start_after, limit)
+        }
     }
+}
+
+fn query_filter_list_proposals(
+    deps: Deps,
+    env: Env,
+    wallet: String,
+    status: Option<Status>,
+    wallet_vote: Option<Vote>,
+    start_after: Option<u64>,
+    limit: Option<u64>,
+) -> StdResult<Binary> {
+    let wallet: Addr = deps.api.addr_validate(&wallet)?;
+    let min = start_after.map(Bound::exclusive);
+    let limit = limit.unwrap_or(DEFAULT_LIMIT);
+    let mut last_proposal_id = 0;
+    let props = BALLOTS
+        .range_by_wallet(
+            deps.storage,
+            wallet.as_str(),
+            min,
+            None,
+            cosmwasm_std::Order::Ascending,
+        )
+        .filter_map(|p_id| match p_id {
+            Ok((p_id, ballot)) => {
+                last_proposal_id = p_id;
+                if wallet_vote.map_or(true, |vote| vote == ballot.vote) {
+                    match PROPOSALS.may_load(deps.storage, p_id) {
+                        Ok(Some(prop)) => {
+                            if status.map_or(true, |st| st == prop.status) {
+                                return Some(Ok(prop.into_response(&env.block, p_id)));
+                            }
+                        }
+                        Err(err) => return Some(Err(err)),
+                        _ => (),
+                    }
+                }
+                None
+            }
+            Err(err) => Some(Err(err)),
+        })
+        .take(limit as usize)
+        .collect::<StdResult<_>>()?;
+
+    to_binary(&FilterListProposalsResponse {
+        proposals: props,
+        last_proposal_id,
+    })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {

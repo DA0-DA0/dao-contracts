@@ -1,10 +1,12 @@
-use cosmwasm_std::{Addr, Uint128};
-use cw_storage_plus::{Item, Map};
+use std::marker::PhantomData;
+
+use cosmwasm_std::{Addr, StdResult, Uint128};
+use cw_storage_plus::{Item, Map, Prefixer};
 use cw_utils::Duration;
 
 use indexable_hooks::Hooks;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use voting::{deposit::CheckedDepositInfo, threshold::Threshold, voting::Vote};
 
@@ -62,8 +64,67 @@ pub const CONFIG: Item<Config> = Item::new("config");
 /// The number of proposals that have been created.
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const PROPOSALS: Map<u64, SingleChoiceProposal> = Map::new("proposals_v2");
-pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
+const BALLOTS_INTERNAL: Map<(u64, Addr), Ballot> = Map::new("ballots");
 /// Consumers of proposal state change hooks.
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
 /// Consumers of vote hooks.
 pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
+
+pub struct Ballots<K, T> {
+    // wallet_voted_on: Map<u64, Ballot>,
+    key_type: PhantomData<K>,
+    data_type: PhantomData<T>,
+}
+
+impl<K, T> Ballots<K, T> {
+    pub fn update<A, E>(
+        &self,
+        store: &mut dyn cosmwasm_std::Storage,
+        k: (u64, Addr),
+        action: A,
+    ) -> Result<Ballot, E>
+    where
+        A: FnOnce(Option<Ballot>) -> Result<Ballot, E>,
+        E: From<cosmwasm_std::StdError>,
+    {
+        let vote = BALLOTS_INTERNAL.update(store, k.clone(), action)?;
+        let wallet_voted_on: Map<u64, Ballot> = Map::new(k.1.as_str());
+        wallet_voted_on.save(store, k.0, &vote)?;
+        Ok(vote)
+    }
+
+    pub fn may_load(
+        &self,
+        store: &dyn cosmwasm_std::Storage,
+        k: (u64, Addr),
+    ) -> StdResult<Option<Ballot>> {
+        BALLOTS_INTERNAL.may_load(store, k)
+    }
+
+    pub fn range_by_wallet<'a>(
+        &'a self,
+        store: &'a dyn cosmwasm_std::Storage,
+        k: &str,
+        min: Option<cw_storage_plus::Bound<u64>>,
+        max: Option<cw_storage_plus::Bound<u64>>,
+        order: cosmwasm_std::Order,
+    ) -> Box<dyn Iterator<Item = Result<(u64, Ballot), cosmwasm_std::StdError>> + '_> {
+        let wallet_voted_on: Map<u64, Ballot> = Map::new(k);
+        wallet_voted_on.range(store, min, max, order)
+    }
+}
+
+impl<'a, K, T> Ballots<K, T>
+where
+    T: Serialize + DeserializeOwned,
+    K: cw_storage_plus::PrimaryKey<'a>,
+{
+    pub fn prefix(&self, p: K::Prefix) -> cw_storage_plus::Prefix<K::Suffix, T, K::Suffix> {
+        cw_storage_plus::Prefix::new(BALLOTS_INTERNAL.namespace(), &p.prefix())
+    }
+}
+
+pub const BALLOTS: Ballots<(u64, Addr), Ballot> = Ballots {
+    key_type: PhantomData,
+    data_type: PhantomData,
+};
