@@ -4,14 +4,22 @@
   "description": "Relevant state for the governance module. Returned by the `DumpState` query.",
   "type": "object",
   "required": [
+    "active_proposal_module_count",
     "admin",
     "config",
     "pause_info",
     "proposal_modules",
+    "total_proposal_module_count",
     "version",
     "voting_module"
   ],
   "properties": {
+    "active_proposal_module_count": {
+      "description": "The number of active proposal modules.",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    },
     "admin": {
       "description": "Optional DAO Admin",
       "allOf": [
@@ -35,8 +43,14 @@
       "description": "The governance modules associated with the governance contract.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Addr"
+        "$ref": "#/definitions/ProposalModule"
       }
+    },
+    "total_proposal_module_count": {
+      "description": "The total number of proposal modules.",
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
     },
     "version": {
       "description": "The governance contract's version.",
@@ -193,6 +207,45 @@
           },
           "additionalProperties": false
         }
+      ]
+    },
+    "ProposalModule": {
+      "description": "Top level type describing a proposal module.",
+      "type": "object",
+      "required": [
+        "address",
+        "prefix",
+        "status"
+      ],
+      "properties": {
+        "address": {
+          "description": "The address of the proposal module.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
+        },
+        "prefix": {
+          "description": "The URL prefix of this proposal module as derived from the module ID. Prefixes are mapped to letters, e.g. 0 is 'A', and 26 is 'AA'.",
+          "type": "string"
+        },
+        "status": {
+          "description": "The status of the proposal module, e.g. 'Active' or 'Disabled.'",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ProposalModuleStatus"
+            }
+          ]
+        }
+      }
+    },
+    "ProposalModuleStatus": {
+      "description": "The status of a proposal module.",
+      "type": "string",
+      "enum": [
+        "Enabled",
+        "Disabled"
       ]
     },
     "Timestamp": {

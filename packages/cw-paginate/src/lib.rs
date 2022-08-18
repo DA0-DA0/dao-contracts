@@ -123,6 +123,35 @@ where
     }
 }
 
+/// Same as `paginate_map` but only returns the values.
+pub fn paginate_map_values<'a, K, V>(
+    deps: Deps,
+    map: &Map<'a, K, V>,
+    start_after: Option<K>,
+    limit: Option<u32>,
+    order: Order,
+) -> StdResult<Vec<V>>
+where
+    K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
+    V: serde::de::DeserializeOwned + serde::Serialize,
+{
+    let (range_min, range_max) = match order {
+        Order::Ascending => (start_after.map(Bound::exclusive), None),
+        Order::Descending => (None, start_after.map(Bound::exclusive)),
+    };
+
+    let items = map
+        .range(deps.storage, range_min, range_max, order)
+        .map(|kv| Ok(kv?.1));
+
+    match limit {
+        Some(limit) => Ok(items
+            .take(limit.try_into().unwrap())
+            .collect::<StdResult<_>>()?),
+        None => Ok(items.collect::<StdResult<_>>()?),
+    }
+}
+
 /// Same as `paginate_map` but only returns the keys. For use with
 /// `SnaphotMap`.
 pub fn paginate_snapshot_map_keys<'a, 'b, K, V, R: 'static>(

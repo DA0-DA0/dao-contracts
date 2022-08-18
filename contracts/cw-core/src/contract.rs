@@ -1,15 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, SubMsg,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdError, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_core_interface::voting;
-use cw_paginate::{paginate_map, paginate_map_keys};
+use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
 
 use crate::error::ContractError;
 use crate::msg::{
@@ -20,8 +20,9 @@ use crate::query::{
     PauseInfoResponse,
 };
 use crate::state::{
-    Config, ADMIN, CONFIG, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
-    VOTING_MODULE,
+    Config, ProposalModule, ProposalModuleStatus, ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG,
+    CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
+    TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
 // version info for migration info
@@ -71,12 +72,16 @@ pub fn instantiate(
         .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
     if proposal_module_msgs.is_empty() {
-        return Err(ContractError::NoProposalModule {});
+        return Err(ContractError::NoActiveProposalModules {});
     }
 
     for InitialItem { key, value } in msg.initial_items.unwrap_or_default() {
         ITEMS.save(deps.storage, key, &value)?;
     }
+
+    // Save total and active proposal module counts
+    TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
+    ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -123,8 +128,8 @@ pub fn execute(
         ExecuteMsg::UpdateVotingModule { module } => {
             execute_update_voting_module(env, info.sender, module)
         }
-        ExecuteMsg::UpdateProposalModules { to_add, to_remove } => {
-            execute_update_proposal_modules(deps, env, info.sender, to_add, to_remove)
+        ExecuteMsg::UpdateProposalModules { to_add, to_disable } => {
+            execute_update_proposal_modules(deps, env, info.sender, to_add, to_disable)
         }
         ExecuteMsg::NominateAdmin { admin } => {
             execute_nominate_admin(deps, env, info.sender, admin)
@@ -179,9 +184,13 @@ pub fn execute_proposal_hook(
     sender: Addr,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> Result<Response, ContractError> {
-    // Check that the message has come from one of the proposal modules
-    if !PROPOSAL_MODULES.has(deps.storage, sender) {
-        return Err(ContractError::Unauthorized {});
+    let module = PROPOSAL_MODULES
+        .may_load(deps.storage, sender.clone())?
+        .ok_or(ContractError::Unauthorized {})?;
+
+    // Check that the message has come from an active module
+    if module.status != ProposalModuleStatus::Enabled {
+        return Err(ContractError::ModuleDisabledCannotExecute { address: sender });
     }
 
     Ok(Response::default()
@@ -312,34 +321,46 @@ pub fn execute_update_proposal_modules(
     env: Env,
     sender: Addr,
     to_add: Vec<ModuleInstantiateInfo>,
-    to_remove: Vec<String>,
+    to_disable: Vec<String>,
 ) -> Result<Response, ContractError> {
     if env.contract.address != sender {
         return Err(ContractError::Unauthorized {});
     }
 
-    for addr in to_remove {
+    let disable_count = to_disable.len() as u32;
+    for addr in to_disable {
         let addr = deps.api.addr_validate(&addr)?;
-        PROPOSAL_MODULES.remove(deps.storage, addr);
+        let mut module = PROPOSAL_MODULES
+            .load(deps.storage, addr.clone())
+            .map_err(|_| ContractError::ProposalModuleDoesNotExist {
+                address: addr.clone(),
+            })?;
+
+        if module.status == ProposalModuleStatus::Disabled {
+            return Err(ContractError::ModuleAlreadyDisabled {
+                address: module.address,
+            });
+        }
+
+        module.status = ProposalModuleStatus::Disabled {};
+        PROPOSAL_MODULES.save(deps.storage, addr, &module)?;
     }
+
+    // If disabling this module will cause there to be no active modules, return error.
+    // We don't check the active count before disabling because there may erroneously be
+    // modules in to_disable which are already disabled.
+    ACTIVE_PROPOSAL_MODULE_COUNT.update(deps.storage, |count| {
+        if count <= disable_count && to_add.is_empty() {
+            return Err(ContractError::NoActiveProposalModules {});
+        }
+        Ok(count - disable_count)
+    })?;
 
     let to_add: Vec<SubMsg<Empty>> = to_add
         .into_iter()
         .map(|info| info.into_wasm_msg(env.contract.address.clone()))
         .map(|wasm| SubMsg::reply_on_success(wasm, PROPOSAL_MODULE_REPLY_ID))
         .collect();
-
-    // If we removed all of our proposal modules and we are not adding
-    // any this operation would result in no proposal modules being
-    // present.
-    if PROPOSAL_MODULES
-        .keys_raw(deps.storage, None, None, cosmwasm_std::Order::Ascending)
-        .next()
-        .is_none()
-        && to_add.is_empty()
-    {
-        return Err(ContractError::NoProposalModule {});
-    }
 
     Ok(Response::default()
         .add_attribute("action", "execute_update_proposal_modules")
@@ -507,6 +528,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, address, height)
         }
+        QueryMsg::ActiveProposalModules { start_after, limit } => {
+            query_active_proposal_modules(deps, start_after, limit)
+        }
     }
 }
 
@@ -541,22 +565,50 @@ pub fn query_proposal_modules(
     // the contract is still recoverable if too many items end up in
     // here.
     //
-    // Further, as the `keys` method on a map returns an iterator it
+    // Further, as the `range` method on a map returns an iterator it
     // is possible (though implementation dependent) that new keys are
     // loaded on demand as the iterator is moved. Should this be the
     // case we are only paying for what we need here.
     //
     // Even if this does lock up one can determine the existing
     // proposal modules by looking at past transactions on chain.
-    to_binary(&paginate_map_keys(
+    to_binary(&paginate_map_values(
         deps,
         &PROPOSAL_MODULES,
         start_after
             .map(|s| deps.api.addr_validate(&s))
             .transpose()?,
         limit,
-        cosmwasm_std::Order::Descending,
+        cosmwasm_std::Order::Ascending,
     )?)
+}
+
+/// Note: this is not gas efficient as we need to potentially visit all modules in order to
+/// filter out the modules with active status.  
+pub fn query_active_proposal_modules(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let values = paginate_map_values(
+        deps,
+        &PROPOSAL_MODULES,
+        start_after
+            .map(|s| deps.api.addr_validate(&s))
+            .transpose()?,
+        None,
+        cosmwasm_std::Order::Ascending,
+    )?;
+
+    let limit = limit.unwrap_or(values.len() as u32);
+
+    to_binary::<Vec<ProposalModule>>(
+        &values
+            .into_iter()
+            .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Enabled)
+            .take(limit as usize)
+            .collect(),
+    )
 }
 
 fn get_pause_info(deps: Deps, env: Env) -> StdResult<PauseInfoResponse> {
@@ -581,10 +633,13 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     let voting_module = VOTING_MODULE.load(deps.storage)?;
     let proposal_modules = PROPOSAL_MODULES
-        .keys(deps.storage, None, None, cosmwasm_std::Order::Descending)
-        .collect::<Result<Vec<Addr>, _>>()?;
+        .range(deps.storage, None, None, cosmwasm_std::Order::Ascending)
+        .map(|kv| Ok(kv?.1))
+        .collect::<StdResult<Vec<ProposalModule>>>()?;
     let pause_info = get_pause_info(deps, env)?;
     let version = get_contract_version(deps.storage)?;
+    let active_proposal_module_count = ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
+    let total_proposal_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
     to_binary(&DumpStateResponse {
         admin,
         config,
@@ -592,6 +647,8 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
         pause_info,
         proposal_modules,
         voting_module,
+        active_proposal_module_count,
+        total_proposal_module_count,
     })
 }
 
@@ -706,9 +763,31 @@ pub fn query_cw20_balances(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Don't do any state migrations.
-    Ok(Response::default())
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    match msg {
+        MigrateMsg::FromV1 {} => {
+            let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
+            let current_keys = current_map
+                .keys(deps.storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<Addr>>>()?;
+
+            current_keys
+                .into_iter()
+                .enumerate()
+                .try_for_each::<_, StdResult<()>>(|(idx, address)| {
+                    let prefix = derive_proposal_module_prefix(idx)?;
+                    let proposal_module = &ProposalModule {
+                        address: address.clone(),
+                        status: ProposalModuleStatus::Enabled {},
+                        prefix,
+                    };
+                    PROPOSAL_MODULES.save(deps.storage, address, proposal_module)?;
+                    Ok(())
+                })?;
+            Ok(Response::default())
+        }
+        MigrateMsg::FromCompatible {} => Ok(Response::default()),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -717,10 +796,25 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         PROPOSAL_MODULE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let prop_module_addr = deps.api.addr_validate(&res.contract_address)?;
-            PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &Empty {})?;
+            let total_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
+
+            let prefix = derive_proposal_module_prefix(total_module_count as usize)?;
+            let prop_module = ProposalModule {
+                address: prop_module_addr.clone(),
+                status: ProposalModuleStatus::Enabled,
+                prefix,
+            };
+
+            PROPOSAL_MODULES.save(deps.storage, prop_module_addr, &prop_module)?;
+
+            // Save active and total proposal module counts.
+            ACTIVE_PROPOSAL_MODULE_COUNT
+                .update::<_, StdError>(deps.storage, |count| Ok(count + 1))?;
+            TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &(total_module_count + 1))?;
 
             Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))
         }
+
         VOTE_MODULE_INSTANTIATE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let vote_module_addr = deps.api.addr_validate(&res.contract_address)?;
@@ -745,5 +839,58 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             Ok(Response::default().add_attribute("voting_module", vote_module_addr))
         }
         _ => Err(ContractError::UnknownReplyID {}),
+    }
+}
+
+pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<String> {
+    dividend += 1;
+    // Pre-allocate string
+    let mut prefix = String::with_capacity(10);
+    loop {
+        let remainder = (dividend - 1) % 26;
+        dividend = (dividend - remainder) / 26;
+        let remainder_str = std::str::from_utf8(&[(remainder + 65) as u8])?.to_owned();
+        prefix.push_str(&remainder_str);
+        if dividend == 0 {
+            break;
+        }
+    }
+    Ok(prefix.chars().rev().collect())
+}
+
+#[cfg(test)]
+mod test {
+    use crate::contract::derive_proposal_module_prefix;
+    use std::collections::HashSet;
+
+    #[test]
+    fn test_prefix_generation() {
+        assert_eq!("A", derive_proposal_module_prefix(0).unwrap());
+        assert_eq!("B", derive_proposal_module_prefix(1).unwrap());
+        assert_eq!("C", derive_proposal_module_prefix(2).unwrap());
+        assert_eq!("AA", derive_proposal_module_prefix(26).unwrap());
+        assert_eq!("AB", derive_proposal_module_prefix(27).unwrap());
+        assert_eq!("BA", derive_proposal_module_prefix(26 * 2).unwrap());
+        assert_eq!("BB", derive_proposal_module_prefix(26 * 2 + 1).unwrap());
+        assert_eq!("CA", derive_proposal_module_prefix(26 * 3).unwrap());
+        assert_eq!("JA", derive_proposal_module_prefix(26 * 10).unwrap());
+        assert_eq!("YA", derive_proposal_module_prefix(26 * 25).unwrap());
+        assert_eq!("ZA", derive_proposal_module_prefix(26 * 26).unwrap());
+        assert_eq!("ZZ", derive_proposal_module_prefix(26 * 26 + 25).unwrap());
+        assert_eq!("AAA", derive_proposal_module_prefix(26 * 26 + 26).unwrap());
+        assert_eq!("YZA", derive_proposal_module_prefix(26 * 26 * 26).unwrap());
+        assert_eq!("ZZ", derive_proposal_module_prefix(26 * 26 + 25).unwrap());
+    }
+
+    #[test]
+    fn test_prefixes_no_collisions() {
+        let mut seen = HashSet::<String>::new();
+        for i in 0..25 * 25 * 25 {
+            let prefix = derive_proposal_module_prefix(i).unwrap();
+            if seen.contains(&prefix) {
+                panic!("already seen value")
+            }
+            seen.insert(prefix);
+        }
     }
 }

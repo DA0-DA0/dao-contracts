@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Addr, StdError};
 use cw_utils::ParseReplyError;
 use thiserror::Error;
 
@@ -16,8 +16,8 @@ pub enum ContractError {
     #[error("No voting module provided.")]
     NoVotingModule {},
 
-    #[error("Execution would result in no governance modules being present.")]
-    NoProposalModule {},
+    #[error("Execution would result in no proposal modules being active.")]
+    NoActiveProposalModules {},
 
     #[error("An unknown reply ID was received.")]
     UnknownReplyID {},
@@ -41,4 +41,13 @@ pub enum ContractError {
         "The pending admin nomination must be withdrawn before a new nomination can be created."
     )]
     PendingNomination {},
+
+    #[error("Proposal module with address ({address}) does not exist.")]
+    ProposalModuleDoesNotExist { address: Addr },
+
+    #[error("Proposal module with address ({address}) is already disabled.")]
+    ModuleAlreadyDisabled { address: Addr },
+
+    #[error("Proposal module with address is disabled and cannot execute messages.")]
+    ModuleDisabledCannotExecute { address: Addr },
 }

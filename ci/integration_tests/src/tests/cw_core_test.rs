@@ -248,7 +248,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     );
 
     let voting_addr = dao.state.voting_module.as_str();
-    let prop_addr = dao.state.proposal_modules[0].as_str();
+    let prop_addr = dao.state.proposal_modules[0].address.as_str();
 
     // voting module config is valid:
     chain
