@@ -1,5 +1,30 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MigrateMsg",
-  "type": "object"
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "from_v1"
+      ],
+      "properties": {
+        "from_v1": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "from_compatible"
+      ],
+      "properties": {
+        "from_compatible": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
 }

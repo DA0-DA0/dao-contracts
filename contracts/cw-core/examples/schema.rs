@@ -9,7 +9,7 @@ use cw_core::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
         PauseInfoResponse, SubDao,
     },
-    state::Config,
+    state::{Config, ProposalModule},
 };
 use cw_core_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -46,13 +46,17 @@ fn main() {
     );
     export_schema_with_title(&schema_for!(Vec<Addr>), &out_dir, "Cw20TokenListResponse");
     export_schema_with_title(&schema_for!(Vec<Addr>), &out_dir, "Cw721TokenListResponse");
-    export_schema_with_title(
-        &schema_for!(Vec<Addr>),
-        &out_dir,
-        "GovernanceModulesResponse",
-    );
     export_schema_with_title(&schema_for!(Vec<String>), &out_dir, "ListItemsResponse");
     export_schema_with_title(&schema_for!(Addr), &out_dir, "VotingModuleResponse");
-    export_schema_with_title(&schema_for!(Vec<Addr>), &out_dir, "ProposalModulesResponse");
+    export_schema_with_title(
+        &schema_for!(Vec<ProposalModule>),
+        &out_dir,
+        "ProposalModulesResponse",
+    );
+    export_schema_with_title(
+        &schema_for!(Vec<ProposalModule>),
+        &out_dir,
+        "ActiveProposalModulesResponse",
+    );
     export_schema_with_title(&schema_for!(Vec<SubDao>), &out_dir, "ListSubDaosResponse");
 }
