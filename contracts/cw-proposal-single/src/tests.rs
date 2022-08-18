@@ -5037,7 +5037,12 @@ fn test_find_proposals() {
         .wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
         .unwrap();
-    let proposal_module = core_state.proposal_modules.into_iter().next().unwrap();
+    let proposal_module = core_state
+        .proposal_modules
+        .into_iter()
+        .next()
+        .unwrap()
+        .address;
 
     app.execute_contract(
         Addr::unchecked("one"),
