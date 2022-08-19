@@ -62,6 +62,12 @@ jobs:
       # TODO: We need to publish a pre-built optimizoor binary in a package manager so we can just pull it here
       #
       # For now Im going to cache the binary in github on a key that never changes
+      - name: Optimizoor cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-cw-optimizoor
+          key: ${{ runner.os }}-cargo-cw-optimizoor
+
       - name: Install Optimizoor
         run: cargo install cw-optimizoor
 
