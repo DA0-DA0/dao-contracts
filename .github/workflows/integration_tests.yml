@@ -34,10 +34,11 @@ jobs:
 
       - name: Download smart contract dependencies
         run: |
+          mkdir artifacts \
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
-            -O ci/integration_tests/artifacts/cw20_base.wasm
+            -O artifacts/cw20_base.wasm
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
-            -O ci/integration_tests/artifacts/cw4_group.wasm
+            -O artifacts/cw4_group.wasm
 
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
