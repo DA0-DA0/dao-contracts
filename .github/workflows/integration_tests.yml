@@ -59,6 +59,15 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      # TODO: We need to publish a pre-built optimizoor binary in a package manager so we can just pull it here
+      #
+      # For now Im going to cache the binary in github on a key that never changes
+      - name: Install Optimizoor
+        run: cargo install cw-optimizoor
+
+      - name: Build + Optimize contracts
+        run: cargo cw-optimizoor Cargo.toml
+
       - name: Run Integration Tests
         run: cd ci/integration_tests/ && cargo t
 
