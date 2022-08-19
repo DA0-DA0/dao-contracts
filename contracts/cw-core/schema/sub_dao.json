@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SubDao",
+  "type": "object",
+  "required": [
+    "addr"
+  ],
+  "properties": {
+    "addr": {
+      "description": "The contract address of the SubDAO",
+      "type": "string"
+    },
+    "charter": {
+      "description": "The purpose/constitution for the SubDAO",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

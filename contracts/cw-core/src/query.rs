@@ -60,3 +60,11 @@ pub struct AdminNominationResponse {
     /// pending.
     pub nomination: Option<Addr>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct SubDao {
+    /// The contract address of the SubDAO
+    pub addr: String,
+    /// The purpose/constitution for the SubDAO
+    pub charter: Option<String>,
+}
