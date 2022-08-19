@@ -32,6 +32,14 @@ jobs:
             -p 9090:9090 \
             ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
 
+      - name: Install latest nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          target: wasm32-unknown-unknown
+          override: true
+
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
         with:
