@@ -36,7 +36,7 @@ pub struct Account {
 
 impl TestContext for Chain {
     fn setup() -> Self {
-        let cfg = CONFIG.get_or_init(|| global_setup()).cfg.clone();
+        let cfg = CONFIG.get_or_init(global_setup).cfg.clone();
         let orc = CosmOrc::new(cfg.clone())
             .unwrap()
             .add_profiler(Box::new(GasProfiler::new()));
