@@ -34,7 +34,7 @@ jobs:
 
       - name: Download smart contract dependencies
         run: |
-          mkdir artifacts \
+          mkdir artifacts
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
             -O artifacts/cw20_base.wasm
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
