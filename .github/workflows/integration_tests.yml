@@ -7,20 +7,30 @@ on:
       - main
 
 jobs:
-  compile-contracts:
-    name: Build + Optimize contracts using cw-optimizoor
+  test:
+    name: Run integration tests against local juno node
     runs-on: ubuntu-latest
+    env:
+      ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
+      GAS_OUT_DIR: gas_reports
+      CONFIG: configs/ci.yaml
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install latest nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          target: wasm32-unknown-unknown
-          override: true
+      - name: Run Local Juno Node
+        run: |
+          docker run --rm -d --name juno \
+            -e PASSWORD=xxxxxxxxx \
+            -e STAKE_TOKEN=ujunox \
+            -e GAS_LIMIT=100000000 \
+            -e MAX_BYTES=22020096 \
+            -e UNSAFE_CORS=true \
+            -p 1317:1317 \
+            -p 26656:26656 \
+            -p 26657:26657 \
+            -p 9090:9090 \
+            ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
 
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
@@ -50,84 +60,12 @@ jobs:
       - name: Build + Optimize contracts
         run: cargo cw-optimizoor Cargo.toml
 
-      - name: Upload contracts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dao-dao-contract-artifacts-${{ github.event.number }}
-          path: artifacts
-          retention-days: 30
-
-  compile-integration-tests:
-    name: Compile integration tests project so we can pre compile in parallel with rust optimization
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install latest nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: true
-
-      - name: Build integration tests
-        run: cd ci/integration_tests && cargo build
-
-      - name: Upload target
-        uses: actions/upload-artifact@v3
-        with:
-          name: dao-dao-contract-target-${{ github.event.number }}
-          path: target
-          retention-days: 1
-
-  test:
-    name: Run integration tests against local juno node
-    runs-on: ubuntu-latest
-    needs: [compile-contracts, compile-integration-tests]
-    env:
-      ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
-      GAS_OUT_DIR: gas_reports
-      CONFIG: configs/ci.yaml
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Run Local Juno Node
-        run: |
-          docker run --rm -d --name juno \
-            -e PASSWORD=xxxxxxxxx \
-            -e STAKE_TOKEN=ujunox \
-            -e GAS_LIMIT=100000000 \
-            -e MAX_BYTES=22020096 \
-            -e UNSAFE_CORS=true \
-            -p 1317:1317 \
-            -p 26656:26656 \
-            -p 26657:26657 \
-            -p 9090:9090 \
-            ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
-
-      - name: Let first block process
-        run: sleep 5
-
-      - name: Restore optimized contracts
-        uses: actions/download-artifact@v3
-        with:
-          name: dao-dao-contract-artifacts-${{ github.event.number }}
-          path: artifacts
-
       - name: Download smart contract dependencies
         run: |
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
             -O artifacts/cw20_base.wasm
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
             -O artifacts/cw4_group.wasm
-
-      - name: Restore pre-built target
-        uses: actions/download-artifact@v3
-        with:
-          name: dao-dao-contract-target-${{ github.event.number }}
-          path: target
 
       - name: Run Integration Tests
         run: cd ci/integration_tests/ && cargo t
