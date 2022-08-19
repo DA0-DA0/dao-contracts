@@ -78,7 +78,9 @@ fn global_setup() -> Cfg {
 
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
-        orc.optimize_contracts("../../Cargo.toml").unwrap();
+        // NOTE: adding `cw-optimizoor` to the build takes way too long.
+        // I need to have `cw-optimizoor` pre-compiled / built in order to use in CI
+        //orc.optimize_contracts("../../Cargo.toml").unwrap();
 
         orc.store_contracts("../../artifacts", &account.key)
             .unwrap();
