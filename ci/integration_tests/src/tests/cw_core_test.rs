@@ -44,7 +44,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     assert_matches!(
         res.unwrap_err(),
-        ProcessError::ClientError(ClientError::CosmosSdk { .. })
+        ProcessError::ClientError(ClientError::GRPC(_))
     );
 
     let res = chain
