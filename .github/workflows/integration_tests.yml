@@ -51,10 +51,15 @@ jobs:
             ~/.cargo/git/db/
             target/
             artifacts/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
 
-      # NOTE: Im just trying to compare the CI runtimes of optimzoor and workspace-optimizer
-      # using the rust cargo cache
+      - name: Download smart contract dependencies
+        run: |
+          mkdir -p artifacts target
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
+            -O artifacts/cw20_base.wasm
+          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
+            -O artifacts/cw4_group.wasm
 
       - name: Build + Optimize contracts
         run: |
@@ -63,13 +68,6 @@ jobs:
             --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
             --platform linux/amd64 \
             cosmwasm/workspace-optimizer:0.12.6
-
-      - name: Download smart contract dependencies
-        run: |
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
-            -O artifacts/cw20_base.wasm
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
-            -O artifacts/cw4_group.wasm
 
       - name: Run Integration Tests
         run: RUST_LOG=info cargo integration-test
@@ -84,6 +82,7 @@ jobs:
         run: echo "GIT_BRANCH=$(echo ${{ github.ref }} | sed 's|/|-|g')" >> $GITHUB_ENV
 
       - name: Upload Gas Report
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v3
         with:
           name: dao-dao-gas-report-${{ env.GIT_BRANCH }}
