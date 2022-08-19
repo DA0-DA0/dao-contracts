@@ -61,6 +61,9 @@ jobs:
     name: Compile integration tests project so we can pre compile in parallel with rust optimization
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
       - name: Install latest nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
