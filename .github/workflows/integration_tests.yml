@@ -7,45 +7,13 @@ on:
       - main
 
 jobs:
-  compile-contracts:
-    name: Compile contracts using optimized rust compiler
-    runs-on: ubuntu-latest
-    container:
-      image: cosmwasm/workspace-optimizer:0.12.6
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - name: Install tar for cache upload
-        run: apk add --no-cache tar
-      - name: Rust Dependencies Cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Optimize
-        run: optimize_workspace.sh
-      - name: Upload contracts
-        uses: actions/upload-artifact@v3
-        with:
-          # TODO: ${{ github.event.number }} is null in main
-          name: dao-dao-contract-artifacts-${{ github.event.number }}
-          path: artifacts
-          retention-days: 1
-
   test:
     name: Run integration tests against local juno node
     runs-on: ubuntu-latest
-    needs: compile-contracts
     env:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
       GAS_OUT_DIR: gas_reports
       CONFIG: configs/ci.yaml
-      CONTRACT_DIR: artifacts
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -61,16 +29,8 @@ jobs:
             -p 1317:1317 \
             -p 26656:26656 \
             -p 26657:26657 \
+            -p 9090:9090 \
             ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
-
-      - name: Let Juno catch up
-        run: sleep 30
-
-      - name: Restore optimized contracts
-        uses: actions/download-artifact@v3
-        with:
-          name: dao-dao-contract-artifacts-${{ github.event.number }}
-          path: ci/integration_tests/artifacts
 
       - name: Download smart contract dependencies
         run: |
