@@ -40,6 +40,14 @@ jobs:
           wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
             -O artifacts/cw4_group.wasm
 
+      - name: Install latest nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          target: wasm32-unknown-unknown
+          override: true
+
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
         with:
