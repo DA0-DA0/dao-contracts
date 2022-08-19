@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Run integration tests against local juno node
+    name: Integration tests
     runs-on: ubuntu-latest
     env:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
@@ -53,21 +53,15 @@ jobs:
             artifacts/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      # TODO: We need to publish a pre-built optimizoor binary in a package manager or docker image
-      #
-      # For now, to test Im going to cache the binary in github on a key that never changes
-      - name: Optimizoor cache
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/cargo-cw-optimizoor
-          key: ${{ runner.os }}-cargo-cw-optimizoor
-
-      - name: Install Optimizoor
-        continue-on-error: true
-        run: cargo install cw-optimizoor
+      # NOTE: Im just trying to compare the CI runtimes of optimzoor and workspace-optimizer
+      # using the rust cargo cache
 
       - name: Build + Optimize contracts
-        run: cargo cw-optimizoor Cargo.toml
+        run: docker run --rm -v "$(pwd)":/code \
+              --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+              --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+              --platform linux/amd64 \
+              cosmwasm/workspace-optimizer:0.12.6
 
       - name: Download smart contract dependencies
         run: |

@@ -43,7 +43,7 @@ Run `cargo t` or `cargo unit-test` from the project root to run the unit tests.
 ### Integration tests
 
 * `./scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg`
-* `CONTRACT_DIR="../../artifacts" GAS_OUT_DIR="gas_reports" CONFIG="configs/local.yaml" cargo integration-test`
+* `CONTRACT_DIR="../../artifacts" GAS_OUT_DIR="gas_reports" CONFIG="configs/local.yaml" RUST_LOG=info cargo integration-test`
 
 See [ci/integration_tests/README.md](ci/integration_tests/README.md) for more information.
 
