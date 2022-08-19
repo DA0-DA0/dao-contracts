@@ -49,7 +49,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-            artifacts
+            artifacts/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       # TODO: We need to publish a pre-built optimizoor binary in a package manager or docker image
@@ -76,7 +76,7 @@ jobs:
             -O artifacts/cw4_group.wasm
 
       - name: Run Integration Tests
-        run: cd ci/integration_tests/ && cargo t
+        run: RUST_LOG=info cargo integration-test
 
       - name: Combine Test Gas Reports
         run: cd ci/integration_tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
