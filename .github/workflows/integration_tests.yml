@@ -53,6 +53,10 @@ jobs:
             artifacts/
           key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
 
+      # WARNING: if we dont `mkdir -p artifacts target` before we optimize the contracts
+      # then we will get os permission errors trying to later build the workspace on a cache miss,
+      # because the workspace-optimizer docker container is creating those folders inside
+      # the docker container with incorrect perms right now.
       - name: Download smart contract dependencies
         run: |
           mkdir -p artifacts target
