@@ -1,11 +1,13 @@
 use std::u128;
 
 use cosmwasm_std::{
+    coins,
     testing::{mock_dependencies, mock_env},
     to_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Order, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
+use cw_asset::{AssetInfo, AssetInfoUnchecked};
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
 use cw_core::{msg::ModuleInstantiateInfo, state::ProposalModule};
@@ -913,9 +915,11 @@ where
         ref token, deposit, ..
     }) = config.deposit_info
     {
+        println!("{:?}", token);
+
         app.execute_contract(
             Addr::unchecked(&proposer),
-            token.clone(),
+            Addr::unchecked(token.to_string().split(':').collect::<Vec<&str>>()[1]),
             &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
                 spender: govmod_single.to_string(),
                 amount: deposit,
@@ -1380,7 +1384,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     assert_eq!(
         config.deposit_info,
         Some(CheckedDepositInfo {
-            token: expected_token,
+            token: AssetInfo::cw20(expected_token),
             deposit: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always
         })
@@ -1424,7 +1428,7 @@ fn test_different_token_proposal_deposit() {
         allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::Token {
-                address: cw20_addr.to_string(),
+                asset: AssetInfoUnchecked::cw20(cw20_addr.to_string()),
             },
             deposit: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
@@ -1483,7 +1487,7 @@ fn test_bad_token_proposal_deposit() {
         allow_revoting: false,
         deposit_info: Some(DepositInfo {
             token: DepositToken::Token {
-                address: votemod_addr.to_string(),
+                asset: AssetInfoUnchecked::cw20(votemod_addr.to_string()),
             },
             deposit: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
@@ -1496,7 +1500,7 @@ fn test_bad_token_proposal_deposit() {
 }
 
 #[test]
-fn test_take_proposal_deposit() {
+fn test_take_cw20_proposal_deposit() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
 
@@ -1567,7 +1571,7 @@ fn test_take_proposal_deposit() {
     // Allow a proposal deposit.
     app.execute_contract(
         Addr::unchecked("ekez"),
-        token.clone(),
+        Addr::unchecked(token.to_string().split(':').collect::<Vec<&str>>()[1]),
         &cw20_base::msg::ExecuteMsg::IncreaseAllowance {
             spender: govmod_single.to_string(),
             amount: Uint128::new(1),
@@ -1591,20 +1595,144 @@ fn test_take_proposal_deposit() {
     .unwrap();
 
     // Check that our balance was deducted.
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token,
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
-    assert_eq!(balance.balance, Uint128::new(1))
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
+    assert_eq!(balance.unwrap(), Uint128::new(1))
 }
 
 #[test]
-fn test_deposit_return_on_execute() {
+fn test_native_proposal_deposit() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let instantiate = InstantiateMsg {
+        threshold,
+        max_voting_period,
+        min_voting_period: None,
+        only_members_execute: false,
+        allow_revoting: false,
+        deposit_info: Some(DepositInfo {
+            token: DepositToken::Token {
+                asset: AssetInfoUnchecked::Native("ujuno".to_string()),
+            },
+            deposit: Uint128::new(1),
+            refund_policy: DepositRefundPolicy::Always,
+        }),
+        close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
+    };
+
+    let governance_addr = instantiate_with_cw20_balances_governance(
+        &mut app,
+        govmod_id,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(2),
+        }]),
+    );
+
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap().address;
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo {
+        token,
+        deposit,
+        refund_policy,
+    } = govmod_config.deposit_info.unwrap();
+    assert_eq!(refund_policy, DepositRefundPolicy::Always);
+    assert_eq!(deposit, Uint128::new(1));
+
+    // This will fail because deposit not send
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    // Mint ekez some tokens
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: "ekez".to_string(),
+        amount: vec![Coin {
+            denom: "ujuno".to_string(),
+            amount: Uint128::new(100),
+        }],
+    }))
+    .unwrap();
+
+    // Adding deposit will work
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &coins(1, "ujuno"),
+    )
+    .unwrap();
+
+    // Check that our balance was deducted.
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
+    assert_eq!(balance.unwrap(), Uint128::new(99));
+
+    // Govmod has the token
+    let balance = token.query_balance(&app.wrap(), govmod_single.to_string());
+    assert_eq!(balance.unwrap(), Uint128::new(1));
+
+    // Vote on the proposal.
+    let res = app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: Vote::Yes,
+        },
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // Execute the proposal, this should cause the deposit to be
+    // refunded.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single.clone(),
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    // "ekez" has been refunded
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
+    assert_eq!(balance.unwrap(), Uint128::new(100));
+
+    // Govmod has refunded the token
+    let balance = token.query_balance(&app.wrap(), govmod_single.to_string());
+    assert_eq!(balance.unwrap(), Uint128::new(0));
+}
+
+#[test]
+fn test_deposit_cw20_return_on_execute() {
     // Will create a proposal and execute it, one token will be
     // deposited to create said proposal, expectation is that the
     // token is then returned once the proposal is executed.
@@ -1640,19 +1768,11 @@ fn test_deposit_return_on_execute() {
         .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
         .unwrap();
     let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token.clone(),
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
     // Proposal has not been executed so deposit has not been
     // refunded.
-    assert_eq!(balance.balance, Uint128::new(9));
+    assert_eq!(balance.unwrap(), Uint128::new(9));
 
     // Execute the proposal, this should cause the deposit to be
     // refunded.
@@ -1664,18 +1784,10 @@ fn test_deposit_return_on_execute() {
     )
     .unwrap();
 
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token,
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
     // Proposal has been executed so deposit has been refunded.
-    assert_eq!(balance.balance, Uint128::new(10));
+    assert_eq!(balance.unwrap(), Uint128::new(10));
 }
 
 #[test]
@@ -1718,19 +1830,11 @@ fn test_deposit_never_refund_configuration() {
         .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
         .unwrap();
     let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token.clone(),
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
     // Proposal has not been executed so deposit has not been
     // refunded.
-    assert_eq!(balance.balance, Uint128::new(9));
+    assert_eq!(balance.unwrap(), Uint128::new(9));
 
     // Execute the proposal, this should cause the deposit to be
     // refunded.
@@ -1742,30 +1846,14 @@ fn test_deposit_never_refund_configuration() {
     )
     .unwrap();
 
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token.clone(),
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
     // Proposal has been executed so deposit has not been refunded.
-    assert_eq!(balance.balance, Uint128::new(9));
+    assert_eq!(balance.unwrap(), Uint128::new(9));
 
-    let dao_balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token,
-            &cw20::Cw20QueryMsg::Balance {
-                address: governance_addr.to_string(),
-            },
-        )
-        .unwrap();
+    let dao_balance = token.query_balance(&app.wrap(), governance_addr.to_string());
     // Since proposals are non-refundable, DAO has funds
-    assert_eq!(dao_balance.balance, Uint128::new(1));
+    assert_eq!(dao_balance.unwrap(), Uint128::new(1));
 }
 
 #[test]
@@ -1794,7 +1882,7 @@ fn test_open_proposal_submission() {
     let governance_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
-            governance_addr.clone(),
+            governance_addr,
             &cw_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
@@ -1902,19 +1990,11 @@ fn test_close_open_proposal() {
         .query_wasm_smart(govmod_single, &QueryMsg::Config {})
         .unwrap();
     let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token,
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
     // Proposal has not been closed so deposit has been
     // refunded.
-    assert_eq!(balance.balance, Uint128::new(10));
+    assert_eq!(balance.unwrap(), Uint128::new(10));
 }
 
 #[test]
@@ -1973,19 +2053,10 @@ fn test_deposit_return_on_close() {
         .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
         .unwrap();
     let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token.clone(),
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
-    // Proposal has not been closed so deposit has not been
-    // refunded.
-    assert_eq!(balance.balance, Uint128::new(9));
+    // Proposal has not been closed so deposit has not been refunded.
+    assert_eq!(balance.unwrap(), Uint128::new(9));
 
     // Close the proposal, this should cause the deposit to be
     // refunded.
@@ -1997,18 +2068,10 @@ fn test_deposit_return_on_close() {
     )
     .unwrap();
 
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token,
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
     // Proposal has been closed so deposit has been refunded.
-    assert_eq!(balance.balance, Uint128::new(10));
+    assert_eq!(balance.unwrap(), Uint128::new(10));
 }
 
 #[test]
@@ -2308,18 +2371,10 @@ fn test_no_return_if_no_refunds() {
     )
     .unwrap();
 
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token,
-            &cw20::Cw20QueryMsg::Balance {
-                address: "ekez".to_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), "ekez".to_string());
 
     // Proposal has been closed but deposit has not been refunded.
-    assert_eq!(balance.balance, Uint128::new(9));
+    assert_eq!(balance.unwrap(), Uint128::new(9));
 }
 
 #[test]
@@ -4685,18 +4740,10 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
         .query_wasm_smart(proposal_single, &QueryMsg::Config {})
         .unwrap();
     let CheckedDepositInfo { token, .. } = proposal_config.deposit_info.unwrap();
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token,
-            &cw20::Cw20QueryMsg::Balance {
-                address: core_addr.into_string(),
-            },
-        )
-        .unwrap();
+    let balance = token.query_balance(&app.wrap(), core_addr.to_string());
 
     // Deposit should now belong to the DAO.
-    assert_eq!(balance.balance, Uint128::new(1));
+    assert_eq!(balance.unwrap(), Uint128::new(1));
 }
 
 #[test]
