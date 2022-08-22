@@ -19,7 +19,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use testing::{ShouldExecute, TestSingleChoiceVote};
 use voting::{
-    deposit::{CheckedDepositInfo, DepositInfo, DepositToken},
+    deposit::{CheckedDepositInfo, DepositInfo, DepositRefundPolicy, DepositToken},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{Vote, Votes},
@@ -890,6 +890,7 @@ where
         allow_revoting: false,
         deposit_info,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -1049,6 +1050,7 @@ fn test_propose() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -1081,6 +1083,7 @@ fn test_propose() {
         dao: governance_addr,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
     assert_eq!(config, expected);
 
@@ -1141,6 +1144,7 @@ fn test_propose_supports_stargate_message() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -1348,9 +1352,10 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: true,
+            refund_policy: DepositRefundPolicy::Always,
         }),
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -1383,7 +1388,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         Some(CheckedDepositInfo {
             token: expected_token,
             deposit: Uint128::new(1),
-            refund_failed_proposals: true
+            refund_policy: DepositRefundPolicy::Always
         })
     )
 }
@@ -1428,9 +1433,10 @@ fn test_different_token_proposal_deposit() {
                 address: cw20_addr.to_string(),
             },
             deposit: Uint128::new(1),
-            refund_failed_proposals: true,
+            refund_policy: DepositRefundPolicy::Always,
         }),
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1486,9 +1492,10 @@ fn test_bad_token_proposal_deposit() {
                 address: votemod_addr.to_string(),
             },
             deposit: Uint128::new(1),
-            refund_failed_proposals: true,
+            refund_policy: DepositRefundPolicy::Always,
         }),
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
@@ -1512,9 +1519,10 @@ fn test_take_proposal_deposit() {
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: true,
+            refund_policy: DepositRefundPolicy::Always,
         }),
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -1543,9 +1551,9 @@ fn test_take_proposal_deposit() {
     let CheckedDepositInfo {
         token,
         deposit,
-        refund_failed_proposals,
+        refund_policy,
     } = govmod_config.deposit_info.unwrap();
-    assert!(refund_failed_proposals);
+    assert_eq!(refund_policy, DepositRefundPolicy::Always);
     assert_eq!(deposit, Uint128::new(1));
 
     // This should fail because we have not created an allowance for
@@ -1621,7 +1629,7 @@ fn test_deposit_return_on_execute() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: false,
+            refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
     );
     let gov_state: cw_core::query::DumpStateResponse = app
@@ -1677,6 +1685,171 @@ fn test_deposit_return_on_execute() {
 }
 
 #[test]
+fn test_deposit_never_refund_configuration() {
+    // Will create a proposal and execute it, one token will be
+    // deposited to create said proposal, expectation is that the
+    // token is then returned once the proposal is executed.
+    let (mut app, governance_addr) = do_test_votes_cw20_balances(
+        vec![TestSingleChoiceVote {
+            voter: "ekez".to_string(),
+            position: Vote::Yes,
+            weight: Uint128::new(10),
+            should_execute: ShouldExecute::Yes,
+        }],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(90)),
+        },
+        Status::Passed,
+        None,
+        Some(DepositInfo {
+            token: DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_policy: DepositRefundPolicy::Never,
+        }),
+    );
+    let gov_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::DumpState {},
+        )
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod_single = governance_modules.into_iter().next().unwrap().address;
+
+    let govmod_config: Config = app
+        .wrap()
+        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token.clone(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has not been executed so deposit has not been
+    // refunded.
+    assert_eq!(balance.balance, Uint128::new(9));
+
+    // Execute the proposal, this should cause the deposit to be
+    // refunded.
+    app.execute_contract(
+        Addr::unchecked("ekez"),
+        govmod_single,
+        &ExecuteMsg::Execute { proposal_id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token.clone(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: "ekez".to_string(),
+            },
+        )
+        .unwrap();
+
+    // Proposal has been executed so deposit has not been refunded.
+    assert_eq!(balance.balance, Uint128::new(9));
+
+    let dao_balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token,
+            &cw20::Cw20QueryMsg::Balance {
+                address: governance_addr.to_string(),
+            },
+        )
+        .unwrap();
+    // Since proposals are non-refundable, DAO has funds
+    assert_eq!(dao_balance.balance, Uint128::new(1));
+}
+
+#[test]
+fn test_open_proposal_submission() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(proposal_contract());
+
+    let threshold = Threshold::AbsolutePercentage {
+        percentage: PercentageThreshold::Majority {},
+    };
+    let max_voting_period = cw_utils::Duration::Height(6);
+
+    // Instantiate with open_proposal_submission enabled
+    let instantiate = InstantiateMsg {
+        threshold: threshold.clone(),
+        max_voting_period,
+        min_voting_period: None,
+        only_members_execute: false,
+        allow_revoting: false,
+        deposit_info: None,
+        close_proposal_on_execution_failure: true,
+        open_proposal_submission: true,
+    };
+    let governance_addr =
+        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
+    let governance_modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            governance_addr.clone(),
+            &cw_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    let govmod_single = governance_modules.into_iter().next().unwrap().address;
+
+    // Random address creates a new proposal.
+    app.execute_contract(
+        Addr::unchecked("random"),
+        govmod_single.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "This is a simple text proposal".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let created: ProposalResponse = app
+        .wrap()
+        .query_wasm_smart(govmod_single, &QueryMsg::Proposal { proposal_id: 1 })
+        .unwrap();
+    let current_block = app.block_info();
+    let expected = SingleChoiceProposal {
+        title: "A simple text proposal".to_string(),
+        description: "This is a simple text proposal".to_string(),
+        proposer: Addr::unchecked("random"),
+        start_height: current_block.height,
+        expiration: max_voting_period.after(&current_block),
+        min_voting_period: None,
+        threshold,
+        allow_revoting: false,
+        total_power: Uint128::new(100_000_000),
+        msgs: vec![],
+        status: Status::Open,
+        votes: Votes::zero(),
+        deposit_info: None,
+        created: current_block.time,
+        last_updated: current_block.time,
+    };
+
+    assert_eq!(created.proposal, expected);
+    assert_eq!(created.id, 1u64);
+}
+
+#[test]
 fn test_close_open_proposal() {
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestSingleChoiceVote {
@@ -1693,7 +1866,7 @@ fn test_close_open_proposal() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: true,
+            refund_policy: DepositRefundPolicy::Always,
         }),
     );
 
@@ -1767,7 +1940,7 @@ fn test_zero_deposit() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(0),
-            refund_failed_proposals: false,
+            refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
     );
 }
@@ -1789,7 +1962,7 @@ fn test_deposit_return_on_close() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: true,
+            refund_policy: DepositRefundPolicy::Always,
         }),
     );
     let gov_state: cw_core::query::DumpStateResponse = app
@@ -1862,6 +2035,7 @@ fn test_execute_expired_proposal() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -1982,7 +2156,7 @@ fn test_update_config() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: false,
+            refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
     );
 
@@ -2025,6 +2199,7 @@ fn test_update_config() {
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         &[],
     )
@@ -2045,6 +2220,7 @@ fn test_update_config() {
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         &[],
     )
@@ -2066,6 +2242,7 @@ fn test_update_config() {
         dao: Addr::unchecked(CREATOR_ADDR),
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
     assert_eq!(govmod_config, expected);
 
@@ -2085,6 +2262,7 @@ fn test_update_config() {
             dao: CREATOR_ADDR.to_string(),
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         &[],
     )
@@ -2108,7 +2286,7 @@ fn test_no_return_if_no_refunds() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: false,
+            refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
     );
     let gov_state: cw_core::query::DumpStateResponse = app
@@ -2168,6 +2346,7 @@ fn test_query_list_proposals() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![Cw20Coin {
             address: CREATOR_ADDR.to_string(),
@@ -2322,6 +2501,7 @@ fn test_hooks() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -2497,6 +2677,7 @@ fn test_active_threshold_absolute() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr = instantiate_with_staking_active_threshold(
@@ -2624,6 +2805,7 @@ fn test_active_threshold_percent() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     // 20% needed to be active, 20% of 100000000 is 20000000
@@ -2752,6 +2934,7 @@ fn test_active_threshold_none() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -2832,6 +3015,7 @@ fn test_active_threshold_none() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -2884,6 +3068,7 @@ fn test_revoting() {
             allow_revoting: true,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3016,6 +3201,7 @@ fn test_allow_revoting_config_changes() {
             allow_revoting: true,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3069,6 +3255,7 @@ fn test_allow_revoting_config_changes() {
             deposit_info: None,
             dao: core_addr.to_string(),
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         &[],
     )
@@ -3166,6 +3353,7 @@ fn test_revoting_same_vote_twice() {
             allow_revoting: true,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3274,6 +3462,7 @@ fn test_three_of_five_multisig() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3406,6 +3595,7 @@ fn test_three_of_five_multisig_reject() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3545,9 +3735,10 @@ fn test_voting_module_token_with_multisig_style_voting() {
             deposit_info: Some(DepositInfo {
                 token: DepositToken::VotingModuleToken {},
                 deposit: Uint128::new(1),
-                refund_failed_proposals: true,
+                refund_policy: DepositRefundPolicy::Always,
             }),
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3584,6 +3775,7 @@ fn test_three_of_five_multisig_revoting() {
             allow_revoting: true,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3826,6 +4018,7 @@ fn test_migrate_from_compatible() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -3885,6 +4078,7 @@ fn test_proposal_count_initialized_to_zero() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -3932,6 +4126,7 @@ fn test_no_early_pass_with_min_duration() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -4021,6 +4216,7 @@ fn test_min_duration_units_missmatch() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -4054,6 +4250,7 @@ fn test_min_duration_larger_than_proposal_duration() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -4086,6 +4283,7 @@ fn test_min_duration_same_as_proposal_duration() {
             allow_revoting: false,
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         },
         Some(vec![
             Cw20Coin {
@@ -4183,6 +4381,7 @@ fn test_timestamp_updated() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr = instantiate_with_cw20_balances_governance(
@@ -4441,6 +4640,7 @@ fn test_migrate_mock() {
             dao: Addr::unchecked("simple happy desert"),
             deposit_info: None,
             close_proposal_on_execution_failure: true,
+            open_proposal_submission: false,
         }
     );
 }
@@ -4462,7 +4662,7 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
         Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            refund_failed_proposals: false,
+            refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
     );
 
@@ -4525,6 +4725,7 @@ fn test_close_failed_proposal() {
         allow_revoting: false,
         deposit_info: None,
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -4664,6 +4865,7 @@ fn test_close_failed_proposal() {
                         dao: original.dao.to_string(),
                         deposit_info: None,
                         close_proposal_on_execution_failure: false,
+                        open_proposal_submission: false,
                     })
                     .unwrap(),
                     funds: vec![],
@@ -4763,12 +4965,13 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         deposit_info: Some(DepositInfo {
             token: DepositToken::VotingModuleToken {},
             deposit: Uint128::new(1),
-            // Important to set to true here as we want to be sure
+            // Important to set to always here as we want to be sure
             // that we don't get a second refund on close. Refunds on
-            // close only happen if this is true.
-            refund_failed_proposals: true,
+            // close only happen if Deposity Refund Policy is "Always".
+            refund_policy: DepositRefundPolicy::Always,
         }),
         close_proposal_on_execution_failure: true,
+        open_proposal_submission: false,
     };
 
     let core_addr = instantiate_with_staking_active_threshold(

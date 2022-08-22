@@ -40,21 +40,8 @@ pub struct InstantiateMsg {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-}
-
-/// Information about the token to use for proposal deposits.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum DepositToken {
-    /// Use a specific token address as the deposit token.
-    Token { address: String },
-    /// Use the token address of the associated DAO's voting
-    /// module. NOTE: in order to use the token address of the voting
-    /// module the voting module must (1) use a cw20 token and (2)
-    /// implement the `TokenContract {}` query type defined by
-    /// `cw_core_macros::token_query`. Failing to implement that
-    /// and using this option will cause instantiation to fail.
-    VotingModuleToken {},
+    /// Whether non-members of the DAO can submit proposals
+    pub open_proposal_submission: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -129,6 +116,8 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
+        /// Whether non-members of the DAO can submit proposals
+        open_proposal_submission: bool,
     },
     /// Adds an address as a consumer of proposal hooks. Consumers of
     /// proposal hooks have hook messages executed on them whenever
