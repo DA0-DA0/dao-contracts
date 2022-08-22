@@ -14,7 +14,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use vote_hooks::new_vote_hooks;
 
-use voting::deposit::{get_deposit_msg, get_return_deposit_msg, CheckedDepositInfo, DepositInfo};
+use voting::deposit::{
+    get_deposit_msg, get_return_deposit_msg, CheckedDepositInfo, DepositInfo, DepositRefundPolicy,
+};
 use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
 use voting::reply::{mask_proposal_execution_proposal_id, TaggedReplyId};
 use voting::status::Status;
@@ -65,6 +67,7 @@ pub fn instantiate(
         deposit_info,
         allow_revoting: msg.allow_revoting,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
+        open_proposal_submission: msg.open_proposal_submission,
     };
 
     // Initialize proposal count to zero so that queries return zero
@@ -102,6 +105,7 @@ pub fn execute(
             dao,
             deposit_info,
             close_proposal_on_execution_failure,
+            open_proposal_submission,
         } => execute_update_config(
             deps,
             info,
@@ -113,6 +117,7 @@ pub fn execute(
             dao,
             deposit_info,
             close_proposal_on_execution_failure,
+            open_proposal_submission,
         ),
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
@@ -155,15 +160,19 @@ pub fn execute_propose(
         return Err(ContractError::InactiveDao {});
     }
 
-    // Check that the sender is a member of the governance contract.
-    let sender_power = get_voting_power(
-        deps.as_ref(),
-        sender.clone(),
-        config.dao.clone(),
-        Some(env.block.height),
-    )?;
-    if sender_power.is_zero() {
-        return Err(ContractError::Unauthorized {});
+    // Check whether open_propsoal_submissions are disabled
+    if !config.open_proposal_submission {
+        // If open_proposal_submission is false,
+        // check that the sender is a member of the governance contract.
+        let sender_power = get_voting_power(
+            deps.as_ref(),
+            sender.clone(),
+            config.dao.clone(),
+            Some(env.block.height),
+        )?;
+        if sender_power.is_zero() {
+            return Err(ContractError::Unauthorized {});
+        }
     }
 
     let expiration = config.max_voting_period.after(&env.block);
@@ -264,8 +273,14 @@ pub fn execute_execute(
 
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
+    // Get refund message if deposits are enabled
     let refund_message = match prop.deposit_info {
-        Some(deposit_info) => get_return_deposit_msg(&deposit_info, &prop.proposer)?,
+        Some(deposit_info) => match deposit_info.refund_policy {
+            // If deposits are not refundable, deposit goes to DAO
+            DepositRefundPolicy::Never => get_return_deposit_msg(&deposit_info, &config.dao)?,
+            // Otherwise, refund goes to proposer
+            _ => get_return_deposit_msg(&deposit_info, &prop.proposer)?,
+        },
         None => vec![],
     };
 
@@ -413,16 +428,12 @@ pub fn execute_close(
     let old_status = prop.status;
 
     let refund_message = match &prop.deposit_info {
-        Some(deposit_info) => {
-            let receiver = if deposit_info.refund_failed_proposals {
-                &prop.proposer
-            } else {
-                // If we aren't refunding failed proposals then return
-                // the depost to the DAO treasury on close.
-                &config.dao
-            };
-            get_return_deposit_msg(deposit_info, receiver)?
-        }
+        Some(deposit_info) => match deposit_info.refund_policy {
+            // If we are always refunding deposits, funds go to proposer
+            DepositRefundPolicy::Always => get_return_deposit_msg(deposit_info, &prop.proposer)?,
+            // If no refunds, or failed proposals not refund, funds go to DAO
+            _ => get_return_deposit_msg(deposit_info, &config.dao)?,
+        },
         None => vec![],
     };
 
@@ -459,6 +470,7 @@ pub fn execute_update_config(
     dao: String,
     deposit_info: Option<DepositInfo>,
     close_proposal_on_execution_failure: bool,
+    open_proposal_submission: bool,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -487,6 +499,7 @@ pub fn execute_update_config(
             dao,
             deposit_info,
             close_proposal_on_execution_failure,
+            open_proposal_submission,
         },
     )?;
 
@@ -781,6 +794,10 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     deposit_info: current_config.deposit_info,
                     // Loads of text, but we're only updating this field.
                     close_proposal_on_execution_failure,
+                    // Previously open prop submission was not a feature
+                    // so we default to false, exisitng DAOs will have to
+                    // vote to enable.
+                    open_proposal_submission: false,
                 },
             )?;
 
