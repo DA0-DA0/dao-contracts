@@ -27,7 +27,15 @@ pub struct DepositInfo {
     /// proposal.
     pub deposit: Uint128,
     /// If failed proposals should have their deposits refunded.
-    pub refund_failed_proposals: bool,
+    pub refund_policy: DepositRefundPolicy,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DepositRefundPolicy {
+    Always,
+    OnlyPassed,
+    Never,
 }
 
 /// Counterpart to the `DepositInfo` struct which has been processed.
@@ -40,7 +48,7 @@ pub struct CheckedDepositInfo {
     /// proposal.
     pub deposit: Uint128,
     /// If failed proposals should have their deposits refunded.
-    pub refund_failed_proposals: bool,
+    pub refund_policy: DepositRefundPolicy,
 }
 
 impl DepositInfo {
@@ -49,7 +57,7 @@ impl DepositInfo {
         let Self {
             token,
             deposit,
-            refund_failed_proposals,
+            refund_policy,
         } = self;
         let token = match token {
             DepositToken::Token { address } => deps.api.addr_validate(&address)?,
@@ -73,7 +81,7 @@ impl DepositInfo {
         Ok(CheckedDepositInfo {
             token,
             deposit,
-            refund_failed_proposals,
+            refund_policy,
         })
     }
 }

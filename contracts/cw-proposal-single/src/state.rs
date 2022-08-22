@@ -55,6 +55,8 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// If set to true, will allow non-members of the DAO to submit proposals
+    pub open_proposal_submission: bool,
 }
 
 /// The current top level config for the module.  The "config" key was
