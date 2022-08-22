@@ -12,7 +12,7 @@ pub enum DepositToken {
     /// module. NOTE: in order to use the token address of the voting
     /// module the voting module must (1) use a cw20 token and (2)
     /// implement the `TokenContract {}` query type defined by
-    /// `cw_core_macros::token_query`. Failing to implement that
+    /// `cw_dao_core_macros::token_query`. Failing to implement that
     /// and using this option will cause instantiation to fail.
     VotingModuleToken {},
 }
@@ -56,10 +56,10 @@ impl DepositInfo {
             DepositToken::VotingModuleToken {} => {
                 let voting_module: Addr = deps
                     .querier
-                    .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})?;
+                    .query_wasm_smart(dao, &cw_dao_core::msg::QueryMsg::VotingModule {})?;
                 let token_addr: Addr = deps.querier.query_wasm_smart(
                     voting_module,
-                    &cw_core_interface::voting::Query::TokenContract {},
+                    &cw_dao_core_interface::voting::VotingModuleQuery::TokenContract {},
                 )?;
                 token_addr
             }
@@ -78,6 +78,8 @@ impl DepositInfo {
     }
 }
 
+/// Gets a messages needed collect a proposal deposit. If no message
+/// is needed, returns an empty list.
 pub fn get_deposit_msg(
     info: &Option<CheckedDepositInfo>,
     contract: &Addr,
@@ -105,6 +107,8 @@ pub fn get_deposit_msg(
     }
 }
 
+/// Gets the messages required to return a proposal deposit. If no
+/// message is needed, returns an empty list.
 pub fn get_return_deposit_msg(
     deposit_info: &CheckedDepositInfo,
     receiver: &Addr,

@@ -1,0 +1,20 @@
+[package]
+name = "cw-dao-core-macros"
+description = "Macros used to derive the interface needed for interacting with cw-dao-core."
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0", features = ["derive"] }
+quote = "1.0"
+proc-macro2 = "1.0"
+
+[dev-dependencies]
+cosmwasm-schema = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }

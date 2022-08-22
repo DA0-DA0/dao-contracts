@@ -1,6 +1,88 @@
-[workspace]
-members = ["contracts/*", "packages/*", "debug/*", "ci/*"]
+# https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#workspace-inheritance
+cargo-features = ["workspace-inheritance"]
 
+[workspace]
+members = [
+	"contracts/cw-dao-core",
+	"contracts/voting-modules/*",
+	"contracts/proposal-modules/*",
+	"contracts/staking-rewards/*",
+	"contracts/utils/*",
+	"packages/*",
+	"debug/*",
+	"ci/*"
+	]
+
+[workspace.package]
+version = "2.0.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
+
+[workspace.dependencies]
+# Packages.
+cw-dao-core-interface = { path = "packages/cw-dao-core-interface", version = "*" }
+cw-dao-core-macros = { path = "packages/cw-dao-core-macros", version = "*" }
+cw-paginate = { path = "packages/cw-paginate", version = "*" }
+cw721-controllers = { path = "packages/cw721-controllers", version = "*" }
+indexable-hooks = { path = "packages/indexable-hooks", version = "*" }
+proposal-hooks = { path = "packages/proposal-hooks", version = "*" }
+proposal-module-testing = { path = "packages/proposal-module-testing", version = "*" }
+vote-hooks = { path = "packages/vote-hooks", version = "*" }
+voting = { path = "packages/voting", version = "*" }
+
+# Contracts.
+cw-dao-core = { path = "contracts/cw-dao-core", features = ["library"], version = "*" }
+
+# Proposal modules.
+cw-dao-proposal-single = { path = "contracts/proposal-modules/cw-dao-proposal-single", features = ["library"], version = "*" }
+cw-dao-proposal-multiple = { path = "contracts/proposal-modules/cw-dao-proposal-multiple", features = ["library"], version = "*" }
+
+# Voting modules.
+cw-dao-voting-cw20-stake = { path = "contracts/voting-modules/cw-dao-voting-cw20-stake", features = ["library"], version = "*" }
+cw-dao-voting-cw4 = { path = "contracts/voting-modules/cw-dao-voting-cw4", features = ["library"], version = "*" }
+cw-dao-voting-cw721-stake = { path = "contracts/voting-modules/cw-dao-voting-cw721-stake", features = ["library"], version = "*" }
+cw-dao-voting-native-stake = { path = "contracts/voting-modules/cw-dao-voting-native-stake", features = ["library"], version = "*" }
+cw20-stake = { path = "contracts/voting-modules/cw20-stake", features = ["library"], version = "*" }
+
+# Staking rewards.
+cw20-stake-external-rewards = { path = "contracts/staking-rewards/cw20-stake-external-rewards", features = ["library"], version = "*" }
+cw20-stake-reward-distributor = { path = "contracts/voting-modules/cw20-stake-reward-distributor", features = ["library"], version = "*" }
+
+# Utils.
+cw-admin-factory = { path = "contracts/utils/cw-admin-factory", features = ["library"], version = "*" }
+cw-named-groups = { path = "contracts/utils/cw-named-groups", features = ["library"], version = "*" }
+cw-names-registry = { path = "contracts/utils/cw-names-registry", features = ["library"], version = "*" }
+cw-token-swap = { path = "contracts/utils/cw-token-swap", features = ["library"], version = "*" }
+
+# Debug.
+cw-dao-proposal-sudo = { path = "debug/cw-dao-proposal-sudo", version = "*", features = ["library"] }
+cw-dao-voting-cw20-balance = { path = "debug/cw-dao-voting-cw20-balance", version = "*", features = ["library"] }
+proposal-hooks-counter = { path = "debug/proposal-hooks-counter", version = "*" }
+
+# Shared packages.
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+schemars = "0.8"
+thiserror = "1.0"
+anyhow = "1.0.51"
+
+# CosmWasm packages.
+cosmwasm-std = { version = "1.0.0", features = ["ibc3"] }
+cosmwasm-schema = "1.0.0"
+cosmwasm-storage = "1.0.0"
+
+cw2 = "0.13"
+cw3 = "0.13"
+cw-storage-plus = "0.13"
+cw-multi-test = "0.13"
+cw-utils = "0.13"
+cw20-base = "0.13"
+cw4 = "0.13"
+cw4-group = "0.13"
+cw20 = "0.13"
+cw721 = "0.13"
+cw721-base = "0.13"
+cw-controllers = "0.13"
 
 [profile.release.package.stake-cw20-external-rewards]
 codegen-units = 1
@@ -16,5 +98,5 @@ debug-assertions = false
 panic = 'abort'
 incremental = false
 # Please do not disable these. Doing so will cause overflow checks in
-# all workspace members to stop working. Overflows should be errors. 
+# all workspace members to stop working. Overflows should be errors.
 overflow-checks = true

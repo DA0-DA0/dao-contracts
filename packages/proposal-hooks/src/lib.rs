@@ -4,12 +4,18 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use voting::reply::mask_proposal_hook_index;
 
+/// The execute message variants that will be called on hook
+/// receivers. For now, you must manually copy these variants over to
+/// your `ExecuteMsg` enum. We'll fix that soon:
+/// <https://github.com/DA0-DA0/dao-contracts/issues/459>
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum ProposalHookMsg {
-    NewProposal {
-        id: u64,
-    },
+    /// Hook that is fired when a new proposal is created.
+    NewProposal { id: u64 },
+    /// Hook that is fired when the status of a proposal changes. To
+    /// support a variety of proposal modules, the status is provided
+    /// as a string.
     ProposalStatusChanged {
         id: u64,
         old_status: String,
@@ -23,9 +29,9 @@ pub enum ProposalHookMsg {
 pub enum ProposalHookExecuteMsg {
     ProposalHook(ProposalHookMsg),
 }
-/// Prepares new proposal hook messages. These messages reply on error
-/// and have even reply IDs.
-/// IDs are set to even numbers to then be interleaved with the vote hooks.
+
+/// Prepares new proposal hook messages. These messages reply on
+/// error. A contract can use that to remove hooks which missfire.
 pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::NewProposal { id },
@@ -44,9 +50,9 @@ pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdRe
     })
 }
 
-/// Prepares proposal status hook messages. These messages reply on error
-/// and have even reply IDs.
-/// IDs are set to even numbers to then be interleaved with the vote hooks.
+/// Prepares proposal status hook messages. These messages reply on
+/// error. A contract may use those replies to remove hooks which
+/// missfire and prevent the proposal module from becoming locked.
 pub fn proposal_status_changed_hooks(
     hooks: Hooks,
     storage: &dyn Storage,

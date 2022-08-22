@@ -2,7 +2,7 @@ use super::chain::Chain;
 use anyhow::Result;
 use cosmwasm_std::{to_binary, Decimal, Uint128};
 use cw20::Cw20Coin;
-use cw_core::{
+use cw_dao_core::{
     msg::{Admin, ModuleInstantiateInfo},
     query::DumpStateResponse,
 };
@@ -24,7 +24,7 @@ pub fn create_dao(
     op_name: &str,
     user_addr: String,
 ) -> Result<DaoState> {
-    let msg = cw_core::msg::InstantiateMsg {
+    let msg = cw_dao_core::msg::InstantiateMsg {
         admin,
         name: "DAO DAO".to_string(),
         description: "A DAO that makes DAO tooling".to_string(),
@@ -36,8 +36,8 @@ pub fn create_dao(
                 .orc
                 .contract_map
                 .code_id("cw20_staked_balance_voting")?,
-            msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
-                token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
+            msg: to_binary(&cw_dao_voting_cw20_stake::msg::InstantiateMsg {
+                token_info: cw_dao_voting_cw20_stake::msg::TokenInfo::New {
                     code_id: chain.orc.contract_map.code_id("cw20_base")?,
                     label: "DAO DAO Gov token".to_string(),
                     name: "DAO".to_string(),
@@ -59,7 +59,7 @@ pub fn create_dao(
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: chain.orc.contract_map.code_id("cw_proposal_single")?,
-            msg: to_binary(&cw_proposal_single::msg::InstantiateMsg {
+            msg: to_binary(&cw_dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -85,9 +85,11 @@ pub fn create_dao(
         .orc
         .instantiate("cw_core", op_name, &msg, &chain.user.key)?;
 
-    let res = chain
-        .orc
-        .query("cw_core", op_name, &cw_core::msg::QueryMsg::DumpState {})?;
+    let res = chain.orc.query(
+        "cw_core",
+        op_name,
+        &cw_dao_core::msg::QueryMsg::DumpState {},
+    )?;
 
     Ok(DaoState {
         addr: chain.orc.contract_map.address("cw_core")?,

@@ -1,0 +1,38 @@
+[package]
+name = "cw-dao-voting-cw721-stake"
+authors = ["CypherApe cypherape@protonmail.com", "ekez <ekez@withoutdoing.com>"]
+description = "A DAO DAO voting module which determines voting power based on the number of staked cw721s."
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-controllers = { workspace = true }
+cw-dao-core-macros = { workspace = true }
+cw-dao-core-interface = { workspace = true }
+cw721-controllers = { workspace = true }
+cw-paginate = { workspace = true }
+cw721 = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+schemars = { workspace = true }
+indexmap = { version = "1.9", features = ["serde"] }
+
+[dev-dependencies]
+cw721-base = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-multi-test = { workspace = true }
+anyhow = { workspace = true }

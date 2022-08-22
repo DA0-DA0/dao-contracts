@@ -26,7 +26,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .query(
             voting_contract,
             "exc_stake_q_stake",
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
         )
         .unwrap()
         .data()
@@ -101,7 +101,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
     //     .query(
     //         "cw_core",
     //         "exc_stake_q_power",
-    //         &cw_core::msg::QueryMsg::VotingPowerAtHeight {
+    //         &cw_dao_core::msg::QueryMsg::VotingPowerAtHeight {
     //             address: chain.user.addr.clone(),
     //             height: None,
     //         },

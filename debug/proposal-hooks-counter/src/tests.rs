@@ -1,6 +1,6 @@
 use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
-use cw_core::state::ProposalModule;
+use cw_dao_core::state::ProposalModule;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use indexable_hooks::HooksResponse;
 
@@ -10,7 +10,7 @@ use voting::{
 };
 
 use crate::msg::{CountResponse, InstantiateMsg, QueryMsg};
-use cw_proposal_single::state::Config;
+use cw_dao_proposal_single::state::Config;
 
 const CREATOR_ADDR: &str = "creator";
 
@@ -25,31 +25,31 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
 
 fn single_govmod_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_proposal_single::contract::execute,
-        cw_proposal_single::contract::instantiate,
-        cw_proposal_single::contract::query,
+        cw_dao_proposal_single::contract::execute,
+        cw_dao_proposal_single::contract::instantiate,
+        cw_dao_proposal_single::contract::query,
     )
-    .with_reply(cw_proposal_single::contract::reply);
+    .with_reply(cw_dao_proposal_single::contract::reply);
     Box::new(contract)
 }
 
 fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw20_balance_voting::contract::execute,
-        cw20_balance_voting::contract::instantiate,
-        cw20_balance_voting::contract::query,
+        cw_dao_voting_cw20_balance::contract::execute,
+        cw_dao_voting_cw20_balance::contract::instantiate,
+        cw_dao_voting_cw20_balance::contract::query,
     )
-    .with_reply(cw20_balance_voting::contract::reply);
+    .with_reply(cw_dao_voting_cw20_balance::contract::reply);
     Box::new(contract)
 }
 
 fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_core::contract::execute,
-        cw_core::contract::instantiate,
-        cw_core::contract::query,
+        cw_dao_core::contract::execute,
+        cw_dao_core::contract::instantiate,
+        cw_dao_core::contract::query,
     )
-    .with_reply(cw_core::contract::reply);
+    .with_reply(cw_dao_core::contract::reply);
     Box::new(contract)
 }
 
@@ -62,7 +62,11 @@ fn counters_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn instantiate_governance(app: &mut App, code_id: u64, msg: cw_core::msg::InstantiateMsg) -> Addr {
+fn instantiate_governance(
+    app: &mut App,
+    code_id: u64,
+    msg: cw_dao_core::msg::InstantiateMsg,
+) -> Addr {
     app.instantiate_contract(
         code_id,
         Addr::unchecked(CREATOR_ADDR),
@@ -77,7 +81,7 @@ fn instantiate_governance(app: &mut App, code_id: u64, msg: cw_core::msg::Instan
 fn instantiate_with_default_governance(
     app: &mut App,
     code_id: u64,
-    msg: cw_proposal_single::msg::InstantiateMsg,
+    msg: cw_dao_proposal_single::msg::InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
 ) -> Addr {
     let cw20_id = app.store_code(cw20_contract());
@@ -91,17 +95,17 @@ fn instantiate_with_default_governance(
         }]
     });
 
-    let governance_instantiate = cw_core::msg::InstantiateMsg {
+    let governance_instantiate = cw_dao_core::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
-        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+        voting_module_instantiate_info: cw_dao_core::msg::ModuleInstantiateInfo {
             code_id: votemod_id,
-            msg: to_binary(&cw20_balance_voting::msg::InstantiateMsg {
-                token_info: cw20_balance_voting::msg::TokenInfo::New {
+            msg: to_binary(&cw_dao_voting_cw20_balance::msg::InstantiateMsg {
+                token_info: cw_dao_voting_cw20_balance::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token".to_string(),
                     name: "DAO".to_string(),
@@ -112,13 +116,13 @@ fn instantiate_with_default_governance(
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: cw_dao_core::msg::Admin::CoreContract {},
             label: "DAO DAO voting module".to_string(),
         },
-        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![cw_dao_core::msg::ModuleInstantiateInfo {
             code_id,
             msg: to_binary(&msg).unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: cw_dao_core::msg::Admin::CoreContract {},
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -137,7 +141,7 @@ fn test_counters() {
         percentage: PercentageThreshold::Majority {},
     };
     let max_voting_period = cw_utils::Duration::Height(6);
-    let instantiate = cw_proposal_single::msg::InstantiateMsg {
+    let instantiate = cw_dao_proposal_single::msg::InstantiateMsg {
         threshold,
         max_voting_period,
         min_voting_period: None,
@@ -153,7 +157,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cw_dao_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -167,7 +171,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::Config {},
+            &cw_dao_proposal_single::msg::QueryMsg::Config {},
         )
         .unwrap();
     let dao = govmod_config.dao;
@@ -199,7 +203,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook {
+        &cw_dao_proposal_single::msg::ExecuteMsg::AddProposalHook {
             address: counters.to_string(),
         },
         &[],
@@ -208,7 +212,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddVoteHook {
+        &cw_dao_proposal_single::msg::ExecuteMsg::AddVoteHook {
             address: counters.to_string(),
         },
         &[],
@@ -220,7 +224,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::ProposalHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -228,7 +232,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::VoteHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -244,7 +248,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Propose {
+        &cw_dao_proposal_single::msg::ExecuteMsg::Propose {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
@@ -278,7 +282,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Vote {
+        &cw_dao_proposal_single::msg::ExecuteMsg::Vote {
             proposal_id: 1,
             vote: Vote::Yes,
         },
@@ -304,7 +308,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddProposalHook {
+        &cw_dao_proposal_single::msg::ExecuteMsg::AddProposalHook {
             address: failing_counters.to_string(),
         },
         &[],
@@ -313,7 +317,7 @@ fn test_counters() {
     app.execute_contract(
         dao.clone(),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::AddVoteHook {
+        &cw_dao_proposal_single::msg::ExecuteMsg::AddVoteHook {
             address: failing_counters.to_string(),
         },
         &[],
@@ -325,7 +329,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::ProposalHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 2);
@@ -333,7 +337,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::VoteHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 2);
@@ -342,7 +346,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Propose {
+        &cw_dao_proposal_single::msg::ExecuteMsg::Propose {
             title: "A simple text proposal 2nd".to_string(),
             description: "This is a simple text proposal 2nd".to_string(),
             msgs: vec![],
@@ -364,7 +368,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::ProposalHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -375,7 +379,7 @@ fn test_counters() {
         .execute_contract(
             dao.clone(),
             govmod_single.clone(),
-            &cw_proposal_single::msg::ExecuteMsg::RemoveProposalHook {
+            &cw_dao_proposal_single::msg::ExecuteMsg::RemoveProposalHook {
                 address: failing_counters.to_string(),
             },
             &[],
@@ -387,7 +391,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::VoteHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 2);
@@ -396,7 +400,7 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cw_proposal_single::msg::ExecuteMsg::Vote {
+        &cw_dao_proposal_single::msg::ExecuteMsg::Vote {
             proposal_id: 2,
             vote: Vote::Yes,
         },
@@ -423,7 +427,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::VoteHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -434,7 +438,7 @@ fn test_counters() {
         .execute_contract(
             dao,
             govmod_single.clone(),
-            &cw_proposal_single::msg::ExecuteMsg::RemoveVoteHook {
+            &cw_dao_proposal_single::msg::ExecuteMsg::RemoveVoteHook {
                 address: failing_counters.to_string(),
             },
             &[],
@@ -446,7 +450,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single.clone(),
-            &cw_proposal_single::msg::QueryMsg::ProposalHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::ProposalHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);
@@ -454,7 +458,7 @@ fn test_counters() {
         .wrap()
         .query_wasm_smart(
             govmod_single,
-            &cw_proposal_single::msg::QueryMsg::VoteHooks {},
+            &cw_dao_proposal_single::msg::QueryMsg::VoteHooks {},
         )
         .unwrap();
     assert_eq!(hooks.hooks.len(), 1);

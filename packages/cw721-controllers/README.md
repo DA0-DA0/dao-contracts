@@ -1,10 +1,13 @@
 # CW721 Controllers: Common cw721 controllers for many contracts
 
-This is a collection of cw721 "controllers" that we end up reimplementing in 
-many contracts. I use the word "controller" similar to the MVC framework
-style, where it is an element that encapsulated business logic and data access.
-We can also directly handle some `ExecuteMsg` and `QueryMsg` variants by
-adding a sub-router to these controllers.
+This package provides methods for creating, querying, and completing
+claims for cw721s. It is similar to the cw-plus
+[cw-controllers](https://crates.io/crates/cw-controllers) package
+but it operates on non-fungible tokens instead of fungible ones.x
 
-This is the beginning of an experiment in code composition, and how best to
-reuse code among multiple contracts.
+When you stake a NFT (see the `cw-dao-voting-cw721-stake`) contract
+you may later choose to unstake it. If there is a non-zero unstaking
+duration, a claim will be created for you. A claim is a piece of state
+that entitles you to a particular cw721 NFT at a particular time. In
+the unstaking case this is the NFT you are unstaking and
+`current_time + unstaking_duration`.

@@ -7,6 +7,7 @@ use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct HooksResponse {
+    /// A list of addresses that are registered to be receiving hooks.
     pub hooks: Vec<String>,
 }
 
@@ -22,14 +23,20 @@ pub enum HookError {
     HookNotRegistered {},
 }
 
-// store all hook addresses in one item. We cannot have many of them before the contract becomes unusable anyway.
+/// We store all hook addresses in one item. If contracts could
+/// support large numbers of hooks storage reads could get expensive
+/// here. Broadly speaking though, a contract will run out of gas
+/// firing hooks before this load becomes meaningfully expensive.
 pub struct Hooks<'a>(Item<'a, Vec<Addr>>);
 
 impl<'a> Hooks<'a> {
+    /// Creates a new set of hooks with the specified
+    /// STORAGE_KEY. Hooks will be stored at this location.
     pub const fn new(storage_key: &'a str) -> Self {
         Hooks(Item::new(storage_key))
     }
 
+    /// Adds a new hook. The hook must not already be registered.
     pub fn add_hook(&self, storage: &mut dyn Storage, addr: Addr) -> Result<(), HookError> {
         let mut hooks = self.0.may_load(storage)?.unwrap_or_default();
         if !hooks.iter().any(|h| h == &addr) {
@@ -40,6 +47,7 @@ impl<'a> Hooks<'a> {
         Ok(self.0.save(storage, &hooks)?)
     }
 
+    /// Removes a hook. The hook must have been previously added.
     pub fn remove_hook(&self, storage: &mut dyn Storage, addr: Addr) -> Result<(), HookError> {
         let mut hooks = self.0.load(storage)?;
         if let Some(p) = hooks.iter().position(|x| x == &addr) {
@@ -50,6 +58,13 @@ impl<'a> Hooks<'a> {
         Ok(self.0.save(storage, &hooks)?)
     }
 
+    /// Removes a hook by index it's index. Panics if the index is out
+    /// of bounds.
+    ///
+    /// This is used by the `proposal-hooks` and `vote-hooks` packages
+    /// in order to remove hooks if they fail to execute. See the
+    /// `reply` method of `cw-dao-proposal-single` and those packages
+    /// for more information.
     pub fn remove_hook_by_index(
         &self,
         storage: &mut dyn Storage,
@@ -61,6 +76,8 @@ impl<'a> Hooks<'a> {
         Ok(hook)
     }
 
+    /// Applies a method to the list of hooks which transforms them
+    /// into submessages.
     pub fn prepare_hooks<F: FnMut(Addr) -> StdResult<SubMsg>>(
         &self,
         storage: &dyn Storage,
@@ -74,6 +91,8 @@ impl<'a> Hooks<'a> {
             .collect()
     }
 
+    /// Gets the hooks currently registered. Intended to be use in the
+    /// query methods for a contract.
     pub fn query_hooks<Q: CustomQuery>(&self, deps: Deps<Q>) -> StdResult<HooksResponse> {
         let hooks = self.0.may_load(deps.storage)?.unwrap_or_default();
         let hooks = hooks.into_iter().map(String::from).collect();

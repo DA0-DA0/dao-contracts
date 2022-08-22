@@ -1,15 +1,16 @@
 [package]
 name = "cw-paginate"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Methods for paginating CosmWasm maps."
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0" }
-cosmwasm-storage = { version = "1.0.0" }
-cw-storage-plus = "0.13"
-serde = { version = "1.0", default-features = false }
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+serde = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test = "0.13"
+cw-multi-test = { workspace = true }

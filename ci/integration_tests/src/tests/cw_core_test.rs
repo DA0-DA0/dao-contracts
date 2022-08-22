@@ -5,7 +5,7 @@ use cosm_orc::client::error::ClientError;
 use cosm_orc::orchestrator::error::ProcessError;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
-use cw_core::query::{GetItemResponse, PauseInfoResponse};
+use cw_dao_core::query::{GetItemResponse, PauseInfoResponse};
 use cw_utils::Duration;
 use test_context::test_context;
 use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, threshold::Threshold};
@@ -29,10 +29,10 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     let res = chain.orc.execute(
         "cw_core",
         "exc_admin_msgs_pause_dao_fail",
-        &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+        &cw_dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                 contract_addr: dao.addr,
-                msg: to_binary(&cw_core::msg::ExecuteMsg::Pause {
+                msg: to_binary(&cw_dao_core::msg::ExecuteMsg::Pause {
                     duration: Duration::Time(100),
                 })
                 .unwrap(),
@@ -52,7 +52,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         .query(
             "cw_core",
             "exc_admin_msgs_pause_dao_query",
-            &cw_core::msg::QueryMsg::PauseInfo {},
+            &cw_dao_core::msg::QueryMsg::PauseInfo {},
         )
         .unwrap();
     let res: PauseInfoResponse = res.data().unwrap();
@@ -73,10 +73,10 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         .execute(
             "cw_core",
             "exc_admin_msgs_pause_dao",
-            &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            &cw_dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr,
-                    msg: to_binary(&cw_core::msg::ExecuteMsg::Pause {
+                    msg: to_binary(&cw_dao_core::msg::ExecuteMsg::Pause {
                         duration: Duration::Height(100),
                     })
                     .unwrap(),
@@ -92,7 +92,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         .query(
             "cw_core",
             "exc_admin_msgs_pause_dao",
-            &cw_core::msg::QueryMsg::PauseInfo {},
+            &cw_dao_core::msg::QueryMsg::PauseInfo {},
         )
         .unwrap();
 
@@ -118,7 +118,7 @@ fn execute_items(chain: &mut Chain) {
         .query(
             "cw_core",
             "exc_items_get",
-            &cw_core::msg::QueryMsg::GetItem {
+            &cw_dao_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
         )
@@ -132,10 +132,10 @@ fn execute_items(chain: &mut Chain) {
         .execute(
             "cw_core",
             "exc_items_set",
-            &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            &cw_dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr.clone(),
-                    msg: to_binary(&cw_core::msg::ExecuteMsg::SetItem {
+                    msg: to_binary(&cw_dao_core::msg::ExecuteMsg::SetItem {
                         key: "meme".to_string(),
                         addr: "foobar".to_string(),
                     })
@@ -152,7 +152,7 @@ fn execute_items(chain: &mut Chain) {
         .query(
             "cw_core",
             "exc_items_set",
-            &cw_core::msg::QueryMsg::GetItem {
+            &cw_dao_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
         )
@@ -167,10 +167,10 @@ fn execute_items(chain: &mut Chain) {
         .execute(
             "cw_core",
             "exc_items_rm",
-            &cw_core::msg::ExecuteMsg::ExecuteAdminMsgs {
+            &cw_dao_core::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
                     contract_addr: dao.addr,
-                    msg: to_binary(&cw_core::msg::ExecuteMsg::RemoveItem {
+                    msg: to_binary(&cw_dao_core::msg::ExecuteMsg::RemoveItem {
                         key: "meme".to_string(),
                     })
                     .unwrap(),
@@ -186,7 +186,7 @@ fn execute_items(chain: &mut Chain) {
         .query(
             "cw_core",
             "exc_items_rm",
-            &cw_core::msg::QueryMsg::GetItem {
+            &cw_dao_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
         )
@@ -209,7 +209,7 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
-        cw_core::state::Config {
+        cw_dao_core::state::Config {
             name: "DAO DAO".to_string(),
             description: "A DAO that makes DAO tooling".to_string(),
             image_url: None,
@@ -238,7 +238,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
-        cw_core::state::Config {
+        cw_dao_core::state::Config {
             name: "DAO DAO".to_string(),
             description: "A DAO that makes DAO tooling".to_string(),
             image_url: None,
@@ -261,7 +261,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query(
             voting_contract,
             "inst_admin_q_stake",
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let staking_addr: &str = res.data().unwrap();
@@ -306,7 +306,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query(
             voting_contract,
             "inst_admin_q_tok",
-            &cw20_staked_balance_voting::msg::QueryMsg::TokenContract {},
+            &cw_dao_voting_cw20_stake::msg::QueryMsg::TokenContract {},
         )
         .unwrap();
     let token_addr: &str = res.data().unwrap();
@@ -336,10 +336,10 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query(
             proposal_contract,
             "inst_admin_q_cfg",
-            &cw_proposal_single::msg::QueryMsg::Config {},
+            &cw_dao_proposal_single::msg::QueryMsg::Config {},
         )
         .unwrap();
-    let config_res: cw_proposal_single::state::Config = res.data().unwrap();
+    let config_res: cw_dao_proposal_single::state::Config = res.data().unwrap();
 
     assert_eq!(config_res.min_voting_period, None);
     assert_eq!(config_res.max_voting_period, Duration::Time(432000));

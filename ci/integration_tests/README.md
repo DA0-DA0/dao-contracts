@@ -54,7 +54,7 @@ fn new_dao_has_no_items(chain: &mut Chain) {
         .query(
             "cw_core",
             "exc_items_get",
-            &cw_core::msg::QueryMsg::GetItem {
+            &cw_dao_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
         )
