@@ -5,7 +5,7 @@ use cosmwasm_std::{
     to_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Order, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
-use cw_dao_voting_cw20_stake::msg::ActiveThreshold;
+use cw_dao_voting_staked_cw20::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
 use cw_dao_core::{msg::ModuleInstantiateInfo, state::ProposalModule};
@@ -13,17 +13,17 @@ use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use cw_utils::Expiration;
 
-use indexable_hooks::HooksResponse;
+use cw_indexable_hooks::HooksResponse;
 
-use proposal_module_testing::{ShouldExecute, TestSingleChoiceVote};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use voting::{
+use cw_dao_proposal_testing::{ShouldExecute, TestSingleChoiceVote};
+use cw_dao_voting::{
     deposit::{CheckedDepositInfo, DepositInfo, DepositToken},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{Vote, Votes},
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     contract::migrate,
@@ -105,19 +105,19 @@ fn cw20_balances_voting() -> Box<dyn Contract<Empty>> {
 
 fn cw20_staked_balances_voting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_dao_voting_cw20_stake::contract::execute,
-        cw_dao_voting_cw20_stake::contract::instantiate,
-        cw_dao_voting_cw20_stake::contract::query,
+        cw_dao_voting_staked_cw20::contract::execute,
+        cw_dao_voting_staked_cw20::contract::instantiate,
+        cw_dao_voting_staked_cw20::contract::query,
     )
-    .with_reply(cw_dao_voting_cw20_stake::contract::reply);
+    .with_reply(cw_dao_voting_staked_cw20::contract::reply);
     Box::new(contract)
 }
 
 fn native_staked_balances_voting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_dao_voting_native_stake::contract::execute,
-        cw_dao_voting_native_stake::contract::instantiate,
-        cw_dao_voting_native_stake::contract::query,
+        cw_dao_voting_staked_native::contract::execute,
+        cw_dao_voting_staked_native::contract::instantiate,
+        cw_dao_voting_staked_native::contract::query,
     );
     Box::new(contract)
 }
@@ -133,9 +133,9 @@ fn cw721_base() -> Box<dyn Contract<Empty>> {
 
 fn cw721_stake() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_dao_voting_cw721_stake::contract::execute,
-        cw_dao_voting_cw721_stake::contract::instantiate,
-        cw_dao_voting_cw721_stake::contract::query,
+        cw_dao_voting_staked_cw721::contract::execute,
+        cw_dao_voting_staked_cw721::contract::instantiate,
+        cw_dao_voting_staked_cw721::contract::query,
     );
     Box::new(contract)
 }
@@ -152,11 +152,11 @@ fn cw_gov_contract() -> Box<dyn Contract<Empty>> {
 
 fn staked_balances_voting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_dao_voting_cw20_stake::contract::execute,
-        cw_dao_voting_cw20_stake::contract::instantiate,
-        cw_dao_voting_cw20_stake::contract::query,
+        cw_dao_voting_staked_cw20::contract::execute,
+        cw_dao_voting_staked_cw20::contract::instantiate,
+        cw_dao_voting_staked_cw20::contract::query,
     )
-    .with_reply(cw_dao_voting_cw20_stake::contract::reply);
+    .with_reply(cw_dao_voting_staked_cw20::contract::reply);
     Box::new(contract)
 }
 
@@ -244,8 +244,8 @@ fn instantiate_with_staked_cw721_governance(
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw721_stake_id,
-            msg: to_binary(&cw_dao_voting_cw721_stake::msg::InstantiateMsg {
-                owner: Some(cw_dao_voting_cw721_stake::msg::Owner::Instantiator {}),
+            msg: to_binary(&cw_dao_voting_staked_cw721::msg::InstantiateMsg {
+                owner: Some(cw_dao_voting_staked_cw721::msg::Owner::Instantiator {}),
                 manager: None,
                 unstaking_duration: None,
                 nft_address: nft_address.to_string(),
@@ -355,8 +355,8 @@ fn instantiate_with_native_staked_balances_governance(
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: native_stake_id,
-            msg: to_binary(&cw_dao_voting_native_stake::msg::InstantiateMsg {
-                owner: Some(cw_dao_voting_native_stake::msg::Owner::Instantiator {}),
+            msg: to_binary(&cw_dao_voting_staked_native::msg::InstantiateMsg {
+                owner: Some(cw_dao_voting_staked_native::msg::Owner::Instantiator {}),
                 manager: None,
                 denom: "ujuno".to_string(),
                 unstaking_duration: None,
@@ -403,7 +403,7 @@ fn instantiate_with_native_staked_balances_governance(
         app.execute_contract(
             Addr::unchecked(&address),
             native_staking_addr.clone(),
-            &cw_dao_voting_native_stake::msg::ExecuteMsg::Stake {},
+            &cw_dao_voting_staked_native::msg::ExecuteMsg::Stake {},
             &[Coin {
                 amount,
                 denom: "ujuno".to_string(),
@@ -460,9 +460,9 @@ fn instantiate_with_staked_balances_governance(
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: staked_balances_voting_id,
-            msg: to_binary(&cw_dao_voting_cw20_stake::msg::InstantiateMsg {
+            msg: to_binary(&cw_dao_voting_staked_cw20::msg::InstantiateMsg {
                 active_threshold: None,
-                token_info: cw_dao_voting_cw20_stake::msg::TokenInfo::New {
+                token_info: cw_dao_voting_staked_cw20::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token.".to_string(),
                     name: "DAO DAO".to_string(),
@@ -509,7 +509,7 @@ fn instantiate_with_staked_balances_governance(
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -569,8 +569,8 @@ fn instantiate_with_staking_active_threshold(
         automatically_add_cw721s: true,
         voting_module_instantiate_info: cw_dao_core::msg::ModuleInstantiateInfo {
             code_id: votemod_id,
-            msg: to_binary(&cw_dao_voting_cw20_stake::msg::InstantiateMsg {
-                token_info: cw_dao_voting_cw20_stake::msg::TokenInfo::New {
+            msg: to_binary(&cw_dao_voting_staked_cw20::msg::InstantiateMsg {
+                token_info: cw_dao_voting_staked_cw20::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token".to_string(),
                     name: "DAO".to_string(),
@@ -1201,102 +1201,102 @@ fn test_propose_supports_stargate_message() {
 
 #[test]
 fn test_vote_simple() {
-    proposal_module_testing::test_simple_votes(do_votes_cw20_balances);
-    proposal_module_testing::test_simple_votes(do_votes_cw4_weights);
-    proposal_module_testing::test_simple_votes(do_votes_staked_balances);
-    proposal_module_testing::test_simple_votes(do_votes_nft_balances);
-    proposal_module_testing::test_simple_votes(do_votes_native_staked_balances)
+    cw_dao_proposal_testing::test_simple_votes(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_simple_votes(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_simple_votes(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_simple_votes(do_votes_nft_balances);
+    cw_dao_proposal_testing::test_simple_votes(do_votes_native_staked_balances)
 }
 
 #[test]
 fn test_simple_vote_no_overflow() {
-    proposal_module_testing::test_simple_vote_no_overflow(do_votes_cw20_balances);
-    proposal_module_testing::test_simple_vote_no_overflow(do_votes_staked_balances);
-    proposal_module_testing::test_simple_vote_no_overflow(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_simple_vote_no_overflow(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_simple_vote_no_overflow(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_simple_vote_no_overflow(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_vote_no_overflow() {
-    proposal_module_testing::test_vote_no_overflow(do_votes_cw20_balances);
-    proposal_module_testing::test_vote_no_overflow(do_votes_staked_balances);
-    proposal_module_testing::test_vote_no_overflow(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_vote_no_overflow(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_vote_no_overflow(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_vote_no_overflow(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_simple_early_rejection() {
-    proposal_module_testing::test_simple_early_rejection(do_votes_cw20_balances);
-    proposal_module_testing::test_simple_early_rejection(do_votes_cw4_weights);
-    proposal_module_testing::test_simple_early_rejection(do_votes_staked_balances);
-    proposal_module_testing::test_simple_early_rejection(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_simple_early_rejection(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_simple_early_rejection(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_simple_early_rejection(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_simple_early_rejection(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_vote_abstain_only() {
-    proposal_module_testing::test_vote_abstain_only(do_votes_cw20_balances);
-    proposal_module_testing::test_vote_abstain_only(do_votes_cw4_weights);
-    proposal_module_testing::test_vote_abstain_only(do_votes_staked_balances);
-    proposal_module_testing::test_vote_abstain_only(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_vote_abstain_only(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_vote_abstain_only(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_vote_abstain_only(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_vote_abstain_only(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_tricky_rounding() {
-    proposal_module_testing::test_tricky_rounding(do_votes_cw20_balances);
-    proposal_module_testing::test_tricky_rounding(do_votes_cw4_weights);
-    proposal_module_testing::test_tricky_rounding(do_votes_staked_balances);
-    proposal_module_testing::test_tricky_rounding(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_tricky_rounding(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_tricky_rounding(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_tricky_rounding(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_tricky_rounding(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_no_double_votes() {
-    proposal_module_testing::test_no_double_votes(do_votes_cw20_balances);
-    proposal_module_testing::test_no_double_votes(do_votes_cw4_weights);
-    proposal_module_testing::test_no_double_votes(do_votes_staked_balances);
-    proposal_module_testing::test_no_double_votes(do_votes_nft_balances);
-    proposal_module_testing::test_no_double_votes(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_no_double_votes(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_no_double_votes(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_no_double_votes(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_no_double_votes(do_votes_nft_balances);
+    cw_dao_proposal_testing::test_no_double_votes(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_votes_favor_yes() {
-    proposal_module_testing::test_votes_favor_yes(do_votes_cw20_balances);
-    proposal_module_testing::test_votes_favor_yes(do_votes_staked_balances);
-    proposal_module_testing::test_votes_favor_yes(do_votes_nft_balances);
-    proposal_module_testing::test_votes_favor_yes(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_votes_favor_yes(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_votes_favor_yes(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_votes_favor_yes(do_votes_nft_balances);
+    cw_dao_proposal_testing::test_votes_favor_yes(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_votes_low_threshold() {
-    proposal_module_testing::test_votes_low_threshold(do_votes_cw20_balances);
-    proposal_module_testing::test_votes_low_threshold(do_votes_cw4_weights);
-    proposal_module_testing::test_votes_low_threshold(do_votes_staked_balances);
-    proposal_module_testing::test_votes_low_threshold(do_votes_nft_balances);
-    proposal_module_testing::test_votes_low_threshold(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_votes_low_threshold(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_votes_low_threshold(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_votes_low_threshold(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_votes_low_threshold(do_votes_nft_balances);
+    cw_dao_proposal_testing::test_votes_low_threshold(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_majority_vs_half() {
-    proposal_module_testing::test_majority_vs_half(do_votes_cw20_balances);
-    proposal_module_testing::test_majority_vs_half(do_votes_cw4_weights);
-    proposal_module_testing::test_majority_vs_half(do_votes_staked_balances);
-    proposal_module_testing::test_majority_vs_half(do_votes_nft_balances);
-    proposal_module_testing::test_majority_vs_half(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_majority_vs_half(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_majority_vs_half(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_majority_vs_half(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_majority_vs_half(do_votes_nft_balances);
+    cw_dao_proposal_testing::test_majority_vs_half(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_pass_threshold_not_quorum() {
-    proposal_module_testing::test_pass_threshold_not_quorum(do_votes_cw20_balances);
-    proposal_module_testing::test_pass_threshold_not_quorum(do_votes_cw4_weights);
-    proposal_module_testing::test_pass_threshold_not_quorum(do_votes_staked_balances);
-    proposal_module_testing::test_pass_threshold_not_quorum(do_votes_nft_balances);
-    proposal_module_testing::test_pass_threshold_not_quorum(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_pass_threshold_not_quorum(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_pass_threshold_not_quorum(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_pass_threshold_not_quorum(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_pass_threshold_not_quorum(do_votes_nft_balances);
+    cw_dao_proposal_testing::test_pass_threshold_not_quorum(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_pass_threshold_exactly_quorum() {
-    proposal_module_testing::test_pass_exactly_quorum(do_votes_cw20_balances);
-    proposal_module_testing::test_pass_exactly_quorum(do_votes_cw4_weights);
-    proposal_module_testing::test_pass_exactly_quorum(do_votes_staked_balances);
-    proposal_module_testing::test_pass_exactly_quorum(do_votes_nft_balances);
-    proposal_module_testing::test_pass_exactly_quorum(do_votes_native_staked_balances);
+    cw_dao_proposal_testing::test_pass_exactly_quorum(do_votes_cw20_balances);
+    cw_dao_proposal_testing::test_pass_exactly_quorum(do_votes_cw4_weights);
+    cw_dao_proposal_testing::test_pass_exactly_quorum(do_votes_staked_balances);
+    cw_dao_proposal_testing::test_pass_exactly_quorum(do_votes_nft_balances);
+    cw_dao_proposal_testing::test_pass_exactly_quorum(do_votes_native_staked_balances);
 }
 
 /// Generate some random voting selections and make sure they behave
@@ -1304,22 +1304,22 @@ fn test_pass_threshold_exactly_quorum() {
 /// can parallize tests.
 #[test]
 fn fuzz_voting_cw20_balances() {
-    proposal_module_testing::fuzz_voting(do_votes_cw20_balances)
+    cw_dao_proposal_testing::fuzz_voting(do_votes_cw20_balances)
 }
 
 #[test]
 fn fuzz_voting_cw4_weights() {
-    proposal_module_testing::fuzz_voting(do_votes_cw4_weights)
+    cw_dao_proposal_testing::fuzz_voting(do_votes_cw4_weights)
 }
 
 #[test]
 fn fuzz_voting_staked_balances() {
-    proposal_module_testing::fuzz_voting(do_votes_staked_balances)
+    cw_dao_proposal_testing::fuzz_voting(do_votes_staked_balances)
 }
 
 #[test]
 fn fuzz_voting_native_staked_balances() {
-    proposal_module_testing::fuzz_voting(do_votes_native_staked_balances)
+    cw_dao_proposal_testing::fuzz_voting(do_votes_native_staked_balances)
 }
 
 /// Instantiate the contract and use the voting module's token
@@ -2529,7 +2529,7 @@ fn test_active_threshold_absolute() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -2657,7 +2657,7 @@ fn test_active_threshold_percent() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -2777,7 +2777,7 @@ fn test_active_threshold_none() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -4547,7 +4547,7 @@ fn test_close_failed_proposal() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -4801,7 +4801,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app

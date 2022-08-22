@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::voting::Vote;
+use cw_dao_voting::voting::Vote;
 
 use crate::proposal::SingleChoiceProposal;
 

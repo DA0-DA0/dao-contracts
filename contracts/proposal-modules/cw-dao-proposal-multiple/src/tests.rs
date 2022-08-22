@@ -3,17 +3,17 @@ use cosmwasm_std::{
 };
 use cw20::Cw20Coin;
 use cw_dao_core::state::ProposalModule;
-use cw_dao_voting_cw20_stake::msg::ActiveThreshold;
-use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
-use cw_utils::Duration;
-use indexable_hooks::HooksResponse;
-use rand::{prelude::SliceRandom, Rng};
-use voting::{
+use cw_dao_voting::{
     deposit::{CheckedDepositInfo, DepositInfo, DepositToken},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{MultipleChoiceVote, MultipleChoiceVotes},
 };
+use cw_dao_voting_staked_cw20::msg::ActiveThreshold;
+use cw_indexable_hooks::HooksResponse;
+use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+use cw_utils::Duration;
+use rand::{prelude::SliceRandom, Rng};
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
@@ -24,7 +24,7 @@ use crate::{
     ContractError,
 };
 
-use proposal_module_testing::{
+use cw_dao_proposal_testing::{
     helpers::{
         cw20_balances_voting, cw20_contract, instantiate_with_cw20_balances_governance,
         instantiate_with_staked_balances_governance, instantiate_with_staking_active_threshold,
@@ -3379,7 +3379,7 @@ fn test_active_threshold_absolute() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -3518,7 +3518,7 @@ fn test_active_threshold_percent() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -3654,7 +3654,7 @@ fn test_active_threshold_none() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -4413,7 +4413,7 @@ fn test_close_failed_proposal() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
@@ -4687,7 +4687,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app

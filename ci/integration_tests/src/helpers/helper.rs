@@ -7,7 +7,7 @@ use cw_dao_core::{
     query::DumpStateResponse,
 };
 use cw_utils::Duration;
-use voting::{
+use cw_dao_voting::{
     deposit::DepositInfo, deposit::DepositToken, threshold::PercentageThreshold,
     threshold::Threshold,
 };
@@ -36,8 +36,8 @@ pub fn create_dao(
                 .orc
                 .contract_map
                 .code_id("cw20_staked_balance_voting")?,
-            msg: to_binary(&cw_dao_voting_cw20_stake::msg::InstantiateMsg {
-                token_info: cw_dao_voting_cw20_stake::msg::TokenInfo::New {
+            msg: to_binary(&cw_dao_voting_staked_cw20::msg::InstantiateMsg {
+                token_info: cw_dao_voting_staked_cw20::msg::TokenInfo::New {
                     code_id: chain.orc.contract_map.code_id("cw20_base")?,
                     label: "DAO DAO Gov token".to_string(),
                     name: "DAO".to_string(),

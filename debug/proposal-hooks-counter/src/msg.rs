@@ -1,7 +1,7 @@
-use proposal_hooks::ProposalHookMsg;
+use cw_dao_proposal_hooks::ProposalHookMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use vote_hooks::VoteHookMsg;
+use cw_dao_vote_hooks::VoteHookMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {

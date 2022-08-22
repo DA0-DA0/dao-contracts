@@ -9,7 +9,7 @@ use cw_dao_proposal_single::{
     query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
     state::Config,
 };
-use indexable_hooks::HooksResponse;
+use cw_indexable_hooks::HooksResponse;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

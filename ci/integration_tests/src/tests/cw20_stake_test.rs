@@ -26,7 +26,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .query(
             voting_contract,
             "exc_stake_q_stake",
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap()
         .data()

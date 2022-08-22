@@ -2,9 +2,9 @@ use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_dao_core::state::ProposalModule;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use indexable_hooks::HooksResponse;
+use cw_indexable_hooks::HooksResponse;
 
-use voting::{
+use cw_dao_voting::{
     threshold::{PercentageThreshold, Threshold},
     voting::Vote,
 };

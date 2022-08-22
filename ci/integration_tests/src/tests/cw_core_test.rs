@@ -8,7 +8,7 @@ use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
 use cw_dao_core::query::{GetItemResponse, PauseInfoResponse};
 use cw_utils::Duration;
 use test_context::test_context;
-use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, threshold::Threshold};
+use cw_dao_voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, threshold::Threshold};
 
 // #### ExecuteMsg #####
 
@@ -261,7 +261,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query(
             voting_contract,
             "inst_admin_q_stake",
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::StakingContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let staking_addr: &str = res.data().unwrap();
@@ -306,7 +306,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query(
             voting_contract,
             "inst_admin_q_tok",
-            &cw_dao_voting_cw20_stake::msg::QueryMsg::TokenContract {},
+            &cw_dao_voting_staked_cw20::msg::QueryMsg::TokenContract {},
         )
         .unwrap();
     let token_addr: &str = res.data().unwrap();

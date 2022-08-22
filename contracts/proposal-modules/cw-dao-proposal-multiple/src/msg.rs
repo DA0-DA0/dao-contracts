@@ -1,7 +1,7 @@
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{deposit::DepositInfo, voting::MultipleChoiceVote};
+use cw_dao_voting::{deposit::DepositInfo, voting::MultipleChoiceVote};
 
 use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
 use cw_dao_core_macros::govmod_query;

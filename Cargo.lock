@@ -577,6 +577,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-dao-proposal-hooks"
+version = "2.0.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-dao-voting",
+ "cw-indexable-hooks",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw-dao-proposal-multiple"
 version = "2.0.0"
 dependencies = [
@@ -585,9 +596,14 @@ dependencies = [
  "cw-dao-core",
  "cw-dao-core-interface",
  "cw-dao-core-macros",
+ "cw-dao-proposal-hooks",
+ "cw-dao-proposal-testing",
+ "cw-dao-vote-hooks",
+ "cw-dao-voting",
  "cw-dao-voting-cw20-balance",
- "cw-dao-voting-cw20-stake",
  "cw-dao-voting-cw4",
+ "cw-dao-voting-staked-cw20",
+ "cw-indexable-hooks",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -597,15 +613,10 @@ dependencies = [
  "cw20-stake",
  "cw4",
  "cw4-group",
- "indexable-hooks",
- "proposal-hooks",
- "proposal-module-testing",
  "rand",
  "schemars",
  "serde",
  "thiserror",
- "vote-hooks",
- "voting",
 ]
 
 [[package]]
@@ -618,11 +629,16 @@ dependencies = [
  "cw-dao-core",
  "cw-dao-core-interface",
  "cw-dao-core-macros",
+ "cw-dao-proposal-hooks",
+ "cw-dao-proposal-testing",
+ "cw-dao-vote-hooks",
+ "cw-dao-voting",
  "cw-dao-voting-cw20-balance",
- "cw-dao-voting-cw20-stake",
  "cw-dao-voting-cw4",
- "cw-dao-voting-cw721-stake",
- "cw-dao-voting-native-stake",
+ "cw-dao-voting-staked-cw20",
+ "cw-dao-voting-staked-cw721",
+ "cw-dao-voting-staked-native",
+ "cw-indexable-hooks",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -634,14 +650,9 @@ dependencies = [
  "cw4",
  "cw4-group",
  "cw721-base",
- "indexable-hooks",
- "proposal-hooks",
- "proposal-module-testing",
  "schemars",
  "serde",
  "thiserror",
- "vote-hooks",
- "voting",
 ]
 
 [[package]]
@@ -656,6 +667,56 @@ dependencies = [
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw2 0.13.4",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-dao-proposal-testing"
+version = "2.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-dao-core",
+ "cw-dao-core-interface",
+ "cw-dao-voting",
+ "cw-dao-voting-cw20-balance",
+ "cw-dao-voting-cw4",
+ "cw-dao-voting-staked-cw20",
+ "cw-indexable-hooks",
+ "cw-multi-test 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20",
+ "cw20-base",
+ "cw20-stake",
+ "cw4",
+ "cw4-group",
+ "rand",
+]
+
+[[package]]
+name = "cw-dao-vote-hooks"
+version = "2.0.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-dao-voting",
+ "cw-indexable-hooks",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-dao-voting"
+version = "2.0.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-dao-core",
+ "cw-dao-core-interface",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw20",
  "schemars",
  "serde",
  "thiserror",
@@ -682,27 +743,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-dao-voting-cw20-stake"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-dao-core-interface",
- "cw-dao-core-macros",
- "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.13.4",
- "cw2 0.13.4",
- "cw20",
- "cw20-base",
- "cw20-stake",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "cw-dao-voting-cw4"
 version = "2.0.0"
 dependencies = [
@@ -723,7 +763,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-dao-voting-cw721-stake"
+name = "cw-dao-voting-staked-cw20"
+version = "2.0.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-dao-core-interface",
+ "cw-dao-core-macros",
+ "cw-multi-test 0.13.4",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20",
+ "cw20-base",
+ "cw20-stake",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-dao-voting-staked-cw721"
 version = "2.0.0"
 dependencies = [
  "anyhow",
@@ -747,7 +808,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-dao-voting-native-stake"
+name = "cw-dao-voting-staked-native"
 version = "2.0.0"
 dependencies = [
  "anyhow",
@@ -762,6 +823,17 @@ dependencies = [
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-indexable-hooks"
+version = "2.0.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.13.4",
  "schemars",
  "serde",
  "thiserror",
@@ -1596,17 +1668,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
-name = "indexable-hooks"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1629,7 +1690,8 @@ dependencies = [
  "cw-dao-core",
  "cw-dao-core-interface",
  "cw-dao-proposal-single",
- "cw-dao-voting-cw20-stake",
+ "cw-dao-voting",
+ "cw-dao-voting-staked-cw20",
  "cw-utils 0.13.4",
  "cw20",
  "cw20-base",
@@ -1640,7 +1702,6 @@ dependencies = [
  "serde",
  "serde_json",
  "test-context",
- "voting",
 ]
 
 [[package]]
@@ -2052,17 +2113,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proposal-hooks"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-std",
- "indexable-hooks",
- "schemars",
- "serde",
- "voting",
-]
-
-[[package]]
 name = "proposal-hooks-counter"
 version = "2.0.0"
 dependencies = [
@@ -2070,45 +2120,21 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-dao-core",
+ "cw-dao-proposal-hooks",
  "cw-dao-proposal-single",
+ "cw-dao-vote-hooks",
+ "cw-dao-voting",
  "cw-dao-voting-cw20-balance",
+ "cw-indexable-hooks",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "cw20",
  "cw20-base",
- "indexable-hooks",
- "proposal-hooks",
  "schemars",
  "serde",
  "thiserror",
- "vote-hooks",
- "voting",
-]
-
-[[package]]
-name = "proposal-module-testing"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-dao-core",
- "cw-dao-core-interface",
- "cw-dao-voting-cw20-balance",
- "cw-dao-voting-cw20-stake",
- "cw-dao-voting-cw4",
- "cw-multi-test 0.13.4",
- "cw-utils 0.13.4",
- "cw2 0.13.4",
- "cw20",
- "cw20-base",
- "cw20-stake",
- "cw4",
- "cw4-group",
- "indexable-hooks",
- "rand",
- "voting",
 ]
 
 [[package]]
@@ -3151,32 +3177,6 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
-
-[[package]]
-name = "vote-hooks"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-std",
- "indexable-hooks",
- "schemars",
- "serde",
- "voting",
-]
-
-[[package]]
-name = "voting"
-version = "2.0.0"
-dependencies = [
- "cosmwasm-std",
- "cw-dao-core",
- "cw-dao-core-interface",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.13.4",
- "cw20",
- "schemars",
- "serde",
- "thiserror",
-]
 
 [[package]]
 name = "walkdir"

@@ -1,0 +1,14 @@
+[package]
+name = "cw-dao-proposal-hooks"
+description = "A package for managing hooks which fire when proposals have their status change."
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+schemars = { workspace = true }
+serde = { workspace = true }
+cosmwasm-std = { workspace = true }
+cw-indexable-hooks = { workspace = true }
+cw-dao-voting = { workspace = true }

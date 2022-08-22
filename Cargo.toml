@@ -25,11 +25,11 @@ cw-dao-core-interface = { path = "packages/cw-dao-core-interface", version = "*"
 cw-dao-core-macros = { path = "packages/cw-dao-core-macros", version = "*" }
 cw-paginate = { path = "packages/cw-paginate", version = "*" }
 cw721-controllers = { path = "packages/cw721-controllers", version = "*" }
-indexable-hooks = { path = "packages/indexable-hooks", version = "*" }
-proposal-hooks = { path = "packages/proposal-hooks", version = "*" }
-proposal-module-testing = { path = "packages/proposal-module-testing", version = "*" }
-vote-hooks = { path = "packages/vote-hooks", version = "*" }
-voting = { path = "packages/voting", version = "*" }
+cw-indexable-hooks = { path = "packages/cw-indexable-hooks", version = "*" }
+cw-dao-proposal-hooks = { path = "packages/cw-dao-proposal-hooks", version = "*" }
+cw-dao-proposal-testing = { path = "packages/cw-dao-proposal-testing", version = "*" }
+cw-dao-vote-hooks = { path = "packages/cw-dao-vote-hooks", version = "*" }
+cw-dao-voting = { path = "packages/cw-dao-voting", version = "*" }
 
 # Contracts.
 cw-dao-core = { path = "contracts/cw-dao-core", features = ["library"], version = "*" }
@@ -39,10 +39,10 @@ cw-dao-proposal-single = { path = "contracts/proposal-modules/cw-dao-proposal-si
 cw-dao-proposal-multiple = { path = "contracts/proposal-modules/cw-dao-proposal-multiple", features = ["library"], version = "*" }
 
 # Voting modules.
-cw-dao-voting-cw20-stake = { path = "contracts/voting-modules/cw-dao-voting-cw20-stake", features = ["library"], version = "*" }
+cw-dao-voting-staked-cw20 = { path = "contracts/voting-modules/cw-dao-voting-staked-cw20", features = ["library"], version = "*" }
 cw-dao-voting-cw4 = { path = "contracts/voting-modules/cw-dao-voting-cw4", features = ["library"], version = "*" }
-cw-dao-voting-cw721-stake = { path = "contracts/voting-modules/cw-dao-voting-cw721-stake", features = ["library"], version = "*" }
-cw-dao-voting-native-stake = { path = "contracts/voting-modules/cw-dao-voting-native-stake", features = ["library"], version = "*" }
+cw-dao-voting-staked-cw721 = { path = "contracts/voting-modules/cw-dao-voting-staked-cw721", features = ["library"], version = "*" } 
+cw-dao-voting-staked-native = { path = "contracts/voting-modules/cw-dao-voting-staked-native", features = ["library"], version = "*" }
 cw20-stake = { path = "contracts/voting-modules/cw20-stake", features = ["library"], version = "*" }
 
 # Staking rewards.

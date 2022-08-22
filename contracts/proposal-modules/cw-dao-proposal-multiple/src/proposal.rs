@@ -1,8 +1,8 @@
-use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128}; 
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{
+use cw_dao_voting::{
     deposit::CheckedDepositInfo,
     proposal::Proposal,
     status::Status,
@@ -330,7 +330,7 @@ mod tests {
     fn test_majority_quorum() {
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Majority {},
         };
 
         let votes = MultipleChoiceVotes {
@@ -435,7 +435,7 @@ mod tests {
     fn test_percentage_quorum() {
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(10),
             ),
         };
@@ -542,7 +542,7 @@ mod tests {
     fn test_unbeatable_none_option() {
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(10),
             ),
         };
@@ -567,7 +567,7 @@ mod tests {
     fn test_quorum_rounding() {
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(10),
             ),
         };
@@ -589,7 +589,7 @@ mod tests {
 
         // High Precision rounding
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(100),
             ),
         };
@@ -612,7 +612,7 @@ mod tests {
 
         // High Precision rounding
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(99),
             ),
         };
@@ -638,7 +638,7 @@ mod tests {
     fn test_tricky_pass() {
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::from_ratio(7u32, 13u32),
             ),
         };
@@ -676,7 +676,7 @@ mod tests {
     fn test_tricky_pass_majority() {
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Majority {},
         };
 
         let votes = MultipleChoiceVotes {
@@ -715,7 +715,7 @@ mod tests {
         // passed or rejected before they expire.
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Majority {},
         };
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(6), Uint128::new(0), Uint128::new(0)],
@@ -750,7 +750,7 @@ mod tests {
         // passed or rejected before they expire.
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Majority {},
         };
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(5), Uint128::new(5), Uint128::new(0)],
@@ -789,7 +789,7 @@ mod tests {
         // passed or rejected before they expire.
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(80),
             ),
         };
@@ -827,7 +827,7 @@ mod tests {
         // passed or rejected before they expire.
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+            quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(80),
             ),
         };

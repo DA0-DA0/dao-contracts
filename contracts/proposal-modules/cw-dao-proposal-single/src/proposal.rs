@@ -3,14 +3,14 @@ use crate::state::PROPOSAL_COUNT;
 use cosmwasm_std::{
     Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Timestamp, Uint128,
 };
+use cw_dao_voting::deposit::CheckedDepositInfo;
+use cw_dao_voting::proposal::Proposal;
+use cw_dao_voting::status::Status;
+use cw_dao_voting::threshold::{PercentageThreshold, Threshold};
+use cw_dao_voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::deposit::CheckedDepositInfo;
-use voting::proposal::Proposal;
-use voting::status::Status;
-use voting::threshold::{PercentageThreshold, Threshold};
-use voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct SingleChoiceProposal {

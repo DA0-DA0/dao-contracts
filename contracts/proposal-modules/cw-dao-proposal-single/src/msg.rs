@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_dao_core_macros::govmod_query;
-use voting::{deposit::DepositInfo, threshold::Threshold, voting::Vote};
+use cw_dao_voting::{deposit::DepositInfo, threshold::Threshold, voting::Vote};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {

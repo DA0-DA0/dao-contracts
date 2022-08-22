@@ -1,26 +1,26 @@
 use std::u64;
 
 use cosmwasm_std::StdError;
-use indexable_hooks::HookError;
+use cw_dao_voting::reply::error::TagError;
+use cw_indexable_hooks::HookError;
 use thiserror::Error;
-use voting::reply::error::TagError;
 
 #[derive(Error, Debug)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
 
-    #[error("{0}")]
+    #[error(transparent)]
     HookError(#[from] HookError),
 
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("{0}")]
-    ThresholdError(#[from] voting::threshold::ThresholdError),
+    #[error(transparent)]
+    ThresholdError(#[from] cw_dao_voting::threshold::ThresholdError),
 
-    #[error("{0}")]
-    VotingError(#[from] voting::error::VotingError),
+    #[error(transparent)]
+    VotingError(#[from] cw_dao_voting::error::VotingError),
 
     #[error("Suggested proposal expiration is larger than the maximum proposal duration")]
     InvalidExpiration {},

@@ -2,7 +2,7 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
     Addr, Attribute, Reply, SubMsgResult, Uint128,
 };
-use voting::{
+use cw_dao_voting::{
     reply::{mask_proposal_execution_proposal_id, mask_proposal_hook_index, mask_vote_hook_index},
     status::Status,
     threshold::{PercentageThreshold, Threshold},

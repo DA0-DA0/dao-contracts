@@ -7,11 +7,11 @@ use cw2::set_contract_version;
 use cw_dao_core_interface::voting::IsActiveResponse;
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
-use indexable_hooks::Hooks;
-use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use cw_indexable_hooks::Hooks;
+use cw_dao_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 
-use vote_hooks::new_vote_hooks;
-use voting::{
+use cw_dao_vote_hooks::new_vote_hooks;
+use cw_dao_voting::{
     deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo},
     proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
     reply::{mask_proposal_execution_proposal_id, TaggedReplyId},

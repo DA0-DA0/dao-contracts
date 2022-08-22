@@ -20,10 +20,10 @@ cw-utils = { workspace = true }
 cosmwasm-std = { workspace = true }
 cw-dao-core = { workspace = true }
 cw20-stake = { workspace = true }
-cw-dao-voting-cw20-stake = { workspace = true }
+cw-dao-voting-staked-cw20 = { workspace = true }
 cw-dao-proposal-single = { workspace = true }
 cw-dao-core-interface = { workspace = true }
-voting = { workspace = true }
+cw-dao-voting = { workspace = true }
 anyhow = { workspace = true }
 serde = { workspace = true }
 assert_matches = "1.5"

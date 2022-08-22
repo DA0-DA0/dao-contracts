@@ -2,11 +2,11 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 
-use indexable_hooks::Hooks;
+use cw_indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::{deposit::CheckedDepositInfo, threshold::Threshold, voting::Vote};
+use cw_dao_voting::{deposit::CheckedDepositInfo, threshold::Threshold, voting::Vote};
 
 use crate::proposal::SingleChoiceProposal;
 

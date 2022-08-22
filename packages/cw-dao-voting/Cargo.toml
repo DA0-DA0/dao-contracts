@@ -1,0 +1,18 @@
+[package]
+name = "cw-dao-voting"
+description = "A package which collects functions that are useful for determining vote outcomes and managing proposals."
+license = { workspace = true }
+repository = { workspace = true }
+edition = { workspace = true }
+version = { workspace = true }
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+cw20 = { workspace = true }
+cw-dao-core-interface = { workspace = true }
+cw-dao-core = { workspace = true }
+cw-utils = { workspace = true }
+cw-storage-plus = { workspace = true }

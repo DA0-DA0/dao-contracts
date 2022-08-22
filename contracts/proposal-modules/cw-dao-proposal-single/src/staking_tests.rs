@@ -4,7 +4,7 @@ use cw_dao_core::{msg::ModuleInstantiateInfo, query::DumpStateResponse};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 
-use voting::threshold::Threshold;
+use cw_dao_voting::threshold::Threshold;
 
 use crate::msg::InstantiateMsg;
 
@@ -31,11 +31,11 @@ fn single_govmod_contract() -> Box<dyn Contract<Empty>> {
 
 fn staked_balances_voting() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_dao_voting_cw20_stake::contract::execute,
-        cw_dao_voting_cw20_stake::contract::instantiate,
-        cw_dao_voting_cw20_stake::contract::query,
+        cw_dao_voting_staked_cw20::contract::execute,
+        cw_dao_voting_staked_cw20::contract::instantiate,
+        cw_dao_voting_staked_cw20::contract::query,
     )
-    .with_reply(cw_dao_voting_cw20_stake::contract::reply);
+    .with_reply(cw_dao_voting_staked_cw20::contract::reply);
     Box::new(contract)
 }
 
@@ -77,9 +77,9 @@ fn instantiate_with_staked_balances_voting() {
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: staked_balances_voting_id,
-            msg: to_binary(&cw_dao_voting_cw20_stake::msg::InstantiateMsg {
+            msg: to_binary(&cw_dao_voting_staked_cw20::msg::InstantiateMsg {
                 active_threshold: None,
-                token_info: cw_dao_voting_cw20_stake::msg::TokenInfo::New {
+                token_info: cw_dao_voting_staked_cw20::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token.".to_string(),
                     name: "DAO DAO".to_string(),
@@ -105,8 +105,8 @@ fn instantiate_with_staked_balances_voting() {
             admin: cw_dao_core::msg::Admin::CoreContract {},
             msg: to_binary(&InstantiateMsg {
                 threshold: Threshold::ThresholdQuorum {
-                    threshold: voting::threshold::PercentageThreshold::Majority {},
-                    quorum: voting::threshold::PercentageThreshold::Percent(Decimal::percent(30)),
+                    threshold: cw_dao_voting::threshold::PercentageThreshold::Majority {},
+                    quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(Decimal::percent(30)),
                 },
                 max_voting_period: Duration::Height(10u64),
                 min_voting_period: None,
