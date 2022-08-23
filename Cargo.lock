@@ -701,6 +701,7 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-asset",
  "cw-core",
  "cw-core-interface",
  "cw-core-macros",
@@ -1695,6 +1696,7 @@ dependencies = [
  "cosm-orc",
  "cosmwasm-std",
  "ctor",
+ "cw-asset",
  "cw-core",
  "cw-core-interface",
  "cw-proposal-single",
