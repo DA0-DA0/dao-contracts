@@ -9,7 +9,9 @@ use cw_core::{
 };
 use cw_utils::Duration;
 use voting::{
-    deposit::DepositInfo, deposit::DepositToken, threshold::PercentageThreshold,
+    deposit::DepositInfo,
+    deposit::{DepositRefundPolicy, DepositToken},
+    threshold::PercentageThreshold,
     threshold::Threshold,
 };
 
@@ -74,9 +76,10 @@ pub fn create_dao(
                 deposit_info: Some(DepositInfo {
                     token: DepositToken::VotingModuleToken {},
                     deposit: Uint128::new(1000000000),
-                    refund_failed_proposals: true,
+                    refund_policy: DepositRefundPolicy::OnlyPassed,
                 }),
                 close_proposal_on_execution_failure: false,
+                open_proposal_submission: false,
             })?,
             admin: Admin::CoreContract {},
             label: "DAO DAO Proposal Module".to_string(),
