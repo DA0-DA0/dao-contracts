@@ -497,6 +497,9 @@ pub fn query_list_stakers(
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     use serde::{Deserialize, Serialize};
 
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     #[derive(Serialize, Deserialize, Clone)]
     struct BetaConfig {
         pub admin: Addr,

@@ -725,9 +725,12 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    /// This proposal version is from commit
-    /// e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID
-    /// 427.
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // This proposal version is from commit
+    // e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID
+    // 427.
     #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
     struct V1Proposal {
         pub title: String,

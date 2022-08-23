@@ -824,6 +824,7 @@ pub fn query_list_sub_daos(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
         MigrateMsg::FromV1 {} => {
             let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
@@ -920,7 +921,7 @@ pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<St
 
 #[cfg(test)]
 mod test {
-    use crate::contract::derive_proposal_module_prefix;
+    use crate::contract::{derive_proposal_module_prefix, CONTRACT_VERSION};
     use std::collections::HashSet;
 
     #[test]

@@ -103,3 +103,6 @@ pub struct TotalStakedAtHeightResponse {
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct MigrateMsg {}
