@@ -2,15 +2,11 @@ use super::chain::Chain;
 use anyhow::Result;
 use cosmwasm_std::{to_binary, Decimal, Uint128};
 use cw20::Cw20Coin;
-use cw_dao_core::{
-    msg::{Admin, ModuleInstantiateInfo},
-    query::DumpStateResponse,
-};
+use cw_dao_core::msg::{Admin, ModuleInstantiateInfo};
+use cw_dao_core::query::DumpStateResponse;
+use cw_dao_voting::deposit::{DepositInfo, DepositToken};
+use cw_dao_voting::threshold::{PercentageThreshold, Threshold};
 use cw_utils::Duration;
-use cw_dao_voting::{
-    deposit::DepositInfo, deposit::DepositToken, threshold::PercentageThreshold,
-    threshold::Threshold,
-};
 
 #[derive(Debug)]
 pub struct DaoState {

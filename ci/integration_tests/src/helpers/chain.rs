@@ -1,15 +1,13 @@
-use cosm_orc::config::key::Key;
+use cosm_orc::config::cfg::Config;
+use cosm_orc::config::key::{Key, SigningKey};
 use cosm_orc::orchestrator::cosm_orc::CosmOrc;
-use cosm_orc::{
-    config::cfg::Config, config::key::SigningKey, profilers::gas_profiler::GasProfiler,
-};
+use cosm_orc::profilers::gas_profiler::GasProfiler;
 use ctor::ctor;
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde_json::Value;
-use std::env;
-use std::fs;
 use std::path::Path;
+use std::{env, fs};
 use test_context::TestContext;
 
 static CONFIG: OnceCell<Cfg> = OnceCell::new();

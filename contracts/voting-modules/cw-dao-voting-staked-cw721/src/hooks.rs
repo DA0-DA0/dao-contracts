@@ -60,10 +60,8 @@ enum StakeChangedExecuteMsg {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        contract::execute,
-        state::{Config, CONFIG},
-    };
+    use crate::contract::execute;
+    use crate::state::{Config, CONFIG};
 
     use super::*;
 

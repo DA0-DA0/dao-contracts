@@ -1,9 +1,11 @@
+use cw_dao_voting::deposit::DepositInfo;
+use cw_dao_voting::voting::MultipleChoiceVote;
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cw_dao_voting::{deposit::DepositInfo, voting::MultipleChoiceVote};
 
-use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
+use crate::state::MultipleChoiceOptions;
+use crate::voting_strategy::VotingStrategy;
 use cw_dao_core_macros::govmod_query;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

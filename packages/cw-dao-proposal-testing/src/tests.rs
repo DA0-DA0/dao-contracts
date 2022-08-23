@@ -1,10 +1,9 @@
 use cosmwasm_std::{Decimal, Uint128};
-use cw_dao_voting::{
-    status::Status,
-    threshold::{PercentageThreshold, Threshold},
-    voting::Vote,
-};
-use rand::{prelude::SliceRandom, Rng};
+use cw_dao_voting::status::Status;
+use cw_dao_voting::threshold::{PercentageThreshold, Threshold};
+use cw_dao_voting::voting::Vote;
+use rand::prelude::SliceRandom;
+use rand::Rng;
 
 /// If a test vote should execute. Used for fuzzing and checking that
 /// votes after a proposal has completed aren't allowed.

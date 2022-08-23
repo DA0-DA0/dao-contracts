@@ -4,11 +4,11 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use cosmwasm_std::Addr;
 use cw_dao_core_interface::voting::InfoResponse;
-use cw_dao_proposal_multiple::{
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
-    state::Config,
+use cw_dao_proposal_multiple::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use cw_dao_proposal_multiple::query::{
+    ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse,
 };
+use cw_dao_proposal_multiple::state::Config;
 use cw_indexable_hooks::HooksResponse;
 
 fn main() {

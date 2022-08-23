@@ -6,7 +6,9 @@ use cw_indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_dao_voting::{deposit::CheckedDepositInfo, threshold::Threshold, voting::Vote};
+use cw_dao_voting::deposit::CheckedDepositInfo;
+use cw_dao_voting::threshold::Threshold;
+use cw_dao_voting::voting::Vote;
 
 use crate::proposal::SingleChoiceProposal;
 

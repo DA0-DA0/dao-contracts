@@ -1,26 +1,21 @@
-use cosmwasm_std::{
-    from_slice,
-    testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
-};
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
+use cosmwasm_std::{from_slice, to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg};
 use cw2::ContractVersion;
 use cw_dao_core_interface::voting::VotingPowerAtHeightResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::Map;
 use cw_utils::{Duration, Expiration};
 
-use crate::{
-    contract::{derive_proposal_module_prefix, migrate},
-    msg::{
-        Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
-    },
-    query::{
-        AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-        PauseInfoResponse, SubDao,
-    },
-    state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
-    ContractError,
+use crate::contract::{derive_proposal_module_prefix, migrate};
+use crate::msg::{
+    Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
 };
+use crate::query::{
+    AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
+    PauseInfoResponse, SubDao,
+};
+use crate::state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES};
+use crate::ContractError;
 
 const CREATOR_ADDR: &str = "creator";
 

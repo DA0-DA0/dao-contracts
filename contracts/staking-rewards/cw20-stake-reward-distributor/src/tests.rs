@@ -1,8 +1,6 @@
-use crate::{
-    msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg},
-    state::Config,
-    ContractError,
-};
+use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
+use crate::state::Config;
+use crate::ContractError;
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};

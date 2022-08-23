@@ -6,9 +6,10 @@ use cosm_orc::orchestrator::error::ProcessError;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
 use cw_dao_core::query::{GetItemResponse, PauseInfoResponse};
+use cw_dao_voting::deposit::CheckedDepositInfo;
+use cw_dao_voting::threshold::{PercentageThreshold, Threshold};
 use cw_utils::Duration;
 use test_context::test_context;
-use cw_dao_voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, threshold::Threshold};
 
 // #### ExecuteMsg #####
 

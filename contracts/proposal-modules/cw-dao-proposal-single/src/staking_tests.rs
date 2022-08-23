@@ -1,6 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
-use cw_dao_core::{msg::ModuleInstantiateInfo, query::DumpStateResponse};
+use cw_dao_core::msg::ModuleInstantiateInfo;
+use cw_dao_core::query::DumpStateResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 
@@ -106,7 +107,9 @@ fn instantiate_with_staked_balances_voting() {
             msg: to_binary(&InstantiateMsg {
                 threshold: Threshold::ThresholdQuorum {
                     threshold: cw_dao_voting::threshold::PercentageThreshold::Majority {},
-                    quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(Decimal::percent(30)),
+                    quorum: cw_dao_voting::threshold::PercentageThreshold::Percent(
+                        Decimal::percent(30),
+                    ),
                 },
                 max_voting_period: Duration::Height(10u64),
                 min_voting_period: None,

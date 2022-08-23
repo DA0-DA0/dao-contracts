@@ -269,7 +269,8 @@ impl SingleChoiceProposal {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cosmwasm_std::{testing::mock_env, Decimal};
+    use cosmwasm_std::testing::mock_env;
+    use cosmwasm_std::Decimal;
 
     fn setup_prop(
         threshold: Threshold,

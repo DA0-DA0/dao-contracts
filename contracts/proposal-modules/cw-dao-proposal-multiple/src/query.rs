@@ -1,7 +1,5 @@
-use crate::{
-    proposal::MultipleChoiceProposal,
-    state::{Config, VoteInfo},
-};
+use crate::proposal::MultipleChoiceProposal;
+use crate::state::{Config, VoteInfo};
 use cosmwasm_std::Uint128;
 
 use schemars::JsonSchema;

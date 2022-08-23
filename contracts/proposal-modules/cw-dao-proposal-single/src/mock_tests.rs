@@ -1,19 +1,15 @@
-use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env},
-    Addr, Attribute, Reply, SubMsgResult, Uint128,
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
+use cosmwasm_std::{Addr, Attribute, Reply, SubMsgResult, Uint128};
+use cw_dao_voting::reply::{
+    mask_proposal_execution_proposal_id, mask_proposal_hook_index, mask_vote_hook_index,
 };
-use cw_dao_voting::{
-    reply::{mask_proposal_execution_proposal_id, mask_proposal_hook_index, mask_vote_hook_index},
-    status::Status,
-    threshold::{PercentageThreshold, Threshold},
-    voting::Votes,
-};
+use cw_dao_voting::status::Status;
+use cw_dao_voting::threshold::{PercentageThreshold, Threshold};
+use cw_dao_voting::voting::Votes;
 
-use crate::{
-    contract::reply,
-    proposal::SingleChoiceProposal,
-    state::{PROPOSALS, PROPOSAL_HOOKS, VOTE_HOOKS},
-};
+use crate::contract::reply;
+use crate::proposal::SingleChoiceProposal;
+use crate::state::{PROPOSALS, PROPOSAL_HOOKS, VOTE_HOOKS};
 
 const CREATOR_ADDR: &str = "creator";
 

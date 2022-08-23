@@ -1,11 +1,14 @@
-use crate::{proposal::MultipleChoiceProposal, voting_strategy::VotingStrategy, ContractError};
+use crate::proposal::MultipleChoiceProposal;
+use crate::voting_strategy::VotingStrategy;
+use crate::ContractError;
 use cosmwasm_std::{Addr, CosmosMsg, Empty, Uint128};
+use cw_dao_voting::deposit::CheckedDepositInfo;
+use cw_dao_voting::voting::MultipleChoiceVote;
+use cw_indexable_hooks::Hooks;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
-use cw_indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cw_dao_voting::{deposit::CheckedDepositInfo, voting::MultipleChoiceVote};
 
 pub const MAX_NUM_CHOICES: u32 = 10;
 const NONE_OPTION_DESCRIPTION: &str = "None of the above";

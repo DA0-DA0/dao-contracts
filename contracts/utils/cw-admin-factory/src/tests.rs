@@ -1,17 +1,14 @@
 use std::vec;
 
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 use cw_dao_core::msg::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
-use crate::{
-    contract::instantiate,
-    contract::{reply, INSTANTIATE_CONTRACT_REPLY_ID},
-    msg::{ExecuteMsg, InstantiateMsg},
-};
+use crate::contract::{instantiate, reply, INSTANTIATE_CONTRACT_REPLY_ID};
+use crate::msg::{ExecuteMsg, InstantiateMsg};
 
 fn factory_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(

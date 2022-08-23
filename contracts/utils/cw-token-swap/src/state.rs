@@ -3,10 +3,8 @@ use cw_storage_plus::Item;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    msg::{Counterparty, TokenInfo},
-    ContractError,
-};
+use crate::msg::{Counterparty, TokenInfo};
+use crate::ContractError;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

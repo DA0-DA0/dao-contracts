@@ -1,7 +1,8 @@
 use std::u64;
 
 use cosmwasm_std::StdError;
-use cw_dao_voting::{reply::error::TagError, threshold::ThresholdError};
+use cw_dao_voting::reply::error::TagError;
+use cw_dao_voting::threshold::ThresholdError;
 use cw_indexable_hooks::HookError;
 use thiserror::Error;
 

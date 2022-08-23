@@ -7,10 +7,10 @@ use cw_controllers::ClaimsResponse;
 use cw_dao_core_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use cw_dao_voting_staked_native::{
-    msg::{ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, Owner, QueryMsg},
-    state::Config,
+use cw_dao_voting_staked_native::msg::{
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, Owner, QueryMsg,
 };
+use cw_dao_voting_staked_native::state::Config;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

@@ -5,31 +5,29 @@ use cosmwasm_std::{
 
 use cw2::set_contract_version;
 use cw_dao_core_interface::voting::IsActiveResponse;
+use cw_dao_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use cw_indexable_hooks::Hooks;
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
-use cw_indexable_hooks::Hooks;
-use cw_dao_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 
 use cw_dao_vote_hooks::new_vote_hooks;
-use cw_dao_voting::{
-    deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo},
-    proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
-    reply::{mask_proposal_execution_proposal_id, TaggedReplyId},
-    status::Status,
-    voting::{
-        get_total_power, get_voting_power, validate_voting_period, MultipleChoiceVote,
-        MultipleChoiceVotes,
-    },
+use cw_dao_voting::deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo};
+use cw_dao_voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
+use cw_dao_voting::reply::{mask_proposal_execution_proposal_id, TaggedReplyId};
+use cw_dao_voting::status::Status;
+use cw_dao_voting::voting::{
+    get_total_power, get_voting_power, validate_voting_period, MultipleChoiceVote,
+    MultipleChoiceVotes,
 };
 
-use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    proposal::{MultipleChoiceProposal, VoteResult},
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
-    state::{Config, MultipleChoiceOptions, CONFIG, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
-    voting_strategy::VotingStrategy,
-    ContractError,
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::proposal::{MultipleChoiceProposal, VoteResult};
+use crate::query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse};
+use crate::state::{
+    Config, MultipleChoiceOptions, CONFIG, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
 };
+use crate::voting_strategy::VotingStrategy;
+use crate::ContractError;
 
 use crate::state::{Ballot, VoteInfo, BALLOTS, PROPOSALS};
 

@@ -1,19 +1,15 @@
-use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128}; 
+use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128};
+use cw_dao_voting::deposit::CheckedDepositInfo;
+use cw_dao_voting::proposal::Proposal;
+use cw_dao_voting::status::Status;
+use cw_dao_voting::voting::{does_vote_count_pass, MultipleChoiceVotes};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cw_dao_voting::{
-    deposit::CheckedDepositInfo,
-    proposal::Proposal,
-    status::Status,
-    voting::{does_vote_count_pass, MultipleChoiceVotes},
-};
 
-use crate::{
-    query::ProposalResponse,
-    state::{CheckedMultipleChoiceOption, MultipleChoiceOptionType},
-    voting_strategy::VotingStrategy,
-};
+use crate::query::ProposalResponse;
+use crate::state::{CheckedMultipleChoiceOption, MultipleChoiceOptionType};
+use crate::voting_strategy::VotingStrategy;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct MultipleChoiceProposal {

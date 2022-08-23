@@ -5,10 +5,8 @@ use cw_dao_core_interface::voting::{
 };
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
-use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    ContractError,
-};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::ContractError;
 
 const DAO_ADDR: &str = "dao";
 const ADDR1: &str = "addr1";

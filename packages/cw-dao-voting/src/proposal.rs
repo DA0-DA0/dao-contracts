@@ -1,6 +1,7 @@
 use cosmwasm_std::Addr;
 
-use crate::{deposit::CheckedDepositInfo, status::Status};
+use crate::deposit::CheckedDepositInfo;
+use crate::status::Status;
 
 /// Default limit for proposal pagination.
 pub const DEFAULT_LIMIT: u64 = 30;

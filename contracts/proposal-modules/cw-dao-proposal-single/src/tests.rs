@@ -1,38 +1,34 @@
 use std::u128;
 
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env},
     to_binary, Addr, Coin, CosmosMsg, Decimal, Empty, Order, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
 use cw_dao_voting_staked_cw20::msg::ActiveThreshold;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
-use cw_dao_core::{msg::ModuleInstantiateInfo, state::ProposalModule};
+use cw_dao_core::msg::ModuleInstantiateInfo;
+use cw_dao_core::state::ProposalModule;
 use cw_storage_plus::{Item, Map};
-use cw_utils::Duration;
-use cw_utils::Expiration;
+use cw_utils::{Duration, Expiration};
 
 use cw_indexable_hooks::HooksResponse;
 
 use cw_dao_proposal_testing::{ShouldExecute, TestSingleChoiceVote};
-use cw_dao_voting::{
-    deposit::{CheckedDepositInfo, DepositInfo, DepositToken},
-    status::Status,
-    threshold::{PercentageThreshold, Threshold},
-    voting::{Vote, Votes},
-};
+use cw_dao_voting::deposit::{CheckedDepositInfo, DepositInfo, DepositToken};
+use cw_dao_voting::status::Status;
+use cw_dao_voting::threshold::{PercentageThreshold, Threshold};
+use cw_dao_voting::voting::{Vote, Votes};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    contract::migrate,
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    proposal::SingleChoiceProposal,
-    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
-    state::Config,
-    ContractError,
-};
+use crate::contract::migrate;
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::proposal::SingleChoiceProposal;
+use crate::query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse};
+use crate::state::Config;
+use crate::ContractError;
 
 const CREATOR_ADDR: &str = "creator";
 

@@ -25,16 +25,14 @@ use cw_dao_voting::voting::{
     get_total_power, get_voting_power, validate_voting_period, Vote, Votes,
 };
 
-use crate::msg::MigrateMsg;
-use crate::proposal::SingleChoiceProposal;
-use crate::state::Config;
-use crate::{
-    error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::advance_proposal_id,
-    query::ProposalListResponse,
-    query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
-    state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
+use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::proposal::{advance_proposal_id, SingleChoiceProposal};
+use crate::query::{
+    ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse,
+};
+use crate::state::{
+    Ballot, Config, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-single";

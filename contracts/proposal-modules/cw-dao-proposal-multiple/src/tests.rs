@@ -3,34 +3,31 @@ use cosmwasm_std::{
 };
 use cw20::Cw20Coin;
 use cw_dao_core::state::ProposalModule;
-use cw_dao_voting::{
-    deposit::{CheckedDepositInfo, DepositInfo, DepositToken},
-    status::Status,
-    threshold::{PercentageThreshold, Threshold},
-    voting::{MultipleChoiceVote, MultipleChoiceVotes},
-};
+use cw_dao_voting::deposit::{CheckedDepositInfo, DepositInfo, DepositToken};
+use cw_dao_voting::status::Status;
+use cw_dao_voting::threshold::{PercentageThreshold, Threshold};
+use cw_dao_voting::voting::{MultipleChoiceVote, MultipleChoiceVotes};
 use cw_dao_voting_staked_cw20::msg::ActiveThreshold;
 use cw_indexable_hooks::HooksResponse;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
-use rand::{prelude::SliceRandom, Rng};
+use rand::prelude::SliceRandom;
+use rand::Rng;
 
-use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    proposal::MultipleChoiceProposal,
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
-    state::{Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo, MAX_NUM_CHOICES},
-    voting_strategy::VotingStrategy,
-    ContractError,
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::proposal::MultipleChoiceProposal;
+use crate::query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse};
+use crate::state::{
+    Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo, MAX_NUM_CHOICES,
 };
+use crate::voting_strategy::VotingStrategy;
+use crate::ContractError;
 
-use cw_dao_proposal_testing::{
-    helpers::{
-        cw20_balances_voting, cw20_contract, instantiate_with_cw20_balances_governance,
-        instantiate_with_staked_balances_governance, instantiate_with_staking_active_threshold,
-    },
-    ShouldExecute,
+use cw_dao_proposal_testing::helpers::{
+    cw20_balances_voting, cw20_contract, instantiate_with_cw20_balances_governance,
+    instantiate_with_staked_balances_governance, instantiate_with_staking_active_threshold,
 };
+use cw_dao_proposal_testing::ShouldExecute;
 
 const CREATOR_ADDR: &str = "creator";
 

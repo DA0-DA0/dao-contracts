@@ -2,11 +2,9 @@ use cosmwasm_std::{to_binary, Addr, Coin, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
-use crate::{
-    msg::{Counterparty, ExecuteMsg, InstantiateMsg, QueryMsg, StatusResponse, TokenInfo},
-    state::{CheckedCounterparty, CheckedTokenInfo},
-    ContractError,
-};
+use crate::msg::{Counterparty, ExecuteMsg, InstantiateMsg, QueryMsg, StatusResponse, TokenInfo};
+use crate::state::{CheckedCounterparty, CheckedTokenInfo};
+use crate::ContractError;
 
 const DAO1: &str = "dao1";
 const DAO2: &str = "dao2";

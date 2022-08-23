@@ -1,6 +1,8 @@
-use crate::helpers::{chain::Chain, helper::create_dao};
+use crate::helpers::chain::Chain;
+use crate::helpers::helper::create_dao;
 use cosmwasm_std::{to_binary, Uint128};
-use cw20_stake::{msg::StakedValueResponse, state::Config};
+use cw20_stake::msg::StakedValueResponse;
+use cw20_stake::state::Config;
 use test_context::test_context;
 
 // #### ExecuteMsg #####

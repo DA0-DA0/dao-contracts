@@ -4,7 +4,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_dao_core_macros::govmod_query;
-use cw_dao_voting::{deposit::DepositInfo, threshold::Threshold, voting::Vote};
+use cw_dao_voting::deposit::DepositInfo;
+use cw_dao_voting::threshold::Threshold;
+use cw_dao_voting::voting::Vote;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -60,7 +62,7 @@ pub enum DepositToken {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    /// Creates a proposal in the governance module.
+    /// Creates a proposal in the proposal module.
     Propose {
         /// The title of the proposal.
         title: String,

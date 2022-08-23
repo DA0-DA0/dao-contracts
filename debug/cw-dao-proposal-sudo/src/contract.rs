@@ -6,11 +6,9 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use crate::{
-    error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{DAO, ROOT},
-};
+use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{DAO, ROOT};
 
 const CONTRACT_NAME: &str = "crates.io:cw-govmod-sudo";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

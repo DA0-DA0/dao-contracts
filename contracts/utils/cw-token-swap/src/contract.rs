@@ -7,11 +7,9 @@ use cw2::set_contract_version;
 use cw_storage_plus::Item;
 use cw_utils::must_pay;
 
-use crate::{
-    error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StatusResponse},
-    state::{CheckedCounterparty, CheckedTokenInfo, COUNTERPARTY_ONE, COUNTERPARTY_TWO},
-};
+use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StatusResponse};
+use crate::state::{CheckedCounterparty, CheckedTokenInfo, COUNTERPARTY_ONE, COUNTERPARTY_TWO};
 
 const CONTRACT_NAME: &str = "crates.io:cw-token-swap";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

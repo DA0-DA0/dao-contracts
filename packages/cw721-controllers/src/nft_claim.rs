@@ -91,10 +91,8 @@ impl<'a> NftClaims<'a> {
 
 #[cfg(test)]
 mod test {
-    use cosmwasm_std::{
-        testing::{mock_dependencies, mock_env},
-        Order,
-    };
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use cosmwasm_std::Order;
 
     use super::*;
     const TEST_BAYC_TOKEN_ID: &str = "BAYC";

@@ -2,13 +2,11 @@ use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, s
 use cw_dao_core_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use cw_dao_voting_staked_cw721::{
-    msg::{
-        ExecuteMsg, GetHooksResponse, InstantiateMsg, NftClaimsResponse, QueryMsg,
-        StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
-    },
-    state::Config,
+use cw_dao_voting_staked_cw721::msg::{
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, NftClaimsResponse, QueryMsg,
+    StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
+use cw_dao_voting_staked_cw721::state::Config;
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
