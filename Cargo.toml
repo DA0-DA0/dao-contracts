@@ -1,6 +1,3 @@
-# https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#workspace-inheritance
-cargo-features = ["workspace-inheritance"]
-
 [workspace]
 members = [
 	"contracts/cw-dao-core",
@@ -41,7 +38,7 @@ cw-dao-proposal-multiple = { path = "contracts/proposal-modules/cw-dao-proposal-
 # Voting modules.
 cw-dao-voting-staked-cw20 = { path = "contracts/voting-modules/cw-dao-voting-staked-cw20", features = ["library"], version = "*" }
 cw-dao-voting-cw4 = { path = "contracts/voting-modules/cw-dao-voting-cw4", features = ["library"], version = "*" }
-cw-dao-voting-staked-cw721 = { path = "contracts/voting-modules/cw-dao-voting-staked-cw721", features = ["library"], version = "*" } 
+cw-dao-voting-staked-cw721 = { path = "contracts/voting-modules/cw-dao-voting-staked-cw721", features = ["library"], version = "*" }
 cw-dao-voting-staked-native = { path = "contracts/voting-modules/cw-dao-voting-staked-native", features = ["library"], version = "*" }
 cw20-stake = { path = "contracts/voting-modules/cw20-stake", features = ["library"], version = "*" }
 
@@ -83,10 +80,6 @@ cw20 = "0.13"
 cw721 = "0.13"
 cw721-base = "0.13"
 cw-controllers = "0.13"
-
-[profile.release.package.stake-cw20-external-rewards]
-codegen-units = 1
-incremental = false
 
 [profile.release]
 codegen-units = 1

@@ -1,0 +1,14 @@
+# Merges import statements that deal with the same module. For
+# example:
+#
+# ```rust
+# import cosmwasm_std::Deps;
+# import cosmwasm_std::DepsMut;
+# ```
+#
+# Becomes:
+#
+# ```rust
+# import cosmwasm_std::{Deps, DepsMut};
+# ```
+imports_granularity = "Module"

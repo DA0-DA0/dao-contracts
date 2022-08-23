@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "IsActiveResponse",
+  "description": "The response type for an `IsActive` query. Voting modules may have conditions for them to be active. For example, a staking voting module may require that some percentage of the total supply is staked for voting to begin.",
   "type": "object",
   "required": [
     "active"

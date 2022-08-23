@@ -1,6 +1,3 @@
-# https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#workspace-inheritance
-cargo-features = ["workspace-inheritance"]
-
 [package]
 name = "integration_tests"
 version = "0.1.0"

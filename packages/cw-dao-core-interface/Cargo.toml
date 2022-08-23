@@ -9,7 +9,7 @@ version = { workspace = true }
 [dependencies]
 cosmwasm-std = { workspace = true }
 cw-dao-core-macros = { workspace = true }
-serde = { worspace = true }
+serde = { workspace = true }
 schemars = { workspace = true }
 cw2 = { workspace = true }
 

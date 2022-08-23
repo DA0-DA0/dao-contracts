@@ -3,7 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
-      "description": "Creates a proposal in the governance module.",
+      "description": "Creates a proposal in the proposal module.",
       "type": "object",
       "required": [
         "propose"
