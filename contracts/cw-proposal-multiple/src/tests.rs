@@ -5072,7 +5072,7 @@ fn test_timestamp_updated() {
 }
 
 #[test]
-fn test_find_proposals() {
+fn test_filter_proposals() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
 

@@ -4993,7 +4993,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
 }
 
 #[test]
-fn test_find_proposals() {
+fn test_filter_proposals() {
     let mut app = App::default();
     let proposal_id = app.store_code(proposal_contract());
     let core_addr = instantiate_with_cw4_groups_governance(
@@ -5406,7 +5406,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: WalletVote::NotVoted {},
+                    wallet_vote: WalletVote::DidNotVote {},
                     start_after: None,
                     limit: None,
                 },
@@ -5428,7 +5428,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "three".into(),
                     status: None,
-                    wallet_vote: WalletVote::NotVoted {},
+                    wallet_vote: WalletVote::DidNotVote {},
                     start_after: None,
                     limit: None,
                 },
@@ -5450,7 +5450,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "four".into(),
                     status: None,
-                    wallet_vote: WalletVote::NotVoted {},
+                    wallet_vote: WalletVote::DidNotVote {},
                     start_after: None,
                     limit: None,
                 },
@@ -5465,4 +5465,133 @@ fn test_find_proposals() {
         );
         assert_eq!(res.last_proposal_id, 3);
     }
+}
+
+#[test]
+fn test_filter_proposals_did_not_vote() {
+    let mut app = App::default();
+    let proposal_id = app.store_code(proposal_contract());
+    let core_addr = instantiate_with_cw4_groups_governance(
+        &mut app,
+        proposal_id,
+        InstantiateMsg {
+            threshold: Threshold::AbsolutePercentage {
+                percentage: PercentageThreshold::Majority {},
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: None,
+            only_members_execute: true,
+            allow_revoting: true,
+            deposit_info: None,
+            close_proposal_on_execution_failure: true,
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let proposal_module = core_state
+        .proposal_modules
+        .into_iter()
+        .next()
+        .unwrap()
+        .address;
+    let cw4_addr = app
+        .wrap()
+        .query_wasm_smart(
+            core_state.voting_module,
+            &cw4_voting::msg::QueryMsg::GroupContract {},
+        )
+        .unwrap();
+
+    let proposal_config: Config = app
+        .wrap()
+        .query_wasm_smart(proposal_module.clone(), &QueryMsg::Config {})
+        .unwrap();
+    let dao = proposal_config.dao;
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose a thing.".to_string(),
+            description: "Do the thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "Propose another thing.".to_string(),
+            description: "Do another thing.".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Created proposals, now adding "three" to the party
+    app.execute_contract(
+        dao,
+        cw4_addr,
+        &cw4_group::msg::ExecuteMsg::UpdateMembers {
+            remove: vec![],
+            add: vec![cw4::Member {
+                addr: "three".to_string(),
+                weight: 1,
+            }],
+        },
+        &[],
+    )
+    .unwrap();
+    app.update_block(next_block);
+
+    app.execute_contract(
+        Addr::unchecked("one"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "foo".to_string(),
+            description: "bar".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let res: FilterListProposalsResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_module,
+            &QueryMsg::FilterListProposals {
+                wallet: "three".into(),
+                status: None,
+                wallet_vote: WalletVote::DidNotVote {},
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        res.proposals
+            .into_iter()
+            .map(|p| p.id)
+            .collect::<Vec<u64>>(),
+        [3]
+    );
+    assert_eq!(res.last_proposal_id, 3);
 }

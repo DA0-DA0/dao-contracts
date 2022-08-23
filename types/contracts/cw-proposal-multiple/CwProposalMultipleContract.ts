@@ -438,7 +438,7 @@ export type QueryMsg = {
 export type WalletVote = {
   voted: MultipleChoiceVote;
 } | {
-  notvoted: {
+  didnotvote: {
     [k: string]: unknown;
   };
 } | {

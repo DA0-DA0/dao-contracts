@@ -439,7 +439,7 @@ export type WalletVote = {
     [k: string]: unknown;
   };
 } | {
-  notvoted: {
+  didnotvote: {
     [k: string]: unknown;
   };
 } | {

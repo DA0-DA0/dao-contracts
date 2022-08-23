@@ -692,7 +692,7 @@ fn query_filter_list_proposals(
                         (WalletVote::AnyVote {}, Ok(Some(_))) => {
                             Some(prop.into_response(&env.block, p_id))
                         }
-                        (WalletVote::NotVoted {}, Ok(None)) => {
+                        (WalletVote::DidNotVote {}, Ok(None)) => {
                             match get_voting_power(
                                 deps,
                                 wallet.clone(),

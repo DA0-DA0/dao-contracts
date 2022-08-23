@@ -60,6 +60,6 @@ pub struct FilterListProposalsResponse {
 #[serde(rename_all = "lowercase")]
 pub enum WalletVote {
     Voted { vote: Vote },
-    NotVoted {},
+    DidNotVote {},
     AnyVote {},
 }
