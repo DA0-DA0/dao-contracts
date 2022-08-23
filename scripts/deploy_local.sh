@@ -31,7 +31,7 @@ docker run --rm -d --name $CONTAINER_NAME \
     -e STAKE_TOKEN=$DENOM \
     -e GAS_LIMIT="$GAS_LIMIT" \
     -e UNSAFE_CORS=true \
-    -p 1317:1317 -p 26656:26656 -p 26657:26657 \
+    -p 1317:1317 -p 26656:26656 -p 26657:26657 -p 9090:9090 \
     --mount type=volume,source=junod_data,target=/root \
     ghcr.io/cosmoscontracts/juno:$IMAGE_TAG /opt/setup_and_run.sh $1
 
@@ -122,6 +122,7 @@ PROPOSAL_MSG='{
     }
   },
   "only_members_execute": true,
+  "close_proposal_on_execution_failure": false,
   "allow_revoting": false,
   "max_voting_period": {
     "time": 432000

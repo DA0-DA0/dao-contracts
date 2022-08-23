@@ -67,7 +67,7 @@ fn test_account(prefix: &str) -> Account {
 fn global_setup() -> Cfg {
     env_logger::init();
     let config = env::var("CONFIG").expect("missing yaml CONFIG env var");
-    let gas_report_dir = env::var("GAS_OUT_DIR").expect("missing GAS_OUT_DIR env var");
+    let gas_report_dir = env::var("GAS_OUT_DIR").unwrap_or_else(|_| "gas_reports".to_string());
 
     let mut cfg = Config::from_yaml(&config).unwrap();
     let mut orc = CosmOrc::new(cfg.clone())
@@ -78,7 +78,7 @@ fn global_setup() -> Cfg {
 
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
-        let contract_dir = env::var("CONTRACT_DIR").expect("missing CONTRACT_DIR env var");
+        let contract_dir = "../../artifacts";
         orc.store_contracts(&contract_dir, &account.key).unwrap();
         save_gas_report(&orc, &gas_report_dir);
         // persist stored code_ids in CONFIG, so we can reuse for all tests

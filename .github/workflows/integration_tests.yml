@@ -14,7 +14,6 @@ jobs:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
       GAS_OUT_DIR: gas_reports
       CONFIG: configs/ci.yaml
-      CONTRACT_DIR: ../../artifacts
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -55,8 +54,8 @@ jobs:
 
       # WARNING: if we dont `mkdir -p artifacts target` before we optimize the contracts
       # then we will get os permission errors trying to later build the workspace on a cache miss,
-      # because the workspace-optimizer docker container is creating those folders inside
-      # the docker container with incorrect perms right now.
+      # because the workspace-optimizer docker container is creating those folders with incorrect perms
+      # if they dont already exist.
       - name: Download smart contract dependencies
         run: |
           mkdir -p artifacts target

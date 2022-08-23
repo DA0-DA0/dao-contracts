@@ -7,6 +7,7 @@ use test_context::test_context;
 
 #[test_context(Chain)]
 #[test]
+#[ignore]
 fn execute_stake_tokens(chain: &mut Chain) {
     let voting_contract = "cw20_staked_balance_voting";
 
