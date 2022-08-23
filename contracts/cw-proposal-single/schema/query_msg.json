@@ -211,6 +211,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Filtered list of proposals for a given wallet address. Returns `FilterListProposalsResponse`",
       "type": "object",
       "required": [
         "filter_list_proposals"
@@ -219,10 +220,12 @@
         "filter_list_proposals": {
           "type": "object",
           "required": [
-            "wallet"
+            "wallet",
+            "wallet_vote"
           ],
           "properties": {
             "limit": {
+              "description": "The maximum number of proposals to return as part of this query. If no limit is set a max of 30 proposals will be returned.",
               "type": [
                 "integer",
                 "null"
@@ -231,6 +234,7 @@
               "minimum": 0.0
             },
             "start_after": {
+              "description": "The proposal ID to start listing proposals after.",
               "type": [
                 "integer",
                 "null"
@@ -239,6 +243,7 @@
               "minimum": 0.0
             },
             "status": {
+              "description": "Filter by this status or any if omitted or null",
               "anyOf": [
                 {
                   "$ref": "#/definitions/Status"
@@ -249,15 +254,14 @@
               ]
             },
             "wallet": {
+              "description": "Wallet address whose votes will be filtered",
               "type": "string"
             },
             "wallet_vote": {
-              "anyOf": [
+              "description": "Filter by this vote",
+              "allOf": [
                 {
-                  "$ref": "#/definitions/Vote"
-                },
-                {
-                  "type": "null"
+                  "$ref": "#/definitions/WalletVote"
                 }
               ]
             }
@@ -297,6 +301,55 @@
         "yes",
         "no",
         "abstain"
+      ]
+    },
+    "WalletVote": {
+      "description": "Helper struct for [`crate::msg::QueryMsg::FilterListProposals`] Letting users to specify what types of wallet votes they are looking for",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "voted"
+          ],
+          "properties": {
+            "voted": {
+              "type": "object",
+              "required": [
+                "vote"
+              ],
+              "properties": {
+                "vote": {
+                  "$ref": "#/definitions/Vote"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "notvoted"
+          ],
+          "properties": {
+            "notvoted": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "anyvote"
+          ],
+          "properties": {
+            "anyvote": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
       ]
     }
   }

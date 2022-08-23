@@ -8,6 +8,7 @@
   ],
   "properties": {
     "last_proposal_id": {
+      "description": "Last checked `proposal_id`. For example, if contract have 3 proposals and `FilterListProposals` returned only first two - it will be 3(if limit > 2).",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

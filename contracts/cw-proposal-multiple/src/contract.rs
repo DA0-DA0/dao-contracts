@@ -27,7 +27,7 @@ use crate::{
     proposal::{MultipleChoiceProposal, VoteResult},
     query::{
         FilterListProposalsResponse, ProposalListResponse, ProposalResponse, VoteListResponse,
-        VoteResponse,
+        VoteResponse, WalletVote,
     },
     state::{Config, MultipleChoiceOptions, CONFIG, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
     voting_strategy::VotingStrategy,
@@ -666,10 +666,11 @@ fn query_filter_list_proposals(
     env: Env,
     wallet: String,
     status: Option<Status>,
-    wallet_vote: Option<MultipleChoiceVote>,
+    wallet_vote: WalletVote,
     start_after: Option<u64>,
     limit: Option<u64>,
 ) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
     let wallet: Addr = deps.api.addr_validate(&wallet)?;
     let min = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_LIMIT);
@@ -681,17 +682,37 @@ fn query_filter_list_proposals(
             Ok((p_id, prop)) => {
                 last_proposal_id = p_id;
                 if status.map_or(true, |st| st == prop.status) {
-                    match BALLOTS.may_load(deps.storage, (p_id, wallet.clone())) {
-                        Ok(Some(ballot)) => {
-                            if wallet_vote.map_or(true, |v| v == ballot.vote) {
-                                return Some(prop.into_response(&env.block, p_id));
+                    match (
+                        wallet_vote,
+                        BALLOTS.may_load(deps.storage, (p_id, wallet.clone())),
+                    ) {
+                        (WalletVote::Voted(vote), Ok(Some(ballot))) if vote == ballot.vote => {
+                            Some(prop.into_response(&env.block, p_id))
+                        }
+                        (WalletVote::AnyVote {}, Ok(Some(_))) => {
+                            Some(prop.into_response(&env.block, p_id))
+                        }
+                        (WalletVote::NotVoted {}, Ok(None)) => {
+                            match get_voting_power(
+                                deps,
+                                wallet.clone(),
+                                config.dao.clone(),
+                                Some(prop.start_height),
+                            ) {
+                                Ok(vote_power) if !vote_power.is_zero() => {
+                                    Some(prop.into_response(&env.block, p_id))
+                                }
+                                // vote power is zero
+                                Ok(_) => None,
+                                Err(err) => Some(Err(err)),
                             }
                         }
-                        Err(err) => return Some(Err(err)),
-                        _ => (),
+                        (_, Err(err)) => Some(Err(err)),
+                        _ => None,
                     }
+                } else {
+                    None
                 }
-                None
             }
             Err(err) => Some(Err(err)),
         })

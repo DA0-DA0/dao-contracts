@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use voting::{deposit::DepositInfo, status::Status, voting::MultipleChoiceVote};
 
-use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
+use crate::{query::WalletVote, state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
 use cw_core_macros::govmod_query;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -158,11 +158,18 @@ pub enum QueryMsg {
     },
     ProposalHooks {},
     VoteHooks {},
+    /// Filtered list of proposals for a given wallet address.
+    /// Returns FilterListProposalsResponse
     FilterListProposals {
+        /// Wallet address whose votes will be filtered
         wallet: String,
+        /// Filter by this vote
+        wallet_vote: WalletVote,
+        /// Filter by this status or any if omitted or null
         status: Option<Status>,
-        wallet_vote: Option<MultipleChoiceVote>,
+        /// Pagination. Starts filtering after(exclusive) given `proposal_id`
         start_after: Option<u64>,
+        /// Pagination. Returns no more than `limit` proposals
         limit: Option<u64>,
     },
 }

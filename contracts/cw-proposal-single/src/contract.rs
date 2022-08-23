@@ -23,7 +23,7 @@ use voting::voting::{get_total_power, get_voting_power, validate_voting_period, 
 
 use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;
-use crate::query::FilterListProposalsResponse;
+use crate::query::{FilterListProposalsResponse, WalletVote};
 use crate::state::Config;
 use crate::{
     error::ContractError,
@@ -630,7 +630,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         } => {
-            query_filter_list_proposals(deps, env, wallet, status, wallet_vote, start_after, limit)
+            query_filter_list_proposals(deps, env, wallet, wallet_vote, status, start_after, limit)
         }
     }
 }
@@ -639,32 +639,54 @@ fn query_filter_list_proposals(
     deps: Deps,
     env: Env,
     wallet: String,
+    wallet_vote: WalletVote,
     status: Option<Status>,
-    wallet_vote: Option<Vote>,
     start_after: Option<u64>,
     limit: Option<u64>,
 ) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
     let wallet: Addr = deps.api.addr_validate(&wallet)?;
     let min = start_after.map(Bound::exclusive);
     let limit = limit.unwrap_or(DEFAULT_LIMIT);
     let mut last_proposal_id = 0;
+
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, min, None, Order::Ascending)
         .filter_map(|res| match res {
             Ok((p_id, prop)) => {
                 last_proposal_id = p_id;
                 if status.map_or(true, |st| st == prop.status) {
-                    match BALLOTS.may_load(deps.storage, (p_id, wallet.clone())) {
-                        Ok(Some(ballot)) => {
-                            if wallet_vote.map_or(true, |v| v == ballot.vote) {
-                                return Some(Ok(prop.into_response(&env.block, p_id)));
+                    match (
+                        wallet_vote,
+                        BALLOTS.may_load(deps.storage, (p_id, wallet.clone())),
+                    ) {
+                        (WalletVote::Voted { vote }, Ok(Some(ballot))) if vote == ballot.vote => {
+                            Some(Ok(prop.into_response(&env.block, p_id)))
+                        }
+                        (WalletVote::AnyVote {}, Ok(Some(_))) => {
+                            Some(Ok(prop.into_response(&env.block, p_id)))
+                        }
+                        (WalletVote::NotVoted {}, Ok(None)) => {
+                            match get_voting_power(
+                                deps,
+                                wallet.clone(),
+                                config.dao.clone(),
+                                Some(prop.start_height),
+                            ) {
+                                Ok(vote_power) if !vote_power.is_zero() => {
+                                    Some(Ok(prop.into_response(&env.block, p_id)))
+                                }
+                                // Vote power is zero
+                                Ok(_) => None,
+                                Err(err) => Some(Err(err)),
                             }
                         }
-                        Err(err) => return Some(Err(err)),
-                        _ => (),
+                        (_, Err(err)) => Some(Err(err)),
+                        _ => None,
                     }
+                } else {
+                    None
                 }
-                None
             }
             Err(err) => Some(Err(err)),
         })

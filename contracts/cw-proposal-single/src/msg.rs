@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use cw_core_macros::govmod_query;
 use voting::{deposit::DepositInfo, status::Status, threshold::Threshold, voting::Vote};
 
+use crate::query::WalletVote;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     /// The threshold a proposal must reach to complete.
@@ -204,11 +206,20 @@ pub enum QueryMsg {
     /// Lists all of the consumers of vote hooks for this
     /// module. Returns indexable_hooks::HooksResponse.
     VoteHooks {},
+    /// Filtered list of proposals for a given wallet address.
+    /// Returns `FilterListProposalsResponse`
     FilterListProposals {
+        /// Wallet address whose votes will be filtered
         wallet: String,
+        /// Filter by this vote
+        wallet_vote: WalletVote,
+        /// Filter by this status or any if omitted or null
         status: Option<Status>,
-        wallet_vote: Option<Vote>,
+        /// The proposal ID to start listing proposals after.
         start_after: Option<u64>,
+        /// The maximum number of proposals to return as part of this
+        /// query. If no limit is set a max of 30 proposals will be
+        /// returned.
         limit: Option<u64>,
     },
 }

@@ -20,7 +20,7 @@ use crate::{
     proposal::MultipleChoiceProposal,
     query::{
         FilterListProposalsResponse, ProposalListResponse, ProposalResponse, VoteListResponse,
-        VoteResponse,
+        VoteResponse, WalletVote,
     },
     state::{Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo, MAX_NUM_CHOICES},
     voting_strategy::VotingStrategy,
@@ -5321,7 +5321,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: None,
+                    wallet_vote: WalletVote::AnyVote {},
                     start_after: None,
                     limit: None,
                 },
@@ -5343,7 +5343,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: Some(Status::Open),
-                    wallet_vote: None,
+                    wallet_vote: WalletVote::AnyVote {},
                     start_after: None,
                     limit: None,
                 },
@@ -5365,7 +5365,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: Some(Status::Executed),
-                    wallet_vote: None,
+                    wallet_vote: WalletVote::AnyVote {},
                     start_after: None,
                     limit: None,
                 },
@@ -5387,7 +5387,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                    wallet_vote: WalletVote::Voted(MultipleChoiceVote { option_id: 0 }),
                     start_after: None,
                     limit: None,
                 },
@@ -5409,7 +5409,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: Some(Status::Open),
-                    wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                    wallet_vote: WalletVote::Voted(MultipleChoiceVote { option_id: 0 }),
                     start_after: None,
                     limit: None,
                 },
@@ -5434,7 +5434,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: None,
+                    wallet_vote: WalletVote::AnyVote {},
                     start_after: Some(1),
                     limit: None,
                 },
@@ -5456,7 +5456,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: None,
+                    wallet_vote: WalletVote::AnyVote {},
                     start_after: None,
                     limit: Some(2),
                 },
@@ -5478,7 +5478,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: None,
+                    wallet_vote: WalletVote::AnyVote {},
                     start_after: Some(1),
                     limit: Some(10),
                 },
@@ -5502,7 +5502,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: Some(MultipleChoiceVote { option_id: 0 }),
+                    wallet_vote: WalletVote::Voted(MultipleChoiceVote { option_id: 0 }),
                     start_after: Some(1),
                     limit: Some(1),
                 },
@@ -5524,7 +5524,7 @@ fn test_find_proposals() {
                 &QueryMsg::FilterListProposals {
                     wallet: "one".into(),
                     status: None,
-                    wallet_vote: None,
+                    wallet_vote: WalletVote::AnyVote {},
                     start_after: Some(5),
                     limit: Some(5),
                 },

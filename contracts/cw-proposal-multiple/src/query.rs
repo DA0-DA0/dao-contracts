@@ -6,6 +6,7 @@ use cosmwasm_std::Uint128;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use voting::voting::MultipleChoiceVote;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ProposalListResponse {
@@ -42,5 +43,18 @@ pub struct ConfigResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct FilterListProposalsResponse {
     pub proposals: Vec<ProposalResponse>,
+    /// Last checked `proposal_id`.
+    /// For example, if contract have 3 proposals and `FilterListProposals`
+    /// returned only first two - it will be 3(if limit > 2).
     pub last_proposal_id: u64,
+}
+
+/// Helper struct for [`crate::msg::QueryMsg::FilterListProposals`]
+/// Letting users to specify what types of wallet votes they are looking for
+#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum WalletVote {
+    Voted(MultipleChoiceVote),
+    NotVoted {},
+    AnyVote {},
 }

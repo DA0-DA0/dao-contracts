@@ -427,11 +427,22 @@ export type QueryMsg = {
     start_after?: number | null;
     status?: Status | null;
     wallet: string;
-    wallet_vote?: MultipleChoiceVote | null;
+    wallet_vote: WalletVote;
     [k: string]: unknown;
   };
 } | {
   info: {
+    [k: string]: unknown;
+  };
+};
+export type WalletVote = {
+  voted: MultipleChoiceVote;
+} | {
+  notvoted: {
+    [k: string]: unknown;
+  };
+} | {
+  anyvote: {
     [k: string]: unknown;
   };
 };
@@ -499,7 +510,7 @@ export interface CwProposalMultipleReadOnlyInterface {
     startAfter?: number;
     status?: Status;
     wallet: string;
-    walletVote?: MultipleChoiceVote;
+    walletVote: WalletVote;
   }) => Promise<FilterListProposalsResponse>;
   info: () => Promise<InfoResponse>;
 }
@@ -624,7 +635,7 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
     startAfter?: number;
     status?: Status;
     wallet: string;
-    walletVote?: MultipleChoiceVote;
+    walletVote: WalletVote;
   }): Promise<FilterListProposalsResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       filter_list_proposals: {

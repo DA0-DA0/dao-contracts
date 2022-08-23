@@ -197,6 +197,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Filtered list of proposals for a given wallet address. Returns FilterListProposalsResponse",
       "type": "object",
       "required": [
         "filter_list_proposals"
@@ -205,10 +206,12 @@
         "filter_list_proposals": {
           "type": "object",
           "required": [
-            "wallet"
+            "wallet",
+            "wallet_vote"
           ],
           "properties": {
             "limit": {
+              "description": "Pagination. Returns no more than `limit` proposals",
               "type": [
                 "integer",
                 "null"
@@ -217,6 +220,7 @@
               "minimum": 0.0
             },
             "start_after": {
+              "description": "Pagination. Starts filtering after(exclusive) given `proposal_id`",
               "type": [
                 "integer",
                 "null"
@@ -225,6 +229,7 @@
               "minimum": 0.0
             },
             "status": {
+              "description": "Filter by this status or any if omitted or null",
               "anyOf": [
                 {
                   "$ref": "#/definitions/Status"
@@ -235,15 +240,14 @@
               ]
             },
             "wallet": {
+              "description": "Wallet address whose votes will be filtered",
               "type": "string"
             },
             "wallet_vote": {
-              "anyOf": [
+              "description": "Filter by this vote",
+              "allOf": [
                 {
-                  "$ref": "#/definitions/MultipleChoiceVote"
-                },
-                {
-                  "type": "null"
+                  "$ref": "#/definitions/WalletVote"
                 }
               ]
             }
@@ -288,6 +292,47 @@
         "executed",
         "closed",
         "execution_failed"
+      ]
+    },
+    "WalletVote": {
+      "description": "Helper struct for [`crate::msg::QueryMsg::FilterListProposals`] Letting users to specify what types of wallet votes they are looking for",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "voted"
+          ],
+          "properties": {
+            "voted": {
+              "$ref": "#/definitions/MultipleChoiceVote"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "notvoted"
+          ],
+          "properties": {
+            "notvoted": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "anyvote"
+          ],
+          "properties": {
+            "anyvote": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
       ]
     }
   }
