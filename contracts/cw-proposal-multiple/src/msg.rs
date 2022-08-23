@@ -39,6 +39,8 @@ pub struct InstantiateMsg {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// Whether non-members of the DAO can submit proposals
+    pub open_proposal_submission: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -112,6 +114,8 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
+        /// Whether non-members of the DAO can submit proposals
+        open_proposal_submission: bool,
     },
     AddProposalHook {
         address: String,

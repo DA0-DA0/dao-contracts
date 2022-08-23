@@ -1785,6 +1785,7 @@ dependencies = [
  "assert_matches",
  "cosm-orc",
  "cosmwasm-std",
+ "cw-asset",
  "cw-core",
  "cw-core-interface",
  "cw-proposal-single",

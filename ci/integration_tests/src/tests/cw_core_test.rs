@@ -5,10 +5,15 @@ use cosm_orc::client::error::ClientError;
 use cosm_orc::orchestrator::error::ProcessError;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
+use cw_asset::AssetInfo;
 use cw_core::query::{GetItemResponse, PauseInfoResponse};
 use cw_utils::Duration;
 use test_context::test_context;
-use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, threshold::Threshold};
+use voting::{
+    deposit::{CheckedDepositInfo, DepositRefundPolicy},
+    threshold::PercentageThreshold,
+    threshold::Threshold,
+};
 
 // #### ExecuteMsg #####
 
@@ -348,9 +353,9 @@ fn instantiate_with_admin(chain: &mut Chain) {
     assert_eq!(
         config_res.deposit_info,
         Some(CheckedDepositInfo {
-            token: Addr::unchecked(token_addr),
+            token: AssetInfo::cw20(Addr::unchecked(token_addr)),
             deposit: Uint128::new(1000000000),
-            refund_failed_proposals: true,
+            refund_policy: DepositRefundPolicy::OnlyPassed,
         })
     );
     assert_eq!(
