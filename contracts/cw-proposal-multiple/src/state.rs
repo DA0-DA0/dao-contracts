@@ -47,6 +47,8 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
+    /// Whether anyone including non-DAO members can submit a proposal
+    pub open_proposal_submission: bool,
 }
 
 /// Information about a vote that was cast.
