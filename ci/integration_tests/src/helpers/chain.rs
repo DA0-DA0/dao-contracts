@@ -79,7 +79,7 @@ fn global_setup() -> Cfg {
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
         let contract_dir = "../../artifacts";
-        orc.store_contracts(&contract_dir, &account.key).unwrap();
+        orc.store_contracts(contract_dir, &account.key).unwrap();
         save_gas_report(&orc, &gas_report_dir);
         // persist stored code_ids in CONFIG, so we can reuse for all tests
         cfg.code_ids = orc
