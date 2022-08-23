@@ -8,6 +8,14 @@ import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/co
 import { StdFee } from "@cosmjs/amino";
 export type Addr = string;
 export type Uint128 = string;
+export type DepositRefundPolicy = "always" | "only_passed" | "never";
+export type AssetInfoBaseForAddr = {
+  native: string;
+} | {
+  cw20: Addr;
+} | {
+  cw1155: [Addr, string];
+};
 export type Duration = {
   height: number;
 } | {
@@ -35,13 +43,14 @@ export interface ConfigResponse {
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
+  open_proposal_submission: boolean;
   voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
 export interface CheckedDepositInfo {
   deposit: Uint128;
-  refund_failed_proposals: boolean;
-  token: Addr;
+  refund_policy: DepositRefundPolicy;
+  token: AssetInfoBaseForAddr;
   [k: string]: unknown;
 }
 export type ExecuteMsg = {
@@ -76,6 +85,7 @@ export type ExecuteMsg = {
     max_voting_period: Duration;
     min_voting_period?: Duration | null;
     only_members_execute: boolean;
+    open_proposal_submission: boolean;
     voting_strategy: VotingStrategy;
     [k: string]: unknown;
   };
@@ -233,13 +243,20 @@ export type GovMsg = {
 export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
 export type DepositToken = {
   token: {
-    address: string;
+    asset: AssetInfoBaseForString;
     [k: string]: unknown;
   };
 } | {
   voting_module_token: {
     [k: string]: unknown;
   };
+};
+export type AssetInfoBaseForString = {
+  native: string;
+} | {
+  cw20: string;
+} | {
+  cw1155: [string, string];
 };
 export interface MultipleChoiceOptions {
   options: MultipleChoiceOption[];
@@ -274,7 +291,7 @@ export interface MultipleChoiceVote {
 }
 export interface DepositInfo {
   deposit: Uint128;
-  refund_failed_proposals: boolean;
+  refund_policy: DepositRefundPolicy;
   token: DepositToken;
   [k: string]: unknown;
 }
@@ -305,6 +322,7 @@ export interface InstantiateMsg {
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
+  open_proposal_submission: boolean;
   voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
@@ -628,6 +646,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
+    openProposalSubmission,
     votingStrategy
   }: {
     allowRevoting: boolean;
@@ -637,6 +656,7 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
+    openProposalSubmission: boolean;
     votingStrategy: VotingStrategy;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   addProposalHook: ({
@@ -742,6 +762,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
+    openProposalSubmission,
     votingStrategy
   }: {
     allowRevoting: boolean;
@@ -751,6 +772,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
+    openProposalSubmission: boolean;
     votingStrategy: VotingStrategy;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
@@ -762,6 +784,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
         max_voting_period: maxVotingPeriod,
         min_voting_period: minVotingPeriod,
         only_members_execute: onlyMembersExecute,
+        open_proposal_submission: openProposalSubmission,
         voting_strategy: votingStrategy
       }
     }, fee, memo, funds);
