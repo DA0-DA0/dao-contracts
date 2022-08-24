@@ -7,44 +7,13 @@ on:
       - main
 
 jobs:
-  compile-contracts:
-    name: Compile contracts using optimized rust compiler
-    runs-on: ubuntu-latest
-    container:
-      image: cosmwasm/workspace-optimizer:0.12.6
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - name: Install tar for cache upload
-        run: apk add --no-cache tar
-      - name: Rust Dependencies Cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Optimize
-        run: optimize_workspace.sh
-      - name: Upload contracts
-        uses: actions/upload-artifact@v3
-        with:
-          name: dao-dao-contract-artifacts-${{ github.event.number }}
-          path: artifacts
-          retention-days: 1
-
   test:
-    name: Run integration tests against local juno node
+    name: Integration tests
     runs-on: ubuntu-latest
-    needs: compile-contracts
     env:
       ADMIN_ADDR: juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
       GAS_OUT_DIR: gas_reports
       CONFIG: configs/ci.yaml
-      CONTRACT_DIR: artifacts
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -60,23 +29,16 @@ jobs:
             -p 1317:1317 \
             -p 26656:26656 \
             -p 26657:26657 \
+            -p 9090:9090 \
             ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $ADMIN_ADDR
 
-      - name: Let Juno catch up
-        run: sleep 30
-
-      - name: Restore optimized contracts
-        uses: actions/download-artifact@v3
+      - name: Install latest nightly toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          name: dao-dao-contract-artifacts-${{ github.event.number }}
-          path: ci/integration_tests/artifacts
-
-      - name: Download smart contract dependencies
-        run: |
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
-            -O ci/integration_tests/artifacts/cw20_base.wasm
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
-            -O ci/integration_tests/artifacts/cw4_group.wasm
+          profile: minimal
+          toolchain: nightly
+          target: wasm32-unknown-unknown
+          override: true
 
       - name: Rust Dependencies Cache
         uses: actions/cache@v3
@@ -87,10 +49,31 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            artifacts/
+          key: ${{ runner.os }}-cargo-and-artifacts-${{ hashFiles('**/Cargo.lock') }}
+
+      # WARNING: if we dont `mkdir -p artifacts target` before we optimize the contracts
+      # then we will get os permission errors trying to later build the workspace on a cache miss,
+      # because the workspace-optimizer docker container is creating those folders with incorrect perms
+      # if they dont already exist.
+      - name: Download smart contract dependencies
+        run: |
+          mkdir -p artifacts target
+          wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw20_base.wasm \
+            -O artifacts/cw20_base.wasm
+          wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm \
+            -O artifacts/cw4_group.wasm
+
+      - name: Build + Optimize contracts
+        run: |
+          docker run --rm -v "$(pwd)":/code \
+            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+            --platform linux/amd64 \
+            cosmwasm/workspace-optimizer:0.12.6
 
       - name: Run Integration Tests
-        run: cd ci/integration_tests/ && cargo t
+        run: RUST_LOG=info cargo integration-test
 
       - name: Combine Test Gas Reports
         run: cd ci/integration_tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
@@ -102,6 +85,7 @@ jobs:
         run: echo "GIT_BRANCH=$(echo ${{ github.ref }} | sed 's|/|-|g')" >> $GITHUB_ENV
 
       - name: Upload Gas Report
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v3
         with:
           name: dao-dao-gas-report-${{ env.GIT_BRANCH }}

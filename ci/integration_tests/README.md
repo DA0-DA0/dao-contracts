@@ -12,13 +12,13 @@ Dao Dao e2e integration tests with gas profiling.
 
 * `./scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg`
 * `cd ci/integration_tests`
-* `CONTRACT_DIR="../../artifacts" GAS_OUT_DIR="gas_reports" CONFIG="configs/local.yaml" cargo t`
+* `CONFIG="configs/local.yaml" cargo t`
 
 ### Hitting Testnet
 
 * `cd ci/integration_tests`
 * Change `src/helpers/chain.rs::test_account()` with your testnet account
-* `CONTRACT_DIR="../../artifacts" GAS_OUT_DIR="gas_reports" CONFIG="configs/testnet.yaml" cargo t`
+* `CONFIG="configs/testnet.yaml" cargo t`
 
 
 ### Skipping Contract Storage
@@ -39,6 +39,7 @@ Add new tests in `src/tests`:
 ```rust
 #[test_context(Chain)]
 #[test]
+#[ignore]
 fn new_dao_has_no_items(chain: &mut Chain) {
     let res = create_dao(
         chain, 
@@ -64,5 +65,7 @@ fn new_dao_has_no_items(chain: &mut Chain) {
     assert_eq!(res.item, None);
 }
 ```
+
+We are currentlying [ignoring](https://doc.rust-lang.org/book/ch11-02-running-tests.html#ignoring-some-tests-unless-specifically-requested) all integration tests by adding the `#[ignore]` annotation to them, because we want to skip them when people run `cargo test` from the workspace root.
 
 Run `cargo c` to compile the tests.
