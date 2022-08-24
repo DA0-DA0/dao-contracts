@@ -43,9 +43,9 @@ docker run --rm -v "$(pwd)":/code \
   cosmwasm/workspace-optimizer:0.12.6
 
 # Download cw20_base.wasm
-curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm
+curl -LO https://github.com/CosmWasm/cw-plus/releases/latest/download/cw20_base.wasm
 # Download c4_group.wasm
-curl -LO https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm
+curl -LO https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm
 
 # Copy wasm binaries to docker container
 docker cp cw20_base.wasm cosmwasm:/cw20_base.wasm

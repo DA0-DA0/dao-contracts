@@ -50,7 +50,7 @@ jobs:
             ~/.cargo/git/db/
             target/
             artifacts/
-          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-and-artifacts-${{ hashFiles('**/Cargo.lock') }}
 
       # WARNING: if we dont `mkdir -p artifacts target` before we optimize the contracts
       # then we will get os permission errors trying to later build the workspace on a cache miss,
@@ -59,9 +59,9 @@ jobs:
       - name: Download smart contract dependencies
         run: |
           mkdir -p artifacts target
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw20_base.wasm \
+          wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw20_base.wasm \
             -O artifacts/cw20_base.wasm
-          wget https://github.com/CosmWasm/cw-plus/releases/download/v0.11.1/cw4_group.wasm \
+          wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm \
             -O artifacts/cw4_group.wasm
 
       - name: Build + Optimize contracts
