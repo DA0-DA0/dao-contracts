@@ -1,5 +1,5 @@
 use crate::{
-    contract::{migrate, CONTRACT_VERSION, CONTRACT_NAME},
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, QueryMsg},
     state::Config,
     ContractError,

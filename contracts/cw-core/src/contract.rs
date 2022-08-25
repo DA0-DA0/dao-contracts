@@ -921,7 +921,7 @@ pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<St
 
 #[cfg(test)]
 mod test {
-    use crate::contract::{derive_proposal_module_prefix, CONTRACT_VERSION};
+    use crate::contract::derive_proposal_module_prefix;
     use std::collections::HashSet;
 
     #[test]

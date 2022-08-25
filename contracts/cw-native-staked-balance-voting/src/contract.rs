@@ -1,6 +1,5 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{
     coins, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
     StdResult, Uint128,
@@ -17,8 +16,8 @@ use crate::msg::{
 };
 use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
-const CONTRACT_NAME: &str = "crates.io:cw-native-staked-balance-voting";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-native-staked-balance-voting";
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
     if let Some(unstaking_duration) = duration {
@@ -363,14 +362,4 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, C
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
-}
-
-#[test]
-pub fn test_migrate_update_version() {
-    let mut deps = mock_dependencies();
-    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
-    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
-    let version = cw2::get_contract_version(&deps.storage).unwrap();
-    assert_eq!(version.version, CONTRACT_VERSION);
-    assert_eq!(version.contract, CONTRACT_NAME);
 }

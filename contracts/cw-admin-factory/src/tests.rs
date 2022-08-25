@@ -4,7 +4,7 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
-use cw2::ContractVersion;
+
 use cw_core::msg::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 

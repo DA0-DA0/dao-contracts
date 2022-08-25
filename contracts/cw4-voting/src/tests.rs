@@ -1,4 +1,7 @@
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg, testing::{mock_dependencies, mock_env}};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
+};
 use cw2::ContractVersion;
 use cw_core_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -6,8 +9,9 @@ use cw_core_interface::voting::{
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
 use crate::{
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
-    ContractError, contract::{migrate, CONTRACT_VERSION, CONTRACT_NAME},
+    ContractError,
 };
 
 const DAO_ADDR: &str = "dao";
