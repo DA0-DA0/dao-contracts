@@ -93,6 +93,10 @@ jobs:
           retention-days: 90
 
       - name: Download main gas report
+        id: download_gas
+        # Because the max retention period of github artifacts is 90 days
+        # there's a possibility the main's report no longer exists
+        continue-on-error: true
         if: ${{ github.ref != 'refs/heads/main' }}
         # NOTE: We can't use github's `actions/download-artifact` because it doesnt support
         # downloading an artifact cross workflows yet
@@ -104,7 +108,7 @@ jobs:
           name: dao-dao-gas-report-refs-heads-main
 
       - name: Post gas diff to PR
-        if: ${{ github.ref != 'refs/heads/main' }}
+        if: ${{ github.ref != 'refs/heads/main' && steps.download_gas.outputs.error_message == ''}}
         uses: de-husk/cosm-orc-gas-diff-action@v0.6.1
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
