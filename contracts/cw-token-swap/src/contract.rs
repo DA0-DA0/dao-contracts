@@ -13,8 +13,8 @@ use crate::{
     state::{CheckedCounterparty, CheckedTokenInfo, COUNTERPARTY_ONE, COUNTERPARTY_TWO},
 };
 
-const CONTRACT_NAME: &str = "crates.io:cw-token-swap";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-token-swap";
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(

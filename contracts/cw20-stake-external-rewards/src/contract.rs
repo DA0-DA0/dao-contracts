@@ -13,6 +13,7 @@ use crate::ContractError::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
+use cosmwasm_std::testing::{mock_env, mock_dependencies};
 use cosmwasm_std::{
     from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
@@ -2147,7 +2148,7 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_reward_rate_faild() {
+    fn test_zero_reward_rate_failed() {
         // This test is due to a bug when funder provides rewards config that results in less then 1
         // reward per block which rounds down to zer0
         let mut app = mock_app();
@@ -2194,4 +2195,14 @@ mod tests {
             .execute_contract(admin, reward_addr, &fund_msg, &reward_funding)
             .unwrap_err();
     }
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

@@ -10,8 +10,8 @@ use cw_utils::parse_reply_instantiate_data;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
-const CONTRACT_NAME: &str = "crates.io:cw-admin-factory";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-admin-factory";
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const INSTANTIATE_CONTRACT_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]

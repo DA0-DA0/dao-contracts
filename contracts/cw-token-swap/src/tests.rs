@@ -1,9 +1,15 @@
-use cosmwasm_std::{to_binary, Addr, Coin, Empty, Uint128};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, Coin, Empty, Uint128,
+};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
 use crate::{
-    msg::{Counterparty, ExecuteMsg, InstantiateMsg, QueryMsg, StatusResponse, TokenInfo},
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
+    msg::{
+        Counterparty, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StatusResponse, TokenInfo,
+    },
     state::{CheckedCounterparty, CheckedTokenInfo},
     ContractError,
 };
@@ -1044,4 +1050,14 @@ fn test_fund_invalid_cw20() {
         .unwrap();
 
     assert_eq!(err, ContractError::InvalidFunds {})
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }
