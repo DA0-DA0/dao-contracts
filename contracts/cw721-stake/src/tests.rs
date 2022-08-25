@@ -1,4 +1,4 @@
-use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION, migrate};
+use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
     ExecuteMsg, MigrateMsg, Owner, QueryMsg, StakedBalanceAtHeightResponse,
     TotalStakedAtHeightResponse,
