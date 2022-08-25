@@ -1,6 +1,6 @@
 [package]
 name = "cw4-voting"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2018"
 
@@ -37,8 +37,8 @@ cw-utils = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
-cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
+cw-core-macros = { version = "0.2.0", path = "../../packages/cw-core-macros" }
+cw-core-interface = { version = "0.2.0", path = "../../packages/cw-core-interface" }
 cw4 = "0.13"
 cw4-group = "0.13"
 

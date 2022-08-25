@@ -1,6 +1,6 @@
 [package]
 name = "cw20-staked-balance-voting"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2018"
 
