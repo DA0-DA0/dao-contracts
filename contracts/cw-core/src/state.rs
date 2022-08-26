@@ -20,6 +20,9 @@ pub struct Config {
     /// If true the contract will automatically add received cw721
     /// tokens to its treasury.
     pub automatically_add_cw721s: bool,
+    /// The URI for the DAO as defined by the DAOstar standard
+    /// https://daostar.one/EIP
+    pub dao_uri: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

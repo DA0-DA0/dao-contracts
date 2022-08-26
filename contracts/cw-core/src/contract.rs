@@ -48,6 +48,7 @@ pub fn instantiate(
         image_url: msg.image_url,
         automatically_add_cw20s: msg.automatically_add_cw20s,
         automatically_add_cw721s: msg.automatically_add_cw721s,
+        dao_uri: msg.dao_uri,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -563,6 +564,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListSubDaos { start_after, limit } => {
             query_list_sub_daos(deps, start_after, limit)
         }
+        QueryMsg::DaoURI {} => query_dao_uri(deps),
     }
 }
 
@@ -820,6 +822,11 @@ pub fn query_list_sub_daos(
         .collect();
 
     to_binary(&subdaos)
+}
+
+pub fn query_dao_uri(deps: Deps) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
+    to_binary(&config.dao_uri)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
