@@ -98,6 +98,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         marketing: None,
     };
     let instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -130,6 +131,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
     assert_eq!(
         state.config,
         Config {
+            dao_uri: None,
             name: "DAO DAO".to_string(),
             description: "A DAO that builds DAOs.".to_string(),
             image_url: None,
@@ -207,6 +209,7 @@ makes wickedness."
     });
 
     let instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -236,6 +239,7 @@ fn test_update_config() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -287,6 +291,7 @@ fn test_update_config() {
         image_url: Some("https://moonphase.is/image.svg".to_string()),
         automatically_add_cw20s: false,
         automatically_add_cw721s: true,
+        dao_uri: Some("https://daostar.one/EIP".to_string()),
     };
 
     app.execute_contract(
@@ -309,10 +314,16 @@ fn test_update_config() {
 
     let config: Config = app
         .wrap()
-        .query_wasm_smart(gov_addr, &QueryMsg::Config {})
+        .query_wasm_smart(gov_addr.clone(), &QueryMsg::Config {})
         .unwrap();
 
-    assert_eq!(expected_config, config)
+    assert_eq!(expected_config, config);
+
+    let dao_uri: Option<String> = app
+        .wrap()
+        .query_wasm_smart(gov_addr, &QueryMsg::DaoURI {})
+        .unwrap();
+    assert_eq!(dao_uri, expected_config.dao_uri);
 }
 
 fn test_swap_governance(swaps: Vec<(u32, u32)>) {
@@ -325,6 +336,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -476,6 +488,7 @@ fn test_removed_modules_can_not_execute() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -618,6 +631,7 @@ fn test_module_already_disabled() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -716,6 +730,7 @@ fn test_swap_voting_module() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -818,6 +833,7 @@ fn test_permissions() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -877,6 +893,7 @@ fn test_permissions() {
         gov_addr,
         ExecuteMsg::UpdateConfig {
             config: Config {
+                dao_uri: None,
                 name: "Evil config.".to_string(),
                 description: "👿".to_string(),
                 image_url: None,
@@ -913,6 +930,7 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -1510,6 +1528,7 @@ fn test_list_items() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -1626,6 +1645,7 @@ fn test_instantiate_with_items() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -2163,6 +2183,7 @@ fn test_pause() {
         core_addr.clone(),
         &ExecuteMsg::UpdateConfig {
             config: Config {
+                dao_uri: None,
                 name: "The Empire Strikes Back".to_string(),
                 description: "haha lol we have pwned your DAO".to_string(),
                 image_url: None,
@@ -2238,6 +2259,7 @@ fn test_pause() {
             core_addr.clone(),
             &ExecuteMsg::UpdateConfig {
                 config: Config {
+                    dao_uri: None,
                     name: "The Empire Strikes Back Again".to_string(),
                     description: "haha lol we have pwned your DAO again".to_string(),
                     image_url: None,
@@ -2410,6 +2432,7 @@ fn test_migrate_from_compatible() {
 
     // Instantiate the core module with an admin to do migrations.
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -2493,6 +2516,7 @@ fn test_migrate_from_beta() {
 
     // Instantiate the core module with an admin to do migrations.
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -2623,6 +2647,7 @@ fn test_module_prefixes() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
