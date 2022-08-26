@@ -15,11 +15,11 @@ cw20 = "0.13"
 cw20-base = "0.13"
 cw-utils = "0.13"
 cosmwasm-std = { version = "1.0.0", features = ["ibc3"] }
-cw-core = { version = "0.1.0", path = "../../contracts/cw-core" }
+cw-core = { version = "*", path = "../../contracts/cw-core" }
 cw20-stake = { version = "*", path = "../../contracts/cw20-stake" }
-cw20-staked-balance-voting = { version = "0.1.0", path = "../../contracts/cw20-staked-balance-voting" }
-cw-proposal-single = { version = "0.1.0", path = "../../contracts/cw-proposal-single" }
-cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
+cw20-staked-balance-voting = { version = "*", path = "../../contracts/cw20-staked-balance-voting" }
+cw-proposal-single = { version = "*", path = "../../contracts/cw-proposal-single" }
+cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
 voting = { version = "*", path = "../../packages/voting" }
 
 assert_matches = "1.5"
