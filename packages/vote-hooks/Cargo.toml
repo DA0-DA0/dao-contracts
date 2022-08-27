@@ -1,6 +1,6 @@
 [package]
 name = "vote-hooks"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,5 +9,5 @@ edition = "2021"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 cosmwasm-std = "1.0.0"
-indexable-hooks = { version = "0.1.0", path = "../indexable-hooks" }
-voting = { version = "0.1.0", path = "../voting" }
+indexable-hooks = { version = "0.2.0", path = "../indexable-hooks" }
+voting = { version = "0.2.0", path = "../voting" }

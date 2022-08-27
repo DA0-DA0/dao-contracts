@@ -26,8 +26,8 @@ use crate::state::{
 };
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw-core";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-core";
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
 const VOTE_MODULE_INSTANTIATE_REPLY_ID: u64 = 1;
@@ -824,6 +824,7 @@ pub fn query_list_sub_daos(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
         MigrateMsg::FromV1 {} => {
             let current_map: Map<Addr, Empty> = Map::new("proposal_modules");

@@ -103,8 +103,9 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // No state migrations performed, just returned a Response
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::default())
 }
 
@@ -513,9 +514,17 @@ pub fn query_pending_rewards(
 mod tests {
     use std::borrow::BorrowMut;
 
-    use crate::ContractError;
+    use crate::{
+        contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
+        msg::MigrateMsg,
+        ContractError,
+    };
 
-    use cosmwasm_std::{coin, to_binary, Addr, Empty, Uint128};
+    use cosmwasm_std::{
+        coin,
+        testing::{mock_dependencies, mock_env},
+        to_binary, Addr, Empty, Uint128,
+    };
     use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
     use cw_utils::Duration;
 
@@ -2146,7 +2155,7 @@ mod tests {
     }
 
     #[test]
-    fn test_zero_reward_rate_faild() {
+    fn test_zero_reward_rate_failed() {
         // This test is due to a bug when funder provides rewards config that results in less then 1
         // reward per block which rounds down to zer0
         let mut app = mock_app();
@@ -2192,5 +2201,15 @@ mod tests {
             .borrow_mut()
             .execute_contract(admin, reward_addr, &fund_msg, &reward_funding)
             .unwrap_err();
+    }
+
+    #[test]
+    pub fn test_migrate_update_version() {
+        let mut deps = mock_dependencies();
+        cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+        migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+        let version = cw2::get_contract_version(&deps.storage).unwrap();
+        assert_eq!(version.version, CONTRACT_VERSION);
+        assert_eq!(version.contract, CONTRACT_NAME);
     }
 }

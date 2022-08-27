@@ -1,12 +1,18 @@
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, CosmosMsg, Decimal, Empty, Uint128, WasmMsg,
+};
 use cw2::ContractVersion;
 use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
 use cw_core_interface::voting::{InfoResponse, IsActiveResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
-use crate::msg::{
-    ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-    StakingInfo,
+use crate::{
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
+    msg::{
+        ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+        StakingInfo,
+    },
 };
 
 const DAO_ADDR: &str = "dao";
@@ -1349,4 +1355,14 @@ fn test_migrate() {
         .unwrap();
 
     assert_eq!(info, new_info);
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

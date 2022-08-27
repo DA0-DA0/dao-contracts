@@ -1,6 +1,6 @@
 [package]
 name = "cw-native-staked-balance-voting"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2018"
 
@@ -33,7 +33,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 cw-core-macros = { version = "*", path = "../../packages/cw-core-macros" }
 cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
-cw-paginate = { version = "0.1.0", path = "../../packages/cw-paginate" }
+cw-paginate = { version = "0.2.0", path = "../../packages/cw-paginate" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

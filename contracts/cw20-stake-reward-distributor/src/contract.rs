@@ -5,13 +5,13 @@ use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, StdError, Uint128, WasmMsg};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, LAST_PAYMENT_BLOCK};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 
-const CONTRACT_NAME: &str = "crates.io:cw20-stake-reward-distributor";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-stake-reward-distributor";
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -231,6 +231,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => to_binary(&query_info(deps, env)?),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }
 
 fn query_info(deps: Deps, env: Env) -> StdResult<InfoResponse> {

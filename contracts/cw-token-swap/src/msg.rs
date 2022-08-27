@@ -58,3 +58,6 @@ pub struct StatusResponse {
     pub counterparty_one: CheckedCounterparty,
     pub counterparty_two: CheckedCounterparty,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct MigrateMsg {}

@@ -32,8 +32,8 @@ pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
 
-const CONTRACT_NAME: &str = "crates.io:cw20-stake";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-stake";
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn validate_duration(duration: Option<Duration>) -> Result<(), ContractError> {
     if let Some(unstaking_duration) = duration {
@@ -496,6 +496,9 @@ pub fn query_list_stakers(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     use serde::{Deserialize, Serialize};
+
+    // Set contract to version to latest
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     #[derive(Serialize, Deserialize, Clone)]
     struct BetaConfig {

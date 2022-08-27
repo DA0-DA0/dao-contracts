@@ -26,7 +26,7 @@ use voting::{
 };
 
 use crate::{
-    contract::migrate,
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::SingleChoiceProposal,
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteResponse},
@@ -4950,4 +4950,14 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         .unwrap();
 
     assert_eq!(balance.balance, Uint128::new(1));
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

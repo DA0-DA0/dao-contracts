@@ -1,6 +1,7 @@
-use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ExecuteMsg, Owner, QueryMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
+    ExecuteMsg, MigrateMsg, Owner, QueryMsg, StakedBalanceAtHeightResponse,
+    TotalStakedAtHeightResponse,
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
@@ -1189,4 +1190,14 @@ fn test_unstake_that_which_you_do_not_own() {
 
     let total_staked = query_total_staked(&app, &staking_addr);
     assert_eq!(total_staked, Uint128::zero());
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

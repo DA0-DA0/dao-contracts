@@ -1,6 +1,6 @@
 [package]
 name = "cw721-stake"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["CypherApe cypherape@protonmail.com"]
 edition = "2018"
 license = "Apache-2.0"
@@ -19,10 +19,10 @@ library = []
 cosmwasm-std = { version = "1.0.0" }
 cw-storage-plus = { version = "0.13" }
 cw-controllers = "0.13"
-cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
-cw-core-interface =  { version = "0.1.0", path = "../../packages/cw-core-interface" }
-cw721-controllers = { version = "0.1.0", path = "../../packages/cw721-controllers" }
-cw-paginate = { version = "0.1.0", path = "../../packages/cw-paginate" }
+cw-core-macros = { version = "0.2.0", path = "../../packages/cw-core-macros" }
+cw-core-interface =  { version = "0.2.0", path = "../../packages/cw-core-interface" }
+cw721-controllers = { version = "0.2.0", path = "../../packages/cw721-controllers" }
+cw-paginate = { version = "0.2.0", path = "../../packages/cw-paginate" }
 cw721 = { version = "0.13" }
 cw-utils = { version = "0.13" }
 cw2 = "0.13"
