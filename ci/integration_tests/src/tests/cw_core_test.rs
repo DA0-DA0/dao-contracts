@@ -213,6 +213,7 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
     assert_eq!(
         dao.state.config,
         cw_core::state::Config {
+            dao_uri: None,
             name: "DAO DAO".to_string(),
             description: "A DAO that makes DAO tooling".to_string(),
             image_url: None,
@@ -243,6 +244,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     assert_eq!(
         dao.state.config,
         cw_core::state::Config {
+            dao_uri: None,
             name: "DAO DAO".to_string(),
             description: "A DAO that makes DAO tooling".to_string(),
             image_url: None,
