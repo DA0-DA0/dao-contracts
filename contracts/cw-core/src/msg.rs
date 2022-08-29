@@ -76,7 +76,7 @@ pub struct InstantiateMsg {
     /// items map. The value is an enum that either uses an existing
     /// address or instantiates a new contract.
     pub initial_items: Option<Vec<InitialItem>>,
-    /// The URI for the DAO linking to
+    /// Implements the DAO Star standard: https://daostar.one/EIP
     pub dao_uri: Option<String>,
 }
 
