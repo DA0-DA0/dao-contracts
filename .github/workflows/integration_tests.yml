@@ -92,4 +92,25 @@ jobs:
           path: ci/integration_tests/gas_report.json
           retention-days: 90
 
-      # TODO: Download main's gas_report artifact and diff
+      - name: Download main gas report
+        id: download_gas
+        # Because the max retention period of github artifacts is 90 days
+        # there's a possibility the main's report no longer exists
+        continue-on-error: true
+        if: ${{ github.ref != 'refs/heads/main' }}
+        # NOTE: We can't use github's `actions/download-artifact` because it doesnt support
+        # downloading an artifact cross workflows yet
+        # https://github.com/actions/download-artifact/issues/3
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          branch: main
+          workflow: integration_tests.yml
+          name: dao-dao-gas-report-refs-heads-main
+
+      - name: Post gas diff to PR
+        if: ${{ github.ref != 'refs/heads/main' && steps.download_gas.outputs.error_message == ''}}
+        uses: de-husk/cosm-orc-gas-diff-action@v0.6.1
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          current_json: ci/integration_tests/gas_report.json
+          old_json: gas_report.json
