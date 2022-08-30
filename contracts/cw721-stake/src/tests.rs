@@ -1,7 +1,6 @@
 use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
-    ExecuteMsg, MigrateMsg, Owner, QueryMsg, StakedBalanceAtHeightResponse,
-    TotalStakedAtHeightResponse,
+    ExecuteMsg, MigrateMsg, QueryMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
@@ -9,6 +8,7 @@ use anyhow::Result as AnyResult;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
 use cw721_controllers::NftClaim;
+use cw_core_interface::Admin;
 use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 use cw_utils::Expiration::AtHeight;
@@ -75,7 +75,9 @@ fn instantiate_cw721(app: &mut App) -> Addr {
 fn instantiate_staking(app: &mut App, cw721: Addr, unstaking_duration: Option<Duration>) -> Addr {
     let staking_code_id = app.store_code(contract_staking());
     let msg = crate::msg::InstantiateMsg {
-        owner: Some(Owner::Addr("owner".to_string())),
+        owner: Some(Admin::Address {
+            addr: "owner".to_string(),
+        }),
         manager: Some("manager".to_string()),
         nft_address: cw721.to_string(),
         unstaking_duration,
@@ -382,7 +384,7 @@ fn test_instantiate_with_instantiator_owner() {
     let staking_addr = {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
-            owner: Some(Owner::Instantiator {}),
+            owner: Some(Admin::Instantiator {}),
             manager: Some("manager".to_string()),
             nft_address: cw721_addr.to_string(),
             unstaking_duration: None,

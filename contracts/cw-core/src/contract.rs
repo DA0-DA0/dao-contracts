@@ -8,15 +8,13 @@ use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
-use cw_core_interface::voting;
+use cw_core_interface::{voting, ModuleInstantiateInfo};
 use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
-use crate::msg::{
-    ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
-};
+use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::{
     AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
     PauseInfoResponse, SubDao,

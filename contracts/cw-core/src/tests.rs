@@ -4,7 +4,7 @@ use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, Empty, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
-use cw_core_interface::voting::VotingPowerAtHeightResponse;
+use cw_core_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
@@ -13,9 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{
-        Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
-    },
+    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
         PauseInfoResponse, SubDao,
@@ -110,14 +108,14 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: (0..n)
             .map(|n| ModuleInstantiateInfo {
                 code_id: cw20_id,
                 msg: to_binary(&cw20_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: format!("governance module {}", n),
             })
             .collect(),
@@ -190,20 +188,20 @@ fn test_instantiate_with_submessage_failure() {
         .map(|n| ModuleInstantiateInfo {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: format!("governance module {}", n),
         })
         .collect::<Vec<_>>();
     governance_modules.push(ModuleInstantiateInfo {
         code_id: cw20_id,
         msg: to_binary("bad").unwrap(),
-        admin: Admin::CoreContract {},
+        admin: Some(Admin::Instantiator {}),
         label: "I have a bad instantiate message".to_string(),
     });
     governance_modules.push(ModuleInstantiateInfo {
         code_id: cw20_id,
         msg: to_binary(&cw20_instantiate).unwrap(),
-        admin: Admin::CoreContract {},
+        admin: Some(Admin::Instantiator {}),
         label: "Everybody knowing
 that goodness is good
 makes wickedness."
@@ -221,7 +219,7 @@ makes wickedness."
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: governance_modules,
@@ -251,13 +249,13 @@ fn test_update_config() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         }],
         initial_items: None,
@@ -348,13 +346,13 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: propmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: propmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -402,7 +400,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
             .map(|n| ModuleInstantiateInfo {
                 code_id: propmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: format!("governance module {}", n),
             })
             .collect();
@@ -500,13 +498,13 @@ fn test_removed_modules_can_not_execute() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -541,7 +539,7 @@ fn test_removed_modules_can_not_execute() {
     let to_add = vec![ModuleInstantiateInfo {
         code_id: govmod_id,
         msg: to_binary(&govmod_instantiate).unwrap(),
-        admin: Admin::CoreContract {},
+        admin: Some(Admin::Instantiator {}),
         label: "new governance module".to_string(),
     }];
 
@@ -572,7 +570,7 @@ fn test_removed_modules_can_not_execute() {
     let to_add = vec![ModuleInstantiateInfo {
         code_id: govmod_id,
         msg: to_binary(&govmod_instantiate).unwrap(),
-        admin: Admin::CoreContract {},
+        admin: Some(Admin::Instantiator {}),
         label: "new governance module".to_string(),
     }];
     let to_disable = vec![new_proposal_module.address.to_string()];
@@ -643,13 +641,13 @@ fn test_module_already_disabled() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -698,7 +696,7 @@ fn test_module_already_disabled() {
                         to_add: vec![ModuleInstantiateInfo {
                             code_id: govmod_id,
                             msg: to_binary(&govmod_instantiate).unwrap(),
-                            admin: Admin::CoreContract {},
+                            admin: Some(Admin::Instantiator {}),
                             label: "governance module".to_string(),
                         }],
                         to_disable,
@@ -742,13 +740,13 @@ fn test_swap_voting_module() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -794,7 +792,7 @@ fn test_swap_voting_module() {
                     module: ModuleInstantiateInfo {
                         code_id: govmod_id,
                         msg: to_binary(&govmod_instantiate).unwrap(),
-                        admin: Admin::CoreContract {},
+                        admin: Some(Admin::Instantiator {}),
                         label: "voting module".to_string(),
                     },
                 })
@@ -843,13 +841,13 @@ fn test_permissions() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -875,7 +873,7 @@ fn test_permissions() {
             module: ModuleInstantiateInfo {
                 code_id: govmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: "voting module".to_string(),
             },
         },
@@ -942,13 +940,13 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -1540,13 +1538,13 @@ fn test_list_items() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -1657,13 +1655,13 @@ fn test_instantiate_with_items() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: Some(vec![
@@ -2447,13 +2445,13 @@ fn test_migrate_from_compatible() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,
@@ -2491,6 +2489,99 @@ fn test_migrate_from_compatible() {
         .unwrap();
 
     assert_eq!(new_state, state);
+}
+
+#[test]
+fn test_migrate_from_beta() {
+    let mut app = App::default();
+    let govmod_id = app.store_code(sudo_proposal_contract());
+    let voting_id = app.store_code(cw20_balances_voting());
+    let gov_id = app.store_code(cw_core_contract());
+    let cw20_id = app.store_code(cw20_contract());
+
+    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
+        root: CREATOR_ADDR.to_string(),
+    };
+    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
+        token_info: cw20_balance_voting::msg::TokenInfo::New {
+            code_id: cw20_id,
+            label: "DAO DAO voting".to_string(),
+            name: "DAO DAO".to_string(),
+            symbol: "DAO".to_string(),
+            decimals: 6,
+            initial_balances: vec![cw20::Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::from(2u64),
+            }],
+            marketing: None,
+        },
+    };
+
+    // Instantiate the core module with an admin to do migrations.
+    let gov_instantiate = InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        dao_uri: None,
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: voting_id,
+            msg: to_binary(&voting_instantiate).unwrap(),
+            admin: Some(Admin::Instantiator {}),
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Some(Admin::Instantiator {}),
+                label: "governance module 1".to_string(),
+            },
+            ModuleInstantiateInfo {
+                code_id: govmod_id,
+                msg: to_binary(&govmod_instantiate).unwrap(),
+                admin: Some(Admin::Instantiator {}),
+                label: "governance module 2".to_string(),
+            },
+        ],
+        initial_items: None,
+    };
+
+    let core_addr = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            Some(CREATOR_ADDR.to_string()),
+        )
+        .unwrap();
+
+    app.execute(
+        Addr::unchecked(CREATOR_ADDR),
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: core_addr.to_string(),
+            new_code_id: gov_id,
+            msg: to_binary(&MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
+        }),
+    )
+    .unwrap();
+
+    let new_state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
+        .unwrap();
+
+    let proposal_modules = new_state.proposal_modules;
+    assert_eq!(2, proposal_modules.len());
+    for (idx, module) in proposal_modules.iter().enumerate() {
+        let prefix = derive_proposal_module_prefix(idx).unwrap();
+        assert_eq!(prefix, module.prefix);
+        assert_eq!(ProposalModuleStatus::Enabled, module.status);
+    }
 }
 
 #[test]
@@ -2608,26 +2699,26 @@ fn test_module_prefixes() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: govmod_id,
             msg: to_binary(&govmod_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![
             ModuleInstantiateInfo {
                 code_id: govmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: "proposal module 1".to_string(),
             },
             ModuleInstantiateInfo {
                 code_id: govmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: "proposal module 2".to_string(),
             },
             ModuleInstantiateInfo {
                 code_id: govmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: "proposal module 2".to_string(),
             },
         ],
