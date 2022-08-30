@@ -41,6 +41,7 @@ vote-hooks = { version = "0.2.0", path = "../../packages/vote-hooks" }
 
 [dev-dependencies]
 indexable-hooks = { version = "0.2.0", path = "../../packages/indexable-hooks" }
+cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
 cw20 = "0.13"
 cw20-balance-voting = { path = "../cw20-balance-voting", version = "0.2.0" }
 cw20-base = "0.13"

@@ -1,6 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_core::state::ProposalModule;
+use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use indexable_hooks::HooksResponse;
 
@@ -99,7 +100,7 @@ fn instantiate_with_default_governance(
         image_url: None,
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
-        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+        voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&cw20_balance_voting::msg::InstantiateMsg {
                 token_info: cw20_balance_voting::msg::TokenInfo::New {
@@ -113,13 +114,13 @@ fn instantiate_with_default_governance(
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO voting module".to_string(),
         },
-        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id,
             msg: to_binary(&msg).unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,

@@ -1,6 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
-use cw_core::{msg::ModuleInstantiateInfo, query::DumpStateResponse};
+use cw_core::query::DumpStateResponse;
+use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 
@@ -97,13 +98,13 @@ fn instantiate_with_staked_balances_voting() {
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::None {},
+            admin: None,
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: govmod_id,
             label: "DAO DAO governance module.".to_string(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             msg: to_binary(&InstantiateMsg {
                 threshold: Threshold::ThresholdQuorum {
                     threshold: voting::threshold::PercentageThreshold::Majority {},

@@ -5,7 +5,7 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 
-use cw_core::msg::{Admin, ModuleInstantiateInfo};
+use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use crate::{
@@ -83,20 +83,20 @@ pub fn test_set_admin() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_code_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
                 msg: to_binary(&cw20_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: "prop module".to_string(),
             },
             ModuleInstantiateInfo {
                 code_id: cw20_code_id,
                 msg: to_binary(&cw20_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
+                admin: Some(Admin::Instantiator {}),
                 label: "prop module 2".to_string(),
             },
         ],
