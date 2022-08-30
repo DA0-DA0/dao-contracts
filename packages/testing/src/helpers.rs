@@ -1,7 +1,7 @@
 use cosmwasm_std::{to_binary, Addr, Binary, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
-use cw_core::msg::ModuleInstantiateInfo;
+use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 
@@ -47,7 +47,7 @@ pub fn instantiate_with_cw20_balances_governance(
         image_url: None,
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
-        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+        voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&cw20_balance_voting::msg::InstantiateMsg {
                 token_info: cw20_balance_voting::msg::TokenInfo::New {
@@ -61,13 +61,13 @@ pub fn instantiate_with_cw20_balances_governance(
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO voting module".to_string(),
         },
-        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: governance_code_id,
             msg: governance_instantiate,
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -143,13 +143,13 @@ pub fn instantiate_with_staked_balances_governance(
                 },
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::None {},
+            admin: None,
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: governance_code_id,
             label: "DAO DAO governance module.".to_string(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             msg: governance_instantiate,
         }],
         initial_items: None,
@@ -234,7 +234,7 @@ pub fn instantiate_with_staking_active_threshold(
         image_url: None,
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
-        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+        voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
                 token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
@@ -252,13 +252,13 @@ pub fn instantiate_with_staking_active_threshold(
                 active_threshold,
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO voting module".to_string(),
         },
-        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id,
             msg: governance_instantiate,
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
@@ -314,20 +314,20 @@ pub fn instantiate_with_cw4_groups_governance(
         image_url: None,
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
-        voting_module_instantiate_info: cw_core::msg::ModuleInstantiateInfo {
+        voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&cw4_voting::msg::InstantiateMsg {
                 cw4_group_code_id: cw4_id,
                 initial_members: initial_weights,
             })
             .unwrap(),
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO voting module".to_string(),
         },
-        proposal_modules_instantiate_info: vec![cw_core::msg::ModuleInstantiateInfo {
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: governance_code_id,
             msg: governance_instantiate,
-            admin: cw_core::msg::Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,

@@ -71,8 +71,11 @@ export interface ContractVersion {
   version: string;
   [k: string]: unknown;
 }
-export type Owner = {
-  addr: string;
+export type Admin = {
+  address: {
+    addr: string;
+    [k: string]: unknown;
+  };
 } | {
   instantiator: {
     [k: string]: unknown;
@@ -81,7 +84,7 @@ export type Owner = {
 export interface InstantiateMsg {
   denom: string;
   manager?: string | null;
-  owner?: Owner | null;
+  owner?: Admin | null;
   unstaking_duration?: Duration | null;
   [k: string]: unknown;
 }

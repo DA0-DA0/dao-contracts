@@ -2,7 +2,7 @@ use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::MigrateMsg;
 #[cfg(not(feature = "library"))]
 use crate::msg::{
-    ExecuteMsg, GetHooksResponse, InstantiateMsg, Owner, QueryMsg, StakedBalanceAtHeightResponse,
+    ExecuteMsg, GetHooksResponse, InstantiateMsg, QueryMsg, StakedBalanceAtHeightResponse,
     TotalStakedAtHeightResponse,
 };
 use crate::state::{
@@ -15,6 +15,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw721::Cw721ReceiveMsg;
+use cw_core_interface::Admin;
 use cw_utils::Duration;
 use indexmap::IndexSet;
 use std::convert::{From, TryFrom};
@@ -33,8 +34,8 @@ pub fn instantiate(
         .owner
         .as_ref()
         .map(|owner| match owner {
-            Owner::Addr(address) => deps.api.addr_validate(address),
-            Owner::Instantiator {} => Ok(info.sender),
+            Admin::Address { addr } => deps.api.addr_validate(addr),
+            Admin::Instantiator {} => Ok(info.sender),
         })
         .transpose()?;
     let manager = msg
