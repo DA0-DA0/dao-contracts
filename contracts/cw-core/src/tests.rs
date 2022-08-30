@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     from_slice,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    to_binary, Addr, CosmosMsg, Empty, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
@@ -2829,4 +2829,52 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+fn test_created_timestamp_set() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let gov_id = app.store_code(cw_core_contract());
+
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
+    };
+
+    let timestamp = Timestamp::from_seconds(300_000_000);
+    app.update_block(|mut block| block.time = timestamp);
+    let instantiate = InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "governance module".to_string(),
+        }],
+        initial_items: None,
+    };
+    let gov_addr = instantiate_gov(&mut app, gov_id, instantiate);
+
+    let state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(&gov_addr, &QueryMsg::DumpState {})
+        .unwrap();
+
+    assert_eq!(timestamp, state.created_timestamp.unwrap());
 }
