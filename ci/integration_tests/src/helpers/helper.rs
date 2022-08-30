@@ -2,10 +2,8 @@ use super::chain::Chain;
 use anyhow::Result;
 use cosmwasm_std::{to_binary, Decimal, Uint128};
 use cw20::Cw20Coin;
-use cw_core::{
-    msg::{Admin, ModuleInstantiateInfo},
-    query::DumpStateResponse,
-};
+use cw_core::query::DumpStateResponse;
+use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_utils::Duration;
 use voting::{
     deposit::DepositInfo,
@@ -56,7 +54,7 @@ pub fn create_dao(
                 },
                 active_threshold: None,
             })?,
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
@@ -78,7 +76,7 @@ pub fn create_dao(
                 close_proposal_on_execution_failure: false,
                 open_proposal_submission: false,
             })?,
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::Instantiator {}),
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,

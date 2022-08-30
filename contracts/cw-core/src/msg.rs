@@ -1,4 +1,5 @@
-use cosmwasm_std::{Binary, CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty};
+use cw_core_interface::ModuleInstantiateInfo;
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -7,32 +8,6 @@ use cw_core_macros::voting_query;
 
 use crate::query::SubDao;
 use crate::state::Config;
-
-/// Information about the admin of a contract.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Admin {
-    /// A specific address.
-    Address { addr: String },
-    /// The core contract itself. The contract will fill this in
-    /// while instantiation takes place.
-    CoreContract {},
-    /// No admin.
-    None {},
-}
-
-/// Information needed to instantiate a proposal or voting module.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct ModuleInstantiateInfo {
-    /// Code ID of the contract to be instantiated.
-    pub code_id: u64,
-    /// Instantiate message to be used to create the contract.
-    pub msg: Binary,
-    /// Admin of the instantiated contract.
-    pub admin: Admin,
-    /// Label for the instantiated contract.
-    pub label: String,
-}
 
 /// Information about an item to be stored in the items list.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

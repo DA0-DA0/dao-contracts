@@ -7,12 +7,12 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
 use cw_core_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
+use cw_core_interface::Admin;
 use cw_utils::{must_pay, Duration};
 
 use crate::error::ContractError;
 use crate::msg::{
-    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, Owner, QueryMsg,
-    StakerBalanceResponse,
+    ExecuteMsg, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg, StakerBalanceResponse,
 };
 use crate::state::{Config, CLAIMS, CONFIG, DAO, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL};
 
@@ -50,8 +50,8 @@ pub fn instantiate(
         .owner
         .as_ref()
         .map(|owner| match owner {
-            Owner::Addr(address) => deps.api.addr_validate(address),
-            Owner::Instantiator {} => Ok(info.sender.clone()),
+            Admin::Address { addr } => deps.api.addr_validate(addr),
+            Admin::Instantiator {} => Ok(info.sender.clone()),
         })
         .transpose()?;
     let manager = msg
