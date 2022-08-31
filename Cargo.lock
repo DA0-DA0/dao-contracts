@@ -3469,6 +3469,7 @@ dependencies = [
  "cw-asset",
  "cw-core",
  "cw-core-interface",
+ "cw-core-macros",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw20",

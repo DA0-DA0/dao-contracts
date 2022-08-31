@@ -4,7 +4,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_core_macros::govmod_query;
-use voting::{deposit::DepositInfo, threshold::Threshold, voting::Vote};
+use voting::{pre_propose::PreProposeInfo, threshold::Threshold, voting::Vote};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -28,10 +28,8 @@ pub struct InstantiateMsg {
     /// vote information is not known until the time of proposal
     /// expiration.
     pub allow_revoting: bool,
-    /// Information about the deposit required to create a
-    /// proposal. None if there is no deposit requirement, Some
-    /// otherwise.
-    pub deposit_info: Option<DepositInfo>,
+    /// Information about what addresses may create proposals.
+    pub pre_propose_info: PreProposeInfo,
     /// If set to true proposals will be closed if their execution
     /// fails. Otherwise, proposals will remain open after execution
     /// failure. For example, with this enabled a proposal to send 5
@@ -40,8 +38,6 @@ pub struct InstantiateMsg {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// Whether non-members of the DAO can submit proposals
-    pub open_proposal_submission: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -105,9 +101,6 @@ pub enum ExecuteMsg {
         /// The address if tge DAO that this governance module is
         /// associated with.
         dao: String,
-        /// Information about the deposit required to make a
-        /// proposal. None if no deposit, Some otherwise.
-        deposit_info: Option<DepositInfo>,
         /// If set to true proposals will be closed if their execution
         /// fails. Otherwise, proposals will remain open after execution
         /// failure. For example, with this enabled a proposal to send 5
@@ -116,8 +109,8 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
-        /// Whether non-members of the DAO can submit proposals
-        open_proposal_submission: bool,
+        /// Information about what addresses may create proposals.
+        pre_propose_info: PreProposeInfo,
     },
     /// Adds an address as a consumer of proposal hooks. Consumers of
     /// proposal hooks have hook messages executed on them whenever

@@ -6,7 +6,7 @@ use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::{deposit::CheckedDepositInfo, threshold::Threshold, voting::Vote};
+use voting::{pre_propose::ProposalCreationPolicy, threshold::Threshold, voting::Vote};
 
 use crate::proposal::SingleChoiceProposal;
 
@@ -44,9 +44,6 @@ pub struct Config {
     /// The address of the DAO that this governance module is
     /// associated with.
     pub dao: Addr,
-    /// Information about the depost required to create a
-    /// proposal. None if no deposit is required, Some otherwise.
-    pub deposit_info: Option<CheckedDepositInfo>,
     /// If set to true proposals will be closed if their execution
     /// fails. Otherwise, proposals will remain open after execution
     /// failure. For example, with this enabled a proposal to send 5
@@ -55,8 +52,8 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// If set to true, will allow non-members of the DAO to submit proposals
-    pub open_proposal_submission: bool,
+    /// The access policy for creating proposals.
+    pub proposal_creation_policy: ProposalCreationPolicy,
 }
 
 /// The current top level config for the module.  The "config" key was
