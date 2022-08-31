@@ -302,3 +302,50 @@ pub fn govmod_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+#[proc_macro_attribute]
+pub fn limit_variant_count(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    let args = parse_macro_input!(metadata as AttributeArgs);
+    if args.len() != 1 {
+        panic!("macro takes one argument. ex: `#[limit_variant_count(4)]`")
+    }
+
+    let limit: usize = if let syn::NestedMeta::Lit(syn::Lit::Int(unparsed)) = args.first().unwrap()
+    {
+        match unparsed.base10_parse() {
+            Ok(limit) => limit,
+            Err(e) => return e.to_compile_error().into(),
+        }
+    } else {
+        return syn::Error::new_spanned(args[0].clone(), "argument should be an integer literal")
+            .to_compile_error()
+            .into();
+    };
+
+    let ast: DeriveInput = parse_macro_input!(input);
+    match ast.data {
+        syn::Data::Enum(DataEnum { ref variants, .. }) => {
+            if variants.len() > limit {
+                return syn::Error::new_spanned(
+                    variants[limit].clone(),
+                    format!("this enum's variant count is limited to {}", limit),
+                )
+                .to_compile_error()
+                .into();
+            }
+        }
+        _ => {
+            return syn::Error::new(
+                ast.ident.span(),
+                "limit_variant_count may only be derived for enums",
+            )
+            .to_compile_error()
+            .into()
+        }
+    };
+
+    quote! {
+    #ast
+    }
+    .into()
+}
