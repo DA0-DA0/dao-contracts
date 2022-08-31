@@ -6,7 +6,6 @@ use cosmwasm_std::{
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::deposit::CheckedDepositInfo;
 use voting::proposal::Proposal;
 use voting::status::Status;
 use voting::threshold::{PercentageThreshold, Threshold};
@@ -41,9 +40,6 @@ pub struct SingleChoiceProposal {
     pub votes: Votes,
     pub allow_revoting: bool,
 
-    /// Information about the deposit that was sent as part of this
-    /// proposal. None if no deposit.
-    pub deposit_info: Option<CheckedDepositInfo>,
     /// The timestamp at which this proposal was created.
     pub created: Timestamp,
     /// The timestamp at which this proposal's status last changed. Note that in the scenario when
@@ -55,9 +51,6 @@ pub struct SingleChoiceProposal {
 impl Proposal for SingleChoiceProposal {
     fn proposer(&self) -> Addr {
         self.proposer.clone()
-    }
-    fn deposit_info(&self) -> Option<CheckedDepositInfo> {
-        self.deposit_info.clone()
     }
     fn status(&self) -> Status {
         self.status
@@ -302,7 +295,6 @@ mod test {
             threshold,
             total_power,
             votes,
-            deposit_info: None,
             created: block.time,
             last_updated: block.time,
         };

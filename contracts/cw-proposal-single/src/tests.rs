@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use testing::{ShouldExecute, TestSingleChoiceVote};
 use voting::{
     deposit::{CheckedDepositInfo, DepositInfo, DepositRefundPolicy, DepositToken},
+    pre_propose::PreProposeInfo,
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{Vote, Votes},
@@ -854,6 +855,7 @@ fn do_test_votes<F>(
     threshold: Threshold,
     expected_status: Status,
     total_supply: Option<Uint128>,
+    pre_propose_info: PreProposeInfo,
     deposit_info: Option<DepositInfo>,
     setup_governance: F,
 ) -> (App, Addr)
@@ -891,9 +893,8 @@ where
         min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
-        deposit_info,
         close_proposal_on_execution_failure: true,
-        open_proposal_submission: false,
+        pre_propose_info,
     };
 
     let governance_addr =
@@ -912,6 +913,8 @@ where
 
     assert_eq!(governance_modules.len(), 1);
     let govmod_single = governance_modules.into_iter().next().unwrap().address;
+
+    // TODO(zeke): Update once modules are written.
 
     // Allow a proposal deposit as needed.
     let config: Config = app
