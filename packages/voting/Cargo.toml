@@ -12,7 +12,8 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 cw20 = "0.13"
 cw-asset = "2.2.0"
-cw-core-interface = { version = "0.2.0", path = "../cw-core-interface" }
+cw-core-interface = { version = "*", path = "../cw-core-interface" }
+cw-core-macros = { version = "*", path = "../cw-core-macros" }
 cw-core = { path = "../../contracts/cw-core", version = "0.2.0"}
 cw-utils = "0.13"
 cw-storage-plus = "0.13"

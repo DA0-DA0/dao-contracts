@@ -4,8 +4,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
 
     #[error("Unauthorized.")]
     Unauthorized {},
@@ -21,9 +24,6 @@ pub enum ContractError {
 
     #[error("An unknown reply ID was received.")]
     UnknownReplyID {},
-
-    #[error("{0}")]
-    ParseReplyError(#[from] ParseReplyError),
 
     #[error("Multiple voting modules during instantiation.")]
     MultipleVotingModules {},
