@@ -1,6 +1,7 @@
 use crate::helpers::{chain::Chain, helper::create_dao};
 use cosmwasm_std::{to_binary, Uint128};
 use cw20_stake::{msg::StakedValueResponse, state::Config};
+use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use test_context::test_context;
 
 // #### ExecuteMsg #####
@@ -95,20 +96,20 @@ fn execute_stake_tokens(chain: &mut Chain) {
 
     assert_eq!(staked_value.value, Uint128::new(100));
 
-    // TODO: Once cosm-orc supports `poll_for_n_blocks(1)` uncomment below:
-    //
-    // let res = chain
-    //     .orc
-    //     .query(
-    //         "cw_core",
-    //         "exc_stake_q_power",
-    //         &cw_core::msg::QueryMsg::VotingPowerAtHeight {
-    //             address: chain.user.addr.clone(),
-    //             height: None,
-    //         },
-    //     )
-    //     .unwrap();
-    // let power: VotingPowerAtHeightResponse = res.data().unwrap();
-    //
-    // assert_eq!(power.power, Uint128::new(100));
+    chain.orc.poll_for_n_blocks(1, 20_000).unwrap();
+
+    let res = chain
+        .orc
+        .query(
+            "cw_core",
+            "exc_stake_q_power",
+            &cw_core::msg::QueryMsg::VotingPowerAtHeight {
+                address: chain.user.addr.clone(),
+                height: None,
+            },
+        )
+        .unwrap();
+    let power: VotingPowerAtHeightResponse = res.data().unwrap();
+
+    assert_eq!(power.power, Uint128::new(100));
 }
