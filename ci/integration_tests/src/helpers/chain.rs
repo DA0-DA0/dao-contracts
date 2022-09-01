@@ -72,9 +72,6 @@ fn global_setup() -> Cfg {
 
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
-        #[cfg(feature = "optimize")]
-        orc.optimize_contracts("../../Cargo.toml").unwrap();
-
         let contract_dir = "../../artifacts";
         orc.store_contracts(contract_dir, &account.key).unwrap();
         save_gas_report(&orc, &gas_report_dir);
