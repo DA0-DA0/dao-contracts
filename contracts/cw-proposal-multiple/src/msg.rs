@@ -1,7 +1,7 @@
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{deposit::DepositInfo, voting::MultipleChoiceVote};
+use voting::{deposit::UncheckedDepositInfo, voting::MultipleChoiceVote};
 
 use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
 use cw_core_macros::govmod_query;
@@ -30,7 +30,7 @@ pub struct InstantiateMsg {
     /// Information about the deposit required to create a
     /// proposal. None if there is no deposit requirement, Some
     /// otherwise.
-    pub deposit_info: Option<DepositInfo>,
+    pub deposit_info: Option<UncheckedDepositInfo>,
     /// If set to true proposals will be closed if their execution
     /// fails. Otherwise, proposals will remain open after execution
     /// failure. For example, with this enabled a proposal to send 5
@@ -105,7 +105,7 @@ pub enum ExecuteMsg {
         dao: String,
         /// Information about the deposit required to make a
         /// proposal. None if no deposit, Some otherwise.
-        deposit_info: Option<DepositInfo>,
+        deposit_info: Option<UncheckedDepositInfo>,
         /// If set to true proposals will be closed if their execution
         /// fails. Otherwise, proposals will remain open after execution
         /// failure. For example, with this enabled a proposal to send 5
