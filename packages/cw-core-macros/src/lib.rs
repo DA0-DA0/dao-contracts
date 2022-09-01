@@ -303,6 +303,18 @@ pub fn govmod_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     .into()
 }
 
+/// Limits the number of variants allowed on an enum at compile
+/// time. For example, the following will not compile:
+///
+/// ```compile_fail
+/// use cw_core_macros::limit_variant_count;
+///
+/// #[limit_variant_count(1)]
+/// enum Two {
+///     One {},
+///     Two {},
+/// }
+/// ```
 #[proc_macro_attribute]
 pub fn limit_variant_count(metadata: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(metadata as AttributeArgs);
