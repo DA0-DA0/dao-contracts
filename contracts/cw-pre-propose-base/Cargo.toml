@@ -1,5 +1,5 @@
 [package]
-name = "cw-pre-propose-optional-deposit-members-only"
+name = "cw-pre-propose-base"
 version = "0.1.0"
 authors = ["ekez <ekez@withoutdoing.com>"]
 edition = "2018"
