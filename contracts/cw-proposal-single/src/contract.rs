@@ -834,7 +834,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             // If the address that failed to respond to the proposal
             // hook is the pre-proposal module we "fail open" by
             // resetting the proposal creation policy to anyone.
-            if config.proposal_creation_policy.addr_is_module(&addr) {
+            if config.proposal_creation_policy.addr_is_my_module(&addr) {
                 let mut config = config;
                 config.proposal_creation_policy = ProposalCreationPolicy::Anyone {};
                 CONFIG.save(deps.storage, &config)?;

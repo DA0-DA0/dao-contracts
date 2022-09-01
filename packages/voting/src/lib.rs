@@ -1,3 +1,4 @@
+pub mod denom;
 pub mod deposit;
 pub mod error;
 pub mod pre_propose;
