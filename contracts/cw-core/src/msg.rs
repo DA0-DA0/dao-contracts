@@ -231,6 +231,6 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MigrateMsg {
-    FromV1 {},
+    FromV1 { dao_uri: Option<String> },
     FromCompatible {},
 }

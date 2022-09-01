@@ -6,8 +6,10 @@ use cosmwasm_std::{
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -2562,7 +2564,7 @@ fn test_migrate_from_beta() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: core_addr.to_string(),
             new_code_id: gov_id,
-            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+            msg: to_binary(&MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
         }),
     )
     .unwrap();
@@ -2584,24 +2586,63 @@ fn test_migrate_from_beta() {
 #[test]
 fn test_migrate_mock() {
     let mut deps = mock_dependencies();
-    let msg = MigrateMsg::FromV1 {};
+    let dao_uri: String = "/dao/uri".to_string();
+    let msg = MigrateMsg::FromV1 {
+        dao_uri: Some(dao_uri.clone()),
+    };
     let env = mock_env();
 
     // Write to storage in old proposal module format
-    let key = Addr::unchecked("addr");
+    let proposal_modules_key = Addr::unchecked("addr");
     let old_map: Map<Addr, Empty> = Map::new("proposal_modules");
-    let path = old_map.key(key.clone());
+    let path = old_map.key(proposal_modules_key.clone());
     deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
 
-    // Migrate to new data format
+    // Write to storage in old config format
+    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+    struct V1Config {
+        pub name: String,
+        pub description: String,
+        pub image_url: Option<String>,
+        pub automatically_add_cw20s: bool,
+        pub automatically_add_cw721s: bool,
+    }
+
+    let v1_config = V1Config {
+        name: "core dao".to_string(),
+        description: "a dao".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+    };
+
+    let config_item: Item<V1Config> = Item::new("config");
+    config_item.save(&mut deps.storage, &v1_config).unwrap();
+
+    // Migrate to v2
     migrate(deps.as_mut(), env, msg).unwrap();
 
-    let new_path = PROPOSAL_MODULES.key(key);
+    let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
     let prop_module_bytes = deps.storage.get(&new_path).unwrap();
     let module: ProposalModule = from_slice(&prop_module_bytes).unwrap();
     assert_eq!(module.address, Addr::unchecked("addr"));
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
     assert_eq!(module.status, ProposalModuleStatus::Enabled {});
+
+    let v2_config_item: Item<Config> = Item::new("config");
+    let v2_config = v2_config_item.load(&deps.storage).unwrap();
+    assert_eq!(v2_config.dao_uri, Some(dao_uri));
+    assert_eq!(v2_config.name, v1_config.name);
+    assert_eq!(v2_config.description, v1_config.description);
+    assert_eq!(v2_config.image_url, v1_config.image_url);
+    assert_eq!(
+        v2_config.automatically_add_cw20s,
+        v1_config.automatically_add_cw20s
+    );
+    assert_eq!(
+        v2_config.automatically_add_cw721s,
+        v1_config.automatically_add_cw721s
+    )
 }
 
 #[test]
