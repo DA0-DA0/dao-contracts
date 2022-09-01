@@ -28,7 +28,7 @@ where
         deps: DepsMut,
         _env: Env,
         info: MessageInfo,
-        msg: InstantiateMsg<InstantiateExt>,
+        msg: InstantianteMsg<InstantiateExt>,
     ) -> Result<Response, PreProposeError> {
         set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -165,7 +165,9 @@ where
             if should_refund {
                 deposit_info.get_return_deposit_message(&proposer)?
             } else {
-                vec![]
+                // If the proposer doesn't get the deposit, the DAO does.
+                let dao = self.dao.load(deps.storage)?;
+                deposit_info.get_return_deposit_message(&dao)?
             }
         } else {
             vec![]
