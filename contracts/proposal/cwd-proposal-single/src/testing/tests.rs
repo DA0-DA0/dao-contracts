@@ -1389,18 +1389,18 @@ fn test_absolute_count_threshold_non_multisig() {
 fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
-            // Instant rejection after this.
             TestSingleChoiceVote {
                 voter: "two".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
+            // Can vote up to expiration time.
             TestSingleChoiceVote {
                 voter: "one".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
-                should_execute: ShouldExecute::No,
+                should_execute: ShouldExecute::Yes,
             },
         ],
         Threshold::AbsoluteCount {

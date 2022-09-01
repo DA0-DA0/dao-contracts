@@ -290,8 +290,8 @@ pub fn execute_vote(
         return Err(ContractError::InvalidVote {});
     }
 
-    if prop.current_status(&env.block)? != Status::Open {
-        return Err(ContractError::NotOpen { id: proposal_id });
+    if prop.expiration.is_expired(&env.block) {
+        return Err(ContractError::Expired { id: proposal_id });
     }
 
     let vote_power = get_voting_power(

@@ -376,8 +376,8 @@ pub fn execute_vote(
     let mut prop = PROPOSALS
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
-    if prop.current_status(&env.block) != Status::Open {
-        return Err(ContractError::NotOpen { id: proposal_id });
+    if prop.expiration.is_expired(&env.block) {
+        return Err(ContractError::Expired { id: proposal_id });
     }
 
     let vote_power = get_voting_power(
