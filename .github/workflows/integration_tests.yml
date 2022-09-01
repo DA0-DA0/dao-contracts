@@ -64,13 +64,13 @@ jobs:
           wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm \
             -O artifacts/cw4_group.wasm
 
-      - name: Build + Optimize contracts
-        run: |
-          docker run --rm -v "$(pwd)":/code \
-            --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-            --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-            --platform linux/amd64 \
-            cosmwasm/workspace-optimizer:0.12.6
+      # - name: Build + Optimize contracts
+      #   run: |
+      #     docker run --rm -v "$(pwd)":/code \
+      #       --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+      #       --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+      #       --platform linux/amd64 \
+      #       cosmwasm/workspace-optimizer:0.12.6
 
       - name: Run Integration Tests
         run: RUST_LOG=info cargo integration-test
