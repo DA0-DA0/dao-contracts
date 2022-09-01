@@ -834,6 +834,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
         MigrateMsg::FromV1 {} => {
+            struct V1Config = 
             let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
             let current_keys = current_map
                 .keys(deps.storage, None, None, Order::Ascending)
