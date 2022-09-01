@@ -50,7 +50,7 @@ jobs:
             ~/.cargo/git/db/
             target/
             artifacts/
-          key: ${{ runner.os }}-cargo-and-artifacts-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
 
       # WARNING: if we dont `mkdir -p artifacts target` before we optimize the contracts
       # then we will get os permission errors trying to later build the workspace on a cache miss,
