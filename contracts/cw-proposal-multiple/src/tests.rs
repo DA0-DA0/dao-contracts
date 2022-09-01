@@ -12,7 +12,7 @@ use cw_utils::Duration;
 use indexable_hooks::HooksResponse;
 use rand::{prelude::SliceRandom, Rng};
 use voting::{
-    deposit::{CheckedDepositInfo, DepositInfo, DepositRefundPolicy, DepositToken},
+    deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{MultipleChoiceVote, MultipleChoiceVotes},
@@ -75,7 +75,7 @@ fn do_votes_cw20_balances(
         voting_strategy,
         expected_status,
         total_supply,
-        None::<DepositInfo>,
+        None::<UncheckedDepositInfo>,
         should_expire,
         instantiate_with_cw20_balances_governance,
     );
@@ -93,7 +93,7 @@ fn do_votes_staked_balances(
         voting_strategy,
         expected_status,
         total_supply,
-        None::<DepositInfo>,
+        None::<UncheckedDepositInfo>,
         should_expire,
         instantiate_with_staked_balances_governance,
     );
@@ -111,7 +111,7 @@ fn do_votes_cw4_weights(
         voting_strategy,
         expected_status,
         total_supply,
-        None::<DepositInfo>,
+        None::<UncheckedDepositInfo>,
         should_expire,
         instantiate_with_cw20_balances_governance,
     );
@@ -123,7 +123,7 @@ fn do_test_votes<F>(
     voting_strategy: VotingStrategy,
     expected_status: Status,
     total_supply: Option<Uint128>,
-    deposit_info: Option<DepositInfo>,
+    deposit_info: Option<UncheckedDepositInfo>,
     should_expire: bool,
     setup_governance: F,
 ) -> (App, Addr)
@@ -193,7 +193,9 @@ where
         .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
         .unwrap();
     if let Some(CheckedDepositInfo {
-        ref token, deposit, ..
+        denom: ref token,
+        amount: deposit,
+        ..
     }) = config.deposit_info
     {
         app.execute_contract(
@@ -274,7 +276,9 @@ where
                         voter: Addr::unchecked(&voter),
                         vote: position,
                         power: match config.deposit_info {
-                            Some(CheckedDepositInfo { deposit, .. }) => {
+                            Some(CheckedDepositInfo {
+                                amount: deposit, ..
+                            }) => {
                                 if proposer == voter {
                                     weight - deposit
                                 } else {
@@ -319,7 +323,7 @@ fn do_test_votes_cw20_balances(
     voting_strategy: VotingStrategy,
     expected_status: Status,
     total_supply: Option<Uint128>,
-    deposit_info: Option<DepositInfo>,
+    deposit_info: Option<UncheckedDepositInfo>,
     should_expire: bool,
 ) -> (App, Addr) {
     do_test_votes(
@@ -1593,9 +1597,9 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     let quorum = PercentageThreshold::Majority {};
     let voting_strategy = VotingStrategy::SingleChoice { quorum };
     let max_voting_period = cw_utils::Duration::Height(6);
-    let deposit_info = Some(DepositInfo {
-        token: DepositToken::VotingModuleToken {},
-        deposit: Uint128::new(1),
+    let deposit_info = Some(UncheckedDepositInfo {
+        denom: DepositToken::VotingModuleToken {},
+        amount: Uint128::new(1),
         refund_policy: DepositRefundPolicy::OnlyPassed,
     });
 
@@ -1642,8 +1646,8 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     assert_eq!(
         config.deposit_info,
         Some(CheckedDepositInfo {
-            token: AssetInfo::cw20(expected_token),
-            deposit: Uint128::new(1),
+            denom: AssetInfo::cw20(expected_token),
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed
         })
     )
@@ -1683,11 +1687,11 @@ fn test_different_token_proposal_deposit() {
         max_voting_period,
         only_members_execute: false,
         allow_revoting: false,
-        deposit_info: Some(DepositInfo {
-            token: DepositToken::Token {
+        deposit_info: Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
                 asset: AssetInfoUnchecked::cw20(cw20_addr),
             },
-            deposit: Uint128::new(1),
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
         voting_strategy,
@@ -1737,11 +1741,11 @@ fn test_bad_token_proposal_deposit() {
         )
         .unwrap();
 
-    let deposit_info = Some(DepositInfo {
-        token: DepositToken::Token {
+    let deposit_info = Some(UncheckedDepositInfo {
+        denom: DepositToken::Token {
             asset: AssetInfoUnchecked::cw20(votemod_addr),
         },
-        deposit: Uint128::new(1),
+        amount: Uint128::new(1),
         refund_policy: DepositRefundPolicy::OnlyPassed,
     });
 
@@ -1775,9 +1779,9 @@ fn test_take_proposal_deposit() {
     let quorum = PercentageThreshold::Percent(Decimal::percent(10));
     let voting_strategy = VotingStrategy::SingleChoice { quorum };
     let max_voting_period = cw_utils::Duration::Height(6);
-    let deposit_info = Some(DepositInfo {
-        token: DepositToken::VotingModuleToken {},
-        deposit: Uint128::new(1),
+    let deposit_info = Some(UncheckedDepositInfo {
+        denom: DepositToken::VotingModuleToken {},
+        amount: Uint128::new(1),
         refund_policy: DepositRefundPolicy::OnlyPassed,
     });
 
@@ -1816,8 +1820,8 @@ fn test_take_proposal_deposit() {
         .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
         .unwrap();
     let CheckedDepositInfo {
-        token,
-        deposit,
+        denom: token,
+        amount: deposit,
         refund_policy,
     } = govmod_config.deposit_info.unwrap();
     assert_eq!(refund_policy, DepositRefundPolicy::OnlyPassed);
@@ -1895,11 +1899,11 @@ fn test_native_proposal_deposit() {
         min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
-        deposit_info: Some(DepositInfo {
-            token: DepositToken::Token {
+        deposit_info: Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
                 asset: AssetInfoUnchecked::Native("ujuno".to_string()),
             },
-            deposit: Uint128::new(1),
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
         close_proposal_on_execution_failure: true,
@@ -1930,8 +1934,8 @@ fn test_native_proposal_deposit() {
         .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
         .unwrap();
     let CheckedDepositInfo {
-        token,
-        deposit,
+        denom: token,
+        amount: deposit,
         refund_policy,
     } = govmod_config.deposit_info.unwrap();
     assert_eq!(refund_policy, DepositRefundPolicy::Always);
@@ -2051,9 +2055,9 @@ fn test_deposit_return_on_execute() {
         },
         Status::Passed,
         None,
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
         true,
@@ -2072,7 +2076,7 @@ fn test_deposit_return_on_execute() {
         .wrap()
         .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
         .unwrap();
-    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let CheckedDepositInfo { denom: token, .. } = govmod_config.deposit_info.unwrap();
 
     // Proposal has not been executed so deposit has not been refunded.
     let balance = token.query_balance(&app.wrap(), "blue".to_string());
@@ -2096,9 +2100,9 @@ fn test_deposit_return_on_execute() {
 #[test]
 fn test_deposit_return_zero() {
     // Test that balance does not change when deposit is zero.
-    let deposit_info = Some(DepositInfo {
-        token: DepositToken::VotingModuleToken {},
-        deposit: Uint128::new(0),
+    let deposit_info = Some(UncheckedDepositInfo {
+        denom: DepositToken::VotingModuleToken {},
+        amount: Uint128::new(0),
         refund_policy: DepositRefundPolicy::OnlyPassed,
     });
 
@@ -2131,7 +2135,7 @@ fn test_deposit_return_zero() {
         .wrap()
         .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
         .unwrap();
-    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let CheckedDepositInfo { denom: token, .. } = govmod_config.deposit_info.unwrap();
 
     // Execute the proposal
     app.execute_contract(
@@ -2331,9 +2335,9 @@ fn test_cant_propose_zero_power() {
         max_voting_period,
         only_members_execute: false,
         allow_revoting: false,
-        deposit_info: Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        deposit_info: Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
         voting_strategy,
@@ -2383,7 +2387,9 @@ fn test_cant_propose_zero_power() {
         .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
         .unwrap();
     if let Some(CheckedDepositInfo {
-        ref token, deposit, ..
+        denom: ref token,
+        amount: deposit,
+        ..
     }) = config.deposit_info
     {
         app.execute_contract(
@@ -2446,9 +2452,9 @@ fn test_cant_vote_not_registered() {
         },
         Status::Open,
         Some(Uint128::new(100)),
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
         false,
@@ -2719,9 +2725,9 @@ fn test_close_open_proposal() {
         },
         Status::Open,
         Some(Uint128::new(100)),
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
         false,
@@ -2764,7 +2770,7 @@ fn test_close_open_proposal() {
         .wrap()
         .query_wasm_smart(govmod, &QueryMsg::Config {})
         .unwrap();
-    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let CheckedDepositInfo { denom: token, .. } = govmod_config.deposit_info.unwrap();
 
     // Proposal been closed so deposit has been refunded.
     let balance = token.query_balance(&app.wrap(), "blue".to_string());
@@ -2785,9 +2791,9 @@ fn test_no_refund_failed_proposal() {
         },
         Status::Open,
         Some(Uint128::new(100)),
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
         false,
@@ -2820,7 +2826,7 @@ fn test_no_refund_failed_proposal() {
         .wrap()
         .query_wasm_smart(govmod, &QueryMsg::Config {})
         .unwrap();
-    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let CheckedDepositInfo { denom: token, .. } = govmod_config.deposit_info.unwrap();
 
     // No refund should have been issued.
     let balance = token.query_balance(&app.wrap(), "blue".to_string());
@@ -2841,9 +2847,9 @@ fn test_zero_deposit() {
         },
         Status::Passed,
         None,
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(0),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(0),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
         true,
@@ -2865,9 +2871,9 @@ fn test_deposit_return_on_close() {
         voting_strategy,
         Status::Rejected,
         None,
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::Always,
         }),
         false,
@@ -2885,7 +2891,7 @@ fn test_deposit_return_on_close() {
         .wrap()
         .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
         .unwrap();
-    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let CheckedDepositInfo { denom: token, .. } = govmod_config.deposit_info.unwrap();
 
     // Proposal has not been closed so deposit has not been refunded.
     let balance = token.query_balance(&app.wrap(), "blue".to_string());
@@ -3051,9 +3057,9 @@ fn test_update_config() {
         },
         Status::Passed,
         None,
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
         false,
@@ -3182,9 +3188,9 @@ fn test_no_return_if_no_refunds() {
         },
         Status::Rejected,
         None,
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
         true,
@@ -3202,7 +3208,7 @@ fn test_no_return_if_no_refunds() {
         .wrap()
         .query_wasm_smart(govmod.clone(), &QueryMsg::Config {})
         .unwrap();
-    let CheckedDepositInfo { token, .. } = govmod_config.deposit_info.unwrap();
+    let CheckedDepositInfo { denom: token, .. } = govmod_config.deposit_info.unwrap();
 
     // Close the proposal, this should cause the deposit to be
     // refunded.
@@ -4541,9 +4547,9 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
         },
         Status::Open,
         Some(Uint128::new(100)),
-        Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             refund_policy: DepositRefundPolicy::OnlyPassed,
         }),
         false,
@@ -4576,7 +4582,7 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
         .wrap()
         .query_wasm_smart(proposal_multiple, &QueryMsg::Config {})
         .unwrap();
-    let CheckedDepositInfo { token, .. } = proposal_config.deposit_info.unwrap();
+    let CheckedDepositInfo { denom: token, .. } = proposal_config.deposit_info.unwrap();
 
     // Deposit should now belong to the DAO.
     let balance = token.query_balance(&app.wrap(), core_addr.to_string());
@@ -4861,9 +4867,9 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
-        deposit_info: Some(DepositInfo {
-            token: DepositToken::VotingModuleToken {},
-            deposit: Uint128::new(1),
+        deposit_info: Some(UncheckedDepositInfo {
+            denom: DepositToken::VotingModuleToken {},
+            amount: Uint128::new(1),
             // Important to set to true here as we want to be sure
             // that we don't get a second refund on close. Refunds on
             // close only happen if this is true.
