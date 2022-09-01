@@ -50,11 +50,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw_core",
-            "exc_admin_msgs_pause_dao_query",
-            &cw_core::msg::QueryMsg::PauseInfo {},
-        )
+        .query("cw_core", &cw_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
     let res: PauseInfoResponse = res.data().unwrap();
 
@@ -90,11 +86,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw_core",
-            "exc_admin_msgs_pause_dao",
-            &cw_core::msg::QueryMsg::PauseInfo {},
-        )
+        .query("cw_core", &cw_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
 
     let res: PauseInfoResponse = res.data().unwrap();
@@ -119,7 +111,6 @@ fn execute_items(chain: &mut Chain) {
         .orc
         .query(
             "cw_core",
-            "exc_items_get",
             &cw_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -153,7 +144,6 @@ fn execute_items(chain: &mut Chain) {
         .orc
         .query(
             "cw_core",
-            "exc_items_set",
             &cw_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -187,7 +177,6 @@ fn execute_items(chain: &mut Chain) {
         .orc
         .query(
             "cw_core",
-            "exc_items_rm",
             &cw_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -266,7 +255,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             voting_contract,
-            "inst_admin_q_stake",
             &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
@@ -281,7 +269,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             "cw20_stake",
-            "inst_admin_q_val",
             &cw20_stake::msg::QueryMsg::StakedValue {
                 address: chain.user.addr.clone(),
             },
@@ -292,11 +279,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw20_stake",
-            "inst_admin_q_cfg",
-            &cw20_stake::msg::QueryMsg::GetConfig {},
-        )
+        .query("cw20_stake", &cw20_stake::msg::QueryMsg::GetConfig {})
         .unwrap();
     let config_res: cw20_stake::state::Config = res.data().unwrap();
     assert_eq!(
@@ -311,7 +294,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             voting_contract,
-            "inst_admin_q_tok",
             &cw20_staked_balance_voting::msg::QueryMsg::TokenContract {},
         )
         .unwrap();
@@ -322,11 +304,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw20_stake",
-            "inst_admin_q_val",
-            &cw20_stake::msg::QueryMsg::TotalValue {},
-        )
+        .query("cw20_stake", &cw20_stake::msg::QueryMsg::TotalValue {})
         .unwrap();
     let total_res: TotalValueResponse = res.data().unwrap();
     assert_eq!(total_res.total, Uint128::new(0));
@@ -341,7 +319,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             proposal_contract,
-            "inst_admin_q_cfg",
             &cw_proposal_single::msg::QueryMsg::Config {},
         )
         .unwrap();

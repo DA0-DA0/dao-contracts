@@ -88,7 +88,7 @@ pub fn create_dao(
 
     let res = chain
         .orc
-        .query("cw_core", op_name, &cw_core::msg::QueryMsg::DumpState {})?;
+        .query("cw_core", &cw_core::msg::QueryMsg::DumpState {})?;
 
     Ok(DaoState {
         addr: chain.orc.contract_map.address("cw_core")?,

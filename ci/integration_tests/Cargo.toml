@@ -1,7 +1,15 @@
 [package]
-name = "integration_tests"
+name = "integration_tests" # TODO: Rename this to `integration-tests` to be like everything else
 version = "0.1.0"
 edition = "2021"
+
+# We conditionally enable the optimize feature
+# because compiling and building cw-optimizoor takes a lot of time.
+# This way we can save some minutes for non integration test builds
+# by defaulting to not building the dependencies.
+
+[features]
+optimize = ["cosm-orc/optimize"]
 
 # This crate depends on rand. These are not features in
 # wasm builds of cosmwasm. Despite this crate only being used as a dev
@@ -10,7 +18,7 @@ edition = "2021"
 # conditionally. As such, we don't compile anything here if we're
 # targeting wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cosm-orc = { version = "1.4.0" }
+cosm-orc = { version = "2.0.0" }
 cw20 = "0.13"
 cw20-base = "0.13"
 cw-utils = "0.13"

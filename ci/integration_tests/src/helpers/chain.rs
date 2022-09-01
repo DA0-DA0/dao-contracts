@@ -1,8 +1,6 @@
 use cosm_orc::config::key::Key;
 use cosm_orc::orchestrator::cosm_orc::CosmOrc;
-use cosm_orc::{
-    config::cfg::Config, config::key::SigningKey, profilers::gas_profiler::GasProfiler,
-};
+use cosm_orc::{config::cfg::Config, config::key::SigningKey};
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde_json::Value;
@@ -37,9 +35,7 @@ pub struct Account {
 impl TestContext for Chain {
     fn setup() -> Self {
         let cfg = CONFIG.get_or_init(global_setup).cfg.clone();
-        let orc = CosmOrc::new(cfg.clone())
-            .unwrap()
-            .add_profiler(Box::new(GasProfiler::new()));
+        let orc = CosmOrc::new(cfg.clone(), true).unwrap();
 
         let user = test_account(&cfg.chain_cfg.prefix);
 
@@ -70,14 +66,15 @@ fn global_setup() -> Cfg {
     let gas_report_dir = env::var("GAS_OUT_DIR").unwrap_or_else(|_| "gas_reports".to_string());
 
     let mut cfg = Config::from_yaml(&config).unwrap();
-    let mut orc = CosmOrc::new(cfg.clone())
-        .unwrap()
-        .add_profiler(Box::new(GasProfiler::new()));
+    let mut orc = CosmOrc::new(cfg.clone(), true).unwrap();
 
     let account = test_account(&cfg.chain_cfg.prefix);
 
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
+        #[cfg(feature = "optimize")]
+        orc.optimize_contracts("../../Cargo.toml").unwrap();
+
         let contract_dir = "../../artifacts";
         orc.store_contracts(contract_dir, &account.key).unwrap();
         save_gas_report(&orc, &gas_report_dir);
@@ -97,11 +94,11 @@ fn global_setup() -> Cfg {
 }
 
 fn save_gas_report(orc: &CosmOrc, gas_report_dir: &str) {
-    let reports = orc
-        .profiler_reports()
+    let report = orc
+        .gas_profiler_report()
         .expect("error fetching profile reports");
 
-    let j: Value = serde_json::from_slice(&reports[0].json_data).unwrap();
+    let j: Value = serde_json::to_value(report).unwrap();
 
     let p = Path::new(gas_report_dir);
     if !p.exists() {

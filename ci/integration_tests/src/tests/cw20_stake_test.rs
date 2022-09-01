@@ -27,7 +27,6 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             voting_contract,
-            "exc_stake_q_stake",
             &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
         )
         .unwrap()
@@ -43,7 +42,6 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             "cw20_stake",
-            "exc_stake_q_staked_value",
             &cw20_stake::msg::QueryMsg::StakedValue {
                 address: chain.user.addr.clone(),
             },
@@ -55,11 +53,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw20_stake",
-            "exc_stake_q_cfg",
-            &cw20_stake::msg::QueryMsg::GetConfig {},
-        )
+        .query("cw20_stake", &cw20_stake::msg::QueryMsg::GetConfig {})
         .unwrap();
     let config: Config = res.data().unwrap();
 
@@ -86,7 +80,6 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             "cw20_stake",
-            "exc_stake_q_stake",
             &cw20_stake::msg::QueryMsg::StakedValue {
                 address: chain.user.addr.clone(),
             },
@@ -102,7 +95,6 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             "cw_core",
-            "exc_stake_q_power",
             &cw_core::msg::QueryMsg::VotingPowerAtHeight {
                 address: chain.user.addr.clone(),
                 height: None,
