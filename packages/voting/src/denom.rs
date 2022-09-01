@@ -21,7 +21,9 @@ pub enum DenomError {
     InvalidCharacter { c: char },
 }
 
-/// A denom that has been checked to point to a valid asset.
+/// A denom that has been checked to point to a valid asset. This enum
+/// should never be constructed literally and should always be built
+/// by calling `into_checked` on an `UncheckedDenom` instance.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CheckedDenom {
