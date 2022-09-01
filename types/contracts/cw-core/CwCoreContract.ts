@@ -37,6 +37,7 @@ export interface Cw20BalancesResponse {
 }
 export type Cw20TokenListResponse = Addr[];
 export type Cw721TokenListResponse = Addr[];
+export type DaoURIResponse = string | null;
 export type PauseInfoResponse = {
   Paused: {
     expiration: Expiration;
