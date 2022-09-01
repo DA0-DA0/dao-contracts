@@ -31,6 +31,8 @@ pub enum ProposalCreationPolicy {
 }
 
 impl ProposalCreationPolicy {
+    /// Determines if CREATOR is permitted to create a
+    /// proposal. Returns true if so and false otherwise.
     pub fn is_permitted(&self, creator: &Addr) -> bool {
         match self {
             Self::Anyone {} => true,
@@ -38,7 +40,10 @@ impl ProposalCreationPolicy {
         }
     }
 
-    pub fn addr_is_module(&self, addr: &Addr) -> bool {
+    /// Determines if ADDR is the module registered to create
+    /// proposals by this proposal creation policy. Returns true if so
+    /// and false otherwise.
+    pub fn addr_is_my_module(&self, addr: &Addr) -> bool {
         match self {
             Self::Anyone {} => false,
             ProposalCreationPolicy::Module { addr: module_addr } => module_addr == addr,
