@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, StdResult, Storage, SubMsg, WasmMsg};
 use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -9,6 +9,7 @@ use voting::reply::mask_proposal_hook_index;
 pub enum ProposalHookMsg {
     NewProposal {
         id: u64,
+        proposer: String,
     },
     ProposalStatusChanged {
         id: u64,
@@ -23,12 +24,21 @@ pub enum ProposalHookMsg {
 pub enum ProposalHookExecuteMsg {
     ProposalHook(ProposalHookMsg),
 }
+
 /// Prepares new proposal hook messages. These messages reply on error
 /// and have even reply IDs.
 /// IDs are set to even numbers to then be interleaved with the vote hooks.
-pub fn new_proposal_hooks(hooks: Hooks, storage: &dyn Storage, id: u64) -> StdResult<Vec<SubMsg>> {
+pub fn new_proposal_hooks(
+    hooks: Hooks,
+    storage: &dyn Storage,
+    id: u64,
+    proposer: Addr,
+) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
-        ProposalHookMsg::NewProposal { id },
+        ProposalHookMsg::NewProposal {
+            id,
+            proposer: proposer.into_string(),
+        },
     ))?;
     let mut index: u64 = 0;
     hooks.prepare_hooks(storage, |a| {

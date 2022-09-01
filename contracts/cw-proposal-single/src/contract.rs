@@ -218,7 +218,7 @@ pub fn execute_propose(
 
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
-    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, sender.clone())?;
     Ok(Response::default()
         .add_submessages(hooks)
         .add_attribute("action", "propose")

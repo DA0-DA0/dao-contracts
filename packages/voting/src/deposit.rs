@@ -114,7 +114,7 @@ impl UncheckedDepositInfo {
                 )?;
                 // We don't assume here that the voting module has
                 // returned a valid token. Conversion of the unchecked
-                // denom into a checked one will to a `TokenInfo {}`
+                // denom into a checked one will do a `TokenInfo {}`
                 // query.
                 UncheckedDenom::Cw20(token_addr.into_string()).into_checked(deps)
             }

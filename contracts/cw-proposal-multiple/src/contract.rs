@@ -12,7 +12,7 @@ use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 
 use vote_hooks::new_vote_hooks;
 use voting::{
-    deposit::{get_deposit_msg, get_return_deposit_msg, DepositInfo, DepositRefundPolicy},
+    deposit::{get_deposit_msg, get_return_deposit_msg, DepositRefundPolicy, UncheckedDepositInfo},
     proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
     reply::{mask_proposal_execution_proposal_id, TaggedReplyId},
     status::Status,
@@ -225,7 +225,7 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id)?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, sender.clone())?;
     Ok(Response::default()
         .add_messages(deposit_msg)
         .add_submessages(hooks)
@@ -484,7 +484,7 @@ pub fn execute_update_config(
     only_members_execute: bool,
     allow_revoting: bool,
     dao: String,
-    deposit_info: Option<DepositInfo>,
+    deposit_info: Option<UncheckedDepositInfo>,
     close_proposal_on_execution_failure: bool,
     open_proposal_submission: bool,
 ) -> Result<Response, ContractError> {

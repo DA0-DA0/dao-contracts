@@ -758,6 +758,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-pre-propose-optional-deposit-members-only"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core-interface",
+ "cw-multi-test 0.13.4",
+ "cw-storage-plus 0.13.4",
+ "cw2 0.13.4",
+ "proposal-hooks",
+ "schemars",
+ "serde",
+ "thiserror",
+ "voting",
+]
+
+[[package]]
 name = "cw-proposal-single"
 version = "0.2.0"
 dependencies = [
