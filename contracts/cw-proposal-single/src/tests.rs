@@ -3806,6 +3806,9 @@ fn test_large_absolute_count_threshold() {
     );
 }
 
+// Note that this isn't actually testing that we are migrating from the previous version since
+// with multitest contract instantiation we can't manipulate storage to the previous version of state before invoking migrate. So if anything,
+// this just tests the idempotency of migrate.
 #[test]
 fn test_migrate_from_compatible() {
     let mut app = App::default();

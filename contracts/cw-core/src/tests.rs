@@ -2406,6 +2406,9 @@ fn test_dump_state_proposal_modules() {
     assert_eq!(all_state.proposal_modules[0], proposal_module);
 }
 
+// Note that this isn't actually testing that we are migrating from the previous version since
+// with multitest contract instantiation we can't manipulate storage to the previous version of state before invoking migrate. So if anything,
+// this just tests the idempotency of migrate.
 #[test]
 fn test_migrate_from_compatible() {
     let mut app = App::default();
@@ -2490,8 +2493,11 @@ fn test_migrate_from_compatible() {
     assert_eq!(new_state, state);
 }
 
+// Note that this isn't actually testing that we are migrating from the v1 version since
+// with multitest contract instantiation we can't manipulate storage to the v1 version of state before invoking migrate. So if anything,
+// this just tests the idempotency of migrate.
 #[test]
-fn test_migrate_from_beta() {
+fn test_migrate_from_v1() {
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
