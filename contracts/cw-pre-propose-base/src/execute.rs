@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, ContractInfoResponse, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
-    WasmMsg, WasmQuery,
+    to_binary, Binary, ContractInfoResponse, Deps, DepsMut, Env, MessageInfo, QueryRequest,
+    Response, StdResult, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 
@@ -11,7 +11,7 @@ use voting::deposit::DepositRefundPolicy;
 
 use crate::{
     error::PreProposeError,
-    msg::{ExecuteMsg, InstantiateMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{Config, PreProposeContract},
 };
 
@@ -28,7 +28,7 @@ where
         deps: DepsMut,
         _env: Env,
         info: MessageInfo,
-        msg: InstantianteMsg<InstantiateExt>,
+        msg: InstantiateMsg<InstantiateExt>,
     ) -> Result<Response, PreProposeError> {
         set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -92,6 +92,14 @@ where
             ExecuteMsg::ProposalHook(ProposalHookMsg::NewProposal { id, proposer }) => {
                 self.execute_new_proposal_hook(deps, info, id, proposer)
             }
+        }
+    }
+
+    pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
+        match msg {
+            QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
+            QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
+            QueryMsg::Ext { .. } => Ok(Binary::default()),
         }
     }
 
