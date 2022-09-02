@@ -305,6 +305,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Implements the DAO Star standard: https://daostar.one/EIP",
+      "type": "object",
+      "required": [
+        "dao_u_r_i"
+      ],
+      "properties": {
+        "dao_u_r_i": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "type": "object",
       "required": [
         "voting_power_at_height"
