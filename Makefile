@@ -1,4 +1,5 @@
 CONFIG ?= "configs/local.yaml"
+ADMIN_ADDR ?= "juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg"
 
 .PHONY: build test lint integration-test bootstrap-dev deploy-local download-deps optimize
 
@@ -31,8 +32,7 @@ deploy-local: download-deps
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
-	sleep 5
+		ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh $(ADMIN_ADDR)
 
 download-deps:
 	mkdir -p artifacts target
@@ -40,5 +40,5 @@ download-deps:
 	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm -O artifacts/cw4_group.wasm
 
 optimize:
-	cargo install cw-optimizoor
+	cargo install cw-optimizoor || true
 	cargo cw-optimizoor Cargo.toml
