@@ -2921,6 +2921,7 @@ fn test_created_timestamp_set() {
     let timestamp = Timestamp::from_seconds(300_000_000);
     app.update_block(|mut block| block.time = timestamp);
     let instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
