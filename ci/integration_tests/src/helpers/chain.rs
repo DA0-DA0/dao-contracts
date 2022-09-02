@@ -7,6 +7,7 @@ use serde_json::Value;
 use std::env;
 use std::fs;
 use std::path::Path;
+use std::time::Duration;
 use test_context::TestContext;
 
 static CONFIG: OnceCell<Cfg> = OnceCell::new();
@@ -69,6 +70,10 @@ fn global_setup() -> Cfg {
     let mut orc = CosmOrc::new(cfg.clone(), true).unwrap();
 
     let account = test_account(&cfg.chain_cfg.prefix);
+
+    // Poll for first block to make sure the node is up:
+    orc.poll_for_n_blocks(1, Duration::from_millis(20_000), true)
+        .unwrap();
 
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {

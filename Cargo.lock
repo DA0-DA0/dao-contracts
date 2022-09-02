@@ -228,7 +228,7 @@ name = "bootstrap-env"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cosm-orc 2.0.0",
+ "cosm-orc 2.1.0",
  "env_logger",
  "log",
 ]
@@ -315,7 +315,7 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cosm-orc"
-version = "2.0.0"
+version = "2.1.0"
 dependencies = [
  "backtrace",
  "config",
@@ -333,9 +333,9 @@ dependencies = [
 
 [[package]]
 name = "cosm-orc"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fdbf85f3ae69976d1d52c6bef0244e305bafa418ed122507bc54d1df683c8c3"
+checksum = "1e24430697bab2c1031873ad8fb58bb521d4b5844f613f5d43820282c4b0775c"
 dependencies = [
  "backtrace",
  "config",
@@ -1693,7 +1693,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert_matches",
- "cosm-orc 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cosm-orc 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cosmwasm-std",
  "cw-core",
  "cw-core-interface",
