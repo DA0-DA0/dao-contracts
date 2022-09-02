@@ -776,6 +776,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-pre-propose-base-proposal-single"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-core",
+ "cw-core-interface",
+ "cw-multi-test 0.13.4",
+ "cw-pre-propose-base",
+ "cw-proposal-single",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20",
+ "cw4-group",
+ "cw4-voting",
+ "schemars",
+ "serde",
+ "testing",
+ "voting",
+]
+
+[[package]]
 name = "cw-proposal-single"
 version = "0.2.0"
 dependencies = [

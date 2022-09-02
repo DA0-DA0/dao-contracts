@@ -1,0 +1,34 @@
+[package]
+name = "cw-pre-propose-base-proposal-single"
+version = "0.1.0"
+authors = ["ekez <zekemedley@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = "1.0.0"
+cw2 = "0.13.2"
+serde = { version = "1.0.137", default-features = false, features = ["derive"] }
+cw-pre-propose-base = { version = "*", path = "../cw-pre-propose-base" }
+schemars = "0.8.8"
+
+[dev-dependencies]
+cosmwasm-schema = "1.0.0"
+cw-multi-test = "0.13.2"
+cw-utils = "0.13.2"
+cw4-group = "0.13.2"
+cw20 = "0.13.2"
+cw-proposal-single = { version = "*", path = "../cw-proposal-single" }
+cw-core = { version = "*", path = "../cw-core" }
+cw4-voting = { version = "*", path = "../cw4-voting" }
+voting = { version = "*", path = "../../packages/voting" }
+cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
+testing = { version = "*", path = "../../packages/testing" }

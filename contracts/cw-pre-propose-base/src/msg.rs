@@ -43,6 +43,9 @@ pub enum QueryMsg<QueryExt> {
     /// Gets the proposal module that this pre propose module is
     /// associated with. Returns `Addr`.
     ProposalModule {},
+    /// Gets the DAO (cw-dao-core) module this contract is associated
+    /// with. Returns `Addr`.
+    Dao {},
     /// Extension for queries. The default implementation will do
     /// nothing if queried for this and will return
     /// `Binary::default()`.
