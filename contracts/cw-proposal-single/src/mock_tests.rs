@@ -42,7 +42,6 @@ fn test_reply_proposal_mock() {
                 msgs: vec![],
                 status: Status::Open,
                 votes: Votes::zero(),
-                deposit_info: None,
                 created: env.block.time,
                 last_updated: env.block.time,
             },
