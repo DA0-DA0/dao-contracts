@@ -1,6 +1,6 @@
 {
-  "name": "@dao-dao/types",
-  "version": "1.0.0",
+  "name": "@dao-dao/contracts",
+  "version": "2.0.0-beta",
   "description": "",
   "main": "build/codegen.js",
   "scripts": {
