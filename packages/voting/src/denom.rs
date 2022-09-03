@@ -47,10 +47,7 @@ pub enum UncheckedDenom {
 impl UncheckedDenom {
     pub fn into_checked(self, deps: Deps) -> Result<CheckedDenom, DenomError> {
         match self {
-            // FIXME(zeke): cosmos SDK uses regex to validate native
-            // denoms...We should do the same presumably.
-            // <https://github.com/cosmos/cosmos-sdk/blob/7728516abfab950dc7a9120caad4870f1f962df5/types/coin.go#L865-L867>.
-            Self::Native(denom) => Ok(CheckedDenom::Native(denom)),
+            Self::Native(denom) => validate_native_denom(denom),
             Self::Cw20(addr) => {
                 let addr = deps.api.addr_validate(&addr)?;
                 let _info: cw20::TokenInfoResponse = deps
@@ -67,7 +64,7 @@ impl UncheckedDenom {
 /// string `[a-zA-Z][a-zA-Z0-9/:._-]{2,127}`.
 ///
 /// <https://github.com/cosmos/cosmos-sdk/blob/7728516abfab950dc7a9120caad4870f1f962df5/types/coin.go#L865-L867>
-pub fn validate_native_denom(denom: String) -> Result<String, DenomError> {
+pub fn validate_native_denom(denom: String) -> Result<CheckedDenom, DenomError> {
     if denom.len() < 3 || denom.len() > 128 {
         return Err(DenomError::NativeDenomLength { len: denom.len() });
     }
@@ -86,7 +83,7 @@ pub fn validate_native_denom(denom: String) -> Result<String, DenomError> {
         }
     }
 
-    Ok(denom)
+    Ok(CheckedDenom::Native(denom))
 }
 
 #[cfg(test)]
