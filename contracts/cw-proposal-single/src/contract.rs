@@ -91,7 +91,8 @@ pub fn execute(
             title,
             description,
             msgs,
-        } => execute_propose(deps, env, info.sender, title, description, msgs),
+            proposer,
+        } => execute_propose(deps, env, info.sender, title, description, msgs, proposer),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
@@ -137,6 +138,7 @@ pub fn execute_propose(
     title: String,
     description: String,
     msgs: Vec<CosmosMsg<Empty>>,
+    proposer: Option<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -145,8 +147,17 @@ pub fn execute_propose(
         return Err(ContractError::Unauthorized {});
     }
 
-    // TODO(zeke): Should we move these checks into the pre-propose
-    // module?
+    // Determine the appropriate proposer. If this is coming from our
+    // pre-propose module, it must be specified. Otherwise, the
+    // proposer should not be specified.
+    let proposer = match (proposer, config.proposal_creation_policy) {
+        (None, ProposalCreationPolicy::Anyone {}) => sender.clone(),
+        (Some(proposer), ProposalCreationPolicy::Module { .. }) => {
+            deps.api.addr_validate(&proposer)?
+        }
+        _ => return Err(ContractError::InvalidProposer {}),
+    };
+
     let voting_module: Addr = deps
         .querier
         .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::VotingModule {})?;
@@ -174,7 +185,7 @@ pub fn execute_propose(
         let mut proposal = SingleChoiceProposal {
             title,
             description,
-            proposer: sender.clone(),
+            proposer: proposer.clone(),
             start_height: env.block.height,
             min_voting_period: config.min_voting_period.map(|min| min.after(&env.block)),
             expiration,
@@ -218,7 +229,7 @@ pub fn execute_propose(
 
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
-    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, sender.clone())?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer)?;
     Ok(Response::default()
         .add_submessages(hooks)
         .add_attribute("action", "propose")

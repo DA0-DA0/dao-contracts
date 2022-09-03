@@ -7,19 +7,16 @@ use cw2::set_contract_version;
 
 use cw_pre_propose_base::{
     error::PreProposeError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
     state::PreProposeContract,
 };
 use schemars::JsonSchema;
-#[cfg(test)]
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 const CONTRACT_NAME: &str = "crates.io:cw-pre-propose-base-proposal-single";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Serialize, JsonSchema)]
-#[cfg_attr(test, derive(Deserialize, Debug, Clone))]
+#[derive(Serialize, JsonSchema, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ProposeMessage {
     Propose {
@@ -29,14 +26,32 @@ pub enum ProposeMessage {
     },
 }
 
-pub type PrePropose = PreProposeContract<Empty, Empty, Empty, ProposeMessage>;
+pub type InstantiateMsg = InstantiateBase<Empty>;
+pub type ExecuteMsg = ExecuteBase<ProposeMessage, Empty>;
+pub type QueryMsg = QueryBase<Empty>;
+
+/// Internal version of the propose message that includes the
+/// `proposer` field. The module will fill this in based on the sender
+/// of the external message.
+#[derive(Serialize, JsonSchema, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum ProposeMessageInternal {
+    Propose {
+        title: String,
+        description: String,
+        msgs: Vec<CosmosMsg<Empty>>,
+        proposer: Option<String>,
+    },
+}
+
+type PrePropose = PreProposeContract<Empty, Empty, Empty, ProposeMessageInternal>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: InstantiateMsg<Empty>,
+    msg: InstantiateMsg,
 ) -> Result<Response, PreProposeError> {
     let resp = PrePropose::default().instantiate(deps.branch(), env, info, msg)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -48,13 +63,35 @@ pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg<ProposeMessage, Empty>,
+    msg: ExecuteMsg,
 ) -> Result<Response, PreProposeError> {
-    PrePropose::default().execute(deps, env, info, msg)
+    type ExecuteInternal = ExecuteBase<ProposeMessageInternal, Empty>;
+    let internalized = match msg {
+        ExecuteMsg::Propose {
+            msg:
+                ProposeMessage::Propose {
+                    title,
+                    description,
+                    msgs,
+                },
+        } => ExecuteInternal::Propose {
+            msg: ProposeMessageInternal::Propose {
+                // Fill in proposer based on message sender.
+                proposer: Some(info.sender.to_string()),
+                title,
+                description,
+                msgs,
+            },
+        },
+        ExecuteMsg::Ext { msg } => ExecuteInternal::Ext { msg },
+        ExecuteMsg::ProposalHook(hook) => ExecuteInternal::ProposalHook(hook),
+    };
+
+    PrePropose::default().execute(deps, env, info, internalized)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg<Empty>) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     PrePropose::default().query(deps, env, msg)
 }
 
@@ -72,7 +109,9 @@ mod tests {
         denom::UncheckedDenom,
         deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
         pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+        status::Status,
         threshold::{PercentageThreshold, Threshold},
+        voting::Vote,
     };
 
     use super::*;
@@ -93,15 +132,14 @@ mod tests {
         Box::new(contract)
     }
 
-    // A cw4-group based DAO that takes native tokens as proposal
-    // deposits.
-    #[test]
-    fn test_simple_playthrough() {
-        let mut app = App::default();
-        let cps_id = app.store_code(cw_dao_proposal_single_contract());
+    fn get_default_proposal_module_instantiate(
+        app: &mut App,
+        deposit_info: Option<UncheckedDepositInfo>,
+        open_proposal_submission: bool,
+    ) -> cps::msg::InstantiateMsg {
         let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
-        let proposal_module_instantiate = cps::msg::InstantiateMsg {
+        cps::msg::InstantiateMsg {
             threshold: Threshold::AbsolutePercentage {
                 percentage: PercentageThreshold::Majority {},
             },
@@ -112,15 +150,9 @@ mod tests {
             pre_propose_info: PreProposeInfo::ModuleMayPropose {
                 info: ModuleInstantiateInfo {
                     code_id: pre_propose_id,
-                    msg: to_binary(&InstantiateMsg::<Empty> {
-                        deposit_info: Some(UncheckedDepositInfo {
-                            denom: DepositToken::Token {
-                                denom: UncheckedDenom::Native("ekez".to_string()),
-                            },
-                            amount: Uint128::new(10),
-                            refund_policy: DepositRefundPolicy::Always,
-                        }),
-                        open_proposal_submission: false,
+                    msg: to_binary(&InstantiateMsg {
+                        deposit_info,
+                        open_proposal_submission,
                         ext: Empty::default(),
                     })
                     .unwrap(),
@@ -129,7 +161,28 @@ mod tests {
                 },
             },
             close_proposal_on_execution_failure: false,
-        };
+        }
+    }
+
+    // A cw4-group based DAO that takes native tokens as proposal
+    // deposits.
+    #[test]
+    fn test_simple_native_playthrough() {
+        let mut app = App::default();
+        let cps_id = app.store_code(cw_dao_proposal_single_contract());
+        let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
+
+        let proposal_module_instantiate = get_default_proposal_module_instantiate(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy: DepositRefundPolicy::Always,
+            }),
+            false,
+        );
 
         let core_addr = instantiate_with_cw4_groups_governance(
             &mut app,
@@ -172,28 +225,28 @@ mod tests {
         // Mint some ekez tokens for ekez so we can pay the deposit.
         app.sudo(cw_multi_test::SudoMsg::Bank(BankSudo::Mint {
             to_address: "ekez".to_string(),
-            amount: coins(10, "ekez"),
+            amount: coins(10, "ujuno"),
         }))
         .unwrap();
 
         app.execute_contract(
             Addr::unchecked("ekez"),
             pre_propose,
-            &ExecuteMsg::<ProposeMessage, Empty>::Propose {
+            &ExecuteMsg::Propose {
                 msg: ProposeMessage::Propose {
                     title: "pre propose works!".to_string(),
                     description: "wow..".to_string(),
                     msgs: vec![],
                 },
             },
-            &coins(10, "ekez"),
+            &coins(10, "ujuno"),
         )
         .unwrap();
 
         let proposal: ProposalResponse = app
             .wrap()
             .query_wasm_smart(
-                proposal_single,
+                proposal_single.clone(),
                 &cps::msg::QueryMsg::Proposal { proposal_id: 1 },
             )
             .unwrap();
@@ -201,5 +254,42 @@ mod tests {
         assert_eq!(proposal.proposal.title, "pre propose works!".to_string());
         assert_eq!(proposal.proposal.description, "wow..".to_string());
         assert_eq!(proposal.proposal.msgs, vec![]);
+
+        // Vote no on the proposal. This should cause it to be rejected.
+        app.execute_contract(
+            Addr::unchecked("ekez"),
+            proposal_single.clone(),
+            &cps::msg::ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: Vote::No,
+            },
+            &[],
+        )
+        .unwrap();
+
+        let proposal: ProposalResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_single.clone(),
+                &cps::msg::QueryMsg::Proposal { proposal_id: 1 },
+            )
+            .unwrap();
+        assert_eq!(proposal.proposal.status, Status::Rejected);
+
+        // Close the proposal. This should cause the deposit to be
+        // refunded.
+        app.execute_contract(
+            Addr::unchecked("ekez"),
+            proposal_single,
+            &cps::msg::ExecuteMsg::Close { proposal_id: 1 },
+            &[],
+        )
+        .unwrap();
+
+        let balance = app
+            .wrap()
+            .query_balance(Addr::unchecked("ekez"), "ujuno")
+            .unwrap();
+        assert_eq!(balance.amount, Uint128::new(10))
     }
 }

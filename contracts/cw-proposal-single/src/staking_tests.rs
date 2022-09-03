@@ -5,7 +5,8 @@ use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 
-use voting::threshold::Threshold;
+use cw_pre_propose_base_proposal_single as cppbps;
+use voting::{pre_propose::PreProposeInfo, threshold::Threshold};
 
 use crate::msg::InstantiateMsg;
 
@@ -27,6 +28,15 @@ fn single_govmod_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::query,
     )
     .with_reply(crate::contract::reply);
+    Box::new(contract)
+}
+
+fn pre_propose_single() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cppbps::contract::execute,
+        cppbps::contract::instantiate,
+        cppbps::contract::query,
+    );
     Box::new(contract)
 }
 
@@ -68,6 +78,21 @@ fn instantiate_with_staked_balances_voting() {
     let cw20_stake_id = app.store_code(cw20_stake());
     let core_contract_id = app.store_code(core_contract());
     let staked_balances_voting_id = app.store_code(staked_balances_voting());
+
+    let pre_propose_contract = app.store_code(pre_propose_single());
+    let pre_propose_info = PreProposeInfo::ModuleMayPropose {
+        info: ModuleInstantiateInfo {
+            code_id: pre_propose_contract,
+            msg: to_binary(&cppbps::InstantiateMsg {
+                deposit_info: None,
+                open_proposal_submission: false,
+                ext: Empty::default(),
+            })
+            .unwrap(),
+            admin: Some(Admin::Instantiator {}),
+            label: "pre_propose_contract".to_string(),
+        },
+    };
 
     let instantiate_core = cw_core::msg::InstantiateMsg {
         dao_uri: None,
@@ -114,9 +139,8 @@ fn instantiate_with_staked_balances_voting() {
                 min_voting_period: None,
                 only_members_execute: true,
                 allow_revoting: false,
-                deposit_info: None,
+                pre_propose_info,
                 close_proposal_on_execution_failure: true,
-                open_proposal_submission: false,
             })
             .unwrap(),
         }],

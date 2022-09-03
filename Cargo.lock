@@ -810,6 +810,7 @@ dependencies = [
  "cw-core-macros",
  "cw-multi-test 0.13.4",
  "cw-native-staked-balance-voting",
+ "cw-pre-propose-base-proposal-single",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",

@@ -52,6 +52,12 @@ pub enum ExecuteMsg {
         /// The messages that should be executed in response to this
         /// proposal passing.
         msgs: Vec<CosmosMsg<Empty>>,
+        /// The address creating the proposal. If no pre-propose
+        /// module is attached to this module this must always be None
+        /// as the proposer is the sender of the propose message. If a
+        /// pre-propose module is attached, this must be Some and will
+        /// set the proposer of the proposal it creates.
+        proposer: Option<String>,
     },
     /// Votes on a proposal. Voting power is determined by the DAO's
     /// voting power module.
