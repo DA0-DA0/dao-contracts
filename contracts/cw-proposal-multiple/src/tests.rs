@@ -696,9 +696,9 @@ where
     let mut rng = rand::thread_rng();
     let dist = rand::distributions::Uniform::<u64>::new(1, 200);
     for _ in 0..10 {
-        let zero: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
-        let one: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
-        let none: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
+        let zero: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
+        let one: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
+        let none: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
 
         let zero_sum: u64 = zero.iter().sum();
         let one_sum: u64 = one.iter().sum();
