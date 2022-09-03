@@ -1,16 +1,8 @@
 [package]
 name = "cw-proposal-single"
 version = "0.2.0"
-authors = ["Zeke Medley <zekemedley@gmail.com>"]
+authors = ["ekez <ekez@withoutdoing.com>"]
 edition = "2018"
-
-exclude = [
-  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "contract.wasm",
-  "hash.txt",
-]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -49,6 +41,7 @@ cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" 
 cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }
 cw-native-staked-balance-voting = { path = "../cw-native-staked-balance-voting", version = "*" }
 cw721-stake = { path = "../cw721-stake", version = "*" }
+cw-pre-propose-base-proposal-single = { path = "../cw-pre-propose-base-proposal-single", version = "*" }
 cw721-base = "0.13"
 testing = { version = "*", path = "../../packages/testing" }
 cw20-stake = { path= "../cw20-stake", version = "*" }

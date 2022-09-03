@@ -46,6 +46,8 @@ pub enum QueryMsg<QueryExt> {
     /// Gets the DAO (cw-dao-core) module this contract is associated
     /// with. Returns `Addr`.
     Dao {},
+    /// Gets the module's configuration. Returns `state::Config`.
+    Config {},
     /// Extension for queries. The default implementation will do
     /// nothing if queried for this and will return
     /// `Binary::default()`.
