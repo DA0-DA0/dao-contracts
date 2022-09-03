@@ -41,6 +41,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
             })],
         },
         &chain.user.key,
+        vec![],
     );
 
     assert_matches!(
@@ -81,6 +82,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
                 })],
             },
             &chain.user.key,
+            vec![],
         )
         .unwrap();
 
@@ -137,6 +139,7 @@ fn execute_items(chain: &mut Chain) {
                 })],
             },
             &chain.user.key,
+            vec![],
         )
         .unwrap();
 
@@ -170,6 +173,7 @@ fn execute_items(chain: &mut Chain) {
                 })],
             },
             &chain.user.key,
+            vec![],
         )
         .unwrap();
 

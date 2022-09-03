@@ -45,9 +45,12 @@ jobs:
         with:
           path: ~/.cargo/bin/cargo-cw-optimizoor
           key: ${{ runner.os }}-cw-optimizoor-${{ env.CW_OPTIMIZOOR_VERSION }}
+      
+      - name: Install just
+        run: cargo install just
 
       - name: Run Integration Tests
-        run: make integration-test
+        run: just integration-test
 
       - name: Combine Test Gas Reports
         run: cd ci/integration_tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json

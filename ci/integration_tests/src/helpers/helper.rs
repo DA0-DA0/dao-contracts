@@ -84,7 +84,7 @@ pub fn create_dao(
 
     chain
         .orc
-        .instantiate("cw_core", op_name, &msg, &chain.user.key)?;
+        .instantiate("cw_core", op_name, &msg, &chain.user.key, None, vec![])?;
 
     let res = chain
         .orc

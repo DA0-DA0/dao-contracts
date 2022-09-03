@@ -7,7 +7,8 @@ chain_cfg:
   gas_prices: 0.1
   gas_adjustment: 1.5
 
-# Add code ids if you dont need to store them:
-code_ids:
-  "cw20_base": 77
-  "cw4_group": 78
+contract_deploy_info:
+  cw20_base:
+    code_id: 77
+  cw4_group:
+    code_id: 78

@@ -74,6 +74,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
                 msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
             &chain.user.key,
+            vec![],
         )
         .unwrap();
 
