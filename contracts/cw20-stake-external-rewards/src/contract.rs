@@ -120,6 +120,7 @@ pub fn execute(
         ExecuteMsg::StakeChangeHook(msg) => execute_stake_changed(deps, env, info, msg),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
         ExecuteMsg::Fund {} => execute_fund_native(deps, env, info),
+        ExecuteMsg::Withdraw {} => execute_withdraw(deps, env, info),
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::UpdateRewardDuration { new_duration } => {
             execute_update_reward_duration(deps, env, info, new_duration)
@@ -162,6 +163,50 @@ pub fn execute_fund_native(
         }
         Cw20(_) => Err(InvalidFunds {}),
     }
+}
+
+pub fn execute_withdraw(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response<Empty>, ContractError> {
+    // only the owner can withdraw
+    let config = CONFIG.load(deps.storage)?;
+    if config.owner != Some(info.sender.clone()) {
+        return Err(Unauthorized {});
+    };
+
+    // withdrawal is only possible after the reward period
+    let reward_config = REWARD_CONFIG.load(deps.storage)?;
+    if reward_config.period_finish > env.block.height {
+        return Err(RewardPeriodNotFinished {});
+    };
+    let leftover_stake = match &config.reward_token {
+        Denom::Native(denom) => {
+            deps.querier.query_balance(
+                env.contract.address,
+                denom.to_string()
+            ).unwrap().amount
+        }
+        Cw20(denom) => {
+            let result: cw20::BalanceResponse = deps.querier.query_wasm_smart(
+                denom.to_string(),
+                &cw20::Cw20QueryMsg::Balance { address: String::from(env.contract.address) }
+            ).unwrap();
+            result.balance
+        }
+    };
+
+    let transfer_msg = get_transfer_msg(
+        info.sender.clone(),
+        leftover_stake,
+        config.reward_token
+    )?;
+
+    Ok(Response::new()
+        .add_message(transfer_msg)
+        .add_attribute("action", "withdraw")
+        .add_attribute("amount", leftover_stake))
 }
 
 pub fn execute_fund(
@@ -523,7 +568,7 @@ mod tests {
     use cosmwasm_std::{
         coin,
         testing::{mock_dependencies, mock_env},
-        to_binary, Addr, Empty, Uint128,
+        to_binary, Addr, Empty, Uint128, Coin, BankMsg, WasmMsg
     };
     use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
     use cw_utils::Duration;
@@ -2211,5 +2256,442 @@ mod tests {
         let version = cw2::get_contract_version(&deps.storage).unwrap();
         assert_eq!(version.version, CONTRACT_VERSION);
         assert_eq!(version.contract, CONTRACT_NAME);
+    }
+
+    #[test]
+    fn test_cannot_withdraw_unless_owner() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Cw20(reward_token.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        // fund the reward token contract
+        fund_rewards_cw20(
+            &mut app,
+            &admin,
+            reward_token.clone(),
+            &reward_addr,
+            100000000,
+        );
+
+        // something happens, someone claims their rewards
+        app.borrow_mut().update_block(|b| b.height += 200);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+
+        let current_reward_balance = get_balance_cw20(&app, &reward_token, &reward_addr);
+        assert_eq!(current_reward_balance, Uint128::new(99900000));
+        let current_owner_balance = get_balance_cw20(&app, &reward_token, OWNER);
+        assert_eq!(current_owner_balance, Uint128::new(400000000));
+
+        // non-owner attempts to withdraw
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(ADDR1),
+                reward_addr.clone(),
+                &ExecuteMsg::Withdraw { },
+                &[]
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+
+        assert_eq!(err, ContractError::Unauthorized {});
+        // assert no balances changed
+        assert_eq!(current_reward_balance, get_balance_cw20(&app, &reward_token, &reward_addr));
+        assert_eq!(current_owner_balance, get_balance_cw20(&app, &reward_token, OWNER));
+    }
+
+    #[test]
+    fn test_cannot_withdraw_early() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Cw20(reward_token.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        // fund the reward token contract
+        fund_rewards_cw20(
+            &mut app,
+            &admin,
+            reward_token.clone(),
+            &reward_addr,
+            100000000,
+        );
+
+        // something happens, someone claims their rewards
+        app.borrow_mut().update_block(|b| b.height += 200);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+
+        let current_reward_balance = get_balance_cw20(&app, &reward_token, &reward_addr);
+        let current_owner_balance = get_balance_cw20(&app, &reward_token, OWNER);
+        assert_eq!(current_reward_balance, Uint128::new(99900000));
+        assert_eq!(current_owner_balance, Uint128::new(400000000));
+
+        // owner attempts to withdraw early
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                reward_addr.clone(),
+                &ExecuteMsg::Withdraw { },
+                &[]
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+
+        assert_eq!(err, ContractError::RewardPeriodNotFinished {});
+        // assert no balances changed
+        assert_eq!(
+            current_reward_balance,
+            get_balance_cw20(&app, &reward_token, &reward_addr)
+        );
+        assert_eq!(
+            current_owner_balance,
+            get_balance_cw20(&app, &reward_token, OWNER)
+        );
+    }
+
+    #[test]
+    fn test_withdraw_cw20() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Cw20(reward_token.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        // fund the reward token contract
+        fund_rewards_cw20(
+            &mut app,
+            &admin,
+            reward_token.clone(),
+            &reward_addr,
+            100000000,
+        );
+
+        let res: InfoResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+            .unwrap();
+
+        assert_eq!(res.reward.reward_rate, Uint128::new(1000));
+        assert_eq!(res.reward.period_finish, 101000);
+        assert_eq!(res.reward.reward_duration, 100000);
+
+        app.borrow_mut().update_block(|b| b.height += 99995);
+
+        claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR3);
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, ADDR1),
+            Uint128::new(49997500)
+        );
+
+        // 5000 reward tokens left & reward duration would expire in a few blocks..
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, &reward_addr),
+            Uint128::new(5000)
+        );
+        assert_eq!(
+            app.borrow_mut().block_info().height + 5,
+            res.reward.period_finish,
+        );
+        // use Cw20 Transfer to transfer some tokens into the reward contract
+        let msg = cw20::Cw20ExecuteMsg::Transfer {
+            recipient: reward_addr.to_string(),
+            amount: Uint128::new(500000),
+        };
+        app.execute_contract(
+            Addr::unchecked(OWNER),
+            reward_token.clone(),
+            &msg,
+            &[],
+        )
+        .unwrap();
+
+        app.borrow_mut().update_block(|b| b.height += 1);
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, &reward_addr),
+            Uint128::new(505000)
+        );
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, ADDR1),
+            Uint128::new(49997500)
+        );
+
+        // rewards period finished, claim the rewards
+        app.borrow_mut().update_block(|b| b.height += 5);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR3);
+
+        assert_eq!(app.borrow_mut().block_info().height, 101001);
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, ADDR1),
+            Uint128::new(50000000)
+        );
+
+        // time passes
+        app.borrow_mut().update_block(|b| b.height += 500);
+
+        // no rewards can be claimed and the rewards contract still has a bunch of tokens
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR2, 0);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR3, 0);
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, &reward_addr),
+            Uint128::new(500000)
+        );
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, OWNER),
+            Uint128::new(399500000)
+        );
+
+        let _resp = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                reward_addr.clone(),
+                &ExecuteMsg::Withdraw { },
+                &[]
+            )
+            .unwrap();
+
+        app.borrow_mut().update_block(|b| b.height += 1);
+
+        // assert that funds have been withdrawn
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, &reward_addr),
+            Uint128::new(0)
+        );
+        assert_eq!(
+            get_balance_cw20(&app, &reward_token, OWNER),
+            Uint128::new(400000000)
+        );
+    }
+
+    #[test]
+    fn test_withdraw_native() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_funding = vec![coin(500000000, denom.clone())];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: admin.to_string(),
+                amount: reward_funding.clone(),
+            }
+        }))
+        .unwrap();
+
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr.clone(),
+            Denom::Native(denom.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        let fund_msg = ExecuteMsg::Fund {};
+
+        let _res = app
+            .borrow_mut()
+            .execute_contract(
+                admin.clone(),
+                reward_addr.clone(),
+                &fund_msg,
+                &reward_funding,
+            )
+            .unwrap();
+
+        let res: InfoResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+            .unwrap();
+
+        assert_eq!(res.reward.reward_rate, Uint128::new(5000));
+        assert_eq!(res.reward.period_finish, 101000);
+        assert_eq!(res.reward.reward_duration, 100000);
+
+        app.borrow_mut().update_block(|b| b.height += 99995);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 249987500);
+
+        claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 0);
+
+        claim_rewards(&mut app, reward_addr.clone(), ADDR2);
+        claim_rewards(&mut app, reward_addr.clone(), ADDR3);
+        assert_eq!(
+            get_balance_native(&app, ADDR1, &denom),
+            Uint128::new(249987500)
+        );
+
+        let res: InfoResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+            .unwrap();
+        // 25000 reward tokens left & reward duration would expire in a few blocks..
+        assert_eq!(
+            get_balance_native(&app, &reward_addr, &denom),
+            Uint128::new(25000)
+        );
+        assert_eq!(
+            app.borrow_mut().block_info().height + 5,
+            res.reward.period_finish,
+        );
+
+        // mint some more tokens into the rewards contract
+        // TODO: consider minting to admin and transferring to the contract instead
+        let reward_funding = vec![coin(500000000, denom.clone())];
+        app.sudo(SudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: reward_addr.to_string(),
+                amount: reward_funding.clone(),
+            }
+        }))
+        .unwrap();
+
+        app.borrow_mut().update_block(|b| b.height += 15);
+        let pre_withdraw_admin_balance = get_balance_native(&app, &admin, &denom);
+        let pre_withdraw_reward_balance = get_balance_native(&app, &reward_addr, &denom);
+
+        assert_eq!(pre_withdraw_admin_balance, Uint128::zero());
+        assert_eq!(pre_withdraw_reward_balance, Uint128::new(500025000));
+
+        let _resp = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                reward_addr.clone(),
+                &ExecuteMsg::Withdraw { },
+                &[]
+            )
+            .unwrap();
+
+        assert_eq!(
+            get_balance_native(&app, &reward_addr, &denom),
+            pre_withdraw_admin_balance
+        );
+        assert_eq!(get_balance_native(&app, &admin, &denom), pre_withdraw_reward_balance);
+    }
+
+    #[test]
+    fn test_withdraw_after_someone_else_funds() {
+        // TODO
     }
 }

@@ -26,6 +26,7 @@ pub enum ExecuteMsg {
     Claim {},
     Receive(Cw20ReceiveMsg),
     Fund {},
+    Withdraw {},
     UpdateRewardDuration { new_duration: u64 },
     UpdateOwner { new_owner: Option<String> },
     UpdateManager { new_manager: Option<String> },
