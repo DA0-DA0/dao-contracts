@@ -801,6 +801,7 @@ dependencies = [
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "cw20",
+ "cw20-base",
  "cw4-group",
  "cw4-voting",
  "schemars",
