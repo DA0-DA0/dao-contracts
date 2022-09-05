@@ -1,0 +1,57 @@
+chain_cfg:
+  denom: ujunox
+  prefix: juno
+  chain_id: testing
+  rpc_endpoint: http://localhost:26657/
+  grpc_endpoint: http://localhost:9090/
+  gas_prices: 0.1
+  gas_adjustment: 1.5
+contract_deploy_info:
+  cw_proposal_single:
+    code_id: 8
+    address: null
+  cw_admin_factory:
+    code_id: 1
+    address: juno1ltd0maxmte3xf4zshta9j5djrq9cl692ctsp9u5q0p9wss0f5lmse0xgw2
+  cw_named_groups:
+    code_id: 12
+    address: null
+  cw20_base:
+    code_id: 2
+    address: null
+  cw_proposal_multiple:
+    code_id: 13
+    address: null
+  cw_core:
+    code_id: 3
+    address: juno1hrpna9v7vs3stzyd4z3xf00676kf78zpe2u5ksvljswn2vnjp3ys7tlgu0
+  cw4_voting:
+    code_id: 9
+    address: null
+  cw721_stake:
+    code_id: 4
+    address: null
+  cw_native_staked_balance_voting:
+    code_id: 6
+    address: null
+  cw20_stake:
+    code_id: 7
+    address: null
+  stake_cw20_external_rewards:
+    code_id: 5
+    address: null
+  cw20_staked_balance_voting:
+    code_id: 11
+    address: null
+  cw_names_registry:
+    code_id: 10
+    address: null
+  stake_cw20_reward_distributor:
+    code_id: 15
+    address: null
+  cw4_group:
+    code_id: 16
+    address: null
+  cw_token_swap:
+    code_id: 14
+    address: null
