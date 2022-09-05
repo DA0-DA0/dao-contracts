@@ -16,10 +16,10 @@ gen-schema:
 	./scripts/schema.sh
 
 gen-typescript:
-	rm -rf types/contracts # Clear out any old or invalid state.
-	yarn --cwd ./types install --frozen-lockfile
-	yarn --cwd ./types build
-	yarn --cwd ./types codegen
+	git checkout typescript/contracts # Clear out any old or invalid state.
+	yarn --cwd ./typescript install --frozen-lockfile
+	yarn --cwd ./typescript build
+	yarn --cwd ./typescript codegen
 
 integration-test: deploy-local optimize
 	RUST_LOG=info CONFIG={{config}} cargo integration-test
