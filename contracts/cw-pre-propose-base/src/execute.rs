@@ -166,19 +166,22 @@ where
             // If the proposal is completed, either return to the DAO
             // or issue a refund.
             let proposal_completed = new_status == "closed" || new_status == "executed";
-            // Refund can be issued if proposal if it is going to
-            // closed or executed.
-            let should_refund = (new_status == "closed"
-                && deposit_info.refund_policy == DepositRefundPolicy::Always)
-                || (new_status == "executed"
-                    && deposit_info.refund_policy != DepositRefundPolicy::Never);
 
-            if should_refund {
-                deposit_info.get_return_deposit_message(&proposer)?
-            } else if proposal_completed {
-                // If the proposer doesn't get the deposit, the DAO does.
-                let dao = self.dao.load(deps.storage)?;
-                deposit_info.get_return_deposit_message(&dao)?
+            if proposal_completed {
+                // Refund can be issued if proposal if it is going to
+                // closed or executed.
+                let should_refund_to_proposer = (new_status == "closed"
+                    && deposit_info.refund_policy == DepositRefundPolicy::Always)
+                    || (new_status == "executed"
+                        && deposit_info.refund_policy != DepositRefundPolicy::Never);
+
+                if should_refund_to_proposer {
+                    deposit_info.get_return_deposit_message(&proposer)?
+                } else {
+                    // If the proposer doesn't get the deposit, the DAO does.
+                    let dao = self.dao.load(deps.storage)?;
+                    deposit_info.get_return_deposit_message(&dao)?
+                }
             } else {
                 vec![]
             }

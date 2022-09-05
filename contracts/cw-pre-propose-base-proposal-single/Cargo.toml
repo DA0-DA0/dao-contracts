@@ -26,6 +26,7 @@ cw-multi-test = "0.13.2"
 cw-utils = "0.13.2"
 cw4-group = "0.13.2"
 cw20 = "0.13.2"
+cw20-base = "0.13.2"
 cw-proposal-single = { version = "*", path = "../cw-proposal-single" }
 cw-core = { version = "*", path = "../cw-core" }
 cw4-voting = { version = "*", path = "../cw4-voting" }
