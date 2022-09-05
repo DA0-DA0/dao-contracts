@@ -99,6 +99,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 mod tests {
     use cosmwasm_std::{coins, to_binary, Addr, Coin, Uint128};
     use cps::query::ProposalResponse;
+    use cw20::Cw20Coin;
     use cw_core::state::ProposalModule;
     use cw_core_interface::{Admin, ModuleInstantiateInfo};
     use cw_denom::UncheckedDenom;
@@ -129,6 +130,15 @@ mod tests {
 
     fn cw_pre_propose_base_proposal_single() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(execute, instantiate, query);
+        Box::new(contract)
+    }
+
+    fn cw20_base_contract() -> Box<dyn Contract<Empty>> {
+        let contract = ContractWrapper::new(
+            cw20_base::contract::execute,
+            cw20_base::contract::instantiate,
+            cw20_base::contract::query,
+        );
         Box::new(contract)
     }
 
@@ -164,6 +174,30 @@ mod tests {
         }
     }
 
+    fn instantiate_cw20_base_default(app: &mut App) -> Addr {
+        let cw20_id = app.store_code(cw20_base_contract());
+        let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+            name: "cw20 token".to_string(),
+            symbol: "cwtwenty".to_string(),
+            decimals: 6,
+            initial_balances: vec![Cw20Coin {
+                address: "ekez".to_string(),
+                amount: Uint128::new(10),
+            }],
+            mint: None,
+            marketing: None,
+        };
+        app.instantiate_contract(
+            cw20_id,
+            Addr::unchecked("ekez"),
+            &cw20_instantiate,
+            &[],
+            "cw20-base",
+            None,
+        )
+        .unwrap()
+    }
+
     struct DefaultTestSetup {
         core_addr: Addr,
         proposal_single: Addr,
@@ -177,17 +211,8 @@ mod tests {
         let cps_id = app.store_code(cw_dao_proposal_single_contract());
         let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
-        let proposal_module_instantiate = get_default_proposal_module_instantiate(
-            app,
-            Some(UncheckedDepositInfo {
-                denom: DepositToken::Token {
-                    denom: UncheckedDenom::Native("ujuno".to_string()),
-                },
-                amount: Uint128::new(10),
-                refund_policy: DepositRefundPolicy::Always,
-            }),
-            false,
-        );
+        let proposal_module_instantiate =
+            get_default_proposal_module_instantiate(app, deposit_info, false);
 
         let core_addr = instantiate_with_cw4_groups_governance(
             app,
@@ -256,7 +281,13 @@ mod tests {
             )
             .unwrap();
 
-        let id = res.custom_attrs(3)[2].value.parse().unwrap();
+        // The new proposal hook is the last message that fires in
+        // this process so we get the proposal ID from it's
+        // attributes. We could do this by looking at the proposal
+        // creation attributes but this changes relative position
+        // depending on if a cw20 or native deposit is being used.
+        let attrs = res.custom_attrs(res.events.len() - 1);
+        let id = attrs[attrs.len() - 1].value.parse().unwrap();
         let proposal: ProposalResponse = app
             .wrap()
             .query_wasm_smart(
@@ -282,6 +313,39 @@ mod tests {
         .unwrap();
     }
 
+    fn increase_allowance(
+        app: &mut App,
+        sender: &str,
+        receiver: &Addr,
+        cw20: Addr,
+        amount: Uint128,
+    ) {
+        app.execute_contract(
+            Addr::unchecked(sender),
+            cw20,
+            &cw20::Cw20ExecuteMsg::IncreaseAllowance {
+                spender: receiver.to_string(),
+                amount,
+                expires: None,
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    fn get_balance_cw20<T: Into<String>, U: Into<String>>(
+        app: &App,
+        contract_addr: T,
+        address: U,
+    ) -> Uint128 {
+        let msg = cw20::Cw20QueryMsg::Balance {
+            address: address.into(),
+        };
+        let result: cw20::BalanceResponse =
+            app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
+        result.balance
+    }
+
     fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> Status {
         app.execute_contract(
             Addr::unchecked(sender),
@@ -302,59 +366,40 @@ mod tests {
         proposal.proposal.status
     }
 
-    // A cw4-group based DAO that takes native tokens as proposal
-    // deposits.
-    #[test]
-    fn test_simple_native_playthrough() {
-        let mut app = App::default();
-
-        let DefaultTestSetup {
-            core_addr,
-            proposal_single,
-            pre_propose,
-        } = setup_default_test(
-            &mut app,
-            Some(UncheckedDepositInfo {
-                denom: DepositToken::Token {
-                    denom: UncheckedDenom::Native("ujuno".to_string()),
-                },
-                amount: Uint128::new(10),
-                refund_policy: DepositRefundPolicy::Always,
-            }),
-            false,
-        );
-
-        mint_natives(&mut app, "ekez", coins(10, "ujuno"));
-        let id = make_proposal(
-            &mut app,
-            pre_propose.clone(),
-            proposal_single.clone(),
-            "ekez",
-            &coins(10, "ujuno"),
-        );
-        // Vote no on the proposal. This should cause it to be rejected.
-        let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, Vote::No);
-        assert_eq!(new_status, Status::Rejected);
-
-        // Close the proposal. This should cause the deposit to be
-        // refunded.
+    fn close_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
         app.execute_contract(
             Addr::unchecked("ekez"),
-            proposal_single,
-            &cps::msg::ExecuteMsg::Close { proposal_id: 1 },
+            module,
+            &cps::msg::ExecuteMsg::Close { proposal_id },
             &[],
         )
         .unwrap();
-
-        let balance = app
-            .wrap()
-            .query_balance(Addr::unchecked("ekez"), "ujuno")
-            .unwrap();
-        assert_eq!(balance.amount, Uint128::new(10))
     }
 
-    #[test]
-    fn test_send_to_dao_on_close_and_no_refund() {
+    fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
+        app.execute_contract(
+            Addr::unchecked("ekez"),
+            module,
+            &cps::msg::ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+        .unwrap();
+    }
+
+    enum EndStatus {
+        Passed,
+        Failed,
+    }
+    enum RefundReceiver {
+        Proposer,
+        Dao,
+    }
+
+    fn test_native_permutation(
+        end_status: EndStatus,
+        refund_policy: DepositRefundPolicy,
+        receiver: RefundReceiver,
+    ) {
         let mut app = App::default();
 
         let DefaultTestSetup {
@@ -368,7 +413,7 @@ mod tests {
                     denom: UncheckedDenom::Native("ujuno".to_string()),
                 },
                 amount: Uint128::new(10),
-                refund_policy: DepositRefundPolicy::Always,
+                refund_policy,
             }),
             false,
         );
@@ -381,6 +426,202 @@ mod tests {
             "ekez",
             &coins(10, "ujuno"),
         );
-        vote(&mut app, proposal_single.clone(), "ekez", id, Vote::No);
+        let (position, expected_status, trigger_refund): (
+            _,
+            _,
+            fn(&mut App, Addr, &str, u64) -> (),
+        ) = match end_status {
+            EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
+            EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+        };
+        // Vote no on the proposal. This should cause it to be rejected.
+        let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
+        assert_eq!(new_status, expected_status);
+
+        // Close or execute the proposal to trigger a refund.
+        trigger_refund(&mut app, proposal_single, "ekez", id);
+
+        let (dao_expected, proposer_expected) = match receiver {
+            RefundReceiver::Proposer => (0, 10),
+            RefundReceiver::Dao => (10, 0),
+        };
+
+        let proposer_balance = app
+            .wrap()
+            .query_balance(Addr::unchecked("ekez"), "ujuno")
+            .unwrap();
+        let dao_balance = app.wrap().query_balance(core_addr, "ujuno").unwrap();
+        assert_eq!(proposer_expected, proposer_balance.amount.u128());
+        assert_eq!(dao_expected, dao_balance.amount.u128())
     }
+
+    fn test_cw20_permutation(
+        end_status: EndStatus,
+        refund_policy: DepositRefundPolicy,
+        receiver: RefundReceiver,
+    ) {
+        let mut app = App::default();
+
+        let cw20_address = instantiate_cw20_base_default(&mut app);
+
+        let DefaultTestSetup {
+            core_addr,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Cw20(cw20_address.to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy,
+            }),
+            false,
+        );
+
+        increase_allowance(
+            &mut app,
+            "ekez",
+            &pre_propose,
+            cw20_address.clone(),
+            Uint128::new(10),
+        );
+        let id = make_proposal(
+            &mut app,
+            pre_propose.clone(),
+            proposal_single.clone(),
+            "ekez",
+            &[],
+        );
+        let (position, expected_status, trigger_refund): (
+            _,
+            _,
+            fn(&mut App, Addr, &str, u64) -> (),
+        ) = match end_status {
+            EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
+            EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+        };
+        // Vote no on the proposal. This should cause it to be rejected.
+        let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
+        assert_eq!(new_status, expected_status);
+
+        // Close or execute the proposal to trigger a refund.
+        trigger_refund(&mut app, proposal_single, "ekez", id);
+
+        let (dao_expected, proposer_expected) = match receiver {
+            RefundReceiver::Proposer => (0, 10),
+            RefundReceiver::Dao => (10, 0),
+        };
+
+        let proposer_balance = get_balance_cw20(&app, &cw20_address, "ekez");
+        let dao_balance = get_balance_cw20(&app, &cw20_address, &core_addr);
+        assert_eq!(proposer_expected, proposer_balance.u128());
+        assert_eq!(dao_expected, dao_balance.u128())
+    }
+
+    #[test]
+    fn test_native_failed_always_refund() {
+        test_native_permutation(
+            EndStatus::Failed,
+            DepositRefundPolicy::Always,
+            RefundReceiver::Proposer,
+        )
+    }
+    #[test]
+    fn test_cw20_failed_always_refund() {
+        test_cw20_permutation(
+            EndStatus::Failed,
+            DepositRefundPolicy::Always,
+            RefundReceiver::Proposer,
+        )
+    }
+
+    #[test]
+    fn test_native_passed_always_refund() {
+        test_native_permutation(
+            EndStatus::Passed,
+            DepositRefundPolicy::Always,
+            RefundReceiver::Proposer,
+        )
+    }
+    #[test]
+    fn test_cw20_passed_always_refund() {
+        test_cw20_permutation(
+            EndStatus::Passed,
+            DepositRefundPolicy::Always,
+            RefundReceiver::Proposer,
+        )
+    }
+
+    #[test]
+    fn test_native_passed_never_refund() {
+        test_native_permutation(
+            EndStatus::Passed,
+            DepositRefundPolicy::Never,
+            RefundReceiver::Dao,
+        )
+    }
+    #[test]
+    fn test_cw20_passed_never_refund() {
+        test_cw20_permutation(
+            EndStatus::Passed,
+            DepositRefundPolicy::Never,
+            RefundReceiver::Dao,
+        )
+    }
+
+    #[test]
+    fn test_native_failed_never_refund() {
+        test_native_permutation(
+            EndStatus::Failed,
+            DepositRefundPolicy::Never,
+            RefundReceiver::Dao,
+        )
+    }
+    #[test]
+    fn test_cw20_failed_never_refund() {
+        test_cw20_permutation(
+            EndStatus::Failed,
+            DepositRefundPolicy::Never,
+            RefundReceiver::Dao,
+        )
+    }
+
+    #[test]
+    fn test_native_passed_passed_refund() {
+        test_native_permutation(
+            EndStatus::Passed,
+            DepositRefundPolicy::OnlyPassed,
+            RefundReceiver::Proposer,
+        )
+    }
+    #[test]
+    fn test_cw20_passed_passed_refund() {
+        test_cw20_permutation(
+            EndStatus::Passed,
+            DepositRefundPolicy::OnlyPassed,
+            RefundReceiver::Proposer,
+        )
+    }
+
+    #[test]
+    fn test_native_failed_passed_refund() {
+        test_native_permutation(
+            EndStatus::Failed,
+            DepositRefundPolicy::OnlyPassed,
+            RefundReceiver::Dao,
+        )
+    }
+    #[test]
+    fn test_cw20_failed_passed_refund() {
+        test_cw20_permutation(
+            EndStatus::Failed,
+            DepositRefundPolicy::OnlyPassed,
+            RefundReceiver::Dao,
+        )
+    }
+
+    // TODO(zeke): test invalid instantiate messages and non happy
+    // path methods.
 }
