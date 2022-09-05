@@ -97,16 +97,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coins, to_binary, Addr, Uint128};
+    use cosmwasm_std::{coins, to_binary, Addr, Coin, Uint128};
     use cps::query::ProposalResponse;
     use cw_core::state::ProposalModule;
     use cw_core_interface::{Admin, ModuleInstantiateInfo};
+    use cw_denom::UncheckedDenom;
     use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
     use cw_proposal_single as cps;
     use cw_utils::Duration;
     use testing::helpers::instantiate_with_cw4_groups_governance;
     use voting::{
-        denom::UncheckedDenom,
         deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
         pre_propose::{PreProposeInfo, ProposalCreationPolicy},
         status::Status,
@@ -164,16 +164,21 @@ mod tests {
         }
     }
 
-    // A cw4-group based DAO that takes native tokens as proposal
-    // deposits.
-    #[test]
-    fn test_simple_native_playthrough() {
-        let mut app = App::default();
+    struct DefaultTestSetup {
+        core_addr: Addr,
+        proposal_single: Addr,
+        pre_propose: Addr,
+    }
+    fn setup_default_test(
+        app: &mut App,
+        deposit_info: Option<UncheckedDepositInfo>,
+        open_proposal_submission: bool,
+    ) -> DefaultTestSetup {
         let cps_id = app.store_code(cw_dao_proposal_single_contract());
         let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
         let proposal_module_instantiate = get_default_proposal_module_instantiate(
-            &mut app,
+            app,
             Some(UncheckedDepositInfo {
                 denom: DepositToken::Token {
                     denom: UncheckedDenom::Native("ujuno".to_string()),
@@ -185,7 +190,7 @@ mod tests {
         );
 
         let core_addr = instantiate_with_cw4_groups_governance(
-            &mut app,
+            app,
             cps_id,
             to_binary(&proposal_module_instantiate).unwrap(),
             Some(vec![
@@ -222,46 +227,68 @@ mod tests {
             _ => panic!("expected a module for the proposal creation policy"),
         };
 
-        // Mint some ekez tokens for ekez so we can pay the deposit.
-        app.sudo(cw_multi_test::SudoMsg::Bank(BankSudo::Mint {
-            to_address: "ekez".to_string(),
-            amount: coins(10, "ujuno"),
-        }))
-        .unwrap();
-
-        app.execute_contract(
-            Addr::unchecked("ekez"),
+        DefaultTestSetup {
+            core_addr,
+            proposal_single,
             pre_propose,
-            &ExecuteMsg::Propose {
-                msg: ProposeMessage::Propose {
-                    title: "pre propose works!".to_string(),
-                    description: "wow..".to_string(),
-                    msgs: vec![],
-                },
-            },
-            &coins(10, "ujuno"),
-        )
-        .unwrap();
+        }
+    }
 
-        let proposal: ProposalResponse = app
-            .wrap()
-            .query_wasm_smart(
-                proposal_single.clone(),
-                &cps::msg::QueryMsg::Proposal { proposal_id: 1 },
+    fn make_proposal(
+        app: &mut App,
+        pre_propose: Addr,
+        proposal_module: Addr,
+        proposer: &str,
+        funds: &[Coin],
+    ) -> u64 {
+        let res = app
+            .execute_contract(
+                Addr::unchecked(proposer),
+                pre_propose,
+                &ExecuteMsg::Propose {
+                    msg: ProposeMessage::Propose {
+                        title: "title".to_string(),
+                        description: "description".to_string(),
+                        msgs: vec![],
+                    },
+                },
+                funds,
             )
             .unwrap();
 
-        assert_eq!(proposal.proposal.title, "pre propose works!".to_string());
-        assert_eq!(proposal.proposal.description, "wow..".to_string());
+        let id = res.custom_attrs(3)[2].value.parse().unwrap();
+        let proposal: ProposalResponse = app
+            .wrap()
+            .query_wasm_smart(
+                proposal_module,
+                &cps::msg::QueryMsg::Proposal { proposal_id: id },
+            )
+            .unwrap();
+
+        assert_eq!(proposal.proposal.proposer, Addr::unchecked(proposer));
+        assert_eq!(proposal.proposal.title, "title".to_string());
+        assert_eq!(proposal.proposal.description, "description".to_string());
         assert_eq!(proposal.proposal.msgs, vec![]);
 
-        // Vote no on the proposal. This should cause it to be rejected.
+        id
+    }
+
+    fn mint_natives(app: &mut App, receiver: &str, coins: Vec<Coin>) {
+        // Mint some ekez tokens for ekez so we can pay the deposit.
+        app.sudo(cw_multi_test::SudoMsg::Bank(BankSudo::Mint {
+            to_address: receiver.to_string(),
+            amount: coins,
+        }))
+        .unwrap();
+    }
+
+    fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> Status {
         app.execute_contract(
-            Addr::unchecked("ekez"),
-            proposal_single.clone(),
+            Addr::unchecked(sender),
+            module.clone(),
             &cps::msg::ExecuteMsg::Vote {
-                proposal_id: 1,
-                vote: Vote::No,
+                proposal_id: id,
+                vote: position,
             },
             &[],
         )
@@ -269,12 +296,45 @@ mod tests {
 
         let proposal: ProposalResponse = app
             .wrap()
-            .query_wasm_smart(
-                proposal_single.clone(),
-                &cps::msg::QueryMsg::Proposal { proposal_id: 1 },
-            )
+            .query_wasm_smart(module, &cps::msg::QueryMsg::Proposal { proposal_id: id })
             .unwrap();
-        assert_eq!(proposal.proposal.status, Status::Rejected);
+
+        proposal.proposal.status
+    }
+
+    // A cw4-group based DAO that takes native tokens as proposal
+    // deposits.
+    #[test]
+    fn test_simple_native_playthrough() {
+        let mut app = App::default();
+
+        let DefaultTestSetup {
+            core_addr,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy: DepositRefundPolicy::Always,
+            }),
+            false,
+        );
+
+        mint_natives(&mut app, "ekez", coins(10, "ujuno"));
+        let id = make_proposal(
+            &mut app,
+            pre_propose.clone(),
+            proposal_single.clone(),
+            "ekez",
+            &coins(10, "ujuno"),
+        );
+        // Vote no on the proposal. This should cause it to be rejected.
+        let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, Vote::No);
+        assert_eq!(new_status, Status::Rejected);
 
         // Close the proposal. This should cause the deposit to be
         // refunded.
@@ -291,5 +351,36 @@ mod tests {
             .query_balance(Addr::unchecked("ekez"), "ujuno")
             .unwrap();
         assert_eq!(balance.amount, Uint128::new(10))
+    }
+
+    #[test]
+    fn test_send_to_dao_on_close_and_no_refund() {
+        let mut app = App::default();
+
+        let DefaultTestSetup {
+            core_addr,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy: DepositRefundPolicy::Always,
+            }),
+            false,
+        );
+
+        mint_natives(&mut app, "ekez", coins(10, "ujuno"));
+        let id = make_proposal(
+            &mut app,
+            pre_propose.clone(),
+            proposal_single.clone(),
+            "ekez",
+            &coins(10, "ujuno"),
+        );
+        vote(&mut app, proposal_single.clone(), "ekez", id, Vote::No);
     }
 }
