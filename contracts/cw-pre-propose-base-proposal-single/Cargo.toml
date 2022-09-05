@@ -30,5 +30,6 @@ cw-proposal-single = { version = "*", path = "../cw-proposal-single" }
 cw-core = { version = "*", path = "../cw-core" }
 cw4-voting = { version = "*", path = "../cw4-voting" }
 voting = { version = "*", path = "../../packages/voting" }
+cw-denom = { version = "*", path = "../../packages/cw-denom" }
 cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
 testing = { version = "*", path = "../../packages/testing" }

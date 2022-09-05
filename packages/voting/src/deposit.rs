@@ -7,7 +7,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::denom::{CheckedDenom, DenomError, UncheckedDenom};
+use cw_denom::{CheckedDenom, DenomError, UncheckedDenom};
 
 /// Error type for deposit methods.
 #[derive(Error, Debug, PartialEq)]

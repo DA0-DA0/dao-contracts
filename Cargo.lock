@@ -655,6 +655,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-denom"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-std",
+ "cw20",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-multi-test"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -783,6 +794,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-core",
  "cw-core-interface",
+ "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-pre-propose-base",
  "cw-proposal-single",
@@ -3507,10 +3519,10 @@ name = "voting"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-std",
- "cw-asset",
  "cw-core",
  "cw-core-interface",
  "cw-core-macros",
+ "cw-denom",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw20",
