@@ -34,7 +34,7 @@ jobs:
             ~/.cargo/git/db/
             target/
             artifacts/
-          key: ${{ runner.os }}-cargo-artifacts-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-with-artifacts-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Set latest just version
         run: echo "JUST_VERSION=$(cargo search just -q | sed -n -e '/^just[[:space:]]/p' | cut -d '"' -f 2)" >> $GITHUB_ENV
