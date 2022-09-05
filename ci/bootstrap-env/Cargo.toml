@@ -3,12 +3,6 @@ name = "bootstrap-env"
 version = "0.1.0"
 edition = "2021"
 
-# This crate depends on rand. These are not features in
-# wasm builds of cosmwasm. Despite this crate only being used as a dev
-# dependency, because it is part of the workspace it will always be
-# compiled. There is no good way to remove a member from a workspace
-# conditionally. As such, we don't compile anything here if we're
-# targeting wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cosm-orc = { version = "2.2.0" }
 cw20 = "0.13"

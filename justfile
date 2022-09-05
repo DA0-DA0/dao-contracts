@@ -10,7 +10,6 @@ test:
 lint:
 	cargo clippy --all-targets -- -D warnings
 
-# TODO: Put `just gen` in a git pre-commit hook
 gen: build gen-schema gen-typescript
 
 gen-schema:
