@@ -10,6 +10,7 @@ use cosm_orc::{
 use cosmwasm_std::{to_binary, Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw_core::msg::{Admin, ModuleInstantiateInfo};
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::time::Duration;
@@ -18,6 +19,13 @@ use voting::{
     threshold::Threshold,
 };
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct Account {
+    name: String,
+    address: String,
+    mnemonic: String,
+}
+
 fn main() -> Result<()> {
     env_logger::init();
 
@@ -25,12 +33,16 @@ fn main() -> Result<()> {
     let mut cfg = Config::from_yaml(&config)?;
     let mut orc = CosmOrc::new(cfg.clone(), false)?;
 
-    // TODO: Make this configurable + bootstrap the local env with many test accounts
+    // use first test user as DAO admin, and only DAO member:
+    let accounts: Vec<Account> =
+        serde_json::from_slice(&fs::read(&"ci/configs/test_accounts.json")?)?;
+    let account = accounts[0].clone();
+
     let key = SigningKey {
-        name: "localval".to_string(),
-            key: Key::Mnemonic("siren window salt bullet cream letter huge satoshi fade shiver permit offer happy immense wage fitness goose usual aim hammer clap about super trend".to_string()),
+        name: account.name,
+        key: Key::Mnemonic(account.mnemonic),
     };
-    let addr = key.to_account(&cfg.chain_cfg.prefix).unwrap().to_string();
+    let addr = account.address;
 
     orc.poll_for_n_blocks(1, Duration::from_millis(20_000), true)?;
 
@@ -96,7 +108,7 @@ fn main() -> Result<()> {
         "dao_init",
         &msg,
         &key,
-        Some(addr),
+        Some(addr.clone()),
         vec![Coin {
             denom: cfg.chain_cfg.denom.clone(),
             amount: 9000000,
@@ -114,6 +126,8 @@ fn main() -> Result<()> {
 
     println!(" ------------------------ ");
     println!("Config Variables\n");
+
+    println!("Admin user address: {}", addr);
 
     println!(
         "NEXT_PUBLIC_CW20_CODE_ID={}",
@@ -154,7 +168,10 @@ fn main() -> Result<()> {
 
     // Persist contract code_ids in local.yaml so we can use SKIP_CONTRACT_STORE locally to avoid having to re-store them again
     cfg.contract_deploy_info = orc.contract_map.deploy_info().clone();
-    fs::write("ci/configs/local.yaml", serde_yaml::to_string(&cfg)?)?;
+    fs::write(
+        "ci/configs/cosm-orc/local.yaml",
+        serde_yaml::to_string(&cfg)?,
+    )?;
 
     Ok(())
 }

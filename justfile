@@ -1,5 +1,5 @@
-config := env_var_or_default('CONFIG', '`pwd`/ci/configs/ci.yaml')
-admin_addr := env_var_or_default('ADMIN_ADDR', 'juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg')
+orc_config := env_var_or_default('CONFIG', '`pwd`/ci/configs/cosm-orc/ci.yaml')
+test_addrs := env_var_or_default('TEST_ADDRS', `jq -r '.[].address' ci/configs/test_accounts.json | tr '\n' ' '`)
 
 build:
 	cargo build
@@ -22,13 +22,13 @@ gen-typescript:
 	yarn --cwd ./typescript codegen
 
 integration-test: deploy-local optimize
-	RUST_LOG=info CONFIG={{config}} cargo integration-test
+	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
 
 integration-test-dev test_name="": 
-	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/local.yaml' cargo integration-test {{test_name}} 
+	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}} 
 
 bootstrap-dev: deploy-local optimize
-	RUST_LOG=info CONFIG={{config}} cargo run bootstrap-env
+	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
 
 deploy-local: download-deps
 	docker kill cosmwasm || true
@@ -44,7 +44,7 @@ deploy-local: download-deps
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh {{admin_addr}}
+		ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh {{test_addrs}}
 
 download-deps:
 	mkdir -p artifacts target

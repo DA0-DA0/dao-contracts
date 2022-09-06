@@ -13,7 +13,12 @@ use test_context::test_context;
 fn execute_stake_tokens(chain: &mut Chain) {
     let voting_contract = "cw20_staked_balance_voting";
 
-    let res = create_dao(chain, None, "exc_stake_create_dao", chain.user.addr.clone());
+    let res = create_dao(
+        chain,
+        None,
+        "exc_stake_create_dao",
+        chain.users["user1"].account.address.clone(),
+    );
     let dao = res.unwrap();
 
     let voting_addr = dao.state.voting_module.as_str();
@@ -44,7 +49,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .query(
             "cw20_stake",
             &cw20_stake::msg::QueryMsg::StakedValue {
-                address: chain.user.addr.clone(),
+                address: chain.users["user1"].account.address.clone(),
             },
         )
         .unwrap();
@@ -73,7 +78,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
                 amount: Uint128::new(100),
                 msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
-            &chain.user.key,
+            &chain.users["user1"].key,
             vec![],
         )
         .unwrap();
@@ -83,7 +88,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .query(
             "cw20_stake",
             &cw20_stake::msg::QueryMsg::StakedValue {
-                address: chain.user.addr.clone(),
+                address: chain.users["user1"].account.address.clone(),
             },
         )
         .unwrap();
@@ -101,7 +106,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .query(
             "cw_core",
             &cw_core::msg::QueryMsg::VotingPowerAtHeight {
-                address: chain.user.addr.clone(),
+                address: chain.users["user1"].account.address.clone(),
                 height: None,
             },
         )

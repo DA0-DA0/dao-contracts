@@ -29,7 +29,7 @@ Or Use `just integration-test-dev` to run all integration tests while skipping s
 
 * `cd ci/integration_tests`
 * Change `src/helpers/chain.rs::test_account()` with your testnet account
-* `CONFIG="../configs/testnet.yaml" just integration-test`
+* `CONFIG="../configs/cosm-orc/testnet.yaml" just integration-test`
 
 
 ## Adding New Integration Tests
@@ -41,10 +41,10 @@ Add new tests in `src/tests`:
 #[ignore]
 fn new_dao_has_no_items(chain: &mut Chain) {
     let res = create_dao(
-        chain, 
-        Some(chain.user.addr.clone()),
-        "ex_create_dao", 
-       chain.user.addr.clone()
+        chain,
+        None,
+        "ex_create_dao",
+        chain.users["user1"].account.address.clone(),
     );
     let dao = res.unwrap();
 

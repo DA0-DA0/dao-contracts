@@ -37,6 +37,8 @@ together.
 - [Rust](https://doc.rust-lang.org/book/ch01-01-installation.html)
 - [Just](https://github.com/casey/just#packages)
 - [Yarn](https://yarnpkg.com/)
+- [Docker](https://docs.docker.com/engine/install/)
+- [jq](https://stedolan.github.io/jq/download/)
 
 Our development workflow is just like a regular Rust project:
 
@@ -127,10 +129,10 @@ Build and deploy the contracts to a local chain running in Docker with:
 just bootstrap-dev
 ```
 
-> Note: This Wasm account is from the [default
-> account](default-account.txt), which you can use for testing (DO NOT
-> store any real funds with this account). You can pass in any wasm
-> account address you want to use.
+> Note: These juno accounts are from the [test
+> accounts](ci/configs/test_accounts.json), which you can use for testing (DO NOT
+> store any real funds with these accounts). You can configure add more juno
+> account addresses you wish to test here.
 
 This will run a chain locally in a docker container, then build and
 deploy the contracts to that chain.

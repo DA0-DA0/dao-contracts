@@ -209,6 +209,8 @@ dependencies = [
  "cw20-stake",
  "cw20-staked-balance-voting",
  "env_logger",
+ "serde",
+ "serde_json",
  "serde_yaml",
  "voting",
 ]

@@ -3,7 +3,9 @@ use cosm_orc::orchestrator::cosm_orc::CosmOrc;
 use cosm_orc::{config::cfg::Config, config::key::SigningKey};
 use once_cell::sync::OnceCell;
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::Path;
@@ -21,12 +23,20 @@ pub struct Cfg {
 pub struct Chain {
     pub cfg: Config,
     pub orc: CosmOrc,
-    pub user: Account,
+    pub users: HashMap<String, SigningAccount>,
 }
 
-pub struct Account {
-    pub addr: String,
+#[derive(Clone, Debug)]
+pub struct SigningAccount {
+    pub account: Account,
     pub key: SigningKey,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Account {
+    pub name: String,
+    pub address: String,
+    pub mnemonic: String,
 }
 
 // NOTE: we have to run the integration tests in one thread right now.
@@ -37,10 +47,8 @@ impl TestContext for Chain {
     fn setup() -> Self {
         let cfg = CONFIG.get_or_init(global_setup).cfg.clone();
         let orc = CosmOrc::new(cfg.clone(), true).unwrap();
-
-        let user = test_account(&cfg.chain_cfg.prefix);
-
-        Self { cfg, orc, user }
+        let users = test_accounts();
+        Self { cfg, orc, users }
     }
 
     fn teardown(self) {
@@ -49,15 +57,24 @@ impl TestContext for Chain {
     }
 }
 
-fn test_account(prefix: &str) -> Account {
-    // TODO: Make this configurable + bootstrap the local env with many test accounts
-    let key = SigningKey {
-        name: "localval".to_string(),
-        key: Key::Mnemonic("siren window salt bullet cream letter huge satoshi fade shiver permit offer happy immense wage fitness goose usual aim hammer clap about super trend".to_string()),
-    };
-    let addr = key.to_account(prefix).unwrap().to_string();
+fn test_accounts() -> HashMap<String, SigningAccount> {
+    let bytes = fs::read(&"../configs/test_accounts.json").unwrap();
+    let accounts: Vec<Account> = serde_json::from_slice(&bytes).unwrap();
 
-    Account { addr, key }
+    let mut account_map = HashMap::new();
+    for account in accounts {
+        account_map.insert(
+            account.name.clone(),
+            SigningAccount {
+                account: account.clone(),
+                key: SigningKey {
+                    name: account.name,
+                    key: Key::Mnemonic(account.mnemonic),
+                },
+            },
+        );
+    }
+    account_map
 }
 
 // global_setup() runs once before all of the tests
@@ -69,7 +86,7 @@ fn global_setup() -> Cfg {
     let mut cfg = Config::from_yaml(&config).unwrap();
     let mut orc = CosmOrc::new(cfg.clone(), true).unwrap();
 
-    let account = test_account(&cfg.chain_cfg.prefix);
+    let accounts = test_accounts();
 
     // Poll for first block to make sure the node is up:
     orc.poll_for_n_blocks(1, Duration::from_millis(20_000), true)
@@ -78,7 +95,7 @@ fn global_setup() -> Cfg {
     let skip_storage = env::var("SKIP_CONTRACT_STORE").unwrap_or_else(|_| "false".to_string());
     if !skip_storage.parse::<bool>().unwrap() {
         let contract_dir = "../../artifacts";
-        orc.store_contracts(contract_dir, &account.key, None)
+        orc.store_contracts(contract_dir, &accounts["user1"].key, None)
             .unwrap();
         save_gas_report(&orc, &gas_report_dir);
         // persist stored code_ids in CONFIG, so we can reuse for all tests

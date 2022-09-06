@@ -23,7 +23,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         chain,
         None,
         "exc_admin_msgs_create_dao",
-        chain.user.addr.clone(),
+        chain.users["user1"].account.address.clone(),
     );
     let dao = res.unwrap();
 
@@ -40,7 +40,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
                 funds: vec![],
             })],
         },
-        &chain.user.key,
+        &chain.users["user1"].key,
         vec![],
     );
 
@@ -60,9 +60,9 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     // if you are the admin you can execute admin msgs:
     let res = create_dao(
         chain,
-        Some(chain.user.addr.clone()),
+        Some(chain.users["user1"].account.address.clone()),
         "exc_admin_msgs_create_dao_with_admin",
-        chain.user.addr.clone(),
+        chain.users["user1"].account.address.clone(),
     );
     let dao = res.unwrap();
 
@@ -81,7 +81,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.user.key,
+            &chain.users["user1"].key,
             vec![],
         )
         .unwrap();
@@ -102,9 +102,9 @@ fn execute_items(chain: &mut Chain) {
     // add item:
     let res = create_dao(
         chain,
-        Some(chain.user.addr.clone()),
+        Some(chain.users["user1"].account.address.clone()),
         "exc_items_create_dao",
-        chain.user.addr.clone(),
+        chain.users["user1"].account.address.clone(),
     );
 
     let dao = res.unwrap();
@@ -138,7 +138,7 @@ fn execute_items(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.user.key,
+            &chain.users["user1"].key,
             vec![],
         )
         .unwrap();
@@ -172,7 +172,7 @@ fn execute_items(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.user.key,
+            &chain.users["user1"].key,
             vec![],
         )
         .unwrap();
@@ -197,7 +197,12 @@ fn execute_items(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_no_admin(chain: &mut Chain) {
-    let res = create_dao(chain, None, "inst_dao_no_admin", chain.user.addr.clone());
+    let res = create_dao(
+        chain,
+        None,
+        "inst_dao_no_admin",
+        chain.users["user1"].account.address.clone(),
+    );
     let dao = res.unwrap();
 
     // ensure the dao is the admin:
@@ -225,14 +230,17 @@ fn instantiate_with_admin(chain: &mut Chain) {
 
     let res = create_dao(
         chain,
-        Some(chain.user.addr.clone()),
+        Some(chain.users["user1"].account.address.clone()),
         "inst_admin_create_dao",
-        chain.user.addr.clone(),
+        chain.users["user1"].account.address.clone(),
     );
     let dao = res.unwrap();
 
     // general dao info is valid:
-    assert_eq!(dao.state.admin, chain.user.addr);
+    assert_eq!(
+        dao.state.admin,
+        chain.users["user1"].account.address.clone()
+    );
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -274,7 +282,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query(
             "cw20_stake",
             &cw20_stake::msg::QueryMsg::StakedValue {
-                address: chain.user.addr.clone(),
+                address: chain.users["user1"].account.address.clone(),
             },
         )
         .unwrap();
