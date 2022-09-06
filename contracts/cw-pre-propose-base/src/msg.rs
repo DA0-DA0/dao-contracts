@@ -15,7 +15,7 @@ pub struct InstantiateMsg<InstantiateExt> {
     pub open_proposal_submission: bool,
     /// Extension for instantiation. The default implementation will
     /// do nothing with this data.
-    pub ext: InstantiateExt,
+    pub extension: InstantiateExt,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -28,7 +28,7 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// Extension message. Contracts that extend this one should put
     /// their custom execute logic here. The default implementation
     /// will do nothing if this variant is executed.
-    Ext { msg: ExecuteExt },
+    Extension { msg: ExecuteExt },
 
     /// Handles proposal hooks fired by the associated proposal
     /// module. By default, the base contract will return deposits
@@ -51,5 +51,5 @@ pub enum QueryMsg<QueryExt> {
     /// Extension for queries. The default implementation will do
     /// nothing if queried for this and will return
     /// `Binary::default()`.
-    Ext { msg: QueryExt },
+    Extension { msg: QueryExt },
 }
