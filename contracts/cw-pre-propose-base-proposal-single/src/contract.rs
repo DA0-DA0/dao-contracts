@@ -351,6 +351,11 @@ mod tests {
         result.balance
     }
 
+    fn get_balance_native(app: &App, who: &str, denom: &str) -> Uint128 {
+        let res = app.wrap().query_balance(who, denom).unwrap();
+        res.amount
+    }
+
     fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> Status {
         app.execute_contract(
             Addr::unchecked(sender),
@@ -450,13 +455,10 @@ mod tests {
             RefundReceiver::Dao => (10, 0),
         };
 
-        let proposer_balance = app
-            .wrap()
-            .query_balance(Addr::unchecked("ekez"), "ujuno")
-            .unwrap();
-        let dao_balance = app.wrap().query_balance(core_addr, "ujuno").unwrap();
-        assert_eq!(proposer_expected, proposer_balance.amount.u128());
-        assert_eq!(dao_expected, dao_balance.amount.u128())
+        let proposer_balance = get_balance_native(&app, "ekez", "ujuno");
+        let dao_balance = get_balance_native(&app, core_addr.as_str(), "ujuno");
+        assert_eq!(proposer_expected, proposer_balance.u128());
+        assert_eq!(dao_expected, dao_balance.u128())
     }
 
     fn test_cw20_permutation(
@@ -623,6 +625,89 @@ mod tests {
             DepositRefundPolicy::OnlyPassed,
             RefundReceiver::Dao,
         )
+    }
+
+    // See: <https://github.com/DA0-DA0/dao-contracts/pull/465#discussion_r960092321>
+    #[test]
+    fn test_multiple_open_proposals() {
+        let mut app = App::default();
+
+        let DefaultTestSetup {
+            core_addr: _,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy: DepositRefundPolicy::Always,
+            }),
+            false,
+        );
+
+        mint_natives(&mut app, "ekez", coins(20, "ujuno"));
+        let first_id = make_proposal(
+            &mut app,
+            pre_propose.clone(),
+            proposal_single.clone(),
+            "ekez",
+            &coins(10, "ujuno"),
+        );
+        let balance = get_balance_native(&app, "ekez", "ujuno");
+        assert_eq!(10, balance.u128());
+
+        let second_id = make_proposal(
+            &mut app,
+            pre_propose.clone(),
+            proposal_single.clone(),
+            "ekez",
+            &coins(10, "ujuno"),
+        );
+        let balance = get_balance_native(&app, "ekez", "ujuno");
+        assert_eq!(0, balance.u128());
+
+        // Finish up the first proposal.
+        let new_status = vote(
+            &mut app,
+            proposal_single.clone(),
+            "ekez",
+            first_id,
+            Vote::Yes,
+        );
+        assert_eq!(Status::Passed, new_status);
+
+        // Still zero.
+        let balance = get_balance_native(&app, "ekez", "ujuno");
+        assert_eq!(0, balance.u128());
+
+        execute_proposal(&mut app, proposal_single.clone(), "ekez", first_id);
+
+        // First proposal refunded.
+        let balance = get_balance_native(&app, "ekez", "ujuno");
+        assert_eq!(10, balance.u128());
+
+        // Finish up the second proposal.
+        let new_status = vote(
+            &mut app,
+            proposal_single.clone(),
+            "ekez",
+            second_id,
+            Vote::No,
+        );
+        assert_eq!(Status::Rejected, new_status);
+
+        // Still zero.
+        let balance = get_balance_native(&app, "ekez", "ujuno");
+        assert_eq!(10, balance.u128());
+
+        close_proposal(&mut app, proposal_single.clone(), "ekez", second_id);
+
+        // All deposits have been refunded.
+        let balance = get_balance_native(&app, "ekez", "ujuno");
+        assert_eq!(20, balance.u128());
     }
 
     #[test]
