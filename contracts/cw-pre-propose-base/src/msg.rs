@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use voting::deposit::UncheckedDepositInfo;
+use voting::deposit::{CheckedDepositInfo, UncheckedDepositInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -48,8 +48,19 @@ pub enum QueryMsg<QueryExt> {
     Dao {},
     /// Gets the module's configuration. Returns `state::Config`.
     Config {},
+    /// Gets the deposit info for the proposal identified by
+    /// PROPOSAL_ID. Returns `DepositInfoResponse`.
+    DepositInfo { proposal_id: u64 },
     /// Extension for queries. The default implementation will do
     /// nothing if queried for this and will return
     /// `Binary::default()`.
     Extension { msg: QueryExt },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DepositInfoResponse {
+    /// The deposit that has been paid for the specified proposal.
+    pub deposit_info: Option<CheckedDepositInfo>,
+    /// The address that created the proposal.
+    pub proposer: cosmwasm_std::Addr,
 }

@@ -20,10 +20,9 @@ Dao Dao e2e integration tests with gas profiling.
 * Change `src/helpers/chain.rs::test_account()` with your testnet account
 * `CONFIG="configs/testnet.yaml" cargo t`
 
-
 ### Skipping Contract Storage
 
-By default all of the smart contracts are stored on-chain once before all of the tests are run. 
+By default all of the smart contracts are stored on-chain once before all of the tests are run.
 This is time consuming when writing tests. If you want to skip this step you can use the `SKIP_CONTRACT_STORE=true` flag like so:
 
 `SKIP_CONTRACT_STORE=true GAS_OUT_DIR="gas_reports" CONFIG="configs/local.yaml" cargo t`
@@ -42,9 +41,9 @@ Add new tests in `src/tests`:
 #[ignore]
 fn new_dao_has_no_items(chain: &mut Chain) {
     let res = create_dao(
-        chain, 
+        chain,
         Some(chain.user.addr.clone()),
-        "ex_create_dao", 
+        "ex_create_dao",
        chain.user.addr.clone()
     );
     let dao = res.unwrap();

@@ -436,6 +436,11 @@ mod tests {
             "ekez",
             &coins(10, "ujuno"),
         );
+
+        // Make sure it went away.
+        let balance = get_balance_native(&app, "ekez", "ujuno");
+        assert_eq!(balance, Uint128::zero());
+
         let (position, expected_status, trigger_refund): (
             _,
             _,
@@ -500,6 +505,11 @@ mod tests {
             "ekez",
             &[],
         );
+
+        // Make sure it went await.
+        let balance = get_balance_cw20(&app, cw20_address.clone(), "ekez");
+        assert_eq!(balance, Uint128::zero());
+
         let (position, expected_status, trigger_refund): (
             _,
             _,

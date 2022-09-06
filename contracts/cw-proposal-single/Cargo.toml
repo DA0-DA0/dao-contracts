@@ -44,6 +44,7 @@ cw721-stake = { path = "../cw721-stake", version = "*" }
 cw-pre-propose-base-proposal-single = { path = "../cw-pre-propose-base-proposal-single", version = "*" }
 cw721-base = "0.13"
 testing = { version = "*", path = "../../packages/testing" }
+cw-denom = { version = "*", path = "../../packages/cw-denom" }
 cw20-stake = { path= "../cw20-stake", version = "*" }
 cw20-base = "0.13"
 cw4 = "0.13"

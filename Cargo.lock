@@ -741,39 +741,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-proposal-multiple"
-version = "0.2.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-asset",
- "cw-core",
- "cw-core-interface",
- "cw-core-macros",
- "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
- "cw-utils 0.13.4",
- "cw2 0.13.4",
- "cw20",
- "cw20-balance-voting",
- "cw20-base",
- "cw20-stake",
- "cw20-staked-balance-voting",
- "cw4",
- "cw4-group",
- "cw4-voting",
- "indexable-hooks",
- "proposal-hooks",
- "rand",
- "schemars",
- "serde",
- "testing",
- "thiserror",
- "vote-hooks",
- "voting",
-]
-
-[[package]]
 name = "cw-proposal-single"
 version = "0.2.0"
 dependencies = [
@@ -1745,6 +1712,7 @@ dependencies = [
  "cw-asset",
  "cw-core",
  "cw-core-interface",
+ "cw-pre-propose-base-proposal-single",
  "cw-proposal-single",
  "cw-utils 0.13.4",
  "cw20",
