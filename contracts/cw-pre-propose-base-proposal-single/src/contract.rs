@@ -65,6 +65,10 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, PreProposeError> {
+    // We don't want to expose the `proposer` field on the propose
+    // message externally as that is to be set by this module. Here,
+    // we transform an external message which omits that field into an
+    // internal message which sets it.
     type ExecuteInternal = ExecuteBase<ProposeMessageInternal, Empty>;
     let internalized = match msg {
         ExecuteMsg::Propose {
@@ -83,7 +87,7 @@ pub fn execute(
                 msgs,
             },
         },
-        ExecuteMsg::Ext { msg } => ExecuteInternal::Ext { msg },
+        ExecuteMsg::Extension { msg } => ExecuteInternal::Extension { msg },
         ExecuteMsg::ProposalHook(hook) => ExecuteInternal::ProposalHook(hook),
     };
 
@@ -97,7 +101,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coins, from_slice, to_binary, Addr, Attribute, Coin, Event, Uint128};
+    use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Uint128};
     use cps::query::ProposalResponse;
     use cw2::ContractVersion;
     use cw20::Cw20Coin;
@@ -165,7 +169,7 @@ mod tests {
                     msg: to_binary(&InstantiateMsg {
                         deposit_info,
                         open_proposal_submission,
-                        ext: Empty::default(),
+                        extension: Empty::default(),
                     })
                     .unwrap(),
                     admin: Some(Admin::Instantiator {}),
@@ -422,7 +426,7 @@ mod tests {
         mint_natives(&mut app, "ekez", coins(10, "ujuno"));
         let id = make_proposal(
             &mut app,
-            pre_propose.clone(),
+            pre_propose,
             proposal_single.clone(),
             "ekez",
             &coins(10, "ujuno"),
@@ -826,7 +830,7 @@ mod tests {
         let mut app = App::default();
         let DefaultTestSetup {
             core_addr: _,
-            proposal_single,
+            proposal_single: _,
             pre_propose,
         } = setup_default_test(
             &mut app, None, false, // no open proposal submission.
@@ -836,7 +840,7 @@ mod tests {
             .execute_contract(
                 Addr::unchecked("ekez"),
                 pre_propose,
-                &ExecuteMsg::Ext {
+                &ExecuteMsg::Extension {
                     msg: Empty::default(),
                 },
                 &[],
@@ -883,7 +887,7 @@ mod tests {
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),
                             open_proposal_submission: false,
-                            ext: Empty::default(),
+                            extension: Empty::default(),
                         })
                         .unwrap(),
                         admin: Some(Admin::Instantiator {}),
@@ -894,7 +898,8 @@ mod tests {
             }
         };
 
-        let core_addr = instantiate_with_cw4_groups_governance(
+        // Should panic.
+        instantiate_with_cw4_groups_governance(
             &mut app,
             cps_id,
             to_binary(&proposal_module_instantiate).unwrap(),
@@ -943,7 +948,7 @@ mod tests {
                                 refund_policy: DepositRefundPolicy::OnlyPassed,
                             }),
                             open_proposal_submission: false,
-                            ext: Empty::default(),
+                            extension: Empty::default(),
                         })
                         .unwrap(),
                         admin: Some(Admin::Instantiator {}),
@@ -954,7 +959,8 @@ mod tests {
             }
         };
 
-        let core_addr = instantiate_with_cw4_groups_governance(
+        // Should panic.
+        instantiate_with_cw4_groups_governance(
             &mut app,
             cps_id,
             to_binary(&proposal_module_instantiate).unwrap(),

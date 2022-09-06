@@ -22,7 +22,7 @@ pub enum PreProposeInfo {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub enum ProposalCreationPolicy {
-    /// Anyone may create a proposal free of charge.
+    /// Anyone may create a proposal, free of charge.
     Anyone {},
     /// Only ADDR may create proposals. It is expected that ADDR is a
     /// pre-propose module, though we only require that it is a valid

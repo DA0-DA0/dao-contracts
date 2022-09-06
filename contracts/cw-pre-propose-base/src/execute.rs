@@ -80,7 +80,7 @@ where
     ) -> Result<Response, PreProposeError> {
         match msg {
             ExecuteMsg::Propose { msg } => self.execute_propose(deps.as_ref(), env, info, msg),
-            ExecuteMsg::Ext { .. } => Ok(Response::default()),
+            ExecuteMsg::Extension { .. } => Ok(Response::default()),
 
             ExecuteMsg::ProposalHook(ProposalHookMsg::ProposalStatusChanged {
                 id,
@@ -100,7 +100,7 @@ where
             QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
             QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
             QueryMsg::Config {} => to_binary(&self.config.load(deps.storage)?),
-            QueryMsg::Ext { .. } => Ok(Binary::default()),
+            QueryMsg::Extension { .. } => Ok(Binary::default()),
         }
     }
 
