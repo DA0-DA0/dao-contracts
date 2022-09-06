@@ -58,7 +58,7 @@ impl TestContext for Chain {
 }
 
 fn test_accounts() -> HashMap<String, SigningAccount> {
-    let bytes = fs::read(&"../configs/test_accounts.json").unwrap();
+    let bytes = fs::read("../configs/test_accounts.json").unwrap();
     let accounts: Vec<Account> = serde_json::from_slice(&bytes).unwrap();
 
     let mut account_map = HashMap::new();

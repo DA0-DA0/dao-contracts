@@ -35,7 +35,7 @@ fn main() -> Result<()> {
 
     // use first test user as DAO admin, and only DAO member:
     let accounts: Vec<Account> =
-        serde_json::from_slice(&fs::read(&"ci/configs/test_accounts.json")?)?;
+        serde_json::from_slice(&fs::read("ci/configs/test_accounts.json")?)?;
     let account = accounts[0].clone();
 
     let key = SigningKey {
