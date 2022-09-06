@@ -11,7 +11,7 @@ use voting::deposit::DepositRefundPolicy;
 
 use crate::{
     error::PreProposeError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{DepositInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{Config, PreProposeContract},
 };
 
@@ -100,6 +100,13 @@ where
             QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
             QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
             QueryMsg::Config {} => to_binary(&self.config.load(deps.storage)?),
+            QueryMsg::DepositInfo { proposal_id } => {
+                let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;
+                to_binary(&DepositInfoResponse {
+                    deposit_info,
+                    proposer,
+                })
+            }
             QueryMsg::Extension { .. } => Ok(Binary::default()),
         }
     }

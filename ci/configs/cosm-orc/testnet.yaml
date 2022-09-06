@@ -1,4 +1,4 @@
-chain_cfg: 
+chain_cfg:
   denom: "ujunox"
   prefix: "juno"
   chain_id: "uni-3"
