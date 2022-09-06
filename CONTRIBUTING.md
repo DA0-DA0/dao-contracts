@@ -33,6 +33,11 @@ page](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design)
 which gives an overview of how all of the DAO DAO smart contracts fit
 together.
 
+### Install Dev Dependencies
+- [Rust](https://doc.rust-lang.org/book/ch01-01-installation.html)
+- [Just](https://github.com/casey/just#packages)
+- [Yarn](https://yarnpkg.com/)
+
 Our development workflow is just like a regular Rust project:
 
 - `cargo build` from the repository root to build the contracts.
@@ -40,12 +45,8 @@ Our development workflow is just like a regular Rust project:
 
 To build WASM files for deploying on a blockchain, run:
 
-```
-docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  --platform linux/amd64 \
-  cosmwasm/workspace-optimizer:0.12.6
+```sh
+just workspace-optimize
 ```
 
 From the repository root.
