@@ -1,14 +1,14 @@
 use super::chain::Chain;
 use anyhow::Result;
 use cosm_orc::config::key::SigningKey;
-use cosmwasm_std::{to_binary, Decimal, Uint128};
+use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_core::query::DumpStateResponse;
 use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_utils::Duration;
 use voting::{
-    deposit::DepositInfo,
-    deposit::{DepositRefundPolicy, DepositToken},
+    deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
+    pre_propose::PreProposeInfo,
     threshold::PercentageThreshold,
     threshold::Threshold,
 };
@@ -71,13 +71,27 @@ pub fn create_dao(
                 max_voting_period: Duration::Time(432000),
                 allow_revoting: false,
                 only_members_execute: true,
-                deposit_info: Some(DepositInfo {
-                    token: DepositToken::VotingModuleToken {},
-                    deposit: Uint128::new(1000000000),
-                    refund_policy: DepositRefundPolicy::OnlyPassed,
-                }),
                 close_proposal_on_execution_failure: false,
-                open_proposal_submission: false,
+                pre_propose_info: PreProposeInfo::ModuleMayPropose {
+                    info: ModuleInstantiateInfo {
+                        code_id: chain
+                            .orc
+                            .contract_map
+                            .code_id("cw_pre_propose_base_proposal_single")?,
+                        msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
+                            deposit_info: Some(UncheckedDepositInfo {
+                                denom: DepositToken::VotingModuleToken {},
+                                amount: Uint128::new(1000000000),
+                                refund_policy: DepositRefundPolicy::OnlyPassed,
+                            }),
+                            open_proposal_submission: false,
+                            extension: Empty::default(),
+                        })
+                        .unwrap(),
+                        admin: Some(Admin::Instantiator {}),
+                        label: "DAO DAO Pre-Propose Module".to_string(),
+                    },
+                },
             })?,
             admin: Some(Admin::Instantiator {}),
             label: "DAO DAO Proposal Module".to_string(),

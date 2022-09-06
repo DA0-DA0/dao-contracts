@@ -152,6 +152,8 @@ pub fn execute_propose(
     // proposer should not be specified.
     let proposer = match (proposer, config.proposal_creation_policy) {
         (None, ProposalCreationPolicy::Anyone {}) => sender.clone(),
+        // `is_permitted` above checks that the specified module is
+        // actually sending the propose message.
         (Some(proposer), ProposalCreationPolicy::Module { .. }) => {
             deps.api.addr_validate(&proposer)?
         }

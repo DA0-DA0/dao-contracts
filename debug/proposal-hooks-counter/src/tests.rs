@@ -6,6 +6,7 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use indexable_hooks::HooksResponse;
 
 use voting::{
+    pre_propose::PreProposeInfo,
     threshold::{PercentageThreshold, Threshold},
     voting::Vote,
 };
@@ -145,9 +146,8 @@ fn test_counters() {
         min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
-        deposit_info: None,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         close_proposal_on_execution_failure: true,
-        open_proposal_submission: false,
     };
 
     let governance_addr =
@@ -251,6 +251,7 @@ fn test_counters() {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
+            proposer: None,
         },
         &[],
     )
@@ -349,6 +350,7 @@ fn test_counters() {
             title: "A simple text proposal 2nd".to_string(),
             description: "This is a simple text proposal 2nd".to_string(),
             msgs: vec![],
+            proposer: None,
         },
         &[],
     )

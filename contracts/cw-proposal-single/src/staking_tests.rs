@@ -86,7 +86,7 @@ fn instantiate_with_staked_balances_voting() {
             msg: to_binary(&cppbps::InstantiateMsg {
                 deposit_info: None,
                 open_proposal_submission: false,
-                ext: Empty::default(),
+                extension: Empty::default(),
             })
             .unwrap(),
             admin: Some(Admin::Instantiator {}),

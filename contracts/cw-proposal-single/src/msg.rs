@@ -43,7 +43,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    /// Creates a proposal in the governance module.
+    /// Creates a proposal in the module.
     Propose {
         /// The title of the proposal.
         title: String,

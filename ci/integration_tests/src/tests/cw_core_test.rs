@@ -11,6 +11,7 @@ use cw_utils::Duration;
 use test_context::test_context;
 use voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy},
+    pre_propose::ProposalCreationPolicy,
     threshold::PercentageThreshold,
     threshold::Threshold,
 };
@@ -350,14 +351,10 @@ fn instantiate_with_admin(chain: &mut Chain) {
     assert_eq!(config_res.max_voting_period, Duration::Time(432000));
     assert!(!config_res.allow_revoting);
     assert!(config_res.only_members_execute);
-    assert_eq!(
-        config_res.deposit_info,
-        Some(CheckedDepositInfo {
-            token: AssetInfo::cw20(Addr::unchecked(token_addr)),
-            deposit: Uint128::new(1000000000),
-            refund_policy: DepositRefundPolicy::OnlyPassed,
-        })
-    );
+    assert!(matches!(
+        config_res.proposal_creation_policy,
+        ProposalCreationPolicy::Module { .. }
+    ));
     assert_eq!(
         config_res.threshold,
         Threshold::ThresholdQuorum {
