@@ -34,3 +34,4 @@ voting = { version = "*", path = "../../packages/voting" }
 cw-denom = { version = "*", path = "../../packages/cw-denom" }
 cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
 testing = { version = "*", path = "../../packages/testing" }
+proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }

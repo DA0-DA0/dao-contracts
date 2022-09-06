@@ -97,8 +97,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{coins, to_binary, Addr, Coin, Uint128};
+    use cosmwasm_std::{coins, from_slice, to_binary, Addr, Attribute, Coin, Event, Uint128};
     use cps::query::ProposalResponse;
+    use cw2::ContractVersion;
     use cw20::Cw20Coin;
     use cw_core::state::ProposalModule;
     use cw_core_interface::{Admin, ModuleInstantiateInfo};
@@ -106,6 +107,7 @@ mod tests {
     use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
     use cw_proposal_single as cps;
     use cw_utils::Duration;
+    use proposal_hooks::ProposalHookMsg;
     use testing::helpers::instantiate_with_cw4_groups_governance;
     use voting::{
         deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -209,10 +211,9 @@ mod tests {
         open_proposal_submission: bool,
     ) -> DefaultTestSetup {
         let cps_id = app.store_code(cw_dao_proposal_single_contract());
-        let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
         let proposal_module_instantiate =
-            get_default_proposal_module_instantiate(app, deposit_info, false);
+            get_default_proposal_module_instantiate(app, deposit_info, open_proposal_submission);
 
         let core_addr = instantiate_with_cw4_groups_governance(
             app,
@@ -368,7 +369,7 @@ mod tests {
 
     fn close_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
         app.execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked(sender),
             module,
             &cps::msg::ExecuteMsg::Close { proposal_id },
             &[],
@@ -378,7 +379,7 @@ mod tests {
 
     fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
         app.execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked(sender),
             module,
             &cps::msg::ExecuteMsg::Execute { proposal_id },
             &[],
@@ -434,7 +435,6 @@ mod tests {
             EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
             EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
         };
-        // Vote no on the proposal. This should cause it to be rejected.
         let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
         assert_eq!(new_status, expected_status);
 
@@ -502,7 +502,6 @@ mod tests {
             EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
             EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
         };
-        // Vote no on the proposal. This should cause it to be rejected.
         let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
         assert_eq!(new_status, expected_status);
 
@@ -622,6 +621,353 @@ mod tests {
         )
     }
 
-    // TODO(zeke): test invalid instantiate messages and non happy
-    // path methods.
+    #[test]
+    fn test_set_version() {
+        let mut app = App::default();
+
+        let DefaultTestSetup {
+            core_addr: _,
+            proposal_single: _,
+            pre_propose,
+        } = setup_default_test(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy: DepositRefundPolicy::Always,
+            }),
+            false,
+        );
+
+        let info: ContractVersion = from_slice(
+            &app.wrap()
+                .query_wasm_raw(pre_propose, "contract_info".as_bytes())
+                .unwrap()
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            ContractVersion {
+                contract: CONTRACT_NAME.to_string(),
+                version: CONTRACT_VERSION.to_string()
+            },
+            info
+        )
+    }
+
+    #[test]
+    fn test_permissions() {
+        let mut app = App::default();
+
+        let DefaultTestSetup {
+            core_addr,
+            proposal_single: _,
+            pre_propose,
+        } = setup_default_test(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy: DepositRefundPolicy::Always,
+            }),
+            false, // no open proposal submission.
+        );
+
+        let err: PreProposeError = app
+            .execute_contract(
+                Addr::unchecked("notmodule"),
+                pre_propose.clone(),
+                &ExecuteMsg::ProposalHook(ProposalHookMsg::NewProposal {
+                    id: 1,
+                    proposer: "ekez".to_string(),
+                }),
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, PreProposeError::NotModule {});
+
+        let err: PreProposeError = app
+            .execute_contract(
+                core_addr,
+                pre_propose.clone(),
+                &ExecuteMsg::ProposalHook(ProposalHookMsg::ProposalStatusChanged {
+                    id: 1,
+                    old_status: "rejected".to_string(),
+                    new_status: "closed".to_string(),
+                }),
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, PreProposeError::NotModule {});
+
+        // Non-members may not propose when open_propose_submission is
+        // disabled.
+        let err: PreProposeError = app
+            .execute_contract(
+                Addr::unchecked("nonmember"),
+                pre_propose,
+                &ExecuteMsg::Propose {
+                    msg: ProposeMessage::Propose {
+                        title: "I would like to join the DAO".to_string(),
+                        description: "though, I am currently not a member.".to_string(),
+                        msgs: vec![],
+                    },
+                },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, PreProposeError::NotMember {})
+    }
+
+    #[test]
+    fn test_propose_open_proposal_submission() {
+        let mut app = App::default();
+        let DefaultTestSetup {
+            core_addr: _,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app,
+            Some(UncheckedDepositInfo {
+                denom: DepositToken::Token {
+                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                },
+                amount: Uint128::new(10),
+                refund_policy: DepositRefundPolicy::Always,
+            }),
+            true, // yes, open proposal submission.
+        );
+
+        // Non-member proposes.
+        mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
+        let id = make_proposal(
+            &mut app,
+            pre_propose,
+            proposal_single.clone(),
+            "nonmember",
+            &coins(10, "ujuno"),
+        );
+        // Member votes.
+        let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
+        assert_eq!(Status::Passed, new_status)
+    }
+
+    #[test]
+    fn test_no_deposit_required_open_submission() {
+        let mut app = App::default();
+        let DefaultTestSetup {
+            core_addr: _,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app, None, true, // yes, open proposal submission.
+        );
+
+        // Non-member proposes.
+        let id = make_proposal(
+            &mut app,
+            pre_propose,
+            proposal_single.clone(),
+            "nonmember",
+            &[],
+        );
+        // Member votes.
+        let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
+        assert_eq!(Status::Passed, new_status)
+    }
+
+    #[test]
+    fn test_no_deposit_required_members_submission() {
+        let mut app = App::default();
+        let DefaultTestSetup {
+            core_addr: _,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app, None, false, // no open proposal submission.
+        );
+
+        // Non-member proposes and this fails.
+        let err: PreProposeError = app
+            .execute_contract(
+                Addr::unchecked("nonmember"),
+                pre_propose.clone(),
+                &ExecuteMsg::Propose {
+                    msg: ProposeMessage::Propose {
+                        title: "I would like to join the DAO".to_string(),
+                        description: "though, I am currently not a member.".to_string(),
+                        msgs: vec![],
+                    },
+                },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, PreProposeError::NotMember {});
+
+        let id = make_proposal(&mut app, pre_propose, proposal_single.clone(), "ekez", &[]);
+        let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
+        assert_eq!(Status::Passed, new_status)
+    }
+
+    #[test]
+    fn test_execute_extension_does_nothing() {
+        let mut app = App::default();
+        let DefaultTestSetup {
+            core_addr: _,
+            proposal_single,
+            pre_propose,
+        } = setup_default_test(
+            &mut app, None, false, // no open proposal submission.
+        );
+
+        let res = app
+            .execute_contract(
+                Addr::unchecked("ekez"),
+                pre_propose,
+                &ExecuteMsg::Ext {
+                    msg: Empty::default(),
+                },
+                &[],
+            )
+            .unwrap();
+
+        // There should be one event which is the invocation of the contract.
+        assert_eq!(res.events.len(), 1);
+        assert_eq!(res.events[0].ty, "execute".to_string());
+        assert_eq!(res.events[0].attributes.len(), 1);
+        assert_eq!(
+            res.events[0].attributes[0].key,
+            "_contract_addr".to_string()
+        )
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid zero deposit. set the deposit to `None` to have no deposit")]
+    fn test_instantiate_with_zero_native_deposit() {
+        let mut app = App::default();
+
+        let cps_id = app.store_code(cw_dao_proposal_single_contract());
+
+        let proposal_module_instantiate = {
+            let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
+
+            cps::msg::InstantiateMsg {
+                threshold: Threshold::AbsolutePercentage {
+                    percentage: PercentageThreshold::Majority {},
+                },
+                max_voting_period: Duration::Time(86400),
+                min_voting_period: None,
+                only_members_execute: false,
+                allow_revoting: false,
+                pre_propose_info: PreProposeInfo::ModuleMayPropose {
+                    info: ModuleInstantiateInfo {
+                        code_id: pre_propose_id,
+                        msg: to_binary(&InstantiateMsg {
+                            deposit_info: Some(UncheckedDepositInfo {
+                                denom: DepositToken::Token {
+                                    denom: UncheckedDenom::Native("ujuno".to_string()),
+                                },
+                                amount: Uint128::zero(),
+                                refund_policy: DepositRefundPolicy::OnlyPassed,
+                            }),
+                            open_proposal_submission: false,
+                            ext: Empty::default(),
+                        })
+                        .unwrap(),
+                        admin: Some(Admin::Instantiator {}),
+                        label: "baby's first pre-propose module".to_string(),
+                    },
+                },
+                close_proposal_on_execution_failure: false,
+            }
+        };
+
+        let core_addr = instantiate_with_cw4_groups_governance(
+            &mut app,
+            cps_id,
+            to_binary(&proposal_module_instantiate).unwrap(),
+            Some(vec![
+                cw20::Cw20Coin {
+                    address: "ekez".to_string(),
+                    amount: Uint128::new(9),
+                },
+                cw20::Cw20Coin {
+                    address: "keze".to_string(),
+                    amount: Uint128::new(8),
+                },
+            ]),
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid zero deposit. set the deposit to `None` to have no deposit")]
+    fn test_instantiate_with_zero_cw20_deposit() {
+        let mut app = App::default();
+
+        let cw20_addr = instantiate_cw20_base_default(&mut app);
+
+        let cps_id = app.store_code(cw_dao_proposal_single_contract());
+
+        let proposal_module_instantiate = {
+            let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
+
+            cps::msg::InstantiateMsg {
+                threshold: Threshold::AbsolutePercentage {
+                    percentage: PercentageThreshold::Majority {},
+                },
+                max_voting_period: Duration::Time(86400),
+                min_voting_period: None,
+                only_members_execute: false,
+                allow_revoting: false,
+                pre_propose_info: PreProposeInfo::ModuleMayPropose {
+                    info: ModuleInstantiateInfo {
+                        code_id: pre_propose_id,
+                        msg: to_binary(&InstantiateMsg {
+                            deposit_info: Some(UncheckedDepositInfo {
+                                denom: DepositToken::Token {
+                                    denom: UncheckedDenom::Cw20(cw20_addr.into_string()),
+                                },
+                                amount: Uint128::zero(),
+                                refund_policy: DepositRefundPolicy::OnlyPassed,
+                            }),
+                            open_proposal_submission: false,
+                            ext: Empty::default(),
+                        })
+                        .unwrap(),
+                        admin: Some(Admin::Instantiator {}),
+                        label: "baby's first pre-propose module".to_string(),
+                    },
+                },
+                close_proposal_on_execution_failure: false,
+            }
+        };
+
+        let core_addr = instantiate_with_cw4_groups_governance(
+            &mut app,
+            cps_id,
+            to_binary(&proposal_module_instantiate).unwrap(),
+            Some(vec![
+                cw20::Cw20Coin {
+                    address: "ekez".to_string(),
+                    amount: Uint128::new(9),
+                },
+                cw20::Cw20Coin {
+                    address: "keze".to_string(),
+                    amount: Uint128::new(8),
+                },
+            ]),
+        );
+    }
 }

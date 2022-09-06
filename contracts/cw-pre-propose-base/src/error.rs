@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use voting::deposit::DepositError;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum PreProposeError {
     #[error(transparent)]
     Std(#[from] StdError),

@@ -804,6 +804,7 @@ dependencies = [
  "cw20-base",
  "cw4-group",
  "cw4-voting",
+ "proposal-hooks",
  "schemars",
  "serde",
  "testing",
