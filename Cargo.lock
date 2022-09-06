@@ -784,6 +784,7 @@ dependencies = [
  "cw-core",
  "cw-core-interface",
  "cw-core-macros",
+ "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-native-staked-balance-voting",
  "cw-pre-propose-base-proposal-single",
