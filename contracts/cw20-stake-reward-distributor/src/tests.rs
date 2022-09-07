@@ -1,9 +1,13 @@
 use crate::{
-    msg::{ExecuteMsg, InfoResponse, InstantiateMsg, QueryMsg},
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
+    msg::{ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, QueryMsg},
     state::Config,
     ContractError,
 };
-use cosmwasm_std::{Addr, Empty, Uint128};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    Addr, Empty, Uint128,
+};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
@@ -533,4 +537,14 @@ fn test_dao_deploy() {
     let distributor_info = get_info(&app, distributor_addr);
     assert_eq!(distributor_info.balance, Uint128::new(990));
     assert_eq!(distributor_info.last_payment_block, app.block_info().height);
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

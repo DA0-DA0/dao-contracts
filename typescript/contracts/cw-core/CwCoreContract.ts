@@ -36,6 +36,8 @@ export interface Cw20BalancesResponse {
 }
 export type Cw20TokenListResponse = Addr[];
 export type Cw721TokenListResponse = Addr[];
+export type Timestamp = Uint64;
+export type Uint64 = string;
 export type PauseInfoResponse = {
   Paused: {
     expiration: Expiration;
@@ -55,12 +57,11 @@ export type Expiration = {
     [k: string]: unknown;
   };
 };
-export type Timestamp = Uint64;
-export type Uint64 = string;
 export interface DumpStateResponse {
   active_proposal_module_count: number;
   admin: Addr;
   config: Config;
+  created_timestamp?: Timestamp | null;
   pause_info: PauseInfoResponse;
   proposal_modules: ProposalModule[];
   total_proposal_module_count: number;
@@ -150,6 +151,12 @@ export type ExecuteMsg = {
 } | {
   update_voting_module: {
     module: ModuleInstantiateInfo;
+    [k: string]: unknown;
+  };
+} | {
+  update_sub_daos: {
+    to_add: SubDao[];
+    to_remove: string[];
     [k: string]: unknown;
   };
 };
@@ -338,6 +345,11 @@ export interface ModuleInstantiateInfo {
   msg: Binary;
   [k: string]: unknown;
 }
+export interface SubDao {
+  addr: string;
+  charter?: string | null;
+  [k: string]: unknown;
+}
 export interface GetItemResponse {
   item?: string | null;
   [k: string]: unknown;
@@ -364,6 +376,7 @@ export interface InitialItem {
   [k: string]: unknown;
 }
 export type ListItemsResponse = string[];
+export type ListSubDaosResponse = SubDao[];
 export type MigrateMsg = {
   from_v1: {
     [k: string]: unknown;
@@ -437,6 +450,12 @@ export type QueryMsg = {
   };
 } | {
   voting_module: {
+    [k: string]: unknown;
+  };
+} | {
+  list_sub_daos: {
+    limit?: number | null;
+    start_after?: string | null;
     [k: string]: unknown;
   };
 } | {
@@ -521,6 +540,13 @@ export interface CwCoreReadOnlyInterface {
   }) => Promise<ActiveProposalModulesResponse>;
   pauseInfo: () => Promise<PauseInfoResponse>;
   votingModule: () => Promise<VotingModuleResponse>;
+  listSubDaos: ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ListSubDaosResponse>;
   votingPowerAtHeight: ({
     address,
     height
@@ -555,6 +581,7 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
     this.activeProposalModules = this.activeProposalModules.bind(this);
     this.pauseInfo = this.pauseInfo.bind(this);
     this.votingModule = this.votingModule.bind(this);
+    this.listSubDaos = this.listSubDaos.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
     this.info = this.info.bind(this);
@@ -685,6 +712,20 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
       voting_module: {}
     });
   };
+  listSubDaos = async ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ListSubDaosResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_sub_daos: {
+        limit,
+        start_after: startAfter
+      }
+    });
+  };
   votingPowerAtHeight = async ({
     address,
     height
@@ -802,6 +843,13 @@ export interface CwCoreInterface extends CwCoreReadOnlyInterface {
   }: {
     module: ModuleInstantiateInfo;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  updateSubDaos: ({
+    toAdd,
+    toRemove
+  }: {
+    toAdd: SubDao[];
+    toRemove: string[];
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
 export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
   client: SigningCosmWasmClient;
@@ -828,6 +876,7 @@ export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
     this.updateCw721List = this.updateCw721List.bind(this);
     this.updateProposalModules = this.updateProposalModules.bind(this);
     this.updateVotingModule = this.updateVotingModule.bind(this);
+    this.updateSubDaos = this.updateSubDaos.bind(this);
   }
 
   executeAdminMsgs = async ({
@@ -1004,6 +1053,20 @@ export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_voting_module: {
         module
+      }
+    }, fee, memo, funds);
+  };
+  updateSubDaos = async ({
+    toAdd,
+    toRemove
+  }: {
+    toAdd: SubDao[];
+    toRemove: string[];
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_sub_daos: {
+        to_add: toAdd,
+        to_remove: toRemove
       }
     }, fee, memo, funds);
   };

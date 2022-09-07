@@ -1,4 +1,5 @@
 use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
     to_binary, Addr, Binary, CosmosMsg, Decimal, Empty, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
@@ -16,6 +17,7 @@ use voting::{
 };
 
 use crate::{
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::MultipleChoiceProposal,
     query::{
@@ -697,9 +699,9 @@ where
     let mut rng = rand::thread_rng();
     let dist = rand::distributions::Uniform::<u64>::new(1, 200);
     for _ in 0..10 {
-        let zero: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
-        let one: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
-        let none: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
+        let zero: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
+        let one: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
+        let none: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
 
         let zero_sum: u64 = zero.iter().sum();
         let one_sum: u64 = one.iter().sum();
@@ -5069,6 +5071,16 @@ fn test_timestamp_updated() {
 
     assert_eq!(updated.proposal.last_updated, latest_time);
     assert_eq!(updated.proposal.status, Status::Closed);
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }
 
 #[test]

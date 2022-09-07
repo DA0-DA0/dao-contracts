@@ -1,6 +1,6 @@
 [package]
 name = "testing"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # This crate depends on multi-test and rand. These are not features in

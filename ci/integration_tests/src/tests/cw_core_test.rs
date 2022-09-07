@@ -16,6 +16,7 @@ use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, thresh
 
 #[test_context(Chain)]
 #[test]
+#[ignore]
 fn execute_execute_admin_msgs(chain: &mut Chain) {
     // if you are not the admin, you cant execute admin msgs:
     let res = create_dao(
@@ -102,6 +103,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
 #[test_context(Chain)]
 #[test]
+#[ignore]
 fn execute_items(chain: &mut Chain) {
     // add item:
     let res = create_dao(
@@ -200,6 +202,7 @@ fn execute_items(chain: &mut Chain) {
 
 #[test_context(Chain)]
 #[test]
+#[ignore]
 fn instantiate_with_no_admin(chain: &mut Chain) {
     let res = create_dao(chain, None, "inst_dao_no_admin", chain.user.addr.clone());
     let dao = res.unwrap();
@@ -221,6 +224,7 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
 
 #[test_context(Chain)]
 #[test]
+#[ignore]
 fn instantiate_with_admin(chain: &mut Chain) {
     let voting_contract = "cw20_staked_balance_voting";
     let proposal_contract = "cw_proposal_single";

@@ -36,3 +36,6 @@ pub struct InfoResponse {
     pub last_payment_block: u64,
     pub balance: Uint128,
 }
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+pub struct MigrateMsg {}

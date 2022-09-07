@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     from_slice,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
+    to_binary, Addr, CosmosMsg, Empty, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
@@ -10,13 +10,13 @@ use cw_storage_plus::Map;
 use cw_utils::{Duration, Expiration};
 
 use crate::{
-    contract::{derive_proposal_module_prefix, migrate},
+    contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{
         Admin, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, ModuleInstantiateInfo, QueryMsg,
     },
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-        PauseInfoResponse,
+        PauseInfoResponse, SubDao,
     },
     state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
     ContractError,
@@ -2714,4 +2714,167 @@ fn get_active_modules(app: &App, gov_addr: Addr) -> Vec<ProposalModule> {
         .into_iter()
         .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Enabled)
         .collect()
+}
+
+#[test]
+fn test_add_remove_subdaos() {
+    let (core_addr, mut app) = do_standard_instantiate(false, None);
+
+    test_unauthorized(
+        &mut app,
+        core_addr.clone(),
+        ExecuteMsg::UpdateSubDaos {
+            to_add: vec![],
+            to_remove: vec![],
+        },
+    );
+
+    let to_add: Vec<SubDao> = vec![
+        SubDao {
+            addr: "subdao001".to_string(),
+            charter: None,
+        },
+        SubDao {
+            addr: "subdao002".to_string(),
+            charter: Some("cool charter bro".to_string()),
+        },
+        SubDao {
+            addr: "subdao005".to_string(),
+            charter: None,
+        },
+        SubDao {
+            addr: "subdao007".to_string(),
+            charter: None,
+        },
+    ];
+    let to_remove: Vec<String> = vec![];
+
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateSubDaos { to_add, to_remove },
+        &[],
+    )
+    .unwrap();
+
+    let res: Vec<SubDao> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr.clone(),
+            &QueryMsg::ListSubDaos {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(res.len(), 4);
+
+    let to_remove: Vec<String> = vec!["subdao005".to_string()];
+
+    app.execute_contract(
+        Addr::unchecked(core_addr.clone()),
+        core_addr.clone(),
+        &ExecuteMsg::UpdateSubDaos {
+            to_add: vec![],
+            to_remove,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let res: Vec<SubDao> = app
+        .wrap()
+        .query_wasm_smart(
+            core_addr,
+            &QueryMsg::ListSubDaos {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(res.len(), 3);
+
+    let test_res: SubDao = SubDao {
+        addr: "subdao002".to_string(),
+        charter: Some("cool charter bro".to_string()),
+    };
+
+    assert_eq!(res[1], test_res);
+
+    let full_result_set: Vec<SubDao> = vec![
+        SubDao {
+            addr: "subdao001".to_string(),
+            charter: None,
+        },
+        SubDao {
+            addr: "subdao002".to_string(),
+            charter: Some("cool charter bro".to_string()),
+        },
+        SubDao {
+            addr: "subdao007".to_string(),
+            charter: None,
+        },
+    ];
+
+    assert_eq!(res, full_result_set);
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+fn test_created_timestamp_set() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let gov_id = app.store_code(cw_core_contract());
+
+    let cw20_instantiate = cw20_base::msg::InstantiateMsg {
+        name: "DAO".to_string(),
+        symbol: "DAO".to_string(),
+        decimals: 6,
+        initial_balances: vec![],
+        mint: None,
+        marketing: None,
+    };
+
+    let timestamp = Timestamp::from_seconds(300_000_000);
+    app.update_block(|mut block| block.time = timestamp);
+    let instantiate = InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs.".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: true,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: cw20_id,
+            msg: to_binary(&cw20_instantiate).unwrap(),
+            admin: Admin::CoreContract {},
+            label: "governance module".to_string(),
+        }],
+        initial_items: None,
+    };
+    let gov_addr = instantiate_gov(&mut app, gov_id, instantiate);
+
+    let state: DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(&gov_addr, &QueryMsg::DumpState {})
+        .unwrap();
+
+    assert_eq!(timestamp, state.created_timestamp.unwrap());
 }

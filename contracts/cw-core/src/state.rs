@@ -2,7 +2,7 @@ use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, Empty};
+use cosmwasm_std::{Addr, Empty, Timestamp};
 use cw_storage_plus::{Item, Map};
 
 /// Top level config type for core module.
@@ -88,3 +88,9 @@ pub const CW20_LIST: Map<Addr, Empty> = Map::new("cw20s");
 /// Set of cw721 tokens that have been registered with this contract's
 /// treasury.
 pub const CW721_LIST: Map<Addr, Empty> = Map::new("cw721s");
+
+/// List of SubDAOs associated to this DAO. Each SubDAO has an optional charter.
+pub const SUBDAO_LIST: Map<&Addr, Option<String>> = Map::new("sub_daos");
+
+/// Timestamp of this DAO's creation. Will only be present for DAOs created v2 and after.
+pub const CREATED_TIMESTAMP: Item<Timestamp> = Item::new("created_timestamp");

@@ -1,6 +1,3 @@
-use core::time;
-use std::thread;
-
 use crate::helpers::{chain::Chain, helper::create_dao};
 use cosmwasm_std::{to_binary, Uint128};
 use cw20_stake::{msg::StakedValueResponse, state::Config};
@@ -11,6 +8,7 @@ use test_context::test_context;
 
 #[test_context(Chain)]
 #[test]
+#[ignore]
 fn execute_stake_tokens(chain: &mut Chain) {
     let voting_contract = "cw20_staked_balance_voting";
 
@@ -98,8 +96,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
 
     assert_eq!(staked_value.value, Uint128::new(100));
 
-    // Sleep to let staking block process, so we have voting power:
-    thread::sleep(time::Duration::from_millis(5000));
+    chain.orc.poll_for_n_blocks(1, 20_000).unwrap();
 
     let res = chain
         .orc

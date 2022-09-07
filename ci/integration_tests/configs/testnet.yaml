@@ -3,6 +3,7 @@ chain_cfg:
   prefix: "juno"
   chain_id: "uni-3"
   rpc_endpoint: "https://rpc.uni.juno.deuslabs.fi:443"
+  grpc_endpoint: "http://juno-testnet-grpc.polkachu.com:26090"
   gas_prices: 0.1
   gas_adjustment: 1.5
 

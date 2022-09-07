@@ -1,6 +1,6 @@
 [package]
 name = "cw-core"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Zeke Medley <zekemedley@gmail.com>"]
 edition = "2018"
 
@@ -39,9 +39,9 @@ cw721 = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
-cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
-cw-paginate = { version = "0.1.0", path = "../../packages/cw-paginate" }
+cw-core-interface = { version = "0.2.0", path = "../../packages/cw-core-interface" }
+cw-core-macros = { version = "0.2.0", path = "../../packages/cw-core-macros" }
+cw-paginate = { version = "0.2.0", path = "../../packages/cw-paginate" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
@@ -49,5 +49,5 @@ cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = { git = "https://github.com/CosmWasm/cw-plus", branch = "main",  features = ["stargate"] }
 cw20-base = "0.13"
 cw721-base = "0.13"
-cw-proposal-sudo = { version = "0.1.0", path = "../../debug/cw-proposal-sudo"}
-cw20-balance-voting = { version = "0.1.0", path = "../../debug/cw20-balance-voting"}
+cw-proposal-sudo = { version = "0.2.0", path = "../../debug/cw-proposal-sudo"}
+cw20-balance-voting = { version = "0.2.0", path = "../../debug/cw20-balance-voting"}

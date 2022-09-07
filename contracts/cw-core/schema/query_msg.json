@@ -276,6 +276,35 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns all SubDAOs with their charters in a vec start_after is bound exclusive and asks for a string address",
+      "type": "object",
+      "required": [
+        "list_sub_daos"
+      ],
+      "properties": {
+        "list_sub_daos": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "type": "object",
       "required": [
         "voting_power_at_height"

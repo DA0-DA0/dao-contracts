@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw2::ContractVersion;
 use cw_utils::Expiration;
 use schemars::JsonSchema;
@@ -27,6 +27,8 @@ pub struct DumpStateResponse {
     pub active_proposal_module_count: u32,
     /// The total number of proposal modules.
     pub total_proposal_module_count: u32,
+    /// The timestamp of this DAO's creation. Will only be present for DAOs created v2 and after.
+    pub created_timestamp: Option<Timestamp>,
 }
 
 /// Information about if the contract is currently paused.
@@ -59,4 +61,12 @@ pub struct AdminNominationResponse {
     /// The currently nominated admin or None if no nomination is
     /// pending.
     pub nomination: Option<Addr>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct SubDao {
+    /// The contract address of the SubDAO
+    pub addr: String,
+    /// The purpose/constitution for the SubDAO
+    pub charter: Option<String>,
 }

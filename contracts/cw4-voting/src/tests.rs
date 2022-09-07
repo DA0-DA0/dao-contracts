@@ -1,4 +1,7 @@
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
+};
 use cw2::ContractVersion;
 use cw_core_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
@@ -6,6 +9,7 @@ use cw_core_interface::voting::{
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
 use crate::{
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     ContractError,
 };
@@ -663,4 +667,14 @@ fn test_zero_voting_power() {
         .unwrap();
     assert_eq!(total_voting_power.power, Uint128::new(2u128));
     assert_eq!(total_voting_power.height, app.block_info().height);
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

@@ -1,6 +1,6 @@
 [package]
 name = "cw721-controllers"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["CypherApe cypherape@protonmail.com"]
 edition = "2018"
 description = "Common cw721 controllers we can reuse in many contracts"

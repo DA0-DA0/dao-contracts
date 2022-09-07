@@ -3,5 +3,6 @@ chain_cfg:
   prefix: "juno"
   chain_id: "testing"
   rpc_endpoint: "http://localhost:26657/"
+  grpc_endpoint: "http://localhost:9090/"
   gas_prices: 0.1
   gas_adjustment: 1.5

@@ -46,15 +46,15 @@ use cw_storage_plus::{Bound, Bounder, KeyDeserialize, Map, SnapshotMap, Strategy
 
 /// Generic function for paginating a list of (K, V) pairs in a
 /// CosmWasm Map.
-pub fn paginate_map<'a, K, V>(
+pub fn paginate_map<'a, 'b, K, V, R: 'static>(
     deps: Deps,
     map: &Map<'a, K, V>,
     start_after: Option<K>,
     limit: Option<u32>,
     order: Order,
-) -> StdResult<Vec<(K, V)>>
+) -> StdResult<Vec<(R, V)>>
 where
-    K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
+    K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
     let (range_min, range_max) = match order {
@@ -72,15 +72,15 @@ where
 }
 
 /// Same as `paginate_map` but only returns the keys.
-pub fn paginate_map_keys<'a, K, V>(
+pub fn paginate_map_keys<'a, 'b, K, V, R: 'static>(
     deps: Deps,
     map: &Map<'a, K, V>,
     start_after: Option<K>,
     limit: Option<u32>,
     order: Order,
-) -> StdResult<Vec<K>>
+) -> StdResult<Vec<R>>
 where
-    K: Bounder<'a> + KeyDeserialize<Output = K> + 'static,
+    K: Bounder<'a> + KeyDeserialize<Output = R> + 'b,
     V: serde::de::DeserializeOwned + serde::Serialize,
 {
     let (range_min, range_max) = match order {
@@ -464,5 +464,113 @@ mod tests {
 
         let items = paginate_map(deps.as_ref(), &map, Some(1), None, Order::Descending).unwrap();
         assert_eq!(items, vec![]);
+    }
+
+    /// testing reworked paginate_map and paginate_map_keys.
+    /// pay particular attention to the values added. this is to ensure
+    /// that the values arent being assessed
+    #[test]
+    fn pagination_keys_refs() {
+        let mut deps = mock_dependencies();
+        let map: Map<&Addr, u32> = Map::new("items");
+
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 1)),
+            &40,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 2)),
+            &22,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 3)),
+            &77,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 4)),
+            &66,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 5)),
+            &0,
+        )
+        .unwrap();
+
+        let items = paginate_map_keys(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
+        assert_eq!(items[1], Addr::unchecked(format!("test_addr{:0>3}", 4)));
+        assert_eq!(items[4], Addr::unchecked(format!("test_addr{:0>3}", 1)));
+
+        let addr: Addr = Addr::unchecked(format!("test_addr{:0>3}", 3));
+        let items =
+            paginate_map_keys(deps.as_ref(), &map, Some(&addr), None, Order::Ascending).unwrap();
+        assert_eq!(items[0], Addr::unchecked(format!("test_addr{:0>3}", 4)));
+    }
+
+    /// testing reworked paginate_map and paginate_map_keys.
+    /// pay particular attention to the values added. this is to ensure
+    /// that the values arent being assessed
+    #[test]
+    fn pagination_refs() {
+        let mut deps = mock_dependencies();
+        let map: Map<&Addr, u32> = Map::new("items");
+
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 1)),
+            &0,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 2)),
+            &22,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 3)),
+            &77,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 4)),
+            &66,
+        )
+        .unwrap();
+        map.save(
+            &mut deps.storage,
+            &Addr::unchecked(format!("test_addr{:0>3}", 6)),
+            &0,
+        )
+        .unwrap();
+
+        let items = paginate_map(deps.as_ref(), &map, None, None, Order::Descending).unwrap();
+        assert_eq!(
+            items[1],
+            (Addr::unchecked(format!("test_addr{:0>3}", 4)), 66)
+        );
+        assert_eq!(
+            items[4],
+            (Addr::unchecked(format!("test_addr{:0>3}", 1)), 0)
+        );
+
+        let addr: Addr = Addr::unchecked(format!("test_addr{:0>3}", 3));
+        let items =
+            paginate_map(deps.as_ref(), &map, Some(&addr), Some(2), Order::Ascending).unwrap();
+        let test_vec: Vec<(Addr, u32)> = vec![
+            (Addr::unchecked(format!("test_addr{:0>3}", 4)), 66),
+            (Addr::unchecked(format!("test_addr{:0>3}", 6)), 0),
+        ];
+        assert_eq!(items, test_vec);
     }
 }

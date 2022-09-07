@@ -4,13 +4,14 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
     to_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
+
 use cw_core::msg::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 
 use crate::{
     contract::instantiate,
-    contract::{reply, INSTANTIATE_CONTRACT_REPLY_ID},
-    msg::{ExecuteMsg, InstantiateMsg},
+    contract::{migrate, reply, CONTRACT_NAME, CONTRACT_VERSION, INSTANTIATE_CONTRACT_REPLY_ID},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg},
 };
 
 fn factory_contract() -> Box<dyn Contract<Empty>> {
@@ -148,4 +149,14 @@ pub fn test_set_admin_mock() {
             admin: "contract2".to_string()
         })
     )
+}
+
+#[test]
+pub fn test_migrate_update_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
 }

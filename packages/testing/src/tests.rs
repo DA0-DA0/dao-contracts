@@ -550,8 +550,8 @@ where
     let mut rng = rand::thread_rng();
     let dist = rand::distributions::Uniform::<u64>::new(1, 200);
     for _ in 0..10 {
-        let yes: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
-        let no: Vec<u64> = (0..50).map(|_| rng.sample(&dist)).collect();
+        let yes: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
+        let no: Vec<u64> = (0..50).map(|_| rng.sample(dist)).collect();
 
         let yes_sum: u64 = yes.iter().sum();
         let no_sum: u64 = no.iter().sum();

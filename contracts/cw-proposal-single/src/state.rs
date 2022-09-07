@@ -57,8 +57,9 @@ pub struct Config {
     pub close_proposal_on_execution_failure: bool,
 }
 
-/// The current top level config for the module.
-pub const CONFIG: Item<Config> = Item::new("config");
+/// The current top level config for the module.  The "config" key was
+/// previously used to store configs for v1 DAOs.
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 /// The number of proposals that have been created.
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const PROPOSALS: Map<u64, SingleChoiceProposal> = Map::new("proposals_v2");

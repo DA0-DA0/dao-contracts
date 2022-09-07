@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use cw_core_macros::voting_query;
 
+use crate::query::SubDao;
 use crate::state::Config;
 
 /// Information about the admin of a contract.
@@ -148,6 +149,11 @@ pub enum ExecuteMsg {
     /// voting module with a new one instantiated by the governance
     /// contract.
     UpdateVotingModule { module: ModuleInstantiateInfo },
+    /// Update the core module to add/remove SubDAOs and their charters
+    UpdateSubDaos {
+        to_add: Vec<SubDao>,
+        to_remove: Vec<String>,
+    },
 }
 
 #[voting_query]
@@ -210,6 +216,12 @@ pub enum QueryMsg {
     PauseInfo {},
     /// Gets the contract's voting module. Returns Addr.
     VotingModule {},
+    /// Returns all SubDAOs with their charters in a vec
+    /// start_after is bound exclusive and asks for a string address
+    ListSubDaos {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
