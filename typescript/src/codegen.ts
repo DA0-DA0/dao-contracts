@@ -106,7 +106,7 @@ function getSchemaDirectories(
               fs.existsSync(schemaDir) &&
               fs.lstatSync(schemaDir).isDirectory()
             ) {
-              directories.push([schemaDir, entry]);
+              directories.push([schemaDir.replaceAll('\\', '/'), entry]);
             } else {
               log(`${schemaDir} is not a directory`, LogLevels.Verbose);
             }
@@ -147,7 +147,7 @@ async function main() {
     console.dir(compilationSpecs);
   }
 
-  const codegenResponses = [];
+  const codegenResponses: Promise<void>[] = [];
   for (const spec of compilationSpecs) {
     codegenResponses.push(generateTs(spec));
   }
