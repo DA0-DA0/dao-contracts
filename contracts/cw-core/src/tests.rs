@@ -2493,102 +2493,6 @@ fn test_migrate_from_compatible() {
     assert_eq!(new_state, state);
 }
 
-// Note that this isn't actually testing that we are migrating from the v1 version since
-// with multitest contract instantiation we can't manipulate storage to the v1 version of state before invoking migrate. So if anything,
-// this just tests the idempotency of migrate.
-#[test]
-fn test_migrate_from_v1() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
-
-    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
-        root: CREATOR_ADDR.to_string(),
-    };
-    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
-        token_info: cw20_balance_voting::msg::TokenInfo::New {
-            code_id: cw20_id,
-            label: "DAO DAO voting".to_string(),
-            name: "DAO DAO".to_string(),
-            symbol: "DAO".to_string(),
-            decimals: 6,
-            initial_balances: vec![cw20::Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::from(2u64),
-            }],
-            marketing: None,
-        },
-    };
-
-    // Instantiate the core module with an admin to do migrations.
-    let gov_instantiate = InstantiateMsg {
-        dao_uri: None,
-        admin: None,
-        name: "DAO DAO".to_string(),
-        description: "A DAO that builds DAOs.".to_string(),
-        image_url: None,
-        automatically_add_cw20s: false,
-        automatically_add_cw721s: false,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
-            label: "voting module".to_string(),
-        },
-        proposal_modules_instantiate_info: vec![
-            ModuleInstantiateInfo {
-                code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
-                label: "governance module 1".to_string(),
-            },
-            ModuleInstantiateInfo {
-                code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
-                label: "governance module 2".to_string(),
-            },
-        ],
-        initial_items: None,
-    };
-
-    let core_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            Some(CREATOR_ADDR.to_string()),
-        )
-        .unwrap();
-
-    app.execute(
-        Addr::unchecked(CREATOR_ADDR),
-        CosmosMsg::Wasm(WasmMsg::Migrate {
-            contract_addr: core_addr.to_string(),
-            new_code_id: gov_id,
-            msg: to_binary(&MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
-        }),
-    )
-    .unwrap();
-
-    let new_state: DumpStateResponse = app
-        .wrap()
-        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
-        .unwrap();
-
-    let proposal_modules = new_state.proposal_modules;
-    assert_eq!(2, proposal_modules.len());
-    for (idx, module) in proposal_modules.iter().enumerate() {
-        let prefix = derive_proposal_module_prefix(idx).unwrap();
-        assert_eq!(prefix, module.prefix);
-        assert_eq!(ProposalModuleStatus::Enabled, module.status);
-    }
-}
-
 #[test]
 fn test_migrate_mock() {
     let mut deps = mock_dependencies();
@@ -2635,7 +2539,7 @@ fn test_migrate_mock() {
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
     assert_eq!(module.status, ProposalModuleStatus::Enabled {});
 
-    let v2_config_item: Item<Config> = Item::new("config");
+    let v2_config_item: Item<Config> = Item::new("config_v2");
     let v2_config = v2_config_item.load(&deps.storage).unwrap();
     assert_eq!(v2_config.dao_uri, Some(dao_uri));
     assert_eq!(v2_config.name, v1_config.name);

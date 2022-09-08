@@ -62,7 +62,7 @@ pub const ADMIN: Item<Addr> = Item::new("admin");
 pub const NOMINATED_ADMIN: Item<Addr> = Item::new("nominated_admin");
 
 /// The current configuration of the module.
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 
 /// The time the DAO will unpause. Here be dragons: this is not set if
 /// the DAO has never been paused.
