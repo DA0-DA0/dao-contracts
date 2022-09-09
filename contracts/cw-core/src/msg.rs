@@ -44,6 +44,8 @@ pub struct InstantiateMsg {
     pub voting_module_instantiate_info: ModuleInstantiateInfo,
     /// Instantiate information for the core contract's
     /// proposal modules.
+    // NOTE: the pre-propose-base package depends on it being the case
+    // that the core module instantiates its proposal module.
     pub proposal_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
 
     /// Initial information for arbitrary contract addresses to be
@@ -119,6 +121,8 @@ pub enum ExecuteMsg {
     /// instantiate info in `to_add` is used to create new modules and
     /// install them.
     UpdateProposalModules {
+        // NOTE: the pre-propose-base package depends on it being the
+        // case that the core module instantiates its proposal module.
         to_add: Vec<ModuleInstantiateInfo>,
         to_disable: Vec<String>,
     },
