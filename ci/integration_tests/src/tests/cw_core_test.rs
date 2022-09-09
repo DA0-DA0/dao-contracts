@@ -5,12 +5,11 @@ use cosm_orc::client::error::ClientError;
 use cosm_orc::orchestrator::error::ProcessError;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
-use cw_asset::AssetInfo;
+
 use cw_core::query::{GetItemResponse, PauseInfoResponse};
 use cw_utils::Duration;
 use test_context::test_context;
 use voting::{
-    deposit::{CheckedDepositInfo, DepositRefundPolicy},
     pre_propose::ProposalCreationPolicy,
     threshold::PercentageThreshold,
     threshold::Threshold,

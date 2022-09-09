@@ -1,6 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use cw_denom::UncheckedDenom;
 use voting::deposit::{CheckedDepositInfo, UncheckedDepositInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -18,12 +19,52 @@ pub struct InstantiateMsg<InstantiateExt> {
     pub extension: InstantiateExt,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// Creates a new proposal in the pre-propose module. MSG will be
     /// serialized and used as the proposal creation message.
     Propose { msg: ProposalMessage },
+
+    /// Updates the configuration of this module. This will completely
+    /// override the existing configuration. This new configuration
+    /// will only apply to proposals created after the config is
+    /// updated. Only the DAO may execute this message.
+    UpdateConfig {
+        deposit_info: Option<UncheckedDepositInfo>,
+        open_proposal_submission: bool,
+    },
+
+    /// Withdraws funds inside of this contract to the message
+    /// sender. The contracts entire balance for the specifed DENOM is
+    /// withdrawn to the message sender. Only the DAO may call this
+    /// method.
+    ///
+    /// This is intended only as an escape hatch in the event of a
+    /// critical bug in this contract or it's proposal
+    /// module. Withdrawing funds will cause future attempts to return
+    /// proposal deposits to fail their transactions as the contract
+    /// will have insufficent balance to return them. In the case of
+    /// `cw-proposal-single` this transaction failure will cause the
+    /// module to remove the pre-propose module from its proposal hook
+    /// receivers.
+    ///
+    /// More likely than not, this should NEVER BE CALLED unless a bug
+    /// in this contract or the proposal module it is associated with
+    /// has caused it to stop receiving proposal hook messages, or if
+    /// a critical security vulnerability has been found that allows
+    /// an attacker to drain proposal deposits.
+    Withdraw {
+        /// The denom to withdraw funds for. If no denom is specified,
+        /// the denomination currently configured for proposal
+        /// deposits will be used.
+        ///
+        /// You may want to specify a denomination here if you are
+        /// withdrawing funds that were previously accepted for
+        /// proposal deposits but are not longer used due to an
+        /// `UpdateConfig` message being executed on the contract.
+        denom: Option<UncheckedDenom>,
+    },
 
     /// Extension message. Contracts that extend this one should put
     /// their custom execute logic here. The default implementation
@@ -37,7 +78,7 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     ProposalHook(proposal_hooks::ProposalHookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg<QueryExt> {
     /// Gets the proposal module that this pre propose module is
@@ -52,8 +93,7 @@ pub enum QueryMsg<QueryExt> {
     /// PROPOSAL_ID. Returns `DepositInfoResponse`.
     DepositInfo { proposal_id: u64 },
     /// Extension for queries. The default implementation will do
-    /// nothing if queried for this and will return
-    /// `Binary::default()`.
+    /// nothing if queried for will return `Binary::default()`.
     Extension { msg: QueryExt },
 }
 

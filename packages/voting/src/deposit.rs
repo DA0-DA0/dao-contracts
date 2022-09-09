@@ -1,6 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Coin, CosmosMsg, Deps, MessageInfo, StdError, StdResult, Uint128,
-    WasmMsg,
+    to_binary, Addr, CosmosMsg, Deps, MessageInfo, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw_utils::{must_pay, PaymentError};
 use schemars::JsonSchema;
@@ -29,7 +28,7 @@ pub enum DepositError {
 }
 
 /// Information about the token to use for proposal deposits.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DepositToken {
     /// Use a specific token address as the deposit token.
@@ -44,19 +43,18 @@ pub enum DepositToken {
 }
 
 /// Information about the deposit required to create a proposal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct UncheckedDepositInfo {
-    /// The address of the cw20 token to be used for proposal
-    /// deposits.
+    /// The address of the token to be used for proposal deposits.
     pub denom: DepositToken,
     /// The number of tokens that must be deposited to create a
     /// proposal. Must be a positive, non-zero number.
     pub amount: Uint128,
-    /// If failed proposals should have their deposits refunded.
+    /// The policy used for refunding deposits on proposal completion.
     pub refund_policy: DepositRefundPolicy,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DepositRefundPolicy {
     /// Deposits should always be refunded.
@@ -71,7 +69,7 @@ pub enum DepositRefundPolicy {
 /// processed. This type should never be constructed literally and
 /// should always by built by calling `into_checked` on a
 /// `DepositInfo` instance.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct CheckedDepositInfo {
     /// The address of the cw20 token to be used for proposal
     /// deposits.
@@ -195,32 +193,14 @@ impl CheckedDepositInfo {
         if self.amount.is_zero() {
             return Ok(vec![]);
         }
-        let message = match &self.denom {
-            CheckedDenom::Native(denom) => BankMsg::Send {
-                to_address: depositor.to_string(),
-                amount: vec![Coin {
-                    amount: self.amount,
-                    denom: denom.to_string(),
-                }],
-            }
-            .into(),
-            CheckedDenom::Cw20(address) => WasmMsg::Execute {
-                contract_addr: address.to_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                    recipient: depositor.to_string(),
-                    amount: self.amount,
-                })?,
-                funds: vec![],
-            }
-            .into(),
-        };
+        let message = self.denom.get_transfer_to_message(depositor, self.amount)?;
         Ok(vec![message])
     }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use cosmwasm_std::{coin, coins, testing::mock_info};
+    use cosmwasm_std::{coin, coins, testing::mock_info, BankMsg};
 
     use super::*;
 
@@ -271,7 +251,7 @@ pub mod tests {
     // deposit seems like a frontend bug off.
     #[test]
     fn check_sending_other_denoms_is_not_allowed() {
-        let info = mock_info("ekez", &vec![coin(10, "unotekez"), coin(10, "ekez")]);
+        let info = mock_info("ekez", &[coin(10, "unotekez"), coin(10, "ekez")]);
         let deposit_info = CheckedDepositInfo {
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             amount: Uint128::new(10),
@@ -284,7 +264,7 @@ pub mod tests {
 
     #[test]
     fn check_native_deposit_paid_no_denoms() {
-        let info = mock_info("ekez", &vec![]);
+        let info = mock_info("ekez", &[]);
         let deposit_info = CheckedDepositInfo {
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             amount: Uint128::new(10),

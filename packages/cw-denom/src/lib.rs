@@ -12,7 +12,15 @@
 //! CosmWasm contract, and that the specified address responds
 //! correctly to cw20 `TokenInfo` queries.
 
-use cosmwasm_std::{Addr, Deps, StdError};
+#[cfg(test)]
+mod integration_tests;
+
+use std::fmt::{self};
+
+use cosmwasm_std::{
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, CustomQuery, Deps, QuerierWrapper, StdError,
+    StdResult, Uint128, WasmMsg,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -38,7 +46,7 @@ pub enum DenomError {
 /// A denom that has been checked to point to a valid asset. This enum
 /// should never be constructed literally and should always be built
 /// by calling `into_checked` on an `UncheckedDenom` instance.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CheckedDenom {
     /// A native (bank module) asset.
@@ -49,7 +57,7 @@ pub enum CheckedDenom {
 
 /// A denom that has not been checked to confirm it points to a valid
 /// asset.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum UncheckedDenom {
     /// A native (bank module) asset.
@@ -59,6 +67,15 @@ pub enum UncheckedDenom {
 }
 
 impl UncheckedDenom {
+    /// Converts an unchecked denomination into a checked one. In the
+    /// case of native denominations, it is checked that the
+    /// denomination is valid according to the [default SDK rules]. In
+    /// the case of cw20 denominations the it is checked that the
+    /// specified address is valid and that that address responds to a
+    /// `TokenInfo` query without erroring and returns a valid
+    /// `cw20::TokenInfoResponse`.
+    ///
+    /// [default SDK rules]: https://github.com/cosmos/cosmos-sdk/blob/7728516abfab950dc7a9120caad4870f1f962df5/types/coin.go#L865-L867
     pub fn into_checked(self, deps: Deps) -> Result<CheckedDenom, DenomError> {
         match self {
             Self::Native(denom) => validate_native_denom(denom),
@@ -71,6 +88,53 @@ impl UncheckedDenom {
                 Ok(CheckedDenom::Cw20(addr))
             }
         }
+    }
+}
+
+impl CheckedDenom {
+    /// Queries WHO's balance for the denomination.
+    pub fn query_balance<'a, C: CustomQuery>(
+        &self,
+        querier: &QuerierWrapper<'a, C>,
+        who: &Addr,
+    ) -> StdResult<Uint128> {
+        match self {
+            CheckedDenom::Native(denom) => Ok(querier.query_balance(who, denom)?.amount),
+            CheckedDenom::Cw20(address) => {
+                let balance: cw20::BalanceResponse = querier.query_wasm_smart(
+                    address,
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: who.to_string(),
+                    },
+                )?;
+                Ok(balance.balance)
+            }
+        }
+    }
+
+    /// Gets a `CosmosMsg` that, when executed, will transfer AMOUNT
+    /// tokens to WHO. AMOUNT being zero will cause the message
+    /// execution to fail.
+    pub fn get_transfer_to_message(&self, who: &Addr, amount: Uint128) -> StdResult<CosmosMsg> {
+        Ok(match self {
+            CheckedDenom::Native(denom) => BankMsg::Send {
+                to_address: who.to_string(),
+                amount: vec![Coin {
+                    amount: amount,
+                    denom: denom.to_string(),
+                }],
+            }
+            .into(),
+            CheckedDenom::Cw20(address) => WasmMsg::Execute {
+                contract_addr: address.to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    recipient: who.to_string(),
+                    amount: amount,
+                })?,
+                funds: vec![],
+            }
+            .into(),
+        })
     }
 }
 
@@ -98,6 +162,17 @@ pub fn validate_native_denom(denom: String) -> Result<CheckedDenom, DenomError> 
     }
 
     Ok(CheckedDenom::Native(denom))
+}
+
+// Useful for returning these in response objects when updating the
+// config or doing a withdrawal.
+impl fmt::Display for CheckedDenom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Native(inner) => write!(f, "{}", inner),
+            Self::Cw20(inner) => write!(f, "{}", inner),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -236,5 +311,18 @@ mod tests {
             validate_native_denom("a🥵abc".to_string()),
             Err(DenomError::InvalidCharacter { c: '🥵' })
         );
+    }
+
+    #[test]
+    fn test_validate_native_denom_valid() {
+        let valids = [
+            "ujuno",
+            "uosmo",
+            "IBC/A59A9C955F1AB8B76671B00C1A0482C64A6590352944BB5880E5122358F7E1CE",
+            "wasm.juno123/channel-1/badkids",
+        ];
+        for valid in valids {
+            validate_native_denom(valid.to_string()).unwrap();
+        }
     }
 }
