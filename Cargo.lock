@@ -578,20 +578,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-asset"
-version = "2.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7996c9c60e416aec195719137767d5cef8301237438bbabb772ee45a27f06e5e"
-dependencies = [
- "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "cw1155",
- "cw20",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "cw-controllers"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -821,7 +807,6 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-asset",
  "cw-core",
  "cw-core-interface",
  "cw-core-macros",
@@ -951,18 +936,6 @@ dependencies = [
  "semver",
  "serde",
  "thiserror",
-]
-
-[[package]]
-name = "cw1155"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42197c9a0fd844653177009125f24157e486578289327a3781923e427a8f9bbc"
-dependencies = [
- "cosmwasm-std",
- "cw-utils 0.13.4",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1845,7 +1818,6 @@ dependencies = [
  "assert_matches",
  "cosm-orc",
  "cosmwasm-std",
- "cw-asset",
  "cw-core",
  "cw-core-interface",
  "cw-pre-propose-base-proposal-single",

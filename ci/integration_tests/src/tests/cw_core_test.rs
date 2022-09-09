@@ -10,9 +10,7 @@ use cw_core::query::{GetItemResponse, PauseInfoResponse};
 use cw_utils::Duration;
 use test_context::test_context;
 use voting::{
-    pre_propose::ProposalCreationPolicy,
-    threshold::PercentageThreshold,
-    threshold::Threshold,
+    pre_propose::ProposalCreationPolicy, threshold::PercentageThreshold, threshold::Threshold,
 };
 
 // #### ExecuteMsg #####
