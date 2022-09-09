@@ -1,5 +1,8 @@
 pub mod contract;
 
+#[cfg(test)]
+mod tests;
+
 pub use contract::{ExecuteMsg, InstantiateMsg, ProposeMessage, QueryMsg};
 
 // Exporting these means that contracts interacting with this one don't

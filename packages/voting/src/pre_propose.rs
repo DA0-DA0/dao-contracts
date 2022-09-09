@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::reply::mask_pre_propose_module_instantiation;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum PreProposeInfo {
     /// Anyone may create a proposal free of charge.
     AnyoneMayPropose {},
@@ -20,7 +20,7 @@ pub enum PreProposeInfo {
     AddrMayPropose { addr: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum ProposalCreationPolicy {
     /// Anyone may create a proposal, free of charge.
     Anyone {},

@@ -121,7 +121,8 @@ pub fn instantiate(
             let initial_supply = initial_balances
                 .iter()
                 .fold(Uint128::zero(), |p, n| p + n.amount);
-            // Cannot instantiate with no initial token owners because it would immediately lock the DAO.
+            // Cannot instantiate with no initial token owners because
+            // it would immediately lock the DAO.
             if initial_supply.is_zero() {
                 return Err(ContractError::InitialBalancesError {});
             }
