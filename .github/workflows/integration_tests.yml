@@ -93,7 +93,7 @@ jobs:
 
       - name: Post gas diff to PR
         if: ${{ github.ref != 'refs/heads/main' && steps.download_gas.outputs.error_message == ''}}
-        uses: de-husk/cosm-orc-gas-diff-action@v0.6.1
+        uses: de-husk/cosm-orc-gas-diff-action@v0.6.2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           current_json: ci/integration_tests/gas_report.json
