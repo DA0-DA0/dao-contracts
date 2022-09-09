@@ -7,7 +7,7 @@
     "close_proposal_on_execution_failure",
     "max_voting_period",
     "only_members_execute",
-    "open_proposal_submission",
+    "pre_propose_info",
     "threshold"
   ],
   "properties": {
@@ -18,17 +18,6 @@
     "close_proposal_on_execution_failure": {
       "description": "If set to true proposals will be closed if their execution fails. Otherwise, proposals will remain open after execution failure. For example, with this enabled a proposal to send 5 tokens out of a DAO's treasury with 4 tokens would be closed when it is executed. With this disabled, that same proposal would remain open until the DAO's treasury was large enough for it to be executed.",
       "type": "boolean"
-    },
-    "deposit_info": {
-      "description": "Information about the deposit required to create a proposal. None if there is no deposit requirement, Some otherwise.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/DepositInfo"
-        },
-        {
-          "type": "null"
-        }
-      ]
     },
     "max_voting_period": {
       "description": "The default maximum amount of time a proposal may be voted on before expiring.",
@@ -53,9 +42,13 @@
       "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal.",
       "type": "boolean"
     },
-    "open_proposal_submission": {
-      "description": "Whether non-members of the DAO can submit proposals",
-      "type": "boolean"
+    "pre_propose_info": {
+      "description": "Information about what addresses may create proposals.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/PreProposeInfo"
+        }
+      ]
     },
     "threshold": {
       "description": "The threshold a proposal must reach to complete.",
@@ -67,122 +60,24 @@
     }
   },
   "definitions": {
-    "AssetInfoBase_for_String": {
-      "description": "Represents the type of an fungible asset\n\nEach **asset info** instance can be one of three variants:\n\n- Native SDK coins. To create an **asset info** instance of this type, provide the denomination. - CW20 tokens. To create an **asset info** instance of this type, provide the contract address. - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.",
+    "Admin": {
+      "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
       "oneOf": [
         {
+          "description": "Set the admin to a specified address.",
           "type": "object",
           "required": [
-            "native"
+            "address"
           ],
           "properties": {
-            "native": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "cw20"
-          ],
-          "properties": {
-            "cw20": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "cw1155"
-          ],
-          "properties": {
-            "cw1155": {
-              "type": "array",
-              "items": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "string"
-                }
-              ],
-              "maxItems": 2,
-              "minItems": 2
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "Decimal": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
-      "type": "string"
-    },
-    "DepositInfo": {
-      "description": "Information about the deposit required to create a proposal.",
-      "type": "object",
-      "required": [
-        "deposit",
-        "refund_policy",
-        "token"
-      ],
-      "properties": {
-        "deposit": {
-          "description": "The number of tokens that must be deposited to create a proposal.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            }
-          ]
-        },
-        "refund_policy": {
-          "description": "If failed proposals should have their deposits refunded.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/DepositRefundPolicy"
-            }
-          ]
-        },
-        "token": {
-          "description": "The address of the cw20 token to be used for proposal deposits.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/DepositToken"
-            }
-          ]
-        }
-      }
-    },
-    "DepositRefundPolicy": {
-      "type": "string",
-      "enum": [
-        "always",
-        "only_passed",
-        "never"
-      ]
-    },
-    "DepositToken": {
-      "description": "Information about the token to use for proposal deposits.",
-      "oneOf": [
-        {
-          "description": "Use a specific token address as the deposit token.",
-          "type": "object",
-          "required": [
-            "token"
-          ],
-          "properties": {
-            "token": {
+            "address": {
               "type": "object",
               "required": [
-                "asset"
+                "addr"
               ],
               "properties": {
-                "asset": {
-                  "$ref": "#/definitions/AssetInfoBase_for_String"
+                "addr": {
+                  "type": "string"
                 }
               }
             }
@@ -190,19 +85,27 @@
           "additionalProperties": false
         },
         {
-          "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `cw_core_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+          "description": "Set the admin to the address that instantiates the contract. This is useful for DAOs that instantiate this contract as part of their creation process and would like to set themselces as the admin (as in this case the address of the instantiating contract is not known at message execution time).",
           "type": "object",
           "required": [
-            "voting_module_token"
+            "instantiator"
           ],
           "properties": {
-            "voting_module_token": {
+            "instantiator": {
               "type": "object"
             }
           },
           "additionalProperties": false
         }
       ]
+    },
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "Decimal": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
     },
     "Duration": {
       "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
@@ -238,6 +141,46 @@
         }
       ]
     },
+    "ModuleInstantiateInfo": {
+      "description": "Information needed to instantiate a module.",
+      "type": "object",
+      "required": [
+        "code_id",
+        "label",
+        "msg"
+      ],
+      "properties": {
+        "admin": {
+          "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Admin"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code_id": {
+          "description": "Code ID of the contract to be instantiated.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "label": {
+          "description": "Label for the instantiated contract.",
+          "type": "string"
+        },
+        "msg": {
+          "description": "Instantiate message to be used to create the contract.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Binary"
+            }
+          ]
+        }
+      }
+    },
     "PercentageThreshold": {
       "description": "A percentage of voting power that must vote yes for a proposal to pass. An example of why this is needed:\n\nIf a user specifies a 60% passing threshold, and there are 10 voters they likely expect that proposal to pass when there are 6 yes votes. This implies that the condition for passing should be `yes_votes >= total_votes * threshold`.\n\nWith this in mind, how should a user specify that they would like proposals to pass if the majority of voters choose yes? Selecting a 50% passing threshold with those rules doesn't properly cover that case as 5 voters voting yes out of 10 would pass the proposal. Selecting 50.0001% or or some variation of that also does not work as a very small yes vote which technically makes the majority yes may not reach that threshold.\n\nTo handle these cases we provide both a majority and percent option for all percentages. If majority is selected passing will be determined by `yes > total_votes * 0.5`. If percent is selected passing is determined by `yes >= total_votes * percent`.\n\nIn both of these cases a proposal with only abstain votes must fail. This requires a special case passing logic.",
       "oneOf": [
@@ -263,6 +206,65 @@
           "properties": {
             "percent": {
               "$ref": "#/definitions/Decimal"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PreProposeInfo": {
+      "oneOf": [
+        {
+          "description": "Anyone may create a proposal free of charge.",
+          "type": "object",
+          "required": [
+            "AnyoneMayPropose"
+          ],
+          "properties": {
+            "AnyoneMayPropose": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The module specified in INFO has exclusive rights to proposal creation.",
+          "type": "object",
+          "required": [
+            "ModuleMayPropose"
+          ],
+          "properties": {
+            "ModuleMayPropose": {
+              "type": "object",
+              "required": [
+                "info"
+              ],
+              "properties": {
+                "info": {
+                  "$ref": "#/definitions/ModuleInstantiateInfo"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "The address specified in ADDR has exclusive rights to proposal creation.",
+          "type": "object",
+          "required": [
+            "AddrMayPropose"
+          ],
+          "properties": {
+            "AddrMayPropose": {
+              "type": "object",
+              "required": [
+                "addr"
+              ],
+              "properties": {
+                "addr": {
+                  "type": "string"
+                }
+              }
             }
           },
           "additionalProperties": false

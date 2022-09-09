@@ -17,7 +17,7 @@ pub enum ContractError {
     #[error(transparent)]
     HookError(#[from] HookError),
 
-    #[error("Unauthorized")]
+    #[error("unauthorized")]
     Unauthorized {},
 
     #[error(transparent)]
@@ -26,56 +26,58 @@ pub enum ContractError {
     #[error(transparent)]
     VotingError(#[from] voting::error::VotingError),
 
-    #[error("Suggested proposal expiration is larger than the maximum proposal duration")]
-    InvalidExpiration {},
-
-    #[error("No such proposal ({id})")]
+    #[error("no such proposal ({id})")]
     NoSuchProposal { id: u64 },
 
-    #[error("Proposal is ({size}) bytes, must be <= ({max}) bytes")]
+    #[error("proposal is ({size}) bytes, must be <= ({max}) bytes")]
     ProposalTooLarge { size: u64, max: u64 },
 
-    #[error("Proposal is not open ({id})")]
+    #[error("proposal is not open ({id})")]
     NotOpen { id: u64 },
 
-    #[error("Proposal is expired ({id})")]
+    #[error("proposal is expired ({id})")]
     Expired { id: u64 },
 
-    #[error("Not registered to vote (no voting power) at time of proposal creation.")]
+    #[error("not registered to vote (no voting power) at time of proposal creation")]
     NotRegistered {},
 
-    #[error("Already voted. This proposal does not support revoting.")]
+    #[error("already voted. this proposal does not support revoting")]
     AlreadyVoted {},
 
-    #[error("Already cast a vote with that option. Change your vote to revote.")]
+    #[error("already cast a vote with that option. change your vote to revote")]
     AlreadyCast {},
 
-    #[error("Proposal is not in 'passed' state.")]
+    #[error("proposal is not in 'passed' state")]
     NotPassed {},
 
-    #[error("Proposal has already been executed.")]
+    #[error("proposal has already been executed")]
     AlreadyExecuted {},
 
-    #[error("Proposal is closed.")]
+    #[error("proposal is closed")]
     Closed {},
 
-    #[error("Only rejected proposals may be closed.")]
+    #[error("only rejected proposals may be closed")]
     WrongCloseStatus {},
 
-    #[error("The DAO is currently inactive, you cannot create proposals")]
+    #[error("the DAO is currently inactive, you cannot create proposals")]
     InactiveDao {},
 
     #[error("min_voting_period and max_voting_period must have the same units (height or time)")]
     DurationUnitsConflict {},
 
-    #[error("Min voting period must be less than or equal to max voting period")]
+    #[error("min voting period must be less than or equal to max voting period")]
     InvalidMinVotingPeriod {},
 
     #[error(
-        "Pre-propose modules must specify a proposer. Lacking one, no proposer should be specified."
+        "pre-propose modules must specify a proposer. lacking one, no proposer should be specified"
     )]
     InvalidProposer {},
 
     #[error(transparent)]
     Tag(#[from] TagError),
+
+    #[error(
+        "all proposals with deposits must be completed out (closed or executed) before migration"
+    )]
+    PendingProposals {},
 }

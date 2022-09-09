@@ -51,15 +51,7 @@ pub mod query;
 #[cfg(test)]
 mod testing;
 
-// #[cfg(test)]
-// mod staking_tests;
-
-// #[cfg(test)]
-// mod mock_tests;
-
-// #[cfg(test)]
-// mod tests;
-
 pub mod state;
+mod v1_state;
 
 pub use crate::error::ContractError;

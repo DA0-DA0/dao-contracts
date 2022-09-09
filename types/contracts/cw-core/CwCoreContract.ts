@@ -299,11 +299,7 @@ export type Admin = {
     [k: string]: unknown;
   };
 } | {
-  core_contract: {
-    [k: string]: unknown;
-  };
-} | {
-  none: {
+  instantiator: {
     [k: string]: unknown;
   };
 };
@@ -338,7 +334,7 @@ export interface Cw721ReceiveMsg {
   [k: string]: unknown;
 }
 export interface ModuleInstantiateInfo {
-  admin: Admin;
+  admin?: Admin | null;
   code_id: number;
   label: string;
   msg: Binary;
