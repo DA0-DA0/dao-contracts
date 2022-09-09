@@ -32,7 +32,7 @@ thiserror = { version = "1.0.30" }
 voting = { path = "../../packages/voting" }
 cw-core = { path = "../cw-core", version = "*", features = ["library"] }
 cw-core-macros = { version = "0.2.0", path = "../../packages/cw-core-macros" }
-cw-core-interface = { version = "0.2.0", path = "../../packages/cw-core-interface" } 
+cw-core-interface = { version = "0.2.0", path = "../../packages/cw-core-interface" }
 proposal-hooks = { version = "0.2.0", path = "../../packages/proposal-hooks" }
 vote-hooks = { version = "0.2.0", path = "../../packages/vote-hooks" }
 indexable-hooks = { version = "0.2.0", path = "../../packages/indexable-hooks" }
