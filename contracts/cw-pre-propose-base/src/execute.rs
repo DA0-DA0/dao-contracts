@@ -5,9 +5,10 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 
 use cw_core_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
+use cw_denom::UncheckedDenom;
 use proposal_hooks::ProposalHookMsg;
 use serde::Serialize;
-use voting::deposit::DepositRefundPolicy;
+use voting::deposit::{DepositRefundPolicy, UncheckedDepositInfo};
 
 use crate::{
     error::PreProposeError,
@@ -80,6 +81,14 @@ where
     ) -> Result<Response, PreProposeError> {
         match msg {
             ExecuteMsg::Propose { msg } => self.execute_propose(deps.as_ref(), env, info, msg),
+            ExecuteMsg::UpdateConfig {
+                deposit_info,
+                open_proposal_submission,
+            } => self.execute_update_config(deps, info, deposit_info, open_proposal_submission),
+            ExecuteMsg::Withdraw { denom } => {
+                self.execute_withdraw(deps.as_ref(), env, info, denom)
+            }
+
             ExecuteMsg::Extension { .. } => Ok(Response::default()),
 
             ExecuteMsg::ProposalHook(ProposalHookMsg::ProposalStatusChanged {
@@ -154,6 +163,71 @@ where
             .add_attribute("deposit_info", to_binary(&config.deposit_info)?.to_string())
             .add_messages(deposit_messages)
             .add_message(propose_messsage))
+    }
+
+    pub fn execute_update_config(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        deposit_info: Option<UncheckedDepositInfo>,
+        open_proposal_submission: bool,
+    ) -> Result<Response, PreProposeError> {
+        let dao = self.dao.load(deps.storage)?;
+        if info.sender != dao {
+            Err(PreProposeError::NotDao {})
+        } else {
+            let deposit_info = deposit_info
+                .map(|d| d.into_checked(deps.as_ref(), dao))
+                .transpose()?;
+            self.config.save(
+                deps.storage,
+                &Config {
+                    deposit_info,
+                    open_proposal_submission,
+                },
+            )?;
+
+            Ok(Response::default()
+                .add_attribute("method", "update_config")
+                .add_attribute("sender", info.sender))
+        }
+    }
+
+    pub fn execute_withdraw(
+        &self,
+        deps: Deps,
+        env: Env,
+        info: MessageInfo,
+        denom: Option<UncheckedDenom>,
+    ) -> Result<Response, PreProposeError> {
+        let dao = self.dao.load(deps.storage)?;
+        if info.sender != dao {
+            Err(PreProposeError::NotDao {})
+        } else {
+            let denom = match denom {
+                Some(denom) => Some(denom.into_checked(deps)?),
+                None => {
+                    let config = self.config.load(deps.storage)?;
+                    config.deposit_info.map(|d| d.denom)
+                }
+            };
+            match denom {
+                None => Err(PreProposeError::NoWithdrawalDenom {}),
+                Some(denom) => {
+                    let balance = denom.query_balance(&deps.querier, &env.contract.address)?;
+                    if balance.is_zero() {
+                        Err(PreProposeError::NothingToWithdraw {})
+                    } else {
+                        let withdraw_message = denom.get_transfer_to_message(&dao, balance)?;
+                        Ok(Response::default()
+                            .add_message(withdraw_message)
+                            .add_attribute("method", "withdraw")
+                            .add_attribute("receiver", &dao)
+                            .add_attribute("denom", denom.to_string()))
+                    }
+                }
+            }
+        }
     }
 
     pub fn execute_status_change_proposal_hook(

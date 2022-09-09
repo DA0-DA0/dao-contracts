@@ -659,7 +659,9 @@ name = "cw-denom"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-std",
+ "cw-multi-test 0.13.4",
  "cw20",
+ "cw20-base",
  "schemars",
  "serde",
  "thiserror",
@@ -776,6 +778,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-core-interface",
+ "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw2 0.13.4",
