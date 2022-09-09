@@ -73,6 +73,7 @@ pub fn test_set_admin() {
     // Instantiate core contract using factory.
     let cw_core_code_id = app.store_code(cw_core_contract());
     let instantiate_core = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),

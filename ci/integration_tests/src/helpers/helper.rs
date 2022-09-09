@@ -25,6 +25,7 @@ pub fn create_dao(
     user_addr: String,
 ) -> Result<DaoState> {
     let msg = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin,
         name: "DAO DAO".to_string(),
         description: "A DAO that makes DAO tooling".to_string(),

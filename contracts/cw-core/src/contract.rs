@@ -5,11 +5,13 @@ use cosmwasm_std::{
     Response, StdError, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Item, Map};
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_core_interface::voting;
 use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
 use crate::msg::{
@@ -48,6 +50,7 @@ pub fn instantiate(
         image_url: msg.image_url,
         automatically_add_cw20s: msg.automatically_add_cw20s,
         automatically_add_cw721s: msg.automatically_add_cw721s,
+        dao_uri: msg.dao_uri,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -566,6 +569,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListSubDaos { start_after, limit } => {
             query_list_sub_daos(deps, start_after, limit)
         }
+        QueryMsg::DaoURI {} => query_dao_uri(deps),
     }
 }
 
@@ -827,16 +831,34 @@ pub fn query_list_sub_daos(
     to_binary(&subdaos)
 }
 
+pub fn query_dao_uri(deps: Deps) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
+    to_binary(&config.dao_uri)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
-        MigrateMsg::FromV1 {} => {
+        MigrateMsg::FromV1 { dao_uri } => {
+            // This config version is from commit
+            // e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID
+            // 432.
+            #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+            struct V1Config {
+                pub name: String,
+                pub description: String,
+                pub image_url: Option<String>,
+                pub automatically_add_cw20s: bool,
+                pub automatically_add_cw721s: bool,
+            }
+
             let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
             let current_keys = current_map
                 .keys(deps.storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<Addr>>>()?;
 
+            // Update proposal modules to v2.
             current_keys
                 .into_iter()
                 .enumerate()
@@ -850,6 +872,22 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                     PROPOSAL_MODULES.save(deps.storage, address, proposal_module)?;
                     Ok(())
                 })?;
+
+            // Update config to have the V2 "dao_uri" field.
+            let config_item: Item<V1Config> = Item::new("config");
+            let v1_config: V1Config = config_item.load(deps.storage)?;
+            CONFIG.save(
+                deps.storage,
+                &Config {
+                    name: v1_config.name,
+                    description: v1_config.description,
+                    image_url: v1_config.image_url,
+                    automatically_add_cw20s: v1_config.automatically_add_cw20s,
+                    automatically_add_cw721s: v1_config.automatically_add_cw721s,
+                    dao_uri,
+                },
+            )?;
+
             Ok(Response::default())
         }
         MigrateMsg::FromCompatible {} => Ok(Response::default()),

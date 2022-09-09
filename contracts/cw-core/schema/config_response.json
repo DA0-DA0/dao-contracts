@@ -18,6 +18,13 @@
       "description": "If true the contract will automatically add received cw721 tokens to its treasury.",
       "type": "boolean"
     },
+    "dao_uri": {
+      "description": "The URI for the DAO as defined by the DAOstar standard https://daostar.one/EIP",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "description": {
       "description": "A description of the contract.",
       "type": "string"
