@@ -21,10 +21,10 @@ cw2 = "0.13.2"
 schemars = "0.8.8"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.31" }
-voting = { version = "*", path = "../../packages/voting" }
-proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }
-cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
-cw-denom = { version = "*", path = "../../packages/cw-denom" }
+voting = { version = "*", path = "../voting" }
+proposal-hooks = { version = "*", path = "../proposal-hooks" }
+cw-core-interface = { version = "*", path = "../cw-core-interface" }
+cw-denom = { version = "*", path = "../cw-denom" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

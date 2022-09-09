@@ -7,19 +7,20 @@
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
 export type Addr = string;
-export type Uint128 = string;
-export type DepositRefundPolicy = "always" | "only_passed" | "never";
-export type AssetInfoBaseForAddr = {
-  native: string;
-} | {
-  cw20: Addr;
-} | {
-  cw1155: [Addr, string];
-};
 export type Duration = {
   height: number;
 } | {
   time: number;
+};
+export type ProposalCreationPolicy = {
+  Anyone: {
+    [k: string]: unknown;
+  };
+} | {
+  Module: {
+    addr: Addr;
+    [k: string]: unknown;
+  };
 };
 export type Threshold = {
   absolute_percentage: {
@@ -46,28 +47,23 @@ export type PercentageThreshold = {
   percent: Decimal;
 };
 export type Decimal = string;
+export type Uint128 = string;
 export interface ConfigResponse {
   allow_revoting: boolean;
   close_proposal_on_execution_failure: boolean;
   dao: Addr;
-  deposit_info?: CheckedDepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
-  open_proposal_submission: boolean;
+  proposal_creation_policy: ProposalCreationPolicy;
   threshold: Threshold;
-  [k: string]: unknown;
-}
-export interface CheckedDepositInfo {
-  deposit: Uint128;
-  refund_policy: DepositRefundPolicy;
-  token: AssetInfoBaseForAddr;
   [k: string]: unknown;
 }
 export type ExecuteMsg = {
   propose: {
     description: string;
     msgs: CosmosMsgForEmpty[];
+    proposer?: string | null;
     title: string;
     [k: string]: unknown;
   };
@@ -92,11 +88,10 @@ export type ExecuteMsg = {
     allow_revoting: boolean;
     close_proposal_on_execution_failure: boolean;
     dao: string;
-    deposit_info?: DepositInfo | null;
     max_voting_period: Duration;
     min_voting_period?: Duration | null;
     only_members_execute: boolean;
-    open_proposal_submission: boolean;
+    pre_propose_info: PreProposeInfo;
     threshold: Threshold;
     [k: string]: unknown;
   };
@@ -253,22 +248,30 @@ export type GovMsg = {
 };
 export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
 export type Vote = "yes" | "no" | "abstain";
-export type DepositToken = {
-  token: {
-    asset: AssetInfoBaseForString;
+export type PreProposeInfo = {
+  AnyoneMayPropose: {
     [k: string]: unknown;
   };
 } | {
-  voting_module_token: {
+  ModuleMayPropose: {
+    info: ModuleInstantiateInfo;
+    [k: string]: unknown;
+  };
+} | {
+  AddrMayPropose: {
+    addr: string;
     [k: string]: unknown;
   };
 };
-export type AssetInfoBaseForString = {
-  native: string;
+export type Admin = {
+  address: {
+    addr: string;
+    [k: string]: unknown;
+  };
 } | {
-  cw20: string;
-} | {
-  cw1155: [string, string];
+  instantiator: {
+    [k: string]: unknown;
+  };
 };
 export interface Coin {
   amount: Uint128;
@@ -288,10 +291,11 @@ export interface IbcTimeoutBlock {
   revision: number;
   [k: string]: unknown;
 }
-export interface DepositInfo {
-  deposit: Uint128;
-  refund_policy: DepositRefundPolicy;
-  token: DepositToken;
+export interface ModuleInstantiateInfo {
+  admin?: Admin | null;
+  code_id: number;
+  label: string;
+  msg: Binary;
   [k: string]: unknown;
 }
 export interface GetVoteResponse {
@@ -317,11 +321,10 @@ export interface ContractVersion {
 export interface InstantiateMsg {
   allow_revoting: boolean;
   close_proposal_on_execution_failure: boolean;
-  deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
-  open_proposal_submission: boolean;
+  pre_propose_info: PreProposeInfo;
   threshold: Threshold;
   [k: string]: unknown;
 }
@@ -347,7 +350,6 @@ export interface ProposalResponse {
 export interface SingleChoiceProposal {
   allow_revoting: boolean;
   created: Timestamp;
-  deposit_info?: CheckedDepositInfo | null;
   description: string;
   expiration: Expiration;
   last_updated: Timestamp;
@@ -375,6 +377,7 @@ export interface ListVotesResponse {
 export type MigrateMsg = {
   from_v1: {
     close_proposal_on_execution_failure: boolean;
+    pre_propose_info: PreProposeInfo;
     [k: string]: unknown;
   };
 } | {
@@ -614,10 +617,12 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
   propose: ({
     description,
     msgs,
+    proposer,
     title
   }: {
     description: string;
     msgs: CosmosMsgForEmpty[];
+    proposer?: string;
     title: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   vote: ({
@@ -641,21 +646,19 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     allowRevoting,
     closeProposalOnExecutionFailure,
     dao,
-    depositInfo,
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    openProposalSubmission,
+    preProposeInfo,
     threshold
   }: {
     allowRevoting: boolean;
     closeProposalOnExecutionFailure: boolean;
     dao: string;
-    depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    openProposalSubmission: boolean;
+    preProposeInfo: PreProposeInfo;
     threshold: Threshold;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   addProposalHook: ({
@@ -703,16 +706,19 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
   propose = async ({
     description,
     msgs,
+    proposer,
     title
   }: {
     description: string;
     msgs: CosmosMsgForEmpty[];
+    proposer?: string;
     title: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       propose: {
         description,
         msgs,
+        proposer,
         title
       }
     }, fee, memo, funds);
@@ -757,21 +763,19 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
     allowRevoting,
     closeProposalOnExecutionFailure,
     dao,
-    depositInfo,
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    openProposalSubmission,
+    preProposeInfo,
     threshold
   }: {
     allowRevoting: boolean;
     closeProposalOnExecutionFailure: boolean;
     dao: string;
-    depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    openProposalSubmission: boolean;
+    preProposeInfo: PreProposeInfo;
     threshold: Threshold;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
@@ -779,11 +783,10 @@ export class CwProposalSingleClient extends CwProposalSingleQueryClient implemen
         allow_revoting: allowRevoting,
         close_proposal_on_execution_failure: closeProposalOnExecutionFailure,
         dao,
-        deposit_info: depositInfo,
         max_voting_period: maxVotingPeriod,
         min_voting_period: minVotingPeriod,
         only_members_execute: onlyMembersExecute,
-        open_proposal_submission: openProposalSubmission,
+        pre_propose_info: preProposeInfo,
         threshold
       }
     }, fee, memo, funds);

@@ -209,6 +209,9 @@ pub enum MigrateMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
+        /// TODO(zeke): write a nice description of what is going on
+        /// here.
+        pre_propose_info: PreProposeInfo,
     },
     FromCompatible {},
 }

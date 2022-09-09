@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cw_denom::UncheckedDenom;
 use voting::deposit::{CheckedDepositInfo, UncheckedDepositInfo};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct InstantiateMsg<InstantiateExt> {
     /// Information about the deposit requirements for this
@@ -19,7 +19,7 @@ pub struct InstantiateMsg<InstantiateExt> {
     pub extension: InstantiateExt,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// Creates a new proposal in the pre-propose module. MSG will be
@@ -78,7 +78,7 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     ProposalHook(proposal_hooks::ProposalHookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg<QueryExt> {
     /// Gets the proposal module that this pre propose module is
@@ -97,7 +97,7 @@ pub enum QueryMsg<QueryExt> {
     Extension { msg: QueryExt },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct DepositInfoResponse {
     /// The deposit that has been paid for the specified proposal.
     pub deposit_info: Option<CheckedDepositInfo>,

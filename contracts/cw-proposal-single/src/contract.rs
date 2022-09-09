@@ -2,19 +2,16 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, Storage, SubMsg, Timestamp, Uint128, WasmMsg,
+    Response, StdResult, Storage, SubMsg, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
-use cw_storage_plus::{Bound, Item, Map};
-use cw_utils::{parse_reply_instantiate_data, Duration, Expiration};
+use cw_storage_plus::Bound;
+use cw_utils::{parse_reply_instantiate_data, Duration};
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use vote_hooks::new_vote_hooks;
 
-use voting::deposit::CheckedDepositInfo;
 use voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
 use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
 use voting::reply::{mask_proposal_execution_proposal_id, TaggedReplyId};
@@ -25,6 +22,7 @@ use voting::voting::{get_total_power, get_voting_power, validate_voting_period, 
 use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;
 use crate::state::Config;
+use crate::v1_state;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -34,7 +32,7 @@ use crate::{
     state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-1proposal-single";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-proposal-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -716,49 +714,16 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // This proposal version is from commit
-    // e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID
-    // 427.
-    #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-    struct V1Proposal {
-        pub title: String,
-        pub description: String,
-        pub proposer: Addr,
-        pub start_height: u64,
-        pub min_voting_period: Option<Expiration>,
-        pub expiration: Expiration,
-        pub threshold: Threshold,
-        pub total_power: Uint128,
-        pub msgs: Vec<CosmosMsg<Empty>>,
-        pub status: Status,
-        pub votes: Votes,
-        pub allow_revoting: bool,
-        // FIXME(zeke): this type was changed and now a v1 proposal
-        // will not deserialize into it.
-        pub deposit_info: Option<CheckedDepositInfo>,
-    }
-
-    /// This config version is from commit
-    /// e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0).
-    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-    pub struct V1Config {
-        pub threshold: Threshold,
-        pub max_voting_period: Duration,
-        pub min_voting_period: Option<Duration>,
-        pub only_members_execute: bool,
-        pub allow_revoting: bool,
-        pub dao: Addr,
-        pub deposit_info: Option<CheckedDepositInfo>,
-    }
-
     match msg {
         MigrateMsg::FromV1 {
             close_proposal_on_execution_failure,
+            pre_propose_info,
         } => {
             // Update the stored config to have the new
             // `close_proposal_on_execution_falure` field.
-            let config_item: Item<V1Config> = Item::new("config");
-            let current_config = config_item.load(deps.storage)?;
+            let current_config = v1_state::CONFIG.load(deps.storage)?;
+            let (initial_policy, pre_propose_messages) = pre_propose_info
+                .into_initial_policy_and_messages(env.contract.address.clone(), deps.as_ref())?;
             CONFIG.save(
                 deps.storage,
                 &Config {
@@ -770,27 +735,34 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     dao: current_config.dao,
                     // Loads of text, but we're only updating this field.
                     close_proposal_on_execution_failure,
-                    // TODO(zeke): what we actually do here will
-                    // depend on the specifics of how we instantiate
-                    // deposit modules.
-                    proposal_creation_policy: todo!(),
+                    proposal_creation_policy: initial_policy,
                 },
             )?;
 
             // Update the module's proposals to v2.
 
-            // Retrieve current map from storage
-            let current_map: Map<u64, V1Proposal> = Map::new("proposals");
-            let current = current_map
+            let current_proposals = v1_state::PROPOSALS
                 .range(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<(u64, V1Proposal)>>>()?;
+                .collect::<StdResult<Vec<(u64, v1_state::Proposal)>>>()?;
 
-            // Add migrated entries to new map.
-            // Based on gas usage testing, we estimate that we will be able to migrate ~4200
-            // proposals at a time before reaching the block max_gas limit.
-            current
+            // Based on gas usage testing, we estimate that we will be
+            // able to migrate ~4200 proposals at a time before
+            // reaching the block max_gas limit.
+            current_proposals
                 .into_iter()
-                .try_for_each::<_, StdResult<()>>(|(id, prop)| {
+                .try_for_each::<_, Result<_, ContractError>>(|(id, prop)| {
+                    if prop
+                        .deposit_info
+                        .map(|info| !info.deposit.is_zero())
+                        .unwrap_or(false)
+                        && prop.status != v1_state::Status::Closed
+                        && prop.status != v1_state::Status::Executed
+                    {
+                        // No migration path for outstanding
+                        // deposits.
+                        return Err(ContractError::PendingProposals {});
+                    }
+
                     let migrated_proposal = SingleChoiceProposal {
                         title: prop.title,
                         description: prop.description,
@@ -801,7 +773,7 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                         threshold: prop.threshold,
                         total_power: prop.total_power,
                         msgs: prop.msgs,
-                        status: prop.status,
+                        status: prop.status.into(),
                         votes: prop.votes,
                         allow_revoting: prop.allow_revoting,
                         // CosmWasm does not expose a way to query the timestamp
@@ -812,15 +784,20 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                         last_updated: env.block.time,
                     };
 
-                    PROPOSALS.save(deps.storage, id, &migrated_proposal)?;
-
-                    Ok(())
+                    PROPOSALS
+                        .save(deps.storage, id, &migrated_proposal)
+                        .map_err(|e| e.into())
                 })?;
 
-            todo!("update migration logic to create new pre-propose modules.")
+            Ok(Response::default()
+                .add_attribute("action", "migrate")
+                .add_attribute("from", "v1")
+                .add_submessages(pre_propose_messages))
         }
 
-        MigrateMsg::FromCompatible {} => Ok(Response::default()),
+        MigrateMsg::FromCompatible {} => Ok(Response::default()
+            .add_attribute("action", "migrate")
+            .add_attribute("from", "compatible")),
     }
 }
 
@@ -863,9 +840,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let res = parse_reply_instantiate_data(msg)?;
             let module = deps.api.addr_validate(&res.contract_address)?;
 
-            // TODO(zeke): should we validate that the current state
-            // is `ProposalCreationPolicy::Anyone`? Depends on what we
-            // decide the appropriate intermediate state should be..
             CONFIG.update(deps.storage, |mut config| -> StdResult<_> {
                 config.proposal_creation_policy = ProposalCreationPolicy::Module {
                     addr: module.clone(),

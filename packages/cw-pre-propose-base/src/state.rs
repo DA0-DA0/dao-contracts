@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use voting::deposit::CheckedDepositInfo;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
 pub struct Config {
     /// Information about the deposit required to create a
     /// proposal. If `None`, no deposit is required.

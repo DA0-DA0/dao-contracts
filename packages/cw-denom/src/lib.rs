@@ -120,7 +120,7 @@ impl CheckedDenom {
             CheckedDenom::Native(denom) => BankMsg::Send {
                 to_address: who.to_string(),
                 amount: vec![Coin {
-                    amount: amount,
+                    amount,
                     denom: denom.to_string(),
                 }],
             }
@@ -129,7 +129,7 @@ impl CheckedDenom {
                 contract_addr: address.to_string(),
                 msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: who.to_string(),
-                    amount: amount,
+                    amount,
                 })?,
                 funds: vec![],
             }
@@ -324,5 +324,13 @@ mod tests {
         for valid in valids {
             validate_native_denom(valid.to_string()).unwrap();
         }
+    }
+
+    #[test]
+    fn test_display() {
+        let denom = CheckedDenom::Native("hello".to_string());
+        assert_eq!(denom.to_string(), "hello".to_string());
+        let denom = CheckedDenom::Cw20(Addr::unchecked("hello"));
+        assert_eq!(denom.to_string(), "hello".to_string());
     }
 }
