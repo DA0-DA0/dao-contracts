@@ -17,7 +17,7 @@ library = []
 cosmwasm-std = "1.0.0"
 cw2 = "0.13.2"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
-cw-pre-propose-base = { version = "*", path = "../cw-pre-propose-base" }
+cw-pre-propose-base = { version = "*", path = "../../packages/cw-pre-propose-base" }
 schemars = "0.8.8"
 
 [dev-dependencies]

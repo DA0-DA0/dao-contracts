@@ -328,7 +328,7 @@ fn update_config_should_fail(
 ) -> PreProposeError {
     app.execute_contract(
         Addr::unchecked(sender),
-        module.clone(),
+        module,
         &ExecuteMsg::UpdateConfig {
             deposit_info,
             open_proposal_submission,
@@ -343,7 +343,7 @@ fn update_config_should_fail(
 fn withdraw(app: &mut App, module: Addr, sender: &str, denom: Option<UncheckedDenom>) {
     app.execute_contract(
         Addr::unchecked(sender),
-        module.clone(),
+        module,
         &ExecuteMsg::Withdraw { denom },
         &[],
     )
@@ -358,7 +358,7 @@ fn withdraw_should_fail(
 ) -> PreProposeError {
     app.execute_contract(
         Addr::unchecked(sender),
-        module.clone(),
+        module,
         &ExecuteMsg::Withdraw { denom },
         &[],
     )
@@ -432,11 +432,15 @@ fn test_native_permutation(
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(balance, Uint128::zero());
 
-    let (position, expected_status, trigger_refund): (_, _, fn(&mut App, Addr, &str, u64) -> ()) =
-        match end_status {
-            EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
-            EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
-        };
+    #[allow(clippy::type_complexity)]
+    let (position, expected_status, trigger_refund): (
+        _,
+        _,
+        fn(&mut App, Addr, &str, u64) -> (),
+    ) = match end_status {
+        EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
+        EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+    };
     let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
     assert_eq!(new_status, expected_status);
 
@@ -498,11 +502,15 @@ fn test_cw20_permutation(
     let balance = get_balance_cw20(&app, cw20_address.clone(), "ekez");
     assert_eq!(balance, Uint128::zero());
 
-    let (position, expected_status, trigger_refund): (_, _, fn(&mut App, Addr, &str, u64) -> ()) =
-        match end_status {
-            EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
-            EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
-        };
+    #[allow(clippy::type_complexity)]
+    let (position, expected_status, trigger_refund): (
+        _,
+        _,
+        fn(&mut App, Addr, &str, u64) -> (),
+    ) = match end_status {
+        EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
+        EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+    };
     let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
     assert_eq!(new_status, expected_status);
 
@@ -1152,13 +1160,8 @@ fn test_update_config() {
     assert_eq!(balance, Uint128::new(0));
 
     // Only the core module can update the config.
-    let err = update_config_should_fail(
-        &mut app,
-        pre_propose.clone(),
-        proposal_single.as_str(),
-        None,
-        true,
-    );
+    let err =
+        update_config_should_fail(&mut app, pre_propose, proposal_single.as_str(), None, true);
     assert_eq!(err, PreProposeError::NotDao {});
 }
 

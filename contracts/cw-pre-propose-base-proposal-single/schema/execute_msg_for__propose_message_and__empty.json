@@ -1,25 +1,22 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ExecuteMsg",
+  "title": "ExecuteMsg_for_ProposeMessage_and_Empty",
   "oneOf": [
     {
-      "description": "Callable by the Admin, if one is configured. Executes messages in order.",
+      "description": "Creates a new proposal in the pre-propose module. MSG will be serialized and used as the proposal creation message.",
       "type": "object",
       "required": [
-        "execute_admin_msgs"
+        "propose"
       ],
       "properties": {
-        "execute_admin_msgs": {
+        "propose": {
           "type": "object",
           "required": [
-            "msgs"
+            "msg"
           ],
           "properties": {
-            "msgs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/CosmosMsg_for_Empty"
-              }
+            "msg": {
+              "$ref": "#/definitions/ProposeMessage"
             }
           }
         }
@@ -27,171 +24,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Callable by proposal modules. The DAO will execute the messages in the hook in order.",
-      "type": "object",
-      "required": [
-        "execute_proposal_hook"
-      ],
-      "properties": {
-        "execute_proposal_hook": {
-          "type": "object",
-          "required": [
-            "msgs"
-          ],
-          "properties": {
-            "msgs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/CosmosMsg_for_Empty"
-              }
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Pauses the DAO for a set duration. When paused the DAO is unable to execute proposals",
-      "type": "object",
-      "required": [
-        "pause"
-      ],
-      "properties": {
-        "pause": {
-          "type": "object",
-          "required": [
-            "duration"
-          ],
-          "properties": {
-            "duration": {
-              "$ref": "#/definitions/Duration"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Executed when the contract receives a cw20 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
-      "type": "object",
-      "required": [
-        "receive"
-      ],
-      "properties": {
-        "receive": {
-          "$ref": "#/definitions/Cw20ReceiveMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Executed when the contract receives a cw721 token. Depending on the contract's configuration the contract will automatically add the token to its treasury.",
-      "type": "object",
-      "required": [
-        "receive_nft"
-      ],
-      "properties": {
-        "receive_nft": {
-          "$ref": "#/definitions/Cw721ReceiveMsg"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Removes an item from the governance contract's item map.",
-      "type": "object",
-      "required": [
-        "remove_item"
-      ],
-      "properties": {
-        "remove_item": {
-          "type": "object",
-          "required": [
-            "key"
-          ],
-          "properties": {
-            "key": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overriden. If the item does not exist a new item is added.",
-      "type": "object",
-      "required": [
-        "set_item"
-      ],
-      "properties": {
-        "set_item": {
-          "type": "object",
-          "required": [
-            "addr",
-            "key"
-          ],
-          "properties": {
-            "addr": {
-              "type": "string"
-            },
-            "key": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Callable by the admin of the contract. If ADMIN is None the admin is set as the contract itself so that it may be updated later by vote. If ADMIN is Some a new admin is proposed and that new admin may become the admin by executing the `AcceptAdminNomination` message.\n\nIf there is already a pending admin nomination the `WithdrawAdminNomination` message must be executed before a new admin may be nominated.",
-      "type": "object",
-      "required": [
-        "nominate_admin"
-      ],
-      "properties": {
-        "nominate_admin": {
-          "type": "object",
-          "properties": {
-            "admin": {
-              "type": [
-                "string",
-                "null"
-              ]
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Callable by a nominated admin. Admins are nominated via the `NominateAdmin` message. Accepting a nomination will make the nominated address the new admin.\n\nRequiring that the new admin accepts the nomination before becoming the admin protects against a typo causing the admin to change to an invalid address.",
-      "type": "object",
-      "required": [
-        "accept_admin_nomination"
-      ],
-      "properties": {
-        "accept_admin_nomination": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Callable by the current admin. Withdraws the current admin nomination.",
-      "type": "object",
-      "required": [
-        "withdraw_admin_nomination"
-      ],
-      "properties": {
-        "withdraw_admin_nomination": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Callable by the core contract. Replaces the current governance contract config with the provided config.",
+      "description": "Updates the configuration of this module. This will completely override the existing configuration. This new configuration will only apply to proposals created after the config is updated. Only the DAO may execute this message.",
       "type": "object",
       "required": [
         "update_config"
@@ -200,42 +33,21 @@
         "update_config": {
           "type": "object",
           "required": [
-            "config"
+            "open_proposal_submission"
           ],
           "properties": {
-            "config": {
-              "$ref": "#/definitions/Config"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Updates the list of cw20 tokens this contract has registered.",
-      "type": "object",
-      "required": [
-        "update_cw20_list"
-      ],
-      "properties": {
-        "update_cw20_list": {
-          "type": "object",
-          "required": [
-            "to_add",
-            "to_remove"
-          ],
-          "properties": {
-            "to_add": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "deposit_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/UncheckedDepositInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
-            "to_remove": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "open_proposal_submission": {
+              "type": "boolean"
             }
           }
         }
@@ -243,30 +55,25 @@
       "additionalProperties": false
     },
     {
-      "description": "Updates the list of cw721 tokens this contract has registered.",
+      "description": "Withdraws funds inside of this contract to the message sender. The contracts entire balance for the specifed DENOM is withdrawn to the message sender. Only the DAO may call this method.\n\nThis is intended only as an escape hatch in the event of a critical bug in this contract or it's proposal module. Withdrawing funds will cause future attempts to return proposal deposits to fail their transactions as the contract will have insufficent balance to return them. In the case of `cw-proposal-single` this transaction failure will cause the module to remove the pre-propose module from its proposal hook receivers.\n\nMore likely than not, this should NEVER BE CALLED unless a bug in this contract or the proposal module it is associated with has caused it to stop receiving proposal hook messages, or if a critical security vulnerability has been found that allows an attacker to drain proposal deposits.",
       "type": "object",
       "required": [
-        "update_cw721_list"
+        "withdraw"
       ],
       "properties": {
-        "update_cw721_list": {
+        "withdraw": {
           "type": "object",
-          "required": [
-            "to_add",
-            "to_remove"
-          ],
           "properties": {
-            "to_add": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "to_remove": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "denom": {
+              "description": "The denom to withdraw funds for. If no denom is specified, the denomination currently configured for proposal deposits will be used.\n\nYou may want to specify a denomination here if you are withdrawing funds that were previously accepted for proposal deposits but are not longer used due to an `UpdateConfig` message being executed on the contract.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/UncheckedDenom"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -274,30 +81,20 @@
       "additionalProperties": false
     },
     {
-      "description": "Updates the governance contract's governance modules. Module instantiate info in `to_add` is used to create new modules and install them.",
+      "description": "Extension message. Contracts that extend this one should put their custom execute logic here. The default implementation will do nothing if this variant is executed.",
       "type": "object",
       "required": [
-        "update_proposal_modules"
+        "extension"
       ],
       "properties": {
-        "update_proposal_modules": {
+        "extension": {
           "type": "object",
           "required": [
-            "to_add",
-            "to_disable"
+            "msg"
           ],
           "properties": {
-            "to_add": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/ModuleInstantiateInfo"
-              }
-            },
-            "to_disable": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+            "msg": {
+              "$ref": "#/definitions/Empty"
             }
           }
         }
@@ -305,98 +102,20 @@
       "additionalProperties": false
     },
     {
-      "description": "Callable by the core contract. Replaces the current voting module with a new one instantiated by the governance contract.",
+      "description": "Handles proposal hooks fired by the associated proposal module. By default, the base contract will return deposits when proposals are executed, or, if it is refunding failed proposals, when they are closed.",
       "type": "object",
       "required": [
-        "update_voting_module"
+        "proposal_hook"
       ],
       "properties": {
-        "update_voting_module": {
-          "type": "object",
-          "required": [
-            "module"
-          ],
-          "properties": {
-            "module": {
-              "$ref": "#/definitions/ModuleInstantiateInfo"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Update the core module to add/remove SubDAOs and their charters",
-      "type": "object",
-      "required": [
-        "update_sub_daos"
-      ],
-      "properties": {
-        "update_sub_daos": {
-          "type": "object",
-          "required": [
-            "to_add",
-            "to_remove"
-          ],
-          "properties": {
-            "to_add": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/SubDao"
-              }
-            },
-            "to_remove": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
+        "proposal_hook": {
+          "$ref": "#/definitions/ProposalHookMsg"
         }
       },
       "additionalProperties": false
     }
   ],
   "definitions": {
-    "Admin": {
-      "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
-      "oneOf": [
-        {
-          "description": "Set the admin to a specified address.",
-          "type": "object",
-          "required": [
-            "address"
-          ],
-          "properties": {
-            "address": {
-              "type": "object",
-              "required": [
-                "addr"
-              ],
-              "properties": {
-                "addr": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Set the admin to the address that instantiates the contract. This is useful for DAOs that instantiate this contract as part of their creation process and would like to set themselces as the admin (as in this case the address of the instantiating contract is not known at message execution time).",
-          "type": "object",
-          "required": [
-            "instantiator"
-          ],
-          "properties": {
-            "instantiator": {
-              "type": "object"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "BankMsg": {
       "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
       "oneOf": [
@@ -469,48 +188,6 @@
           "$ref": "#/definitions/Uint128"
         },
         "denom": {
-          "type": "string"
-        }
-      }
-    },
-    "Config": {
-      "description": "Top level config type for core module.",
-      "type": "object",
-      "required": [
-        "automatically_add_cw20s",
-        "automatically_add_cw721s",
-        "description",
-        "name"
-      ],
-      "properties": {
-        "automatically_add_cw20s": {
-          "description": "If true the contract will automatically add received cw20 tokens to its treasury.",
-          "type": "boolean"
-        },
-        "automatically_add_cw721s": {
-          "description": "If true the contract will automatically add received cw721 tokens to its treasury.",
-          "type": "boolean"
-        },
-        "dao_uri": {
-          "description": "The URI for the DAO as defined by the DAOstar standard https://daostar.one/EIP",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "description": {
-          "description": "A description of the contract.",
-          "type": "string"
-        },
-        "image_url": {
-          "description": "An optional image URL for displaying alongside the contract.",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "name": {
-          "description": "The name of the contract.",
           "type": "string"
         }
       }
@@ -628,45 +305,52 @@
         }
       ]
     },
-    "Cw20ReceiveMsg": {
-      "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
-      "type": "object",
-      "required": [
-        "amount",
-        "msg",
-        "sender"
-      ],
-      "properties": {
-        "amount": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "msg": {
-          "$ref": "#/definitions/Binary"
-        },
-        "sender": {
-          "type": "string"
-        }
-      }
+    "DepositRefundPolicy": {
+      "type": "string",
+      "enum": [
+        "always",
+        "only_passed",
+        "never"
+      ]
     },
-    "Cw721ReceiveMsg": {
-      "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
-      "type": "object",
-      "required": [
-        "msg",
-        "sender",
-        "token_id"
-      ],
-      "properties": {
-        "msg": {
-          "$ref": "#/definitions/Binary"
+    "DepositToken": {
+      "description": "Information about the token to use for proposal deposits.",
+      "oneOf": [
+        {
+          "description": "Use a specific token address as the deposit token.",
+          "type": "object",
+          "required": [
+            "token"
+          ],
+          "properties": {
+            "token": {
+              "type": "object",
+              "required": [
+                "denom"
+              ],
+              "properties": {
+                "denom": {
+                  "$ref": "#/definitions/UncheckedDenom"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
         },
-        "sender": {
-          "type": "string"
-        },
-        "token_id": {
-          "type": "string"
+        {
+          "description": "Use the token address of the associated DAO's voting module. NOTE: in order to use the token address of the voting module the voting module must (1) use a cw20 token and (2) implement the `TokenContract {}` query type defined by `cw_core_macros::token_query`. Failing to implement that and using this option will cause instantiation to fail.",
+          "type": "object",
+          "required": [
+            "voting_module_token"
+          ],
+          "properties": {
+            "voting_module_token": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
         }
-      }
+      ]
     },
     "DistributionMsg": {
       "description": "The message types of the distribution module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto",
@@ -711,40 +395,6 @@
                   "type": "string"
                 }
               }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "Duration": {
-      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "height"
-          ],
-          "properties": {
-            "height": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Time in seconds",
-          "type": "object",
-          "required": [
-            "time"
-          ],
-          "properties": {
-            "time": {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -939,45 +589,100 @@
         }
       }
     },
-    "ModuleInstantiateInfo": {
-      "description": "Information needed to instantiate a module.",
-      "type": "object",
-      "required": [
-        "code_id",
-        "label",
-        "msg"
-      ],
-      "properties": {
-        "admin": {
-          "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Admin"
-            },
-            {
-              "type": "null"
+    "ProposalHookMsg": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "new_proposal"
+          ],
+          "properties": {
+            "new_proposal": {
+              "type": "object",
+              "required": [
+                "id",
+                "proposer"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "proposer": {
+                  "type": "string"
+                }
+              }
             }
-          ]
+          },
+          "additionalProperties": false
         },
-        "code_id": {
-          "description": "Code ID of the contract to be instantiated.",
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
-        },
-        "label": {
-          "description": "Label for the instantiated contract.",
-          "type": "string"
-        },
-        "msg": {
-          "description": "Instantiate message to be used to create the contract.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Binary"
+        {
+          "type": "object",
+          "required": [
+            "proposal_status_changed"
+          ],
+          "properties": {
+            "proposal_status_changed": {
+              "type": "object",
+              "required": [
+                "id",
+                "new_status",
+                "old_status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "new_status": {
+                  "type": "string"
+                },
+                "old_status": {
+                  "type": "string"
+                }
+              }
             }
-          ]
+          },
+          "additionalProperties": false
         }
-      }
+      ]
+    },
+    "ProposeMessage": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "propose"
+          ],
+          "properties": {
+            "propose": {
+              "type": "object",
+              "required": [
+                "description",
+                "msgs",
+                "title"
+              ],
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "msgs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/CosmosMsg_for_Empty"
+                  }
+                },
+                "title": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "StakingMsg": {
       "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",
@@ -1063,25 +768,6 @@
         }
       ]
     },
-    "SubDao": {
-      "type": "object",
-      "required": [
-        "addr"
-      ],
-      "properties": {
-        "addr": {
-          "description": "The contract address of the SubDAO",
-          "type": "string"
-        },
-        "charter": {
-          "description": "The purpose/constitution for the SubDAO",
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      }
-    },
     "Timestamp": {
       "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
       "allOf": [
@@ -1097,6 +783,72 @@
     "Uint64": {
       "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
       "type": "string"
+    },
+    "UncheckedDenom": {
+      "description": "A denom that has not been checked to confirm it points to a valid asset.",
+      "oneOf": [
+        {
+          "description": "A native (bank module) asset.",
+          "type": "object",
+          "required": [
+            "native"
+          ],
+          "properties": {
+            "native": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "A cw20 asset.",
+          "type": "object",
+          "required": [
+            "cw20"
+          ],
+          "properties": {
+            "cw20": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "UncheckedDepositInfo": {
+      "description": "Information about the deposit required to create a proposal.",
+      "type": "object",
+      "required": [
+        "amount",
+        "denom",
+        "refund_policy"
+      ],
+      "properties": {
+        "amount": {
+          "description": "The number of tokens that must be deposited to create a proposal. Must be a positive, non-zero number.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            }
+          ]
+        },
+        "denom": {
+          "description": "The address of the token to be used for proposal deposits.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DepositToken"
+            }
+          ]
+        },
+        "refund_policy": {
+          "description": "The policy used for refunding deposits on proposal completion.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/DepositRefundPolicy"
+            }
+          ]
+        }
+      }
     },
     "VoteOption": {
       "type": "string",
