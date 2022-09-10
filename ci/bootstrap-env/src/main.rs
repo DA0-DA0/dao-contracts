@@ -53,6 +53,7 @@ fn main() -> Result<()> {
         name: "DAO DAO".to_string(),
         description: "A DAO that makes DAO tooling".to_string(),
         image_url: Some("https://zmedley.com/raw_logo.png".to_string()),
+        dao_uri: None,
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
