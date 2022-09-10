@@ -1,7 +1,7 @@
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{deposit::UncheckedDepositInfo, voting::MultipleChoiceVote};
+use voting::{pre_propose::PreProposeInfo, voting::MultipleChoiceVote};
 
 use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
 use cw_core_macros::govmod_query;
@@ -27,10 +27,8 @@ pub struct InstantiateMsg {
     /// vote information is not known until the time of proposal
     /// expiration.
     pub allow_revoting: bool,
-    /// Information about the deposit required to create a
-    /// proposal. None if there is no deposit requirement, Some
-    /// otherwise.
-    pub deposit_info: Option<UncheckedDepositInfo>,
+    /// Information about what addresses may create proposals.
+    pub pre_propose_info: PreProposeInfo,
     /// If set to true proposals will be closed if their execution
     /// fails. Otherwise, proposals will remain open after execution
     /// failure. For example, with this enabled a proposal to send 5
@@ -39,8 +37,6 @@ pub struct InstantiateMsg {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// Whether non-members of the DAO can submit proposals
-    pub open_proposal_submission: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -54,6 +50,12 @@ pub enum ExecuteMsg {
         description: String,
         /// The multiple choices.
         choices: MultipleChoiceOptions,
+        /// The address creating the proposal. If no pre-propose
+        /// module is attached to this module this must always be None
+        /// as the proposer is the sender of the propose message. If a
+        /// pre-propose module is attached, this must be Some and will
+        /// set the proposer of the proposal it creates.
+        proposer: Option<String>,
     },
     /// Votes on a proposal. Voting power is determined by the DAO's
     /// voting power module.
@@ -103,9 +105,6 @@ pub enum ExecuteMsg {
         /// The address if tge DAO that this governance module is
         /// associated with.
         dao: String,
-        /// Information about the deposit required to make a
-        /// proposal. None if no deposit, Some otherwise.
-        deposit_info: Option<UncheckedDepositInfo>,
         /// If set to true proposals will be closed if their execution
         /// fails. Otherwise, proposals will remain open after execution
         /// failure. For example, with this enabled a proposal to send 5
@@ -114,8 +113,8 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
-        /// Whether non-members of the DAO can submit proposals
-        open_proposal_submission: bool,
+        /// Information about what addresses may create proposals.
+        pre_propose_info: PreProposeInfo,
     },
     AddProposalHook {
         address: String,
@@ -171,4 +170,22 @@ pub struct VoteMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-pub struct MigrateMsg {}
+#[serde(rename_all = "snake_case")]
+pub enum MigrateMsg {
+    FromV1 {
+        /// This field was not present in DAO DAO v1. To migrate, a
+        /// value must be specified.
+        ///
+        /// If set to true proposals will be closed if their execution
+        /// fails. Otherwise, proposals will remain open after execution
+        /// failure. For example, with this enabled a proposal to send 5
+        /// tokens out of a DAO's treasury with 4 tokens would be closed when
+        /// it is executed. With this disabled, that same proposal would
+        /// remain open until the DAO's treasury was large enough for it to be
+        /// executed.
+        close_proposal_on_execution_failure: bool,
+        /// Information about what addresses may create proposals.
+        pre_propose_info: PreProposeInfo,
+    },
+    FromCompatible {},
+}

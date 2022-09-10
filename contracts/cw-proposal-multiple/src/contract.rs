@@ -1,18 +1,18 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdResult, Storage, SubMsg, WasmMsg,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
+    Response, StdResult, Storage, SubMsg, Timestamp, WasmMsg,
 };
 
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
 use cw_storage_plus::Bound;
-use cw_utils::Duration;
+use cw_utils::{parse_reply_instantiate_data, Duration};
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 
 use vote_hooks::new_vote_hooks;
 use voting::{
-    deposit::{get_deposit_msg, get_return_deposit_msg, DepositRefundPolicy, UncheckedDepositInfo},
+    pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
     reply::{mask_proposal_execution_proposal_id, TaggedReplyId},
     status::Status,
@@ -22,6 +22,7 @@ use voting::{
     },
 };
 
+use crate::v1_state;
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::{MultipleChoiceProposal, VoteResult},
@@ -39,7 +40,7 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -48,13 +49,13 @@ pub fn instantiate(
     msg.voting_strategy.validate()?;
 
     let dao = info.sender;
-    let deposit_info = msg
-        .deposit_info
-        .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
-        .transpose()?;
 
     let (min_voting_period, max_voting_period) =
         validate_voting_period(msg.min_voting_period, msg.max_voting_period)?;
+
+    let (initial_policy, pre_propose_messages) = msg
+        .pre_propose_info
+        .into_initial_policy_and_messages(env.contract.address, deps.as_ref())?;
 
     let config = Config {
         voting_strategy: msg.voting_strategy,
@@ -63,9 +64,8 @@ pub fn instantiate(
         only_members_execute: msg.only_members_execute,
         allow_revoting: msg.allow_revoting,
         dao,
-        deposit_info,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
-        open_proposal_submission: msg.open_proposal_submission,
+        proposal_creation_policy: initial_policy,
     };
 
     // Initialize proposal count to zero.
@@ -73,6 +73,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::default()
+        .add_submessages(pre_propose_messages)
         .add_attribute("action", "instantiate")
         .add_attribute("dao", config.dao))
 }
@@ -89,7 +90,16 @@ pub fn execute(
             title,
             description,
             choices,
-        } => execute_propose(deps, env, info.sender, title, description, choices),
+            proposer,
+        } => execute_propose(
+            deps,
+            env,
+            info.sender,
+            title,
+            description,
+            choices,
+            proposer,
+        ),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
@@ -100,11 +110,11 @@ pub fn execute(
             only_members_execute,
             allow_revoting,
             dao,
-            deposit_info,
             close_proposal_on_execution_failure,
-            open_proposal_submission,
+            pre_propose_info,
         } => execute_update_config(
             deps,
+            env,
             info,
             voting_strategy,
             min_voting_period,
@@ -112,9 +122,8 @@ pub fn execute(
             only_members_execute,
             allow_revoting,
             dao,
-            deposit_info,
             close_proposal_on_execution_failure,
-            open_proposal_submission,
+            pre_propose_info,
         ),
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
@@ -136,8 +145,27 @@ pub fn execute_propose(
     title: String,
     description: String,
     options: MultipleChoiceOptions,
+    proposer: Option<String>,
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+
+    // Check that the sender is permitted to create proposals.
+    if !config.proposal_creation_policy.is_permitted(&sender) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // Determine the appropriate proposer. If this is coming from our
+    // pre-propose module, it must be specified. Otherwise, the
+    // proposer should not be specified.
+    let proposer = match (proposer, config.proposal_creation_policy) {
+        (None, ProposalCreationPolicy::Anyone {}) => sender.clone(),
+        // `is_permitted` above checks that the specified module is
+        // actually sending the propose message.
+        (Some(proposer), ProposalCreationPolicy::Module { .. }) => {
+            deps.api.addr_validate(&proposer)?
+        }
+        _ => return Err(ContractError::InvalidProposer {}),
+    };
 
     let voting_module: Addr = deps
         .querier
@@ -157,17 +185,6 @@ pub fn execute_propose(
         return Err(ContractError::InactiveDao {});
     }
 
-    // Check whether open_propsoal_submissions are disabled
-    if !config.open_proposal_submission {
-        // If open_proposal_submission is false,
-        // Check that the sender is a member of the governance contract.
-        let sender_power =
-            get_voting_power(deps.as_ref(), sender.clone(), config.dao.clone(), None)?;
-        if sender_power.is_zero() {
-            return Err(ContractError::MustHaveVotingPower {});
-        }
-    }
-
     // Validate options.
     let checked_multiple_choice_options = options.into_checked()?.options;
 
@@ -179,7 +196,7 @@ pub fn execute_propose(
         let mut proposal = MultipleChoiceProposal {
             title,
             description,
-            proposer: sender.clone(),
+            proposer: proposer.clone(),
             start_height: env.block.height,
             min_voting_period: config.min_voting_period.map(|min| min.after(&env.block)),
             expiration,
@@ -188,7 +205,6 @@ pub fn execute_propose(
             status: Status::Open,
             votes: MultipleChoiceVotes::zero(checked_multiple_choice_options.len()),
             allow_revoting: config.allow_revoting,
-            deposit_info: config.deposit_info.clone(),
             choices: checked_multiple_choice_options,
             created: env.block.time,
             last_updated: env.block.time,
@@ -224,10 +240,8 @@ pub fn execute_propose(
 
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
-    let deposit_msg = get_deposit_msg(&config.deposit_info, &env.contract.address, &sender)?;
-    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, sender.clone())?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer)?;
     Ok(Response::default()
-        .add_messages(deposit_msg)
         .add_submessages(hooks)
         .add_attribute("action", "propose")
         .add_attribute("sender", sender)
@@ -365,17 +379,6 @@ pub fn execute_execute(
 
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-    // Get refund message if deposits are enabled
-    let refund_message = match &prop.deposit_info {
-        Some(deposit_info) => match deposit_info.refund_policy {
-            // If deposits are not refundable, deposit goes to DAO
-            DepositRefundPolicy::Never => get_return_deposit_msg(deposit_info, &config.dao)?,
-            // Otherwise, refund goes to proposer
-            _ => get_return_deposit_msg(deposit_info, &prop.proposer)?,
-        },
-        None => vec![],
-    };
-
     let vote_result = prop.calculate_vote_result()?;
     match vote_result {
         VoteResult::Tie => Err(ContractError::Tie {}), // We don't anticipate this case as the proposal would not be in passed state, checked above.
@@ -417,7 +420,6 @@ pub fn execute_execute(
             )?;
 
             Ok(response
-                .add_messages(refund_message)
                 .add_submessages(hooks)
                 .add_attribute("action", "execute")
                 .add_attribute("sender", info.sender)
@@ -434,7 +436,6 @@ pub fn execute_close(
     proposal_id: u64,
 ) -> Result<Response<Empty>, ContractError> {
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
-    let config = CONFIG.load(deps.storage)?;
 
     prop.update_status(&env.block)?;
     if prop.status != Status::Rejected {
@@ -442,16 +443,6 @@ pub fn execute_close(
     }
 
     let old_status = prop.status;
-
-    let refund_message = match &prop.deposit_info {
-        Some(deposit_info) => match deposit_info.refund_policy {
-            // If we are always refunding deposits, funds go to proposer
-            DepositRefundPolicy::Always => get_return_deposit_msg(deposit_info, &prop.proposer)?,
-            // If no refunds, or failed proposals not refund, funds go to DAO
-            _ => get_return_deposit_msg(deposit_info, &config.dao)?,
-        },
-        None => vec![],
-    };
 
     prop.status = Status::Closed;
     // Update proposal's last updated timestamp.
@@ -470,13 +461,13 @@ pub fn execute_close(
         .add_submessages(changed_hooks)
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
-        .add_messages(refund_message)
         .add_attribute("proposal_id", proposal_id.to_string()))
 }
 
 #[allow(clippy::too_many_arguments)]
 pub fn execute_update_config(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     voting_strategy: VotingStrategy,
     min_voting_period: Option<Duration>,
@@ -484,9 +475,8 @@ pub fn execute_update_config(
     only_members_execute: bool,
     allow_revoting: bool,
     dao: String,
-    deposit_info: Option<UncheckedDepositInfo>,
     close_proposal_on_execution_failure: bool,
-    open_proposal_submission: bool,
+    pre_propose_info: PreProposeInfo,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -498,12 +488,12 @@ pub fn execute_update_config(
     voting_strategy.validate()?;
 
     let dao = deps.api.addr_validate(&dao)?;
-    let deposit_info = deposit_info
-        .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
-        .transpose()?;
 
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
+
+    let (initial_policy, pre_propose_messages) =
+        pre_propose_info.into_initial_policy_and_messages(env.contract.address, deps.as_ref())?;
 
     CONFIG.save(
         deps.storage,
@@ -514,13 +504,13 @@ pub fn execute_update_config(
             only_members_execute,
             allow_revoting,
             dao,
-            deposit_info,
             close_proposal_on_execution_failure,
-            open_proposal_submission,
+            proposal_creation_policy: initial_policy,
         },
     )?;
 
     Ok(Response::default()
+        .add_submessages(pre_propose_messages)
         .add_attribute("action", "update_config")
         .add_attribute("sender", info.sender))
 }
@@ -784,12 +774,119 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let addr = VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
             Ok(Response::new().add_attribute("removed vote hook", format!("{addr}:{idx}")))
         }
+        TaggedReplyId::PreProposeModuleInstantiation => {
+            let res = parse_reply_instantiate_data(msg)?;
+            let module = deps.api.addr_validate(&res.contract_address)?;
+
+            CONFIG.update(deps.storage, |mut config| -> StdResult<_> {
+                config.proposal_creation_policy = ProposalCreationPolicy::Module {
+                    addr: module.clone(),
+                };
+                Ok(config)
+            })?;
+
+            // Add the module as a receiver of proposal hooks. Doing
+            // this gives us two things:
+            //
+            // 1. The module will be removed if it fails to handle a
+            //    hook (want to fail open).
+            // 2. The module will be informed when proposals change
+            //    their status. This, for example, lets the module return
+            //    deposits when proposals close.
+            add_hook(PROPOSAL_HOOKS, deps.storage, module)?;
+
+            Ok(Response::new().add_attribute("update_pre_propose_module", res.contract_address))
+        }
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+    match msg {
+        MigrateMsg::FromV1 {
+            close_proposal_on_execution_failure,
+            pre_propose_info,
+        } => {
+            // Update the stored config to have the new
+            // `close_proposal_on_execution_falure` field.
+            let current_config = v1_state::CONFIG.load(deps.storage)?;
+            let (initial_policy, pre_propose_messages) = pre_propose_info
+                .into_initial_policy_and_messages(env.contract.address.clone(), deps.as_ref())?;
+            CONFIG.save(
+                deps.storage,
+                &Config {
+                    voting_strategy: current_config.voting_strategy,
+                    max_voting_period: current_config.max_voting_period,
+                    min_voting_period: current_config.min_voting_period,
+                    only_members_execute: current_config.only_members_execute,
+                    allow_revoting: current_config.allow_revoting,
+                    dao: current_config.dao,
+                    // Loads of text, but we're only updating these fields.
+                    close_proposal_on_execution_failure,
+                    proposal_creation_policy: initial_policy,
+                },
+            )?;
+
+            // Update the module's proposals to v2.
+
+            let current_proposals = v1_state::PROPOSALS
+                .range(deps.storage, None, None, Order::Ascending)
+                .collect::<StdResult<Vec<(u64, v1_state::Proposal)>>>()?;
+
+            // Based on gas usage testing, we estimate that we will be
+            // able to migrate ~4200 proposals at a time before
+            // reaching the block max_gas limit.
+            current_proposals
+                .into_iter()
+                .try_for_each::<_, Result<_, ContractError>>(|(id, prop)| {
+                    if prop
+                        .deposit_info
+                        .map(|info| !info.deposit.is_zero())
+                        .unwrap_or(false)
+                        && prop.status != v1_state::Status::Closed
+                        && prop.status != v1_state::Status::Executed
+                    {
+                        // No migration path for outstanding
+                        // deposits.
+                        return Err(ContractError::PendingProposals {});
+                    }
+
+                    let migrated_proposal = MultipleChoiceProposal {
+                        title: prop.title,
+                        description: prop.description,
+                        proposer: prop.proposer,
+                        start_height: prop.start_height,
+                        min_voting_period: prop.min_voting_period,
+                        expiration: prop.expiration,
+                        voting_strategy: prop.voting_strategy,
+                        total_power: prop.total_power,
+                        choices: prop.choices,
+                        status: prop.status.into(),
+                        votes: prop.votes,
+                        allow_revoting: prop.allow_revoting,
+                        // CosmWasm does not expose a way to query the timestamp
+                        // of a block given block height. As such, we assign migrated
+                        // proposals a created timestamp of 0 so that the frontend may
+                        // query for the true timestamp given `start_height`.
+                        created: Timestamp::from_seconds(0),
+                        last_updated: env.block.time,
+                    };
+
+                    PROPOSALS
+                        .save(deps.storage, id, &migrated_proposal)
+                        .map_err(|e| e.into())
+                })?;
+
+            Ok(Response::default()
+                .add_attribute("action", "migrate")
+                .add_attribute("from", "v1")
+                .add_submessages(pre_propose_messages))
+        }
+
+        MigrateMsg::FromCompatible {} => Ok(Response::default()
+            .add_attribute("action", "migrate")
+            .add_attribute("from", "compatible")),
+    }
 }

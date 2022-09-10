@@ -3,7 +3,6 @@ use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use voting::{
-    deposit::CheckedDepositInfo,
     proposal::Proposal,
     status::Status,
     voting::{does_vote_count_pass, MultipleChoiceVotes},
@@ -19,23 +18,34 @@ use crate::{
 pub struct MultipleChoiceProposal {
     pub title: String,
     pub description: String,
+    /// The address that created this proposal.
     pub proposer: Addr,
+    /// The block height at which this proposal was created. Voting
+    /// power queries should query for voting power at this block
+    /// height.
     pub start_height: u64,
     /// The minimum amount of time this proposal must remain open for
     /// voting. The proposal may not pass unless this is expired or
     /// None.
     pub min_voting_period: Option<Expiration>,
+    /// The the time at which this proposal will expire and close for
+    /// additional votes.
     pub expiration: Expiration,
+    /// The options to be chosen from in the vote.
     pub choices: Vec<CheckedMultipleChoiceOption>,
+    /// Prosal status (Open, rejected, executed, execution failed, closed, passed)
     pub status: Status,
+    /// Voting settings (threshold, quorum, etc.)
     pub voting_strategy: VotingStrategy,
     /// The total power when the proposal started (used to calculate percentages)
     pub total_power: Uint128,
+    /// The vote tally.
     pub votes: MultipleChoiceVotes,
+    /// Whether DAO members are allowed to change their votes.
+    /// When disabled, proposals can be executed as soon as they pass.
+    /// When enabled, proposals can only be executed after the voting
+    /// perid has ended and the proposal passed.
     pub allow_revoting: bool,
-    /// Information about the deposit that was sent as part of this
-    /// proposal. None if no deposit.
-    pub deposit_info: Option<CheckedDepositInfo>,
     /// The timestamp at which this proposal was created.
     pub created: Timestamp,
     /// The timestamp at which this proposal's status last changed. Note that in the scenario when
@@ -52,9 +62,6 @@ pub enum VoteResult {
 impl Proposal for MultipleChoiceProposal {
     fn proposer(&self) -> Addr {
         self.proposer.clone()
-    }
-    fn deposit_info(&self) -> Option<CheckedDepositInfo> {
-        self.deposit_info.clone()
     }
     fn status(&self) -> Status {
         self.status

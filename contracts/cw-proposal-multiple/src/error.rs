@@ -1,6 +1,7 @@
 use std::u64;
 
 use cosmwasm_std::StdError;
+use cw_utils::ParseReplyError;
 use indexable_hooks::HookError;
 use thiserror::Error;
 use voting::{reply::error::TagError, threshold::ThresholdError};
@@ -9,6 +10,9 @@ use voting::{reply::error::TagError, threshold::ThresholdError};
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
 
     #[error("{0}")]
     HookError(#[from] HookError),
@@ -76,6 +80,16 @@ pub enum ContractError {
     #[error("Must have voting power to propose.")]
     MustHaveVotingPower {},
 
+    #[error(
+        "pre-propose modules must specify a proposer. lacking one, no proposer should be specified"
+    )]
+    InvalidProposer {},
+
     #[error("{0}")]
     Tag(#[from] TagError),
+
+    #[error(
+        "all proposals with deposits must be completed out (closed or executed) before migration"
+    )]
+    PendingProposals {},
 }

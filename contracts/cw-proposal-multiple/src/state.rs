@@ -5,7 +5,7 @@ use cw_utils::Duration;
 use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{deposit::CheckedDepositInfo, voting::MultipleChoiceVote};
+use voting::{pre_propose::ProposalCreationPolicy, voting::MultipleChoiceVote};
 
 pub const MAX_NUM_CHOICES: u32 = 10;
 const NONE_OPTION_DESCRIPTION: &str = "None of the above";
@@ -36,9 +36,6 @@ pub struct Config {
     /// The address of the DAO that this governance module is
     /// associated with.
     pub dao: Addr,
-    /// Information about the depost required to create a
-    /// proposal. None if no deposit is required, Some otherwise.
-    pub deposit_info: Option<CheckedDepositInfo>,
     /// If set to true proposals will be closed if their execution
     /// fails. Otherwise, proposals will remain open after execution
     /// failure. For example, with this enabled a proposal to send 5
@@ -47,8 +44,8 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// Whether anyone including non-DAO members can submit a proposal
-    pub open_proposal_submission: bool,
+    /// The access policy for creating proposals.
+    pub proposal_creation_policy: ProposalCreationPolicy,
 }
 
 /// Information about a vote that was cast.
