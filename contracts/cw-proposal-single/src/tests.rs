@@ -70,64 +70,6 @@ pub struct V1Config {
 }
 
 #[test]
-fn test_migrate_from_compatible() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(proposal_contract());
-
-    let threshold = Threshold::AbsolutePercentage {
-        percentage: PercentageThreshold::Majority {},
-    };
-    let max_voting_period = cw_utils::Duration::Height(6);
-    let instantiate = InstantiateMsg {
-        threshold,
-        max_voting_period,
-        min_voting_period: None,
-        only_members_execute: false,
-        allow_revoting: false,
-        pre_propose_info: get_pre_propose_info(&mut app, None, false),
-        close_proposal_on_execution_failure: true,
-    };
-
-    let governance_addr =
-        instantiate_with_cw20_balances_governance(&mut app, govmod_id, instantiate, None);
-    let governance_modules: Vec<ProposalModule> = app
-        .wrap()
-        .query_wasm_smart(
-            governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap();
-
-    assert_eq!(governance_modules.len(), 1);
-    let govmod_single = governance_modules.into_iter().next().unwrap().address;
-
-    let config: Config = app
-        .wrap()
-        .query_wasm_smart(govmod_single.clone(), &QueryMsg::Config {})
-        .unwrap();
-
-    app.execute(
-        governance_addr,
-        CosmosMsg::Wasm(WasmMsg::Migrate {
-            contract_addr: govmod_single.to_string(),
-            new_code_id: govmod_id,
-            msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
-        }),
-    )
-    .unwrap();
-
-    let new_config: Config = app
-        .wrap()
-        .query_wasm_smart(govmod_single, &QueryMsg::Config {})
-        .unwrap();
-
-    assert_eq!(config, new_config);
-}
-
-#[test]
 fn test_migrate_mock() {
     let mut deps = mock_dependencies();
     let env = mock_env();
