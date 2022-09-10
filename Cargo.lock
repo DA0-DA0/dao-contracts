@@ -244,9 +244,9 @@ dependencies = [
  "cosm-orc",
  "cosmwasm-std",
  "cw-admin-factory",
- "cw-core",
- "cw-core-interface",
- "cw-proposal-single",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
+ "cw-proposal-single 0.2.0",
  "cw-utils 0.13.4",
  "cw20",
  "cw20-stake",
@@ -255,7 +255,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "voting",
+ "voting 0.2.0",
 ]
 
 [[package]]
@@ -565,8 +565,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core",
- "cw-core-interface",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -593,15 +593,35 @@ dependencies = [
 
 [[package]]
 name = "cw-core"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core-interface 0.1.0",
+ "cw-core-macros 0.1.0",
+ "cw-paginate 0.1.0",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20",
+ "cw721",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-core"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.14.0",
- "cw-paginate",
+ "cw-paginate 0.2.0",
  "cw-proposal-sudo",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -618,14 +638,36 @@ dependencies = [
 
 [[package]]
 name = "cw-core-interface"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cw-core-macros 0.1.0",
+ "cw2 0.13.4",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-core-interface"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-core-macros",
+ "cw-core-macros 0.2.0",
  "cw2 0.13.4",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw-core-macros"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -733,16 +775,27 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.13.4",
- "cw-paginate",
+ "cw-paginate 0.2.0",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "schemars",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "cw-paginate"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.13.4",
+ "serde",
 ]
 
 [[package]]
@@ -763,16 +816,16 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
+ "cw-core-interface 0.2.0",
  "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw2 0.13.4",
- "proposal-hooks",
+ "proposal-hooks 0.2.0",
  "schemars",
  "serde",
  "thiserror",
- "voting",
+ "voting 0.2.0",
 ]
 
 [[package]]
@@ -781,23 +834,47 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-core",
- "cw-core-interface",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
  "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-pre-propose-base",
- "cw-proposal-single",
+ "cw-proposal-single 0.2.0",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "cw20",
  "cw20-base",
  "cw4-group",
  "cw4-voting",
- "proposal-hooks",
+ "proposal-hooks 0.2.0",
  "schemars",
  "serde",
  "testing",
- "voting",
+ "voting 0.2.0",
+]
+
+[[package]]
+name = "cw-proposal-single"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core 0.1.0",
+ "cw-core-interface 0.1.0",
+ "cw-core-macros 0.1.0",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20",
+ "cw3",
+ "indexable-hooks 0.1.0",
+ "proposal-hooks 0.1.0",
+ "schemars",
+ "serde",
+ "thiserror",
+ "vote-hooks 0.1.0",
+ "voting 0.1.0",
 ]
 
 [[package]]
@@ -807,13 +884,14 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-native-staked-balance-voting",
  "cw-pre-propose-base-proposal-single",
+ "cw-proposal-single 0.1.0",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
@@ -828,14 +906,15 @@ dependencies = [
  "cw4-voting",
  "cw721-base",
  "cw721-stake",
- "indexable-hooks",
- "proposal-hooks",
+ "indexable-hooks 0.2.0",
+ "proposal-hooks 0.2.0",
  "schemars",
  "serde",
  "testing",
  "thiserror",
- "vote-hooks",
- "voting",
+ "vote-hooks 0.2.0",
+ "voting 0.1.0",
+ "voting 0.2.0",
 ]
 
 [[package]]
@@ -845,8 +924,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw2 0.13.4",
@@ -862,8 +941,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw2 0.13.4",
@@ -981,8 +1060,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -1020,7 +1099,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers",
  "cw-multi-test 0.13.4",
- "cw-paginate",
+ "cw-paginate 0.2.0",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
@@ -1038,8 +1117,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -1100,8 +1179,8 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -1161,10 +1240,10 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-multi-test 0.13.4",
- "cw-paginate",
+ "cw-paginate 0.2.0",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
@@ -1781,6 +1860,18 @@ checksum = "ce23b50ad8242c51a442f3ff322d56b02f08852c77e4c0b4d3fd684abc89c683"
 
 [[package]]
 name = "indexable-hooks"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.13.4",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "indexable-hooks"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-std",
@@ -1818,10 +1909,10 @@ dependencies = [
  "assert_matches",
  "cosm-orc",
  "cosmwasm-std",
- "cw-core",
- "cw-core-interface",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
  "cw-pre-propose-base-proposal-single",
- "cw-proposal-single",
+ "cw-proposal-single 0.2.0",
  "cw-utils 0.13.4",
  "cw20",
  "cw20-base",
@@ -1833,7 +1924,7 @@ dependencies = [
  "serde",
  "serde_json",
  "test-context",
- "voting",
+ "voting 0.2.0",
 ]
 
 [[package]]
@@ -2338,13 +2429,24 @@ dependencies = [
 
 [[package]]
 name = "proposal-hooks"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "indexable-hooks 0.1.0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "proposal-hooks"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-std",
- "indexable-hooks",
+ "indexable-hooks 0.2.0",
  "schemars",
  "serde",
- "voting",
+ "voting 0.2.0",
 ]
 
 [[package]]
@@ -2354,23 +2456,23 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core",
- "cw-core-interface",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
  "cw-multi-test 0.13.4",
- "cw-proposal-single",
+ "cw-proposal-single 0.2.0",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "cw20",
  "cw20-balance-voting",
  "cw20-base",
- "indexable-hooks",
- "proposal-hooks",
+ "indexable-hooks 0.2.0",
+ "proposal-hooks 0.2.0",
  "schemars",
  "serde",
  "thiserror",
- "vote-hooks",
- "voting",
+ "vote-hooks 0.2.0",
+ "voting 0.2.0",
 ]
 
 [[package]]
@@ -3110,8 +3212,8 @@ version = "0.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-core",
- "cw-core-interface",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
  "cw-multi-test 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
@@ -3123,9 +3225,9 @@ dependencies = [
  "cw4",
  "cw4-group",
  "cw4-voting",
- "indexable-hooks",
+ "indexable-hooks 0.2.0",
  "rand",
- "voting",
+ "voting 0.2.0",
 ]
 
 [[package]]
@@ -3484,13 +3586,35 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
 name = "vote-hooks"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "indexable-hooks 0.1.0",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "vote-hooks"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-std",
- "indexable-hooks",
+ "indexable-hooks 0.2.0",
  "schemars",
  "serde",
- "voting",
+ "voting 0.2.0",
+]
+
+[[package]]
+name = "voting"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -3498,9 +3622,9 @@ name = "voting"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-std",
- "cw-core",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core 0.2.0",
+ "cw-core-interface 0.2.0",
+ "cw-core-macros 0.2.0",
  "cw-denom",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
