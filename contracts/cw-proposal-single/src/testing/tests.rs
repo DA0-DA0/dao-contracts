@@ -1,6 +1,9 @@
-use cosmwasm_std::{coins, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Uint128, WasmMsg};
+use cosmwasm_std::{
+    coins, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Empty, Uint128, WasmMsg,
+};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
+use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_denom::CheckedDenom;
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
@@ -15,11 +18,15 @@ use voting::{
 };
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::SingleChoiceProposal,
     query::ProposalResponse,
     state::Config,
     testing::{
+        contracts::{
+            cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
+            cw_core_contract, pre_propose_single_contract,
+        },
         execute::{
             add_proposal_hook, add_proposal_hook_should_fail, add_vote_hook,
             add_vote_hook_should_fail, close_proposal_should_fail, execute_proposal,
@@ -40,6 +47,7 @@ use crate::{
 };
 
 use super::{
+    contracts::{proposal_single_contract, v1_proposal_single_contract},
     do_votes::do_votes_staked_balances,
     execute::{close_proposal, make_proposal, mint_cw20s, vote_on_proposal},
     instantiate::{
@@ -1592,6 +1600,227 @@ fn test_timestamps_updated() {
     assert_eq!(third_proposal.proposal.status, Status::ExecutionFailed);
     assert_eq!(third_proposal.proposal.last_updated, current_block.time);
     assert_eq!(third_proposal.proposal.created, start_block.time);
+}
+
+#[test]
+fn test_migrate_from_compatible() {
+    let CommonTest {
+        mut app,
+        core_addr,
+        proposal_module,
+        gov_token: _,
+        proposal_id: _,
+    } = setup_test(vec![]);
+
+    let new_code_id = app.store_code(proposal_single_contract());
+    let start_config = query_proposal_config(&app, &proposal_module);
+
+    app.execute(
+        core_addr,
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: proposal_module.to_string(),
+            new_code_id,
+            msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
+        }),
+    )
+    .unwrap();
+
+    let end_config = query_proposal_config(&app, &proposal_module);
+    assert_eq!(start_config, end_config);
+}
+
+/// Instantiates a DAO with a v1 proposal module and then migrates it
+/// to v2.
+#[test]
+fn test_migrate_from_v1() {
+    use cw_proposal_single_v1 as v1;
+
+    let mut app = App::default();
+    let v1_proposal_single_code = app.store_code(v1_proposal_single_contract());
+
+    let instantiate = v1::msg::InstantiateMsg {
+        threshold: voting_v1::Threshold::AbsolutePercentage {
+            percentage: voting_v1::PercentageThreshold::Majority {},
+        },
+        max_voting_period: cw_utils::Duration::Height(6),
+        min_voting_period: None,
+        only_members_execute: false,
+        allow_revoting: false,
+        deposit_info: Some(v1::msg::DepositInfo {
+            token: v1::msg::DepositToken::VotingModuleToken {},
+            deposit: Uint128::new(1),
+            refund_failed_proposals: true,
+        }),
+    };
+
+    let initial_balances = vec![Cw20Coin {
+        amount: Uint128::new(100),
+        address: CREATOR_ADDR.to_string(),
+    }];
+
+    let cw20_id = app.store_code(cw20_contract());
+    let cw20_stake_id = app.store_code(cw20_stake_contract());
+    let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
+    let core_contract_id = app.store_code(cw_core_contract());
+
+    let instantiate_core = cw_core::msg::InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: staked_balances_voting_id,
+            msg: to_binary(&cw20_staked_balance_voting::msg::InstantiateMsg {
+                active_threshold: None,
+                token_info: cw20_staked_balance_voting::msg::TokenInfo::New {
+                    code_id: cw20_id,
+                    label: "DAO DAO governance token.".to_string(),
+                    name: "DAO DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances: initial_balances.clone(),
+                    marketing: None,
+                    staking_code_id: cw20_stake_id,
+                    unstaking_duration: Some(Duration::Height(6)),
+                    initial_dao_balance: None,
+                },
+            })
+            .unwrap(),
+            admin: None,
+            label: "DAO DAO voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: v1_proposal_single_code,
+            label: "DAO DAO governance module.".to_string(),
+            admin: Some(Admin::Instantiator {}),
+            msg: to_binary(&instantiate).unwrap(),
+        }],
+        initial_items: None,
+    };
+
+    let core_addr = app
+        .instantiate_contract(
+            core_contract_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &instantiate_core,
+            &[],
+            "DAO DAO",
+            None,
+        )
+        .unwrap();
+
+    let core_state: cw_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let voting_module = core_state.voting_module;
+
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cw_core_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake all the initial balances.
+    for Cw20Coin { address, amount } in initial_balances {
+        app.execute_contract(
+            Addr::unchecked(&address),
+            token_contract.clone(),
+            &cw20::Cw20ExecuteMsg::Send {
+                contract: staking_contract.to_string(),
+                amount,
+                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    // Update the block so that those staked balances appear.
+    app.update_block(|block| block.height += 1);
+
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+
+    let v2_proposal_single = app.store_code(proposal_single_contract());
+    let pre_propose_single = app.store_code(pre_propose_single_contract());
+
+    app.execute(
+        core_addr.clone(),
+        CosmosMsg::Wasm(WasmMsg::Migrate {
+            contract_addr: proposal_module.to_string(),
+            new_code_id: v2_proposal_single,
+            msg: to_binary(&MigrateMsg::FromV1 {
+                close_proposal_on_execution_failure: true,
+                pre_propose_info: PreProposeInfo::ModuleMayPropose {
+                    info: ModuleInstantiateInfo {
+                        code_id: pre_propose_single,
+                        msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
+                            deposit_info: Some(UncheckedDepositInfo {
+                                denom: voting::deposit::DepositToken::VotingModuleToken {},
+                                amount: Uint128::new(1),
+                                refund_policy: voting::deposit::DepositRefundPolicy::OnlyPassed,
+                            }),
+                            open_proposal_submission: false,
+                            extension: Empty::default(),
+                        })
+                        .unwrap(),
+                        admin: Some(Admin::Instantiator {}),
+                        label: "DAO DAO pre-propose".to_string(),
+                    },
+                },
+            })
+            .unwrap(),
+        }),
+    )
+    .unwrap();
+
+    let new_config = query_proposal_config(&app, &proposal_module);
+
+    let pre_propose = match new_config.proposal_creation_policy.clone() {
+        ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
+        ProposalCreationPolicy::Module { addr } => addr,
+    };
+
+    assert_eq!(
+        new_config,
+        Config {
+            threshold: Threshold::AbsolutePercentage {
+                percentage: PercentageThreshold::Majority {}
+            },
+            max_voting_period: Duration::Height(6),
+            min_voting_period: None,
+            only_members_execute: false,
+            allow_revoting: false,
+            dao: core_addr.clone(),
+            close_proposal_on_execution_failure: true,
+            proposal_creation_policy: ProposalCreationPolicy::Module { addr: pre_propose }
+        }
+    );
+
+    // Make sure we can still make a proposal and vote on it.
+    mint_cw20s(&mut app, &token_contract, &core_addr, CREATOR_ADDR, 1);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Executed);
 }
 
 // - Update deposit module.
