@@ -230,6 +230,24 @@ pub mod tests {
     }
 
     #[test]
+    fn test_native_deposit_paid_wrong_amount() {
+        let info = mock_info("ekez", &coins(9, NATIVE_DENOM));
+        let deposit_info = CheckedDepositInfo {
+            denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
+            amount: Uint128::new(10),
+            refund_policy: DepositRefundPolicy::Always,
+        };
+        let err = deposit_info.check_native_deposit_paid(&info).unwrap_err();
+        assert_eq!(
+            err,
+            DepositError::InvalidDeposit {
+                actual: Uint128::new(9),
+                expected: Uint128::new(10)
+            }
+        )
+    }
+
+    #[test]
     fn check_native_deposit_paid_wrong_denom() {
         let info = mock_info("ekez", &coins(10, "unotekez"));
         let deposit_info = CheckedDepositInfo {

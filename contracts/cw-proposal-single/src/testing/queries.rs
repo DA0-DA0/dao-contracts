@@ -8,7 +8,7 @@ use voting::pre_propose::ProposalCreationPolicy;
 
 use crate::{
     msg::QueryMsg,
-    query::{ProposalListResponse, ProposalResponse},
+    query::{ProposalListResponse, ProposalResponse, VoteListResponse},
     state::Config,
 };
 
@@ -43,6 +43,25 @@ pub(crate) fn query_list_proposals(
         .query_wasm_smart(
             proposal_single,
             &QueryMsg::ListProposals { start_after, limit },
+        )
+        .unwrap()
+}
+
+pub(crate) fn query_list_votes(
+    app: &App,
+    proposal_single: &Addr,
+    proposal_id: u64,
+    start_after: Option<String>,
+    limit: Option<u64>,
+) -> VoteListResponse {
+    app.wrap()
+        .query_wasm_smart(
+            proposal_single,
+            &QueryMsg::ListVotes {
+                proposal_id,
+                start_after,
+                limit,
+            },
         )
         .unwrap()
 }
