@@ -1,5 +1,8 @@
 use cosmwasm_std::{
-    coins, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Empty, Uint128, WasmMsg,
+    coins,
+    testing::{mock_dependencies, mock_env},
+    to_binary, Addr, Attribute, BankMsg, Binary, CosmosMsg, Decimal, Empty, Reply, StdError,
+    SubMsgResult, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
@@ -12,12 +15,14 @@ use testing::{ShouldExecute, TestSingleChoiceVote};
 use voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+    reply::{mask_proposal_execution_proposal_id, mask_proposal_hook_index, mask_vote_hook_index},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{Vote, Votes},
 };
 
 use crate::{
+    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::SingleChoiceProposal,
     query::ProposalResponse,
@@ -1629,6 +1634,16 @@ fn test_migrate_from_compatible() {
     assert_eq!(start_config, end_config);
 }
 
+#[test]
+pub fn test_migrate_updates_version() {
+    let mut deps = mock_dependencies();
+    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
+    migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {}).unwrap();
+    let version = cw2::get_contract_version(&deps.storage).unwrap();
+    assert_eq!(version.version, CONTRACT_VERSION);
+    assert_eq!(version.contract, CONTRACT_NAME);
+}
+
 /// Instantiates a DAO with a v1 proposal module and then migrates it
 /// to v2.
 #[test]
@@ -1823,7 +1838,244 @@ fn test_migrate_from_v1() {
     assert_eq!(proposal.proposal.status, Status::Executed);
 }
 
+// - Make a proposal that will fail to execute.
+// - Verify that it goes to execution failed and that proposal
+//   deposits are returned once and not on closing.
+// - Make the same proposal again.
+// - Update the config to disable close on execution failure.
+// - Make sure that proposal doesn't close on execution (this config
+//   feature gets applied retroactively).
+#[test]
+fn test_execution_failed() {
+    let CommonTest {
+        mut app,
+        core_addr,
+        proposal_module,
+        gov_token,
+        proposal_id,
+    } = setup_test(vec![BankMsg::Send {
+        to_address: "ekez".to_string(),
+        amount: coins(10, "ujuno"),
+    }
+    .into()]);
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::ExecutionFailed);
+
+    // Make sure the deposit was returned.
+    let balance = query_balance_cw20(&app, &gov_token, CREATOR_ADDR);
+    assert_eq!(balance, Uint128::new(10_000_000));
+
+    // ExecutionFailed is an end state.
+    let err = close_proposal_should_fail(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+    assert!(matches!(err, ContractError::WrongCloseStatus {}));
+
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![BankMsg::Send {
+            to_address: "ekez".to_string(),
+            amount: coins(10, "ujuno"),
+        }
+        .into()],
+    );
+
+    let config = query_proposal_config(&app, &proposal_module);
+    let pre_propose_module = match config.proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => panic!("expected pre-propose module"),
+        ProposalCreationPolicy::Module { addr } => addr,
+    };
+
+    // Disable execution failing proposals.
+    app.execute_contract(
+        core_addr.clone(),
+        proposal_module.clone(),
+        &ExecuteMsg::UpdateConfig {
+            threshold: Threshold::ThresholdQuorum {
+                quorum: PercentageThreshold::Percent(Decimal::percent(15)),
+                threshold: PercentageThreshold::Majority {},
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: None,
+            only_members_execute: true,
+            allow_revoting: false,
+            dao: core_addr.to_string(),
+            // Disable.
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AddrMayPropose {
+                addr: pre_propose_module.to_string(),
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    let err: StdError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            proposal_module.clone(),
+            &ExecuteMsg::Execute { proposal_id },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, StdError::Overflow { .. }));
+
+    // Even though this proposal was created before the config change
+    // was made it still gets retroactively applied.
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Passed);
+
+    // This proposal's deposit should not have been returned. It will
+    // not be returnable until this is executed, or close on execution
+    // is re-enabled.
+    let balance = query_balance_cw20(&app, &gov_token, CREATOR_ADDR);
+    assert_eq!(balance, Uint128::zero());
+}
+
+#[test]
+fn test_reply_proposal_mock() {
+    use crate::contract::reply;
+    use crate::state::PROPOSALS;
+
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+
+    let m_proposal_id = mask_proposal_execution_proposal_id(1);
+    PROPOSALS
+        .save(
+            deps.as_mut().storage,
+            1,
+            &SingleChoiceProposal {
+                title: "A simple text proposal".to_string(),
+                description: "This is a simple text proposal".to_string(),
+                proposer: Addr::unchecked(CREATOR_ADDR),
+                start_height: env.block.height,
+                expiration: cw_utils::Duration::Height(6).after(&env.block),
+                min_voting_period: None,
+                threshold: Threshold::AbsolutePercentage {
+                    percentage: PercentageThreshold::Majority {},
+                },
+                allow_revoting: false,
+                total_power: Uint128::new(100_000_000),
+                msgs: vec![],
+                status: Status::Open,
+                votes: Votes::zero(),
+                created: env.block.time,
+                last_updated: env.block.time,
+            },
+        )
+        .unwrap();
+
+    // PROPOSALS
+    let reply_msg = Reply {
+        id: m_proposal_id,
+        result: SubMsgResult::Err("error_msg".to_string()),
+    };
+    let res = reply(deps.as_mut(), env, reply_msg).unwrap();
+    assert_eq!(
+        res.attributes[0],
+        Attribute {
+            key: "proposal_execution_failed".to_string(),
+            value: 1.to_string()
+        }
+    );
+
+    let prop = PROPOSALS.load(deps.as_mut().storage, 1).unwrap();
+    assert_eq!(prop.status, Status::ExecutionFailed);
+}
+
+#[test]
+fn test_reply_hooks_mock() {
+    use crate::contract::reply;
+    use crate::state::{CONFIG, PROPOSAL_HOOKS, VOTE_HOOKS};
+
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+
+    // Proposal hook
+    let m_proposal_hook_idx = mask_proposal_hook_index(0);
+    PROPOSAL_HOOKS
+        .add_hook(deps.as_mut().storage, Addr::unchecked(CREATOR_ADDR))
+        .unwrap();
+
+    let reply_msg = Reply {
+        id: m_proposal_hook_idx,
+        result: SubMsgResult::Err("error_msg".to_string()),
+    };
+
+    // Reply needs a config in state.
+    CONFIG
+        .save(
+            &mut deps.storage,
+            &Config {
+                threshold: Threshold::AbsolutePercentage {
+                    percentage: PercentageThreshold::Majority {},
+                },
+                max_voting_period: Duration::Height(6),
+                min_voting_period: None,
+                only_members_execute: false,
+                allow_revoting: false,
+                dao: Addr::unchecked("dao"),
+                close_proposal_on_execution_failure: true,
+                proposal_creation_policy: ProposalCreationPolicy::Module {
+                    addr: Addr::unchecked("ekez"),
+                },
+            },
+        )
+        .unwrap();
+
+    let res = reply(deps.as_mut(), env.clone(), reply_msg).unwrap();
+    assert_eq!(
+        res.attributes[0],
+        Attribute {
+            key: "removed_proposal_hook".to_string(),
+            value: format! {"{CREATOR_ADDR}:{}", 0}
+        }
+    );
+
+    // Vote hook
+    let m_vote_hook_idx = mask_vote_hook_index(0);
+    VOTE_HOOKS
+        .add_hook(deps.as_mut().storage, Addr::unchecked(CREATOR_ADDR))
+        .unwrap();
+
+    let reply_msg = Reply {
+        id: m_vote_hook_idx,
+        result: SubMsgResult::Err("error_msg".to_string()),
+    };
+    let res = reply(deps.as_mut(), env, reply_msg).unwrap();
+    assert_eq!(
+        res.attributes[0],
+        Attribute {
+            key: "removed_vote_hook".to_string(),
+            value: format! {"{CREATOR_ADDR}:{}", 0}
+        }
+    );
+}
+
 // - Update deposit module.
 // - Old deposits refunded on deposit module update.
 // - Withdraw from deposit module that has been removed.
-// - Test you can not remove the hook for the pre-propose module..
+// - Test you can not remove the hook for the pre-propose module.
+
+// - What happens if you have proposals that can not be executed but
+//   took deposits and want to migrate?
