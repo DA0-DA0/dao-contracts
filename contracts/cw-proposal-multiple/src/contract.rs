@@ -767,8 +767,19 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
+            let config = CONFIG.load(deps.storage)?;
             let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-            Ok(Response::new().add_attribute("removed proposal hook", format!("{addr}:{idx}")))
+
+            // If the address that failed to respond to the proposal
+            // hook is the pre-proposal module we "fail open" by
+            // resetting the proposal creation policy to anyone.
+            if config.proposal_creation_policy.addr_is_my_module(&addr) {
+                let mut config = config;
+                config.proposal_creation_policy = ProposalCreationPolicy::Anyone {};
+                CONFIG.save(deps.storage, &config)?;
+            }
+
+            Ok(Response::new().add_attribute("removed_proposal_hook", format!("{addr}:{idx}")))
         }
         TaggedReplyId::FailedVoteHook(idx) => {
             let addr = VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;

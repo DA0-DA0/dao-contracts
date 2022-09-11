@@ -1,5 +1,12 @@
-use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Empty, Uint128};
-use cpm::query::ProposalResponse;
+use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Decimal, Empty, Uint128};
+use cpm::{
+    query::ProposalResponse,
+    state::{
+        CheckedMultipleChoiceOption, MultipleChoiceOption, MultipleChoiceOptionType,
+        MultipleChoiceOptions,
+    },
+    voting_strategy::VotingStrategy,
+};
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_core::state::ProposalModule;
@@ -15,13 +22,13 @@ use voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     status::Status,
-    threshold::{PercentageThreshold, Threshold},
-    voting::Vote,
+    threshold::PercentageThreshold,
+    voting::MultipleChoiceVote,
 };
 
 use crate::contract::*;
 
-fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
+fn cw_dao_proposal_multiple_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cpm::contract::execute,
         cpm::contract::instantiate,
@@ -54,8 +61,8 @@ fn get_default_proposal_module_instantiate(
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
     cpm::msg::InstantiateMsg {
-        threshold: Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Majority {},
+        voting_strategy: VotingStrategy::SingleChoice {
+            quorum: PercentageThreshold::Percent(Decimal::percent(10)),
         },
         max_voting_period: Duration::Time(86400),
         min_voting_period: None,
@@ -112,7 +119,7 @@ fn setup_default_test(
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
 ) -> DefaultTestSetup {
-    let cpm_id = app.store_code(cw_dao_proposal_single_contract());
+    let cpm_id = app.store_code(cw_dao_proposal_multiple_contract());
 
     let proposal_module_instantiate =
         get_default_proposal_module_instantiate(app, deposit_info, open_proposal_submission);
@@ -184,7 +191,18 @@ fn make_proposal(
                 msg: ProposeMessage::Propose {
                     title: "title".to_string(),
                     description: "description".to_string(),
-                    msgs: vec![],
+                    choices: MultipleChoiceOptions {
+                        options: vec![
+                            MultipleChoiceOption {
+                                description: "multiple choice option 1".to_string(),
+                                msgs: None,
+                            },
+                            MultipleChoiceOption {
+                                description: "multiple choice option 2".to_string(),
+                                msgs: None,
+                            },
+                        ],
+                    },
                 },
             },
             funds,
@@ -209,7 +227,32 @@ fn make_proposal(
     assert_eq!(proposal.proposal.proposer, Addr::unchecked(proposer));
     assert_eq!(proposal.proposal.title, "title".to_string());
     assert_eq!(proposal.proposal.description, "description".to_string());
-    assert_eq!(proposal.proposal.msgs, vec![]);
+    assert_eq!(
+        proposal.proposal.choices,
+        vec![
+            CheckedMultipleChoiceOption {
+                description: "multiple choice option 1".to_string(),
+                msgs: None,
+                option_type: MultipleChoiceOptionType::Standard,
+                vote_count: Uint128::zero(),
+                index: 0,
+            },
+            CheckedMultipleChoiceOption {
+                description: "multiple choice option 2".to_string(),
+                msgs: None,
+                option_type: MultipleChoiceOptionType::Standard,
+                vote_count: Uint128::zero(),
+                index: 1,
+            },
+            CheckedMultipleChoiceOption {
+                description: "None of the above".to_string(),
+                msgs: None,
+                option_type: MultipleChoiceOptionType::None,
+                vote_count: Uint128::zero(),
+                index: 2,
+            },
+        ]
+    );
 
     id
 }
@@ -254,7 +297,13 @@ fn get_balance_native(app: &App, who: &str, denom: &str) -> Uint128 {
     res.amount
 }
 
-fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> Status {
+fn vote(
+    app: &mut App,
+    module: Addr,
+    sender: &str,
+    id: u64,
+    position: MultipleChoiceVote,
+) -> Status {
     app.execute_contract(
         Addr::unchecked(sender),
         module.clone(),
@@ -438,8 +487,16 @@ fn test_native_permutation(
         _,
         fn(&mut App, Addr, &str, u64) -> (),
     ) = match end_status {
-        EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
-        EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+        EndStatus::Passed => (
+            MultipleChoiceVote { option_id: 0 },
+            Status::Passed,
+            execute_proposal,
+        ),
+        EndStatus::Failed => (
+            MultipleChoiceVote { option_id: 2 },
+            Status::Rejected,
+            close_proposal,
+        ),
     };
     let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
     assert_eq!(new_status, expected_status);
@@ -508,8 +565,16 @@ fn test_cw20_permutation(
         _,
         fn(&mut App, Addr, &str, u64) -> (),
     ) = match end_status {
-        EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
-        EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+        EndStatus::Passed => (
+            MultipleChoiceVote { option_id: 0 },
+            Status::Passed,
+            execute_proposal,
+        ),
+        EndStatus::Failed => (
+            MultipleChoiceVote { option_id: 2 },
+            Status::Rejected,
+            close_proposal,
+        ),
     };
     let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
     assert_eq!(new_status, expected_status);
@@ -678,7 +743,7 @@ fn test_multiple_open_proposals() {
         proposal_single.clone(),
         "ekez",
         first_id,
-        Vote::Yes,
+        MultipleChoiceVote { option_id: 0 },
     );
     assert_eq!(Status::Passed, new_status);
 
@@ -698,7 +763,7 @@ fn test_multiple_open_proposals() {
         proposal_single.clone(),
         "ekez",
         second_id,
-        Vote::No,
+        MultipleChoiceVote { option_id: 2 },
     );
     assert_eq!(Status::Rejected, new_status);
 
@@ -810,7 +875,12 @@ fn test_permissions() {
                 msg: ProposeMessage::Propose {
                     title: "I would like to join the DAO".to_string(),
                     description: "though, I am currently not a member.".to_string(),
-                    msgs: vec![],
+                    choices: MultipleChoiceOptions {
+                        options: vec![MultipleChoiceOption {
+                            description: "multiple choice option 1".to_string(),
+                            msgs: None,
+                        }],
+                    },
                 },
             },
             &[],
@@ -850,7 +920,13 @@ fn test_propose_open_proposal_submission() {
         &coins(10, "ujuno"),
     );
     // Member votes.
-    let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
+    let new_status = vote(
+        &mut app,
+        proposal_single,
+        "ekez",
+        id,
+        MultipleChoiceVote { option_id: 0 },
+    );
     assert_eq!(Status::Passed, new_status)
 }
 
@@ -874,7 +950,13 @@ fn test_no_deposit_required_open_submission() {
         &[],
     );
     // Member votes.
-    let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
+    let new_status = vote(
+        &mut app,
+        proposal_single,
+        "ekez",
+        id,
+        MultipleChoiceVote { option_id: 0 },
+    );
     assert_eq!(Status::Passed, new_status)
 }
 
@@ -898,7 +980,12 @@ fn test_no_deposit_required_members_submission() {
                 msg: ProposeMessage::Propose {
                     title: "I would like to join the DAO".to_string(),
                     description: "though, I am currently not a member.".to_string(),
-                    msgs: vec![],
+                    choices: MultipleChoiceOptions {
+                        options: vec![MultipleChoiceOption {
+                            description: "multiple choice option 1".to_string(),
+                            msgs: None,
+                        }],
+                    },
                 },
             },
             &[],
@@ -909,7 +996,13 @@ fn test_no_deposit_required_members_submission() {
     assert_eq!(err, PreProposeError::NotMember {});
 
     let id = make_proposal(&mut app, pre_propose, proposal_single.clone(), "ekez", &[]);
-    let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
+    let new_status = vote(
+        &mut app,
+        proposal_single,
+        "ekez",
+        id,
+        MultipleChoiceVote { option_id: 0 },
+    );
     assert_eq!(Status::Passed, new_status)
 }
 
@@ -950,14 +1043,14 @@ fn test_execute_extension_does_nothing() {
 fn test_instantiate_with_zero_native_deposit() {
     let mut app = App::default();
 
-    let cpm_id = app.store_code(cw_dao_proposal_single_contract());
+    let cpm_id = app.store_code(cw_dao_proposal_multiple_contract());
 
     let proposal_module_instantiate = {
         let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
         cpm::msg::InstantiateMsg {
-            threshold: Threshold::AbsolutePercentage {
-                percentage: PercentageThreshold::Majority {},
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Time(86400),
             min_voting_period: None,
@@ -1011,14 +1104,14 @@ fn test_instantiate_with_zero_cw20_deposit() {
 
     let cw20_addr = instantiate_cw20_base_default(&mut app);
 
-    let cpm_id = app.store_code(cw_dao_proposal_single_contract());
+    let cpm_id = app.store_code(cw_dao_proposal_multiple_contract());
 
     let proposal_module_instantiate = {
         let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
         cpm::msg::InstantiateMsg {
-            threshold: Threshold::AbsolutePercentage {
-                percentage: PercentageThreshold::Majority {},
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Percent(Decimal::percent(10)),
             },
             max_voting_period: Duration::Time(86400),
             min_voting_period: None,
@@ -1151,8 +1244,20 @@ fn test_update_config() {
     );
 
     // Both proposals should be allowed to complete.
-    vote(&mut app, proposal_single.clone(), "ekez", id, Vote::Yes);
-    vote(&mut app, proposal_single.clone(), "ekez", new_id, Vote::Yes);
+    vote(
+        &mut app,
+        proposal_single.clone(),
+        "ekez",
+        id,
+        MultipleChoiceVote { option_id: 0 },
+    );
+    vote(
+        &mut app,
+        proposal_single.clone(),
+        "ekez",
+        new_id,
+        MultipleChoiceVote { option_id: 0 },
+    );
     execute_proposal(&mut app, proposal_single.clone(), "ekez", id);
     execute_proposal(&mut app, proposal_single.clone(), "ekez", new_id);
     // Deposit should not have been refunded (never policy in use).
@@ -1284,7 +1389,7 @@ fn test_withdraw() {
         proposal_single.clone(),
         "ekez",
         cw20_id,
-        Vote::Yes,
+        MultipleChoiceVote { option_id: 0 },
     );
     execute_proposal(&mut app, proposal_single.clone(), "ekez", cw20_id);
 
@@ -1305,7 +1410,7 @@ fn test_withdraw() {
         proposal_single.clone(),
         "ekez",
         native_id,
-        Vote::No,
+        MultipleChoiceVote { option_id: 2 },
     );
     close_proposal(&mut app, proposal_single.clone(), "ekez", native_id);
     withdraw(
