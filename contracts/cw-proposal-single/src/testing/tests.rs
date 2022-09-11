@@ -4,9 +4,10 @@ use cosmwasm_std::{
     to_binary, Addr, Attribute, BankMsg, Binary, CosmosMsg, Decimal, Empty, Reply, StdError,
     SubMsgResult, Uint128, WasmMsg,
 };
+use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
-use cw_core_interface::{Admin, ModuleInstantiateInfo};
+use cw_core_interface::{voting::InfoResponse, Admin, ModuleInstantiateInfo};
 use cw_denom::CheckedDenom;
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
@@ -15,6 +16,7 @@ use testing::{ShouldExecute, TestSingleChoiceVote};
 use voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+    proposal::MAX_PROPOSAL_SIZE,
     reply::{mask_proposal_execution_proposal_id, mask_proposal_hook_index, mask_vote_hook_index},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
@@ -25,7 +27,7 @@ use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::SingleChoiceProposal,
-    query::ProposalResponse,
+    query::{ProposalResponse, VoteInfo},
     state::Config,
     testing::{
         contracts::{
@@ -60,8 +62,8 @@ use super::{
         instantiate_with_staked_balances_governance, instantiate_with_staking_active_threshold,
     },
     queries::{
-        query_dao_token, query_list_proposals, query_list_proposals_reverse, query_proposal,
-        query_proposal_config, query_proposal_hooks, query_single_proposal_module,
+        query_dao_token, query_list_proposals, query_list_proposals_reverse, query_list_votes,
+        query_proposal, query_proposal_config, query_proposal_hooks, query_single_proposal_module,
         query_vote_hooks, query_voting_module,
     },
     CREATOR_ADDR,
@@ -1767,35 +1769,82 @@ fn test_migrate_from_v1() {
 
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
+    // Make a proposal so we can test that migration doesn't work with
+    // open proposals that have deposits.
+    mint_cw20s(&mut app, &token_contract, &core_addr, CREATOR_ADDR, 1);
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_contract.clone(),
+        &cw20::Cw20ExecuteMsg::IncreaseAllowance {
+            spender: proposal_module.to_string(),
+            amount: Uint128::new(1),
+            expires: None,
+        },
+        &[],
+    )
+    .unwrap();
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        proposal_module.clone(),
+        &v1::msg::ExecuteMsg::Propose {
+            title: "title".to_string(),
+            description: "description".to_string(),
+            msgs: vec![],
+        },
+        &[],
+    )
+    .unwrap();
+
     let v2_proposal_single = app.store_code(proposal_single_contract());
     let pre_propose_single = app.store_code(pre_propose_single_contract());
 
+    // Attempt to migrate. This will fail as there is a pending
+    // proposal.
+    let migrate_msg = MigrateMsg::FromV1 {
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::ModuleMayPropose {
+            info: ModuleInstantiateInfo {
+                code_id: pre_propose_single,
+                msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
+                    deposit_info: Some(UncheckedDepositInfo {
+                        denom: voting::deposit::DepositToken::VotingModuleToken {},
+                        amount: Uint128::new(1),
+                        refund_policy: voting::deposit::DepositRefundPolicy::OnlyPassed,
+                    }),
+                    open_proposal_submission: false,
+                    extension: Empty::default(),
+                })
+                .unwrap(),
+                admin: Some(Admin::Instantiator {}),
+                label: "DAO DAO pre-propose".to_string(),
+            },
+        },
+    };
+    let err: ContractError = app
+        .execute(
+            core_addr.clone(),
+            CosmosMsg::Wasm(WasmMsg::Migrate {
+                contract_addr: proposal_module.to_string(),
+                new_code_id: v2_proposal_single,
+                msg: to_binary(&migrate_msg).unwrap(),
+            }),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::PendingProposals {}));
+
+    // Vote on and close the pending proposal.
+    vote_on_proposal(&mut app, &proposal_module, CREATOR_ADDR, 1, Vote::No);
+    close_proposal(&mut app, &proposal_module, CREATOR_ADDR, 1);
+
+    // Now we can migrate!
     app.execute(
         core_addr.clone(),
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: proposal_module.to_string(),
             new_code_id: v2_proposal_single,
-            msg: to_binary(&MigrateMsg::FromV1 {
-                close_proposal_on_execution_failure: true,
-                pre_propose_info: PreProposeInfo::ModuleMayPropose {
-                    info: ModuleInstantiateInfo {
-                        code_id: pre_propose_single,
-                        msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
-                            deposit_info: Some(UncheckedDepositInfo {
-                                denom: voting::deposit::DepositToken::VotingModuleToken {},
-                                amount: Uint128::new(1),
-                                refund_policy: voting::deposit::DepositRefundPolicy::OnlyPassed,
-                            }),
-                            open_proposal_submission: false,
-                            extension: Empty::default(),
-                        })
-                        .unwrap(),
-                        admin: Some(Admin::Instantiator {}),
-                        label: "DAO DAO pre-propose".to_string(),
-                    },
-                },
-            })
-            .unwrap(),
+            msg: to_binary(&migrate_msg).unwrap(),
         }),
     )
     .unwrap();
@@ -2004,6 +2053,148 @@ fn test_reply_proposal_mock() {
 }
 
 #[test]
+fn test_proposal_too_large() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.pre_propose_info = PreProposeInfo::AnyoneMayPropose {};
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+
+    let err = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            proposal_module,
+            &ExecuteMsg::Propose {
+                title: "".to_string(),
+                description: "a".repeat(MAX_PROPOSAL_SIZE as usize),
+                msgs: vec![],
+                proposer: None,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    assert!(matches!(
+        err,
+        ContractError::ProposalTooLarge {
+            size: _,
+            max: MAX_PROPOSAL_SIZE
+        }
+    ))
+}
+
+#[test]
+fn test_vote_not_registered() {
+    let CommonTest {
+        mut app,
+        core_addr: _,
+        proposal_module,
+        gov_token: _,
+        proposal_id,
+    } = setup_test(vec![]);
+
+    let err =
+        vote_on_proposal_should_fail(&mut app, &proposal_module, "ekez", proposal_id, Vote::Yes);
+    assert!(matches!(err, ContractError::NotRegistered {}))
+}
+
+#[test]
+fn test_proposal_creation_permissions() {
+    let CommonTest {
+        mut app,
+        core_addr,
+        proposal_module,
+        gov_token: _,
+        proposal_id: _,
+    } = setup_test(vec![]);
+
+    // Non pre-propose may not propose.
+    let err = app
+        .execute_contract(
+            Addr::unchecked("notprepropose"),
+            proposal_module.clone(),
+            &ExecuteMsg::Propose {
+                title: "title".to_string(),
+                description: "description".to_string(),
+                msgs: vec![],
+                proposer: None,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
+    let config = query_proposal_config(&app, &proposal_module);
+    let pre_propose = match config.proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
+        ProposalCreationPolicy::Module { addr } => addr,
+    };
+
+    // Proposer may not be none when a pre-propose module is making
+    // the proposal.
+    let err = app
+        .execute_contract(
+            pre_propose,
+            proposal_module.clone(),
+            &ExecuteMsg::Propose {
+                title: "title".to_string(),
+                description: "description".to_string(),
+                msgs: vec![],
+                proposer: None,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::InvalidProposer {}));
+
+    // Allow anyone to propose.
+    app.execute_contract(
+        core_addr.clone(),
+        proposal_module.clone(),
+        &ExecuteMsg::UpdateConfig {
+            threshold: Threshold::ThresholdQuorum {
+                quorum: PercentageThreshold::Percent(Decimal::percent(15)),
+                threshold: PercentageThreshold::Majority {},
+            },
+            max_voting_period: Duration::Height(10),
+            min_voting_period: None,
+            only_members_execute: true,
+            allow_revoting: false,
+            dao: core_addr.to_string(),
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Proposer must be None when non pre-propose module is making the
+    // proposal.
+    let err = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            proposal_module,
+            &ExecuteMsg::Propose {
+                title: "title".to_string(),
+                description: "description".to_string(),
+                msgs: vec![],
+                proposer: Some("ekez".to_string()),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::InvalidProposer {}));
+}
+
+#[test]
 fn test_reply_hooks_mock() {
     use crate::contract::reply;
     use crate::state::{CONFIG, PROPOSAL_HOOKS, VOTE_HOOKS};
@@ -2069,6 +2260,134 @@ fn test_reply_hooks_mock() {
             key: "removed_vote_hook".to_string(),
             value: format! {"{CREATOR_ADDR}:{}", 0}
         }
+    );
+}
+
+#[test]
+fn test_query_info() {
+    let CommonTest {
+        app,
+        core_addr: _,
+        proposal_module,
+        gov_token: _,
+        proposal_id: _,
+    } = setup_test(vec![]);
+    let info: InfoResponse = app
+        .wrap()
+        .query_wasm_smart(proposal_module, &QueryMsg::Info {})
+        .unwrap();
+    assert_eq!(
+        info,
+        InfoResponse {
+            info: ContractVersion {
+                contract: CONTRACT_NAME.to_string(),
+                version: CONTRACT_VERSION.to_string()
+            }
+        }
+    )
+}
+
+// Make a little multisig and test that queries to list votes work as
+// expected.
+#[test]
+fn test_query_list_votes() {
+    let mut app = App::default();
+    let mut instantiate = get_default_non_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.threshold = Threshold::AbsoluteCount {
+        threshold: Uint128::new(3),
+    };
+    instantiate.pre_propose_info = PreProposeInfo::AnyoneMayPropose {};
+    let core_addr = instantiate_with_cw4_groups_governance(
+        &mut app,
+        instantiate,
+        Some(vec![
+            Cw20Coin {
+                address: "one".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "two".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "three".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "four".to_string(),
+                amount: Uint128::new(1),
+            },
+            Cw20Coin {
+                address: "five".to_string(),
+                amount: Uint128::new(1),
+            },
+        ]),
+    );
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+    let proposal_id = make_proposal(&mut app, &proposal_module, "one", vec![]);
+
+    let votes = query_list_votes(&app, &proposal_module, proposal_id, None, None);
+    assert_eq!(votes.votes, vec![]);
+
+    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "three", proposal_id, Vote::No);
+    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "four", proposal_id, Vote::Yes);
+    vote_on_proposal(&mut app, &proposal_module, "five", proposal_id, Vote::Yes);
+
+    let votes = query_list_votes(&app, &proposal_module, proposal_id, None, None);
+    assert_eq!(
+        votes.votes,
+        vec![
+            VoteInfo {
+                voter: Addr::unchecked("five"),
+                vote: Vote::Yes,
+                power: Uint128::new(1)
+            },
+            VoteInfo {
+                voter: Addr::unchecked("four"),
+                vote: Vote::Yes,
+                power: Uint128::new(1)
+            },
+            VoteInfo {
+                voter: Addr::unchecked("one"),
+                vote: Vote::Yes,
+                power: Uint128::new(1)
+            },
+            VoteInfo {
+                voter: Addr::unchecked("three"),
+                vote: Vote::No,
+                power: Uint128::new(1)
+            },
+            VoteInfo {
+                voter: Addr::unchecked("two"),
+                vote: Vote::No,
+                power: Uint128::new(1)
+            }
+        ]
+    );
+
+    let votes = query_list_votes(
+        &app,
+        &proposal_module,
+        proposal_id,
+        Some("four".to_string()),
+        Some(2),
+    );
+    assert_eq!(
+        votes.votes,
+        vec![
+            VoteInfo {
+                voter: Addr::unchecked("one"),
+                vote: Vote::Yes,
+                power: Uint128::new(1)
+            },
+            VoteInfo {
+                voter: Addr::unchecked("three"),
+                vote: Vote::No,
+                power: Uint128::new(1)
+            },
+        ]
     );
 }
 
