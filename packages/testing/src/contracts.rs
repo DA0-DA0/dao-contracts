@@ -90,6 +90,16 @@ pub fn cw20_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+pub fn cw20_balances_voting_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw20_balance_voting::contract::execute,
+        cw20_balance_voting::contract::instantiate,
+        cw20_balance_voting::contract::query,
+    )
+    .with_reply(cw20_balance_voting::contract::reply);
+    Box::new(contract)
+}
+
 pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw_native_staked_balance_voting::contract::execute,
