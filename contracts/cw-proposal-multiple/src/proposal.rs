@@ -326,7 +326,6 @@ mod tests {
             total_power,
             votes,
             allow_revoting,
-            deposit_info: None,
             min_voting_period: None,
             created: block.time,
             last_updated: block.time,
