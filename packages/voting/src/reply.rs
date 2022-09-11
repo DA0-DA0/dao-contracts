@@ -44,6 +44,8 @@ impl TaggedReplyId {
             PRE_PROPOSE_MODULE_INSTANTIATION_MASK => {
                 Ok(TaggedReplyId::PreProposeModuleInstantiation)
             }
+            // This is actually unreachable as we cover all possible
+            // uses for the first two bits of a integer.
             _ => Err(error::TagError::UnknownReplyId { id }),
         }
     }
