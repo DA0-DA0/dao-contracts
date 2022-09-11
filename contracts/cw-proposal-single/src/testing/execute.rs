@@ -3,6 +3,7 @@ use cw_multi_test::{App, BankSudo, Executor};
 
 use cw_denom::CheckedDenom;
 use cw_pre_propose_base_proposal_single as cppbps;
+use testing::contracts::cw20_contract;
 use voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy, voting::Vote};
 
 use crate::{
@@ -12,7 +13,10 @@ use crate::{
     ContractError,
 };
 
-use super::{contracts::cw20_contract, queries::query_pre_proposal_single_config, CREATOR_ADDR};
+use super::{
+    queries::{query_pre_proposal_single_config, query_proposal_config},
+    CREATOR_ADDR,
+};
 
 // Creates a proposal then checks that the proposal was created with
 // the specified messages and returns the ID of the proposal.

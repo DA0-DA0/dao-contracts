@@ -35,9 +35,10 @@ use crate::{
 use cw_pre_propose_base_proposal_multiple as cppbps;
 
 use testing::{
+    contracts::{cw20_balances_voting, cw20_contract},
     helpers::{
-        cw20_balances_voting, cw20_contract, instantiate_with_cw20_balances_governance,
-        instantiate_with_staked_balances_governance, instantiate_with_staking_active_threshold,
+        instantiate_with_cw20_balances_governance, instantiate_with_staked_balances_governance,
+        instantiate_with_staking_active_threshold,
     },
     ShouldExecute,
 };

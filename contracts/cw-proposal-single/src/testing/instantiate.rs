@@ -7,30 +7,27 @@ use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
 use cw_pre_propose_base_proposal_single as cppbps;
 use cw_utils::Duration;
 
+use testing::contracts::{
+    cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract, cw4_contract,
+    cw4_voting_contract, cw721_contract, cw721_stake_contract, cw_core_contract,
+    native_staked_balances_voting_contract, pre_propose_single_contract,
+};
 use voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
     pre_propose::PreProposeInfo,
     threshold::{PercentageThreshold, Threshold::ThresholdQuorum},
 };
 
-use crate::msg::InstantiateMsg;
+use crate::{msg::InstantiateMsg, testing::tests::proposal_single_contract};
 
-use super::{
-    contracts::{
-        cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract, cw4_contract,
-        cw4_voting_contract, cw721_contract, cw721_stake_contract, cw_core_contract,
-        native_staked_balances_voting_contract, proposal_single_contract,
-    },
-    CREATOR_ADDR,
-};
+use super::CREATOR_ADDR;
 
 pub(crate) fn get_pre_propose_info(
     app: &mut App,
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
 ) -> PreProposeInfo {
-    let pre_propose_contract =
-        app.store_code(crate::testing::contracts::pre_propose_single_contract());
+    let pre_propose_contract = app.store_code(pre_propose_single_contract());
     PreProposeInfo::ModuleMayPropose {
         info: ModuleInstantiateInfo {
             code_id: pre_propose_contract,

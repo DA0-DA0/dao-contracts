@@ -9,10 +9,16 @@ use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 use cw_core_interface::{voting::InfoResponse, Admin, ModuleInstantiateInfo};
 use cw_denom::CheckedDenom;
-use cw_multi_test::{next_block, App, Executor};
+use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 use indexable_hooks::{HookError, HooksResponse};
-use testing::{ShouldExecute, TestSingleChoiceVote};
+use testing::{
+    contracts::{
+        cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract, cw_core_contract,
+        pre_propose_single_contract, v1_proposal_single_contract,
+    },
+    ShouldExecute, TestSingleChoiceVote,
+};
 use voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
@@ -30,11 +36,7 @@ use crate::{
     query::{ProposalResponse, VoteInfo},
     state::Config,
     testing::{
-        contracts::{
-            cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
-            cw_core_contract, pre_propose_single_contract, proposal_single_contract,
-            v1_proposal_single_contract,
-        },
+        do_votes::do_votes_staked_balances,
         execute::{
             add_proposal_hook, add_proposal_hook_should_fail, add_vote_hook,
             add_vote_hook_should_fail, close_proposal, close_proposal_should_fail,
@@ -57,11 +59,21 @@ use crate::{
             query_proposal_hooks, query_single_proposal_module, query_vote_hooks,
             query_voting_module,
         },
+        tests::CREATOR_ADDR,
     },
     ContractError,
 };
 
-use super::{do_votes::do_votes_staked_balances, CREATOR_ADDR};
+pub fn proposal_single_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        crate::contract::execute,
+        crate::contract::instantiate,
+        crate::contract::query,
+    )
+    .with_reply(crate::contract::reply)
+    .with_migrate(crate::contract::migrate);
+    Box::new(contract)
+}
 
 struct CommonTest {
     app: App,
