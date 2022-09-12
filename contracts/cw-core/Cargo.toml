@@ -45,8 +45,7 @@ cw-paginate = { version = "0.2.0", path = "../../packages/cw-paginate" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
-# TODO: We are using the main branch of cw-multi-test until the next release, because we need recent stargate parsing fixes
-cw-multi-test = { git = "https://github.com/CosmWasm/cw-plus", branch = "main",  features = ["stargate"] }
+cw-multi-test = { version = "0.14", features = ["stargate"] }
 cw20-base = "0.13"
 cw721-base = "0.13"
 cw-proposal-sudo = { version = "0.2.0", path = "../../debug/cw-proposal-sudo"}
