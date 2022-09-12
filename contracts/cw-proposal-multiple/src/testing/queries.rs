@@ -12,7 +12,7 @@ use crate::{
     state::Config,
 };
 
-pub(crate) fn query_deposit_config_and_pre_propose_module(
+pub fn query_deposit_config_and_pre_propose_module(
     app: &App,
     proposal_multiple: &Addr,
 ) -> (cppbpm::Config, Addr) {
@@ -27,29 +27,19 @@ pub(crate) fn query_deposit_config_and_pre_propose_module(
     }
 }
 
-pub(crate) fn query_proposal_config(app: &App, proposal_multiple: &Addr) -> Config {
+pub fn query_proposal_config(app: &App, proposal_multiple: &Addr) -> Config {
     app.wrap()
         .query_wasm_smart(proposal_multiple, &QueryMsg::Config {})
         .unwrap()
 }
 
-pub(crate) fn query_pre_proposal_multiple_config(app: &App, pre_propose: &Addr) -> cppbpm::Config {
+pub fn query_pre_proposal_multiple_config(app: &App, pre_propose: &Addr) -> cppbpm::Config {
     app.wrap()
         .query_wasm_smart(pre_propose, &cppbpm::QueryMsg::Config {})
         .unwrap()
 }
 
-pub(crate) fn query_pre_proposal_multiple_deposit_info(
-    app: &App,
-    pre_propose: &Addr,
-    proposal_id: u64,
-) -> cppbpm::DepositInfoResponse {
-    app.wrap()
-        .query_wasm_smart(pre_propose, &cppbpm::QueryMsg::DepositInfo { proposal_id })
-        .unwrap()
-}
-
-pub(crate) fn query_multiple_proposal_module(app: &App, core_addr: &Addr) -> Addr {
+pub fn query_multiple_proposal_module(app: &App, core_addr: &Addr) -> Addr {
     let modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
@@ -77,7 +67,7 @@ pub(crate) fn query_multiple_proposal_module(app: &App, core_addr: &Addr) -> Add
     modules.into_iter().next().unwrap().address
 }
 
-pub(crate) fn query_list_proposals(
+pub fn query_list_proposals(
     app: &App,
     proposal_multiple: &Addr,
     start_after: Option<u64>,
@@ -91,19 +81,19 @@ pub(crate) fn query_list_proposals(
         .unwrap()
 }
 
-pub(crate) fn query_proposal_hooks(app: &App, proposal_multiple: &Addr) -> HooksResponse {
+pub fn query_proposal_hooks(app: &App, proposal_multiple: &Addr) -> HooksResponse {
     app.wrap()
         .query_wasm_smart(proposal_multiple, &QueryMsg::ProposalHooks {})
         .unwrap()
 }
 
-pub(crate) fn query_vote_hooks(app: &App, proposal_multiple: &Addr) -> HooksResponse {
+pub fn query_vote_hooks(app: &App, proposal_multiple: &Addr) -> HooksResponse {
     app.wrap()
         .query_wasm_smart(proposal_multiple, &QueryMsg::VoteHooks {})
         .unwrap()
 }
 
-pub(crate) fn query_list_proposals_reverse(
+pub fn query_list_proposals_reverse(
     app: &App,
     proposal_multiple: &Addr,
     start_before: Option<u64>,
@@ -120,7 +110,7 @@ pub(crate) fn query_list_proposals_reverse(
         .unwrap()
 }
 
-pub(crate) fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
+pub fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
     let voting_module = query_voting_module(app, core_addr);
     app.wrap()
         .query_wasm_smart(
@@ -130,13 +120,13 @@ pub(crate) fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
         .unwrap()
 }
 
-pub(crate) fn query_voting_module(app: &App, core_addr: &Addr) -> Addr {
+pub fn query_voting_module(app: &App, core_addr: &Addr) -> Addr {
     app.wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::VotingModule {})
         .unwrap()
 }
 
-pub(crate) fn query_balance_cw20<T: Into<String>, U: Into<String>>(
+pub fn query_balance_cw20<T: Into<String>, U: Into<String>>(
     app: &App,
     contract_addr: T,
     address: U,
@@ -148,12 +138,12 @@ pub(crate) fn query_balance_cw20<T: Into<String>, U: Into<String>>(
     result.balance
 }
 
-pub(crate) fn query_balance_native(app: &App, who: &str, denom: &str) -> Uint128 {
+pub fn query_balance_native(app: &App, who: &str, denom: &str) -> Uint128 {
     let res = app.wrap().query_balance(who, denom).unwrap();
     res.amount
 }
 
-pub(crate) fn query_proposal(app: &App, proposal_multiple: &Addr, id: u64) -> ProposalResponse {
+pub fn query_proposal(app: &App, proposal_multiple: &Addr, id: u64) -> ProposalResponse {
     app.wrap()
         .query_wasm_smart(proposal_multiple, &QueryMsg::Proposal { proposal_id: id })
         .unwrap()

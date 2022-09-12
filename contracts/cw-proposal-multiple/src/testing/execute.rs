@@ -1,20 +1,15 @@
-use cosmwasm_std::{coins, Addr, Coin, CosmosMsg, Uint128};
-use cw_multi_test::{App, BankSudo, Executor};
+use cosmwasm_std::{coins, Addr};
+use cw_multi_test::{App, Executor};
 
 use cw_denom::CheckedDenom;
 use cw_pre_propose_base_proposal_multiple as cppbpm;
-use testing::contracts::cw20_contract;
-use voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy, voting::Vote};
+use voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy};
 
 use crate::{
     msg::{ExecuteMsg, QueryMsg},
     query::ProposalResponse,
     state::{MultipleChoiceOption, MultipleChoiceOptions},
-    testing::{
-        queries::{query_pre_proposal_multiple_config, query_proposal_config},
-        tests::CREATOR_ADDR,
-    },
-    ContractError,
+    testing::queries::{query_pre_proposal_multiple_config, query_proposal_config},
 };
 
 impl From<MultipleChoiceOptions> for cw_proposal_multiple::state::MultipleChoiceOptions {
@@ -104,7 +99,7 @@ pub fn make_proposal(
                 &ExecuteMsg::Propose {
                     title: "title".to_string(),
                     description: "description".to_string(),
-                    choices: choices.clone(),
+                    choices,
                     proposer: None,
                 },
                 &[],
@@ -118,7 +113,7 @@ pub fn make_proposal(
                     msg: cppbpm::ProposeMessage::Propose {
                         title: "title".to_string(),
                         description: "description".to_string(),
-                        choices: choices.clone().into(),
+                        choices: choices.into(),
                     },
                 },
                 &funds,

@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, Coin, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw20_staked_balance_voting::msg::ActiveThreshold;
 
@@ -16,7 +16,7 @@ use testing::contracts::{
 use voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
     pre_propose::PreProposeInfo,
-    threshold::{PercentageThreshold, Threshold::ThresholdQuorum},
+    threshold::PercentageThreshold,
 };
 
 use crate::{
@@ -24,7 +24,8 @@ use crate::{
     voting_strategy::VotingStrategy,
 };
 
-pub(crate) fn get_pre_propose_info(
+#[allow(dead_code)]
+fn get_pre_propose_info(
     app: &mut App,
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
@@ -45,7 +46,7 @@ pub(crate) fn get_pre_propose_info(
     }
 }
 
-pub(crate) fn get_default_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
+fn _get_default_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
     let quorum = PercentageThreshold::Majority {};
     let voting_strategy = VotingStrategy::SingleChoice { quorum };
 
@@ -69,9 +70,7 @@ pub(crate) fn get_default_token_dao_proposal_module_instantiate(app: &mut App) -
 }
 
 // Same as above but no proposal deposit.
-pub(crate) fn get_default_non_token_dao_proposal_module_instantiate(
-    app: &mut App,
-) -> InstantiateMsg {
+fn _get_default_non_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
     let quorum = PercentageThreshold::Majority {};
     let voting_strategy = VotingStrategy::SingleChoice { quorum };
 
@@ -86,7 +85,7 @@ pub(crate) fn get_default_non_token_dao_proposal_module_instantiate(
     }
 }
 
-pub(crate) fn instantiate_with_staked_cw721_governance(
+pub fn _instantiate_with_staked_cw721_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
@@ -213,7 +212,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
     core_addr
 }
 
-pub(crate) fn instantiate_with_native_staked_balances_governance(
+pub fn _instantiate_with_native_staked_balances_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
@@ -395,7 +394,7 @@ pub fn instantiate_with_cw20_balances_governance(
     .unwrap()
 }
 
-pub(crate) fn instantiate_with_staked_balances_governance(
+pub fn instantiate_with_staked_balances_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
@@ -520,7 +519,7 @@ pub(crate) fn instantiate_with_staked_balances_governance(
     core_addr
 }
 
-pub(crate) fn instantiate_with_staking_active_threshold(
+pub fn instantiate_with_staking_active_threshold(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_balances: Option<Vec<Cw20Coin>>,
@@ -587,7 +586,7 @@ pub(crate) fn instantiate_with_staking_active_threshold(
     .unwrap()
 }
 
-pub(crate) fn instantiate_with_cw4_groups_governance(
+pub fn _instantiate_with_cw4_groups_governance(
     app: &mut App,
     proposal_module_instantiate: InstantiateMsg,
     initial_weights: Option<Vec<Cw20Coin>>,

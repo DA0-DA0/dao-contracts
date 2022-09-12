@@ -67,23 +67,23 @@ pub enum MultipleChoiceOptionType {
     Standard,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct MultipleChoiceOptions {
     pub options: Vec<MultipleChoiceOption>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct CheckedMultipleChoiceOptions {
     pub options: Vec<CheckedMultipleChoiceOption>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct MultipleChoiceOption {
     pub description: String,
     pub msgs: Option<Vec<CosmosMsg<Empty>>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct CheckedMultipleChoiceOption {
     // This is the index of the option in both the vote_weights and proposal.choices vectors.
     // Workaround due to not being able to use HashMaps in Cosmwasm.
