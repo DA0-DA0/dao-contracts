@@ -18,12 +18,16 @@ use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, thresh
 #[test]
 #[ignore]
 fn execute_execute_admin_msgs(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
+
     // if you are not the admin, you cant execute admin msgs:
     let res = create_dao(
         chain,
         None,
         "exc_admin_msgs_create_dao",
-        chain.users["user1"].account.address.clone(),
+        user_addr.clone(),
+        &user_key,
     );
     let dao = res.unwrap();
 
@@ -40,7 +44,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
                 funds: vec![],
             })],
         },
-        &chain.users["user1"].key,
+        &user_key,
         vec![],
     );
 
@@ -60,9 +64,10 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     // if you are the admin you can execute admin msgs:
     let res = create_dao(
         chain,
-        Some(chain.users["user1"].account.address.clone()),
+        Some(user_addr.clone()),
         "exc_admin_msgs_create_dao_with_admin",
-        chain.users["user1"].account.address.clone(),
+        user_addr.clone(),
+        &user_key,
     );
     let dao = res.unwrap();
 
@@ -81,7 +86,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.users["user1"].key,
+            &user_key,
             vec![],
         )
         .unwrap();
@@ -99,12 +104,16 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn execute_items(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
+
     // add item:
     let res = create_dao(
         chain,
-        Some(chain.users["user1"].account.address.clone()),
+        Some(user_addr.clone()),
         "exc_items_create_dao",
-        chain.users["user1"].account.address.clone(),
+        user_addr.clone(),
+        &user_key,
     );
 
     let dao = res.unwrap();
@@ -138,7 +147,7 @@ fn execute_items(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.users["user1"].key,
+            &user_key,
             vec![],
         )
         .unwrap();
@@ -172,7 +181,7 @@ fn execute_items(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.users["user1"].key,
+            &user_key,
             vec![],
         )
         .unwrap();
@@ -197,11 +206,15 @@ fn execute_items(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_no_admin(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
+
     let res = create_dao(
         chain,
         None,
         "inst_dao_no_admin",
-        chain.users["user1"].account.address.clone(),
+        user_addr.clone(),
+        &user_key,
     );
     let dao = res.unwrap();
 
@@ -225,22 +238,22 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_admin(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
     let voting_contract = "cw20_staked_balance_voting";
     let proposal_contract = "cw_proposal_single";
 
     let res = create_dao(
         chain,
-        Some(chain.users["user1"].account.address.clone()),
+        Some(user_addr.clone()),
         "inst_admin_create_dao",
-        chain.users["user1"].account.address.clone(),
+        user_addr.clone(),
+        &user_key,
     );
     let dao = res.unwrap();
 
     // general dao info is valid:
-    assert_eq!(
-        dao.state.admin,
-        chain.users["user1"].account.address.clone()
-    );
+    assert_eq!(dao.state.admin, user_addr.clone());
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -282,7 +295,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query(
             "cw20_stake",
             &cw20_stake::msg::QueryMsg::StakedValue {
-                address: chain.users["user1"].account.address.clone(),
+                address: user_addr.clone(),
             },
         )
         .unwrap();

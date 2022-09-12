@@ -131,7 +131,7 @@ just bootstrap-dev
 
 > Note: These juno accounts are from the [test
 > accounts](ci/configs/test_accounts.json), which you can use for testing (DO NOT
-> store any real funds with these accounts). You can configure add more juno
+> store any real funds with these accounts). You can add more juno
 > account addresses you wish to test here.
 
 This will run a chain locally in a docker container, then build and
