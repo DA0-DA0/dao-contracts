@@ -7,19 +7,20 @@
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
 export type Addr = string;
-export type Uint128 = string;
-export type DepositRefundPolicy = "always" | "only_passed" | "never";
-export type AssetInfoBaseForAddr = {
-  native: string;
-} | {
-  cw20: Addr;
-} | {
-  cw1155: [Addr, string];
-};
 export type Duration = {
   height: number;
 } | {
   time: number;
+};
+export type ProposalCreationPolicy = {
+  Anyone: {
+    [k: string]: unknown;
+  };
+} | {
+  Module: {
+    addr: Addr;
+    [k: string]: unknown;
+  };
 };
 export type VotingStrategy = {
   single_choice: {
@@ -39,24 +40,18 @@ export interface ConfigResponse {
   allow_revoting: boolean;
   close_proposal_on_execution_failure: boolean;
   dao: Addr;
-  deposit_info?: CheckedDepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
-  open_proposal_submission: boolean;
+  proposal_creation_policy: ProposalCreationPolicy;
   voting_strategy: VotingStrategy;
-  [k: string]: unknown;
-}
-export interface CheckedDepositInfo {
-  deposit: Uint128;
-  refund_policy: DepositRefundPolicy;
-  token: AssetInfoBaseForAddr;
   [k: string]: unknown;
 }
 export type ExecuteMsg = {
   propose: {
     choices: MultipleChoiceOptions;
     description: string;
+    proposer?: string | null;
     title: string;
     [k: string]: unknown;
   };
@@ -81,11 +76,10 @@ export type ExecuteMsg = {
     allow_revoting: boolean;
     close_proposal_on_execution_failure: boolean;
     dao: string;
-    deposit_info?: DepositInfo | null;
     max_voting_period: Duration;
     min_voting_period?: Duration | null;
     only_members_execute: boolean;
-    open_proposal_submission: boolean;
+    pre_propose_info: PreProposeInfo;
     voting_strategy: VotingStrategy;
     [k: string]: unknown;
   };
@@ -143,6 +137,7 @@ export type BankMsg = {
     [k: string]: unknown;
   };
 };
+export type Uint128 = string;
 export type StakingMsg = {
   delegate: {
     amount: Coin;
@@ -241,22 +236,30 @@ export type GovMsg = {
   };
 };
 export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
-export type DepositToken = {
-  token: {
-    asset: AssetInfoBaseForString;
+export type PreProposeInfo = {
+  AnyoneMayPropose: {
     [k: string]: unknown;
   };
 } | {
-  voting_module_token: {
+  ModuleMayPropose: {
+    info: ModuleInstantiateInfo;
+    [k: string]: unknown;
+  };
+} | {
+  AddrMayPropose: {
+    addr: string;
     [k: string]: unknown;
   };
 };
-export type AssetInfoBaseForString = {
-  native: string;
+export type Admin = {
+  address: {
+    addr: string;
+    [k: string]: unknown;
+  };
 } | {
-  cw20: string;
-} | {
-  cw1155: [string, string];
+  instantiator: {
+    [k: string]: unknown;
+  };
 };
 export interface MultipleChoiceOptions {
   options: MultipleChoiceOption[];
@@ -289,10 +292,11 @@ export interface MultipleChoiceVote {
   option_id: number;
   [k: string]: unknown;
 }
-export interface DepositInfo {
-  deposit: Uint128;
-  refund_policy: DepositRefundPolicy;
-  token: DepositToken;
+export interface ModuleInstantiateInfo {
+  admin?: Admin | null;
+  code_id: number;
+  label: string;
+  msg: Binary;
   [k: string]: unknown;
 }
 export interface GetVoteResponse {
@@ -318,11 +322,10 @@ export interface ContractVersion {
 export interface InstantiateMsg {
   allow_revoting: boolean;
   close_proposal_on_execution_failure: boolean;
-  deposit_info?: DepositInfo | null;
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
-  open_proposal_submission: boolean;
+  pre_propose_info: PreProposeInfo;
   voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
@@ -350,7 +353,6 @@ export interface MultipleChoiceProposal {
   allow_revoting: boolean;
   choices: CheckedMultipleChoiceOption[];
   created: Timestamp;
-  deposit_info?: CheckedDepositInfo | null;
   description: string;
   expiration: Expiration;
   last_updated: Timestamp;
@@ -380,9 +382,17 @@ export interface ListVotesResponse {
   votes: VoteInfo[];
   [k: string]: unknown;
 }
-export interface MigrateMsg {
-  [k: string]: unknown;
-}
+export type MigrateMsg = {
+  from_v1: {
+    close_proposal_on_execution_failure: boolean;
+    pre_propose_info: PreProposeInfo;
+    [k: string]: unknown;
+  };
+} | {
+  from_compatible: {
+    [k: string]: unknown;
+  };
+};
 export type ProposalCountResponse = number;
 export interface ProposalHooksResponse {
   hooks: string[];
@@ -615,10 +625,12 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
   propose: ({
     choices,
     description,
+    proposer,
     title
   }: {
     choices: MultipleChoiceOptions;
     description: string;
+    proposer?: string;
     title: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   vote: ({
@@ -642,21 +654,19 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     allowRevoting,
     closeProposalOnExecutionFailure,
     dao,
-    depositInfo,
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    openProposalSubmission,
+    preProposeInfo,
     votingStrategy
   }: {
     allowRevoting: boolean;
     closeProposalOnExecutionFailure: boolean;
     dao: string;
-    depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    openProposalSubmission: boolean;
+    preProposeInfo: PreProposeInfo;
     votingStrategy: VotingStrategy;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   addProposalHook: ({
@@ -704,16 +714,19 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
   propose = async ({
     choices,
     description,
+    proposer,
     title
   }: {
     choices: MultipleChoiceOptions;
     description: string;
+    proposer?: string;
     title: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       propose: {
         choices,
         description,
+        proposer,
         title
       }
     }, fee, memo, funds);
@@ -758,21 +771,19 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     allowRevoting,
     closeProposalOnExecutionFailure,
     dao,
-    depositInfo,
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    openProposalSubmission,
+    preProposeInfo,
     votingStrategy
   }: {
     allowRevoting: boolean;
     closeProposalOnExecutionFailure: boolean;
     dao: string;
-    depositInfo?: DepositInfo;
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    openProposalSubmission: boolean;
+    preProposeInfo: PreProposeInfo;
     votingStrategy: VotingStrategy;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
@@ -780,11 +791,10 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
         allow_revoting: allowRevoting,
         close_proposal_on_execution_failure: closeProposalOnExecutionFailure,
         dao,
-        deposit_info: depositInfo,
         max_voting_period: maxVotingPeriod,
         min_voting_period: minVotingPeriod,
         only_members_execute: onlyMembersExecute,
-        open_proposal_submission: openProposalSubmission,
+        pre_propose_info: preProposeInfo,
         voting_strategy: votingStrategy
       }
     }, fee, memo, funds);

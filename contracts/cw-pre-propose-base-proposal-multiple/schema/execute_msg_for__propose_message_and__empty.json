@@ -589,6 +589,40 @@
         }
       }
     },
+    "MultipleChoiceOption": {
+      "type": "object",
+      "required": [
+        "description"
+      ],
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "msgs": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/CosmosMsg_for_Empty"
+          }
+        }
+      }
+    },
+    "MultipleChoiceOptions": {
+      "type": "object",
+      "required": [
+        "options"
+      ],
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MultipleChoiceOption"
+          }
+        }
+      }
+    },
     "ProposalHookMsg": {
       "oneOf": [
         {
@@ -660,19 +694,16 @@
             "propose": {
               "type": "object",
               "required": [
+                "choices",
                 "description",
-                "msgs",
                 "title"
               ],
               "properties": {
+                "choices": {
+                  "$ref": "#/definitions/MultipleChoiceOptions"
+                },
                 "description": {
                   "type": "string"
-                },
-                "msgs": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/CosmosMsg_for_Empty"
-                  }
                 },
                 "title": {
                   "type": "string"
