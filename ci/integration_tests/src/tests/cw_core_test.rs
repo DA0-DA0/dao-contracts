@@ -66,7 +66,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         chain,
         Some(user_addr.clone()),
         "exc_admin_msgs_create_dao_with_admin",
-        user_addr.clone(),
+        user_addr,
         &user_key,
     );
     let dao = res.unwrap();
@@ -112,7 +112,7 @@ fn execute_items(chain: &mut Chain) {
         chain,
         Some(user_addr.clone()),
         "exc_items_create_dao",
-        user_addr.clone(),
+        user_addr,
         &user_key,
     );
 
@@ -209,13 +209,7 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
 
-    let res = create_dao(
-        chain,
-        None,
-        "inst_dao_no_admin",
-        user_addr.clone(),
-        &user_key,
-    );
+    let res = create_dao(chain, None, "inst_dao_no_admin", user_addr, &user_key);
     let dao = res.unwrap();
 
     // ensure the dao is the admin:
@@ -253,7 +247,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     let dao = res.unwrap();
 
     // general dao info is valid:
-    assert_eq!(dao.state.admin, user_addr.clone());
+    assert_eq!(dao.state.admin, user_addr);
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -294,9 +288,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             "cw20_stake",
-            &cw20_stake::msg::QueryMsg::StakedValue {
-                address: user_addr.clone(),
-            },
+            &cw20_stake::msg::QueryMsg::StakedValue { address: user_addr },
         )
         .unwrap();
     let staked_res: StakedValueResponse = res.data().unwrap();

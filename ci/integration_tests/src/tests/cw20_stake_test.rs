@@ -109,7 +109,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .query(
             "cw_core",
             &cw_core::msg::QueryMsg::VotingPowerAtHeight {
-                address: user_addr.clone(),
+                address: user_addr,
                 height: None,
             },
         )
