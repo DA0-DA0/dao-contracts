@@ -18,7 +18,7 @@ cosmwasm-std = "1.0.0"
 cw2 = "0.13.2"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 cw-pre-propose-base = { version = "*", path = "../../packages/cw-pre-propose-base" }
-cw-proposal-multiple = { version = "*", path = "../cw-proposal-multiple"}
+cw-proposal-multiple = { version = "*", path = "../cw-proposal-multiple", features = ["library"]}
 schemars = "0.8.8"
 
 [dev-dependencies]

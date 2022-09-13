@@ -1,6 +1,8 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, Storage, SubMsg, Timestamp, WasmMsg,
+    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
+    StdResult, Storage, SubMsg, Timestamp, WasmMsg,
 };
 
 use cw2::set_contract_version;
