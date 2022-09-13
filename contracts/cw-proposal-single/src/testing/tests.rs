@@ -1951,7 +1951,7 @@ fn test_execution_failed() {
 
     // Disable execution failing proposals.
     app.execute_contract(
-        core_addr.clone(),
+        core_addr,
         proposal_module.clone(),
         &ExecuteMsg::UpdateConfig {
             threshold: config.threshold,
@@ -2153,7 +2153,7 @@ fn test_proposal_creation_permissions() {
 
     // Allow anyone to propose.
     app.execute_contract(
-        core_addr.clone(),
+        core_addr,
         proposal_module.clone(),
         &ExecuteMsg::UpdatePreProposeInfo {
             info: PreProposeInfo::AnyoneMayPropose {},
@@ -2245,7 +2245,7 @@ fn test_reply_hooks_mock() {
     );
 
     // Do it again. This time, there is nothing so this should error.
-    let err = reply(deps.as_mut(), env.clone(), reply_msg.clone()).unwrap_err();
+    let err = reply(deps.as_mut(), env.clone(), reply_msg).unwrap_err();
     assert!(matches!(err, ContractError::InvalidHookIndex { idx: 0 }));
 
     // Check that we fail open.
