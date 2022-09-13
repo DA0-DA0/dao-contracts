@@ -1,7 +1,7 @@
 //! Types related to the pre-propose module. Motivation:
 //! <https://github.com/DA0-DA0/dao-contracts/discussions/462>.
 
-use cosmwasm_std::{Addr, Deps, Empty, StdResult, SubMsg};
+use cosmwasm_std::{Addr, Empty, StdResult, SubMsg};
 use cw_core_interface::ModuleInstantiateInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,9 +15,6 @@ pub enum PreProposeInfo {
     /// The module specified in INFO has exclusive rights to proposal
     /// creation.
     ModuleMayPropose { info: ModuleInstantiateInfo },
-    /// The address specified in ADDR has exclusive rights to proposal
-    /// creation.
-    AddrMayPropose { addr: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -55,21 +52,13 @@ impl PreProposeInfo {
     pub fn into_initial_policy_and_messages(
         self,
         contract_address: Addr,
-        deps: Deps,
     ) -> StdResult<(ProposalCreationPolicy, Vec<SubMsg<Empty>>)> {
         Ok(match self {
             Self::AnyoneMayPropose {} => (ProposalCreationPolicy::Anyone {}, vec![]),
-            Self::AddrMayPropose { addr } => (
-                ProposalCreationPolicy::Module {
-                    addr: deps.api.addr_validate(&addr)?,
-                },
-                vec![],
-            ),
             Self::ModuleMayPropose { info } => (
+                // Anyone can propose, then, upon instantiation
+                // `ModuleMayPropose`.
                 ProposalCreationPolicy::Anyone {},
-                // If the instantiation of the pre-propose module fails,
-                // we fail the entire instantiation. This is in contrast
-                // to the normal fail-open behavior of this module.
                 vec![SubMsg::reply_on_success(
                     info.into_wasm_msg(contract_address),
                     mask_pre_propose_module_instantiation(),
@@ -81,7 +70,7 @@ impl PreProposeInfo {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{testing::mock_dependencies, to_binary, WasmMsg};
+    use cosmwasm_std::{to_binary, WasmMsg};
 
     use super::*;
 
@@ -123,29 +112,10 @@ mod tests {
     #[test]
     fn test_pre_any_conversion() {
         let info = PreProposeInfo::AnyoneMayPropose {};
-        let deps = mock_dependencies();
         let (policy, messages) = info
-            .into_initial_policy_and_messages(Addr::unchecked("😃"), deps.as_ref())
+            .into_initial_policy_and_messages(Addr::unchecked("😃"))
             .unwrap();
         assert_eq!(policy, ProposalCreationPolicy::Anyone {});
-        assert!(messages.is_empty())
-    }
-
-    #[test]
-    fn test_pre_addr_conversion() {
-        let info = PreProposeInfo::AddrMayPropose {
-            addr: "😅".to_string(),
-        };
-        let deps = mock_dependencies();
-        let (policy, messages) = info
-            .into_initial_policy_and_messages(Addr::unchecked("🥵"), deps.as_ref())
-            .unwrap();
-        assert_eq!(
-            policy,
-            ProposalCreationPolicy::Module {
-                addr: Addr::unchecked("😅")
-            }
-        );
         assert!(messages.is_empty())
     }
 
@@ -159,9 +129,8 @@ mod tests {
                 label: "pre-propose-9000".to_string(),
             },
         };
-        let deps = mock_dependencies();
         let (policy, messages) = info
-            .into_initial_policy_and_messages(Addr::unchecked("🥵"), deps.as_ref())
+            .into_initial_policy_and_messages(Addr::unchecked("🥵"))
             .unwrap();
 
         // In this case the package is expected to allow anyone to

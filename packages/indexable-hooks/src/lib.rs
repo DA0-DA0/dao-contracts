@@ -74,6 +74,15 @@ impl<'a> Hooks<'a> {
             .collect()
     }
 
+    pub fn hook_count(&self, storage: &dyn Storage) -> StdResult<u32> {
+        // The WASM VM (as of version 1) is 32 bit and sets limits for
+        // memory accordingly:
+        // <https://webassembly.github.io/spec/core/syntax/types.html#syntax-limits>. We
+        // can safely return a u32 here as that's the biggest size in
+        // the WASM VM.
+        Ok(self.0.may_load(storage)?.unwrap_or_default().len() as u32)
+    }
+
     pub fn query_hooks<Q: CustomQuery>(&self, deps: Deps<Q>) -> StdResult<HooksResponse> {
         let hooks = self.0.may_load(deps.storage)?.unwrap_or_default();
         let hooks = hooks.into_iter().map(String::from).collect();

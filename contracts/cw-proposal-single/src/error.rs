@@ -80,4 +80,7 @@ pub enum ContractError {
         "all proposals with deposits must be completed out (closed or executed) before migration"
     )]
     PendingProposals {},
+
+    #[error("received a failed proposal hook reply with an invalid hook index: ({idx})")]
+    InvalidHookIndex { idx: u64 },
 }

@@ -115,9 +115,10 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
-        /// Information about what addresses may create proposals.
-        pre_propose_info: PreProposeInfo,
     },
+    /// Update's the proposal creation policy used for this
+    /// module. Only the DAO may call this method.
+    UpdatePreProposeInfo { info: PreProposeInfo },
     /// Adds an address as a consumer of proposal hooks. Consumers of
     /// proposal hooks have hook messages executed on them whenever
     /// the status of a proposal changes or a proposal is created. If
@@ -187,6 +188,9 @@ pub enum QueryMsg {
         /// query. If no limit is specified a max of 30 are returned.
         limit: Option<u64>,
     },
+    /// Gets the current proposal creation policy for this
+    /// module. Returns `voting::pre_propose::ProposalCreationPolicy`.
+    ProposalCreationPolicy {},
     /// Lists all of the consumers of proposal hooks for this module.
     ProposalHooks {},
     /// Lists all of the consumers of vote hooks for this

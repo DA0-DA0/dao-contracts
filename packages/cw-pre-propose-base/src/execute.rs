@@ -242,39 +242,51 @@ where
             return Err(PreProposeError::NotModule {});
         }
 
-        let (deposit_info, proposer) = self.deposits.load(deps.storage, id)?;
-        let messages = if let Some(ref deposit_info) = deposit_info {
-            // If the proposal is completed, either return to the DAO
-            // or issue a refund.
-            let proposal_completed = new_status == "closed" || new_status == "executed";
+        match self.deposits.may_load(deps.storage, id)? {
+            Some((deposit_info, proposer)) => {
+                let messages = if let Some(ref deposit_info) = deposit_info {
+                    // If the proposal is completed, either return to the DAO
+                    // or issue a refund.
+                    let proposal_completed = new_status == "closed" || new_status == "executed";
 
-            if proposal_completed {
-                // Refund can be issued if proposal if it is going to
-                // closed or executed.
-                let should_refund_to_proposer = (new_status == "closed"
-                    && deposit_info.refund_policy == DepositRefundPolicy::Always)
-                    || (new_status == "executed"
-                        && deposit_info.refund_policy != DepositRefundPolicy::Never);
+                    if proposal_completed {
+                        // Refund can be issued if proposal if it is going to
+                        // closed or executed.
+                        let should_refund_to_proposer = (new_status == "closed"
+                            && deposit_info.refund_policy == DepositRefundPolicy::Always)
+                            || (new_status == "executed"
+                                && deposit_info.refund_policy != DepositRefundPolicy::Never);
 
-                if should_refund_to_proposer {
-                    deposit_info.get_return_deposit_message(&proposer)?
+                        if should_refund_to_proposer {
+                            deposit_info.get_return_deposit_message(&proposer)?
+                        } else {
+                            // If the proposer doesn't get the deposit, the DAO does.
+                            let dao = self.dao.load(deps.storage)?;
+                            deposit_info.get_return_deposit_message(&dao)?
+                        }
+                    } else {
+                        // Proposal isn't done. Nothing to do.
+                        vec![]
+                    }
                 } else {
-                    // If the proposer doesn't get the deposit, the DAO does.
-                    let dao = self.dao.load(deps.storage)?;
-                    deposit_info.get_return_deposit_message(&dao)?
-                }
-            } else {
-                vec![]
-            }
-        } else {
-            vec![]
-        };
+                    // No for this proposal. Nothing to do.
+                    vec![]
+                };
 
-        Ok(Response::default()
-            .add_attribute("method", "execute_status_changed_proposal_hook")
-            .add_attribute("proposal", id.to_string())
-            .add_attribute("deposit_info", to_binary(&deposit_info)?.to_string())
-            .add_messages(messages))
+                Ok(Response::default()
+                    .add_attribute("method", "execute_status_changed_proposal_hook")
+                    .add_attribute("proposal", id.to_string())
+                    .add_attribute("deposit_info", to_binary(&deposit_info)?.to_string())
+                    .add_messages(messages))
+            }
+            // If we do not have a deposit for this proposal it was
+            // likely created before we were added to the proposal
+            // module. In that case, it's not our problem and we just
+            // do nothing.
+            None => Ok(Response::default()
+                .add_attribute("method", "execute_status_changed_proposal_hook")
+                .add_attribute("proposal", id.to_string())),
+        }
     }
 
     pub fn execute_new_proposal_hook(
