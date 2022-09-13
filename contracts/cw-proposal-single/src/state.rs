@@ -52,8 +52,6 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// The access policy for creating proposals.
-    pub proposal_creation_policy: ProposalCreationPolicy,
 }
 
 /// The current top level config for the module.  The "config" key was
@@ -67,3 +65,6 @@ pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
 /// Consumers of vote hooks.
 pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
+/// The address of the pre-propose module associated with this
+/// proposal module (if any).
+pub const CREATION_POLICY: Item<ProposalCreationPolicy> = Item::new("creation_policy");

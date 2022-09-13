@@ -343,13 +343,23 @@ fn instantiate_with_admin(chain: &mut Chain) {
         )
         .unwrap();
     let config_res: cw_proposal_single::state::Config = res.data().unwrap();
+    let proposal_creation_policy: voting::pre_propose::ProposalCreationPolicy = chain
+        .orc
+        .query(
+            proposal_contract,
+            "inst_admin_q_cpc",
+            &cw_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
+        )
+        .unwrap()
+        .data()
+        .unwrap();
 
     assert_eq!(config_res.min_voting_period, None);
     assert_eq!(config_res.max_voting_period, Duration::Time(432000));
     assert!(!config_res.allow_revoting);
     assert!(config_res.only_members_execute);
     assert!(matches!(
-        config_res.proposal_creation_policy,
+        proposal_creation_policy,
         ProposalCreationPolicy::Module { .. }
     ));
     assert_eq!(

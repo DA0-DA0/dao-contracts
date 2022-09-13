@@ -21,7 +21,7 @@ use voting::voting::{get_total_power, get_voting_power, validate_voting_period, 
 
 use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;
-use crate::state::Config;
+use crate::state::{Config, CREATION_POLICY};
 use crate::v1_state;
 use crate::{
     error::ContractError,
@@ -53,7 +53,7 @@ pub fn instantiate(
 
     let (initial_policy, pre_propose_messages) = msg
         .pre_propose_info
-        .into_initial_policy_and_messages(env.contract.address, deps.as_ref())?;
+        .into_initial_policy_and_messages(env.contract.address)?;
 
     let config = Config {
         threshold: msg.threshold,
@@ -63,13 +63,13 @@ pub fn instantiate(
         dao: dao.clone(),
         allow_revoting: msg.allow_revoting,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
-        proposal_creation_policy: initial_policy,
     };
 
     // Initialize proposal count to zero so that queries return zero
     // instead of None.
     PROPOSAL_COUNT.save(deps.storage, &0)?;
     CONFIG.save(deps.storage, &config)?;
+    CREATION_POLICY.save(deps.storage, &initial_policy)?;
 
     Ok(Response::default()
         .add_submessages(pre_propose_messages)
@@ -102,10 +102,8 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
-            pre_propose_info,
         } => execute_update_config(
             deps,
-            env,
             info,
             threshold,
             max_voting_period,
@@ -114,8 +112,10 @@ pub fn execute(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
-            pre_propose_info,
         ),
+        ExecuteMsg::UpdatePreProposeInfo { info: new_info } => {
+            execute_update_proposal_creation_policy(deps, env, info, new_info)
+        }
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
         }
@@ -139,18 +139,19 @@ pub fn execute_propose(
     proposer: Option<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
 
     // Check that the sender is permitted to create proposals.
-    if !config.proposal_creation_policy.is_permitted(&sender) {
+    if !proposal_creation_policy.is_permitted(&sender) {
         return Err(ContractError::Unauthorized {});
     }
 
     // Determine the appropriate proposer. If this is coming from our
     // pre-propose module, it must be specified. Otherwise, the
     // proposer should not be specified.
-    let proposer = match (proposer, config.proposal_creation_policy) {
+    let proposer = match (proposer, proposal_creation_policy) {
         (None, ProposalCreationPolicy::Anyone {}) => sender.clone(),
-        // `is_permitted` above checks that the specified module is
+        // `is_permitted` above checks that an allowed module is
         // actually sending the propose message.
         (Some(proposer), ProposalCreationPolicy::Module { .. }) => {
             deps.api.addr_validate(&proposer)?
@@ -229,7 +230,13 @@ pub fn execute_propose(
 
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
-    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer)?;
+    let hooks = new_proposal_hooks(
+        PROPOSAL_HOOKS,
+        CREATION_POLICY.load(deps.storage)?,
+        deps.storage,
+        id,
+        proposer,
+    )?;
     Ok(Response::default()
         .add_submessages(hooks)
         .add_attribute("action", "propose")
@@ -293,11 +300,13 @@ pub fn execute_execute(
 
     let hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
+        CREATION_POLICY.load(deps.storage)?,
         deps.storage,
         proposal_id,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
+
     Ok(response
         .add_submessages(hooks)
         .add_attribute("action", "execute")
@@ -372,6 +381,7 @@ pub fn execute_vote(
     let new_status = prop.status;
     let change_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
+        CREATION_POLICY.load(deps.storage)?,
         deps.storage,
         proposal_id,
         old_status.to_string(),
@@ -419,6 +429,7 @@ pub fn execute_close(
 
     let changed_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
+        CREATION_POLICY.load(deps.storage)?,
         deps.storage,
         proposal_id,
         old_status.to_string(),
@@ -435,7 +446,6 @@ pub fn execute_close(
 #[allow(clippy::too_many_arguments)]
 pub fn execute_update_config(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     threshold: Threshold,
     max_voting_period: Duration,
@@ -444,7 +454,6 @@ pub fn execute_update_config(
     allow_revoting: bool,
     dao: String,
     close_proposal_on_execution_failure: bool,
-    pre_propose_info: PreProposeInfo,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -458,8 +467,6 @@ pub fn execute_update_config(
 
     let (min_voting_period, max_voting_period) =
         validate_voting_period(min_voting_period, max_voting_period)?;
-    let (initial_policy, pre_propose_messages) =
-        pre_propose_info.into_initial_policy_and_messages(env.contract.address, deps.as_ref())?;
 
     CONFIG.save(
         deps.storage,
@@ -471,15 +478,36 @@ pub fn execute_update_config(
             allow_revoting,
             dao,
             close_proposal_on_execution_failure,
-            proposal_creation_policy: initial_policy,
         },
     )?;
 
     Ok(Response::default()
-        .add_submessages(pre_propose_messages)
         .add_attribute("action", "update_config")
         .add_attribute("sender", info.sender))
 }
+
+pub fn execute_update_proposal_creation_policy(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    new_info: PreProposeInfo,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.dao != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let (initial_policy, messages) =
+        new_info.into_initial_policy_and_messages(env.contract.address)?;
+    CREATION_POLICY.save(deps.storage, &initial_policy)?;
+
+    Ok(Response::default()
+        .add_submessages(messages)
+        .add_attribute("action", "update_proposal_creation_policy")
+        .add_attribute("sender", info.sender)
+        .add_attribute("new_policy", format!("{:?}", initial_policy)))
+}
+
 pub fn add_hook(
     hooks: Hooks,
     storage: &mut dyn Storage,
@@ -606,6 +634,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         } => query_reverse_proposals(deps, env, start_before, limit),
+        QueryMsg::ProposalCreationPolicy {} => query_creation_policy(deps),
         QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
     }
@@ -619,6 +648,11 @@ pub fn query_config(deps: Deps) -> StdResult<Binary> {
 pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
     let proposal = PROPOSALS.load(deps.storage, id)?;
     to_binary(&proposal.into_response(&env.block, id))
+}
+
+pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
+    let policy = CREATION_POLICY.load(deps.storage)?;
+    to_binary(&policy)
 }
 
 pub fn query_list_proposals(
@@ -722,8 +756,6 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
             // Update the stored config to have the new
             // `close_proposal_on_execution_falure` field.
             let current_config = v1_state::CONFIG.load(deps.storage)?;
-            let (initial_policy, pre_propose_messages) = pre_propose_info
-                .into_initial_policy_and_messages(env.contract.address.clone(), deps.as_ref())?;
             CONFIG.save(
                 deps.storage,
                 &Config {
@@ -735,9 +767,12 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     dao: current_config.dao,
                     // Loads of text, but we're only updating this field.
                     close_proposal_on_execution_failure,
-                    proposal_creation_policy: initial_policy,
                 },
             )?;
+
+            let (initial_policy, pre_propose_messages) =
+                pre_propose_info.into_initial_policy_and_messages(env.contract.address.clone())?;
+            CREATION_POLICY.save(deps.storage, &initial_policy)?;
 
             // Update the module's proposals to v2.
 
@@ -815,20 +850,38 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 }
                 None => Err(ContractError::NoSuchProposal { id: proposal_id }),
             })?;
+
             Ok(Response::new().add_attribute("proposal_execution_failed", proposal_id.to_string()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
-            let config = CONFIG.load(deps.storage)?;
-            let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-
-            // If the address that failed to respond to the proposal
-            // hook is the pre-proposal module we "fail open" by
-            // resetting the proposal creation policy to anyone.
-            if config.proposal_creation_policy.addr_is_my_module(&addr) {
-                let mut config = config;
-                config.proposal_creation_policy = ProposalCreationPolicy::Anyone {};
-                CONFIG.save(deps.storage, &config)?;
-            }
+            // When firing off proposal hooks indexes `[0,
+            // hook_count)` are used to represent hooks that have been
+            // fired via the regular PROPOSAL_HOOKS method. Index
+            // `hook_count` is used to represent the pre-propose
+            // module.
+            let count = PROPOSAL_HOOKS.hook_count(deps.storage)?;
+            let addr = if idx == count as u64 {
+                match CREATION_POLICY.load(deps.storage)? {
+                    ProposalCreationPolicy::Anyone {} => {
+                        // Something is off if we're getting this
+                        // reply and we don't have a pre-propose
+                        // module installed. This should be
+                        // unreachable.
+                        return Err(ContractError::InvalidHookIndex { idx });
+                    }
+                    ProposalCreationPolicy::Module { addr } => {
+                        // If we are here, our pre-propose module has
+                        // errored while receiving a proposal
+                        // hook. Rest in peace pre-propose module.
+                        CREATION_POLICY.save(deps.storage, &ProposalCreationPolicy::Anyone {})?;
+                        addr
+                    }
+                }
+            } else {
+                // The index we're getting a response to is one of our
+                // regular proposal hooks.
+                PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?
+            };
 
             Ok(Response::new().add_attribute("removed_proposal_hook", format!("{addr}:{idx}")))
         }
@@ -839,23 +892,10 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
         TaggedReplyId::PreProposeModuleInstantiation => {
             let res = parse_reply_instantiate_data(msg)?;
             let module = deps.api.addr_validate(&res.contract_address)?;
-
-            CONFIG.update(deps.storage, |mut config| -> StdResult<_> {
-                config.proposal_creation_policy = ProposalCreationPolicy::Module {
-                    addr: module.clone(),
-                };
-                Ok(config)
-            })?;
-
-            // Add the module as a receiver of proposal hooks. Doing
-            // this gives us two things:
-            //
-            // 1. The module will be removed if it fails to handle a
-            //    hook (want to fail open).
-            // 2. The module will be informed when proposals change
-            //    their status. This, for example, lets the module return
-            //    deposits when proposals close.
-            add_hook(PROPOSAL_HOOKS, deps.storage, module)?;
+            CREATION_POLICY.save(
+                deps.storage,
+                &ProposalCreationPolicy::Module { addr: module },
+            )?;
 
             Ok(Response::new().add_attribute("update_pre_propose_module", res.contract_address))
         }
