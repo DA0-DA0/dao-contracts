@@ -10,7 +10,7 @@ use indexable_hooks::HooksResponse;
 use std::panic;
 use voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
-    pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+    pre_propose::PreProposeInfo,
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{MultipleChoiceVote, MultipleChoiceVotes},
@@ -135,7 +135,6 @@ fn test_propose() {
         voting_strategy: voting_strategy.clone(),
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
-        proposal_creation_policy: ProposalCreationPolicy::Anyone {},
     };
     assert_eq!(config, expected);
 
@@ -215,7 +214,6 @@ fn test_propose_wrong_num_choices() {
         allow_revoting: false,
         dao: core_addr,
         voting_strategy,
-        proposal_creation_policy: ProposalCreationPolicy::Anyone {},
     };
     assert_eq!(config, expected);
 
@@ -490,7 +488,6 @@ fn test_propose_with_messages() {
         only_members_execute: false,
         allow_revoting: false,
         dao: "dao".to_string(),
-        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
     };
 
     let wasm_msg = WasmMsg::Execute {
@@ -2126,7 +2123,6 @@ fn test_update_config() {
             only_members_execute: false,
             allow_revoting: false,
             dao: dao.to_string(),
-            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         },
         &[],
     )
@@ -2146,7 +2142,6 @@ fn test_update_config() {
             only_members_execute: false,
             allow_revoting: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
-            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         },
         &[],
     )
@@ -2164,7 +2159,6 @@ fn test_update_config() {
         only_members_execute: false,
         allow_revoting: false,
         dao: Addr::unchecked(CREATOR_ADDR),
-        proposal_creation_policy: ProposalCreationPolicy::Anyone {},
     };
     assert_eq!(govmod_config, expected);
 
@@ -2183,7 +2177,6 @@ fn test_update_config() {
             only_members_execute: false,
             allow_revoting: false,
             dao: Addr::unchecked(CREATOR_ADDR).to_string(),
-            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         },
         &[],
     )
@@ -3061,7 +3054,6 @@ fn test_allow_revoting_config_changes() {
                 quorum: PercentageThreshold::Majority {},
             },
             close_proposal_on_execution_failure: false,
-            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         },
         &[],
     )
@@ -3557,7 +3549,6 @@ fn test_close_failed_proposal() {
                                     allow_revoting: false,
                                     dao: original.dao.to_string(),
                                     close_proposal_on_execution_failure: false,
-                                    pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
                                 })
                                 .unwrap(),
                                 funds: vec![],

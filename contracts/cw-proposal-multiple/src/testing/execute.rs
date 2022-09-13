@@ -9,7 +9,7 @@ use crate::{
     msg::{ExecuteMsg, QueryMsg},
     query::ProposalResponse,
     state::{MultipleChoiceOption, MultipleChoiceOptions},
-    testing::queries::{query_pre_proposal_multiple_config, query_proposal_config},
+    testing::queries::{query_creation_policy, query_pre_proposal_multiple_config},
 };
 
 impl From<MultipleChoiceOptions> for cw_proposal_multiple::state::MultipleChoiceOptions {
@@ -53,10 +53,10 @@ pub fn make_proposal(
     proposer: &str,
     choices: MultipleChoiceOptions,
 ) -> u64 {
-    let config = query_proposal_config(app, proposal_multiple);
+    let proposal_creation_policy = query_creation_policy(app, proposal_multiple);
 
     // Collect the funding.
-    let funds = match config.proposal_creation_policy {
+    let funds = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => vec![],
         ProposalCreationPolicy::Module {
             addr: ref pre_propose,
@@ -91,7 +91,7 @@ pub fn make_proposal(
     };
 
     // Make the proposal.
-    let res = match config.proposal_creation_policy {
+    let res = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => app
             .execute_contract(
                 Addr::unchecked(proposer),

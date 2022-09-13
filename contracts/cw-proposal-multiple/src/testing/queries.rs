@@ -16,9 +16,9 @@ pub fn query_deposit_config_and_pre_propose_module(
     app: &App,
     proposal_multiple: &Addr,
 ) -> (cppbpm::Config, Addr) {
-    let config = query_proposal_config(app, proposal_multiple);
+    let proposal_creation_policy = query_creation_policy(app, proposal_multiple);
 
-    if let ProposalCreationPolicy::Module { addr: module_addr } = config.proposal_creation_policy {
+    if let ProposalCreationPolicy::Module { addr: module_addr } = proposal_creation_policy {
         let deposit_config = query_pre_proposal_multiple_config(app, &module_addr);
 
         (deposit_config, module_addr)
@@ -30,6 +30,12 @@ pub fn query_deposit_config_and_pre_propose_module(
 pub fn query_proposal_config(app: &App, proposal_multiple: &Addr) -> Config {
     app.wrap()
         .query_wasm_smart(proposal_multiple, &QueryMsg::Config {})
+        .unwrap()
+}
+
+pub fn query_creation_policy(app: &App, proposal_multiple: &Addr) -> ProposalCreationPolicy {
+    app.wrap()
+        .query_wasm_smart(proposal_multiple, &QueryMsg::ProposalCreationPolicy {})
         .unwrap()
 }
 
