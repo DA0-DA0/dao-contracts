@@ -54,7 +54,7 @@ pub fn create_dao(
                 },
                 active_threshold: None,
             })?,
-            admin: Some(Admin::Instantiator {}),
+            admin: Some(Admin::CoreModule {}),
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
@@ -85,12 +85,12 @@ pub fn create_dao(
                             extension: Empty::default(),
                         })
                         .unwrap(),
-                        admin: Some(Admin::Instantiator {}),
+                        admin: Some(Admin::CoreModule {}),
                         label: "DAO DAO Pre-Propose Module".to_string(),
                     },
                 },
             })?,
-            admin: Some(Admin::Instantiator {}),
+            admin: Some(Admin::CoreModule {}),
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,

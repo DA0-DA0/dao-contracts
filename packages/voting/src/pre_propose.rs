@@ -51,7 +51,7 @@ impl ProposalCreationPolicy {
 impl PreProposeInfo {
     pub fn into_initial_policy_and_messages(
         self,
-        contract_address: Addr,
+        dao_address: Addr,
     ) -> StdResult<(ProposalCreationPolicy, Vec<SubMsg<Empty>>)> {
         Ok(match self {
             Self::AnyoneMayPropose {} => (ProposalCreationPolicy::Anyone {}, vec![]),
@@ -60,7 +60,7 @@ impl PreProposeInfo {
                 // `ModuleMayPropose`.
                 ProposalCreationPolicy::Anyone {},
                 vec![SubMsg::reply_on_success(
-                    info.into_wasm_msg(contract_address),
+                    info.into_wasm_msg(dao_address),
                     mask_pre_propose_module_instantiation(),
                 )],
             ),

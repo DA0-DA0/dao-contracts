@@ -1,8 +1,8 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, Attribute, BankMsg, Binary, CosmosMsg, Decimal, Empty, Reply, StdError,
-    SubMsgResult, Uint128, WasmMsg,
+    to_binary, Addr, Attribute, BankMsg, Binary, ContractInfoResponse, CosmosMsg, Decimal, Empty,
+    Reply, StdError, SubMsgResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
@@ -1706,7 +1706,7 @@ fn test_migrate_from_v1() {
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: v1_proposal_single_code,
             label: "DAO DAO governance module.".to_string(),
-            admin: Some(Admin::Instantiator {}),
+            admin: Some(Admin::CoreModule {}),
             msg: to_binary(&instantiate).unwrap(),
         }],
         initial_items: None,
@@ -1810,7 +1810,7 @@ fn test_migrate_from_v1() {
                     extension: Empty::default(),
                 })
                 .unwrap(),
-                admin: Some(Admin::Instantiator {}),
+                admin: Some(Admin::CoreModule {}),
                 label: "DAO DAO pre-propose".to_string(),
             },
         },
@@ -2442,7 +2442,7 @@ fn test_update_pre_propose_module() {
                             extension: Empty::default(),
                         })
                         .unwrap(),
-                        admin: Some(Admin::Instantiator {}),
+                        admin: Some(Admin::CoreModule {}),
                         label: "new pre-propose module".to_string(),
                     },
                 },
@@ -2468,6 +2468,16 @@ fn test_update_pre_propose_module() {
         ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
         ProposalCreationPolicy::Module { addr } => addr,
     };
+
+    // Check that the admin has been set to the DAO properly.
+    let info: ContractInfoResponse = app
+        .wrap()
+        .query(&cosmwasm_std::QueryRequest::Wasm(WasmQuery::ContractInfo {
+            contract_addr: pre_propose.to_string(),
+        }))
+        .unwrap();
+    assert_eq!(info.admin, Some(core_addr.to_string()));
+
     let pre_propose_config = query_pre_proposal_single_config(&app, &pre_propose);
     assert_eq!(
         pre_propose_config,
@@ -2537,11 +2547,34 @@ fn test_update_pre_propose_module() {
     assert_eq!(balance, Uint128::new(10_000_000));
 }
 
-// TODO: remove v1_state file and use the v1 dependency.
+/// DAO should be admin of the pre-propose contract despite the fact
+/// that the proposal module instantiates it.
+#[test]
+fn test_pre_propose_admin_is_dao() {
+    let CommonTest {
+        app,
+        core_addr,
+        proposal_module,
+        gov_token: _,
+        proposal_id: _,
+    } = setup_test(vec![]);
 
-// TODO: update ModuleInstantiateInfo::Instantiator ->
-// ModuleInstantiateInfo::CoreModule and capture those semantics while
-// instantiating pre-propose module.
+    let proposal_creation_policy = query_creation_policy(&app, &proposal_module);
+
+    // Check that a new creation policy has been birthed.
+    let pre_propose = match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
+        ProposalCreationPolicy::Module { addr } => addr,
+    };
+
+    let info: ContractInfoResponse = app
+        .wrap()
+        .query(&cosmwasm_std::QueryRequest::Wasm(WasmQuery::ContractInfo {
+            contract_addr: pre_propose.into_string(),
+        }))
+        .unwrap();
+    assert_eq!(info.admin, Some(core_addr.into_string()));
+}
 
 // TODO: test pre-propose module that fails on new proposal hook.
 

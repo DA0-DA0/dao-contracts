@@ -235,7 +235,7 @@ fn test_instantiate_dao_owner() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -288,7 +288,7 @@ fn test_stake_invalid_denom() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -307,7 +307,7 @@ fn test_stake_valid_denom() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -328,7 +328,7 @@ fn test_unstake_none_staked() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -347,7 +347,7 @@ fn test_unstake_invalid_balance() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -370,7 +370,7 @@ fn test_unstake() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -405,7 +405,7 @@ fn test_unstake_no_unstaking_duration() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: None,
@@ -442,7 +442,7 @@ fn test_claim_no_claims() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -461,7 +461,7 @@ fn test_claim_claim_not_reached() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -488,7 +488,7 @@ fn test_claim() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -539,7 +539,7 @@ fn test_update_config_invalid_sender() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -567,7 +567,7 @@ fn test_update_config_non_owner_changes_owner() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -586,7 +586,7 @@ fn test_update_config_as_owner() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -624,7 +624,7 @@ fn test_update_config_as_manager() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -663,7 +663,7 @@ fn test_update_config_invalid_duration() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -690,7 +690,7 @@ fn test_query_dao() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -710,7 +710,7 @@ fn test_query_info() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -733,7 +733,7 @@ fn test_query_claims() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -769,7 +769,7 @@ fn test_query_get_config() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -796,7 +796,7 @@ fn test_voting_power_queries() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),
@@ -902,7 +902,7 @@ fn test_query_list_stakers() {
         &mut app,
         staking_id,
         InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some(ADDR1.to_string()),
             denom: DENOM.to_string(),
             unstaking_duration: Some(Duration::Height(5)),

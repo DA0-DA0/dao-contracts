@@ -9,7 +9,6 @@
     "dao",
     "max_voting_period",
     "only_members_execute",
-    "proposal_creation_policy",
     "threshold"
   ],
   "properties": {
@@ -51,14 +50,6 @@
     "only_members_execute": {
       "description": "If set to true only members may execute passed proposals. Otherwise, any address may execute a passed proposal.",
       "type": "boolean"
-    },
-    "proposal_creation_policy": {
-      "description": "The access policy for creating proposals.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProposalCreationPolicy"
-        }
-      ]
     },
     "threshold": {
       "description": "The threshold a proposal must reach to complete.",
@@ -137,44 +128,6 @@
           "properties": {
             "percent": {
               "$ref": "#/definitions/Decimal"
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
-    "ProposalCreationPolicy": {
-      "oneOf": [
-        {
-          "description": "Anyone may create a proposal, free of charge.",
-          "type": "object",
-          "required": [
-            "Anyone"
-          ],
-          "properties": {
-            "Anyone": {
-              "type": "object"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Only ADDR may create proposals. It is expected that ADDR is a pre-propose module, though we only require that it is a valid address.",
-          "type": "object",
-          "required": [
-            "Module"
-          ],
-          "properties": {
-            "Module": {
-              "type": "object",
-              "required": [
-                "addr"
-              ],
-              "properties": {
-                "addr": {
-                  "$ref": "#/definitions/Addr"
-                }
-              }
             }
           },
           "additionalProperties": false
