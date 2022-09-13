@@ -1,8 +1,8 @@
-mod do_votes;
-mod execute;
-mod instantiate;
-mod queries;
+pub mod do_votes;
+pub mod execute;
+pub mod instantiate;
+pub mod queries;
 
-mod tests;
+pub mod tests;
 
 pub(crate) const CREATOR_ADDR: &str = "creator";

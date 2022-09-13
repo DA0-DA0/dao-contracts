@@ -20,7 +20,7 @@ use super::{queries::query_pre_proposal_single_config, CREATOR_ADDR};
 //
 // This expects that the proposer already has the needed tokens to pay
 // the deposit.
-pub(crate) fn make_proposal(
+pub fn make_proposal(
     app: &mut App,
     proposal_single: &Addr,
     proposer: &str,
@@ -121,7 +121,7 @@ pub(crate) fn make_proposal(
     id
 }
 
-pub(crate) fn vote_on_proposal(
+pub fn vote_on_proposal(
     app: &mut App,
     proposal_single: &Addr,
     sender: &str,
@@ -137,7 +137,7 @@ pub(crate) fn vote_on_proposal(
     .unwrap();
 }
 
-pub(crate) fn vote_on_proposal_should_fail(
+pub fn vote_on_proposal_should_fail(
     app: &mut App,
     proposal_single: &Addr,
     sender: &str,
@@ -155,7 +155,7 @@ pub(crate) fn vote_on_proposal_should_fail(
     .unwrap()
 }
 
-pub(crate) fn execute_proposal_should_fail(
+pub fn execute_proposal_should_fail(
     app: &mut App,
     proposal_single: &Addr,
     sender: &str,
@@ -172,12 +172,7 @@ pub(crate) fn execute_proposal_should_fail(
     .unwrap()
 }
 
-pub(crate) fn execute_proposal(
-    app: &mut App,
-    proposal_single: &Addr,
-    sender: &str,
-    proposal_id: u64,
-) {
+pub fn execute_proposal(app: &mut App, proposal_single: &Addr, sender: &str, proposal_id: u64) {
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_single.clone(),
@@ -187,7 +182,7 @@ pub(crate) fn execute_proposal(
     .unwrap();
 }
 
-pub(crate) fn close_proposal_should_fail(
+pub fn close_proposal_should_fail(
     app: &mut App,
     proposal_single: &Addr,
     sender: &str,
@@ -204,12 +199,7 @@ pub(crate) fn close_proposal_should_fail(
     .unwrap()
 }
 
-pub(crate) fn close_proposal(
-    app: &mut App,
-    proposal_single: &Addr,
-    sender: &str,
-    proposal_id: u64,
-) {
+pub fn close_proposal(app: &mut App, proposal_single: &Addr, sender: &str, proposal_id: u64) {
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_single.clone(),
@@ -219,7 +209,7 @@ pub(crate) fn close_proposal(
     .unwrap();
 }
 
-pub(crate) fn mint_natives(app: &mut App, receiver: &str, amount: Vec<Coin>) {
+pub fn mint_natives(app: &mut App, receiver: &str, amount: Vec<Coin>) {
     app.sudo(cw_multi_test::SudoMsg::Bank(BankSudo::Mint {
         to_address: receiver.to_string(),
         amount,
@@ -227,7 +217,7 @@ pub(crate) fn mint_natives(app: &mut App, receiver: &str, amount: Vec<Coin>) {
     .unwrap();
 }
 
-pub(crate) fn mint_cw20s(
+pub fn mint_cw20s(
     app: &mut App,
     cw20_contract: &Addr,
     sender: &Addr,
@@ -246,7 +236,7 @@ pub(crate) fn mint_cw20s(
     .unwrap();
 }
 
-pub(crate) fn instantiate_cw20_base_default(app: &mut App) -> Addr {
+pub fn instantiate_cw20_base_default(app: &mut App) -> Addr {
     let cw20_id = app.store_code(cw20_contract());
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "cw20 token".to_string(),
@@ -270,12 +260,7 @@ pub(crate) fn instantiate_cw20_base_default(app: &mut App) -> Addr {
     .unwrap()
 }
 
-pub(crate) fn add_proposal_hook(
-    app: &mut App,
-    proposal_module: &Addr,
-    sender: &str,
-    hook_addr: &str,
-) {
+pub fn add_proposal_hook(app: &mut App, proposal_module: &Addr, sender: &str, hook_addr: &str) {
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_module.clone(),
@@ -287,7 +272,7 @@ pub(crate) fn add_proposal_hook(
     .unwrap();
 }
 
-pub(crate) fn add_proposal_hook_should_fail(
+pub fn add_proposal_hook_should_fail(
     app: &mut App,
     proposal_module: &Addr,
     sender: &str,
@@ -306,12 +291,7 @@ pub(crate) fn add_proposal_hook_should_fail(
     .unwrap()
 }
 
-pub(crate) fn remove_proposal_hook(
-    app: &mut App,
-    proposal_module: &Addr,
-    sender: &str,
-    hook_addr: &str,
-) {
+pub fn remove_proposal_hook(app: &mut App, proposal_module: &Addr, sender: &str, hook_addr: &str) {
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_module.clone(),
@@ -323,7 +303,7 @@ pub(crate) fn remove_proposal_hook(
     .unwrap();
 }
 
-pub(crate) fn remove_proposal_hook_should_fail(
+pub fn remove_proposal_hook_should_fail(
     app: &mut App,
     proposal_module: &Addr,
     sender: &str,
@@ -342,7 +322,7 @@ pub(crate) fn remove_proposal_hook_should_fail(
     .unwrap()
 }
 
-pub(crate) fn add_vote_hook(app: &mut App, proposal_module: &Addr, sender: &str, hook_addr: &str) {
+pub fn add_vote_hook(app: &mut App, proposal_module: &Addr, sender: &str, hook_addr: &str) {
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_module.clone(),
@@ -354,7 +334,7 @@ pub(crate) fn add_vote_hook(app: &mut App, proposal_module: &Addr, sender: &str,
     .unwrap();
 }
 
-pub(crate) fn add_vote_hook_should_fail(
+pub fn add_vote_hook_should_fail(
     app: &mut App,
     proposal_module: &Addr,
     sender: &str,
@@ -373,12 +353,7 @@ pub(crate) fn add_vote_hook_should_fail(
     .unwrap()
 }
 
-pub(crate) fn remove_vote_hook(
-    app: &mut App,
-    proposal_module: &Addr,
-    sender: &str,
-    hook_addr: &str,
-) {
+pub fn remove_vote_hook(app: &mut App, proposal_module: &Addr, sender: &str, hook_addr: &str) {
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_module.clone(),
@@ -390,7 +365,7 @@ pub(crate) fn remove_vote_hook(
     .unwrap();
 }
 
-pub(crate) fn remove_vote_hook_should_fail(
+pub fn remove_vote_hook_should_fail(
     app: &mut App,
     proposal_module: &Addr,
     sender: &str,

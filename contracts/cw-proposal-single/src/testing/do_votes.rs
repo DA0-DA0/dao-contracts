@@ -19,7 +19,7 @@ use crate::{
     testing::{instantiate::*, queries::query_deposit_config_and_pre_propose_module},
 };
 
-pub(crate) fn do_votes_staked_balances(
+pub fn do_votes_staked_balances(
     votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
@@ -35,7 +35,7 @@ pub(crate) fn do_votes_staked_balances(
     );
 }
 
-pub(crate) fn do_votes_nft_balances(
+pub fn do_votes_nft_balances(
     votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
@@ -51,7 +51,7 @@ pub(crate) fn do_votes_nft_balances(
     );
 }
 
-pub(crate) fn do_votes_native_staked_balances(
+pub fn do_votes_native_staked_balances(
     votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,
@@ -67,7 +67,7 @@ pub(crate) fn do_votes_native_staked_balances(
     );
 }
 
-pub(crate) fn do_votes_cw4_weights(
+pub fn do_votes_cw4_weights(
     votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
     expected_status: Status,

@@ -12,7 +12,7 @@ use crate::{
     state::Config,
 };
 
-pub(crate) fn query_deposit_config_and_pre_propose_module(
+pub fn query_deposit_config_and_pre_propose_module(
     app: &App,
     proposal_single: &Addr,
 ) -> (cppbps::Config, Addr) {
@@ -27,19 +27,19 @@ pub(crate) fn query_deposit_config_and_pre_propose_module(
     }
 }
 
-pub(crate) fn query_proposal_config(app: &App, proposal_single: &Addr) -> Config {
+pub fn query_proposal_config(app: &App, proposal_single: &Addr) -> Config {
     app.wrap()
         .query_wasm_smart(proposal_single, &QueryMsg::Config {})
         .unwrap()
 }
 
-pub(crate) fn query_creation_policy(app: &App, proposal_single: &Addr) -> ProposalCreationPolicy {
+pub fn query_creation_policy(app: &App, proposal_single: &Addr) -> ProposalCreationPolicy {
     app.wrap()
         .query_wasm_smart(proposal_single, &QueryMsg::ProposalCreationPolicy {})
         .unwrap()
 }
 
-pub(crate) fn query_list_proposals(
+pub fn query_list_proposals(
     app: &App,
     proposal_single: &Addr,
     start_after: Option<u64>,
@@ -53,7 +53,7 @@ pub(crate) fn query_list_proposals(
         .unwrap()
 }
 
-pub(crate) fn query_list_votes(
+pub fn query_list_votes(
     app: &App,
     proposal_single: &Addr,
     proposal_id: u64,
@@ -72,19 +72,19 @@ pub(crate) fn query_list_votes(
         .unwrap()
 }
 
-pub(crate) fn query_proposal_hooks(app: &App, proposal_single: &Addr) -> HooksResponse {
+pub fn query_proposal_hooks(app: &App, proposal_single: &Addr) -> HooksResponse {
     app.wrap()
         .query_wasm_smart(proposal_single, &QueryMsg::ProposalHooks {})
         .unwrap()
 }
 
-pub(crate) fn query_vote_hooks(app: &App, proposal_single: &Addr) -> HooksResponse {
+pub fn query_vote_hooks(app: &App, proposal_single: &Addr) -> HooksResponse {
     app.wrap()
         .query_wasm_smart(proposal_single, &QueryMsg::VoteHooks {})
         .unwrap()
 }
 
-pub(crate) fn query_list_proposals_reverse(
+pub fn query_list_proposals_reverse(
     app: &App,
     proposal_single: &Addr,
     start_before: Option<u64>,
@@ -101,13 +101,13 @@ pub(crate) fn query_list_proposals_reverse(
         .unwrap()
 }
 
-pub(crate) fn query_pre_proposal_single_config(app: &App, pre_propose: &Addr) -> cppbps::Config {
+pub fn query_pre_proposal_single_config(app: &App, pre_propose: &Addr) -> cppbps::Config {
     app.wrap()
         .query_wasm_smart(pre_propose, &cppbps::QueryMsg::Config {})
         .unwrap()
 }
 
-pub(crate) fn query_pre_proposal_single_deposit_info(
+pub fn query_pre_proposal_single_deposit_info(
     app: &App,
     pre_propose: &Addr,
     proposal_id: u64,
@@ -117,7 +117,7 @@ pub(crate) fn query_pre_proposal_single_deposit_info(
         .unwrap()
 }
 
-pub(crate) fn query_single_proposal_module(app: &App, core_addr: &Addr) -> Addr {
+pub fn query_single_proposal_module(app: &App, core_addr: &Addr) -> Addr {
     let modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
@@ -145,7 +145,7 @@ pub(crate) fn query_single_proposal_module(app: &App, core_addr: &Addr) -> Addr 
     modules.into_iter().next().unwrap().address
 }
 
-pub(crate) fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
+pub fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
     let voting_module = query_voting_module(app, core_addr);
     app.wrap()
         .query_wasm_smart(
@@ -155,13 +155,13 @@ pub(crate) fn query_dao_token(app: &App, core_addr: &Addr) -> Addr {
         .unwrap()
 }
 
-pub(crate) fn query_voting_module(app: &App, core_addr: &Addr) -> Addr {
+pub fn query_voting_module(app: &App, core_addr: &Addr) -> Addr {
     app.wrap()
         .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::VotingModule {})
         .unwrap()
 }
 
-pub(crate) fn query_balance_cw20<T: Into<String>, U: Into<String>>(
+pub fn query_balance_cw20<T: Into<String>, U: Into<String>>(
     app: &App,
     contract_addr: T,
     address: U,
@@ -173,12 +173,12 @@ pub(crate) fn query_balance_cw20<T: Into<String>, U: Into<String>>(
     result.balance
 }
 
-pub(crate) fn query_balance_native(app: &App, who: &str, denom: &str) -> Uint128 {
+pub fn query_balance_native(app: &App, who: &str, denom: &str) -> Uint128 {
     let res = app.wrap().query_balance(who, denom).unwrap();
     res.amount
 }
 
-pub(crate) fn query_proposal(app: &App, proposal_single: &Addr, id: u64) -> ProposalResponse {
+pub fn query_proposal(app: &App, proposal_single: &Addr, id: u64) -> ProposalResponse {
     app.wrap()
         .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: id })
         .unwrap()
