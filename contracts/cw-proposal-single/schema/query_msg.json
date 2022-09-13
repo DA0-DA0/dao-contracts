@@ -185,6 +185,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Gets the current proposal creation policy for this module. Returns `voting::pre_propose::ProposalCreationPolicy`.",
+      "type": "object",
+      "required": [
+        "proposal_creation_policy"
+      ],
+      "properties": {
+        "proposal_creation_policy": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Lists all of the consumers of proposal hooks for this module.",
       "type": "object",
       "required": [

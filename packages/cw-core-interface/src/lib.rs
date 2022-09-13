@@ -20,13 +20,8 @@ pub enum ExecuteMsg {
 pub enum Admin {
     /// Set the admin to a specified address.
     Address { addr: String },
-    /// Set the admin to the address that instantiates the
-    /// contract. This is useful for DAOs that instantiate this
-    /// contract as part of their creation process and would like to
-    /// set themselces as the admin (as in this case the address of
-    /// the instantiating contract is not known at message execution
-    /// time).
-    Instantiator {},
+    /// Sets the admin as the core module address.
+    CoreModule {},
 }
 
 /// Information needed to instantiate a module.
@@ -44,11 +39,11 @@ pub struct ModuleInstantiateInfo {
 }
 
 impl ModuleInstantiateInfo {
-    pub fn into_wasm_msg(self, contract_address: Addr) -> WasmMsg {
+    pub fn into_wasm_msg(self, dao_address: Addr) -> WasmMsg {
         WasmMsg::Instantiate {
             admin: self.admin.map(|admin| match admin {
                 Admin::Address { addr } => addr,
-                Admin::Instantiator {} => contract_address.into_string(),
+                Admin::CoreModule {} => dao_address.into_string(),
             }),
             code_id: self.code_id,
             msg: self.msg,
@@ -111,7 +106,7 @@ mod tests {
         let no_admin = ModuleInstantiateInfo {
             code_id: 42,
             msg: to_binary("foo").unwrap(),
-            admin: Some(Admin::Instantiator {}),
+            admin: Some(Admin::CoreModule {}),
             label: "bar".to_string(),
         };
         assert_eq!(

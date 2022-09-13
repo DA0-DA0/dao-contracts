@@ -6,7 +6,6 @@ use cosmwasm_std::{
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::proposal::Proposal;
 use voting::status::Status;
 use voting::threshold::{PercentageThreshold, Threshold};
 use voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
@@ -46,15 +45,6 @@ pub struct SingleChoiceProposal {
     /// a proposal expires and passes upon expiration, this field will not be updated because it can only update
     /// upon actions on the contract.
     pub last_updated: Timestamp,
-}
-
-impl Proposal for SingleChoiceProposal {
-    fn proposer(&self) -> Addr {
-        self.proposer.clone()
-    }
-    fn status(&self) -> Status {
-        self.status
-    }
 }
 
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {

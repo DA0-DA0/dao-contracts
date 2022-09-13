@@ -115,13 +115,13 @@ fn instantiate_with_default_governance(
                 },
             })
             .unwrap(),
-            admin: Some(Admin::Instantiator {}),
+            admin: Some(Admin::CoreModule {}),
             label: "DAO DAO voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id,
             msg: to_binary(&msg).unwrap(),
-            admin: Some(Admin::Instantiator {}),
+            admin: Some(Admin::CoreModule {}),
             label: "DAO DAO governance module".to_string(),
         }],
         initial_items: None,
