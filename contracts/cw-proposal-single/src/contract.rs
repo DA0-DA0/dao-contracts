@@ -6,6 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
+use cw_proposal_single_v1 as v1;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 use indexable_hooks::Hooks;
@@ -22,7 +23,8 @@ use voting::voting::{get_total_power, get_voting_power, validate_voting_period, 
 use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;
 use crate::state::{Config, CREATION_POLICY};
-use crate::v1_state;
+
+use crate::v1_state::{v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2};
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -755,11 +757,11 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
         } => {
             // Update the stored config to have the new
             // `close_proposal_on_execution_falure` field.
-            let current_config = v1_state::CONFIG.load(deps.storage)?;
+            let current_config = v1::state::CONFIG.load(deps.storage)?;
             CONFIG.save(
                 deps.storage,
                 &Config {
-                    threshold: current_config.threshold,
+                    threshold: v1_threshold_to_v2(current_config.threshold),
                     max_voting_period: current_config.max_voting_period,
                     min_voting_period: current_config.min_voting_period,
                     only_members_execute: current_config.only_members_execute,
@@ -776,9 +778,9 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
 
             // Update the module's proposals to v2.
 
-            let current_proposals = v1_state::PROPOSALS
+            let current_proposals = v1::state::PROPOSALS
                 .range(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<(u64, v1_state::Proposal)>>>()?;
+                .collect::<StdResult<Vec<(u64, v1::proposal::Proposal)>>>()?;
 
             // Based on gas usage testing, we estimate that we will be
             // able to migrate ~4200 proposals at a time before
@@ -790,8 +792,8 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                         .deposit_info
                         .map(|info| !info.deposit.is_zero())
                         .unwrap_or(false)
-                        && prop.status != v1_state::Status::Closed
-                        && prop.status != v1_state::Status::Executed
+                        && prop.status != voting_v1::Status::Closed
+                        && prop.status != voting_v1::Status::Executed
                     {
                         // No migration path for outstanding
                         // deposits.
@@ -805,11 +807,11 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                         start_height: prop.start_height,
                         min_voting_period: prop.min_voting_period,
                         expiration: prop.expiration,
-                        threshold: prop.threshold,
+                        threshold: v1_threshold_to_v2(prop.threshold),
                         total_power: prop.total_power,
                         msgs: prop.msgs,
-                        status: prop.status.into(),
-                        votes: prop.votes,
+                        status: v1_status_to_v2(prop.status),
+                        votes: v1_votes_to_v2(prop.votes),
                         allow_revoting: prop.allow_revoting,
                         // CosmWasm does not expose a way to query the timestamp
                         // of a block given block height. As such, we assign migrated
