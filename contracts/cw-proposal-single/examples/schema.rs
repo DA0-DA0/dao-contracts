@@ -10,6 +10,7 @@ use cw_proposal_single::{
     state::Config,
 };
 use indexable_hooks::HooksResponse;
+use voting::pre_propose::ProposalCreationPolicy;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -57,4 +58,9 @@ fn main() {
     );
     export_schema_with_title(&schema_for!(HooksResponse), &out_dir, "VoteHooksResponse");
     export_schema_with_title(&schema_for!(VoteResponse), &out_dir, "GetVoteResponse");
+    export_schema_with_title(
+        &schema_for!(ProposalCreationPolicy),
+        &out_dir,
+        "ProposalCreationPolicyResponse",
+    );
 }

@@ -2576,7 +2576,7 @@ fn test_pre_propose_admin_is_dao() {
     assert_eq!(info.admin, Some(core_addr.into_string()));
 }
 
-// TODO: test pre-propose module that fails on new proposal hook.
+// TODO: test pre-propose module that fails on new proposal hook (ugh).
 
 // - What happens if you have proposals that can not be executed but
 //   took deposits and want to migrate?
