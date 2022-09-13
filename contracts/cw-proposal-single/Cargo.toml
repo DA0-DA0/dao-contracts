@@ -32,6 +32,9 @@ indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
 proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }
 vote-hooks = { version = "*", path = "../../packages/vote-hooks" }
 
+voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = "0.13"
@@ -48,5 +51,3 @@ cw20-stake = { path= "../cw20-stake", version = "*" }
 cw20-base = "0.13"
 cw4 = "0.13"
 cw4-group = "0.13"
-cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
-voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
