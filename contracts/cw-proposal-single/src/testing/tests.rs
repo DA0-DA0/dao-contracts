@@ -59,10 +59,11 @@ use crate::{
             query_proposal_hooks, query_single_proposal_module, query_vote_hooks,
             query_voting_module,
         },
-        tests::CREATOR_ADDR,
     },
     ContractError,
 };
+
+use super::CREATOR_ADDR;
 
 pub fn proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(

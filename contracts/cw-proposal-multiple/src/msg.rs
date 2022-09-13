@@ -113,8 +113,11 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
-        /// Information about what addresses may create proposals.
-        pre_propose_info: PreProposeInfo,
+    },
+    /// Update's the proposal creation policy used for this
+    /// module. Only the DAO may call this method.
+    UpdatePreProposeInfo {
+        info: PreProposeInfo,
     },
     AddProposalHook {
         address: String,
@@ -138,28 +141,41 @@ pub enum QueryMsg {
     Config {},
     /// Gets information about a proposal. Returns
     /// `proposals::Proposal`.
-    Proposal {
-        proposal_id: u64,
-    },
+    Proposal { proposal_id: u64 },
+    /// Lists all the proposals that have been cast in this
+    /// module. Returns `query::ProposalListResponse`.
     ListProposals {
         start_after: Option<u64>,
         limit: Option<u64>,
     },
+    /// Lists all of the proposals that have been cast in this module
+    /// in decending order of proposal ID. Returns
+    /// `query::ProposalListResponse`.
     ReverseProposals {
         start_before: Option<u64>,
         limit: Option<u64>,
     },
+    /// Returns the number of proposals that have been created in this
+    /// module./// Returns a voters position on a propsal. Returns
+    /// `query::VoteResponse`.
     ProposalCount {},
-    GetVote {
-        proposal_id: u64,
-        voter: String,
-    },
+    /// Returns a voters position on a propsal. Returns
+    /// `query::VoteResponse`.
+    GetVote { proposal_id: u64, voter: String },
+    /// Lists all of the votes that have been cast on a
+    /// proposal. Returns `VoteListResponse`.
     ListVotes {
         proposal_id: u64,
         start_after: Option<String>,
         limit: Option<u64>,
     },
+    /// Gets the current proposal creation policy for this
+    /// module. Returns `voting::pre_propose::ProposalCreationPolicy`.
+    ProposalCreationPolicy {},
+    /// Lists all of the consumers of proposal hooks for this module.
     ProposalHooks {},
+    /// Lists all of the consumers of vote hooks for this
+    /// module. Returns indexable_hooks::HooksResponse.
     VoteHooks {},
 }
 

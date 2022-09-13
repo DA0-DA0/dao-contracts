@@ -77,7 +77,7 @@ fn get_default_proposal_module_instantiate(
                     extension: Empty::default(),
                 })
                 .unwrap(),
-                admin: Some(Admin::Instantiator {}),
+                admin: Some(Admin::CoreModule {}),
                 label: "baby's first pre-propose module".to_string(),
             },
         },
@@ -152,12 +152,15 @@ fn setup_default_test(
 
     assert_eq!(proposal_modules.len(), 1);
     let proposal_single = proposal_modules.into_iter().next().unwrap().address;
-    let config: cpm::state::Config = app
+    let proposal_creation_policy = app
         .wrap()
-        .query_wasm_smart(proposal_single.clone(), &cpm::msg::QueryMsg::Config {})
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &cpm::msg::QueryMsg::ProposalCreationPolicy {},
+        )
         .unwrap();
 
-    let pre_propose = match config.proposal_creation_policy {
+    let pre_propose = match proposal_creation_policy {
         ProposalCreationPolicy::Module { addr } => addr,
         _ => panic!("expected a module for the proposal creation policy"),
     };
@@ -1071,7 +1074,7 @@ fn test_instantiate_with_zero_native_deposit() {
                         extension: Empty::default(),
                     })
                     .unwrap(),
-                    admin: Some(Admin::Instantiator {}),
+                    admin: Some(Admin::CoreModule {}),
                     label: "baby's first pre-propose module".to_string(),
                 },
             },
@@ -1132,7 +1135,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
                         extension: Empty::default(),
                     })
                     .unwrap(),
-                    admin: Some(Admin::Instantiator {}),
+                    admin: Some(Admin::CoreModule {}),
                     label: "baby's first pre-propose module".to_string(),
                 },
             },
@@ -1395,14 +1398,15 @@ fn test_withdraw() {
 
     // Make sure the proposal module has fallen back to anyone can
     // propose becuase of our malfunction.
-    let config: cpm::state::Config = app
+    let proposal_creation_policy: ProposalCreationPolicy = app
         .wrap()
-        .query_wasm_smart(proposal_single.clone(), &cpm::msg::QueryMsg::Config {})
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &cpm::msg::QueryMsg::ProposalCreationPolicy {},
+        )
         .unwrap();
-    assert_eq!(
-        config.proposal_creation_policy,
-        ProposalCreationPolicy::Anyone {}
-    );
+
+    assert_eq!(proposal_creation_policy, ProposalCreationPolicy::Anyone {});
 
     // Close out the native proposal and it's deposit as well.
     vote(

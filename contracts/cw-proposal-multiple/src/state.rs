@@ -44,8 +44,6 @@ pub struct Config {
     /// remain open until the DAO's treasury was large enough for it to be
     /// executed.
     pub close_proposal_on_execution_failure: bool,
-    /// The access policy for creating proposals.
-    pub proposal_creation_policy: ProposalCreationPolicy,
 }
 
 /// Information about a vote that was cast.
@@ -67,23 +65,23 @@ pub enum MultipleChoiceOptionType {
     Standard,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MultipleChoiceOptions {
     pub options: Vec<MultipleChoiceOption>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CheckedMultipleChoiceOptions {
     pub options: Vec<CheckedMultipleChoiceOption>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MultipleChoiceOption {
     pub description: String,
     pub msgs: Option<Vec<CosmosMsg<Empty>>>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CheckedMultipleChoiceOption {
     // This is the index of the option in both the vote_weights and proposal.choices vectors.
     // Workaround due to not being able to use HashMaps in Cosmwasm.
@@ -146,12 +144,18 @@ pub struct Ballot {
     pub vote: MultipleChoiceVote,
 }
 
+/// The current top level config for the module.
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const PROPOSALS: Map<u64, MultipleChoiceProposal> = Map::new("proposals");
 pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
+/// Consumers of proposal state change hooks.
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
+/// Consumers of vote hooks.
 pub const VOTE_HOOKS: Hooks = Hooks::new("vote_hooks");
+/// The address of the pre-propose module associated with this
+/// proposal module (if any).
+pub const CREATION_POLICY: Item<ProposalCreationPolicy> = Item::new("creation_policy");
 
 mod tests {
 

@@ -13,10 +13,7 @@ use crate::{
     ContractError,
 };
 
-use super::{
-    queries::{query_pre_proposal_single_config, query_proposal_config},
-    CREATOR_ADDR,
-};
+use super::{queries::query_pre_proposal_single_config, CREATOR_ADDR};
 
 // Creates a proposal then checks that the proposal was created with
 // the specified messages and returns the ID of the proposal.

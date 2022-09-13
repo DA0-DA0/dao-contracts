@@ -96,7 +96,7 @@ pub fn get_pre_propose_info(
                 extension: Empty::default(),
             })
             .unwrap(),
-            admin: Some(Admin::Instantiator {}),
+            admin: Some(Admin::CoreModule {}),
             label: "pre_propose_contract".to_string(),
         },
     }
