@@ -304,10 +304,11 @@ where
 
         // Save the deposit.
         //
-        // FIXME(zeke): This makes me nervous. Does there exist a
-        // sequence of events where the deposit info changes between
-        // the new proposal hook being received and us dispatching the
-        // message to create a proposal?
+        // It is possibe that a malicious proposal hook could run
+        // before us and update our config! We don't have to worry
+        // about this though as the only way to be able to update our
+        // config is to have root on the code module and if someone
+        // has that we're totally screwed anyhow.
         let config = self.config.load(deps.storage)?;
         self.deposits
             .save(deps.storage, id, &(config.deposit_info, proposer))?;
