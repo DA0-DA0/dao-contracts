@@ -8,14 +8,11 @@ use voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy, v
 use crate::{
     msg::{ExecuteMsg, QueryMsg},
     query::ProposalResponse,
+    testing::queries::query_creation_policy,
     ContractError,
 };
 
-use super::{
-    contracts::cw20_contract,
-    queries::{query_pre_proposal_single_config, query_proposal_config},
-    CREATOR_ADDR,
-};
+use super::{contracts::cw20_contract, queries::query_pre_proposal_single_config, CREATOR_ADDR};
 
 // Creates a proposal then checks that the proposal was created with
 // the specified messages and returns the ID of the proposal.
@@ -28,10 +25,10 @@ pub(crate) fn make_proposal(
     proposer: &str,
     msgs: Vec<CosmosMsg>,
 ) -> u64 {
-    let config = query_proposal_config(app, proposal_single);
+    let proposal_creation_policy = query_creation_policy(app, proposal_single);
 
     // Collect the funding.
-    let funds = match config.proposal_creation_policy {
+    let funds = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => vec![],
         ProposalCreationPolicy::Module {
             addr: ref pre_propose,
@@ -66,7 +63,7 @@ pub(crate) fn make_proposal(
     };
 
     // Make the proposal.
-    let res = match config.proposal_creation_policy {
+    let res = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => app
             .execute_contract(
                 Addr::unchecked(proposer),

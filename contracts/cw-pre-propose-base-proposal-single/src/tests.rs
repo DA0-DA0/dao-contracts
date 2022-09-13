@@ -145,12 +145,15 @@ fn setup_default_test(
 
     assert_eq!(proposal_modules.len(), 1);
     let proposal_single = proposal_modules.into_iter().next().unwrap().address;
-    let config: cps::state::Config = app
+    let proposal_creation_policy = app
         .wrap()
-        .query_wasm_smart(proposal_single.clone(), &cps::msg::QueryMsg::Config {})
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+        )
         .unwrap();
 
-    let pre_propose = match config.proposal_creation_policy {
+    let pre_propose = match proposal_creation_policy {
         ProposalCreationPolicy::Module { addr } => addr,
         _ => panic!("expected a module for the proposal creation policy"),
     };
@@ -1270,9 +1273,10 @@ fn test_withdraw() {
 
     // There is now a pending proposal and cw20 tokens in the
     // pre-propose module that should be returned on that proposal's
-    // completion. Execute an early withdraw and make sure things play
-    // out correctly.
-
+    // completion. To make things interesting, we withdraw those
+    // tokens which should cause the status change hook on the
+    // proposal's execution to fail as we don't have sufficent balance
+    // to return the deposit.
     withdraw(&mut app, pre_propose.clone(), core_addr.as_str(), None);
     let balance = get_balance_cw20(&app, &cw20_address, core_addr.as_str());
     assert_eq!(balance, Uint128::new(10));
@@ -1290,14 +1294,15 @@ fn test_withdraw() {
 
     // Make sure the proposal module has fallen back to anyone can
     // propose becuase of our malfunction.
-    let config: cps::state::Config = app
+    let proposal_creation_policy: ProposalCreationPolicy = app
         .wrap()
-        .query_wasm_smart(proposal_single.clone(), &cps::msg::QueryMsg::Config {})
+        .query_wasm_smart(
+            proposal_single.clone(),
+            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+        )
         .unwrap();
-    assert_eq!(
-        config.proposal_creation_policy,
-        ProposalCreationPolicy::Anyone {}
-    );
+
+    assert_eq!(proposal_creation_policy, ProposalCreationPolicy::Anyone {});
 
     // Close out the native proposal and it's deposit as well.
     vote(

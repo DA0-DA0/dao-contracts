@@ -32,42 +32,36 @@ use crate::{
     testing::{
         contracts::{
             cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
-            cw_core_contract, pre_propose_single_contract,
+            cw_core_contract, pre_propose_single_contract, proposal_single_contract,
+            v1_proposal_single_contract,
         },
         execute::{
             add_proposal_hook, add_proposal_hook_should_fail, add_vote_hook,
-            add_vote_hook_should_fail, close_proposal_should_fail, execute_proposal,
-            execute_proposal_should_fail, instantiate_cw20_base_default, mint_natives,
-            remove_proposal_hook, remove_proposal_hook_should_fail, remove_vote_hook,
-            remove_vote_hook_should_fail, vote_on_proposal_should_fail,
+            add_vote_hook_should_fail, close_proposal, close_proposal_should_fail,
+            execute_proposal, execute_proposal_should_fail, instantiate_cw20_base_default,
+            make_proposal, mint_cw20s, mint_natives, remove_proposal_hook,
+            remove_proposal_hook_should_fail, remove_vote_hook, remove_vote_hook_should_fail,
+            vote_on_proposal, vote_on_proposal_should_fail,
         },
         instantiate::{
-            get_default_non_token_dao_proposal_module_instantiate, get_pre_propose_info,
-            instantiate_with_cw4_groups_governance,
+            get_default_non_token_dao_proposal_module_instantiate,
+            get_default_token_dao_proposal_module_instantiate, get_pre_propose_info,
+            instantiate_with_cw4_groups_governance, instantiate_with_staked_balances_governance,
+            instantiate_with_staking_active_threshold,
         },
         queries::{
-            query_balance_cw20, query_balance_native, query_deposit_config_and_pre_propose_module,
-            query_pre_proposal_single_deposit_info,
+            query_balance_cw20, query_balance_native, query_creation_policy, query_dao_token,
+            query_deposit_config_and_pre_propose_module, query_list_proposals,
+            query_list_proposals_reverse, query_list_votes, query_pre_proposal_single_config,
+            query_pre_proposal_single_deposit_info, query_proposal, query_proposal_config,
+            query_proposal_hooks, query_single_proposal_module, query_vote_hooks,
+            query_voting_module,
         },
     },
     ContractError,
 };
 
-use super::{
-    contracts::{proposal_single_contract, v1_proposal_single_contract},
-    do_votes::do_votes_staked_balances,
-    execute::{close_proposal, make_proposal, mint_cw20s, vote_on_proposal},
-    instantiate::{
-        get_default_token_dao_proposal_module_instantiate,
-        instantiate_with_staked_balances_governance, instantiate_with_staking_active_threshold,
-    },
-    queries::{
-        query_dao_token, query_list_proposals, query_list_proposals_reverse, query_list_votes,
-        query_proposal, query_proposal_config, query_proposal_hooks, query_single_proposal_module,
-        query_vote_hooks, query_voting_module,
-    },
-    CREATOR_ADDR,
-};
+use super::{do_votes::do_votes_staked_balances, CREATOR_ADDR};
 
 struct CommonTest {
     app: App,
@@ -519,6 +513,7 @@ fn test_update_config() {
         Vote::Yes,
     );
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+    // Make a proposal to update the config.
     let proposal_id = make_proposal(
         &mut app,
         &proposal_module,
@@ -535,7 +530,6 @@ fn test_update_config() {
                 allow_revoting: false,
                 dao: core_addr.to_string(),
                 close_proposal_on_execution_failure: false,
-                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             })
             .unwrap(),
             funds: vec![],
@@ -564,7 +558,6 @@ fn test_update_config() {
             allow_revoting: false,
             dao: core_addr.clone(),
             close_proposal_on_execution_failure: false,
-            proposal_creation_policy: ProposalCreationPolicy::Anyone {}
         }
     );
 
@@ -583,7 +576,6 @@ fn test_update_config() {
                 allow_revoting: false,
                 dao: core_addr.to_string(),
                 close_proposal_on_execution_failure: false,
-                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
             },
             &[],
         )
@@ -689,8 +681,8 @@ fn test_proposal_hook_registration() {
     let proposal_hooks = query_proposal_hooks(&app, &proposal_module);
     assert_eq!(
         proposal_hooks.hooks.len(),
-        1,
-        "pre-propose deposit module should be registered"
+        0,
+        "pre-propose deposit module should not show on this listing"
     );
 
     // non-dao may not add a hook.
@@ -716,7 +708,7 @@ fn test_proposal_hook_registration() {
     ));
 
     let proposal_hooks = query_proposal_hooks(&app, &proposal_module);
-    assert_eq!(proposal_hooks.hooks[1], "proposalhook".to_string());
+    assert_eq!(proposal_hooks.hooks[0], "proposalhook".to_string());
 
     // Only DAO can remove proposal hooks.
     let err =
@@ -729,7 +721,7 @@ fn test_proposal_hook_registration() {
         "proposalhook",
     );
     let proposal_hooks = query_proposal_hooks(&app, &proposal_module);
-    assert_eq!(proposal_hooks.hooks.len(), 1);
+    assert_eq!(proposal_hooks.hooks.len(), 0);
 
     // Can not remove that which does not exist.
     let err = remove_proposal_hook_should_fail(
@@ -1128,6 +1120,8 @@ fn test_allow_revoting_config_changes() {
     let proposal_module = query_single_proposal_module(&app, &core_addr);
 
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    // This proposal should have revoting enable for its entire
+    // lifetime.
     let revoting_proposal = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
 
     // Update the config of the proposal module to disable revoting.
@@ -1146,12 +1140,12 @@ fn test_allow_revoting_config_changes() {
             allow_revoting: false,
             dao: core_addr.to_string(),
             close_proposal_on_execution_failure: false,
-            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
         },
         &[],
     )
     .unwrap();
 
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
     let no_revoting_proposal = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
 
     vote_on_proposal(
@@ -1650,6 +1644,7 @@ pub fn test_migrate_updates_version() {
 /// to v2.
 #[test]
 fn test_migrate_from_v1() {
+    use cw_pre_propose_base_proposal_single as cppbps;
     use cw_proposal_single_v1 as v1;
 
     let mut app = App::default();
@@ -1850,12 +1845,6 @@ fn test_migrate_from_v1() {
     .unwrap();
 
     let new_config = query_proposal_config(&app, &proposal_module);
-
-    let pre_propose = match new_config.proposal_creation_policy.clone() {
-        ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
-        ProposalCreationPolicy::Module { addr } => addr,
-    };
-
     assert_eq!(
         new_config,
         Config {
@@ -1868,7 +1857,26 @@ fn test_migrate_from_v1() {
             allow_revoting: false,
             dao: core_addr.clone(),
             close_proposal_on_execution_failure: true,
-            proposal_creation_policy: ProposalCreationPolicy::Module { addr: pre_propose }
+        }
+    );
+
+    let proposal_creation_policy = query_creation_policy(&app, &proposal_module);
+
+    // Check that a new creation policy has been birthed.
+    let pre_propose = match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
+        ProposalCreationPolicy::Module { addr } => addr,
+    };
+    let pre_propose_config = query_pre_proposal_single_config(&app, &pre_propose);
+    assert_eq!(
+        pre_propose_config,
+        cppbps::Config {
+            open_proposal_submission: false,
+            deposit_info: Some(CheckedDepositInfo {
+                denom: CheckedDenom::Cw20(token_contract.clone()),
+                amount: Uint128::new(1),
+                refund_policy: voting::deposit::DepositRefundPolicy::OnlyPassed,
+            })
         }
     );
 
@@ -1940,30 +1948,20 @@ fn test_execution_failed() {
     );
 
     let config = query_proposal_config(&app, &proposal_module);
-    let pre_propose_module = match config.proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => panic!("expected pre-propose module"),
-        ProposalCreationPolicy::Module { addr } => addr,
-    };
 
     // Disable execution failing proposals.
     app.execute_contract(
         core_addr.clone(),
         proposal_module.clone(),
         &ExecuteMsg::UpdateConfig {
-            threshold: Threshold::ThresholdQuorum {
-                quorum: PercentageThreshold::Percent(Decimal::percent(15)),
-                threshold: PercentageThreshold::Majority {},
-            },
-            max_voting_period: Duration::Height(10),
-            min_voting_period: None,
-            only_members_execute: true,
-            allow_revoting: false,
-            dao: core_addr.to_string(),
+            threshold: config.threshold,
+            max_voting_period: config.max_voting_period,
+            min_voting_period: config.min_voting_period,
+            only_members_execute: config.only_members_execute,
+            allow_revoting: config.allow_revoting,
+            dao: config.dao.into_string(),
             // Disable.
             close_proposal_on_execution_failure: false,
-            pre_propose_info: PreProposeInfo::AddrMayPropose {
-                addr: pre_propose_module.to_string(),
-            },
         },
         &[],
     )
@@ -2128,8 +2126,8 @@ fn test_proposal_creation_permissions() {
         .unwrap();
     assert!(matches!(err, ContractError::Unauthorized {}));
 
-    let config = query_proposal_config(&app, &proposal_module);
-    let pre_propose = match config.proposal_creation_policy {
+    let proposal_creation_policy = query_creation_policy(&app, &proposal_module);
+    let pre_propose = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
         ProposalCreationPolicy::Module { addr } => addr,
     };
@@ -2157,18 +2155,8 @@ fn test_proposal_creation_permissions() {
     app.execute_contract(
         core_addr.clone(),
         proposal_module.clone(),
-        &ExecuteMsg::UpdateConfig {
-            threshold: Threshold::ThresholdQuorum {
-                quorum: PercentageThreshold::Percent(Decimal::percent(15)),
-                threshold: PercentageThreshold::Majority {},
-            },
-            max_voting_period: Duration::Height(10),
-            min_voting_period: None,
-            only_members_execute: true,
-            allow_revoting: false,
-            dao: core_addr.to_string(),
-            close_proposal_on_execution_failure: false,
-            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        &ExecuteMsg::UpdatePreProposeInfo {
+            info: PreProposeInfo::AnyoneMayPropose {},
         },
         &[],
     )
@@ -2179,7 +2167,7 @@ fn test_proposal_creation_permissions() {
     let err = app
         .execute_contract(
             Addr::unchecked("ekez"),
-            proposal_module,
+            proposal_module.clone(),
             &ExecuteMsg::Propose {
                 title: "title".to_string(),
                 description: "description".to_string(),
@@ -2192,12 +2180,25 @@ fn test_proposal_creation_permissions() {
         .downcast()
         .unwrap();
     assert!(matches!(err, ContractError::InvalidProposer {}));
+
+    // Works normally.
+    let proposal_id = make_proposal(&mut app, &proposal_module, "ekez", vec![]);
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.proposer, Addr::unchecked("ekez"));
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::No,
+    );
+    close_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 }
 
 #[test]
 fn test_reply_hooks_mock() {
     use crate::contract::reply;
-    use crate::state::{CONFIG, PROPOSAL_HOOKS, VOTE_HOOKS};
+    use crate::state::{CREATION_POLICY, PROPOSAL_HOOKS, VOTE_HOOKS};
 
     let mut deps = mock_dependencies();
     let env = mock_env();
@@ -2213,28 +2214,17 @@ fn test_reply_hooks_mock() {
         result: SubMsgResult::Err("error_msg".to_string()),
     };
 
-    // Reply needs a config in state.
-    CONFIG
+    // Reply needs a creation policy in state.
+    CREATION_POLICY
         .save(
-            &mut deps.storage,
-            &Config {
-                threshold: Threshold::AbsolutePercentage {
-                    percentage: PercentageThreshold::Majority {},
-                },
-                max_voting_period: Duration::Height(6),
-                min_voting_period: None,
-                only_members_execute: false,
-                allow_revoting: false,
-                dao: Addr::unchecked("dao"),
-                close_proposal_on_execution_failure: true,
-                proposal_creation_policy: ProposalCreationPolicy::Module {
-                    addr: Addr::unchecked("ekez"),
-                },
+            deps.as_mut().storage,
+            &ProposalCreationPolicy::Module {
+                addr: Addr::unchecked("ekez"),
             },
         )
         .unwrap();
 
-    let res = reply(deps.as_mut(), env.clone(), reply_msg).unwrap();
+    let res = reply(deps.as_mut(), env.clone(), reply_msg.clone()).unwrap();
     assert_eq!(
         res.attributes[0],
         Attribute {
@@ -2242,6 +2232,25 @@ fn test_reply_hooks_mock() {
             value: format! {"{CREATOR_ADDR}:{}", 0}
         }
     );
+
+    // Remove the pre-propose module as part of a reply. Can just
+    // reuse the reply message.
+    let res = reply(deps.as_mut(), env.clone(), reply_msg.clone()).unwrap();
+    assert_eq!(
+        res.attributes[0],
+        Attribute {
+            key: "removed_proposal_hook".to_string(),
+            value: format! {"ekez:{}", 0}
+        }
+    );
+
+    // Do it again. This time, there is nothing so this should error.
+    let err = reply(deps.as_mut(), env.clone(), reply_msg.clone()).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidHookIndex { idx: 0 }));
+
+    // Check that we fail open.
+    let status = CREATION_POLICY.load(deps.as_ref().storage).unwrap();
+    assert!(matches!(status, ProposalCreationPolicy::Anyone {}));
 
     // Vote hook
     let m_vote_hook_idx = mask_vote_hook_index(0);
@@ -2391,10 +2400,150 @@ fn test_query_list_votes() {
     );
 }
 
-// - Update deposit module.
-// - Old deposits refunded on deposit module update.
-// - Withdraw from deposit module that has been removed.
-// - Test you can not remove the hook for the pre-propose module.
+#[test]
+fn test_update_pre_propose_module() {
+    let CommonTest {
+        mut app,
+        core_addr,
+        proposal_module,
+        gov_token,
+        proposal_id: pre_update_proposal_id,
+    } = setup_test(vec![]);
+
+    // Store the address of the pre-propose module that we start with
+    // so we can execute withdraw on it later.
+    let proposal_creation_policy = query_creation_policy(&app, &proposal_module);
+    let pre_propose_start = match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
+        ProposalCreationPolicy::Module { addr } => addr,
+    };
+
+    let pre_propose_id = app.store_code(pre_propose_single_contract());
+
+    // Make a proposal to switch to a new pre-propose moudle.
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![WasmMsg::Execute {
+            contract_addr: proposal_module.to_string(),
+            msg: to_binary(&ExecuteMsg::UpdatePreProposeInfo {
+                info: PreProposeInfo::ModuleMayPropose {
+                    info: ModuleInstantiateInfo {
+                        code_id: pre_propose_id,
+                        msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
+                            deposit_info: Some(UncheckedDepositInfo {
+                                denom: voting::deposit::DepositToken::VotingModuleToken {},
+                                amount: Uint128::new(1),
+                                refund_policy: voting::deposit::DepositRefundPolicy::OnlyPassed,
+                            }),
+                            open_proposal_submission: false,
+                            extension: Empty::default(),
+                        })
+                        .unwrap(),
+                        admin: Some(Admin::Instantiator {}),
+                        label: "new pre-propose module".to_string(),
+                    },
+                },
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()],
+    );
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+
+    // Check that a new creation policy has been birthed.
+    let proposal_creation_policy = query_creation_policy(&app, &proposal_module);
+    let pre_propose = match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => panic!("expected a pre-propose module"),
+        ProposalCreationPolicy::Module { addr } => addr,
+    };
+    let pre_propose_config = query_pre_proposal_single_config(&app, &pre_propose);
+    assert_eq!(
+        pre_propose_config,
+        cw_pre_propose_base_proposal_single::Config {
+            deposit_info: Some(CheckedDepositInfo {
+                denom: CheckedDenom::Cw20(gov_token.clone()),
+                amount: Uint128::new(1),
+                refund_policy: voting::deposit::DepositRefundPolicy::OnlyPassed,
+            }),
+            open_proposal_submission: false,
+        }
+    );
+
+    // Make a new proposal with this new module installed.
+    make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
+    // Check that the deposit was withdrawn.
+    let balance = query_balance_cw20(&app, gov_token.as_str(), CREATOR_ADDR);
+    assert_eq!(balance, Uint128::new(9_999_999));
+
+    // Vote on and execute the proposal created with the old
+    // module. This should work fine, but the deposit will not be
+    // returned as that module is no longer receiving hook messages.
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        pre_update_proposal_id,
+        Vote::Yes,
+    );
+    execute_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        pre_update_proposal_id,
+    );
+
+    // Deposit should not have been returned.
+    let balance = query_balance_cw20(&app, gov_token.as_str(), CREATOR_ADDR);
+    assert_eq!(balance, Uint128::new(9_999_999));
+
+    // Withdraw from the old pre-propose module.
+    let proposal_id = make_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        vec![WasmMsg::Execute {
+            contract_addr: pre_propose_start.into_string(),
+            msg: to_binary(&cw_pre_propose_base_proposal_single::ExecuteMsg::Withdraw {
+                denom: None,
+            })
+            .unwrap(),
+            funds: vec![],
+        }
+        .into()],
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
+
+    // Make sure the left over deposit was returned to the DAO.
+    let balance = query_balance_cw20(&app, gov_token.as_str(), core_addr.as_str());
+    assert_eq!(balance, Uint128::new(10_000_000));
+}
+
+// TODO: remove v1_state file and use the v1 dependency.
+
+// TODO: update ModuleInstantiateInfo::Instantiator ->
+// ModuleInstantiateInfo::CoreModule and capture those semantics while
+// instantiating pre-propose module.
+
+// TODO: test pre-propose module that fails on new proposal hook.
 
 // - What happens if you have proposals that can not be executed but
 //   took deposits and want to migrate?
