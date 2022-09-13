@@ -12,16 +12,6 @@ export type Duration = {
 } | {
   time: number;
 };
-export type ProposalCreationPolicy = {
-  Anyone: {
-    [k: string]: unknown;
-  };
-} | {
-  Module: {
-    addr: Addr;
-    [k: string]: unknown;
-  };
-};
 export type VotingStrategy = {
   single_choice: {
     quorum: PercentageThreshold;
@@ -43,7 +33,6 @@ export interface ConfigResponse {
   max_voting_period: Duration;
   min_voting_period?: Duration | null;
   only_members_execute: boolean;
-  proposal_creation_policy: ProposalCreationPolicy;
   voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
@@ -79,8 +68,12 @@ export type ExecuteMsg = {
     max_voting_period: Duration;
     min_voting_period?: Duration | null;
     only_members_execute: boolean;
-    pre_propose_info: PreProposeInfo;
     voting_strategy: VotingStrategy;
+    [k: string]: unknown;
+  };
+} | {
+  update_pre_propose_info: {
+    info: PreProposeInfo;
     [k: string]: unknown;
   };
 } | {
@@ -245,11 +238,6 @@ export type PreProposeInfo = {
     info: ModuleInstantiateInfo;
     [k: string]: unknown;
   };
-} | {
-  AddrMayPropose: {
-    addr: string;
-    [k: string]: unknown;
-  };
 };
 export type Admin = {
   address: {
@@ -257,7 +245,7 @@ export type Admin = {
     [k: string]: unknown;
   };
 } | {
-  instantiator: {
+  core_module: {
     [k: string]: unknown;
   };
 };
@@ -394,6 +382,16 @@ export type MigrateMsg = {
   };
 };
 export type ProposalCountResponse = number;
+export type ProposalCreationPolicyResponse = {
+  Anyone: {
+    [k: string]: unknown;
+  };
+} | {
+  Module: {
+    addr: Addr;
+    [k: string]: unknown;
+  };
+};
 export interface ProposalHooksResponse {
   hooks: string[];
   [k: string]: unknown;
@@ -434,6 +432,10 @@ export type QueryMsg = {
     limit?: number | null;
     proposal_id: number;
     start_after?: string | null;
+    [k: string]: unknown;
+  };
+} | {
+  proposal_creation_policy: {
     [k: string]: unknown;
   };
 } | {
@@ -500,6 +502,7 @@ export interface CwProposalMultipleReadOnlyInterface {
     proposalId: number;
     startAfter?: string;
   }) => Promise<ListVotesResponse>;
+  proposalCreationPolicy: () => Promise<ProposalCreationPolicyResponse>;
   proposalHooks: () => Promise<ProposalHooksResponse>;
   voteHooks: () => Promise<VoteHooksResponse>;
   info: () => Promise<InfoResponse>;
@@ -518,6 +521,7 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
     this.proposalCount = this.proposalCount.bind(this);
     this.getVote = this.getVote.bind(this);
     this.listVotes = this.listVotes.bind(this);
+    this.proposalCreationPolicy = this.proposalCreationPolicy.bind(this);
     this.proposalHooks = this.proposalHooks.bind(this);
     this.voteHooks = this.voteHooks.bind(this);
     this.info = this.info.bind(this);
@@ -603,6 +607,11 @@ export class CwProposalMultipleQueryClient implements CwProposalMultipleReadOnly
       }
     });
   };
+  proposalCreationPolicy = async (): Promise<ProposalCreationPolicyResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      proposal_creation_policy: {}
+    });
+  };
   proposalHooks = async (): Promise<ProposalHooksResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       proposal_hooks: {}
@@ -657,7 +666,6 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    preProposeInfo,
     votingStrategy
   }: {
     allowRevoting: boolean;
@@ -666,8 +674,12 @@ export interface CwProposalMultipleInterface extends CwProposalMultipleReadOnlyI
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    preProposeInfo: PreProposeInfo;
     votingStrategy: VotingStrategy;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  updatePreProposeInfo: ({
+    info
+  }: {
+    info: object;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   addProposalHook: ({
     address
@@ -705,6 +717,7 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     this.execute = this.execute.bind(this);
     this.close = this.close.bind(this);
     this.updateConfig = this.updateConfig.bind(this);
+    this.updatePreProposeInfo = this.updatePreProposeInfo.bind(this);
     this.addProposalHook = this.addProposalHook.bind(this);
     this.removeProposalHook = this.removeProposalHook.bind(this);
     this.addVoteHook = this.addVoteHook.bind(this);
@@ -774,7 +787,6 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     maxVotingPeriod,
     minVotingPeriod,
     onlyMembersExecute,
-    preProposeInfo,
     votingStrategy
   }: {
     allowRevoting: boolean;
@@ -783,7 +795,6 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
     maxVotingPeriod: Duration;
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
-    preProposeInfo: PreProposeInfo;
     votingStrategy: VotingStrategy;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
@@ -794,8 +805,18 @@ export class CwProposalMultipleClient extends CwProposalMultipleQueryClient impl
         max_voting_period: maxVotingPeriod,
         min_voting_period: minVotingPeriod,
         only_members_execute: onlyMembersExecute,
-        pre_propose_info: preProposeInfo,
         voting_strategy: votingStrategy
+      }
+    }, fee, memo, funds);
+  };
+  updatePreProposeInfo = async ({
+    info
+  }: {
+    info: object;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_pre_propose_info: {
+        info
       }
     }, fee, memo, funds);
   };

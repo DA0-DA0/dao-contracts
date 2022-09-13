@@ -39,6 +39,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all the proposals that have been cast in this module. Returns `query::ProposalListResponse`.",
       "type": "object",
       "required": [
         "list_proposals"
@@ -69,6 +70,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the proposals that have been cast in this module in decending order of proposal ID. Returns `query::ProposalListResponse`.",
       "type": "object",
       "required": [
         "reverse_proposals"
@@ -99,6 +101,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the number of proposals that have been created in this module./// Returns a voters position on a propsal. Returns `query::VoteResponse`.",
       "type": "object",
       "required": [
         "proposal_count"
@@ -111,6 +114,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns a voters position on a propsal. Returns `query::VoteResponse`.",
       "type": "object",
       "required": [
         "get_vote"
@@ -137,6 +141,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the votes that have been cast on a proposal. Returns `VoteListResponse`.",
       "type": "object",
       "required": [
         "list_votes"
@@ -173,6 +178,20 @@
       "additionalProperties": false
     },
     {
+      "description": "Gets the current proposal creation policy for this module. Returns `voting::pre_propose::ProposalCreationPolicy`.",
+      "type": "object",
+      "required": [
+        "proposal_creation_policy"
+      ],
+      "properties": {
+        "proposal_creation_policy": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Lists all of the consumers of proposal hooks for this module.",
       "type": "object",
       "required": [
         "proposal_hooks"
@@ -185,6 +204,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Lists all of the consumers of vote hooks for this module. Returns indexable_hooks::HooksResponse.",
       "type": "object",
       "required": [
         "vote_hooks"

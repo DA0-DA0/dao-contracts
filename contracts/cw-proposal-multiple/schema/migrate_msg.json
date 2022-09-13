@@ -71,13 +71,13 @@
           "additionalProperties": false
         },
         {
-          "description": "Set the admin to the address that instantiates the contract. This is useful for DAOs that instantiate this contract as part of their creation process and would like to set themselces as the admin (as in this case the address of the instantiating contract is not known at message execution time).",
+          "description": "Sets the admin as the core module address.",
           "type": "object",
           "required": [
-            "instantiator"
+            "core_module"
           ],
           "properties": {
-            "instantiator": {
+            "core_module": {
               "type": "object"
             }
           },
@@ -159,27 +159,6 @@
               "properties": {
                 "info": {
                   "$ref": "#/definitions/ModuleInstantiateInfo"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "The address specified in ADDR has exclusive rights to proposal creation.",
-          "type": "object",
-          "required": [
-            "AddrMayPropose"
-          ],
-          "properties": {
-            "AddrMayPropose": {
-              "type": "object",
-              "required": [
-                "addr"
-              ],
-              "properties": {
-                "addr": {
-                  "type": "string"
                 }
               }
             }
