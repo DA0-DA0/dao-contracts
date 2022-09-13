@@ -74,7 +74,7 @@ export type Admin = {
     [k: string]: unknown;
   };
 } | {
-  instantiator: {
+  core_module: {
     [k: string]: unknown;
   };
 };
