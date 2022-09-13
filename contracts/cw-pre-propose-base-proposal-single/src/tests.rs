@@ -70,7 +70,7 @@ fn get_default_proposal_module_instantiate(
                     extension: Empty::default(),
                 })
                 .unwrap(),
-                admin: Some(Admin::Instantiator {}),
+                admin: Some(Admin::CoreModule {}),
                 label: "baby's first pre-propose module".to_string(),
             },
         },
@@ -981,7 +981,7 @@ fn test_instantiate_with_zero_native_deposit() {
                         extension: Empty::default(),
                     })
                     .unwrap(),
-                    admin: Some(Admin::Instantiator {}),
+                    admin: Some(Admin::CoreModule {}),
                     label: "baby's first pre-propose module".to_string(),
                 },
             },
@@ -1042,7 +1042,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
                         extension: Empty::default(),
                     })
                     .unwrap(),
-                    admin: Some(Admin::Instantiator {}),
+                    admin: Some(Admin::CoreModule {}),
                     label: "baby's first pre-propose module".to_string(),
                 },
             },

@@ -51,7 +51,7 @@ pub fn instantiate(
         .as_ref()
         .map(|owner| match owner {
             Admin::Address { addr } => deps.api.addr_validate(addr),
-            Admin::Instantiator {} => Ok(info.sender.clone()),
+            Admin::CoreModule {} => Ok(info.sender.clone()),
         })
         .transpose()?;
     let manager = msg

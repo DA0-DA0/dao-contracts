@@ -498,4 +498,34 @@ mod test {
             Decimal::percent(0)
         ))
     }
+
+    #[test]
+    fn test_display_multiple_choice_vote() {
+        let vote = MultipleChoiceVote { option_id: 0 };
+        assert_eq!("0", format!("{}", vote))
+    }
+
+    #[test]
+    fn test_multiple_choice_votes() {
+        let mut votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(10), Uint128::new(100)],
+        };
+        let total = votes.total();
+        assert_eq!(total, Uint128::new(110));
+
+        votes
+            .add_vote(MultipleChoiceVote { option_id: 0 }, Uint128::new(10))
+            .unwrap();
+        let total = votes.total();
+        assert_eq!(total, Uint128::new(120));
+
+        votes
+            .remove_vote(MultipleChoiceVote { option_id: 0 }, Uint128::new(20))
+            .unwrap();
+        votes
+            .remove_vote(MultipleChoiceVote { option_id: 1 }, Uint128::new(100))
+            .unwrap();
+
+        assert_eq!(votes, MultipleChoiceVotes::zero(2))
+    }
 }

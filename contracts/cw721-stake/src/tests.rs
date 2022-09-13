@@ -384,7 +384,7 @@ fn test_instantiate_with_instantiator_owner() {
     let staking_addr = {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
-            owner: Some(Admin::Instantiator {}),
+            owner: Some(Admin::CoreModule {}),
             manager: Some("manager".to_string()),
             nft_address: cw721_addr.to_string(),
             unstaking_duration: None,

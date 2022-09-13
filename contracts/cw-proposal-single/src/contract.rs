@@ -40,7 +40,7 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -55,7 +55,7 @@ pub fn instantiate(
 
     let (initial_policy, pre_propose_messages) = msg
         .pre_propose_info
-        .into_initial_policy_and_messages(env.contract.address)?;
+        .into_initial_policy_and_messages(dao.clone())?;
 
     let config = Config {
         threshold: msg.threshold,
@@ -116,7 +116,7 @@ pub fn execute(
             close_proposal_on_execution_failure,
         ),
         ExecuteMsg::UpdatePreProposeInfo { info: new_info } => {
-            execute_update_proposal_creation_policy(deps, env, info, new_info)
+            execute_update_proposal_creation_policy(deps, info, new_info)
         }
         ExecuteMsg::AddProposalHook { address } => {
             execute_add_proposal_hook(deps, env, info, address)
@@ -490,7 +490,6 @@ pub fn execute_update_config(
 
 pub fn execute_update_proposal_creation_policy(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     new_info: PreProposeInfo,
 ) -> Result<Response, ContractError> {
@@ -499,8 +498,7 @@ pub fn execute_update_proposal_creation_policy(
         return Err(ContractError::Unauthorized {});
     }
 
-    let (initial_policy, messages) =
-        new_info.into_initial_policy_and_messages(env.contract.address)?;
+    let (initial_policy, messages) = new_info.into_initial_policy_and_messages(config.dao)?;
     CREATION_POLICY.save(deps.storage, &initial_policy)?;
 
     Ok(Response::default()
@@ -766,14 +764,14 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     min_voting_period: current_config.min_voting_period,
                     only_members_execute: current_config.only_members_execute,
                     allow_revoting: current_config.allow_revoting,
-                    dao: current_config.dao,
+                    dao: current_config.dao.clone(),
                     // Loads of text, but we're only updating this field.
                     close_proposal_on_execution_failure,
                 },
             )?;
 
             let (initial_policy, pre_propose_messages) =
-                pre_propose_info.into_initial_policy_and_messages(env.contract.address.clone())?;
+                pre_propose_info.into_initial_policy_and_messages(current_config.dao)?;
             CREATION_POLICY.save(deps.storage, &initial_policy)?;
 
             // Update the module's proposals to v2.
