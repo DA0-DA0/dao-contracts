@@ -8,9 +8,9 @@ use cw_pre_propose_base::{
     msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
     state::PreProposeContract,
 };
-use cw_proposal_multiple::state::MultipleChoiceOptions;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use voting::multiple_choice::MultipleChoiceOptions;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-pre-propose-base-proposal-multiple";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

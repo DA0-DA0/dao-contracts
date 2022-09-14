@@ -3,44 +3,16 @@ use cw_multi_test::{App, Executor};
 
 use cw_denom::CheckedDenom;
 use cw_pre_propose_base_proposal_multiple as cppbpm;
-use voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy};
+use voting::{
+    deposit::CheckedDepositInfo, multiple_choice::MultipleChoiceOptions,
+    pre_propose::ProposalCreationPolicy,
+};
 
 use crate::{
     msg::{ExecuteMsg, QueryMsg},
     query::ProposalResponse,
-    state::{MultipleChoiceOption, MultipleChoiceOptions},
     testing::queries::{query_creation_policy, query_pre_proposal_multiple_config},
 };
-
-impl From<MultipleChoiceOptions> for cw_proposal_multiple::state::MultipleChoiceOptions {
-    fn from(choices: MultipleChoiceOptions) -> cw_proposal_multiple::state::MultipleChoiceOptions {
-        cw_proposal_multiple::state::MultipleChoiceOptions {
-            options: choices
-                .options
-                .into_iter()
-                .map(|option| cw_proposal_multiple::state::MultipleChoiceOption {
-                    description: option.description,
-                    msgs: option.msgs,
-                })
-                .collect(),
-        }
-    }
-}
-
-impl From<cw_proposal_multiple::state::MultipleChoiceOptions> for MultipleChoiceOptions {
-    fn from(choices: cw_proposal_multiple::state::MultipleChoiceOptions) -> MultipleChoiceOptions {
-        MultipleChoiceOptions {
-            options: choices
-                .options
-                .into_iter()
-                .map(|option| MultipleChoiceOption {
-                    description: option.description,
-                    msgs: option.msgs,
-                })
-                .collect(),
-        }
-    }
-}
 
 // Creates a proposal then checks that the proposal was created with
 // the specified messages and returns the ID of the proposal.
@@ -113,7 +85,7 @@ pub fn make_proposal(
                     msg: cppbpm::ProposeMessage::Propose {
                         title: "title".to_string(),
                         description: "description".to_string(),
-                        choices: choices.into(),
+                        choices,
                     },
                 },
                 &funds,

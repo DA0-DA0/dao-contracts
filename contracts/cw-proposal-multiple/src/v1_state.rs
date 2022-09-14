@@ -13,9 +13,10 @@ use cw_utils::{Duration, Expiration};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{status::Status as V2Status, voting::MultipleChoiceVotes};
-
-use crate::{state::CheckedMultipleChoiceOption, voting_strategy::VotingStrategy};
+use voting::{
+    multiple_choice::{CheckedMultipleChoiceOption, MultipleChoiceVotes, VotingStrategy},
+    status::Status as V2Status,
+};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug, Copy)]
 #[serde(rename_all = "snake_case")]

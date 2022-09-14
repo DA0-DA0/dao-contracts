@@ -10,20 +10,21 @@ use indexable_hooks::HooksResponse;
 use std::panic;
 use voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
+    multiple_choice::{
+        CheckedMultipleChoiceOption, MultipleChoiceOption, MultipleChoiceOptionType,
+        MultipleChoiceOptions, MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy,
+        MAX_NUM_CHOICES,
+    },
     pre_propose::PreProposeInfo,
     status::Status,
     threshold::{PercentageThreshold, Threshold},
-    voting::{MultipleChoiceVote, MultipleChoiceVotes},
 };
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::MultipleChoiceProposal,
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse},
-    state::{
-        CheckedMultipleChoiceOption, Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo,
-        MAX_NUM_CHOICES,
-    },
+    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse},
+    state::Config,
     testing::{
         do_votes::do_test_votes_cw20_balances,
         execute::make_proposal,
@@ -38,7 +39,6 @@ use crate::{
             query_proposal_config, query_proposal_hooks, query_vote_hooks,
         },
     },
-    voting_strategy::VotingStrategy,
     ContractError,
 };
 use cw_pre_propose_base_proposal_multiple as cppbpm;
@@ -221,24 +221,18 @@ fn test_propose_wrong_num_choices() {
 
     // Create a proposal with less than min choices.
     let mc_options = MultipleChoiceOptions { options };
-    let err = app
-        .execute_contract(
-            Addr::unchecked(CREATOR_ADDR),
-            govmod.clone(),
-            &ExecuteMsg::Propose {
-                title: "A simple text proposal".to_string(),
-                description: "A simple text proposal".to_string(),
-                choices: mc_options,
-                proposer: None,
-            },
-            &[],
-        )
-        .unwrap_err();
-
-    assert!(matches!(
-        err.downcast::<ContractError>().unwrap(),
-        ContractError::WrongNumberOfChoices {}
-    ));
+    let err = app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    );
+    assert!(err.is_err());
 
     let options = vec![
         MultipleChoiceOption {
@@ -252,24 +246,18 @@ fn test_propose_wrong_num_choices() {
 
     let mc_options = MultipleChoiceOptions { options };
     // Create a new proposal.
-    let err = app
-        .execute_contract(
-            Addr::unchecked(CREATOR_ADDR),
-            govmod,
-            &ExecuteMsg::Propose {
-                title: "A simple text proposal".to_string(),
-                description: "A simple text proposal".to_string(),
-                choices: mc_options,
-                proposer: None,
-            },
-            &[],
-        )
-        .unwrap_err();
-
-    assert!(matches!(
-        err.downcast::<ContractError>().unwrap(),
-        ContractError::WrongNumberOfChoices {}
-    ));
+    let err = app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod,
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    );
+    assert!(err.is_err());
 }
 
 #[test]
@@ -957,7 +945,7 @@ fn test_take_proposal_deposit() {
                 msg: cppbpm::ProposeMessage::Propose {
                     title: "title".to_string(),
                     description: "description".to_string(),
-                    choices: mc_options.clone().into(),
+                    choices: mc_options.clone(),
                 },
             },
             &[],
@@ -1064,7 +1052,7 @@ fn test_native_proposal_deposit() {
                 msg: cppbpm::ProposeMessage::Propose {
                     title: "title".to_string(),
                     description: "description".to_string(),
-                    choices: mc_options.clone().into(),
+                    choices: mc_options.clone(),
                 },
             },
             &[],
@@ -1496,7 +1484,7 @@ fn test_cant_propose_zero_power() {
             msg: cppbpm::ProposeMessage::Propose {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
-                choices: mc_options.clone().into(),
+                choices: mc_options.clone(),
             },
         },
         &[],
@@ -1511,7 +1499,7 @@ fn test_cant_propose_zero_power() {
             msg: cppbpm::ProposeMessage::Propose {
                 title: "A simple text proposal".to_string(),
                 description: "A simple text proposal".to_string(),
-                choices: mc_options.into(),
+                choices: mc_options,
             },
         },
         &[],
@@ -1715,21 +1703,21 @@ fn test_open_proposal_submission() {
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 1".to_string(),
                 msgs: None,
-                option_type: crate::state::MultipleChoiceOptionType::Standard,
+                option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 0,
             },
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 2".to_string(),
                 msgs: None,
-                option_type: crate::state::MultipleChoiceOptionType::Standard,
+                option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 1,
             },
             CheckedMultipleChoiceOption {
                 description: "None of the above".to_string(),
                 msgs: None,
-                option_type: crate::state::MultipleChoiceOptionType::None,
+                option_type: MultipleChoiceOptionType::None,
                 vote_count: Uint128::zero(),
                 index: 2,
             },

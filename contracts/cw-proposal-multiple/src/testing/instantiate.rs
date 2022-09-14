@@ -15,13 +15,13 @@ use testing::contracts::{
 };
 use voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    multiple_choice::VotingStrategy,
     pre_propose::PreProposeInfo,
     threshold::PercentageThreshold,
 };
 
 use crate::{
     msg::InstantiateMsg, testing::tests::proposal_multiple_contract, testing::tests::CREATOR_ADDR,
-    voting_strategy::VotingStrategy,
 };
 
 #[allow(dead_code)]

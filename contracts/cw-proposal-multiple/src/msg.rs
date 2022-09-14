@@ -1,9 +1,11 @@
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{pre_propose::PreProposeInfo, voting::MultipleChoiceVote};
+use voting::{
+    multiple_choice::{MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy},
+    pre_propose::PreProposeInfo,
+};
 
-use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
 use cw_core_macros::govmod_query;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

@@ -5,7 +5,6 @@ pub mod proposal;
 pub mod query;
 pub mod state;
 pub mod v1_state;
-pub mod voting_strategy;
 pub use crate::error::ContractError;
 
 #[cfg(test)]

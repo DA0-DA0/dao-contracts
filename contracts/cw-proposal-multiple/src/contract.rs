@@ -14,27 +14,26 @@ use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 
 use vote_hooks::new_vote_hooks;
 use voting::{
+    multiple_choice::{
+        MultipleChoiceOptions, MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy,
+    },
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
     reply::{mask_proposal_execution_proposal_id, TaggedReplyId},
     status::Status,
-    voting::{
-        get_total_power, get_voting_power, validate_voting_period, MultipleChoiceVote,
-        MultipleChoiceVotes,
-    },
+    voting::{get_total_power, get_voting_power, validate_voting_period},
 };
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::{MultipleChoiceProposal, VoteResult},
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
-    state::{Config, MultipleChoiceOptions, CONFIG, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
-    voting_strategy::VotingStrategy,
+    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
+    state::{
+        Ballot, Config, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
+    },
     ContractError,
 };
 use crate::{state::CREATION_POLICY, v1_state};
-
-use crate::state::{Ballot, VoteInfo, BALLOTS, PROPOSALS};
 
 pub const CONTRACT_NAME: &str = "crates.io:cw-proposal-multiple";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

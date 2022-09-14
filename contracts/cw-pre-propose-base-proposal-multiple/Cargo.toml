@@ -20,6 +20,7 @@ serde = { version = "1.0.137", default-features = false, features = ["derive"] }
 cw-pre-propose-base = { version = "*", path = "../../packages/cw-pre-propose-base" }
 cw-proposal-multiple = { version = "*", path = "../cw-proposal-multiple", features = ["library"]}
 schemars = "0.8.8"
+voting = { path = "../../packages/voting" }
 
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"

@@ -1,12 +1,5 @@
 use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Decimal, Empty, Uint128};
-use cpm::{
-    query::ProposalResponse,
-    state::{
-        CheckedMultipleChoiceOption, MultipleChoiceOption, MultipleChoiceOptionType,
-        MultipleChoiceOptions,
-    },
-    voting_strategy::VotingStrategy,
-};
+use cpm::query::ProposalResponse;
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_core::state::ProposalModule;
@@ -20,10 +13,13 @@ use proposal_hooks::ProposalHookMsg;
 use testing::helpers::instantiate_with_cw4_groups_governance;
 use voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
+    multiple_choice::{
+        CheckedMultipleChoiceOption, MultipleChoiceOption, MultipleChoiceOptionType,
+        MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy,
+    },
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     status::Status,
     threshold::PercentageThreshold,
-    voting::MultipleChoiceVote,
 };
 
 use crate::contract::*;

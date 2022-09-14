@@ -821,7 +821,6 @@ dependencies = [
  "cw-multi-test 0.13.4",
  "cw-native-staked-balance-voting",
  "cw-pre-propose-base-proposal-multiple",
- "cw-proposal-multiple",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",

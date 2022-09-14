@@ -7,15 +7,16 @@ use rand::{prelude::SliceRandom, Rng};
 use std::panic;
 use voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
+    multiple_choice::{
+        MultipleChoiceOption, MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy,
+    },
     status::Status,
     threshold::PercentageThreshold,
-    voting::MultipleChoiceVote,
 };
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    query::{ProposalResponse, VoteResponse},
-    state::VoteInfo,
+    query::{ProposalResponse, VoteInfo, VoteResponse},
     testing::{
         instantiate::{
             instantiate_with_cw20_balances_governance, instantiate_with_staked_balances_governance,
@@ -23,7 +24,6 @@ use crate::{
         queries::query_deposit_config_and_pre_propose_module,
         tests::{get_pre_propose_info, proposal_multiple_contract, TestMultipleChoiceVote},
     },
-    voting_strategy::VotingStrategy,
 };
 use cw_pre_propose_base_proposal_multiple as cppbpm;
 
@@ -191,17 +191,17 @@ where
     };
 
     let options = vec![
-        cw_proposal_multiple::state::MultipleChoiceOption {
+        MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: None,
         },
-        cw_proposal_multiple::state::MultipleChoiceOption {
+        MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: None,
         },
     ];
 
-    let mc_options = cw_proposal_multiple::state::MultipleChoiceOptions { options };
+    let mc_options = MultipleChoiceOptions { options };
 
     app.execute_contract(
         Addr::unchecked(&proposer),

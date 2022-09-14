@@ -3,16 +3,15 @@ use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use voting::{
+    multiple_choice::{
+        CheckedMultipleChoiceOption, MultipleChoiceOptionType, MultipleChoiceVotes, VotingStrategy,
+    },
     proposal::Proposal,
     status::Status,
-    voting::{does_vote_count_pass, MultipleChoiceVotes},
+    voting::does_vote_count_pass,
 };
 
-use crate::{
-    query::ProposalResponse,
-    state::{CheckedMultipleChoiceOption, MultipleChoiceOptionType},
-    voting_strategy::VotingStrategy,
-};
+use crate::query::ProposalResponse;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct MultipleChoiceProposal {
@@ -280,11 +279,10 @@ impl MultipleChoiceProposal {
 
 #[cfg(test)]
 mod tests {
-    use crate::state::{MultipleChoiceOption, MultipleChoiceOptions};
-
     use super::*;
 
     use cosmwasm_std::testing::mock_env;
+    use voting::multiple_choice::{MultipleChoiceOption, MultipleChoiceOptions};
 
     fn create_proposal(
         block: &BlockInfo,

@@ -1,11 +1,9 @@
-use crate::{
-    proposal::MultipleChoiceProposal,
-    state::{Config, VoteInfo},
-};
-use cosmwasm_std::Uint128;
+use crate::{proposal::MultipleChoiceProposal, state::Config};
+use cosmwasm_std::{Addr, Uint128};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use voting::multiple_choice::MultipleChoiceVote;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct ProposalListResponse {
@@ -17,6 +15,17 @@ pub struct ProposalListResponse {
 pub struct ProposalResponse {
     pub id: u64,
     pub proposal: MultipleChoiceProposal,
+}
+
+/// Information about a vote that was cast.
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+pub struct VoteInfo {
+    /// The address that voted.
+    pub voter: Addr,
+    /// Position on the vote.
+    pub vote: MultipleChoiceVote,
+    /// The voting power behind the vote.
+    pub power: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]

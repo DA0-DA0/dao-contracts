@@ -41,7 +41,6 @@ indexable-hooks = { version = "0.2.0", path = "../../packages/indexable-hooks" }
 cosmwasm-schema = { version = "1.0.0" }
 cw-denom = { version = "*", path = "../../packages/cw-denom" }
 cw-multi-test = "0.13"
-cw-proposal-multiple = { path = "./", version = "*" }
 cw-pre-propose-base-proposal-multiple = { path = "../cw-pre-propose-base-proposal-multiple", version = "*" }
 cw4-voting = { path = "../cw4-voting", version = "*" }
 cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" }
