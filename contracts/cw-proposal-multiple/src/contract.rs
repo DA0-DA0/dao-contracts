@@ -481,7 +481,6 @@ pub fn execute_close(
 #[allow(clippy::too_many_arguments)]
 pub fn execute_update_config(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     voting_strategy: VotingStrategy,
     min_voting_period: Option<Duration>,
@@ -876,7 +875,7 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
             )?;
 
             let (initial_policy, pre_propose_messages) =
-                pre_propose_info.into_initial_policy_and_messages(env.contract.address.clone())?;
+                pre_propose_info.into_initial_policy_and_messages(current_config.dao)?;
             CREATION_POLICY.save(deps.storage, &initial_policy)?;
 
             // Update the module's proposals to v2.
