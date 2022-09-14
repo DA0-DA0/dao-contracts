@@ -17,7 +17,11 @@ pub struct InstantiateMsg {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
-pub struct MigrateMsg {}
+#[serde(rename_all = "snake_case")]
+pub enum MigrateMsg {
+    FromV1 { is_paused: Option<bool> },
+    FromCompatible {},
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -30,6 +34,7 @@ pub enum ExecuteMsg {
     UpdateRewardDuration { new_duration: u64 },
     UpdateOwner { new_owner: Option<String> },
     UpdateManager { new_manager: Option<String> },
+    UpdatePauseStatus { is_paused: bool },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

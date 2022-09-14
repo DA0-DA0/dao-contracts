@@ -23,13 +23,17 @@ cw-controllers = "0.13"
 cw20 = { version = "0.13" }
 cw-utils = { version = "0.13" }
 cw20-base = {  version = "0.13", features = ["library"] }
+cw-core = { path = "../cw-core", version = "*", features = ["library"] }
+cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
 cw2 = "0.13"
 schemars = "0.8.8"
 serde = { version = "1.0.132", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.30" }
 cw20-stake = { path = "../cw20-stake", features = ["library"]}
+stake-cw20-external-rewards-v1 = { package = "stake-cw20-external-rewards", version = "0.2.6", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = {  version = "0.13" }
 anyhow = { version = "1.0.51"}
+cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }

@@ -208,7 +208,7 @@ dependencies = [
  "cw-proposal-single",
  "cw-utils 0.13.4",
  "cw20 0.13.4",
- "cw20-stake",
+ "cw20-stake 0.2.6",
  "cw20-staked-balance-voting",
  "env_logger",
  "serde",
@@ -693,7 +693,7 @@ dependencies = [
  "cw20 0.13.4",
  "cw20-balance-voting",
  "cw20-base",
- "cw20-stake",
+ "cw20-stake 0.2.6",
  "cw20-staked-balance-voting",
  "cw4",
  "cw4-group",
@@ -727,7 +727,7 @@ dependencies = [
  "cw20 0.13.4",
  "cw20-balance-voting",
  "cw20-base",
- "cw20-stake",
+ "cw20-stake 0.2.6",
  "cw20-staked-balance-voting",
  "cw3",
  "cw4",
@@ -974,6 +974,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw20-stake"
+version = "0.2.6"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-controllers",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20 0.13.4",
+ "cw20-base",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw20-staked-balance-voting"
 version = "0.2.0"
 dependencies = [
@@ -988,7 +1006,7 @@ dependencies = [
  "cw2 0.13.4",
  "cw20 0.13.4",
  "cw20-base",
- "cw20-stake",
+ "cw20-stake 0.2.6",
  "schemars",
  "serde",
  "thiserror",
@@ -1689,7 +1707,7 @@ dependencies = [
  "cw-utils 0.13.4",
  "cw20 0.13.4",
  "cw20-base",
- "cw20-stake",
+ "cw20-stake 0.2.6",
  "cw20-staked-balance-voting",
  "env_logger",
  "once_cell",
@@ -2566,13 +2584,36 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-controllers",
+ "cw-core",
+ "cw-core-interface",
  "cw-multi-test 0.13.4",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "cw20 0.13.4",
  "cw20-base",
- "cw20-stake",
+ "cw20-stake 0.2.6",
+ "cw20-staked-balance-voting",
+ "schemars",
+ "serde",
+ "stake-cw20-external-rewards 0.2.6 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "thiserror",
+]
+
+[[package]]
+name = "stake-cw20-external-rewards"
+version = "0.2.6"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-controllers",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20 0.13.4",
+ "cw20-base",
+ "cw20-stake 0.2.6 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
  "schemars",
  "serde",
  "thiserror",
@@ -2591,7 +2632,7 @@ dependencies = [
  "cw2 0.13.4",
  "cw20 0.13.4",
  "cw20-base",
- "cw20-stake",
+ "cw20-stake 0.2.6",
  "schemars",
  "serde",
  "thiserror",
@@ -2787,7 +2828,7 @@ dependencies = [
  "cw20 0.13.4",
  "cw20-balance-voting",
  "cw20-base",
- "cw20-stake",
+ "cw20-stake 0.2.6",
  "cw20-staked-balance-voting",
  "cw4",
  "cw4-group",

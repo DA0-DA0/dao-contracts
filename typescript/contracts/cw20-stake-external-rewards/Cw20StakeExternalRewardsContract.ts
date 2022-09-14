@@ -19,6 +19,10 @@ export type ExecuteMsg = {
     [k: string]: unknown;
   };
 } | {
+  withdraw: {
+    [k: string]: unknown;
+  };
+} | {
   update_reward_duration: {
     new_duration: number;
     [k: string]: unknown;
@@ -31,6 +35,11 @@ export type ExecuteMsg = {
 } | {
   update_manager: {
     new_manager?: string | null;
+    [k: string]: unknown;
+  };
+} | {
+  update_pause_status: {
+    is_paused: boolean;
     [k: string]: unknown;
   };
 };
@@ -74,6 +83,7 @@ export interface InfoResponse {
   [k: string]: unknown;
 }
 export interface Config {
+  is_paused: boolean;
   manager?: Addr | null;
   owner?: Addr | null;
   reward_token: Denom;
@@ -163,6 +173,7 @@ export interface Cw20StakeExternalRewardsInterface extends Cw20StakeExternalRewa
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   fund: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  withdraw: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateRewardDuration: ({
     newDuration
   }: {
@@ -177,6 +188,11 @@ export interface Cw20StakeExternalRewardsInterface extends Cw20StakeExternalRewa
     newManager
   }: {
     newManager?: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  updatePauseStatus: ({
+    isPaused
+  }: {
+    isPaused: boolean;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
 export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRewardsInterface {
@@ -193,9 +209,11 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
     this.claim = this.claim.bind(this);
     this.receive = this.receive.bind(this);
     this.fund = this.fund.bind(this);
+    this.withdraw = this.withdraw.bind(this);
     this.updateRewardDuration = this.updateRewardDuration.bind(this);
     this.updateOwner = this.updateOwner.bind(this);
     this.updateManager = this.updateManager.bind(this);
+    this.updatePauseStatus = this.updatePauseStatus.bind(this);
   }
 
   stakeChangeHook = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
@@ -230,6 +248,11 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
       fund: {}
     }, fee, memo, funds);
   };
+  withdraw = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      withdraw: {}
+    }, fee, memo, funds);
+  };
   updateRewardDuration = async ({
     newDuration
   }: {
@@ -260,6 +283,17 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
     return await this.client.execute(this.sender, this.contractAddress, {
       update_manager: {
         new_manager: newManager
+      }
+    }, fee, memo, funds);
+  };
+  updatePauseStatus = async ({
+    isPaused
+  }: {
+    isPaused: boolean;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_pause_status: {
+        is_paused: isPaused
       }
     }, fee, memo, funds);
   };

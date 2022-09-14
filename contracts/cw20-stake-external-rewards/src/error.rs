@@ -11,6 +11,8 @@ pub enum ContractError {
     Unauthorized {},
     #[error("No rewards claimable")]
     NoRewardsClaimable {},
+    #[error("Reward period already finished")]
+    RewardPeriodFinished {},
     #[error("Reward period not finished")]
     RewardPeriodNotFinished {},
     #[error("Invalid funds")]
@@ -21,4 +23,8 @@ pub enum ContractError {
     RewardRateLessThenOnePerBlock {},
     #[error("Reward duration can not be zero")]
     ZeroRewardDuration {},
+    #[error("Contract is already in current state")]
+    SettingCurrentPauseState {},
+    #[error("Contract is paused")]
+    ContractPaused {},
 }

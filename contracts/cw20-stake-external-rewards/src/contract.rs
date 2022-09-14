@@ -8,20 +8,20 @@ use crate::state::{
 };
 use crate::ContractError;
 use crate::ContractError::{
-    InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodNotFinished, Unauthorized,
+    InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodFinished, RewardPeriodNotFinished,
+    Unauthorized,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
+    from_binary, to_binary, to_vec, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty,
+    Env, MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw20::Denom::Cw20;
 use cw20::{Cw20ReceiveMsg, Denom};
 use cw20_stake::hooks::StakeChangedHookMsg;
-
-use cw20::Denom::Cw20;
 use std::cmp::min;
 use std::convert::TryInto;
 
@@ -63,6 +63,7 @@ pub fn instantiate(
         manager,
         staking_contract: deps.api.addr_validate(&msg.staking_contract)?,
         reward_token,
+        is_paused: false,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -99,14 +100,41 @@ pub fn instantiate(
         )
         .add_attribute("reward_rate", reward_config.reward_rate)
         .add_attribute("period_finish", reward_config.period_finish.to_string())
-        .add_attribute("reward_duration", reward_config.reward_duration.to_string()))
+        .add_attribute("reward_duration", reward_config.reward_duration.to_string())
+        .add_attribute("is_paused", "false"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+    match msg {
+        MigrateMsg::FromV1 { is_paused } => {
+            // Load the current config and introduce the claim pause flag
+            let current_config =
+                stake_cw20_external_rewards_v1::state::CONFIG.load(deps.storage)?;
+            let is_paused = if let Some(val) = is_paused {
+                val
+            } else {
+                false
+            };
+
+            let new_config = Config {
+                owner: current_config.owner,
+                manager: current_config.manager,
+                staking_contract: current_config.staking_contract,
+                reward_token: current_config.reward_token,
+                is_paused,
+            };
+            deps.storage.set(b"config", &to_vec(&new_config)?);
+            Ok(Response::default()
+                .add_attribute("action", "migrate")
+                .add_attribute("from", "v1")
+                .add_attribute("is_paused", is_paused.to_string()))
+        }
+        MigrateMsg::FromCompatible {} => Ok(Response::default()
+            .add_attribute("action", "migrate")
+            .add_attribute("from", "compatible")),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -128,6 +156,9 @@ pub fn execute(
         ExecuteMsg::UpdateOwner { new_owner } => execute_update_owner(deps, env, info, new_owner),
         ExecuteMsg::UpdateManager { new_manager } => {
             execute_update_manager(deps, env, info, new_manager)
+        }
+        ExecuteMsg::UpdatePauseStatus { is_paused } => {
+            execute_update_pause_status(deps, env, info, is_paused)
         }
     }
 }
@@ -183,25 +214,26 @@ pub fn execute_withdraw(
     };
     let leftover_stake = match &config.reward_token {
         Denom::Native(denom) => {
-            deps.querier.query_balance(
-                env.contract.address,
-                denom.to_string()
-            ).unwrap().amount
+            deps.querier
+                .query_balance(env.contract.address, denom.to_string())
+                .unwrap()
+                .amount
         }
         Cw20(denom) => {
-            let result: cw20::BalanceResponse = deps.querier.query_wasm_smart(
-                denom.to_string(),
-                &cw20::Cw20QueryMsg::Balance { address: String::from(env.contract.address) }
-            ).unwrap();
+            let result: cw20::BalanceResponse = deps
+                .querier
+                .query_wasm_smart(
+                    denom.to_string(),
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: String::from(env.contract.address),
+                    },
+                )
+                .unwrap();
             result.balance
         }
     };
 
-    let transfer_msg = get_transfer_msg(
-        info.sender.clone(),
-        leftover_stake,
-        config.reward_token
-    )?;
+    let transfer_msg = get_transfer_msg(info.sender, leftover_stake, config.reward_token)?;
 
     Ok(Response::new()
         .add_message(transfer_msg)
@@ -288,6 +320,11 @@ pub fn execute_claim(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response<Empty>, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.is_paused {
+        return Err(ContractError::ContractPaused {});
+    }
+
     update_rewards(&mut deps, &env, &info.sender)?;
     let rewards = PENDING_REWARDS
         .load(deps.storage, info.sender.clone())
@@ -296,7 +333,6 @@ pub fn execute_claim(
         return Err(ContractError::NoRewardsClaimable {});
     }
     PENDING_REWARDS.save(deps.storage, info.sender.clone(), &Uint128::zero())?;
-    let config = CONFIG.load(deps.storage)?;
     let transfer_msg = get_transfer_msg(info.sender, rewards, config.reward_token)?;
     Ok(Response::new()
         .add_message(transfer_msg)
@@ -508,6 +544,32 @@ pub fn execute_update_manager(
         ))
 }
 
+pub fn execute_update_pause_status(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    is_paused: bool,
+) -> Result<Response<Empty>, ContractError> {
+    let mut config = CONFIG.load(deps.storage)?;
+    if Some(info.sender.clone()) != config.owner && Some(info.sender) != config.manager {
+        return Err(ContractError::Unauthorized {});
+    };
+
+    let reward_config = REWARD_CONFIG.load(deps.storage)?;
+    if reward_config.period_finish < env.block.height {
+        return Err(RewardPeriodFinished {});
+    } else if config.is_paused == is_paused {
+        return Err(ContractError::SettingCurrentPauseState {});
+    }
+
+    config.is_paused = is_paused;
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_pause_state")
+        .add_attribute("new_state", config.is_paused.to_string()))
+}
+
 fn scale_factor() -> Uint256 {
     Uint256::from(10u8).pow(39)
 }
@@ -561,21 +623,22 @@ mod tests {
 
     use crate::{
         contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-        msg::MigrateMsg,
+        msg::{
+            ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, PendingRewardsResponse, QueryMsg,
+            ReceiveMsg,
+        },
         ContractError,
     };
 
     use cosmwasm_std::{
         coin,
         testing::{mock_dependencies, mock_env},
-        to_binary, Addr, Empty, Uint128, Coin, BankMsg, WasmMsg
+        to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
     };
     use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
     use cw_utils::Duration;
 
     use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
-
-    use crate::msg::{ExecuteMsg, InfoResponse, PendingRewardsResponse, QueryMsg, ReceiveMsg};
 
     const OWNER: &str = "owner";
     const MANAGER: &str = "manager";
@@ -598,6 +661,26 @@ mod tests {
             cw20_stake::contract::instantiate,
             cw20_stake::contract::query,
         );
+        Box::new(contract)
+    }
+
+    pub fn external_rewards_contract() -> Box<dyn Contract<Empty>> {
+        let contract = ContractWrapper::new(
+            crate::contract::execute,
+            crate::contract::instantiate,
+            crate::contract::query,
+        )
+        .with_migrate(crate::contract::migrate);
+        Box::new(contract)
+    }
+
+    pub fn v1_external_rewards_contract() -> Box<dyn Contract<Empty>> {
+        let contract = ContractWrapper::new(
+            stake_cw20_external_rewards_v1::contract::execute,
+            stake_cw20_external_rewards_v1::contract::instantiate,
+            stake_cw20_external_rewards_v1::contract::query,
+        )
+        .with_migrate(stake_cw20_external_rewards_v1::contract::migrate);
         Box::new(contract)
     }
 
@@ -2252,7 +2335,7 @@ mod tests {
     pub fn test_migrate_update_version() {
         let mut deps = mock_dependencies();
         cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
-        migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
+        migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {}).unwrap();
         let version = cw2::get_contract_version(&deps.storage).unwrap();
         assert_eq!(version.version, CONTRACT_VERSION);
         assert_eq!(version.contract, CONTRACT_NAME);
@@ -2278,7 +2361,7 @@ mod tests {
             },
         ];
 
-        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
 
         let reward_token = instantiate_cw20(
             &mut app,
@@ -2289,7 +2372,7 @@ mod tests {
         );
         let reward_addr = setup_reward_contract(
             &mut app,
-            staking_addr.clone(),
+            staking_addr,
             Denom::Cw20(reward_token.clone()),
             admin.clone(),
             Addr::unchecked(MANAGER),
@@ -2319,8 +2402,8 @@ mod tests {
             .execute_contract(
                 Addr::unchecked(ADDR1),
                 reward_addr.clone(),
-                &ExecuteMsg::Withdraw { },
-                &[]
+                &ExecuteMsg::Withdraw {},
+                &[],
             )
             .unwrap_err()
             .downcast()
@@ -2328,8 +2411,14 @@ mod tests {
 
         assert_eq!(err, ContractError::Unauthorized {});
         // assert no balances changed
-        assert_eq!(current_reward_balance, get_balance_cw20(&app, &reward_token, &reward_addr));
-        assert_eq!(current_owner_balance, get_balance_cw20(&app, &reward_token, OWNER));
+        assert_eq!(
+            current_reward_balance,
+            get_balance_cw20(&app, &reward_token, &reward_addr)
+        );
+        assert_eq!(
+            current_owner_balance,
+            get_balance_cw20(&app, &reward_token, OWNER)
+        );
     }
 
     #[test]
@@ -2352,7 +2441,7 @@ mod tests {
             },
         ];
 
-        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
 
         let reward_token = instantiate_cw20(
             &mut app,
@@ -2363,7 +2452,7 @@ mod tests {
         );
         let reward_addr = setup_reward_contract(
             &mut app,
-            staking_addr.clone(),
+            staking_addr,
             Denom::Cw20(reward_token.clone()),
             admin.clone(),
             Addr::unchecked(MANAGER),
@@ -2395,8 +2484,8 @@ mod tests {
             .execute_contract(
                 Addr::unchecked(OWNER),
                 reward_addr.clone(),
-                &ExecuteMsg::Withdraw { },
-                &[]
+                &ExecuteMsg::Withdraw {},
+                &[],
             )
             .unwrap_err()
             .downcast()
@@ -2433,7 +2522,7 @@ mod tests {
                 amount: Uint128::new(50),
             },
         ];
-        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
 
         let reward_token = instantiate_cw20(
             &mut app,
@@ -2444,7 +2533,7 @@ mod tests {
         );
         let reward_addr = setup_reward_contract(
             &mut app,
-            staking_addr.clone(),
+            staking_addr,
             Denom::Cw20(reward_token.clone()),
             admin.clone(),
             Addr::unchecked(MANAGER),
@@ -2495,13 +2584,8 @@ mod tests {
             recipient: reward_addr.to_string(),
             amount: Uint128::new(500000),
         };
-        app.execute_contract(
-            Addr::unchecked(OWNER),
-            reward_token.clone(),
-            &msg,
-            &[],
-        )
-        .unwrap();
+        app.execute_contract(Addr::unchecked(OWNER), reward_token.clone(), &msg, &[])
+            .unwrap();
 
         app.borrow_mut().update_block(|b| b.height += 1);
         assert_eq!(
@@ -2546,8 +2630,8 @@ mod tests {
             .execute_contract(
                 Addr::unchecked(OWNER),
                 reward_addr.clone(),
-                &ExecuteMsg::Withdraw { },
-                &[]
+                &ExecuteMsg::Withdraw {},
+                &[],
             )
             .unwrap();
 
@@ -2584,7 +2668,7 @@ mod tests {
             },
         ];
         let denom = "utest".to_string();
-        let (staking_addr, cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
 
         let reward_funding = vec![coin(500000000, denom.clone())];
         app.sudo(SudoMsg::Bank({
@@ -2597,7 +2681,7 @@ mod tests {
 
         let reward_addr = setup_reward_contract(
             &mut app,
-            staking_addr.clone(),
+            staking_addr,
             Denom::Native(denom.clone()),
             admin.clone(),
             Addr::unchecked(MANAGER),
@@ -2656,12 +2740,11 @@ mod tests {
         );
 
         // mint some more tokens into the rewards contract
-        // TODO: consider minting to admin and transferring to the contract instead
         let reward_funding = vec![coin(500000000, denom.clone())];
         app.sudo(SudoMsg::Bank({
             BankSudo::Mint {
                 to_address: reward_addr.to_string(),
-                amount: reward_funding.clone(),
+                amount: reward_funding,
             }
         }))
         .unwrap();
@@ -2678,8 +2761,8 @@ mod tests {
             .execute_contract(
                 Addr::unchecked(OWNER),
                 reward_addr.clone(),
-                &ExecuteMsg::Withdraw { },
-                &[]
+                &ExecuteMsg::Withdraw {},
+                &[],
             )
             .unwrap();
 
@@ -2687,11 +2770,506 @@ mod tests {
             get_balance_native(&app, &reward_addr, &denom),
             pre_withdraw_admin_balance
         );
-        assert_eq!(get_balance_native(&app, &admin, &denom), pre_withdraw_reward_balance);
+        assert_eq!(
+            get_balance_native(&app, &admin, &denom),
+            pre_withdraw_reward_balance
+        );
     }
 
     #[test]
-    fn test_withdraw_after_someone_else_funds() {
-        // TODO
+    fn test_cannot_claim_from_paused_contract() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(100),
+        }];
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr,
+            Denom::Cw20(reward_token.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        // fund the reward token contract
+        fund_rewards_cw20(
+            &mut app,
+            &admin,
+            reward_token.clone(),
+            &reward_addr,
+            100000000,
+        );
+
+        app.borrow_mut().update_block(|b| b.height += 995);
+
+        // first claims work as expected
+        claim_rewards(&mut app, reward_addr.clone(), ADDR1);
+        let previous_user_balance = get_balance_cw20(&app, &reward_token, ADDR1);
+        let previous_contract_balance = get_balance_cw20(&app, &reward_token, &reward_addr);
+        assert_eq!(previous_user_balance, Uint128::new(995000));
+        assert_eq!(previous_contract_balance, Uint128::new(99005000));
+
+        app.borrow_mut().update_block(|b| b.height += 300);
+
+        let _resp = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                reward_addr.clone(),
+                &ExecuteMsg::UpdatePauseStatus { is_paused: true },
+                &[],
+            )
+            .unwrap();
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(ADDR1),
+                reward_addr.clone(),
+                &ExecuteMsg::Claim {},
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+
+        assert_eq!(err, ContractError::ContractPaused {});
+        // assert no balances changed
+        assert_eq!(
+            previous_user_balance,
+            get_balance_cw20(&app, &reward_token, ADDR1)
+        );
+        assert_eq!(
+            previous_contract_balance,
+            get_balance_cw20(&app, &reward_token, &reward_addr)
+        );
+
+        // everything looks good, unpause the contract
+        app.borrow_mut().update_block(|b| b.height += 1);
+
+        app.borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                reward_addr.clone(),
+                &ExecuteMsg::UpdatePauseStatus { is_paused: false },
+                &[],
+            )
+            .unwrap();
+
+        // 301000 pending rewards for ADDR1
+        assert_pending_rewards(&mut app, &reward_addr, ADDR1, 301000);
+
+        app.borrow_mut()
+            .execute_contract(
+                Addr::unchecked(ADDR1),
+                reward_addr.clone(),
+                &ExecuteMsg::Claim {},
+                &[],
+            )
+            .unwrap();
+
+        assert_eq!(
+            previous_user_balance + Uint128::new(301000),
+            get_balance_cw20(&app, &reward_token, ADDR1)
+        );
+    }
+
+    #[test]
+    fn test_cannot_pause_contract_unauthorized() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(100),
+        }];
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(500000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr,
+            Denom::Cw20(reward_token.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        app.borrow_mut().update_block(|b| b.height = 1000);
+
+        // fund the reward token contract
+        fund_rewards_cw20(&mut app, &admin, reward_token, &reward_addr, 100000000);
+
+        app.borrow_mut().update_block(|b| b.height += 995);
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(ADDR1),
+                reward_addr.clone(),
+                &ExecuteMsg::UpdatePauseStatus { is_paused: true },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+
+        assert_eq!(err, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_cannot_pause_after_reward_period() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(1000),
+        }];
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(5000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr,
+            Denom::Cw20(reward_token.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        // fund the reward token contract
+        fund_rewards_cw20(&mut app, &admin, reward_token, &reward_addr, 100000);
+
+        app.borrow_mut().update_block(|b| b.height += 500000);
+        let res: InfoResponse = app
+            .borrow_mut()
+            .wrap()
+            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
+            .unwrap();
+        // assert reward period finished
+        assert!(res.reward.period_finish < app.borrow_mut().block_info().height);
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                reward_addr.clone(),
+                &ExecuteMsg::UpdatePauseStatus { is_paused: true },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+
+        assert_eq!(err, ContractError::RewardPeriodFinished {});
+    }
+
+    #[test]
+    fn test_cannot_set_existing_pause_state() {
+        let mut app = mock_app();
+        let admin = Addr::unchecked(OWNER);
+        app.borrow_mut().update_block(|b| b.height = 0);
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(1000),
+        }];
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(5000000),
+            }],
+        );
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr,
+            Denom::Cw20(reward_token.clone()),
+            admin.clone(),
+            Addr::unchecked(MANAGER),
+        );
+
+        // fund the reward token contract
+        fund_rewards_cw20(&mut app, &admin, reward_token, &reward_addr, 100000);
+
+        app.borrow_mut().update_block(|b| b.height += 5);
+
+        let err: ContractError = app
+            .borrow_mut()
+            .execute_contract(
+                Addr::unchecked(OWNER),
+                reward_addr.clone(),
+                &ExecuteMsg::UpdatePauseStatus { is_paused: false },
+                &[],
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+
+        assert_eq!(err, ContractError::SettingCurrentPauseState {});
+    }
+
+    pub fn query_stake_external_rewards_config(app: &App, external_rewards: Addr) -> InfoResponse {
+        app.wrap()
+            .query_wasm_smart(external_rewards, &QueryMsg::Info {})
+            .unwrap()
+    }
+
+    struct CommonTest {
+        app: App,
+        stake_external_rewards_addr: Addr,
+    }
+    fn setup_test(_messages: Vec<CosmosMsg>) -> CommonTest {
+        let mut app = App::default();
+        let stake_external_rewards_code = app.store_code(external_rewards_contract());
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(5000000),
+            }],
+        );
+
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(10000),
+        }];
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let instantiate = InstantiateMsg {
+            owner: Some(OWNER.to_string()),
+            manager: Some(MANAGER.to_string()),
+            staking_contract: staking_addr.to_string(),
+            reward_token: Denom::Native(reward_token.to_string()),
+            reward_duration: 10000,
+        };
+
+        let stake_external_rewards_addr: Addr = app
+            .instantiate_contract(
+                stake_external_rewards_code,
+                Addr::unchecked(OWNER.to_string()),
+                &instantiate,
+                &[],
+                "cw20-stake-external-rewards module",
+                Some(OWNER.to_string()),
+            )
+            .unwrap();
+
+        CommonTest {
+            app,
+            stake_external_rewards_addr,
+        }
+    }
+
+    #[test]
+    fn test_migrate_from_compatible() {
+        let CommonTest {
+            mut app,
+            stake_external_rewards_addr,
+        } = setup_test(vec![]);
+
+        // store the new code and query the existing config
+        let new_code_id = app.store_code(external_rewards_contract());
+        let start_config =
+            query_stake_external_rewards_config(&app, stake_external_rewards_addr.clone());
+
+        // migrate
+        app.execute(
+            Addr::unchecked(OWNER.to_string()),
+            CosmosMsg::Wasm(WasmMsg::Migrate {
+                contract_addr: stake_external_rewards_addr.to_string(),
+                new_code_id,
+                msg: to_binary(&MigrateMsg::FromCompatible {}).unwrap(),
+            }),
+        )
+        .unwrap();
+
+        // query end config and compare with start config
+        let end_config = query_stake_external_rewards_config(&app, stake_external_rewards_addr);
+        assert_eq!(start_config, end_config);
+    }
+
+    #[test]
+    fn test_migrate_from_v1_with_paused_flag() {
+        let mut app = App::default();
+
+        use stake_cw20_external_rewards_v1 as v1;
+        let v1_stake_external_rewards = app.store_code(v1_external_rewards_contract());
+        let stake_external_rewards = app.store_code(external_rewards_contract());
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(5000000),
+            }],
+        );
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(10000),
+        }];
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let instantiate_v1: v1::msg::InstantiateMsg = v1::msg::InstantiateMsg {
+            owner: Some(OWNER.to_string()),
+            manager: Some(MANAGER.to_string()),
+            staking_contract: staking_addr.to_string(),
+            reward_token: Denom::Cw20(Addr::unchecked(reward_token.to_string())),
+            reward_duration: 10000,
+        };
+
+        let v1_stake_external_rewards_addr: Addr = app
+            .instantiate_contract(
+                v1_stake_external_rewards,
+                Addr::unchecked(OWNER.to_string()),
+                &instantiate_v1,
+                &[],
+                "cw20-stake-external-rewards module",
+                Some(OWNER.to_string()),
+            )
+            .unwrap();
+
+        // pre-migration config
+        let start_config: v1::msg::InfoResponse = app
+            .wrap()
+            .query_wasm_smart(
+                v1_stake_external_rewards_addr.clone(),
+                &v1::msg::QueryMsg::Info {},
+            )
+            .unwrap();
+
+        // migrate
+        app.execute(
+            Addr::unchecked(OWNER.to_string()),
+            CosmosMsg::Wasm(WasmMsg::Migrate {
+                contract_addr: v1_stake_external_rewards_addr.to_string(),
+                msg: to_binary(&MigrateMsg::FromV1 {
+                    is_paused: Some(true),
+                })
+                .unwrap(),
+                new_code_id: stake_external_rewards,
+            }),
+        )
+        .unwrap();
+
+        // query end config and compare with start config
+        let end_config = query_stake_external_rewards_config(&app, v1_stake_external_rewards_addr);
+
+        // all existing props should be the same, with the added pause flag
+        assert_eq!(start_config.config.owner, end_config.config.owner);
+        assert_eq!(start_config.config.manager, end_config.config.manager);
+        assert_eq!(
+            start_config.config.reward_token,
+            end_config.config.reward_token
+        );
+        assert_eq!(
+            start_config.config.staking_contract,
+            end_config.config.staking_contract
+        );
+        assert!(end_config.config.is_paused, "{}", true);
+    }
+
+    #[test]
+    fn test_migrate_from_v1_without_paused_flag() {
+        let mut app = App::default();
+
+        use stake_cw20_external_rewards_v1 as v1;
+        let v1_stake_external_rewards = app.store_code(v1_external_rewards_contract());
+        let stake_external_rewards = app.store_code(external_rewards_contract());
+
+        let reward_token = instantiate_cw20(
+            &mut app,
+            vec![Cw20Coin {
+                address: OWNER.to_string(),
+                amount: Uint128::new(5000000),
+            }],
+        );
+        let initial_balances = vec![Cw20Coin {
+            address: ADDR1.to_string(),
+            amount: Uint128::new(10000),
+        }];
+        let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
+
+        let instantiate_v1: v1::msg::InstantiateMsg = v1::msg::InstantiateMsg {
+            owner: Some(OWNER.to_string()),
+            manager: Some(MANAGER.to_string()),
+            staking_contract: staking_addr.to_string(),
+            reward_token: Denom::Cw20(Addr::unchecked(reward_token.to_string())),
+            reward_duration: 10000,
+        };
+
+        let v1_stake_external_rewards_addr: Addr = app
+            .instantiate_contract(
+                v1_stake_external_rewards,
+                Addr::unchecked(OWNER.to_string()),
+                &instantiate_v1,
+                &[],
+                "cw20-stake-external-rewards module",
+                Some(OWNER.to_string()),
+            )
+            .unwrap();
+
+        // pre-migration config
+        let start_config: v1::msg::InfoResponse = app
+            .wrap()
+            .query_wasm_smart(
+                v1_stake_external_rewards_addr.clone(),
+                &v1::msg::QueryMsg::Info {},
+            )
+            .unwrap();
+
+        // migrate
+        app.execute(
+            Addr::unchecked(OWNER.to_string()),
+            CosmosMsg::Wasm(WasmMsg::Migrate {
+                contract_addr: v1_stake_external_rewards_addr.to_string(),
+                msg: to_binary(&MigrateMsg::FromV1 { is_paused: None }).unwrap(),
+                new_code_id: stake_external_rewards,
+            }),
+        )
+        .unwrap();
+
+        // query end config and compare with start config
+        let end_config = query_stake_external_rewards_config(&app, v1_stake_external_rewards_addr);
+
+        // all existing props should be the same, with the added pause flag
+        assert_eq!(start_config.config.owner, end_config.config.owner);
+        assert_eq!(start_config.config.manager, end_config.config.manager);
+        assert_eq!(
+            start_config.config.reward_token,
+            end_config.config.reward_token
+        );
+        assert_eq!(
+            start_config.config.staking_contract,
+            end_config.config.staking_contract
+        );
+        // no flag defaults to false
+        assert!(!end_config.config.is_paused);
     }
 }

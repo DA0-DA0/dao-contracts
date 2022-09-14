@@ -53,6 +53,18 @@
     {
       "type": "object",
       "required": [
+        "withdraw"
+      ],
+      "properties": {
+        "withdraw": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "update_reward_duration"
       ],
       "properties": {
@@ -106,6 +118,26 @@
                 "string",
                 "null"
               ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_pause_status"
+      ],
+      "properties": {
+        "update_pause_status": {
+          "type": "object",
+          "required": [
+            "is_paused"
+          ],
+          "properties": {
+            "is_paused": {
+              "type": "boolean"
             }
           }
         }

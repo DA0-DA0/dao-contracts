@@ -22,10 +22,14 @@
     "Config": {
       "type": "object",
       "required": [
+        "is_paused",
         "reward_token",
         "staking_contract"
       ],
       "properties": {
+        "is_paused": {
+          "type": "boolean"
+        },
         "manager": {
           "anyOf": [
             {

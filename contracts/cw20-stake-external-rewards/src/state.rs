@@ -12,6 +12,7 @@ pub struct Config {
     pub manager: Option<Addr>,
     pub staking_contract: Addr,
     pub reward_token: Denom,
+    pub is_paused: bool,
 }
 pub const CONFIG: Item<Config> = Item::new("config");
 
