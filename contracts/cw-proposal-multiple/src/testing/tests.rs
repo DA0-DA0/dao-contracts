@@ -21,7 +21,7 @@ use voting::{
 };
 
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::MultipleChoiceProposal,
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse},
     state::Config,
@@ -67,8 +67,7 @@ pub fn proposal_multiple_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-    .with_reply(crate::contract::reply)
-    .with_migrate(crate::contract::migrate);
+    .with_reply(crate::contract::reply);
     Box::new(contract)
 }
 
@@ -258,47 +257,6 @@ fn test_propose_wrong_num_choices() {
         &[],
     );
     assert!(err.is_err());
-}
-
-#[test]
-fn test_migrate() {
-    let mut app = App::default();
-    let _govmod_id = app.store_code(proposal_multiple_contract());
-
-    let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
-            quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
-        max_voting_period: Duration::Time(10),
-        min_voting_period: None,
-        close_proposal_on_execution_failure: true,
-        only_members_execute: true,
-        allow_revoting: false,
-        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-    };
-
-    let core_addr = instantiate_with_staked_balances_governance(&mut app, msg, None);
-    let govmod = query_multiple_proposal_module(&app, &core_addr);
-
-    let config: Config = query_proposal_config(&app, &govmod);
-
-    app.execute(
-        core_addr,
-        CosmosMsg::Wasm(WasmMsg::Migrate {
-            contract_addr: govmod.to_string(),
-            new_code_id: _govmod_id,
-            msg: to_binary(&MigrateMsg::FromV1 {
-                close_proposal_on_execution_failure: true,
-                pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-            })
-            .unwrap(),
-        }),
-    )
-    .unwrap();
-
-    let new_config: Config = query_proposal_config(&app, &govmod);
-
-    assert_eq!(config, new_config);
 }
 
 #[test]

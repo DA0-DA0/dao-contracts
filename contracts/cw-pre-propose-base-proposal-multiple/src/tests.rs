@@ -30,7 +30,6 @@ fn cw_dao_proposal_multiple_contract() -> Box<dyn Contract<Empty>> {
         cpm::contract::instantiate,
         cpm::contract::query,
     )
-    .with_migrate(cpm::contract::migrate)
     .with_reply(cpm::contract::reply);
     Box::new(contract)
 }

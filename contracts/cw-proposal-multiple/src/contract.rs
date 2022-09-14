@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
-    StdResult, Storage, SubMsg, Timestamp, WasmMsg,
+    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult,
+    Storage, SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -24,8 +24,9 @@ use voting::{
     voting::{get_total_power, get_voting_power, validate_voting_period},
 };
 
+use crate::state::CREATION_POLICY;
 use crate::{
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::{MultipleChoiceProposal, VoteResult},
     query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::{
@@ -33,7 +34,6 @@ use crate::{
     },
     ContractError,
 };
-use crate::{state::CREATION_POLICY, v1_state};
 
 pub const CONTRACT_NAME: &str = "crates.io:cw-proposal-multiple";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -843,96 +843,5 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
             Ok(Response::new().add_attribute("update_pre_propose_module", res.contract_address))
         }
-    }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    match msg {
-        MigrateMsg::FromV1 {
-            close_proposal_on_execution_failure,
-            pre_propose_info,
-        } => {
-            // Update the stored config to have the new
-            // `close_proposal_on_execution_falure` field.
-            let current_config = v1_state::CONFIG.load(deps.storage)?;
-            CONFIG.save(
-                deps.storage,
-                &Config {
-                    voting_strategy: current_config.voting_strategy,
-                    max_voting_period: current_config.max_voting_period,
-                    min_voting_period: current_config.min_voting_period,
-                    only_members_execute: current_config.only_members_execute,
-                    allow_revoting: current_config.allow_revoting,
-                    dao: current_config.dao.clone(),
-                    // Loads of text, but we're only updating these fields.
-                    close_proposal_on_execution_failure,
-                },
-            )?;
-
-            let (initial_policy, pre_propose_messages) =
-                pre_propose_info.into_initial_policy_and_messages(current_config.dao)?;
-            CREATION_POLICY.save(deps.storage, &initial_policy)?;
-
-            // Update the module's proposals to v2.
-            let current_proposals = v1_state::PROPOSALS
-                .range(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<(u64, v1_state::Proposal)>>>()?;
-
-            // Based on gas usage testing, we estimate that we will be
-            // able to migrate ~4200 proposals at a time before
-            // reaching the block max_gas limit.
-            current_proposals
-                .into_iter()
-                .try_for_each::<_, Result<_, ContractError>>(|(id, prop)| {
-                    if prop
-                        .deposit_info
-                        .map(|info| !info.deposit.is_zero())
-                        .unwrap_or(false)
-                        && prop.status != v1_state::Status::Closed
-                        && prop.status != v1_state::Status::Executed
-                    {
-                        // No migration path for outstanding
-                        // deposits.
-                        return Err(ContractError::PendingProposals {});
-                    }
-
-                    let migrated_proposal = MultipleChoiceProposal {
-                        title: prop.title,
-                        description: prop.description,
-                        proposer: prop.proposer,
-                        start_height: prop.start_height,
-                        min_voting_period: prop.min_voting_period,
-                        expiration: prop.expiration,
-                        voting_strategy: prop.voting_strategy,
-                        total_power: prop.total_power,
-                        choices: prop.choices,
-                        status: prop.status.into(),
-                        votes: prop.votes,
-                        allow_revoting: prop.allow_revoting,
-                        // CosmWasm does not expose a way to query the timestamp
-                        // of a block given block height. As such, we assign migrated
-                        // proposals a created timestamp of 0 so that the frontend may
-                        // query for the true timestamp given `start_height`.
-                        created: Timestamp::from_seconds(0),
-                        last_updated: env.block.time,
-                    };
-
-                    PROPOSALS
-                        .save(deps.storage, id, &migrated_proposal)
-                        .map_err(|e| e.into())
-                })?;
-
-            Ok(Response::default()
-                .add_attribute("action", "migrate")
-                .add_attribute("from", "v1")
-                .add_submessages(pre_propose_messages))
-        }
-
-        MigrateMsg::FromCompatible {} => Ok(Response::default()
-            .add_attribute("action", "migrate")
-            .add_attribute("from", "compatible")),
     }
 }
