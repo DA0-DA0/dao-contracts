@@ -1,20 +1,14 @@
 [package]
-name = "integration_tests" # TODO: Rename this to `integration-tests` to be like everything else
+name = "bootstrap-env"
 version = "0.1.0"
 edition = "2021"
 
-# This crate depends on rand. These are not features in
-# wasm builds of cosmwasm. Despite this crate only being used as a dev
-# dependency, because it is part of the workspace it will always be
-# compiled. There is no good way to remove a member from a workspace
-# conditionally. As such, we don't compile anything here if we're
-# targeting wasm.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cosm-orc = { version = "2.3.1" }
 cw20 = "0.13"
-cw20-base = "0.13"
 cw-utils = "0.13"
 cosmwasm-std = { version = "1.0.0", features = ["ibc3"] }
+cw-admin-factory = { version = "*", path = "../../contracts/cw-admin-factory" }
 cw-core = { version = "*", path = "../../contracts/cw-core" }
 cw20-stake = { version = "*", path = "../../contracts/cw20-stake" }
 cw20-staked-balance-voting = { version = "*", path = "../../contracts/cw20-staked-balance-voting" }
@@ -22,11 +16,8 @@ cw-proposal-single = { version = "*", path = "../../contracts/cw-proposal-single
 cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
 voting = { version = "*", path = "../../packages/voting" }
 
-assert_matches = "1.5"
 anyhow = { version = "1.0.51"}
+env_logger = "0.9.0"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 serde_json = "1.0"
-once_cell = "1.13.0"
-env_logger = "0.9.0"
-test-context = "0.1.4"
-rand = "0.8.5"
+serde_yaml = "0.9"

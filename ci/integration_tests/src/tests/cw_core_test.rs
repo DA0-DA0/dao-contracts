@@ -18,12 +18,16 @@ use voting::{deposit::CheckedDepositInfo, threshold::PercentageThreshold, thresh
 #[test]
 #[ignore]
 fn execute_execute_admin_msgs(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
+
     // if you are not the admin, you cant execute admin msgs:
     let res = create_dao(
         chain,
         None,
         "exc_admin_msgs_create_dao",
-        chain.user.addr.clone(),
+        user_addr.clone(),
+        &user_key,
     );
     let dao = res.unwrap();
 
@@ -40,7 +44,8 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
                 funds: vec![],
             })],
         },
-        &chain.user.key,
+        &user_key,
+        vec![],
     );
 
     assert_matches!(
@@ -50,11 +55,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw_core",
-            "exc_admin_msgs_pause_dao_query",
-            &cw_core::msg::QueryMsg::PauseInfo {},
-        )
+        .query("cw_core", &cw_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
     let res: PauseInfoResponse = res.data().unwrap();
 
@@ -63,9 +64,10 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     // if you are the admin you can execute admin msgs:
     let res = create_dao(
         chain,
-        Some(chain.user.addr.clone()),
+        Some(user_addr.clone()),
         "exc_admin_msgs_create_dao_with_admin",
-        chain.user.addr.clone(),
+        user_addr,
+        &user_key,
     );
     let dao = res.unwrap();
 
@@ -84,17 +86,14 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.user.key,
+            &user_key,
+            vec![],
         )
         .unwrap();
 
     let res = chain
         .orc
-        .query(
-            "cw_core",
-            "exc_admin_msgs_pause_dao",
-            &cw_core::msg::QueryMsg::PauseInfo {},
-        )
+        .query("cw_core", &cw_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
 
     let res: PauseInfoResponse = res.data().unwrap();
@@ -105,12 +104,16 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn execute_items(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
+
     // add item:
     let res = create_dao(
         chain,
-        Some(chain.user.addr.clone()),
+        Some(user_addr.clone()),
         "exc_items_create_dao",
-        chain.user.addr.clone(),
+        user_addr,
+        &user_key,
     );
 
     let dao = res.unwrap();
@@ -119,7 +122,6 @@ fn execute_items(chain: &mut Chain) {
         .orc
         .query(
             "cw_core",
-            "exc_items_get",
             &cw_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -145,7 +147,8 @@ fn execute_items(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.user.key,
+            &user_key,
+            vec![],
         )
         .unwrap();
 
@@ -153,7 +156,6 @@ fn execute_items(chain: &mut Chain) {
         .orc
         .query(
             "cw_core",
-            "exc_items_set",
             &cw_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -179,7 +181,8 @@ fn execute_items(chain: &mut Chain) {
                     funds: vec![],
                 })],
             },
-            &chain.user.key,
+            &user_key,
+            vec![],
         )
         .unwrap();
 
@@ -187,7 +190,6 @@ fn execute_items(chain: &mut Chain) {
         .orc
         .query(
             "cw_core",
-            "exc_items_rm",
             &cw_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -204,7 +206,10 @@ fn execute_items(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_no_admin(chain: &mut Chain) {
-    let res = create_dao(chain, None, "inst_dao_no_admin", chain.user.addr.clone());
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
+
+    let res = create_dao(chain, None, "inst_dao_no_admin", user_addr, &user_key);
     let dao = res.unwrap();
 
     // ensure the dao is the admin:
@@ -227,19 +232,22 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
 #[test]
 #[ignore]
 fn instantiate_with_admin(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
     let voting_contract = "cw20_staked_balance_voting";
     let proposal_contract = "cw_proposal_single";
 
     let res = create_dao(
         chain,
-        Some(chain.user.addr.clone()),
+        Some(user_addr.clone()),
         "inst_admin_create_dao",
-        chain.user.addr.clone(),
+        user_addr.clone(),
+        &user_key,
     );
     let dao = res.unwrap();
 
     // general dao info is valid:
-    assert_eq!(dao.state.admin, chain.user.addr);
+    assert_eq!(dao.state.admin, user_addr);
     assert_eq!(dao.state.pause_info, PauseInfoResponse::Unpaused {});
     assert_eq!(
         dao.state.config,
@@ -266,7 +274,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             voting_contract,
-            "inst_admin_q_stake",
             &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
@@ -281,10 +288,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             "cw20_stake",
-            "inst_admin_q_val",
-            &cw20_stake::msg::QueryMsg::StakedValue {
-                address: chain.user.addr.clone(),
-            },
+            &cw20_stake::msg::QueryMsg::StakedValue { address: user_addr },
         )
         .unwrap();
     let staked_res: StakedValueResponse = res.data().unwrap();
@@ -292,11 +296,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw20_stake",
-            "inst_admin_q_cfg",
-            &cw20_stake::msg::QueryMsg::GetConfig {},
-        )
+        .query("cw20_stake", &cw20_stake::msg::QueryMsg::GetConfig {})
         .unwrap();
     let config_res: cw20_stake::state::Config = res.data().unwrap();
     assert_eq!(
@@ -311,7 +311,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             voting_contract,
-            "inst_admin_q_tok",
             &cw20_staked_balance_voting::msg::QueryMsg::TokenContract {},
         )
         .unwrap();
@@ -322,11 +321,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw20_stake",
-            "inst_admin_q_val",
-            &cw20_stake::msg::QueryMsg::TotalValue {},
-        )
+        .query("cw20_stake", &cw20_stake::msg::QueryMsg::TotalValue {})
         .unwrap();
     let total_res: TotalValueResponse = res.data().unwrap();
     assert_eq!(total_res.total, Uint128::new(0));
@@ -341,7 +336,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .orc
         .query(
             proposal_contract,
-            "inst_admin_q_cfg",
             &cw_proposal_single::msg::QueryMsg::Config {},
         )
         .unwrap();

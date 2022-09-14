@@ -1,5 +1,6 @@
 use super::chain::Chain;
 use anyhow::Result;
+use cosm_orc::config::key::SigningKey;
 use cosmwasm_std::{to_binary, Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw_core::{
@@ -23,6 +24,7 @@ pub fn create_dao(
     admin: Option<String>,
     op_name: &str,
     user_addr: String,
+    key: &SigningKey,
 ) -> Result<DaoState> {
     let msg = cw_core::msg::InstantiateMsg {
         dao_uri: None,
@@ -84,11 +86,11 @@ pub fn create_dao(
 
     chain
         .orc
-        .instantiate("cw_core", op_name, &msg, &chain.user.key)?;
+        .instantiate("cw_core", op_name, &msg, key, None, vec![])?;
 
     let res = chain
         .orc
-        .query("cw_core", op_name, &cw_core::msg::QueryMsg::DumpState {})?;
+        .query("cw_core", &cw_core::msg::QueryMsg::DumpState {})?;
 
     Ok(DaoState {
         addr: chain.orc.contract_map.address("cw_core")?,

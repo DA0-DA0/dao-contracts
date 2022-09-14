@@ -33,6 +33,13 @@ page](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design)
 which gives an overview of how all of the DAO DAO smart contracts fit
 together.
 
+### Install Dev Dependencies
+- [Rust](https://doc.rust-lang.org/book/ch01-01-installation.html)
+- [Just](https://github.com/casey/just#packages)
+- [Yarn](https://yarnpkg.com/)
+- [Docker](https://docs.docker.com/engine/install/)
+- [jq](https://stedolan.github.io/jq/download/)
+
 Our development workflow is just like a regular Rust project:
 
 - `cargo build` from the repository root to build the contracts.
@@ -40,12 +47,8 @@ Our development workflow is just like a regular Rust project:
 
 To build WASM files for deploying on a blockchain, run:
 
-```
-docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  --platform linux/amd64 \
-  cosmwasm/workspace-optimizer:0.12.6
+```sh
+just workspace-optimize
 ```
 
 From the repository root.
@@ -56,6 +59,11 @@ Before making a PR, you'll need to do two things to get CI passing:
 
 1. Generate schema files for the contracts.
 2. Generate Typescript interfaces from those schemas.
+
+You can do both of these by running:
+```sh
+just gen
+```
 
 ### Generating schema files
 
@@ -94,8 +102,8 @@ export_schema_with_title(&schema_for!(Vec<Addr>), &out_dir, "Cw20TokenListRespon
 Once you have exported these types, you can generate schema files for
 all the contracts by running:
 
-```
-bash scripts/schema.sh
+```sh
+just gen-schema
 ```
 
 ### Generating the Typescript interface
@@ -103,11 +111,8 @@ bash scripts/schema.sh
 To generate the Typescript interface, after generating the schema
 files, run:
 
-```
-rm -rf types/contracts # Clear out any old or invalid state.
-yarn --cwd ./types install --frozen-lockfile
-yarn --cwd ./types build
-yarn --cwd ./types codegen
+```sh
+just gen-typescript
 ```
 
 To do this you'll need [yarn](https://yarnpkg.com/) installed.
@@ -121,13 +126,13 @@ is likely because you forgot to export that type from
 Build and deploy the contracts to a local chain running in Docker with:
 
 ```sh
-bash scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg
+just bootstrap-dev
 ```
 
-> Note: This Wasm account is from the [default
-> account](default-account.txt), which you can use for testing (DO NOT
-> store any real funds with this account). You can pass in any wasm
-> account address you want to use.
+> Note: These juno accounts are from the [test
+> accounts](ci/configs/test_accounts.json), which you can use for testing (DO NOT
+> store any real funds with these accounts). You can add more juno
+> account addresses you wish to test here.
 
 This will run a chain locally in a docker container, then build and
 deploy the contracts to that chain.
