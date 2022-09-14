@@ -116,7 +116,6 @@ pub fn execute(
             close_proposal_on_execution_failure,
         } => execute_update_config(
             deps,
-            env,
             info,
             voting_strategy,
             min_voting_period,
@@ -868,7 +867,7 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                     min_voting_period: current_config.min_voting_period,
                     only_members_execute: current_config.only_members_execute,
                     allow_revoting: current_config.allow_revoting,
-                    dao: current_config.dao,
+                    dao: current_config.dao.clone(),
                     // Loads of text, but we're only updating these fields.
                     close_proposal_on_execution_failure,
                 },

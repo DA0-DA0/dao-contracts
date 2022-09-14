@@ -1,7 +1,7 @@
-# Single choice proposal deposit contract
+# Multiple choice proposal deposit contract
 
 This is a pre-propose module that manages proposal deposits for the
-`cw-dao-proposal-single` proposal module.
+`cw-dao-proposal-multiple` proposal module.
 
 It may accept either native ([bank
 module](https://docs.cosmos.network/main/modules/bank/)),
