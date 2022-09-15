@@ -23,6 +23,7 @@ export type AdminResponse = Addr | null;
 export interface ConfigResponse {
   automatically_add_cw20s: boolean;
   automatically_add_cw721s: boolean;
+  dao_uri?: string | null;
   description: string;
   image_url?: string | null;
   name: string;
@@ -36,6 +37,7 @@ export interface Cw20BalancesResponse {
 }
 export type Cw20TokenListResponse = Addr[];
 export type Cw721TokenListResponse = Addr[];
+export type DaoURIResponse = string | null;
 export type Timestamp = Uint64;
 export type Uint64 = string;
 export type PauseInfoResponse = {
@@ -72,6 +74,7 @@ export interface DumpStateResponse {
 export interface Config {
   automatically_add_cw20s: boolean;
   automatically_add_cw721s: boolean;
+  dao_uri?: string | null;
   description: string;
   image_url?: string | null;
   name: string;
@@ -362,6 +365,7 @@ export interface InstantiateMsg {
   admin?: string | null;
   automatically_add_cw20s: boolean;
   automatically_add_cw721s: boolean;
+  dao_uri?: string | null;
   description: string;
   image_url?: string | null;
   initial_items?: InitialItem[] | null;
@@ -379,6 +383,7 @@ export type ListItemsResponse = string[];
 export type ListSubDaosResponse = SubDao[];
 export type MigrateMsg = {
   from_v1: {
+    dao_uri?: string | null;
     [k: string]: unknown;
   };
 } | {
@@ -456,6 +461,10 @@ export type QueryMsg = {
   list_sub_daos: {
     limit?: number | null;
     start_after?: string | null;
+    [k: string]: unknown;
+  };
+} | {
+  dao_u_r_i: {
     [k: string]: unknown;
   };
 } | {
@@ -547,6 +556,7 @@ export interface CwCoreReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ListSubDaosResponse>;
+  daoURI: () => Promise<DaoURIResponse>;
   votingPowerAtHeight: ({
     address,
     height
@@ -582,6 +592,7 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
     this.pauseInfo = this.pauseInfo.bind(this);
     this.votingModule = this.votingModule.bind(this);
     this.listSubDaos = this.listSubDaos.bind(this);
+    this.daoURI = this.daoURI.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
     this.info = this.info.bind(this);
@@ -724,6 +735,11 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
         limit,
         start_after: startAfter
       }
+    });
+  };
+  daoURI = async (): Promise<DaoURIResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao_u_r_i: {}
     });
   };
   votingPowerAtHeight = async ({

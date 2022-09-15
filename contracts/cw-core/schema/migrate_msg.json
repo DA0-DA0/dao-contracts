@@ -9,7 +9,15 @@
       ],
       "properties": {
         "from_v1": {
-          "type": "object"
+          "type": "object",
+          "properties": {
+            "dao_uri": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false

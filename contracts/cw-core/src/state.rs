@@ -20,6 +20,9 @@ pub struct Config {
     /// If true the contract will automatically add received cw721
     /// tokens to its treasury.
     pub automatically_add_cw721s: bool,
+    /// The URI for the DAO as defined by the DAOstar standard
+    /// https://daostar.one/EIP
+    pub dao_uri: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
@@ -59,7 +62,7 @@ pub const ADMIN: Item<Addr> = Item::new("admin");
 pub const NOMINATED_ADMIN: Item<Addr> = Item::new("nominated_admin");
 
 /// The current configuration of the module.
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 
 /// The time the DAO will unpause. Here be dragons: this is not set if
 /// the DAO has never been paused.

@@ -239,6 +239,7 @@ fn instantiate_with_staked_cw721_governance(
         .unwrap();
 
     let instantiate_core = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -350,6 +351,7 @@ fn instantiate_with_native_staked_balances_governance(
     let core_contract_id = app.store_code(cw_gov_contract());
 
     let instantiate_core = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -455,6 +457,7 @@ fn instantiate_with_staked_balances_governance(
     let core_contract_id = app.store_code(cw_gov_contract());
 
     let instantiate_core = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -564,6 +567,7 @@ fn instantiate_with_staking_active_threshold(
     });
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -644,6 +648,7 @@ fn instantiate_with_cw4_groups_governance(
     };
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -720,6 +725,7 @@ fn instantiate_with_cw20_balances_governance(
     };
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -3803,6 +3809,9 @@ fn test_large_absolute_count_threshold() {
     );
 }
 
+// Note that this isn't actually testing that we are migrating from the previous version since
+// with multitest contract instantiation we can't manipulate storage to the previous version of state before invoking migrate. So if anything,
+// this just tests the idempotency of migrate.
 #[test]
 fn test_migrate_from_compatible() {
     let mut app = App::default();

@@ -27,6 +27,7 @@ tarpaulin-report.*
 
 # integration tests
 gas_reports/
+ci/configs/cosm-orc/local.yaml
 
 contracts/**/Cargo.lock
 packages/**/Cargo.lock

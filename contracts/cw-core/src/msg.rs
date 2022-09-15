@@ -76,6 +76,8 @@ pub struct InstantiateMsg {
     /// items map. The value is an enum that either uses an existing
     /// address or instantiates a new contract.
     pub initial_items: Option<Vec<InitialItem>>,
+    /// Implements the DAO Star standard: https://daostar.one/EIP
+    pub dao_uri: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -222,11 +224,13 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Implements the DAO Star standard: https://daostar.one/EIP
+    DaoURI {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MigrateMsg {
-    FromV1 {},
+    FromV1 { dao_uri: Option<String> },
     FromCompatible {},
 }

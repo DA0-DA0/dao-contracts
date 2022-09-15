@@ -6,8 +6,10 @@ use cosmwasm_std::{
 use cw2::ContractVersion;
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
-use cw_storage_plus::Map;
+use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -98,6 +100,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         marketing: None,
     };
     let instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -130,6 +133,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
     assert_eq!(
         state.config,
         Config {
+            dao_uri: None,
             name: "DAO DAO".to_string(),
             description: "A DAO that builds DAOs.".to_string(),
             image_url: None,
@@ -207,6 +211,7 @@ makes wickedness."
     });
 
     let instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -236,6 +241,7 @@ fn test_update_config() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -287,6 +293,7 @@ fn test_update_config() {
         image_url: Some("https://moonphase.is/image.svg".to_string()),
         automatically_add_cw20s: false,
         automatically_add_cw721s: true,
+        dao_uri: Some("https://daostar.one/EIP".to_string()),
     };
 
     app.execute_contract(
@@ -309,10 +316,16 @@ fn test_update_config() {
 
     let config: Config = app
         .wrap()
-        .query_wasm_smart(gov_addr, &QueryMsg::Config {})
+        .query_wasm_smart(gov_addr.clone(), &QueryMsg::Config {})
         .unwrap();
 
-    assert_eq!(expected_config, config)
+    assert_eq!(expected_config, config);
+
+    let dao_uri: Option<String> = app
+        .wrap()
+        .query_wasm_smart(gov_addr, &QueryMsg::DaoURI {})
+        .unwrap();
+    assert_eq!(dao_uri, expected_config.dao_uri);
 }
 
 fn test_swap_governance(swaps: Vec<(u32, u32)>) {
@@ -325,6 +338,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -476,6 +490,7 @@ fn test_removed_modules_can_not_execute() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -618,6 +633,7 @@ fn test_module_already_disabled() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -716,6 +732,7 @@ fn test_swap_voting_module() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -818,6 +835,7 @@ fn test_permissions() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -877,6 +895,7 @@ fn test_permissions() {
         gov_addr,
         ExecuteMsg::UpdateConfig {
             config: Config {
+                dao_uri: None,
                 name: "Evil config.".to_string(),
                 description: "👿".to_string(),
                 image_url: None,
@@ -913,6 +932,7 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -1510,6 +1530,7 @@ fn test_list_items() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -1626,6 +1647,7 @@ fn test_instantiate_with_items() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -2163,6 +2185,7 @@ fn test_pause() {
         core_addr.clone(),
         &ExecuteMsg::UpdateConfig {
             config: Config {
+                dao_uri: None,
                 name: "The Empire Strikes Back".to_string(),
                 description: "haha lol we have pwned your DAO".to_string(),
                 image_url: None,
@@ -2238,6 +2261,7 @@ fn test_pause() {
             core_addr.clone(),
             &ExecuteMsg::UpdateConfig {
                 config: Config {
+                    dao_uri: None,
                     name: "The Empire Strikes Back Again".to_string(),
                     description: "haha lol we have pwned your DAO again".to_string(),
                     image_url: None,
@@ -2382,6 +2406,9 @@ fn test_dump_state_proposal_modules() {
     assert_eq!(all_state.proposal_modules[0], proposal_module);
 }
 
+// Note that this isn't actually testing that we are migrating from the previous version since
+// with multitest contract instantiation we can't manipulate storage to the previous version of state before invoking migrate. So if anything,
+// this just tests the idempotency of migrate.
 #[test]
 fn test_migrate_from_compatible() {
     let mut app = App::default();
@@ -2410,6 +2437,7 @@ fn test_migrate_from_compatible() {
 
     // Instantiate the core module with an admin to do migrations.
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -2466,118 +2494,65 @@ fn test_migrate_from_compatible() {
 }
 
 #[test]
-fn test_migrate_from_beta() {
-    let mut app = App::default();
-    let govmod_id = app.store_code(sudo_proposal_contract());
-    let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
-    let cw20_id = app.store_code(cw20_contract());
-
-    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
-        root: CREATOR_ADDR.to_string(),
-    };
-    let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
-        token_info: cw20_balance_voting::msg::TokenInfo::New {
-            code_id: cw20_id,
-            label: "DAO DAO voting".to_string(),
-            name: "DAO DAO".to_string(),
-            symbol: "DAO".to_string(),
-            decimals: 6,
-            initial_balances: vec![cw20::Cw20Coin {
-                address: CREATOR_ADDR.to_string(),
-                amount: Uint128::from(2u64),
-            }],
-            marketing: None,
-        },
-    };
-
-    // Instantiate the core module with an admin to do migrations.
-    let gov_instantiate = InstantiateMsg {
-        admin: None,
-        name: "DAO DAO".to_string(),
-        description: "A DAO that builds DAOs.".to_string(),
-        image_url: None,
-        automatically_add_cw20s: false,
-        automatically_add_cw721s: false,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: voting_id,
-            msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
-            label: "voting module".to_string(),
-        },
-        proposal_modules_instantiate_info: vec![
-            ModuleInstantiateInfo {
-                code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
-                label: "governance module 1".to_string(),
-            },
-            ModuleInstantiateInfo {
-                code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Admin::CoreContract {},
-                label: "governance module 2".to_string(),
-            },
-        ],
-        initial_items: None,
-    };
-
-    let core_addr = app
-        .instantiate_contract(
-            gov_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
-            &[],
-            "cw-governance",
-            Some(CREATOR_ADDR.to_string()),
-        )
-        .unwrap();
-
-    app.execute(
-        Addr::unchecked(CREATOR_ADDR),
-        CosmosMsg::Wasm(WasmMsg::Migrate {
-            contract_addr: core_addr.to_string(),
-            new_code_id: gov_id,
-            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
-        }),
-    )
-    .unwrap();
-
-    let new_state: DumpStateResponse = app
-        .wrap()
-        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
-        .unwrap();
-
-    let proposal_modules = new_state.proposal_modules;
-    assert_eq!(2, proposal_modules.len());
-    for (idx, module) in proposal_modules.iter().enumerate() {
-        let prefix = derive_proposal_module_prefix(idx).unwrap();
-        assert_eq!(prefix, module.prefix);
-        assert_eq!(ProposalModuleStatus::Enabled, module.status);
-    }
-}
-
-#[test]
 fn test_migrate_mock() {
     let mut deps = mock_dependencies();
-    let msg = MigrateMsg::FromV1 {};
+    let dao_uri: String = "/dao/uri".to_string();
+    let msg = MigrateMsg::FromV1 {
+        dao_uri: Some(dao_uri.clone()),
+    };
     let env = mock_env();
 
     // Write to storage in old proposal module format
-    let key = Addr::unchecked("addr");
+    let proposal_modules_key = Addr::unchecked("addr");
     let old_map: Map<Addr, Empty> = Map::new("proposal_modules");
-    let path = old_map.key(key.clone());
+    let path = old_map.key(proposal_modules_key.clone());
     deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
 
-    // Migrate to new data format
+    // Write to storage in old config format
+    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+    struct V1Config {
+        pub name: String,
+        pub description: String,
+        pub image_url: Option<String>,
+        pub automatically_add_cw20s: bool,
+        pub automatically_add_cw721s: bool,
+    }
+
+    let v1_config = V1Config {
+        name: "core dao".to_string(),
+        description: "a dao".to_string(),
+        image_url: None,
+        automatically_add_cw20s: false,
+        automatically_add_cw721s: false,
+    };
+
+    let config_item: Item<V1Config> = Item::new("config");
+    config_item.save(&mut deps.storage, &v1_config).unwrap();
+
+    // Migrate to v2
     migrate(deps.as_mut(), env, msg).unwrap();
 
-    let new_path = PROPOSAL_MODULES.key(key);
+    let new_path = PROPOSAL_MODULES.key(proposal_modules_key);
     let prop_module_bytes = deps.storage.get(&new_path).unwrap();
     let module: ProposalModule = from_slice(&prop_module_bytes).unwrap();
     assert_eq!(module.address, Addr::unchecked("addr"));
     assert_eq!(module.prefix, derive_proposal_module_prefix(0).unwrap());
     assert_eq!(module.status, ProposalModuleStatus::Enabled {});
+
+    let v2_config_item: Item<Config> = Item::new("config_v2");
+    let v2_config = v2_config_item.load(&deps.storage).unwrap();
+    assert_eq!(v2_config.dao_uri, Some(dao_uri));
+    assert_eq!(v2_config.name, v1_config.name);
+    assert_eq!(v2_config.description, v1_config.description);
+    assert_eq!(v2_config.image_url, v1_config.image_url);
+    assert_eq!(
+        v2_config.automatically_add_cw20s,
+        v1_config.automatically_add_cw20s
+    );
+    assert_eq!(
+        v2_config.automatically_add_cw721s,
+        v1_config.automatically_add_cw721s
+    )
 }
 
 #[test]
@@ -2623,6 +2598,7 @@ fn test_module_prefixes() {
     };
 
     let gov_instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
@@ -2849,6 +2825,7 @@ fn test_created_timestamp_set() {
     let timestamp = Timestamp::from_seconds(300_000_000);
     app.update_block(|mut block| block.time = timestamp);
     let instantiate = InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),

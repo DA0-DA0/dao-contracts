@@ -69,6 +69,7 @@ fn instantiate_with_staked_balances_voting() {
     let staked_balances_voting_id = app.store_code(staked_balances_voting());
 
     let instantiate_core = cw_core::msg::InstantiateMsg {
+        dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
@@ -140,6 +141,7 @@ fn instantiate_with_staked_balances_voting() {
     assert_eq!(
         state.config,
         cw_core::state::Config {
+            dao_uri: None,
             name: "DAO DAO".to_string(),
             description: "A DAO that builds DAOs".to_string(),
             image_url: None,

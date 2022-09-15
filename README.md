@@ -38,12 +38,11 @@ be found in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### Unit tests
 
-Run `cargo test` or `cargo unit-test` from the project root to run the unit tests.
+Run `cargo test`, or `just test` from the project root to run the unit tests.
 
 ### Integration tests
 
-* `./scripts/deploy_local.sh juno10j9gpw9t4jsz47qgnkvl5n3zlm2fz72k67rxsg`
-* `RUST_LOG=info CONFIG="configs/local.yaml" cargo integration-test`
+Run `just integration-test` to run all of the integration tests.
 
 See [ci/integration_tests/README.md](ci/integration_tests/README.md) for more information.
 

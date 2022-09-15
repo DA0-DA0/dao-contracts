@@ -2,6 +2,7 @@ use crate::helpers::{chain::Chain, helper::create_dao};
 use cosmwasm_std::{to_binary, Uint128};
 use cw20_stake::{msg::StakedValueResponse, state::Config};
 use cw_core_interface::voting::VotingPowerAtHeightResponse;
+use std::time::Duration;
 use test_context::test_context;
 
 // #### ExecuteMsg #####
@@ -10,9 +11,17 @@ use test_context::test_context;
 #[test]
 #[ignore]
 fn execute_stake_tokens(chain: &mut Chain) {
+    let user_addr = chain.users["user1"].account.address.clone();
+    let user_key = chain.users["user1"].key.clone();
     let voting_contract = "cw20_staked_balance_voting";
 
-    let res = create_dao(chain, None, "exc_stake_create_dao", chain.user.addr.clone());
+    let res = create_dao(
+        chain,
+        None,
+        "exc_stake_create_dao",
+        user_addr.clone(),
+        &user_key,
+    );
     let dao = res.unwrap();
 
     let voting_addr = dao.state.voting_module.as_str();
@@ -27,7 +36,6 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             voting_contract,
-            "exc_stake_q_stake",
             &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
         )
         .unwrap()
@@ -43,9 +51,8 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             "cw20_stake",
-            "exc_stake_q_staked_value",
             &cw20_stake::msg::QueryMsg::StakedValue {
-                address: chain.user.addr.clone(),
+                address: user_addr.clone(),
             },
         )
         .unwrap();
@@ -55,11 +62,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query(
-            "cw20_stake",
-            "exc_stake_q_cfg",
-            &cw20_stake::msg::QueryMsg::GetConfig {},
-        )
+        .query("cw20_stake", &cw20_stake::msg::QueryMsg::GetConfig {})
         .unwrap();
     let config: Config = res.data().unwrap();
 
@@ -78,7 +81,8 @@ fn execute_stake_tokens(chain: &mut Chain) {
                 amount: Uint128::new(100),
                 msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
             },
-            &chain.user.key,
+            &user_key,
+            vec![],
         )
         .unwrap();
 
@@ -86,9 +90,8 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             "cw20_stake",
-            "exc_stake_q_stake",
             &cw20_stake::msg::QueryMsg::StakedValue {
-                address: chain.user.addr.clone(),
+                address: user_addr.clone(),
             },
         )
         .unwrap();
@@ -96,15 +99,17 @@ fn execute_stake_tokens(chain: &mut Chain) {
 
     assert_eq!(staked_value.value, Uint128::new(100));
 
-    chain.orc.poll_for_n_blocks(1, 20_000).unwrap();
+    chain
+        .orc
+        .poll_for_n_blocks(1, Duration::from_millis(20_000), false)
+        .unwrap();
 
     let res = chain
         .orc
         .query(
             "cw_core",
-            "exc_stake_q_power",
             &cw_core::msg::QueryMsg::VotingPowerAtHeight {
-                address: chain.user.addr.clone(),
+                address: user_addr,
                 height: None,
             },
         )
