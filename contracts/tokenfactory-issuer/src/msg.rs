@@ -28,10 +28,10 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SudoMsg {
-    BlockBeforeSend {
+    BeforeSend {
         from: String,
         to: String,
-        amount: Coin,
+        amount: Vec<Coin>,
     },
 }
 
