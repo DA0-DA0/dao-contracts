@@ -206,8 +206,8 @@ export type QueryMsg = {
   };
 };
 export type SudoMsg = {
-  before_send: {
-    amount: Coin[];
+  block_before_send: {
+    amount: Coin;
     from: string;
     to: string;
     [k: string]: unknown;

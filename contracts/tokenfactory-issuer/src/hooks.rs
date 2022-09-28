@@ -5,21 +5,19 @@ use crate::error::ContractError;
 use crate::state::CONFIG;
 use crate::helpers::check_is_not_blacklisted;
 
-pub fn beforesend_hook(
+pub fn blockbeforesend_hook(
     deps: DepsMut,
     from: String,
     to: String,
-    amount: Vec<Coin>,
+    amount: Coin,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
     if config.is_frozen {
-        for coin in amount {
-            if coin.denom == config.denom {
-                return Err(ContractError::ContractFrozen {
-                    denom: config.denom,
-                });
-            }
+        if amount.denom == config.denom {
+            return Err(ContractError::ContractFrozen {
+                denom: config.denom,
+            });
         }
     }
 
@@ -27,5 +25,5 @@ pub fn beforesend_hook(
     check_is_not_blacklisted(deps.as_ref(), from)?;
     check_is_not_blacklisted(deps.as_ref(), to)?;
 
-    Ok(Response::new().add_attribute("action", "before_send"))
+    Ok(Response::new().add_attribute("action", "blcok_before_send"))
 }

@@ -86,8 +86,8 @@ func (suite *KeeperTestSuite) CreateTokenAndContract() (denom string, contractAd
 	// Instantiate a new contract to take over as admin of the new denom
 	contractAddr = suite.InstantiateContract(denom)
 
-	// Set the BeforeSendHook of the denom to the new contract
-	_, err = suite.msgServer.SetBeforeSendHook(sdk.WrapSDKContext(suite.Ctx), types.NewMsgSetBeforeSendHook(
+	// Set the BeforeSendListener of the denom to the new contract
+	_, err = suite.msgServer.SetBeforeSendListener(sdk.WrapSDKContext(suite.Ctx), types.NewMsgSetBeforeSendHook(
 		suite.TestAccs[0].String(),
 		denom, contractAddr.String(),
 	))

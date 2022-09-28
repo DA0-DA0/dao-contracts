@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coin, coins, from_binary, Addr, DepsMut, Uint128};
+use cosmwasm_std::{coin, from_binary, Addr, DepsMut, Uint128};
 
 use crate::contract;
 use crate::error::ContractError;
@@ -144,10 +144,10 @@ fn freezing() {
     let new_freezer_address = "freezer";
 
     // test unfrozen contract allows sends
-    let sudo_msg = SudoMsg::BeforeSend {
+    let sudo_msg = SudoMsg::BlockBeforeSend {
         from: "from_address".to_string(),
         to: "to_address".to_string(),
-        amount: coins(1000, denom.clone()),
+        amount: coin(1000, denom.clone()),
     };
     contract::sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
 
@@ -193,10 +193,10 @@ fn freezing() {
     assert!(res.is_frozen);
 
     // test if contract is frozen, Sudo msg with frozen coins should be blocked
-    let sudo_msg = SudoMsg::BeforeSend {
+    let sudo_msg = SudoMsg::BlockBeforeSend {
         from: "from_address".to_string(),
         to: "to_address".to_string(),
-        amount: coins(1000, denom.clone()),
+        amount: coin(1000, denom.clone()),
     };
     let res = contract::sudo(deps.as_mut(), mock_env(), sudo_msg);
     let err = res.unwrap_err();
@@ -206,18 +206,6 @@ fn freezing() {
             panic!("contract should be frozen, but is {}", err)
         }
     }
-
-    // test if contract is frozen, Sudo msg with multiple denoms will be blocked
-    let _res = contract::sudo(
-        deps.as_mut(),
-        mock_env(),
-        SudoMsg::BeforeSend {
-            from: "from_address".to_string(),
-            to: "to_address".to_string(),
-            amount: vec![coin(1000, "somethingelse"), coin(1000, denom.clone())],
-        },
-    )
-    .unwrap_err();
 
     // admin can remove freezing capabilitity
     contract::execute(
@@ -287,10 +275,10 @@ fn blacklists() {
     }
 
     // test can send from blacklistee address
-    let sudo_msg = SudoMsg::BeforeSend {
+    let sudo_msg = SudoMsg::BlockBeforeSend {
         from: blacklistee_address.to_string(),
         to: blacklister_address.to_string(),
-        amount: coins(1000, denom.clone()),
+        amount: coin(1000, denom.clone()),
     };
     contract::sudo(deps.as_mut(), mock_env(), sudo_msg).unwrap();
 
@@ -346,11 +334,11 @@ fn blacklists() {
     .unwrap();
     assert!(res.status);
 
-    // test if blacklisted, blacklistee cannot send coins of denom
-    let sudo_msg = SudoMsg::BeforeSend {
+    // test if blacklisted, blacklistee cannot send coin of denom
+    let sudo_msg = SudoMsg::BlockBeforeSend {
         from: blacklistee_address.to_string(),
         to: "anyone".to_string(),
-        amount: coins(1000, denom.clone()),
+        amount: coin(1000, denom.clone()),
     };
     let res = contract::sudo(deps.as_mut(), mock_env(), sudo_msg);
     let err = res.unwrap_err();
@@ -363,11 +351,11 @@ fn blacklists() {
         }
     }
 
-    // test if blacklisted, blacklistee cannot receive coins of denom
-    let sudo_msg = SudoMsg::BeforeSend {
+    // test if blacklisted, blacklistee cannot receive coin of denom
+    let sudo_msg = SudoMsg::BlockBeforeSend {
         from: "anyone".to_string(),
         to: blacklistee_address.to_string(),
-        amount: coins(1000, denom.clone()),
+        amount: coin(1000, denom.clone()),
     };
     let res = contract::sudo(deps.as_mut(), mock_env(), sudo_msg);
     let err = res.unwrap_err();
@@ -379,18 +367,6 @@ fn blacklists() {
             panic!("should be blacklisted, but is {}", err)
         }
     }
-
-    // test if blacklisted, blacklistee cannot send coins of multiple denom
-    contract::sudo(
-        deps.as_mut(),
-        mock_env(),
-        SudoMsg::BeforeSend {
-            from: blacklistee_address.to_string(),
-            to: "anyone".to_string(),
-            amount: vec![coin(1000, "somethingelse"), coin(1000, denom)],
-        },
-    )
-    .unwrap_err();
 
     // admin can remove blacklisting capabilitity
     contract::execute(
