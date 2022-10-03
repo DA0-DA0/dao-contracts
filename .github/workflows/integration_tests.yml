@@ -46,15 +46,6 @@ jobs:
 
       - name: Install just
         run: cargo install just || true
-
-      - name: Set latest optimizoor version
-        run: echo "CW_OPTIMIZOOR_VERSION=$(cargo search cw-optimizoor -q | sed -n -e '/^cw-optimizoor[[:space:]]/p' | cut -d '"' -f 2)" >> $GITHUB_ENV
-
-      - name: Get cached optimizoor
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/cargo-cw-optimizoor
-          key: ${{ runner.os }}-cw-optimizoor-${{ env.CW_OPTIMIZOOR_VERSION }}
       
       - name: Run Integration Tests
         run: just integration-test
