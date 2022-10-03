@@ -14,7 +14,7 @@ pub struct Config {
     pub reward_token: Denom,
     pub is_paused: bool,
 }
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 pub struct RewardConfig {

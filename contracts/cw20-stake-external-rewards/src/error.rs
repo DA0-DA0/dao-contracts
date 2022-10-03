@@ -27,4 +27,6 @@ pub enum ContractError {
     SettingCurrentPauseState {},
     #[error("Contract is paused")]
     ContractPaused {},
+    #[error("Only the owner can withdraw")]
+    UnauthorizedWithdrawal {},
 }

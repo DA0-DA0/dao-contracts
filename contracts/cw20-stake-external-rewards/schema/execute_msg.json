@@ -133,10 +133,10 @@
         "update_pause_status": {
           "type": "object",
           "required": [
-            "is_paused"
+            "pause"
           ],
           "properties": {
-            "is_paused": {
+            "pause": {
               "type": "boolean"
             }
           }
