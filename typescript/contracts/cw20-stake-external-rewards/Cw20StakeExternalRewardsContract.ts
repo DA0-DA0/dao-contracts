@@ -39,7 +39,7 @@ export type ExecuteMsg = {
   };
 } | {
   update_pause_status: {
-    is_paused: boolean;
+    pause: boolean;
     [k: string]: unknown;
   };
 };
@@ -190,9 +190,9 @@ export interface Cw20StakeExternalRewardsInterface extends Cw20StakeExternalRewa
     newManager?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updatePauseStatus: ({
-    isPaused
+    pause
   }: {
-    isPaused: boolean;
+    pause: boolean;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
 export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRewardsInterface {
@@ -287,13 +287,13 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
     }, fee, memo, funds);
   };
   updatePauseStatus = async ({
-    isPaused
+    pause
   }: {
-    isPaused: boolean;
+    pause: boolean;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_pause_status: {
-        is_paused: isPaused
+        pause
       }
     }, fee, memo, funds);
   };
