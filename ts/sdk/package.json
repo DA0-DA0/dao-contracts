@@ -20,6 +20,7 @@
     ]
   },
   "devDependencies": {
+    "@cosmwasm/ts-codegen": "^0.16.5",
     "@swc/core": "^1.2.198",
     "@swc/helpers": "^0.3.17",
     "@types/eslint": "^8.4.1",
@@ -48,7 +49,8 @@
     "lint": "eslint \"*/**/*.{ts,js,json}\"",
     "lint:fix": "eslint \"*/**/*.{ts,js,json}\" --fix",
     "build": "rollup --config ./rollup.config.js",
-    "prepublishOnly": "npm run doc && npm run lint && npm run test && npm run build"
+    "prepublishOnly": "npm run doc && npm run lint && npm run test && npm run build",
+    "codegen": "node ./scripts/codegen"
   },
   "keywords": [],
   "author": {
