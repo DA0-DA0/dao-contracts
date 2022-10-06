@@ -22,7 +22,7 @@ use crate::{
     proposal::MultipleChoiceProposal,
     query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
     state::{Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo, MAX_NUM_CHOICES},
-    voting_strategy::{VotingStrategy, MultipleProposalThreshold},
+    voting_strategy::{VotingStrategy, MultipleProposalThreshold, self},
     ContractError,
 };
 
@@ -330,42 +330,44 @@ fn do_test_votes_cw20_balances(
 pub fn test_simple_votes<F>(do_test_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
-{
-    // Vote for one option, passes
-    do_test_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice(
-            MultipleProposalThreshold::Percentage { 
-                quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-            }
-        ),
-        Status::Passed,
-        None,
-        false,
-    );
+{   
+    let strategies = vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
+            quorum: PercentageThreshold::Percent(Decimal::percent(100)),
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute { threshold: Uint128::new(10) }),
+    ];
 
-    // Vote for none of the above, gets rejected
-    do_test_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 2 },
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice(
-            MultipleProposalThreshold::Percentage { 
-                quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-            }
-        ),
-        Status::Rejected,
-        None,
-        false,
-    )
+    for voting_strategy in strategies {
+        // Vote for one option, passes
+        do_test_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            None,
+            false,
+        );
+
+        // Vote for none of the above, gets rejected
+        do_test_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 2 },
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy,
+            Status::Rejected,
+            None,
+            false,
+        )
+    }
+
 }
 
 pub fn test_vote_invalid_option<F>(do_test_votes: F)
@@ -442,30 +444,35 @@ pub fn test_vote_tied_rejected<F>(do_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
-    do_votes(
-        vec![
-            TestMultipleChoiceVote {
-                voter: "bluenote".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(1),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestMultipleChoiceVote {
-                voter: "bob".to_string(),
-                position: MultipleChoiceVote { option_id: 1 },
-                weight: Uint128::new(1),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        VotingStrategy::SingleChoice(
-            MultipleProposalThreshold::Percentage { 
-                quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-            }
-        ),
-        Status::Rejected,
-        None,
-        false,
-    );
+    let strategies = vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
+            quorum: PercentageThreshold::Percent(Decimal::percent(100)),
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute { threshold: Uint128::new(2) }),
+    ];
+
+    for voting_strategy in strategies {
+        do_votes(
+            vec![
+                TestMultipleChoiceVote {
+                    voter: "bluenote".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(1),
+                    should_execute: ShouldExecute::Yes,
+                },
+                TestMultipleChoiceVote {
+                    voter: "bob".to_string(),
+                    position: MultipleChoiceVote { option_id: 1 },
+                    weight: Uint128::new(1),
+                    should_execute: ShouldExecute::Yes,
+                },
+            ],
+            voting_strategy,
+            Status::Rejected,
+            None,
+            false,
+        );
+    }
 }
 
 pub fn test_vote_none_of_the_above_only<F>(do_votes: F)
@@ -513,46 +520,61 @@ pub fn test_tricky_rounding<F>(do_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
-    // This tests the smallest possible round up for passing
-    // thresholds we can have. Specifically, a 1% passing threshold
-    // and 1 total vote. This should round up and only pass if there
-    // are 1 or more yes votes.
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice(
-            MultipleProposalThreshold::Percentage { 
-                quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-            }
-        ),
-        Status::Passed,
-        Some(Uint128::new(100)),
-        true,
-    );
+    let strategies = vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
+            quorum: PercentageThreshold::Percent(Decimal::percent(1)),
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute { threshold: Uint128::new(1) }),
+    ];
 
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice(
-            MultipleProposalThreshold::Percentage { 
-                quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-            }
-        ),
-        Status::Passed,
-        Some(Uint128::new(1000)),
-        true,
-    );
+    for voting_strategy in strategies {
+        // This tests the smallest possible round up for passing
+        // thresholds we can have. Specifically, a 1% passing threshold
+        // and 1 total vote. This should round up and only pass if there
+        // are 1 or more yes votes.
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            Some(Uint128::new(100)),
+            true,
+        );
 
-    // High Precision
-    // Proposal should be rejected if < 1% have voted and proposal expires
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            Some(Uint128::new(1000)),
+            true,
+        );
+
+        // Proposal should be rejected if quorum is met but "none of the above" is the winning option.
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 2 },
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Rejected,
+            None,
+            false,
+        );
+    }
+
+    // // High Precision
+    // // Proposal should be rejected if < 1% have voted and proposal expires
     do_votes(
         vec![TestMultipleChoiceVote {
             voter: "bluenote".to_string(),
@@ -560,32 +582,12 @@ where
             weight: Uint128::new(9999999),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice(
-            MultipleProposalThreshold::Percentage { 
-                quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-            }
-        ),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
+            quorum: PercentageThreshold::Percent(Decimal::percent(1)),
+        }),
         Status::Rejected,
         Some(Uint128::new(1000000000)),
         true,
-    );
-
-    // Proposal should be rejected if quorum is met but "none of the above" is the winning option.
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 2 },
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice(
-            MultipleProposalThreshold::Percentage { 
-                quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-            }
-        ),
-        Status::Rejected,
-        None,
-        false,
     );
 }
 
@@ -631,86 +633,104 @@ where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
     // Half
-    do_votes(
-        vec![
-            TestMultipleChoiceVote {
-                voter: "bluenote".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestMultipleChoiceVote {
-                voter: "blue".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
+    for voting_strategy in vec![
         VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(50)),
         }),
-        Status::Passed,
-        Some(Uint128::new(40)),
-        true,
-    );
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute { threshold: Uint128::new(20) }),
+    ] {
+        do_votes(
+            vec![
+                TestMultipleChoiceVote {
+                    voter: "bluenote".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+                TestMultipleChoiceVote {
+                    voter: "blue".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+            ],
+            voting_strategy,
+            Status::Passed,
+            Some(Uint128::new(40)),
+            true,
+        );
+    }
 
     // Majority
-    do_votes(
-        vec![
-            TestMultipleChoiceVote {
-                voter: "bluenote".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestMultipleChoiceVote {
-                voter: "blue".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum: PercentageThreshold::Majority {} }),
-        Status::Rejected,
-        Some(Uint128::new(40)),
-        true,
-    );
+    for voting_strategy in vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
+            quorum: PercentageThreshold::Majority {},
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute { threshold: Uint128::new(21) }),
+    ] {
+        do_votes(
+            vec![
+                TestMultipleChoiceVote {
+                    voter: "bluenote".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+                TestMultipleChoiceVote {
+                    voter: "blue".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+            ],
+            voting_strategy,
+            Status::Rejected,
+            Some(Uint128::new(40)),
+            true,
+        );
+    }
 }
 
 pub fn test_pass_exactly_quorum<F>(do_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(60),
-            should_execute: ShouldExecute::Yes,
-        }],
+    let strategies = vec![
         VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(60)),
         }),
-        Status::Passed,
-        Some(Uint128::new(100)),
-        false,
-    );
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute { threshold: Uint128::new(60) }),
+    ];
 
-    // None of the above wins
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 2 },
-            weight: Uint128::new(60),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
-            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        }),
-        Status::Rejected,
-        Some(Uint128::new(100)),
-        false,
-    );
+    for voting_strategy in strategies {
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(60),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            Some(Uint128::new(100)),
+            false,
+        );
+
+        // None of the above wins
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 2 },
+                weight: Uint128::new(60),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy,
+            Status::Rejected,
+            Some(Uint128::new(100)),
+            false,
+        );
+    }
+
 }
 
 pub fn fuzz_voting<F>(do_votes: F)
