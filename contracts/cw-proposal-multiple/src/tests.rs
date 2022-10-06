@@ -568,8 +568,8 @@ where
         );
     }
 
-    // // High Precision
-    // // Proposal should be rejected if < 1% have voted and proposal expires
+    // High Precision
+    // Proposal should be rejected if < 1% have voted and proposal expires
     do_votes(
         vec![TestMultipleChoiceVote {
             voter: "bluenote".to_string(),
