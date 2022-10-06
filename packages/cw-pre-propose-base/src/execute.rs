@@ -1,14 +1,16 @@
 use cosmwasm_std::{
-    to_binary, Binary, ContractInfoResponse, Deps, DepsMut, Env, MessageInfo, QueryRequest,
-    Response, StdResult, WasmMsg, WasmQuery,
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, WasmMsg,
 };
+
 use cw2::set_contract_version;
 
 use cw_core_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use cw_denom::UncheckedDenom;
-use proposal_hooks::ProposalHookMsg;
 use serde::Serialize;
-use voting::deposit::{DepositRefundPolicy, UncheckedDepositInfo};
+use voting::{
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
+    status::Status,
+};
 
 use crate::{
     error::PreProposeError,
@@ -33,32 +35,29 @@ where
     ) -> Result<Response, PreProposeError> {
         set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-        // The proposal module instantiates us. Same as below, we're
+        // The proposal module instantiates us. We're
         // making limited assumptions here. The only way to associate
         // a deposit module with a proposal module is for the proposal
         // module to instantiate it.
         self.proposal_module.save(deps.storage, &info.sender)?;
 
-        // The DAO instantiates the proposal module. Note that we're
-        // making limited assumptions here. The only way to add a
-        // proposal module to a DAO is for it to create it.
-        let module_info: ContractInfoResponse =
-            deps.querier
-                .query(&QueryRequest::Wasm(WasmQuery::ContractInfo {
-                    contract_addr: info.sender.to_string(),
-                }))?;
-        let dao = deps.api.addr_validate(&module_info.creator)?;
+        // Query the proposal module for its DAO.
+        let dao: Addr = deps
+            .querier
+            .query_wasm_smart(info.sender.clone(), &CwCoreQuery::Dao {})?;
+
         self.dao.save(deps.storage, &dao)?;
 
         let deposit_info = msg
             .deposit_info
-            .map(|info| info.into_checked(deps.as_ref(), dao))
+            .map(|info| info.into_checked(deps.as_ref(), dao.clone()))
             .transpose()?;
 
         let config = Config {
             deposit_info,
             open_proposal_submission: msg.open_proposal_submission,
         };
+
         self.config.save(deps.storage, &config)?;
 
         Ok(Response::default()
@@ -69,7 +68,7 @@ where
                 "open_proposal_submission",
                 config.open_proposal_submission.to_string(),
             )
-            .add_attribute("dao", module_info.creator))
+            .add_attribute("dao", dao))
     }
 
     pub fn execute(
@@ -88,19 +87,15 @@ where
             ExecuteMsg::Withdraw { denom } => {
                 self.execute_withdraw(deps.as_ref(), env, info, denom)
             }
-
             ExecuteMsg::Extension { .. } => Ok(Response::default()),
-
-            ExecuteMsg::ProposalHook(ProposalHookMsg::ProposalStatusChanged {
-                id,
+            ExecuteMsg::ProposalCreatedHook {
+                proposal_id,
+                proposer,
+            } => self.execute_proposal_created_hook(deps, info, proposal_id, proposer),
+            ExecuteMsg::ProposalCompletedHook {
+                proposal_id,
                 new_status,
-                // Deposits only care about where you're headed, not
-                // where you've been.
-                old_status: _,
-            }) => self.execute_status_change_proposal_hook(deps.as_ref(), info, id, new_status),
-            ExecuteMsg::ProposalHook(ProposalHookMsg::NewProposal { id, proposer }) => {
-                self.execute_new_proposal_hook(deps, info, id, proposer)
-            }
+            } => self.execute_proposal_completed_hook(deps.as_ref(), info, proposal_id, new_status),
         }
     }
 
@@ -230,66 +225,63 @@ where
         }
     }
 
-    pub fn execute_status_change_proposal_hook(
+    pub fn execute_proposal_completed_hook(
         &self,
         deps: Deps,
         info: MessageInfo,
         id: u64,
-        new_status: String,
+        new_status: Status,
     ) -> Result<Response, PreProposeError> {
         let proposal_module = self.proposal_module.load(deps.storage)?;
         if info.sender != proposal_module {
             return Err(PreProposeError::NotModule {});
         }
 
+        // These are the only proposal statuses we handle deposits for.
+        if new_status != Status::Closed && new_status != Status::Executed {
+            return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
+        }
+
         match self.deposits.may_load(deps.storage, id)? {
             Some((deposit_info, proposer)) => {
                 let messages = if let Some(ref deposit_info) = deposit_info {
-                    // If the proposal is completed, either return to the DAO
-                    // or issue a refund.
-                    let proposal_completed = new_status == "closed" || new_status == "executed";
+                    // Refund can be issued if proposal if it is going to
+                    // closed or executed.
+                    let should_refund_to_proposer = (new_status == Status::Closed
+                        && deposit_info.refund_policy == DepositRefundPolicy::Always)
+                        || (new_status == Status::Executed
+                            && deposit_info.refund_policy != DepositRefundPolicy::Never);
 
-                    if proposal_completed {
-                        // Refund can be issued if proposal if it is going to
-                        // closed or executed.
-                        let should_refund_to_proposer = (new_status == "closed"
-                            && deposit_info.refund_policy == DepositRefundPolicy::Always)
-                            || (new_status == "executed"
-                                && deposit_info.refund_policy != DepositRefundPolicy::Never);
-
-                        if should_refund_to_proposer {
-                            deposit_info.get_return_deposit_message(&proposer)?
-                        } else {
-                            // If the proposer doesn't get the deposit, the DAO does.
-                            let dao = self.dao.load(deps.storage)?;
-                            deposit_info.get_return_deposit_message(&dao)?
-                        }
+                    if should_refund_to_proposer {
+                        deposit_info.get_return_deposit_message(&proposer)?
                     } else {
-                        // Proposal isn't done. Nothing to do.
-                        vec![]
+                        // If the proposer doesn't get the deposit, the DAO does.
+                        let dao = self.dao.load(deps.storage)?;
+                        deposit_info.get_return_deposit_message(&dao)?
                     }
                 } else {
-                    // No for this proposal. Nothing to do.
+                    // No deposit info for this proposal. Nothing to do.
                     vec![]
                 };
 
                 Ok(Response::default()
-                    .add_attribute("method", "execute_status_changed_proposal_hook")
+                    .add_attribute("method", "execute_proposal_completed_hook")
                     .add_attribute("proposal", id.to_string())
                     .add_attribute("deposit_info", to_binary(&deposit_info)?.to_string())
                     .add_messages(messages))
             }
+
             // If we do not have a deposit for this proposal it was
             // likely created before we were added to the proposal
             // module. In that case, it's not our problem and we just
             // do nothing.
             None => Ok(Response::default()
-                .add_attribute("method", "execute_status_changed_proposal_hook")
+                .add_attribute("method", "execute_proposal_completed_hook")
                 .add_attribute("proposal", id.to_string())),
         }
     }
 
-    pub fn execute_new_proposal_hook(
+    pub fn execute_proposal_created_hook(
         &self,
         deps: DepsMut,
         info: MessageInfo,

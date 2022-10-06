@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_core::state::{ProposalModule, ProposalModuleStatus};
 use cw_multi_test::App;
 
-use cw_pre_propose_base_proposal_single as cppbps;
+use cw_pre_propose_single as cppbps;
 use indexable_hooks::HooksResponse;
 use voting::pre_propose::ProposalCreationPolicy;
 

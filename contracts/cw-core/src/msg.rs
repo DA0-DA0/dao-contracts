@@ -4,7 +4,7 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_core_macros::voting_query;
+use cw_core_macros::{info_query, voting_query};
 
 use crate::query::SubDao;
 use crate::state::Config;
@@ -138,6 +138,7 @@ pub enum ExecuteMsg {
 }
 
 #[voting_query]
+#[info_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {

@@ -1,8 +1,8 @@
-use cosmwasm_std::{to_binary, Addr, StdResult, Storage, SubMsg, WasmMsg};
+use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use indexable_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{pre_propose::ProposalCreationPolicy, reply::mask_proposal_hook_index};
+use voting::reply::mask_proposal_hook_index;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
@@ -30,15 +30,14 @@ pub enum ProposalHookExecuteMsg {
 /// IDs are set to even numbers to then be interleaved with the vote hooks.
 pub fn new_proposal_hooks(
     hooks: Hooks,
-    pre_propose: ProposalCreationPolicy,
     storage: &dyn Storage,
     id: u64,
-    proposer: Addr,
+    proposer: &str,
 ) -> StdResult<Vec<SubMsg>> {
     let msg = to_binary(&ProposalHookExecuteMsg::ProposalHook(
         ProposalHookMsg::NewProposal {
             id,
-            proposer: proposer.into_string(),
+            proposer: proposer.to_string(),
         },
     ))?;
 
@@ -55,29 +54,6 @@ pub fn new_proposal_hooks(
         Ok(tmp)
     })?;
 
-    // Add a hook for the pre propose receiver as needed.
-    let messages = match pre_propose {
-        ProposalCreationPolicy::Anyone {} => messages,
-        ProposalCreationPolicy::Module { addr } => {
-            let mut messages = messages;
-            messages.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                // Gets index + 1 as it's index.
-                //
-                // NOTE: DO NOT CHANGE THIS. The reply handler expects
-                // this to be the case and uses it to identify this
-                // message as being associated with the pre-propose
-                // module.
-                mask_proposal_hook_index(index),
-            ));
-            messages
-        }
-    };
-
     Ok(messages)
 }
 
@@ -86,7 +62,6 @@ pub fn new_proposal_hooks(
 /// IDs are set to even numbers to then be interleaved with the vote hooks.
 pub fn proposal_status_changed_hooks(
     hooks: Hooks,
-    pre_propose: ProposalCreationPolicy,
     storage: &dyn Storage,
     id: u64,
     old_status: String,
@@ -115,29 +90,6 @@ pub fn proposal_status_changed_hooks(
         index += 1;
         Ok(tmp)
     })?;
-
-    // Add a hook for the pre propose receiver as needed.
-    let messages = match pre_propose {
-        ProposalCreationPolicy::Anyone {} => messages,
-        ProposalCreationPolicy::Module { addr } => {
-            let mut messages = messages;
-            messages.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                // Gets index + 1 as it's index.
-                //
-                // NOTE: DO NOT CHANGE THIS. The reply handler expects
-                // this to be the case and uses it to identify this
-                // message as being associated with the pre-propose
-                // module.
-                mask_proposal_hook_index(index),
-            ));
-            messages
-        }
-    };
 
     Ok(messages)
 }

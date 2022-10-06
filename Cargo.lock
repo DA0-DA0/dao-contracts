@@ -829,7 +829,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-pre-propose-base-proposal-single"
+name = "cw-pre-propose-single"
 version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
@@ -844,6 +844,7 @@ dependencies = [
  "cw2 0.13.4",
  "cw20",
  "cw20-base",
+ "cw20-staked-balance-voting",
  "cw4-group",
  "cw4-voting",
  "proposal-hooks 0.2.0",
@@ -890,7 +891,8 @@ dependencies = [
  "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-native-staked-balance-voting",
- "cw-pre-propose-base-proposal-single",
+ "cw-pre-propose-base",
+ "cw-pre-propose-single",
  "cw-proposal-single 0.1.0",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -1911,7 +1913,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-core 0.2.0",
  "cw-core-interface 0.2.0",
- "cw-pre-propose-base-proposal-single",
+ "cw-pre-propose-single",
  "cw-proposal-single 0.2.0",
  "cw-utils 0.13.4",
  "cw20",

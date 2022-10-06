@@ -17,7 +17,10 @@ use voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
     proposal::MAX_PROPOSAL_SIZE,
-    reply::{mask_proposal_execution_proposal_id, mask_proposal_hook_index, mask_vote_hook_index},
+    reply::{
+        failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id,
+        mask_proposal_hook_index, mask_vote_hook_index,
+    },
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::{Vote, Votes},
@@ -1644,7 +1647,7 @@ pub fn test_migrate_updates_version() {
 /// to v2.
 #[test]
 fn test_migrate_from_v1() {
-    use cw_pre_propose_base_proposal_single as cppbps;
+    use cw_pre_propose_single as cppbps;
     use cw_proposal_single_v1 as v1;
 
     let mut app = App::default();
@@ -1800,7 +1803,7 @@ fn test_migrate_from_v1() {
         pre_propose_info: PreProposeInfo::ModuleMayPropose {
             info: ModuleInstantiateInfo {
                 code_id: pre_propose_single,
-                msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
+                msg: to_binary(&cw_pre_propose_single::InstantiateMsg {
                     deposit_info: Some(UncheckedDepositInfo {
                         denom: voting::deposit::DepositToken::VotingModuleToken {},
                         amount: Uint128::new(1),
@@ -2203,7 +2206,7 @@ fn test_reply_hooks_mock() {
     let mut deps = mock_dependencies();
     let env = mock_env();
 
-    // Proposal hook
+    // Add a proposal hook and remove it
     let m_proposal_hook_idx = mask_proposal_hook_index(0);
     PROPOSAL_HOOKS
         .add_hook(deps.as_mut().storage, Addr::unchecked(CREATOR_ADDR))
@@ -2213,6 +2216,15 @@ fn test_reply_hooks_mock() {
         id: m_proposal_hook_idx,
         result: SubMsgResult::Err("error_msg".to_string()),
     };
+
+    let res = reply(deps.as_mut(), env.clone(), reply_msg).unwrap();
+    assert_eq!(
+        res.attributes[0],
+        Attribute {
+            key: "removed_proposal_hook".to_string(),
+            value: format! {"{CREATOR_ADDR}:{}", 0}
+        }
+    );
 
     // Reply needs a creation policy in state.
     CREATION_POLICY
@@ -2224,29 +2236,25 @@ fn test_reply_hooks_mock() {
         )
         .unwrap();
 
-    let res = reply(deps.as_mut(), env.clone(), reply_msg.clone()).unwrap();
+    let prepropose_reply_msg = Reply {
+        id: failed_pre_propose_module_hook_id(),
+        result: SubMsgResult::Err("error_msg".to_string()),
+    };
+
+    // Remove the pre-propose module as part of a reply.
+    let res = reply(deps.as_mut(), env.clone(), prepropose_reply_msg.clone()).unwrap();
     assert_eq!(
         res.attributes[0],
         Attribute {
-            key: "removed_proposal_hook".to_string(),
-            value: format! {"{CREATOR_ADDR}:{}", 0}
+            key: "failed_prepropose_hook".to_string(),
+            value: "ekez".into()
         }
     );
 
-    // Remove the pre-propose module as part of a reply. Can just
-    // reuse the reply message.
-    let res = reply(deps.as_mut(), env.clone(), reply_msg.clone()).unwrap();
-    assert_eq!(
-        res.attributes[0],
-        Attribute {
-            key: "removed_proposal_hook".to_string(),
-            value: format! {"ekez:{}", 0}
-        }
-    );
-
-    // Do it again. This time, there is nothing so this should error.
-    let err = reply(deps.as_mut(), env.clone(), reply_msg).unwrap_err();
-    assert!(matches!(err, ContractError::InvalidHookIndex { idx: 0 }));
+    // Do it again. This time, there is no module so this should error.
+    let _id = failed_pre_propose_module_hook_id();
+    let err = reply(deps.as_mut(), env.clone(), prepropose_reply_msg).unwrap_err();
+    assert!(matches!(err, ContractError::InvalidReplyID { id: _ }));
 
     // Check that we fail open.
     let status = CREATION_POLICY.load(deps.as_ref().storage).unwrap();
@@ -2432,7 +2440,7 @@ fn test_update_pre_propose_module() {
                 info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
                         code_id: pre_propose_id,
-                        msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
+                        msg: to_binary(&cw_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: voting::deposit::DepositToken::VotingModuleToken {},
                                 amount: Uint128::new(1),
@@ -2481,7 +2489,7 @@ fn test_update_pre_propose_module() {
     let pre_propose_config = query_pre_proposal_single_config(&app, &pre_propose);
     assert_eq!(
         pre_propose_config,
-        cw_pre_propose_base_proposal_single::Config {
+        cw_pre_propose_single::Config {
             deposit_info: Some(CheckedDepositInfo {
                 denom: CheckedDenom::Cw20(gov_token.clone()),
                 amount: Uint128::new(1),
@@ -2525,10 +2533,7 @@ fn test_update_pre_propose_module() {
         CREATOR_ADDR,
         vec![WasmMsg::Execute {
             contract_addr: pre_propose_start.into_string(),
-            msg: to_binary(&cw_pre_propose_base_proposal_single::ExecuteMsg::Withdraw {
-                denom: None,
-            })
-            .unwrap(),
+            msg: to_binary(&cw_pre_propose_single::ExecuteMsg::Withdraw { denom: None }).unwrap(),
             funds: vec![],
         }
         .into()],

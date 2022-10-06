@@ -3,7 +3,7 @@ use cw20::Cw20Coin;
 
 use cw_core::state::ProposalModule;
 use cw_multi_test::{App, BankSudo, Executor};
-use cw_pre_propose_base_proposal_single as cppbps;
+use cw_pre_propose_single as cppbps;
 
 use cw_denom::CheckedDenom;
 use testing::{ShouldExecute, TestSingleChoiceVote};
