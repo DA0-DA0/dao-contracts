@@ -1,7 +1,7 @@
 use cosmwasm_std::Uint128;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::threshold::{validate_quorum, validate_count, PercentageThreshold, ThresholdError};
+use voting::threshold::{validate_count, validate_quorum, PercentageThreshold, ThresholdError};
 
 /// Determines the way votes are counted.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
@@ -10,7 +10,6 @@ pub enum MultipleProposalThreshold {
     Percentage { quorum: PercentageThreshold },
     Absoulute { threshold: Uint128 },
 }
-
 
 /// Determines the way votes are counted.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
@@ -22,12 +21,10 @@ pub enum VotingStrategy {
 impl VotingStrategy {
     pub fn validate(&self) -> Result<(), ThresholdError> {
         match self {
-            VotingStrategy::SingleChoice(thresold) => {
-                match thresold {
-                    MultipleProposalThreshold::Absoulute { threshold } => validate_count(threshold),
-                    MultipleProposalThreshold::Percentage{ quorum } => validate_quorum(quorum),
-                }    
-            }
-        }   
+            VotingStrategy::SingleChoice(thresold) => match thresold {
+                MultipleProposalThreshold::Absoulute { threshold } => validate_count(threshold),
+                MultipleProposalThreshold::Percentage { quorum } => validate_quorum(quorum),
+            },
+        }
     }
 }
