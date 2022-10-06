@@ -616,7 +616,7 @@ mod tests {
         // High Precision rounding
         let voting_strategy = VotingStrategy::SingleChoice(
             MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
-                cosmwasm_std::Decimal::percent(10),
+                cosmwasm_std::Decimal::percent(100),
             )}
         );
 
@@ -639,7 +639,7 @@ mod tests {
         // High Precision rounding
         let voting_strategy = VotingStrategy::SingleChoice(
             MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
-                cosmwasm_std::Decimal::percent(10),
+                cosmwasm_std::Decimal::percent(99),
             )}
         );
 
