@@ -1,2 +1,2 @@
-export * as contracts from "./contracts";
+export * from "./contracts";
 //# sourceMappingURL=index.d.ts.map

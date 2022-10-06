@@ -1,5 +1,6 @@
-use cosmwasm_std::{coins, BankMsg, DepsMut, Env, MessageInfo, Response, StdError, Uint128};
+use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, StdError, Uint128};
 use osmo_bindings::OsmosisMsg;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
 
 use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};
@@ -56,8 +57,10 @@ pub fn mint(
 
 pub fn burn(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     amount: Uint128,
+    address: String,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     // don't allow burning of 0 coins
     if amount.is_zero() {
@@ -78,7 +81,13 @@ pub fn burn(
 
     // create tokenfactory MsgBurn which burns coins from the contract address
     // NOTE: this requires the contract to own the tokens already
-    let burn_tokens_msg = OsmosisMsg::burn_contract_tokens(denom, amount, "".to_string());
+    let burn_from_address = deps.api.addr_validate(&address)?;
+    let burn_tokens_msg: cosmwasm_std::CosmosMsg<OsmosisMsg> = MsgBurn {
+        sender: env.contract.address.to_string(),
+        amount: Some(Coin::new(amount.u128(), denom).into()),
+        burn_from_address: burn_from_address.to_string(),
+    }
+    .into();
 
     // dispatch msg
     Ok(Response::new()

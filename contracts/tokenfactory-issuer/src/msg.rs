@@ -8,16 +8,43 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    ChangeTokenFactoryAdmin { new_admin: String },
-    ChangeContractOwner { new_owner: String },
-    SetMinter { address: String, allowance: Uint128 },
-    SetBurner { address: String, allowance: Uint128 },
-    SetBlacklister { address: String, status: bool },
-    SetFreezer { address: String, status: bool },
-    Mint { to_address: String, amount: Uint128 },
-    Burn { amount: Uint128 },
-    Blacklist { address: String, status: bool },
-    Freeze { status: bool },
+    ChangeTokenFactoryAdmin {
+        new_admin: String,
+    },
+    ChangeContractOwner {
+        new_owner: String,
+    },
+    SetMinter {
+        address: String,
+        allowance: Uint128,
+    },
+    SetBurner {
+        address: String,
+        allowance: Uint128,
+    },
+    SetBlacklister {
+        address: String,
+        status: bool,
+    },
+    SetFreezer {
+        address: String,
+        status: bool,
+    },
+    Mint {
+        to_address: String,
+        amount: Uint128,
+    },
+    Burn {
+        from_address: String,
+        amount: Uint128,
+    },
+    Blacklist {
+        address: String,
+        status: bool,
+    },
+    Freeze {
+        status: bool,
+    },
 }
 
 /// SudoMsg is only exposed for internal Cosmos SDK modules to call.

@@ -21,7 +21,7 @@ fn initialize_contract(deps: DepsMut) -> (Addr, String) {
     let info = mock_info(CREATOR_ADDRESS, &[]);
 
     // instantiate with enough funds provided should succeed
-    contract::instantiate(deps, mock_env(), info.clone(), msg.clone()).unwrap();
+    contract::instantiate(deps, mock_env(), info.clone(), msg).unwrap();
 
     (info.sender, denom)
 }
@@ -196,7 +196,7 @@ fn freezing() {
     let sudo_msg = SudoMsg::BlockBeforeSend {
         from: "from_address".to_string(),
         to: "to_address".to_string(),
-        amount: Coin::new(1000, denom.clone()),
+        amount: Coin::new(1000, denom),
     };
     let res = contract::sudo(deps.as_mut(), mock_env(), sudo_msg);
     let err = res.unwrap_err();
@@ -571,6 +571,7 @@ fn burning() {
         unauthorized_info,
         ExecuteMsg::Burn {
             amount: Uint128::from(100u64),
+            from_address: String::from(burner),
         },
     )
     .unwrap_err();
@@ -624,6 +625,7 @@ fn burning() {
         mock_info(burner, &[]),
         ExecuteMsg::Burn {
             amount: Uint128::from(500u64),
+            from_address: burner.to_string(),
         },
     )
     .unwrap();
@@ -650,6 +652,7 @@ fn burning() {
         mock_info(burner, &[]),
         ExecuteMsg::Burn {
             amount: Uint128::from(600u64),
+            from_address: burner.to_string(),
         },
     )
     .unwrap_err();

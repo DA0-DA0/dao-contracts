@@ -196,11 +196,15 @@
           "burn": {
             "type": "object",
             "required": [
-              "amount"
+              "amount",
+              "from_address"
             ],
             "properties": {
               "amount": {
                 "$ref": "#/definitions/Uint128"
+              },
+              "from_address": {
+                "type": "string"
               }
             },
             "additionalProperties": false
