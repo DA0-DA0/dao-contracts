@@ -125,7 +125,7 @@ impl MultipleChoiceProposal {
             VotingStrategy::SingleChoice(threshold) => {
                 match threshold {
                     MultipleProposalThreshold::Absoulute { threshold } => {
-                        if self.votes.total() < Uint128::from(*threshold) {
+                        if self.votes.total() < *threshold {
                             return Ok(false);
                         }
                         

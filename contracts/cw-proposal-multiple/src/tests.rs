@@ -22,7 +22,7 @@ use crate::{
     proposal::MultipleChoiceProposal,
     query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
     state::{Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo, MAX_NUM_CHOICES},
-    voting_strategy::{VotingStrategy, MultipleProposalThreshold, self},
+    voting_strategy::{VotingStrategy, MultipleProposalThreshold},
     ContractError,
 };
 
