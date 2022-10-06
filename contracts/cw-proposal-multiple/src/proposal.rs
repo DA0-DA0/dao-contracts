@@ -12,7 +12,7 @@ use voting::{
 use crate::{
     query::ProposalResponse,
     state::{CheckedMultipleChoiceOption, MultipleChoiceOptionType},
-    voting_strategy::VotingStrategy,
+    voting_strategy::{VotingStrategy, MultipleProposalThreshold},
 };
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
@@ -121,31 +121,48 @@ impl MultipleChoiceProposal {
             }
         }
 
-        // Proposal can only pass if quorum has been met.
-        if does_vote_count_pass(
-            self.votes.total(),
-            self.total_power,
-            self.voting_strategy.get_quorum(),
-        ) {
-            let vote_result = self.calculate_vote_result()?;
-            match vote_result {
-                // Proposal is not passed if there is a tie.
-                VoteResult::Tie => return Ok(false),
-                VoteResult::SingleWinner(winning_choice) => {
-                    // Proposal is not passed if winning choice is None.
-                    if winning_choice.option_type != MultipleChoiceOptionType::None {
-                        // If proposal is expired, quorum has been reached, and winning choice is neither tied nor None, then proposal is passed.
-                        if self.expiration.is_expired(block) {
-                            return Ok(true);
-                        } else {
-                            // If the proposal is not expired but the leading choice cannot
-                            // possibly be outwon by any other choices, the proposal has passed.
-                            return self.is_choice_unbeatable(&winning_choice);
+        match &self.voting_strategy {
+            VotingStrategy::SingleChoice(threshold) => {
+                match threshold {
+                    MultipleProposalThreshold::Absoulute { threshold } => {
+                        if self.votes.total() < Uint128::from(*threshold) {
+                            return Ok(false);
                         }
+                        
+                    },
+                    MultipleProposalThreshold::Percentage { quorum } => {
+                         if !does_vote_count_pass(
+                            self.votes.total(),
+                            self.total_power,
+                            *quorum,
+                        ) {
+                            return Ok(false);
+                        }
+                    },
+                }
+            }
+        }
+
+        let vote_result = self.calculate_vote_result()?;
+        match vote_result {
+            // Proposal is not passed if there is a tie.
+            VoteResult::Tie => return Ok(false),
+            VoteResult::SingleWinner(winning_choice) => {
+                // Proposal is not passed if winning choice is None.
+                if winning_choice.option_type != MultipleChoiceOptionType::None {
+                    // If proposal is expired, quorum has been reached, and winning choice is neither tied nor None, then proposal is passed.
+                    if self.expiration.is_expired(block) {
+                        return Ok(true);
+                    } else {
+                        // If the proposal is not expired but the leading choice cannot
+                        // possibly be outwon by any other choices, the proposal has passed.
+                        return self.is_choice_unbeatable(&winning_choice);
                     }
                 }
             }
         }
+
+        // Proposal can only pass if quorum has been met.
         Ok(false)
     }
 
@@ -166,12 +183,25 @@ impl MultipleChoiceProposal {
                 Ok(rejected)
             }
             VoteResult::SingleWinner(winning_choice) => {
+                let vote_passes = match &self.voting_strategy {
+                    VotingStrategy::SingleChoice(threshold) => {
+                        match threshold {
+                            MultipleProposalThreshold::Absoulute { threshold } => {
+                                self.votes.total() > *threshold
+                            },
+                            MultipleProposalThreshold::Percentage { quorum } => {
+                                does_vote_count_pass(
+                                    self.votes.total(),
+                                    self.total_power,
+                                    *quorum,
+                                )
+                            },
+                        }
+                    }
+                };
+
                 match (
-                    does_vote_count_pass(
-                        self.votes.total(),
-                        self.total_power,
-                        self.voting_strategy.get_quorum(),
-                    ),
+                    vote_passes,
                     self.expiration.is_expired(block),
                 ) {
                     // Quorum is met and proposal is expired.
@@ -200,37 +230,33 @@ impl MultipleChoiceProposal {
 
     /// Find the option with the highest vote weight, and note if there is a tie.
     pub fn calculate_vote_result(&self) -> StdResult<VoteResult> {
-        match self.voting_strategy {
-            VotingStrategy::SingleChoice { quorum: _ } => {
-                // We expect to have at least 3 vote weights
-                if let Some(max_weight) = self.votes.vote_weights.iter().max_by(|&a, &b| a.cmp(b)) {
-                    let top_choices: Vec<(usize, &Uint128)> = self
-                        .votes
-                        .vote_weights
-                        .iter()
-                        .enumerate()
-                        .filter(|x| x.1 == max_weight)
-                        .collect();
+        // We expect to have at least 3 vote weights
+        if let Some(max_weight) = self.votes.vote_weights.iter().max_by(|&a, &b| a.cmp(b)) {
+            let top_choices: Vec<(usize, &Uint128)> = self
+                .votes
+                .vote_weights
+                .iter()
+                .enumerate()
+                .filter(|x| x.1 == max_weight)
+                .collect();
 
-                    // If more than one choice has the highest number of votes, we have a tie.
-                    if top_choices.len() > 1 {
-                        return Ok(VoteResult::Tie);
-                    }
+            // If more than one choice has the highest number of votes, we have a tie.
+            if top_choices.len() > 1 {
+                return Ok(VoteResult::Tie);
+            }
 
-                    match top_choices.first() {
-                        Some(winning_choice) => {
-                            return Ok(VoteResult::SingleWinner(
-                                self.choices[winning_choice.0].clone(),
-                            ));
-                        }
-                        None => {
-                            return Err(StdError::generic_err("no votes found"));
-                        }
-                    }
+            match top_choices.first() {
+                Some(winning_choice) => {
+                    return Ok(VoteResult::SingleWinner(
+                        self.choices[winning_choice.0].clone(),
+                    ));
                 }
-                Err(StdError::not_found("max vote weight"))
+                None => {
+                    return Err(StdError::generic_err("no votes found"));
+                }
             }
         }
+        Err(StdError::not_found("max vote weight"))
     }
 
     /// Ensure that with the remaining vote power, the choice with the second highest votes
@@ -329,9 +355,9 @@ mod tests {
     #[test]
     fn test_majority_quorum() {
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
-        };
+        let voting_strategy = VotingStrategy::SingleChoice (
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Majority {} }
+        );
 
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(1), Uint128::new(0), Uint128::new(0)],
@@ -434,11 +460,11 @@ mod tests {
     #[test]
     fn test_percentage_quorum() {
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(10),
-            ),
-        };
+            )}
+        );
 
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(1), Uint128::new(0), Uint128::new(0)],
@@ -541,11 +567,11 @@ mod tests {
     #[test]
     fn test_unbeatable_none_option() {
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(10),
-            ),
-        };
+            )}
+        );
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(0), Uint128::new(50), Uint128::new(500)],
         };
@@ -566,11 +592,11 @@ mod tests {
     #[test]
     fn test_quorum_rounding() {
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(10),
-            ),
-        };
+            )}
+        );
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(10), Uint128::new(0), Uint128::new(0)],
         };
@@ -588,11 +614,11 @@ mod tests {
         assert!(!prop.is_rejected(&env.block).unwrap());
 
         // High Precision rounding
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
-                cosmwasm_std::Decimal::percent(100),
-            ),
-        };
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
+                cosmwasm_std::Decimal::percent(10),
+            )}
+        );
 
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(999999), Uint128::new(0), Uint128::new(0)],
@@ -611,11 +637,11 @@ mod tests {
         assert!(prop.is_rejected(&env.block).unwrap());
 
         // High Precision rounding
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
-                cosmwasm_std::Decimal::percent(99),
-            ),
-        };
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
+                cosmwasm_std::Decimal::percent(10),
+            )}
+        );
 
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(9888889), Uint128::new(0), Uint128::new(0)],
@@ -637,11 +663,11 @@ mod tests {
     #[test]
     fn test_tricky_pass() {
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::from_ratio(7u32, 13u32),
-            ),
-        };
+            )}
+        );
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(7), Uint128::new(0), Uint128::new(6)],
         };
@@ -675,9 +701,9 @@ mod tests {
     #[test]
     fn test_tricky_pass_majority() {
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
-        };
+        let voting_strategy = VotingStrategy::SingleChoice (
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Majority {} }
+        );
 
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(7), Uint128::new(0), Uint128::new(0)],
@@ -714,9 +740,9 @@ mod tests {
         // Revoting being allowed means that proposals may not be
         // passed or rejected before they expire.
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
-        };
+        let voting_strategy = VotingStrategy::SingleChoice (
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Majority {} }
+        );
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(6), Uint128::new(0), Uint128::new(0)],
         };
@@ -749,9 +775,9 @@ mod tests {
         // Revoting being allowed means that proposals may not be
         // passed or rejected before they expire.
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Majority {},
-        };
+        let voting_strategy = VotingStrategy::SingleChoice (
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Majority {} }
+        );
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(5), Uint128::new(5), Uint128::new(0)],
         };
@@ -788,11 +814,11 @@ mod tests {
         // Revoting being allowed means that proposals may not be
         // passed or rejected before they expire.
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(80),
-            ),
-        };
+            )}
+        );
 
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(81), Uint128::new(0), Uint128::new(0)],
@@ -826,11 +852,11 @@ mod tests {
         // Revoting being allowed means that proposals may not be
         // passed or rejected before they expire.
         let env = mock_env();
-        let voting_strategy = VotingStrategy::SingleChoice {
-            quorum: voting::threshold::PercentageThreshold::Percent(
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Percentage { quorum: voting::threshold::PercentageThreshold::Percent(
                 cosmwasm_std::Decimal::percent(80),
-            ),
-        };
+            )}
+        );
 
         let votes = MultipleChoiceVotes {
             vote_weights: vec![Uint128::new(90), Uint128::new(0), Uint128::new(0)],

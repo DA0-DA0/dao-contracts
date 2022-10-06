@@ -85,6 +85,16 @@ fn validate_percentage(percent: &PercentageThreshold) -> Result<(), ThresholdErr
     }
 }
 
+/// Asserts that the threshold is > 0
+pub fn validate_count(threshold: &Uint128) -> Result<(), ThresholdError> {
+    if threshold.is_zero() {
+        Err(ThresholdError::ZeroThreshold {})
+    } else {
+        Ok(())
+    }
+
+}
+
 /// Asserts that a quorum <= 1. Quorums may be zero, to enable plurality-style voting.
 pub fn validate_quorum(quorum: &PercentageThreshold) -> Result<(), ThresholdError> {
     match quorum {
@@ -111,13 +121,7 @@ impl Threshold {
                 validate_percentage(threshold)?;
                 validate_quorum(quorum)
             }
-            Threshold::AbsoluteCount { threshold } => {
-                if threshold.is_zero() {
-                    Err(ThresholdError::ZeroThreshold {})
-                } else {
-                    Ok(())
-                }
-            }
+            Threshold::AbsoluteCount { threshold } => validate_count(threshold),
         }
     }
 }
