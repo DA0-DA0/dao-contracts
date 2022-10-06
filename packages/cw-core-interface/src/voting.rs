@@ -1,12 +1,14 @@
 use cosmwasm_std::Uint128;
 use cw2::ContractVersion;
-use cw_core_macros::{active_query, token_query, voting_query};
+use cw_core_macros::{active_query, govmod_query, info_query, token_query, voting_query};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[token_query]
 #[voting_query]
+#[info_query]
 #[active_query]
+#[govmod_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {}
@@ -38,12 +40,13 @@ mod tests {
     /// fail to compile if not.
     #[test]
     fn test_macro_expansion() {
-        use cw_core_macros::{active_query, token_query, voting_query};
+        use cw_core_macros::{active_query, info_query, token_query, voting_query};
         use schemars::JsonSchema;
         use serde::{Deserialize, Serialize};
 
         #[token_query]
         #[voting_query]
+        #[info_query]
         #[active_query]
         #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
         #[serde(rename_all = "snake_case")]

@@ -6,16 +6,18 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_core_interface::voting::IsActiveResponse;
+use cw_pre_propose_single::contract::ExecuteMsg as PreProposeMsg;
 use cw_proposal_single_v1 as v1;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 use indexable_hooks::Hooks;
 use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use vote_hooks::new_vote_hooks;
-
 use voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
 use voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
-use voting::reply::{mask_proposal_execution_proposal_id, TaggedReplyId};
+use voting::reply::{
+    failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id, TaggedReplyId,
+};
 use voting::status::Status;
 use voting::threshold::Threshold;
 use voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
@@ -151,7 +153,7 @@ pub fn execute_propose(
     // Determine the appropriate proposer. If this is coming from our
     // pre-propose module, it must be specified. Otherwise, the
     // proposer should not be specified.
-    let proposer = match (proposer, proposal_creation_policy) {
+    let proposer = match (proposer, &proposal_creation_policy) {
         (None, ProposalCreationPolicy::Anyone {}) => sender.clone(),
         // `is_permitted` above checks that an allowed module is
         // actually sending the propose message.
@@ -232,13 +234,31 @@ pub fn execute_propose(
 
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
-    let hooks = new_proposal_hooks(
-        PROPOSAL_HOOKS,
-        CREATION_POLICY.load(deps.storage)?,
-        deps.storage,
-        id,
-        proposer,
-    )?;
+    let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer.as_str())?;
+
+    // Add prepropose / deposit module hook which will save deposit info. This
+    // needs to be called after execute_propose because we don't know the
+    // proposal ID beforehand.
+    let hooks = match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => hooks,
+        ProposalCreationPolicy::Module { addr } => {
+            let msg = to_binary(&PreProposeMsg::ProposalCreatedHook {
+                proposal_id: id,
+                proposer: proposer.into_string(),
+            })?;
+            let mut hooks = hooks;
+            hooks.push(SubMsg::reply_on_error(
+                WasmMsg::Execute {
+                    contract_addr: addr.into_string(),
+                    msg,
+                    funds: vec![],
+                },
+                failed_pre_propose_module_hook_id(),
+            ));
+            hooks
+        }
+    };
+
     Ok(Response::default()
         .add_submessages(hooks)
         .add_attribute("action", "propose")
@@ -302,12 +322,33 @@ pub fn execute_execute(
 
     let hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
-        CREATION_POLICY.load(deps.storage)?,
         deps.storage,
         proposal_id,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
+
+    // Add prepropose / deposit module hook which will handle deposit refunds.
+    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+    let hooks = match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => hooks,
+        ProposalCreationPolicy::Module { addr } => {
+            let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
+                proposal_id,
+                new_status: prop.status,
+            })?;
+            let mut hooks = hooks;
+            hooks.push(SubMsg::reply_on_error(
+                WasmMsg::Execute {
+                    contract_addr: addr.into_string(),
+                    msg,
+                    funds: vec![],
+                },
+                failed_pre_propose_module_hook_id(),
+            ));
+            hooks
+        }
+    };
 
     Ok(response
         .add_submessages(hooks)
@@ -383,12 +424,12 @@ pub fn execute_vote(
     let new_status = prop.status;
     let change_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
-        CREATION_POLICY.load(deps.storage)?,
         deps.storage,
         proposal_id,
         old_status.to_string(),
         new_status.to_string(),
     )?;
+
     let vote_hooks = new_vote_hooks(
         VOTE_HOOKS,
         deps.storage,
@@ -429,17 +470,38 @@ pub fn execute_close(
     prop.last_updated = env.block.time;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
-    let changed_hooks = proposal_status_changed_hooks(
+    let hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
-        CREATION_POLICY.load(deps.storage)?,
         deps.storage,
         proposal_id,
         old_status.to_string(),
         prop.status.to_string(),
     )?;
 
+    // Add prepropose / deposit module hook which will handle deposit refunds.
+    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+    let hooks = match proposal_creation_policy {
+        ProposalCreationPolicy::Anyone {} => hooks,
+        ProposalCreationPolicy::Module { addr } => {
+            let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
+                proposal_id,
+                new_status: prop.status,
+            })?;
+            let mut hooks = hooks;
+            hooks.push(SubMsg::reply_on_error(
+                WasmMsg::Execute {
+                    contract_addr: addr.into_string(),
+                    msg,
+                    funds: vec![],
+                },
+                failed_pre_propose_module_hook_id(),
+            ));
+            hooks
+        }
+    };
+
     Ok(Response::default()
-        .add_submessages(changed_hooks)
+        .add_submessages(hooks)
         .add_attribute("action", "close")
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string()))
@@ -618,6 +680,7 @@ pub fn execute_remove_vote_hook(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
+        QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::Proposal { proposal_id } => query_proposal(deps, env, proposal_id),
         QueryMsg::ListProposals { start_after, limit } => {
             query_list_proposals(deps, env, start_after, limit)
@@ -643,6 +706,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     to_binary(&config)
+}
+
+pub fn query_dao(deps: Deps) -> StdResult<Binary> {
+    let config = CONFIG.load(deps.storage)?;
+    to_binary(&config.dao)
 }
 
 pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
@@ -854,35 +922,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(Response::new().add_attribute("proposal_execution_failed", proposal_id.to_string()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
-            // When firing off proposal hooks indexes `[0,
-            // hook_count)` are used to represent hooks that have been
-            // fired via the regular PROPOSAL_HOOKS method. Index
-            // `hook_count` is used to represent the pre-propose
-            // module.
-            let count = PROPOSAL_HOOKS.hook_count(deps.storage)?;
-            let addr = if idx == count as u64 {
-                match CREATION_POLICY.load(deps.storage)? {
-                    ProposalCreationPolicy::Anyone {} => {
-                        // Something is off if we're getting this
-                        // reply and we don't have a pre-propose
-                        // module installed. This should be
-                        // unreachable.
-                        return Err(ContractError::InvalidHookIndex { idx });
-                    }
-                    ProposalCreationPolicy::Module { addr } => {
-                        // If we are here, our pre-propose module has
-                        // errored while receiving a proposal
-                        // hook. Rest in peace pre-propose module.
-                        CREATION_POLICY.save(deps.storage, &ProposalCreationPolicy::Anyone {})?;
-                        addr
-                    }
-                }
-            } else {
-                // The index we're getting a response to is one of our
-                // regular proposal hooks.
-                PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?
-            };
-
+            let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
             Ok(Response::new().add_attribute("removed_proposal_hook", format!("{addr}:{idx}")))
         }
         TaggedReplyId::FailedVoteHook(idx) => {
@@ -898,6 +938,27 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             )?;
 
             Ok(Response::new().add_attribute("update_pre_propose_module", res.contract_address))
+        }
+        TaggedReplyId::FailedPreProposeModuleHook => {
+            let addr = match CREATION_POLICY.load(deps.storage)? {
+                ProposalCreationPolicy::Anyone {} => {
+                    // Something is off if we're getting this
+                    // reply and we don't have a pre-propose
+                    // module installed. This should be
+                    // unreachable.
+                    return Err(ContractError::InvalidReplyID {
+                        id: failed_pre_propose_module_hook_id(),
+                    });
+                }
+                ProposalCreationPolicy::Module { addr } => {
+                    // If we are here, our pre-propose module has
+                    // errored while receiving a proposal
+                    // hook. Rest in peace pre-propose module.
+                    CREATION_POLICY.save(deps.storage, &ProposalCreationPolicy::Anyone {})?;
+                    addr
+                }
+            };
+            Ok(Response::new().add_attribute("failed_prepropose_hook", format!("{addr}")))
         }
     }
 }

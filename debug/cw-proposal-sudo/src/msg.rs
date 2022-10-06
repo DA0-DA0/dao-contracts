@@ -2,7 +2,7 @@ use cosmwasm_std::CosmosMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_core_macros::govmod_query;
+use cw_core_macros::{govmod_query, info_query};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -16,9 +16,9 @@ pub enum ExecuteMsg {
 }
 
 #[govmod_query]
+#[info_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Admin {},
-    Dao {},
 }

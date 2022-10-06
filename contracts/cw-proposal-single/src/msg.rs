@@ -3,7 +3,7 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_core_macros::govmod_query;
+use cw_core_macros::{govmod_query, info_query};
 use voting::{pre_propose::PreProposeInfo, threshold::Threshold, voting::Vote};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -137,6 +137,7 @@ pub enum ExecuteMsg {
 }
 
 #[govmod_query]
+#[info_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {

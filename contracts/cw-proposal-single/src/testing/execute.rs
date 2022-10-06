@@ -2,7 +2,7 @@ use cosmwasm_std::{coins, Addr, Coin, CosmosMsg, Uint128};
 use cw_multi_test::{App, BankSudo, Executor};
 
 use cw_denom::CheckedDenom;
-use cw_pre_propose_base_proposal_single as cppbps;
+use cw_pre_propose_single as cppbps;
 use voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy, voting::Vote};
 
 use crate::{

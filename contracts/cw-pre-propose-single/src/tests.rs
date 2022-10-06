@@ -9,7 +9,6 @@ use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
 use cw_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
 use cw_proposal_single as cps;
 use cw_utils::Duration;
-use proposal_hooks::ProposalHookMsg;
 use testing::helpers::instantiate_with_cw4_groups_governance;
 use voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -556,6 +555,7 @@ fn test_native_passed_always_refund() {
         RefundReceiver::Proposer,
     )
 }
+
 #[test]
 fn test_cw20_passed_always_refund() {
     test_cw20_permutation(
@@ -776,10 +776,10 @@ fn test_permissions() {
         .execute_contract(
             Addr::unchecked("notmodule"),
             pre_propose.clone(),
-            &ExecuteMsg::ProposalHook(ProposalHookMsg::NewProposal {
-                id: 1,
+            &ExecuteMsg::ProposalCreatedHook {
+                proposal_id: 1,
                 proposer: "ekez".to_string(),
-            }),
+            },
             &[],
         )
         .unwrap_err()
@@ -791,11 +791,10 @@ fn test_permissions() {
         .execute_contract(
             core_addr,
             pre_propose.clone(),
-            &ExecuteMsg::ProposalHook(ProposalHookMsg::ProposalStatusChanged {
-                id: 1,
-                old_status: "rejected".to_string(),
-                new_status: "closed".to_string(),
-            }),
+            &ExecuteMsg::ProposalCompletedHook {
+                proposal_id: 1,
+                new_status: Status::Closed,
+            },
             &[],
         )
         .unwrap_err()

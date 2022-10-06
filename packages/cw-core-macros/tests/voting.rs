@@ -1,9 +1,10 @@
-use cw_core_macros::voting_query;
+use cw_core_macros::{info_query, voting_query};
 
 /// enum for testing. Important that this derives things / has other
 /// attributes so we can be sure we aren't messing with other macros
 /// with ours.
 #[voting_query]
+#[info_query]
 #[derive(Clone)]
 #[allow(dead_code)]
 enum Test {

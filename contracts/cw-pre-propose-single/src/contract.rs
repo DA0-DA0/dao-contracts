@@ -13,7 +13,7 @@ use cw_pre_propose_base::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-pre-propose-base-proposal-single";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-pre-propose-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Serialize, JsonSchema, Deserialize, Debug, Clone)]
@@ -88,7 +88,6 @@ pub fn execute(
             },
         },
         ExecuteMsg::Extension { msg } => ExecuteInternal::Extension { msg },
-        ExecuteMsg::ProposalHook(hook) => ExecuteInternal::ProposalHook(hook),
         ExecuteMsg::Withdraw { denom } => ExecuteInternal::Withdraw { denom },
         ExecuteMsg::UpdateConfig {
             deposit_info,
@@ -96,6 +95,20 @@ pub fn execute(
         } => ExecuteInternal::UpdateConfig {
             deposit_info,
             open_proposal_submission,
+        },
+        ExecuteMsg::ProposalCreatedHook {
+            proposal_id,
+            proposer,
+        } => ExecuteInternal::ProposalCreatedHook {
+            proposal_id,
+            proposer,
+        },
+        ExecuteMsg::ProposalCompletedHook {
+            proposal_id,
+            new_status,
+        } => ExecuteInternal::ProposalCompletedHook {
+            proposal_id,
+            new_status,
         },
     };
 

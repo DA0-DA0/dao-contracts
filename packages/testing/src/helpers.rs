@@ -223,10 +223,16 @@ pub fn instantiate_with_staking_active_threshold(
     let votemod_id = app.store_code(cw20_staked_balances_voting());
 
     let initial_balances = initial_balances.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(100_000_000),
-        }]
+        vec![
+            Cw20Coin {
+                address: "blob".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "blue".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]
     });
 
     let governance_instantiate = cw_core::msg::InstantiateMsg {

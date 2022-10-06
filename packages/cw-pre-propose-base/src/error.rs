@@ -2,7 +2,7 @@ use cosmwasm_std::StdError;
 use cw_denom::DenomError;
 use thiserror::Error;
 
-use voting::deposit::DepositError;
+use voting::{deposit::DepositError, status::Status};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum PreProposeError {
@@ -15,18 +15,21 @@ pub enum PreProposeError {
     #[error(transparent)]
     Deposit(#[from] DepositError),
 
-    #[error("message sender is not proposal module")]
+    #[error("Message sender is not proposal module")]
     NotModule {},
 
-    #[error("message sender is not dao")]
+    #[error("Message sender is not dao")]
     NotDao {},
 
-    #[error("you must be a member of this DAO (have voting power) to create a proposal")]
+    #[error("You must be a member of this DAO (have voting power) to create a proposal")]
     NotMember {},
 
-    #[error("no denomination for withdrawal. specify a denomination to withdraw")]
+    #[error("No denomination for withdrawal. specify a denomination to withdraw")]
     NoWithdrawalDenom {},
 
-    #[error("nothing to withdraw")]
+    #[error("Nothing to withdraw")]
     NothingToWithdraw {},
+
+    #[error("Proposal status ({status}) not closed or executed")]
+    NotClosedOrExecuted { status: Status },
 }

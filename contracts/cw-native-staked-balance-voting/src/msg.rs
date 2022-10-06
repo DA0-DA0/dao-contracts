@@ -1,6 +1,6 @@
 use cosmwasm_std::Uint128;
 use cw_core_interface::Admin;
-use cw_core_macros::voting_query;
+use cw_core_macros::{info_query, voting_query};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -33,6 +33,7 @@ pub enum ExecuteMsg {
 }
 
 #[voting_query]
+#[info_query]
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {

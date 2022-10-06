@@ -1,5 +1,5 @@
 [package]
-name = "cw-pre-propose-base-proposal-single"
+name = "cw-pre-propose-single"
 version = "0.1.0"
 authors = ["ekez <zekemedley@gmail.com>"]
 edition = "2018"
@@ -27,6 +27,7 @@ cw-utils = "0.13.2"
 cw4-group = "0.13.2"
 cw20 = "0.13.2"
 cw20-base = "0.13.2"
+cw20-staked-balance-voting = { version = "*", path = "../cw20-staked-balance-voting" }
 cw-proposal-single = { version = "*", path = "../cw-proposal-single" }
 cw-core = { version = "*", path = "../cw-core" }
 cw4-voting = { version = "*", path = "../cw4-voting" }

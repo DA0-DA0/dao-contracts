@@ -74,11 +74,8 @@ pub fn create_dao(
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
-                        code_id: chain
-                            .orc
-                            .contract_map
-                            .code_id("cw_pre_propose_base_proposal_single")?,
-                        msg: to_binary(&cw_pre_propose_base_proposal_single::InstantiateMsg {
+                        code_id: chain.orc.contract_map.code_id("cw_pre_propose_single")?,
+                        msg: to_binary(&cw_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},
                                 amount: Uint128::new(1000000000),

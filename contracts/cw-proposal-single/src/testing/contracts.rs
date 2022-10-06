@@ -1,7 +1,7 @@
 use cosmwasm_std::Empty;
 
 use cw_multi_test::{Contract, ContractWrapper};
-use cw_pre_propose_base_proposal_single as cppbps;
+use cw_pre_propose_single as cppbps;
 
 pub(crate) fn cw20_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(

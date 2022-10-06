@@ -11,10 +11,10 @@ enum Test {
 
 #[test]
 fn govmod_query_derive() {
-    let test = Test::Info {};
+    let test = Test::Dao {};
 
     // If this compiles we have won.
     match test {
-        Test::Foo | Test::Bar(_) | Test::Baz { .. } | Test::Info {} => "yay",
+        Test::Foo | Test::Bar(_) | Test::Baz { .. } | Test::Dao {} => "yay",
     };
 }

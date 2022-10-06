@@ -5,9 +5,10 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use cw_core_macros::voting_query;
+use cw_core_macros::{info_query, voting_query};
 
 #[voting_query]
+#[info_query]
 #[derive(Serialize, Deserialize, JsonSchema)]
 enum VotingQuery {}
 
