@@ -6,7 +6,7 @@ use cw_core_interface::ModuleInstantiateInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::reply::mask_pre_propose_module_instantiation;
+use crate::reply::pre_propose_module_instantiation_id;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub enum PreProposeInfo {
@@ -36,16 +36,6 @@ impl ProposalCreationPolicy {
             Self::Module { addr } => creator == addr,
         }
     }
-
-    /// Determines if ADDR is the module registered to create
-    /// proposals by this proposal creation policy. Returns true if so
-    /// and false otherwise.
-    pub fn addr_is_my_module(&self, addr: &Addr) -> bool {
-        match self {
-            Self::Anyone {} => false,
-            ProposalCreationPolicy::Module { addr: module_addr } => module_addr == addr,
-        }
-    }
 }
 
 impl PreProposeInfo {
@@ -56,12 +46,13 @@ impl PreProposeInfo {
         Ok(match self {
             Self::AnyoneMayPropose {} => (ProposalCreationPolicy::Anyone {}, vec![]),
             Self::ModuleMayPropose { info } => (
-                // Anyone can propose, then, upon instantiation
-                // `ModuleMayPropose`.
+                // Anyone can propose will be set until instantiation succeeds, then
+                // `ModuleMayPropose` will be set. This ensures that we fail open
+                // upon instantiation failure.
                 ProposalCreationPolicy::Anyone {},
                 vec![SubMsg::reply_on_success(
                     info.into_wasm_msg(dao_address),
-                    mask_pre_propose_module_instantiation(),
+                    pre_propose_module_instantiation_id(),
                 )],
             ),
         })
@@ -149,7 +140,7 @@ mod tests {
                     funds: vec![],
                     label: "pre-propose-9000".to_string()
                 },
-                crate::reply::mask_pre_propose_module_instantiation()
+                crate::reply::pre_propose_module_instantiation_id()
             )
         )
     }

@@ -4,7 +4,7 @@ use std::fs::create_dir_all;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 use cosmwasm_std::Empty;
 use cw_pre_propose_base::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw_pre_propose_base_proposal_single::contract::ProposeMessage;
+use cw_pre_propose_single::contract::ProposeMessage;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

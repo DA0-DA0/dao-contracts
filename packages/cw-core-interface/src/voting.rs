@@ -1,12 +1,14 @@
 use cosmwasm_std::Uint128;
 use cw2::ContractVersion;
-use cw_core_macros::{active_query, token_query, voting_query};
+use cw_core_macros::{active_query, govmod_query, info_query, token_query, voting_query};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[token_query]
 #[voting_query]
+#[info_query]
 #[active_query]
+#[govmod_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {}
@@ -34,6 +36,8 @@ pub struct IsActiveResponse {
 }
 
 mod tests {
+    use cw_core_macros::info_query;
+
     /// Make sure the enum has all of the fields we expect. This will
     /// fail to compile if not.
     #[test]
@@ -44,6 +48,7 @@ mod tests {
 
         #[token_query]
         #[voting_query]
+        #[info_query]
         #[active_query]
         #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
         #[serde(rename_all = "snake_case")]

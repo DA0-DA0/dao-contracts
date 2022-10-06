@@ -83,4 +83,7 @@ pub enum ContractError {
 
     #[error("received a failed proposal hook reply with an invalid hook index: ({idx})")]
     InvalidHookIndex { idx: u64 },
+
+    #[error("received a reply failure with an invalid ID: ({id})")]
+    InvalidReplyID { id: u64 },
 }

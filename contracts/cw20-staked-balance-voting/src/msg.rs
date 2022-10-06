@@ -1,7 +1,7 @@
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
-use cw_core_macros::{active_query, token_query, voting_query};
+use cw_core_macros::{active_query, info_query, token_query, voting_query};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -63,6 +63,7 @@ pub enum ExecuteMsg {
 }
 
 #[voting_query]
+#[info_query]
 #[token_query]
 #[active_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]

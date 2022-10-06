@@ -4,7 +4,7 @@ use cw20_staked_balance_voting::msg::ActiveThreshold;
 
 use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
-use cw_pre_propose_base_proposal_single as cppbps;
+use cw_pre_propose_single as cppbps;
 use cw_utils::Duration;
 
 use voting::{

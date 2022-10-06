@@ -2,7 +2,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cw_denom::UncheckedDenom;
-use voting::deposit::{CheckedDepositInfo, UncheckedDepositInfo};
+use voting::{
+    deposit::{CheckedDepositInfo, UncheckedDepositInfo},
+    status::Status,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -71,11 +74,21 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// will do nothing if this variant is executed.
     Extension { msg: ExecuteExt },
 
-    /// Handles proposal hooks fired by the associated proposal
-    /// module. By default, the base contract will return deposits
-    /// when proposals are executed, or, if it is refunding failed
+    /// Handles proposal hook fired by the associated proposal
+    /// module when a proposal is created. By default, the base contract will return deposits
     /// proposals, when they are closed.
-    ProposalHook(proposal_hooks::ProposalHookMsg),
+    /// when proposals are executed, or, if it is refunding failed
+    ProposalCreatedHook { proposal_id: u64, proposer: String },
+
+    /// Handles proposal hook fired by the associated proposal
+    /// module when a proposal is completed (ie executed or rejected).
+    /// By default, the base contract will return deposits
+    /// proposals, when they are closed.
+    /// when proposals are executed, or, if it is refunding failed
+    ProposalCompletedHook {
+        proposal_id: u64,
+        new_status: Status,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

@@ -20,7 +20,7 @@ cw20-stake = { version = "*", path = "../../contracts/cw20-stake" }
 cw20-staked-balance-voting = { version = "*", path = "../../contracts/cw20-staked-balance-voting" }
 cw-proposal-single = { version = "*", path = "../../contracts/cw-proposal-single" }
 cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
-cw-pre-propose-base-proposal-single = { version = "*", path = "../../contracts/cw-pre-propose-base-proposal-single" }
+cw-pre-propose-single = { version = "*", path = "../../contracts/cw-pre-propose-single" }
 voting = { version = "*", path = "../../packages/voting" }
 
 assert_matches = "1.5"
