@@ -82,7 +82,9 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, _env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
     match msg {
-        SudoMsg::BeforeSend { from, to, amount } => hooks::beforesend_hook(deps, from, to, amount),
+        SudoMsg::BlockBeforeSend { from, to, amount } => {
+            hooks::beforesend_hook(deps, from, to, amount)
+        }
     }
 }
 

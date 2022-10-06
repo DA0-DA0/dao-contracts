@@ -579,10 +579,10 @@
       {
         "type": "object",
         "required": [
-          "block_before_send"
+          "before_send"
         ],
         "properties": {
-          "block_before_send": {
+          "before_send": {
             "type": "object",
             "required": [
               "amount",
@@ -591,7 +591,10 @@
             ],
             "properties": {
               "amount": {
-                "$ref": "#/definitions/Coin"
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Coin"
+                }
               },
               "from": {
                 "type": "string"

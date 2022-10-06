@@ -25,10 +25,10 @@ pub enum ExecuteMsg {
 /// external users or contracts, but only trusted (native/Go) code in the blockchain
 #[cw_serde]
 pub enum SudoMsg {
-    BeforeSend {
+    BlockBeforeSend {
         from: String,
         to: String,
-        amount: Vec<Coin>,
+        amount: Coin,
     },
 }
 
