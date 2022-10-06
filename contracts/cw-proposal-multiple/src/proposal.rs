@@ -565,6 +565,111 @@ mod tests {
     }
 
     #[test]
+    fn test_absolute_quorum() {
+        let env = mock_env();
+        let voting_strategy = VotingStrategy::SingleChoice(
+            MultipleProposalThreshold::Absoulute { threshold: Uint128::new(5) }
+        );
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(10), Uint128::new(0), Uint128::new(0)],
+        };
+
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes,
+            Uint128::new(10),
+            false,
+            false,
+        );
+
+        // Count was met and all votes were cast, should be passed.
+        assert!(prop.is_passed(&env.block).unwrap());
+        assert!(!prop.is_rejected(&env.block).unwrap());
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(0), Uint128::new(0), Uint128::new(10)],
+        };
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes,
+            Uint128::new(10),
+            false,
+            false,
+        );
+
+        // Count was met but none of the above won, should be rejected.
+        assert!(!prop.is_passed(&env.block).unwrap());
+        assert!(prop.is_rejected(&env.block).unwrap());
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(1), Uint128::new(0), Uint128::new(0)],
+        };
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes,
+            Uint128::new(10),
+            false,
+            false,
+        );
+
+        // Count was not met and is not expired, should be open.
+        assert!(!prop.is_passed(&env.block).unwrap());
+        assert!(!prop.is_rejected(&env.block).unwrap());
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(1), Uint128::new(0), Uint128::new(0)],
+        };
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes,
+            Uint128::new(10),
+            true,
+            false,
+        );
+
+        // Count was not met and it is expired, should be rejected.
+        assert!(!prop.is_passed(&env.block).unwrap());
+        assert!(prop.is_rejected(&env.block).unwrap());
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(5), Uint128::new(5), Uint128::new(0)],
+        };
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy.clone(),
+            votes,
+            Uint128::new(10),
+            true,
+            false,
+        );
+
+        // Count was met but it is a tie and expired, should be rejected.
+        assert!(!prop.is_passed(&env.block).unwrap());
+        assert!(prop.is_rejected(&env.block).unwrap());
+
+        let votes = MultipleChoiceVotes {
+            vote_weights: vec![Uint128::new(3), Uint128::new(3), Uint128::new(0)],
+        };
+        let prop = create_proposal(
+            &env.block,
+            voting_strategy,
+            votes,
+            Uint128::new(10),
+            false,
+            false,
+        );
+
+        // Count was met but it is a tie but not expired and still voting power remains, should be open.
+        assert!(!prop.is_passed(&env.block).unwrap());
+        assert!(!prop.is_rejected(&env.block).unwrap());
+    }
+
+    #[test]
     fn test_unbeatable_none_option() {
         let env = mock_env();
         let voting_strategy = VotingStrategy::SingleChoice(
