@@ -239,14 +239,13 @@ pub fn execute_propose(
     // Add prepropose / deposit module hook which will save deposit info. This
     // needs to be called after execute_propose because we don't know the
     // proposal ID beforehand.
-    let msg = to_binary(&PreProposeMsg::ProposalCreatedHook {
-        proposal_id: id,
-        proposer: proposer.into_string(),
-    })?;
-
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
+            let msg = to_binary(&PreProposeMsg::ProposalCreatedHook {
+                proposal_id: id,
+                proposer: proposer.into_string(),
+            })?;
             let mut hooks = hooks;
             hooks.push(SubMsg::reply_on_error(
                 WasmMsg::Execute {
@@ -331,14 +330,13 @@ pub fn execute_execute(
 
     // Add prepropose / deposit module hook which will handle deposit refunds.
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-    let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
-        proposal_id,
-        new_status: prop.status,
-    })?;
-
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
+            let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
+                proposal_id,
+                new_status: prop.status,
+            })?;
             let mut hooks = hooks;
             hooks.push(SubMsg::reply_on_error(
                 WasmMsg::Execute {
@@ -482,14 +480,13 @@ pub fn execute_close(
 
     // Add prepropose / deposit module hook which will handle deposit refunds.
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-    let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
-        proposal_id,
-        new_status: prop.status,
-    })?;
-
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
+            let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
+                proposal_id,
+                new_status: prop.status,
+            })?;
             let mut hooks = hooks;
             hooks.push(SubMsg::reply_on_error(
                 WasmMsg::Execute {
