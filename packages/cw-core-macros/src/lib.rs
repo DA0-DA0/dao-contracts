@@ -238,7 +238,7 @@ pub fn active_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 /// use cw_core_macros::info_query;
 ///
-/// #[active_query]
+/// #[info_query]
 /// enum QueryMsg {}
 /// ```
 ///

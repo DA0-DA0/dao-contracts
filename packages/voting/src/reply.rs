@@ -92,18 +92,18 @@ mod test {
 
     #[test]
     fn test_tagged_reply_id() {
-        // max u62, change this if new reply types added
-        let proposal_id = 4611686018427387903;
+        // max u61
+        let proposal_id_max: u64 = 2_u64.pow(61)-1;
         let proposal_hook_idx = 1234;
         let vote_hook_idx = 4321;
 
-        let m_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
+        let m_proposal_id = mask_proposal_execution_proposal_id(proposal_id_max);
         let m_proposal_hook_idx = mask_proposal_hook_index(proposal_hook_idx);
         let m_vote_hook_idx = mask_vote_hook_index(vote_hook_idx);
 
         assert_eq!(
             TaggedReplyId::new(m_proposal_id).unwrap(),
-            TaggedReplyId::FailedProposalExecution(proposal_id)
+            TaggedReplyId::FailedProposalExecution(proposal_id_max)
         );
         assert_eq!(
             TaggedReplyId::new(m_proposal_hook_idx).unwrap(),
