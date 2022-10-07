@@ -337,10 +337,8 @@ export interface ProposalResponse {
 }
 export interface SingleChoiceProposal {
   allow_revoting: boolean;
-  created: Timestamp;
   description: string;
   expiration: Expiration;
-  last_updated: Timestamp;
   min_voting_period?: Expiration | null;
   msgs: CosmosMsgForEmpty[];
   proposer: Addr;

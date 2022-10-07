@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Uint128};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -36,12 +36,6 @@ pub struct MultipleChoiceProposal {
     /// Information about the deposit that was sent as part of this
     /// proposal. None if no deposit.
     pub deposit_info: Option<CheckedDepositInfo>,
-    /// The timestamp at which this proposal was created.
-    pub created: Timestamp,
-    /// The timestamp at which this proposal's status last changed. Note that in the scenario when
-    /// a proposal expires and passes upon expiration, this field will not be updated because it can only update
-    /// upon actions on the contract.
-    pub last_updated: Timestamp,
 }
 
 pub enum VoteResult {
@@ -90,10 +84,7 @@ impl MultipleChoiceProposal {
     /// Sets a proposals status to its current status.
     pub fn update_status(&mut self, block: &BlockInfo) -> StdResult<()> {
         let new_status = self.current_status(block)?;
-        // Update last_updated only if status changed.
-        if new_status != self.status {
-            self.last_updated = block.time
-        }
+
         self.status = new_status;
         Ok(())
     }
@@ -321,8 +312,6 @@ mod tests {
             allow_revoting,
             deposit_info: None,
             min_voting_period: None,
-            created: block.time,
-            last_updated: block.time,
         }
     }
 
