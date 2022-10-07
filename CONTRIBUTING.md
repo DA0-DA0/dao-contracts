@@ -39,6 +39,7 @@ together.
 - [Yarn](https://yarnpkg.com/)
 - [Docker](https://docs.docker.com/engine/install/)
 - [jq](https://stedolan.github.io/jq/download/)
+- [node](https://nodejs.org/en/download/) (>= v15)
 
 Our development workflow is just like a regular Rust project:
 
