@@ -1,6 +1,6 @@
 use cw_core_macros::govmod_query;
 
-#[govmod_query]
+#[proposal_module_query]
 #[derive(Clone)]
 #[allow(dead_code)]
 enum Test {

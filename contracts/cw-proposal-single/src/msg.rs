@@ -136,7 +136,7 @@ pub enum ExecuteMsg {
     RemoveVoteHook { address: String },
 }
 
-#[govmod_query]
+#[proposal_module_query]
 #[info_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

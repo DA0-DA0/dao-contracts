@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[voting_query]
 #[info_query]
 #[active_query]
-#[govmod_query]
+#[proposal_module_query]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Query {}
