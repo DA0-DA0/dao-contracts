@@ -44,3 +44,74 @@ pub fn v1_status_to_v2(v1: voting_v1::Status) -> Status {
         voting_v1::Status::Closed => Status::Closed,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use cosmwasm_std::{Decimal, Uint128};
+
+    use super::*;
+
+    #[test]
+    fn test_percentage_conversion() {
+        assert_eq!(
+            v1_percentage_threshold_to_v2(voting_v1::PercentageThreshold::Majority {}),
+            PercentageThreshold::Majority {}
+        );
+        assert_eq!(
+            v1_percentage_threshold_to_v2(voting_v1::PercentageThreshold::Percent(
+                Decimal::percent(80)
+            )),
+            PercentageThreshold::Percent(Decimal::percent(80))
+        )
+    }
+
+    #[test]
+    fn test_threshold_conversion() {
+        assert_eq!(
+            v1_threshold_to_v2(voting_v1::Threshold::AbsoluteCount {
+                threshold: Uint128::new(10)
+            }),
+            Threshold::AbsoluteCount {
+                threshold: Uint128::new(10)
+            }
+        );
+        assert_eq!(
+            v1_threshold_to_v2(voting_v1::Threshold::AbsolutePercentage {
+                percentage: voting_v1::PercentageThreshold::Majority {}
+            }),
+            Threshold::AbsolutePercentage {
+                percentage: PercentageThreshold::Majority {}
+            }
+        );
+        assert_eq!(
+            v1_threshold_to_v2(voting_v1::Threshold::ThresholdQuorum {
+                threshold: voting_v1::PercentageThreshold::Majority {},
+                quorum: voting_v1::PercentageThreshold::Percent(Decimal::percent(20))
+            }),
+            Threshold::ThresholdQuorum {
+                threshold: PercentageThreshold::Majority {},
+                quorum: PercentageThreshold::Percent(Decimal::percent(20))
+            }
+        );
+    }
+
+    #[test]
+    fn test_status_conversion() {
+        macro_rules! status_conversion {
+            ($x:expr) => {
+                assert_eq!(
+                    v1_status_to_v2({
+                        use voting_v1::Status;
+                        $x
+                    }),
+                    $x
+                )
+            };
+        }
+
+        status_conversion!(Status::Open);
+        status_conversion!(Status::Closed);
+        status_conversion!(Status::Executed);
+        status_conversion!(Status::Rejected)
+    }
+}
