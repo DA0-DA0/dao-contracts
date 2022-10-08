@@ -48,6 +48,7 @@ export interface ConfigResponse {
   threshold: Threshold;
   [k: string]: unknown;
 }
+export type DaoResponse = string;
 export type ExecuteMsg = {
   propose: {
     description: string;
