@@ -338,7 +338,7 @@ pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn govmod_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+pub fn proposal_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     // Make sure that no arguments were passed in.
     let args = parse_macro_input!(metadata as AttributeArgs);
     if let Some(first_arg) = args.first() {
