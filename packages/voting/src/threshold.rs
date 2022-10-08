@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum ThresholdError {
     #[error("Required threshold cannot be zero")]
     ZeroThreshold {},
@@ -100,8 +100,11 @@ pub fn validate_quorum(quorum: &PercentageThreshold) -> Result<(), ThresholdErro
 }
 
 impl Threshold {
-    /// returns error if this is an unreachable value,
-    /// given a total weight of all members in the group
+    /// Validates the threshold.
+    ///
+    /// - Quorums must never be over 100%.
+    /// - Passing thresholds must never be over 100%, nor be 0%.
+    /// - Absolute count thresholds must be non-zero.
     pub fn validate(&self) -> Result<(), ThresholdError> {
         match self {
             Threshold::AbsolutePercentage {
@@ -119,5 +122,64 @@ impl Threshold {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! p {
+        ($x:expr ) => {
+            PercentageThreshold::Percent(Decimal::percent($x))
+        };
+    }
+
+    #[test]
+    fn test_threshold_validation() {
+        let t = Threshold::AbsoluteCount {
+            threshold: Uint128::zero(),
+        };
+        assert_eq!(t.validate().unwrap_err(), ThresholdError::ZeroThreshold {});
+
+        let t = Threshold::AbsolutePercentage { percentage: p!(0) };
+        assert_eq!(t.validate().unwrap_err(), ThresholdError::ZeroThreshold {});
+
+        let t = Threshold::AbsolutePercentage {
+            percentage: p!(101),
+        };
+        assert_eq!(
+            t.validate().unwrap_err(),
+            ThresholdError::UnreachableThreshold {}
+        );
+
+        let t = Threshold::AbsolutePercentage {
+            percentage: p!(100),
+        };
+        assert_eq!(t.validate().unwrap(), ());
+
+        let t = Threshold::ThresholdQuorum {
+            threshold: p!(101),
+            quorum: p!(0),
+        };
+        assert_eq!(
+            t.validate().unwrap_err(),
+            ThresholdError::UnreachableThreshold {}
+        );
+
+        let t = Threshold::ThresholdQuorum {
+            threshold: p!(100),
+            quorum: p!(0),
+        };
+        assert_eq!(t.validate().unwrap(), ());
+
+        let t = Threshold::ThresholdQuorum {
+            threshold: p!(100),
+            quorum: p!(101),
+        };
+        assert_eq!(
+            t.validate().unwrap_err(),
+            ThresholdError::UnreachableThreshold {}
+        );
     }
 }

@@ -4,7 +4,9 @@ const FAILED_PROPOSAL_EXECUTION_MASK: u64 = 0b000;
 const FAILED_PROPOSAL_HOOK_MASK: u64 = 0b001;
 const FAILED_VOTE_HOOK_MASK: u64 = 0b010;
 
-/// These are IDs as opposed to bitmasks since they only need to convey one piece of information (the type of reply the reply handler is handling.)
+/// These are IDs as opposed to bitmasks since they only need to
+/// convey one piece of information (the type of reply the reply
+/// handler is handling.)
 const PRE_PROPOSE_MODULE_INSTANTIATION_ID: u64 = 0b011;
 const FAILED_PRE_PROPOSE_MODULE_HOOK_ID: u64 = 0b100;
 
@@ -48,8 +50,6 @@ impl TaggedReplyId {
             FAILED_VOTE_HOOK_MASK => Ok(TaggedReplyId::FailedVoteHook(id_after_shift)),
             PRE_PROPOSE_MODULE_INSTANTIATION_ID => Ok(TaggedReplyId::PreProposeModuleInstantiation),
             FAILED_PRE_PROPOSE_MODULE_HOOK_ID => Ok(TaggedReplyId::FailedPreProposeModuleHook),
-            // This is actually unreachable as we cover all possible
-            // uses for the first two bits of a integer.
             _ => Err(error::TagError::UnknownReplyId { id }),
         }
     }
@@ -112,6 +112,10 @@ mod test {
         assert_eq!(
             TaggedReplyId::new(m_vote_hook_idx).unwrap(),
             TaggedReplyId::FailedVoteHook(vote_hook_idx)
+        );
+        assert_eq!(
+            TaggedReplyId::new(0b110).unwrap_err(),
+            error::TagError::UnknownReplyId { id: 0b110 }
         );
     }
 }
