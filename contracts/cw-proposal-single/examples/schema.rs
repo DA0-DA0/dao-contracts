@@ -51,6 +51,7 @@ fn main() {
         &out_dir,
         "ReverseProposalsResponse",
     );
+    export_schema_with_title(&schema_for!(Addr), &out_dir, "DaoResponse");
     export_schema_with_title(
         &schema_for!(HooksResponse),
         &out_dir,
