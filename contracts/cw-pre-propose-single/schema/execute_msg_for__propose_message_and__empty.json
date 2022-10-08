@@ -102,14 +102,55 @@
       "additionalProperties": false
     },
     {
-      "description": "Handles proposal hooks fired by the associated proposal module. By default, the base contract will return deposits when proposals are executed, or, if it is refunding failed proposals, when they are closed.",
+      "description": "Handles proposal hook fired by the associated proposal module when a proposal is created. By default, the base contract will return deposits proposals, when they are closed. when proposals are executed, or, if it is refunding failed",
       "type": "object",
       "required": [
-        "proposal_hook"
+        "proposal_created_hook"
       ],
       "properties": {
-        "proposal_hook": {
-          "$ref": "#/definitions/ProposalHookMsg"
+        "proposal_created_hook": {
+          "type": "object",
+          "required": [
+            "proposal_id",
+            "proposer"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "proposer": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Handles proposal hook fired by the associated proposal module when a proposal is completed (ie executed or rejected). By default, the base contract will return deposits proposals, when they are closed. when proposals are executed, or, if it is refunding failed",
+      "type": "object",
+      "required": [
+        "proposal_completed_hook"
+      ],
+      "properties": {
+        "proposal_completed_hook": {
+          "type": "object",
+          "required": [
+            "new_status",
+            "proposal_id"
+          ],
+          "properties": {
+            "new_status": {
+              "$ref": "#/definitions/Status"
+            },
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -174,7 +215,7 @@
       ]
     },
     "Binary": {
-      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
       "type": "string"
     },
     "Coin": {
@@ -306,11 +347,28 @@
       ]
     },
     "DepositRefundPolicy": {
-      "type": "string",
-      "enum": [
-        "always",
-        "only_passed",
-        "never"
+      "oneOf": [
+        {
+          "description": "Deposits should always be refunded.",
+          "type": "string",
+          "enum": [
+            "always"
+          ]
+        },
+        {
+          "description": "Deposits should only be refunded for passed proposals.",
+          "type": "string",
+          "enum": [
+            "only_passed"
+          ]
+        },
+        {
+          "description": "Deposits should never be refunded.",
+          "type": "string",
+          "enum": [
+            "never"
+          ]
+        }
       ]
     },
     "DepositToken": {
@@ -589,66 +647,6 @@
         }
       }
     },
-    "ProposalHookMsg": {
-      "oneOf": [
-        {
-          "type": "object",
-          "required": [
-            "new_proposal"
-          ],
-          "properties": {
-            "new_proposal": {
-              "type": "object",
-              "required": [
-                "id",
-                "proposer"
-              ],
-              "properties": {
-                "id": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                },
-                "proposer": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "proposal_status_changed"
-          ],
-          "properties": {
-            "proposal_status_changed": {
-              "type": "object",
-              "required": [
-                "id",
-                "new_status",
-                "old_status"
-              ],
-              "properties": {
-                "id": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                },
-                "new_status": {
-                  "type": "string"
-                },
-                "old_status": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        }
-      ]
-    },
     "ProposeMessage": {
       "oneOf": [
         {
@@ -765,6 +763,52 @@
             }
           },
           "additionalProperties": false
+        }
+      ]
+    },
+    "Status": {
+      "oneOf": [
+        {
+          "description": "The proposal is open for voting.",
+          "type": "string",
+          "enum": [
+            "open"
+          ]
+        },
+        {
+          "description": "The proposal has been rejected.",
+          "type": "string",
+          "enum": [
+            "rejected"
+          ]
+        },
+        {
+          "description": "The proposal has been passed but has not been executed.",
+          "type": "string",
+          "enum": [
+            "passed"
+          ]
+        },
+        {
+          "description": "The proposal has been passed and executed.",
+          "type": "string",
+          "enum": [
+            "executed"
+          ]
+        },
+        {
+          "description": "The proposal has failed or expired and has been closed. A proposal deposit refund has been issued if applicable.",
+          "type": "string",
+          "enum": [
+            "closed"
+          ]
+        },
+        {
+          "description": "The proposal's execution failed.",
+          "type": "string",
+          "enum": [
+            "execution_failed"
+          ]
         }
       ]
     },

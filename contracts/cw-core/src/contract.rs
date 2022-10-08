@@ -5,13 +5,11 @@ use cosmwasm_std::{
     Response, StdError, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw_storage_plus::{Item, Map};
+use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_core_interface::{voting, ModuleInstantiateInfo};
 use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -839,22 +837,16 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
         MigrateMsg::FromV1 { dao_uri } => {
-            // This config version is from commit
-            // e531c760a5d057329afd98d62567aaa4dca2c96f (v1.0.0) and code ID
-            // 432.
-            #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-            struct V1Config {
-                pub name: String,
-                pub description: String,
-                pub image_url: Option<String>,
-                pub automatically_add_cw20s: bool,
-                pub automatically_add_cw721s: bool,
-            }
+            use cw_core_v1 as v1;
 
-            let current_map: Map<Addr, Empty> = Map::new("proposal_modules");
-            let current_keys = current_map
+            let current_keys = v1::state::PROPOSAL_MODULES
                 .keys(deps.storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<Addr>>>()?;
+
+            // All proposal modules are considered active in v1.
+            let module_count = &(current_keys.len() as u32);
+            TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, module_count)?;
+            ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, module_count)?;
 
             // Update proposal modules to v2.
             current_keys
@@ -872,8 +864,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 })?;
 
             // Update config to have the V2 "dao_uri" field.
-            let config_item: Item<V1Config> = Item::new("config");
-            let v1_config: V1Config = config_item.load(deps.storage)?;
+            let v1_config = v1::state::CONFIG.load(deps.storage)?;
             CONFIG.save(
                 deps.storage,
                 &Config {

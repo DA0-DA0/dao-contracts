@@ -26,11 +26,28 @@
       "type": "string"
     },
     "Vote": {
-      "type": "string",
-      "enum": [
-        "yes",
-        "no",
-        "abstain"
+      "oneOf": [
+        {
+          "description": "Marks support for the proposal.",
+          "type": "string",
+          "enum": [
+            "yes"
+          ]
+        },
+        {
+          "description": "Marks opposition to the proposal.",
+          "type": "string",
+          "enum": [
+            "no"
+          ]
+        },
+        {
+          "description": "Marks participation but does not count towards the ratio of support / opposed.",
+          "type": "string",
+          "enum": [
+            "abstain"
+          ]
+        }
       ]
     },
     "VoteInfo": {
