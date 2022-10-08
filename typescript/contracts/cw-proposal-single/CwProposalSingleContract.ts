@@ -439,6 +439,10 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
+  dao: {
+    [k: string]: unknown;
+  };
+} | {
   info: {
     [k: string]: unknown;
   };
@@ -497,6 +501,7 @@ export interface CwProposalSingleReadOnlyInterface {
   proposalCreationPolicy: () => Promise<ProposalCreationPolicyResponse>;
   proposalHooks: () => Promise<ProposalHooksResponse>;
   voteHooks: () => Promise<VoteHooksResponse>;
+  dao: () => Promise<DaoResponse>;
   info: () => Promise<InfoResponse>;
 }
 export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInterface {
@@ -516,6 +521,7 @@ export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInte
     this.proposalCreationPolicy = this.proposalCreationPolicy.bind(this);
     this.proposalHooks = this.proposalHooks.bind(this);
     this.voteHooks = this.voteHooks.bind(this);
+    this.dao = this.dao.bind(this);
     this.info = this.info.bind(this);
   }
 
@@ -612,6 +618,11 @@ export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInte
   voteHooks = async (): Promise<VoteHooksResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       vote_hooks: {}
+    });
+  };
+  dao = async (): Promise<DaoResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao: {}
     });
   };
   info = async (): Promise<InfoResponse> => {

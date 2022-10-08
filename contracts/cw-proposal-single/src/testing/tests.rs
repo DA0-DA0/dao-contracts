@@ -1683,6 +1683,7 @@ fn test_migrate_from_v1() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs".to_string(),
         image_url: None,
+        dao_uri: None,
         automatically_add_cw20s: true,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {

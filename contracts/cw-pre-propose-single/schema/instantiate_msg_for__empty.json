@@ -33,11 +33,28 @@
   },
   "definitions": {
     "DepositRefundPolicy": {
-      "type": "string",
-      "enum": [
-        "always",
-        "only_passed",
-        "never"
+      "oneOf": [
+        {
+          "description": "Deposits should always be refunded.",
+          "type": "string",
+          "enum": [
+            "always"
+          ]
+        },
+        {
+          "description": "Deposits should only be refunded for passed proposals.",
+          "type": "string",
+          "enum": [
+            "only_passed"
+          ]
+        },
+        {
+          "description": "Deposits should never be refunded.",
+          "type": "string",
+          "enum": [
+            "never"
+          ]
+        }
       ]
     },
     "DepositToken": {

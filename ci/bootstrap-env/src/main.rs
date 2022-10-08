@@ -7,15 +7,17 @@ use cosm_orc::{
     },
     orchestrator::cosm_orc::CosmOrc,
 };
-use cosmwasm_std::{to_binary, Decimal, Uint128};
+use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
-use cw_core::msg::{Admin, ModuleInstantiateInfo};
+use cw_core_interface::{Admin, ModuleInstantiateInfo};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::time::Duration;
 use voting::{
-    deposit::DepositInfo, deposit::DepositToken, threshold::PercentageThreshold,
+    deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
+    pre_propose::PreProposeInfo,
+    threshold::PercentageThreshold,
     threshold::Threshold,
 };
 
@@ -76,7 +78,7 @@ fn main() -> Result<()> {
                 },
                 active_threshold: None,
             })?,
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::CoreModule {}),
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
@@ -90,14 +92,26 @@ fn main() -> Result<()> {
                 max_voting_period: cw_utils::Duration::Time(432000),
                 allow_revoting: false,
                 only_members_execute: true,
-                deposit_info: Some(DepositInfo {
-                    token: DepositToken::VotingModuleToken {},
-                    deposit: Uint128::new(1000000000),
-                    refund_failed_proposals: true,
-                }),
+                pre_propose_info: PreProposeInfo::ModuleMayPropose {
+                    info: ModuleInstantiateInfo {
+                        code_id: orc.contract_map.code_id("cw_pre_propose_single")?,
+                        msg: to_binary(&cw_pre_propose_single::InstantiateMsg {
+                            deposit_info: Some(UncheckedDepositInfo {
+                                denom: DepositToken::VotingModuleToken {},
+                                amount: Uint128::new(1000000000),
+                                refund_policy: DepositRefundPolicy::OnlyPassed,
+                            }),
+                            open_proposal_submission: false,
+                            extension: Empty::default(),
+                        })
+                        .unwrap(),
+                        admin: Some(Admin::CoreModule {}),
+                        label: "DAO DAO Pre-Propose Module".to_string(),
+                    },
+                },
                 close_proposal_on_execution_failure: false,
             })?,
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::CoreModule {}),
             label: "DAO DAO Proposal Module".to_string(),
         }],
         initial_items: None,

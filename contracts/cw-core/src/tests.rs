@@ -72,6 +72,14 @@ fn cw_core_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+fn v1_cw_core_contract() -> Box<dyn Contract<Empty>> {
+    use cw_core_v1::contract;
+    let contract = ContractWrapper::new(contract::execute, contract::instantiate, contract::query)
+        .with_reply(contract::reply)
+        .with_migrate(contract::migrate);
+    Box::new(contract)
+}
+
 fn instantiate_gov(app: &mut App, code_id: u64, msg: InstantiateMsg) -> Addr {
     app.instantiate_contract(
         code_id,
@@ -2493,13 +2501,16 @@ fn test_migrate_from_compatible() {
 
 #[test]
 fn test_migrate_from_beta() {
+    use cw_core_v1 as v1;
+
     let mut app = App::default();
     let govmod_id = app.store_code(sudo_proposal_contract());
     let voting_id = app.store_code(cw20_balances_voting());
-    let gov_id = app.store_code(cw_core_contract());
+    let core_id = app.store_code(cw_core_contract());
+    let v1_core_id = app.store_code(v1_cw_core_contract());
     let cw20_id = app.store_code(cw20_contract());
 
-    let govmod_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
+    let proposal_instantiate = cw_proposal_sudo::msg::InstantiateMsg {
         root: CREATOR_ADDR.to_string(),
     };
     let voting_instantiate = cw20_balance_voting::msg::InstantiateMsg {
@@ -2518,31 +2529,30 @@ fn test_migrate_from_beta() {
     };
 
     // Instantiate the core module with an admin to do migrations.
-    let gov_instantiate = InstantiateMsg {
+    let v1_core_instantiate = v1::msg::InstantiateMsg {
         admin: None,
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
-        dao_uri: None,
         image_url: None,
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
+        voting_module_instantiate_info: v1::msg::ModuleInstantiateInfo {
             code_id: voting_id,
             msg: to_binary(&voting_instantiate).unwrap(),
-            admin: Some(Admin::CoreModule {}),
+            admin: v1::msg::Admin::CoreContract {},
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![
-            ModuleInstantiateInfo {
+            v1::msg::ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Some(Admin::CoreModule {}),
+                msg: to_binary(&proposal_instantiate).unwrap(),
+                admin: v1::msg::Admin::CoreContract {},
                 label: "governance module 1".to_string(),
             },
-            ModuleInstantiateInfo {
+            v1::msg::ModuleInstantiateInfo {
                 code_id: govmod_id,
-                msg: to_binary(&govmod_instantiate).unwrap(),
-                admin: Some(Admin::CoreModule {}),
+                msg: to_binary(&proposal_instantiate).unwrap(),
+                admin: v1::msg::Admin::CoreContract {},
                 label: "governance module 2".to_string(),
             },
         ],
@@ -2551,9 +2561,9 @@ fn test_migrate_from_beta() {
 
     let core_addr = app
         .instantiate_contract(
-            gov_id,
+            v1_core_id,
             Addr::unchecked(CREATOR_ADDR),
-            &gov_instantiate,
+            &v1_core_instantiate,
             &[],
             "cw-governance",
             Some(CREATOR_ADDR.to_string()),
@@ -2564,7 +2574,7 @@ fn test_migrate_from_beta() {
         Addr::unchecked(CREATOR_ADDR),
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: core_addr.to_string(),
-            new_code_id: gov_id,
+            new_code_id: core_id,
             msg: to_binary(&MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
         }),
     )
@@ -2926,13 +2936,13 @@ fn test_created_timestamp_set() {
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::CoreModule {}),
             label: "voting module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
-            admin: Admin::CoreContract {},
+            admin: Some(Admin::CoreModule {}),
             label: "governance module".to_string(),
         }],
         initial_items: None,

@@ -156,7 +156,7 @@ mod tests {
         let t = Threshold::AbsolutePercentage {
             percentage: p!(100),
         };
-        assert_eq!(t.validate().unwrap(), ());
+        t.validate().unwrap();
 
         let t = Threshold::ThresholdQuorum {
             threshold: p!(101),
@@ -171,7 +171,7 @@ mod tests {
             threshold: p!(100),
             quorum: p!(0),
         };
-        assert_eq!(t.validate().unwrap(), ());
+        t.validate().unwrap();
 
         let t = Threshold::ThresholdQuorum {
             threshold: p!(100),

@@ -226,6 +226,18 @@
     {
       "type": "object",
       "required": [
+        "dao"
+      ],
+      "properties": {
+        "dao": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "info"
       ],
       "properties": {

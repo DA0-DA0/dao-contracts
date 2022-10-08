@@ -9,7 +9,7 @@ pub struct InstantiateMsg {
     pub root: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Execute { msgs: Vec<CosmosMsg> },
