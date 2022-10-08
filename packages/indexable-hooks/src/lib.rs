@@ -89,3 +89,56 @@ impl<'a> Hooks<'a> {
         Ok(HooksResponse { hooks })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::{coins, testing::mock_dependencies, BankMsg};
+
+    // Shorthand for an unchecked address.
+    macro_rules! addr {
+        ($x:expr ) => {
+            Addr::unchecked($x)
+        };
+    }
+
+    #[test]
+    fn test_hooks() {
+        let mut deps = mock_dependencies();
+        let storage = &mut deps.storage;
+        let hooks = Hooks::new("hooks");
+        hooks.add_hook(storage, addr!("ekez")).unwrap();
+        hooks.add_hook(storage, addr!("meow")).unwrap();
+
+        assert_eq!(hooks.hook_count(storage).unwrap(), 2);
+
+        hooks.remove_hook_by_index(storage, 0).unwrap();
+
+        assert_eq!(hooks.hook_count(storage).unwrap(), 1);
+
+        let msgs = hooks
+            .prepare_hooks(storage, |a| {
+                Ok(SubMsg::reply_always(
+                    BankMsg::Burn {
+                        amount: coins(a.as_str().len() as u128, "uekez"),
+                    },
+                    2,
+                ))
+            })
+            .unwrap();
+
+        assert_eq!(
+            msgs,
+            vec![SubMsg::reply_always(
+                BankMsg::Burn {
+                    amount: coins(4, "uekez"),
+                },
+                2,
+            )]
+        );
+
+        let HooksResponse { hooks: the_hooks } = hooks.query_hooks(deps.as_ref()).unwrap();
+
+        assert_eq!(the_hooks, vec![addr!("meow")]);
+    }
+}
