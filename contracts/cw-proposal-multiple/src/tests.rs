@@ -22,7 +22,7 @@ use crate::{
     proposal::MultipleChoiceProposal,
     query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
     state::{Config, MultipleChoiceOption, MultipleChoiceOptions, VoteInfo, MAX_NUM_CHOICES},
-    voting_strategy::VotingStrategy,
+    voting_strategy::{MultipleProposalThreshold, VotingStrategy},
     ContractError,
 };
 
@@ -331,37 +331,44 @@ pub fn test_simple_votes<F>(do_test_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
-    // Vote for one option, passes
-    do_test_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice {
+    let strategies = vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Passed,
-        None,
-        false,
-    );
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute {
+            threshold: Uint128::new(10),
+        }),
+    ];
 
-    // Vote for none of the above, gets rejected
-    do_test_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 2 },
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice {
-            quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Rejected,
-        None,
-        false,
-    )
+    for voting_strategy in strategies {
+        // Vote for one option, passes
+        do_test_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            None,
+            false,
+        );
+
+        // Vote for none of the above, gets rejected
+        do_test_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 2 },
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy,
+            Status::Rejected,
+            None,
+            false,
+        )
+    }
 }
 
 pub fn test_vote_invalid_option<F>(do_test_votes: F)
@@ -376,9 +383,9 @@ where
             weight: Uint128::new(10),
             should_execute: ShouldExecute::No,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
+        }),
         Status::Open,
         None,
         false,
@@ -396,9 +403,9 @@ where
             weight: Uint128::new(u128::max_value()),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
+        }),
         Status::Passed,
         None,
         false,
@@ -419,9 +426,9 @@ where
                 should_execute: ShouldExecute::Yes,
             },
         ],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
+        }),
         Status::Passed,
         None,
         false,
@@ -432,28 +439,37 @@ pub fn test_vote_tied_rejected<F>(do_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
-    do_votes(
-        vec![
-            TestMultipleChoiceVote {
-                voter: "bluenote".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(1),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestMultipleChoiceVote {
-                voter: "bob".to_string(),
-                position: MultipleChoiceVote { option_id: 1 },
-                weight: Uint128::new(1),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        VotingStrategy::SingleChoice {
+    let strategies = vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
-        Status::Rejected,
-        None,
-        false,
-    );
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute {
+            threshold: Uint128::new(2),
+        }),
+    ];
+
+    for voting_strategy in strategies {
+        do_votes(
+            vec![
+                TestMultipleChoiceVote {
+                    voter: "bluenote".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(1),
+                    should_execute: ShouldExecute::Yes,
+                },
+                TestMultipleChoiceVote {
+                    voter: "bob".to_string(),
+                    position: MultipleChoiceVote { option_id: 1 },
+                    weight: Uint128::new(1),
+                    should_execute: ShouldExecute::Yes,
+                },
+            ],
+            voting_strategy,
+            Status::Rejected,
+            None,
+            false,
+        );
+    }
 }
 
 pub fn test_vote_none_of_the_above_only<F>(do_votes: F)
@@ -467,9 +483,9 @@ where
             weight: Uint128::new(u64::max_value().into()),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
+        }),
         Status::Rejected,
         None,
         false,
@@ -483,9 +499,9 @@ where
                 weight: Uint128::new(u64::max_value().into()),
                 should_execute: ShouldExecute::Yes,
             }],
-            VotingStrategy::SingleChoice {
+            VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Percent(Decimal::percent(i)),
-            },
+            }),
             Status::Rejected,
             None,
             false,
@@ -497,39 +513,60 @@ pub fn test_tricky_rounding<F>(do_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
-    // This tests the smallest possible round up for passing
-    // thresholds we can have. Specifically, a 1% passing threshold
-    // and 1 total vote. This should round up and only pass if there
-    // are 1 or more yes votes.
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice {
+    let strategies = vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-        },
-        Status::Passed,
-        Some(Uint128::new(100)),
-        true,
-    );
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute {
+            threshold: Uint128::new(1),
+        }),
+    ];
 
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(10),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice {
-            quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-        },
-        Status::Passed,
-        Some(Uint128::new(1000)),
-        true,
-    );
+    for voting_strategy in strategies {
+        // This tests the smallest possible round up for passing
+        // thresholds we can have. Specifically, a 1% passing threshold
+        // and 1 total vote. This should round up and only pass if there
+        // are 1 or more yes votes.
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            Some(Uint128::new(100)),
+            true,
+        );
+
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            Some(Uint128::new(1000)),
+            true,
+        );
+
+        // Proposal should be rejected if quorum is met but "none of the above" is the winning option.
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 2 },
+                weight: Uint128::new(1),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Rejected,
+            None,
+            false,
+        );
+    }
 
     // High Precision
     // Proposal should be rejected if < 1% have voted and proposal expires
@@ -540,28 +577,12 @@ where
             weight: Uint128::new(9999999),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-        },
+        }),
         Status::Rejected,
         Some(Uint128::new(1000000000)),
         true,
-    );
-
-    // Proposal should be rejected if quorum is met but "none of the above" is the winning option.
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 2 },
-            weight: Uint128::new(1),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice {
-            quorum: PercentageThreshold::Percent(Decimal::percent(1)),
-        },
-        Status::Rejected,
-        None,
-        false,
     );
 }
 
@@ -584,9 +605,9 @@ where
                 should_execute: ShouldExecute::No,
             },
         ],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(100)),
-        },
+        }),
         // NOTE: Updating our cw20-base version will cause this to
         // fail. In versions of cw20-base before Feb 15 2022 (the one
         // we use at the time of writing) it was allowed to have an
@@ -605,88 +626,109 @@ where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
     // Half
-    do_votes(
-        vec![
-            TestMultipleChoiceVote {
-                voter: "bluenote".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestMultipleChoiceVote {
-                voter: "blue".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        VotingStrategy::SingleChoice {
+    for voting_strategy in vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(50)),
-        },
-        Status::Passed,
-        Some(Uint128::new(40)),
-        true,
-    );
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute {
+            threshold: Uint128::new(20),
+        }),
+    ] {
+        do_votes(
+            vec![
+                TestMultipleChoiceVote {
+                    voter: "bluenote".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+                TestMultipleChoiceVote {
+                    voter: "blue".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+            ],
+            voting_strategy,
+            Status::Passed,
+            Some(Uint128::new(40)),
+            true,
+        );
+    }
 
     // Majority
-    do_votes(
-        vec![
-            TestMultipleChoiceVote {
-                voter: "bluenote".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestMultipleChoiceVote {
-                voter: "blue".to_string(),
-                position: MultipleChoiceVote { option_id: 0 },
-                weight: Uint128::new(10),
-                should_execute: ShouldExecute::Yes,
-            },
-        ],
-        VotingStrategy::SingleChoice {
+    for voting_strategy in vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
-        Status::Rejected,
-        Some(Uint128::new(40)),
-        true,
-    );
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute {
+            threshold: Uint128::new(21),
+        }),
+    ] {
+        do_votes(
+            vec![
+                TestMultipleChoiceVote {
+                    voter: "bluenote".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+                TestMultipleChoiceVote {
+                    voter: "blue".to_string(),
+                    position: MultipleChoiceVote { option_id: 0 },
+                    weight: Uint128::new(10),
+                    should_execute: ShouldExecute::Yes,
+                },
+            ],
+            voting_strategy,
+            Status::Rejected,
+            Some(Uint128::new(40)),
+            true,
+        );
+    }
 }
 
 pub fn test_pass_exactly_quorum<F>(do_votes: F)
 where
     F: Fn(Vec<TestMultipleChoiceVote>, VotingStrategy, Status, Option<Uint128>, bool),
 {
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 0 },
-            weight: Uint128::new(60),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice {
+    let strategies = vec![
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        },
-        Status::Passed,
-        Some(Uint128::new(100)),
-        false,
-    );
+        }),
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Absoulute {
+            threshold: Uint128::new(60),
+        }),
+    ];
 
-    // None of the above wins
-    do_votes(
-        vec![TestMultipleChoiceVote {
-            voter: "bluenote".to_string(),
-            position: MultipleChoiceVote { option_id: 2 },
-            weight: Uint128::new(60),
-            should_execute: ShouldExecute::Yes,
-        }],
-        VotingStrategy::SingleChoice {
-            quorum: PercentageThreshold::Percent(Decimal::percent(60)),
-        },
-        Status::Rejected,
-        Some(Uint128::new(100)),
-        false,
-    );
+    for voting_strategy in strategies {
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 0 },
+                weight: Uint128::new(60),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy.clone(),
+            Status::Passed,
+            Some(Uint128::new(100)),
+            false,
+        );
+
+        // None of the above wins
+        do_votes(
+            vec![TestMultipleChoiceVote {
+                voter: "bluenote".to_string(),
+                position: MultipleChoiceVote { option_id: 2 },
+                weight: Uint128::new(60),
+                should_execute: ShouldExecute::Yes,
+            }],
+            voting_strategy,
+            Status::Rejected,
+            Some(Uint128::new(100)),
+            false,
+        );
+    }
 }
 
 pub fn fuzz_voting<F>(do_votes: F)
@@ -748,9 +790,9 @@ where
 
         do_votes(
             votes,
-            VotingStrategy::SingleChoice {
+            VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             expected_status,
             None,
             true,
@@ -766,7 +808,8 @@ fn test_propose() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let quorum = PercentageThreshold::Majority {};
 
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
 
     let instantiate = InstantiateMsg {
         max_voting_period,
@@ -882,7 +925,8 @@ fn test_propose_wrong_num_choices() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let quorum = PercentageThreshold::Majority {};
 
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
 
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -1078,9 +1122,9 @@ fn test_migrate() {
     let govmod_id = app.store_code(proposal_contract());
 
     let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
+        }),
         max_voting_period: Duration::Time(10),
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
@@ -1137,9 +1181,9 @@ fn test_proposal_count_initialized_to_zero() {
     let mut app = App::default();
     let proposal_id = app.store_code(proposal_contract());
     let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
+        }),
         max_voting_period: Duration::Height(10),
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
@@ -1176,9 +1220,9 @@ fn test_no_early_pass_with_min_duration() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
+        }),
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Height(2)),
         only_members_execute: true,
@@ -1273,9 +1317,9 @@ fn test_propose_with_messages() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
+        }),
         max_voting_period: Duration::Height(10),
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
@@ -1310,9 +1354,9 @@ fn test_propose_with_messages() {
     let govmod = proposal_modules.into_iter().next().unwrap().address;
 
     let config_msg = ExecuteMsg::UpdateConfig {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
         max_voting_period: cw_utils::Duration::Height(20),
@@ -1396,9 +1440,9 @@ fn test_min_duration_units_missmatch() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
+        }),
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Time(2)),
         only_members_execute: true,
@@ -1429,9 +1473,9 @@ fn test_min_duration_larger_than_proposal_duration() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
+        }),
         max_voting_period: Duration::Height(10),
         min_voting_period: Some(Duration::Height(11)),
         only_members_execute: true,
@@ -1461,9 +1505,9 @@ fn test_min_duration_same_as_proposal_duration() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let msg = InstantiateMsg {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::percent(10)),
-        },
+        }),
         max_voting_period: Duration::Time(10),
         min_voting_period: Some(Duration::Time(10)),
         only_members_execute: true,
@@ -1573,7 +1617,8 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
     let govmod_id = app.store_code(proposal_contract());
 
     let quorum = PercentageThreshold::Majority {};
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let deposit_info = Some(DepositInfo {
         token: DepositToken::VotingModuleToken {},
@@ -1656,7 +1701,8 @@ fn test_different_token_proposal_deposit() {
         .unwrap();
 
     let quorum = PercentageThreshold::Percent(Decimal::percent(10));
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -1726,7 +1772,8 @@ fn test_bad_token_proposal_deposit() {
     });
 
     let quorum = PercentageThreshold::Percent(Decimal::percent(10));
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -1752,7 +1799,8 @@ fn test_take_proposal_deposit() {
     let govmod_id = app.store_code(proposal_contract());
 
     let quorum = PercentageThreshold::Percent(Decimal::percent(10));
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let deposit_info = Some(DepositInfo {
         token: DepositToken::VotingModuleToken {},
@@ -1879,9 +1927,9 @@ fn test_deposit_return_on_execute() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Passed,
         None,
         Some(DepositInfo {
@@ -1960,9 +2008,9 @@ fn test_deposit_return_zero() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Passed,
         None,
         deposit_info,
@@ -2024,9 +2072,9 @@ fn test_query_list_votes() {
                 should_execute: ShouldExecute::Yes,
             },
         ],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Passed,
         None,
         None,
@@ -2080,9 +2128,9 @@ fn test_invalid_quorum() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Percent(Decimal::from_ratio(1u128, 10u128)),
-        },
+        }),
         Status::Rejected,
         None,
         None,
@@ -2100,9 +2148,9 @@ fn test_cant_vote_executed_or_closed() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Rejected,
         None,
         None,
@@ -2147,9 +2195,9 @@ fn test_cant_vote_executed_or_closed() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Passed,
         None,
         None,
@@ -2183,7 +2231,8 @@ fn test_cant_propose_zero_power() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let quorum = PercentageThreshold::Percent(Decimal::percent(10));
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -2300,9 +2349,9 @@ fn test_cant_vote_not_registered() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Open,
         Some(Uint128::new(100)),
         Some(DepositInfo {
@@ -2350,7 +2399,8 @@ fn test_cant_execute_not_member() {
     let max_voting_period = cw_utils::Duration::Height(6);
     let quorum = PercentageThreshold::Majority {};
 
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
 
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -2457,9 +2507,9 @@ fn test_close_open_proposal() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Open,
         Some(Uint128::new(100)),
         Some(DepositInfo {
@@ -2532,9 +2582,9 @@ fn test_no_refund_failed_proposal() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Open,
         Some(Uint128::new(100)),
         Some(DepositInfo {
@@ -2596,9 +2646,9 @@ fn test_zero_deposit() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Passed,
         None,
         Some(DepositInfo {
@@ -2613,7 +2663,8 @@ fn test_zero_deposit() {
 #[test]
 fn test_deposit_return_on_close() {
     let quorum = PercentageThreshold::Percent(Decimal::percent(10));
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
 
     let (mut app, governance_addr) = do_test_votes_cw20_balances(
         vec![TestMultipleChoiceVote {
@@ -2689,7 +2740,8 @@ fn test_execute_expired_proposal() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let quorum = PercentageThreshold::Percent(Decimal::percent(10));
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -2823,9 +2875,9 @@ fn test_update_config() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Passed,
         None,
         Some(DepositInfo {
@@ -2852,9 +2904,9 @@ fn test_update_config() {
 
     assert_eq!(
         govmod_config.voting_strategy,
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {}
-        }
+        })
     );
 
     let dao = govmod_config.dao;
@@ -2865,9 +2917,9 @@ fn test_update_config() {
         Addr::unchecked("wrong"),
         govmod.clone(),
         &ExecuteMsg::UpdateConfig {
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             min_voting_period: None,
             close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
@@ -2885,9 +2937,9 @@ fn test_update_config() {
         dao.clone(),
         govmod.clone(),
         &ExecuteMsg::UpdateConfig {
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             min_voting_period: None,
             close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
@@ -2906,9 +2958,9 @@ fn test_update_config() {
         .unwrap();
 
     let expected = Config {
-        voting_strategy: VotingStrategy::SingleChoice {
+        voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
         max_voting_period: cw_utils::Duration::Height(10),
@@ -2925,9 +2977,9 @@ fn test_update_config() {
         dao,
         govmod,
         &ExecuteMsg::UpdateConfig {
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             min_voting_period: None,
             close_proposal_on_execution_failure: true,
             max_voting_period: cw_utils::Duration::Height(10),
@@ -2950,9 +3002,9 @@ fn test_no_return_if_no_refunds() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Rejected,
         None,
         Some(DepositInfo {
@@ -3006,7 +3058,8 @@ fn test_query_list_proposals() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let quorum = PercentageThreshold::Majority {};
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -3175,7 +3228,8 @@ fn test_hooks() {
     let govmod_id = app.store_code(proposal_contract());
 
     let quorum = PercentageThreshold::Majority {};
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -3333,7 +3387,8 @@ fn test_active_threshold_absolute() {
     let govmod_id = app.store_code(proposal_contract());
 
     let quorum = PercentageThreshold::Majority {};
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -3471,7 +3526,8 @@ fn test_active_threshold_percent() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let quorum = PercentageThreshold::Majority {};
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -3610,7 +3666,8 @@ fn test_active_threshold_none() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
     let quorum = PercentageThreshold::Majority {};
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         min_voting_period: None,
@@ -3760,9 +3817,9 @@ fn test_revoting() {
             only_members_execute: false,
             allow_revoting: true,
             deposit_info: None,
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             close_proposal_on_execution_failure: false,
         })
         .unwrap(),
@@ -3907,9 +3964,9 @@ fn test_allow_revoting_config_changes() {
             only_members_execute: false,
             allow_revoting: true,
             deposit_info: None,
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             close_proposal_on_execution_failure: false,
         })
         .unwrap(),
@@ -3973,9 +4030,9 @@ fn test_allow_revoting_config_changes() {
             allow_revoting: false,
             dao: core_addr.to_string(),
             deposit_info: None,
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             close_proposal_on_execution_failure: false,
         },
         &[],
@@ -4069,9 +4126,9 @@ fn test_revoting_same_vote_twice() {
             only_members_execute: false,
             allow_revoting: true,
             deposit_info: None,
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             close_proposal_on_execution_failure: false,
         })
         .unwrap(),
@@ -4170,9 +4227,9 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
             only_members_execute: false,
             allow_revoting: true,
             deposit_info: None,
-            voting_strategy: VotingStrategy::SingleChoice {
+            voting_strategy: VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
                 quorum: PercentageThreshold::Majority {},
-            },
+            }),
             close_proposal_on_execution_failure: false,
         })
         .unwrap(),
@@ -4308,9 +4365,9 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
             weight: Uint128::new(10),
             should_execute: ShouldExecute::Yes,
         }],
-        VotingStrategy::SingleChoice {
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
             quorum: PercentageThreshold::Majority {},
-        },
+        }),
         Status::Open,
         Some(Uint128::new(100)),
         Some(DepositInfo {
@@ -4369,7 +4426,8 @@ fn test_close_failed_proposal() {
     let govmod_id = app.store_code(proposal_contract());
 
     let quorum = PercentageThreshold::Majority {};
-    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+    let voting_strategy =
+        VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage { quorum });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         max_voting_period,
@@ -4533,7 +4591,9 @@ fn test_close_failed_proposal() {
                             msgs: Some(vec![WasmMsg::Execute {
                                 contract_addr: govmod_single.to_string(),
                                 msg: to_binary(&ExecuteMsg::UpdateConfig {
-                                    voting_strategy: VotingStrategy::SingleChoice { quorum },
+                                    voting_strategy: VotingStrategy::SingleChoice(
+                                        MultipleProposalThreshold::Percentage { quorum },
+                                    ),
                                     max_voting_period: original.max_voting_period,
                                     min_voting_period: original.min_voting_period,
                                     only_members_execute: original.only_members_execute,
@@ -4629,9 +4689,9 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     let mut app = App::default();
     let proposal_module_id = app.store_code(proposal_contract());
 
-    let voting_strategy = VotingStrategy::SingleChoice {
+    let voting_strategy = VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
         quorum: PercentageThreshold::Majority {},
-    };
+    });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         voting_strategy,
@@ -4859,9 +4919,9 @@ fn test_timestamp_updated() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
 
-    let voting_strategy = VotingStrategy::SingleChoice {
+    let voting_strategy = VotingStrategy::SingleChoice(MultipleProposalThreshold::Percentage {
         quorum: PercentageThreshold::Majority {},
-    };
+    });
     let max_voting_period = cw_utils::Duration::Height(6);
     let instantiate = InstantiateMsg {
         voting_strategy,
