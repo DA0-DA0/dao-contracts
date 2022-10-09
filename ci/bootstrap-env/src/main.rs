@@ -59,7 +59,7 @@ fn main() -> Result<()> {
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: orc.contract_map.code_id("cwd_voting_cw20_staked")?,
+            code_id: orc.contract_map.code_id("cw20_staked_balance_voting")?,
             msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: orc.contract_map.code_id("cw20_base")?,
@@ -82,7 +82,7 @@ fn main() -> Result<()> {
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: orc.contract_map.code_id("cwd_proposal_single")?,
+            code_id: orc.contract_map.code_id("cw_proposal_single")?,
             msg: to_binary(&cwd_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
@@ -94,7 +94,7 @@ fn main() -> Result<()> {
                 only_members_execute: true,
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
-                        code_id: orc.contract_map.code_id("cwd_pre_propose_single")?,
+                        code_id: orc.contract_map.code_id("cw_pre_propose_single")?,
                         msg: to_binary(&cwd_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},

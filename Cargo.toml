@@ -5,10 +5,10 @@ members = [
 	"contracts/pre-propose/*",
 	"contracts/staking/*",
 	"contracts/voting/*",
-	"contracts/external/*",
 	"packages/*",
 	"test-contracts/*",
-	"ci/*"
+	"ci/*",
+	"contracts/external/*"
 	]
 exclude = ["ci/configs/"]
 
