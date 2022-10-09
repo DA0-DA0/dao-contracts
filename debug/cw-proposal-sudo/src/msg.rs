@@ -2,7 +2,7 @@ use cosmwasm_std::CosmosMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_core_macros::{govmod_query, info_query};
+use cw_core_macros::{info_query, proposal_module_query};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
