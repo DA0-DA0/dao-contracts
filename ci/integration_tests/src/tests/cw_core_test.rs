@@ -346,7 +346,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     let proposal_creation_policy: voting::pre_propose::ProposalCreationPolicy = chain
         .orc
         .query(
-            "inst_admin_q_cpc",
+            proposal_contract,
             &cw_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap()
