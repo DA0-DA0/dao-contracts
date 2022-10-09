@@ -1,6 +1,6 @@
 use cosmwasm_std::Uint128;
 use cw2::ContractVersion;
-use cw_core_macros::{active_query, govmod_query, info_query, token_query, voting_query};
+use cw_core_macros::{active_query, info_query, proposal_module_query, token_query, voting_query};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

@@ -114,7 +114,7 @@ pub fn voting_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use cw_core_macros::govmod_query;
+/// use cw_core_macros::token_query;
 ///
 /// #[derive(Clone)]
 /// #[token_query]
@@ -306,9 +306,9 @@ pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// For example:
 ///
 /// ```
-/// use cw_core_macros::govmod_query;
+/// use cw_core_macros::proposal_module_query;
 ///
-/// #[govmod_query]
+/// #[proposal_module_query]
 /// enum QueryMsg {}
 /// ```
 ///
@@ -326,10 +326,10 @@ pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use cw_core_macros::govmod_query;
+/// use cw_core_macros::proposal_module_query;
 ///
 /// #[derive(Clone)]
-/// #[govmod_query]
+/// #[proposal_module_query]
 /// #[allow(dead_code)]
 /// enum Test {
 ///     Foo,

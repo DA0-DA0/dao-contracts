@@ -3,7 +3,7 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_core_macros::{govmod_query, info_query};
+use cw_core_macros::{info_query, proposal_module_query};
 use voting::{pre_propose::PreProposeInfo, threshold::Threshold, voting::Vote};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

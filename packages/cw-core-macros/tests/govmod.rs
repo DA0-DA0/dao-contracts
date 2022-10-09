@@ -1,4 +1,4 @@
-use cw_core_macros::govmod_query;
+use cw_core_macros::proposal_module_query;
 
 #[proposal_module_query]
 #[derive(Clone)]
@@ -10,7 +10,7 @@ enum Test {
 }
 
 #[test]
-fn govmod_query_derive() {
+fn proposal_module_query_derive() {
     let test = Test::Dao {};
 
     // If this compiles we have won.
