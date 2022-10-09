@@ -1,0 +1,31 @@
+[package]
+name = "cwd-voting-cw20-balance"
+version = "0.2.0"
+authors = ["ekez <ekez@withoutdoing.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { version = "1.0.0" }
+cw-storage-plus = "0.13"
+cw2 = "0.13"
+cw20 = "0.13"
+cw-utils = "0.13"
+schemars = "0.8"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0" }
+cwd-macros = { path = "../../packages/cwd-macros" }
+cwd-interface = { path = "../../packages/cwd-interface" }
+cw20-base = {  version = "0.13", features = ["library"] }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "1.0.0" }
+cw-multi-test = "0.13"

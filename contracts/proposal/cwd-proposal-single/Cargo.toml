@@ -1,0 +1,58 @@
+[package]
+name = "cwd-proposal-single"
+version = "0.2.0"
+authors = ["ekez <ekez@withoutdoing.com>"]
+edition = "2021"
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "A DAO DAO proposal module for single choice (yes / no) voting."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { version = "1.0.0", features = ["ibc3"] }
+cosmwasm-storage = { version = "1.0.0" }
+cw-storage-plus = "0.13"
+cw-utils = "0.13"
+cw2 = "0.13"
+cw20 = "0.13"
+cw3 = "0.13"
+schemars = "0.8"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0" }
+
+cwd-core = { path = "../../cwd-core", features = ["library"] }
+cwd-macros = { path = "../../../packages/cwd-macros" }
+cwd-pre-propose-base = { path = "../../../packages/cwd-pre-propose-base" }
+cwd-pre-propose-single = { path = "../../pre-propose/cwd-pre-propose-single" }
+cwd-interface = { path = "../../../packages/cwd-interface" }
+cwd-voting = { path = "../../../packages/cwd-voting" }
+cwd-hooks = { path = "../../../packages/cwd-hooks" }
+cwd-proposal-hooks = { path = "../../../packages/cwd-proposal-hooks" }
+cwd-vote-hooks = { path = "../../../packages/cwd-vote-hooks" }
+
+voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "1.0.0" }
+cw-multi-test = "0.13"
+cwd-voting-cw4 = { path = "../../voting/cwd-voting-cw4" }
+cwd-voting-cw20-balance = { path = "../../../test-contracts/cwd-voting-cw20-balance" }
+cwd-voting-cw20-staked = { path = "../../voting/cwd-voting-cw20-staked" }
+cwd-voting-native-staked = { path = "../../voting/cwd-voting-native-staked" }
+cwd-voting-cw721-staked = { path = "../../voting/cwd-voting-cw721-staked" }
+cwd-pre-propose-single = { path = "../../pre-propose/cwd-pre-propose-single" }
+cw-denom = { path = "../../../packages/cw-denom" }
+cwd-testing = { path = "../../../packages/cwd-testing" }
+cw20-stake = { path= "../../staking/cw20-stake" }
+cw20-base = "0.13"
+cw721-base = "0.13"
+cw4 = "0.13"
+cw4-group = "0.13"

@@ -2,10 +2,10 @@ use crate::{proposal::MultipleChoiceProposal, voting_strategy::VotingStrategy, C
 use cosmwasm_std::{Addr, CosmosMsg, Empty, Uint128};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
-use indexable_hooks::Hooks;
+use cwd_hooks::Hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{deposit::CheckedDepositInfo, voting::MultipleChoiceVote};
+use cwd_voting::{deposit::CheckedDepositInfo, voting::MultipleChoiceVote};
 
 pub const MAX_NUM_CHOICES: u32 = 10;
 const NONE_OPTION_DESCRIPTION: &str = "None of the above";

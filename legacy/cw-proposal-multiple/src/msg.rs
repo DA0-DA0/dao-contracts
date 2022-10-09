@@ -1,10 +1,10 @@
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{deposit::UncheckedDepositInfo, voting::MultipleChoiceVote};
+use cwd_voting::{deposit::UncheckedDepositInfo, voting::MultipleChoiceVote};
 
 use crate::{state::MultipleChoiceOptions, voting_strategy::VotingStrategy};
-use cw_core_macros::govmod_query;
+use cwd_macros::govmod_query;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct InstantiateMsg {

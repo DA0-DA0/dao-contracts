@@ -1,0 +1,32 @@
+[package]
+name = "cwd-pre-propose-base"
+version = "0.2.0"
+edition = "2021"
+authors = ["ekez ekez@withoutdoing.com"]
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "A package for implementing pre-propose modules."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query WASM exports
+library = []
+
+[dependencies]
+cosmwasm-std = "1.0.0"
+cw-storage-plus = "0.13.2"
+cw2 = "0.13.2"
+schemars = "0.8.8"
+serde = { version = "1.0.137", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.31" }
+cwd-voting = { path = "../cwd-voting" }
+cwd-proposal-hooks = { path = "../cwd-proposal-hooks" }
+cwd-interface = { path = "../cwd-interface" }
+cw-denom = { path = "../cw-denom" }
+
+[dev-dependencies]
+cosmwasm-schema = "1.0.0"
+cw-multi-test = "0.13.2"

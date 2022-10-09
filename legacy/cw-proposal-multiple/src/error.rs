@@ -1,9 +1,9 @@
 use std::u64;
 
 use cosmwasm_std::StdError;
-use indexable_hooks::HookError;
+use cwd_hooks::HookError;
 use thiserror::Error;
-use voting::{reply::error::TagError, threshold::ThresholdError};
+use cwd_voting::{reply::error::TagError, threshold::ThresholdError};
 
 #[derive(Error, Debug)]
 pub enum ContractError {

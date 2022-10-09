@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::threshold::{validate_quorum, PercentageThreshold, ThresholdError};
+use cwd_voting::threshold::{validate_quorum, PercentageThreshold, ThresholdError};
 
 /// Determines the way votes are counted.
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
