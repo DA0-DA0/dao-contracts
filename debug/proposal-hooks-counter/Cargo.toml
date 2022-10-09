@@ -38,6 +38,7 @@ serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
 proposal-hooks = { version = "0.2.0", path = "../../packages/proposal-hooks" }
 proposal-hooks-macros = { version = "*", path = "../../packages/proposal-hooks-macros" }
+vote-hooks-macros = { version = "*", path = "../../packages/vote-hooks-macros" }
 vote-hooks = { version = "0.2.0", path = "../../packages/vote-hooks" }
 
 [dev-dependencies]

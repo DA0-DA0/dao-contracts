@@ -2085,6 +2085,7 @@ dependencies = [
  "serde",
  "thiserror",
  "vote-hooks",
+ "vote-hooks-macros",
  "voting",
 ]
 
@@ -3172,6 +3173,16 @@ dependencies = [
  "schemars",
  "serde",
  "voting",
+]
+
+[[package]]
+name = "vote-hooks-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "vote-hooks",
 ]
 
 [[package]]

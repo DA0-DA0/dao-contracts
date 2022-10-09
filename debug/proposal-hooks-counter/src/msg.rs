@@ -3,6 +3,7 @@ use proposal_hooks_macros::proposal_hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use vote_hooks::VoteHookMsg;
+use vote_hooks_macros::vote_hooks;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -10,11 +11,10 @@ pub struct InstantiateMsg {
 }
 
 #[proposal_hooks]
+#[vote_hooks]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg {
-    VoteHook(VoteHookMsg),
-}
+pub enum ExecuteMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
