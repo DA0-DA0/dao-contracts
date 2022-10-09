@@ -47,7 +47,7 @@ pub fn proposal_hooks(metadata: TokenStream, input: TokenStream) -> TokenStream 
     // Make sure that no arguments were passed in.
     let args = parse_macro_input!(metadata as AttributeArgs);
     if let Some(first_arg) = args.first() {
-        return syn::Error::new_spanned(first_arg, "voting query macro takes no arguments")
+        return syn::Error::new_spanned(first_arg, "proposal hooks macro takes no arguments")
             .to_compile_error()
             .into();
     }
