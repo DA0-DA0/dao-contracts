@@ -23,6 +23,7 @@ pub enum ProposalHookMsg {
 pub enum ProposalHookExecuteMsg {
     ProposalHook(ProposalHookMsg),
 }
+
 /// Prepares new proposal hook messages. These messages reply on error
 /// and have even reply IDs.
 /// IDs are set to even numbers to then be interleaved with the vote hooks.

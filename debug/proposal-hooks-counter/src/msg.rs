@@ -1,4 +1,5 @@
 use proposal_hooks::ProposalHookMsg;
+use proposal_hooks_macros::proposal_hooks;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use vote_hooks::VoteHookMsg;
@@ -8,10 +9,10 @@ pub struct InstantiateMsg {
     pub should_error: bool, // Debug flag to test when hooks fail over
 }
 
+#[proposal_hooks]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    ProposalHook(ProposalHookMsg),
     VoteHook(VoteHookMsg),
 }
 

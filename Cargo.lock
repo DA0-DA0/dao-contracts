@@ -2080,11 +2080,22 @@ dependencies = [
  "cw20-base",
  "indexable-hooks",
  "proposal-hooks",
+ "proposal-hooks-macros",
  "schemars",
  "serde",
  "thiserror",
  "vote-hooks",
  "voting",
+]
+
+[[package]]
+name = "proposal-hooks-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "proposal-hooks",
+ "quote",
+ "syn",
 ]
 
 [[package]]
