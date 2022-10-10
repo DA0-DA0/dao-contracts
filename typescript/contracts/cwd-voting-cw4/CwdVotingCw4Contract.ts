@@ -7,7 +7,19 @@
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
 export type DaoResponse = string;
-export type ExecuteMsg = string;
+export type ExecuteMsg = {
+  member_changed_hook: {
+    diffs: MemberDiff[];
+    [k: string]: unknown;
+  };
+};
+export interface MemberDiff {
+  key: string;
+  new?: number | null;
+  old?: number | null;
+  [k: string]: unknown;
+}
+export type GroupContractResponse = string;
 export interface InfoResponse {
   info: ContractVersion;
   [k: string]: unknown;
@@ -18,18 +30,24 @@ export interface ContractVersion {
   [k: string]: unknown;
 }
 export interface InstantiateMsg {
-  staking_module_address: string;
+  cw4_group_code_id: number;
+  initial_members: Member[];
+  [k: string]: unknown;
+}
+export interface Member {
+  addr: string;
+  weight: number;
   [k: string]: unknown;
 }
 export interface MigrateMsg {
   [k: string]: unknown;
 }
 export type QueryMsg = {
-  dao: {
+  group_contract: {
     [k: string]: unknown;
   };
 } | {
-  staking_module: {
+  dao: {
     [k: string]: unknown;
   };
 } | {
@@ -48,7 +66,6 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 };
-export type StakingModuleResponse = string;
 export type Uint128 = string;
 export interface TotalPowerAtHeightResponse {
   height: number;
@@ -60,10 +77,10 @@ export interface VotingPowerAtHeightResponse {
   power: Uint128;
   [k: string]: unknown;
 }
-export interface CwStakingDenomVotingReadOnlyInterface {
+export interface CwdVotingCw4ReadOnlyInterface {
   contractAddress: string;
+  groupContract: () => Promise<GroupContractResponse>;
   dao: () => Promise<DaoResponse>;
-  stakingModule: () => Promise<StakingModuleResponse>;
   votingPowerAtHeight: ({
     address,
     height
@@ -78,28 +95,28 @@ export interface CwStakingDenomVotingReadOnlyInterface {
   }) => Promise<TotalPowerAtHeightResponse>;
   info: () => Promise<InfoResponse>;
 }
-export class CwStakingDenomVotingQueryClient implements CwStakingDenomVotingReadOnlyInterface {
+export class CwdVotingCw4QueryClient implements CwdVotingCw4ReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
+    this.groupContract = this.groupContract.bind(this);
     this.dao = this.dao.bind(this);
-    this.stakingModule = this.stakingModule.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
     this.info = this.info.bind(this);
   }
 
+  groupContract = async (): Promise<GroupContractResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      group_contract: {}
+    });
+  };
   dao = async (): Promise<DaoResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       dao: {}
-    });
-  };
-  stakingModule = async (): Promise<StakingModuleResponse> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      staking_module: {}
     });
   };
   votingPowerAtHeight = async ({
@@ -131,5 +148,39 @@ export class CwStakingDenomVotingQueryClient implements CwStakingDenomVotingRead
     return this.client.queryContractSmart(this.contractAddress, {
       info: {}
     });
+  };
+}
+export interface CwdVotingCw4Interface extends CwdVotingCw4ReadOnlyInterface {
+  contractAddress: string;
+  sender: string;
+  memberChangedHook: ({
+    diffs
+  }: {
+    diffs: MemberDiff[];
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+}
+export class CwdVotingCw4Client extends CwdVotingCw4QueryClient implements CwdVotingCw4Interface {
+  client: SigningCosmWasmClient;
+  sender: string;
+  contractAddress: string;
+
+  constructor(client: SigningCosmWasmClient, sender: string, contractAddress: string) {
+    super(client, contractAddress);
+    this.client = client;
+    this.sender = sender;
+    this.contractAddress = contractAddress;
+    this.memberChangedHook = this.memberChangedHook.bind(this);
+  }
+
+  memberChangedHook = async ({
+    diffs
+  }: {
+    diffs: MemberDiff[];
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      member_changed_hook: {
+        diffs
+      }
+    }, fee, memo, funds);
   };
 }

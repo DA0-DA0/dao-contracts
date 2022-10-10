@@ -6,15 +6,35 @@
 
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-export type ExecuteMsg = {
-  receive_nft: Cw721ReceiveMsg;
+export type Uint128 = string;
+export type Expiration = {
+  at_height: number;
 } | {
-  unstake: {
-    token_ids: string[];
+  at_time: Timestamp;
+} | {
+  never: {
+    [k: string]: unknown;
+  };
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
+export interface ClaimsResponse {
+  claims: Claim[];
+  [k: string]: unknown;
+}
+export interface Claim {
+  amount: Uint128;
+  release_at: Expiration;
+  [k: string]: unknown;
+}
+export type DaoResponse = string;
+export type ExecuteMsg = {
+  stake: {
     [k: string]: unknown;
   };
 } | {
-  claim_nfts: {
+  unstake: {
+    amount: Uint128;
     [k: string]: unknown;
   };
 } | {
@@ -25,38 +45,21 @@ export type ExecuteMsg = {
     [k: string]: unknown;
   };
 } | {
-  add_hook: {
-    addr: string;
-    [k: string]: unknown;
-  };
-} | {
-  remove_hook: {
-    addr: string;
+  claim: {
     [k: string]: unknown;
   };
 };
-export type Binary = string;
 export type Duration = {
   height: number;
 } | {
   time: number;
 };
-export interface Cw721ReceiveMsg {
-  msg: Binary;
-  sender: string;
-  token_id: string;
-  [k: string]: unknown;
-}
 export type Addr = string;
 export interface GetConfigResponse {
+  denom: string;
   manager?: Addr | null;
-  nft_address: Addr;
   owner?: Addr | null;
   unstaking_duration?: Duration | null;
-  [k: string]: unknown;
-}
-export interface GetHooksResponse {
-  hooks: string[];
   [k: string]: unknown;
 }
 export interface InfoResponse {
@@ -79,42 +82,30 @@ export type Admin = {
   };
 };
 export interface InstantiateMsg {
+  denom: string;
   manager?: string | null;
-  nft_address: string;
   owner?: Admin | null;
   unstaking_duration?: Duration | null;
   [k: string]: unknown;
 }
-export type ListStakersResponse = string[];
-export type Expiration = {
-  at_height: number;
-} | {
-  at_time: Timestamp;
-} | {
-  never: {
-    [k: string]: unknown;
-  };
-};
-export type Timestamp = Uint64;
-export type Uint64 = string;
-export interface NftClaimsResponse {
-  nft_claims: NftClaim[];
+export interface IsActiveResponse {
+  active: boolean;
   [k: string]: unknown;
 }
-export interface NftClaim {
-  release_at: Expiration;
-  token_id: string;
+export interface ListStakersResponse {
+  stakers: StakerBalanceResponse[];
+  [k: string]: unknown;
+}
+export interface StakerBalanceResponse {
+  address: string;
+  balance: Uint128;
+  [k: string]: unknown;
+}
+export interface MigrateMsg {
   [k: string]: unknown;
 }
 export type QueryMsg = {
-  staked_balance_at_height: {
-    address: string;
-    height?: number | null;
-    [k: string]: unknown;
-  };
-} | {
-  total_staked_at_height: {
-    height?: number | null;
+  dao: {
     [k: string]: unknown;
   };
 } | {
@@ -122,23 +113,12 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 } | {
-  nft_claims: {
+  claims: {
     address: string;
-    [k: string]: unknown;
-  };
-} | {
-  get_hooks: {
     [k: string]: unknown;
   };
 } | {
   list_stakers: {
-    limit?: number | null;
-    start_after?: string | null;
-    [k: string]: unknown;
-  };
-} | {
-  staked_nfts: {
-    address: string;
     limit?: number | null;
     start_after?: string | null;
     [k: string]: unknown;
@@ -159,21 +139,9 @@ export type QueryMsg = {
     [k: string]: unknown;
   };
 };
-export type Uint128 = string;
-export interface StakedBalanceAtHeightResponse {
-  balance: Uint128;
-  height: number;
-  [k: string]: unknown;
-}
-export type StakedNftsResponse = string[];
 export interface TotalPowerAtHeightResponse {
   height: number;
   power: Uint128;
-  [k: string]: unknown;
-}
-export interface TotalStakedAtHeightResponse {
-  height: number;
-  total: Uint128;
   [k: string]: unknown;
 }
 export interface VotingPowerAtHeightResponse {
@@ -181,27 +149,15 @@ export interface VotingPowerAtHeightResponse {
   power: Uint128;
   [k: string]: unknown;
 }
-export interface Cw721StakeReadOnlyInterface {
+export interface CwdVotingNativeStakedReadOnlyInterface {
   contractAddress: string;
-  stakedBalanceAtHeight: ({
-    address,
-    height
-  }: {
-    address: string;
-    height?: number;
-  }) => Promise<StakedBalanceAtHeightResponse>;
-  totalStakedAtHeight: ({
-    height
-  }: {
-    height?: number;
-  }) => Promise<TotalStakedAtHeightResponse>;
+  dao: () => Promise<DaoResponse>;
   getConfig: () => Promise<GetConfigResponse>;
-  nftClaims: ({
+  claims: ({
     address
   }: {
     address: string;
-  }) => Promise<NftClaimsResponse>;
-  getHooks: () => Promise<GetHooksResponse>;
+  }) => Promise<ClaimsResponse>;
   listStakers: ({
     limit,
     startAfter
@@ -209,15 +165,6 @@ export interface Cw721StakeReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ListStakersResponse>;
-  stakedNfts: ({
-    address,
-    limit,
-    startAfter
-  }: {
-    address: string;
-    limit?: number;
-    startAfter?: string;
-  }) => Promise<StakedNftsResponse>;
   votingPowerAtHeight: ({
     address,
     height
@@ -232,48 +179,25 @@ export interface Cw721StakeReadOnlyInterface {
   }) => Promise<TotalPowerAtHeightResponse>;
   info: () => Promise<InfoResponse>;
 }
-export class Cw721StakeQueryClient implements Cw721StakeReadOnlyInterface {
+export class CwdVotingNativeStakedQueryClient implements CwdVotingNativeStakedReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
-    this.stakedBalanceAtHeight = this.stakedBalanceAtHeight.bind(this);
-    this.totalStakedAtHeight = this.totalStakedAtHeight.bind(this);
+    this.dao = this.dao.bind(this);
     this.getConfig = this.getConfig.bind(this);
-    this.nftClaims = this.nftClaims.bind(this);
-    this.getHooks = this.getHooks.bind(this);
+    this.claims = this.claims.bind(this);
     this.listStakers = this.listStakers.bind(this);
-    this.stakedNfts = this.stakedNfts.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
     this.info = this.info.bind(this);
   }
 
-  stakedBalanceAtHeight = async ({
-    address,
-    height
-  }: {
-    address: string;
-    height?: number;
-  }): Promise<StakedBalanceAtHeightResponse> => {
+  dao = async (): Promise<DaoResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
-      staked_balance_at_height: {
-        address,
-        height
-      }
-    });
-  };
-  totalStakedAtHeight = async ({
-    height
-  }: {
-    height?: number;
-  }): Promise<TotalStakedAtHeightResponse> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      total_staked_at_height: {
-        height
-      }
+      dao: {}
     });
   };
   getConfig = async (): Promise<GetConfigResponse> => {
@@ -281,20 +205,15 @@ export class Cw721StakeQueryClient implements Cw721StakeReadOnlyInterface {
       get_config: {}
     });
   };
-  nftClaims = async ({
+  claims = async ({
     address
   }: {
     address: string;
-  }): Promise<NftClaimsResponse> => {
+  }): Promise<ClaimsResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
-      nft_claims: {
+      claims: {
         address
       }
-    });
-  };
-  getHooks = async (): Promise<GetHooksResponse> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      get_hooks: {}
     });
   };
   listStakers = async ({
@@ -306,23 +225,6 @@ export class Cw721StakeQueryClient implements Cw721StakeReadOnlyInterface {
   }): Promise<ListStakersResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_stakers: {
-        limit,
-        start_after: startAfter
-      }
-    });
-  };
-  stakedNfts = async ({
-    address,
-    limit,
-    startAfter
-  }: {
-    address: string;
-    limit?: number;
-    startAfter?: string;
-  }): Promise<StakedNftsResponse> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      staked_nfts: {
-        address,
         limit,
         start_after: startAfter
       }
@@ -359,24 +261,15 @@ export class Cw721StakeQueryClient implements Cw721StakeReadOnlyInterface {
     });
   };
 }
-export interface Cw721StakeInterface extends Cw721StakeReadOnlyInterface {
+export interface CwdVotingNativeStakedInterface extends CwdVotingNativeStakedReadOnlyInterface {
   contractAddress: string;
   sender: string;
-  receiveNft: ({
-    msg,
-    sender,
-    tokenId
-  }: {
-    msg: string;
-    sender: string;
-    tokenId: string;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  stake: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   unstake: ({
-    tokenIds
+    amount
   }: {
-    tokenIds: string[];
+    amount: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
-  claimNfts: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
     duration,
     manager,
@@ -386,18 +279,9 @@ export interface Cw721StakeInterface extends Cw721StakeReadOnlyInterface {
     manager?: string;
     owner?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
-  addHook: ({
-    addr
-  }: {
-    addr: string;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
-  removeHook: ({
-    addr
-  }: {
-    addr: string;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
+  claim: (fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class Cw721StakeClient extends Cw721StakeQueryClient implements Cw721StakeInterface {
+export class CwdVotingNativeStakedClient extends CwdVotingNativeStakedQueryClient implements CwdVotingNativeStakedInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;
@@ -407,45 +291,26 @@ export class Cw721StakeClient extends Cw721StakeQueryClient implements Cw721Stak
     this.client = client;
     this.sender = sender;
     this.contractAddress = contractAddress;
-    this.receiveNft = this.receiveNft.bind(this);
+    this.stake = this.stake.bind(this);
     this.unstake = this.unstake.bind(this);
-    this.claimNfts = this.claimNfts.bind(this);
     this.updateConfig = this.updateConfig.bind(this);
-    this.addHook = this.addHook.bind(this);
-    this.removeHook = this.removeHook.bind(this);
+    this.claim = this.claim.bind(this);
   }
 
-  receiveNft = async ({
-    msg,
-    sender,
-    tokenId
-  }: {
-    msg: string;
-    sender: string;
-    tokenId: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+  stake = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      receive_nft: {
-        msg,
-        sender,
-        token_id: tokenId
-      }
+      stake: {}
     }, fee, memo, funds);
   };
   unstake = async ({
-    tokenIds
+    amount
   }: {
-    tokenIds: string[];
+    amount: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       unstake: {
-        token_ids: tokenIds
+        amount
       }
-    }, fee, memo, funds);
-  };
-  claimNfts = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      claim_nfts: {}
     }, fee, memo, funds);
   };
   updateConfig = async ({
@@ -465,26 +330,9 @@ export class Cw721StakeClient extends Cw721StakeQueryClient implements Cw721Stak
       }
     }, fee, memo, funds);
   };
-  addHook = async ({
-    addr
-  }: {
-    addr: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
+  claim = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      add_hook: {
-        addr
-      }
-    }, fee, memo, funds);
-  };
-  removeHook = async ({
-    addr
-  }: {
-    addr: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: readonly Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      remove_hook: {
-        addr
-      }
+      claim: {}
     }, fee, memo, funds);
   };
 }

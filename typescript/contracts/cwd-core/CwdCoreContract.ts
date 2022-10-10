@@ -490,7 +490,7 @@ export interface VotingPowerAtHeightResponse {
   power: Uint128;
   [k: string]: unknown;
 }
-export interface CwCoreReadOnlyInterface {
+export interface CwdCoreReadOnlyInterface {
   contractAddress: string;
   admin: () => Promise<AdminResponse>;
   adminNomination: () => Promise<AdminNominationResponse>;
@@ -567,7 +567,7 @@ export interface CwCoreReadOnlyInterface {
   }) => Promise<TotalPowerAtHeightResponse>;
   info: () => Promise<InfoResponse>;
 }
-export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
+export class CwdCoreQueryClient implements CwdCoreReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -769,7 +769,7 @@ export class CwCoreQueryClient implements CwCoreReadOnlyInterface {
     });
   };
 }
-export interface CwCoreInterface extends CwCoreReadOnlyInterface {
+export interface CwdCoreInterface extends CwdCoreReadOnlyInterface {
   contractAddress: string;
   sender: string;
   executeAdminMsgs: ({
@@ -863,7 +863,7 @@ export interface CwCoreInterface extends CwCoreReadOnlyInterface {
     toRemove: string[];
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class CwCoreClient extends CwCoreQueryClient implements CwCoreInterface {
+export class CwdCoreClient extends CwdCoreQueryClient implements CwdCoreInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;

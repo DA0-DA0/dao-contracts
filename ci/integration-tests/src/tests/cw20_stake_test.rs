@@ -107,7 +107,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cw_core",
+            "cwd_core",
             &cwd_core::msg::QueryMsg::VotingPowerAtHeight {
                 address: user_addr,
                 height: None,

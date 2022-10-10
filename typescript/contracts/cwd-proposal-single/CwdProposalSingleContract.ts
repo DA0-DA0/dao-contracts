@@ -460,7 +460,7 @@ export interface VoteResponse {
   vote?: VoteInfo | null;
   [k: string]: unknown;
 }
-export interface CwProposalSingleReadOnlyInterface {
+export interface CwdProposalSingleReadOnlyInterface {
   contractAddress: string;
   config: () => Promise<ConfigResponse>;
   proposal: ({
@@ -505,7 +505,7 @@ export interface CwProposalSingleReadOnlyInterface {
   dao: () => Promise<DaoResponse>;
   info: () => Promise<InfoResponse>;
 }
-export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInterface {
+export class CwdProposalSingleQueryClient implements CwdProposalSingleReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -632,7 +632,7 @@ export class CwProposalSingleQueryClient implements CwProposalSingleReadOnlyInte
     });
   };
 }
-export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInterface {
+export interface CwdProposalSingleInterface extends CwdProposalSingleReadOnlyInterface {
   contractAddress: string;
   sender: string;
   propose: ({
@@ -706,7 +706,7 @@ export interface CwProposalSingleInterface extends CwProposalSingleReadOnlyInter
     address: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class CwProposalSingleClient extends CwProposalSingleQueryClient implements CwProposalSingleInterface {
+export class CwdProposalSingleClient extends CwdProposalSingleQueryClient implements CwdProposalSingleInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;

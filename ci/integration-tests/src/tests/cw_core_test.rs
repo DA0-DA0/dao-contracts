@@ -35,7 +35,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     let dao = res.unwrap();
 
     let res = chain.orc.execute(
-        "cw_core",
+        "cwd_core",
         "exc_admin_msgs_pause_dao_fail",
         &cwd_core::msg::ExecuteMsg::ExecuteAdminMsgs {
             msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -58,7 +58,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("cw_core", &cwd_core::msg::QueryMsg::PauseInfo {})
+        .query("cwd_core", &cwd_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
     let res: PauseInfoResponse = res.data().unwrap();
 
@@ -77,7 +77,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "cw_core",
+            "cwd_core",
             "exc_admin_msgs_pause_dao",
             &cwd_core::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -96,7 +96,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("cw_core", &cwd_core::msg::QueryMsg::PauseInfo {})
+        .query("cwd_core", &cwd_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
 
     let res: PauseInfoResponse = res.data().unwrap();
@@ -124,7 +124,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cw_core",
+            "cwd_core",
             &cwd_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -137,7 +137,7 @@ fn execute_items(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "cw_core",
+            "cwd_core",
             "exc_items_set",
             &cwd_core::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -158,7 +158,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cw_core",
+            "cwd_core",
             &cwd_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -172,7 +172,7 @@ fn execute_items(chain: &mut Chain) {
     chain
         .orc
         .execute(
-            "cw_core",
+            "cwd_core",
             "exc_items_rm",
             &cwd_core::msg::ExecuteMsg::ExecuteAdminMsgs {
                 msgs: vec![CosmosMsg::Wasm(cosmwasm_std::WasmMsg::Execute {
@@ -192,7 +192,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cw_core",
+            "cwd_core",
             &cwd_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -305,7 +305,7 @@ fn instantiate_with_admin(chain: &mut Chain) {
     assert_eq!(
         config_res.owner,
         Some(Addr::unchecked(
-            chain.orc.contract_map.address("cw_core").unwrap()
+            chain.orc.contract_map.address("cwd_core").unwrap()
         ))
     );
     assert_eq!(config_res.manager, None);
@@ -370,6 +370,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
     );
     assert_eq!(
         config_res.dao,
-        chain.orc.contract_map.address("cw_core").unwrap()
+        chain.orc.contract_map.address("cwd_core").unwrap()
     );
 }

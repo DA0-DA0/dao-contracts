@@ -82,7 +82,7 @@ fn main() -> Result<()> {
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: orc.contract_map.code_id("cw_proposal_single")?,
+            code_id: orc.contract_map.code_id("cwd_proposal_single")?,
             msg: to_binary(&cwd_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
@@ -94,7 +94,7 @@ fn main() -> Result<()> {
                 only_members_execute: true,
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
-                        code_id: orc.contract_map.code_id("cw_pre_propose_single")?,
+                        code_id: orc.contract_map.code_id("cwd_pre_propose_single")?,
                         msg: to_binary(&cwd_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},
@@ -119,7 +119,7 @@ fn main() -> Result<()> {
 
     // Init dao dao dao with an initial treasury of 9000000 tokens
     orc.instantiate(
-        "cw_core",
+        "cwd_core",
         "dao_init",
         &msg,
         &key,
@@ -154,11 +154,11 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_CWCORE_CODE_ID={}",
-        orc.contract_map.code_id("cw_core")?
+        orc.contract_map.code_id("cwd_core")?
     );
     println!(
         "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID={}",
-        orc.contract_map.code_id("cw_proposal_single")?
+        orc.contract_map.code_id("cwd_proposal_single")?
     );
     println!(
         "NEXT_PUBLIC_CW4VOTING_CODE_ID={}",
@@ -174,7 +174,7 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS={}",
-        orc.contract_map.address("cw_core")?
+        orc.contract_map.address("cwd_core")?
     );
     println!(
         "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS={}",

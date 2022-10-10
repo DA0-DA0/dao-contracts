@@ -160,7 +160,7 @@ export interface VotingPowerAtHeightResponse {
   power: Uint128;
   [k: string]: unknown;
 }
-export interface Cw20StakedBalanceVotingReadOnlyInterface {
+export interface CwdVotingCw20StakedReadOnlyInterface {
   contractAddress: string;
   stakingContract: () => Promise<StakingContractResponse>;
   dao: () => Promise<DaoResponse>;
@@ -181,7 +181,7 @@ export interface Cw20StakedBalanceVotingReadOnlyInterface {
   tokenContract: () => Promise<TokenContractResponse>;
   isActive: () => Promise<IsActiveResponse>;
 }
-export class Cw20StakedBalanceVotingQueryClient implements Cw20StakedBalanceVotingReadOnlyInterface {
+export class CwdVotingCw20StakedQueryClient implements CwdVotingCw20StakedReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -254,7 +254,7 @@ export class Cw20StakedBalanceVotingQueryClient implements Cw20StakedBalanceVoti
     });
   };
 }
-export interface Cw20StakedBalanceVotingInterface extends Cw20StakedBalanceVotingReadOnlyInterface {
+export interface CwdVotingCw20StakedInterface extends CwdVotingCw20StakedReadOnlyInterface {
   contractAddress: string;
   sender: string;
   updateActiveThreshold: ({
@@ -263,7 +263,7 @@ export interface Cw20StakedBalanceVotingInterface extends Cw20StakedBalanceVotin
     newThreshold?: ActiveThreshold;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: readonly Coin[]) => Promise<ExecuteResult>;
 }
-export class Cw20StakedBalanceVotingClient extends Cw20StakedBalanceVotingQueryClient implements Cw20StakedBalanceVotingInterface {
+export class CwdVotingCw20StakedClient extends CwdVotingCw20StakedQueryClient implements CwdVotingCw20StakedInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;
