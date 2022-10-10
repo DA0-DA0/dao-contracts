@@ -237,7 +237,7 @@ fn instantiate_with_no_admin(chain: &mut Chain) {
 fn instantiate_with_admin(chain: &mut Chain) {
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
-    let voting_contract = "cw20_staked_balance_voting";
+    let voting_contract = "cwd_voting_cw20_staked";
     let proposal_contract = "cw_proposal_single";
 
     let res = create_dao(

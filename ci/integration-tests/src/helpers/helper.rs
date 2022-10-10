@@ -35,10 +35,7 @@ pub fn create_dao(
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: chain
-                .orc
-                .contract_map
-                .code_id("cw20_staked_balance_voting")?,
+            code_id: chain.orc.contract_map.code_id("cwd_voting_cw20_staked")?,
             msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: chain.orc.contract_map.code_id("cw20_base")?,

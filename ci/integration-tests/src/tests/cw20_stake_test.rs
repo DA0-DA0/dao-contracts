@@ -13,7 +13,7 @@ use test_context::test_context;
 fn execute_stake_tokens(chain: &mut Chain) {
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
-    let voting_contract = "cw20_staked_balance_voting";
+    let voting_contract = "cwd_voting_cw20_staked";
 
     let res = create_dao(
         chain,

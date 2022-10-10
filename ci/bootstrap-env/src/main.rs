@@ -59,7 +59,7 @@ fn main() -> Result<()> {
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: orc.contract_map.code_id("cw20_staked_balance_voting")?,
+            code_id: orc.contract_map.code_id("cwd_voting_cw20_staked")?,
             msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: orc.contract_map.code_id("cw20_base")?,
@@ -166,7 +166,7 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID={}",
-        orc.contract_map.code_id("cw20_staked_balance_voting")?
+        orc.contract_map.code_id("cwd_voting_cw20_staked")?
     );
     println!(
         "NEXT_PUBLIC_STAKECW20_CODE_ID={}",
