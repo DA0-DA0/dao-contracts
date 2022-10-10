@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128, Uint256};
-use cwd_interface::voting;
 use cw_utils::Duration;
+use cwd_interface::voting;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

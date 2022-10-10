@@ -3,11 +3,11 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use cosmwasm_std::Addr;
-use cwd_voting_cw20_staked::msg::{
-    ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-};
 use cwd_interface::voting::{
     InfoResponse, IsActiveResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+};
+use cwd_voting_cw20_staked::msg::{
+    ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 
 fn main() {

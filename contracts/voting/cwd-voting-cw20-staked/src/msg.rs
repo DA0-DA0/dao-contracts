@@ -1,8 +1,8 @@
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
-use cwd_macros::{active_query, info_query, token_query, voting_query};
 use cw_utils::Duration;
+use cwd_macros::{active_query, info_query, token_query, voting_query};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

@@ -4,13 +4,13 @@ use cosmwasm_std::{
 
 use cw2::set_contract_version;
 
-use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use cw_denom::UncheckedDenom;
-use serde::Serialize;
+use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use cwd_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
     status::Status,
 };
+use serde::Serialize;
 
 use crate::{
     error::PreProposeError,

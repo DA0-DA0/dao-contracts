@@ -1,8 +1,8 @@
 use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use cwd_hooks::Hooks;
+use cwd_voting::reply::mask_proposal_hook_index;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cwd_voting::reply::mask_proposal_hook_index;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]

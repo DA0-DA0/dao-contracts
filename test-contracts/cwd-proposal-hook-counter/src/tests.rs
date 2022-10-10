@@ -1,9 +1,9 @@
 use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
 use cw20::Cw20Coin;
-use cwd_core::state::ProposalModule;
-use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cwd_core::state::ProposalModule;
 use cwd_hooks::HooksResponse;
+use cwd_interface::{Admin, ModuleInstantiateInfo};
 
 use cwd_voting::{
     pre_propose::PreProposeInfo,

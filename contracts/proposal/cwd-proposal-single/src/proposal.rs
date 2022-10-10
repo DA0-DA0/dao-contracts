@@ -4,11 +4,11 @@ use cosmwasm_std::{
     Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Timestamp, Uint128,
 };
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use cwd_voting::status::Status;
 use cwd_voting::threshold::{PercentageThreshold, Threshold};
 use cwd_voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 pub struct SingleChoiceProposal {

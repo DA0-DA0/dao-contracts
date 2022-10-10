@@ -6,9 +6,9 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_controllers::ClaimsResponse;
+use cw_utils::{must_pay, Duration};
 use cwd_interface::voting::{TotalPowerAtHeightResponse, VotingPowerAtHeightResponse};
 use cwd_interface::Admin;
-use cw_utils::{must_pay, Duration};
 
 use crate::error::ContractError;
 use crate::msg::{

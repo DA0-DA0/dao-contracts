@@ -6,14 +6,14 @@ use crate::state::Config;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{coins, Addr, Coin, Empty, Uint128};
 use cw_controllers::ClaimsResponse;
-use cwd_interface::voting::{
-    InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
-};
-use cwd_interface::Admin;
 use cw_multi_test::{
     custom_app, next_block, App, AppResponse, Contract, ContractWrapper, Executor,
 };
 use cw_utils::Duration;
+use cwd_interface::voting::{
+    InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
+};
+use cwd_interface::Admin;
 
 const DAO_ADDR: &str = "dao";
 const ADDR1: &str = "addr1";

@@ -8,10 +8,10 @@ use anyhow::Result as AnyResult;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
 use cw721_controllers::NftClaim;
-use cwd_interface::Admin;
 use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 use cw_utils::Expiration::AtHeight;
+use cwd_interface::Admin;
 use std::borrow::BorrowMut;
 use std::convert::TryFrom;
 

@@ -1,9 +1,9 @@
 use cosmwasm_std::{to_binary, Addr, Binary, Empty, Uint128};
 use cw20::Cw20Coin;
-use cwd_voting_cw20_staked::msg::ActiveThreshold;
-use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
+use cwd_interface::{Admin, ModuleInstantiateInfo};
+use cwd_voting_cw20_staked::msg::ActiveThreshold;
 
 const CREATOR_ADDR: &str = "creator";
 

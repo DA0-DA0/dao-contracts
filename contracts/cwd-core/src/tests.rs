@@ -4,10 +4,10 @@ use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, Empty, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
-use cwd_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
+use cwd_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiateInfo};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

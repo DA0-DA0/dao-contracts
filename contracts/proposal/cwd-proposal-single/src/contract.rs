@@ -12,6 +12,7 @@ use cwd_hooks::Hooks;
 use cwd_interface::voting::IsActiveResponse;
 use cwd_pre_propose_single::contract::ExecuteMsg as PreProposeMsg;
 use cwd_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use cwd_vote_hooks::new_vote_hooks;
 use cwd_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
 use cwd_voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
 use cwd_voting::reply::{
@@ -20,7 +21,6 @@ use cwd_voting::reply::{
 use cwd_voting::status::Status;
 use cwd_voting::threshold::Threshold;
 use cwd_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
-use cwd_vote_hooks::new_vote_hooks;
 
 use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;

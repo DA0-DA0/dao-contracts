@@ -3,10 +3,10 @@ use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, Empty, Uint128, WasmMsg,
 };
 use cw2::ContractVersion;
+use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cwd_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
-use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},

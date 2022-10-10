@@ -1,8 +1,8 @@
 use cosmwasm_std::{Addr, Empty, Uint128};
 use cw2::ContractVersion;
 use cw20::{Cw20Coin, MinterResponse, TokenInfoResponse};
-use cwd_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cwd_interface::voting::{InfoResponse, VotingPowerAtHeightResponse};
 
 use crate::msg::{InstantiateMsg, QueryMsg};
 

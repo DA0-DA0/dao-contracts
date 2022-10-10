@@ -8,8 +8,8 @@ use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
-use cwd_interface::{voting, ModuleInstantiateInfo};
 use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
+use cwd_interface::{voting, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};

@@ -1,8 +1,8 @@
 use cosmwasm_std::{Decimal, Uint128};
-use rand::{prelude::SliceRandom, Rng};
 use cwd_voting::status::Status;
 use cwd_voting::threshold::{PercentageThreshold, Threshold};
 use cwd_voting::voting::Vote;
+use rand::{prelude::SliceRandom, Rng};
 
 /// If a test vote should execute. Used for fuzzing and checking that
 /// votes after a proposal has completed aren't allowed.

@@ -1,12 +1,12 @@
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
+use cwd_interface::voting::InfoResponse;
+use cwd_interface::voting::TotalPowerAtHeightResponse;
+use cwd_interface::voting::VotingPowerAtHeightResponse;
 use cwd_voting_cw721_staked::msg::{
     ExecuteMsg, GetHooksResponse, InstantiateMsg, NftClaimsResponse, QueryMsg,
     StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
 };
 use cwd_voting_cw721_staked::state::Config;
-use cwd_interface::voting::InfoResponse;
-use cwd_interface::voting::TotalPowerAtHeightResponse;
-use cwd_interface::voting::VotingPowerAtHeightResponse;
 use std::env::current_dir;
 use std::fs::create_dir_all;
 

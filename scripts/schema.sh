@@ -1,12 +1,57 @@
 START_DIR=$(pwd)
-for f in ./contracts/*
+
+# ${f    <-- from variable f
+#   ##   <-- greedy front trim
+#   *    <-- matches anything
+#   /    <-- until the last '/'
+#  }
+# <https://stackoverflow.com/a/3162500>
+
+echo "generating schema for cwd-core"
+cd contracts/cwd-core
+cargo run --example schema > /dev/null
+
+cd "$START_DIR"
+
+for f in ./contracts/voting/*
 do
-  # we've temporarially disabled this one so we can focus on getting
-  # v2 out and apply the pre-propose module refactor later.
-  if [ "$f" == "./contracts/cw-proposal-multiple" ] ; then
-    continue;
-  fi
-  echo "generating schema for $f"
+  echo "generating schema for ${f##*/}"
+  cd "$f"
+  CMD="cargo run --example schema"
+  eval $CMD > /dev/null
+  cd "$START_DIR"
+done
+
+for f in ./contracts/proposal/*
+do
+  echo "generating schema for ${f##*/}"
+  cd "$f"
+  CMD="cargo run --example schema"
+  eval $CMD > /dev/null
+  cd "$START_DIR"
+done
+
+for f in ./contracts/staking/*
+do
+  echo "generating schema for ${f##*/}"
+  cd "$f"
+  CMD="cargo run --example schema"
+  eval $CMD > /dev/null
+  cd "$START_DIR"
+done
+
+for f in ./contracts/pre-propose/*
+do
+  echo "generating schema for ${f##*/}"
+  cd "$f"
+  CMD="cargo run --example schema"
+  eval $CMD > /dev/null
+  cd "$START_DIR"
+done
+
+for f in ./contracts/external/*
+do
+  echo "generating schema for ${f##*/}"
   cd "$f"
   CMD="cargo run --example schema"
   eval $CMD > /dev/null

@@ -15,8 +15,8 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw721::Cw721ReceiveMsg;
-use cwd_interface::Admin;
 use cw_utils::Duration;
+use cwd_interface::Admin;
 use indexmap::IndexSet;
 use std::convert::{From, TryFrom};
 

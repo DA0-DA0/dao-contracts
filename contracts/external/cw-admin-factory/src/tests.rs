@@ -5,8 +5,8 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 
-use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cwd_interface::{Admin, ModuleInstantiateInfo};
 
 use crate::{
     contract::instantiate,

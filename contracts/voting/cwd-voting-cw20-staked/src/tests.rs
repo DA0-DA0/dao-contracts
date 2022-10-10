@@ -4,8 +4,8 @@ use cosmwasm_std::{
 };
 use cw2::ContractVersion;
 use cw20::{BalanceResponse, Cw20Coin, MinterResponse, TokenInfoResponse};
-use cwd_interface::voting::{InfoResponse, IsActiveResponse, VotingPowerAtHeightResponse};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
+use cwd_interface::voting::{InfoResponse, IsActiveResponse, VotingPowerAtHeightResponse};
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},

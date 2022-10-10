@@ -1,6 +1,6 @@
 use cosmwasm_std::{CosmosMsg, Empty};
-use cwd_interface::ModuleInstantiateInfo;
 use cw_utils::Duration;
+use cwd_interface::ModuleInstantiateInfo;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

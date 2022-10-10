@@ -6,8 +6,8 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::{Cw20Coin, TokenInfoResponse};
-use cwd_interface::voting::IsActiveResponse;
 use cw_utils::parse_reply_instantiate_data;
+use cwd_interface::voting::IsActiveResponse;
 use std::convert::TryInto;
 
 use crate::error::ContractError;

@@ -1,8 +1,8 @@
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
+use cw_utils::Duration;
 use cwd_interface::Admin;
 use cwd_macros::{info_query, voting_query};
-use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
