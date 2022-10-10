@@ -1,4 +1,4 @@
-# cw4-group voting
+# CW4 Group Voting
 
 A simple voting power module which determines voting power based on
 the weight of a user in a cw4-group contract. This allocates voting

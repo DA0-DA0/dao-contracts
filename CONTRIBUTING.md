@@ -1,11 +1,8 @@
 # Contributing to DAO DAO
 
-Thanks for your interest in contributing. We're excited to welcome you
-into our community. :)
-
-We value kindness, humility, and low-ego communication. You can read
-our [Code of Conduct](./CODE_OF_CONDUCT.md) for a poetic version of
-this.
+Thanks for your interest in contributing. We value kindness, humility,
+and low-ego communication. You can read our [Code of
+Conduct](./CODE_OF_CONDUCT.md) for a poetic version of this.
 
 There are many ways you can contribute.
 
@@ -15,10 +12,8 @@ There are many ways you can contribute.
   repo](https://github.com/DA0-DA0/dao-dao-ui).
 - If you want to contribute documentation, check out our [docs
   repo](https://github.com/DA0-DA0/docs).
-
-Getting started contributing to an open source project can be
-daunting. A great place to ask questions is the [DAO DAO
-Discord](https://discord.gg/sAaGuyW3D2).
+- If you want to contribute thoughts, feedback, or ideas join the [DAO
+  DAO Discord](https://discord.gg/sAaGuyW3D2).
 
 ## Getting started
 
@@ -33,7 +28,13 @@ page](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design)
 which gives an overview of how all of the DAO DAO smart contracts fit
 together.
 
+Finally, consider reading our [security best
+practices](https://github.com/DA0-DA0/dao-contracts/wiki/CosmWasm-security-best-practices)
+wiki page. We won't land anything that doesn't follow those
+guidelines.
+
 ### Install Dev Dependencies
+
 - [Rust](https://doc.rust-lang.org/book/ch01-01-installation.html)
 - [Just](https://github.com/casey/just#packages)
 - [Yarn](https://yarnpkg.com/)
@@ -52,7 +53,7 @@ To build WASM files for deploying on a blockchain, run:
 just workspace-optimize
 ```
 
-From the repository root.
+from the repository root.
 
 ## Getting ready to make a PR
 
