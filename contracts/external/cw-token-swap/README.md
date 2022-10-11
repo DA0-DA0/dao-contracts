@@ -8,3 +8,4 @@ transaction is completed and both sides receive their tokens.
 
 At any time before the other counterparty has provided funds a
 counterparty may withdraw their funds.
+

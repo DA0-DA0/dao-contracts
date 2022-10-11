@@ -24,3 +24,4 @@ Here is a flowchart showing the proposal creation process using this
 module:
 
 ![](https://bafkreig42cxswefi2ks7vhrwyvkcnumbnwdk7ov643yaafm7loi6vh2gja.ipfs.nftstorage.link)
+

@@ -7,4 +7,5 @@ Useful for allowing contracts (e.g. DAOs) to migrate themselves.
 
 Example instantiation flow:
 
-![](https://bafkreibqsrdnht5chc5mdzbb6pgiyqfjke3yvukvjrokyefwwbl3k3iwaa.ipfs.nftstorage.link/)
+![](https://bafkreibqsrdnht5chc5mdzbb6pgiyqfjke3yvukvjrokyefwwbl3k3iwaa.ipfs.nftstorage.link)
+
