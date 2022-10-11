@@ -33,8 +33,32 @@ export NODE="https://juno-testnet-rpc.polkachu.com:443"
 
 KEY_NAME=$1
 
-PRE_PROPOSE_INFO='{
+PRE_PROPOSE_INSTANTIATE_MSG='{
+    "deposit_info": {
+      "denom": {
+        "token": {
+          "denom": {
+            "native": "ujunox"
+          }
+        }
+      },
+      "amount": "1",
+      "refund_policy": "always"
+    },
+    "open_proposal_submission": false,
+    "extension": {}
   }'
+
+# NO DEPOSIT
+
+  # PRE_PROPOSE_INSTANTIATE_MSG='{
+  #   "open_proposal_submission": false,
+  #   "extension": {}
+  # }'
+
+ENCODED_PRE_PROPOSE=`echo -n $PRE_PROPOSE_INSTANTIATE_MSG | tr -d '[:space:]' | openssl base64 | tr -d '[:space:]'`
+echo -e '\nENCODED PREPROPOSE MESSAGE'
+echo $ENCODED_PRE_PROPOSE
 
 MODULE_MSG='{
         "allow_revoting": false,
@@ -42,7 +66,15 @@ MODULE_MSG='{
           "time": 604800
         },
         "close_proposal_on_execution_failure": true,
-        "pre_propose_info": {"AnyoneMayPropose":{}},
+        "pre_propose_info": {"ModuleMayPropose":{
+          "info": {
+          "admin": {
+            "core_module": {}
+          },
+          "code_id": 845,
+          "label": "pre propose module",
+          "msg": "'$ENCODED_PRE_PROPOSE'"
+        }}},
         "only_members_execute": true,
         "threshold": {
           "threshold_quorum": {
@@ -77,7 +109,7 @@ CW_CORE_INIT='{
       "admin": {
         "core_module": {}
       },
-      "code_id": 696,
+      "code_id": 844,
       "label": "v2 dao",
       "msg": "'$ENCODED_PROP_MESSAGE'"
     }
@@ -86,7 +118,7 @@ CW_CORE_INIT='{
     "admin": {
       "core_module": {}
     },
-    "code_id": 698,
+    "code_id": 846,
     "label": "test_v2_dao-cw4-voting",
     "msg": "'$ENCODED_VOTING_MESSAGE'"
   }
@@ -101,7 +133,7 @@ echo -e '\nCW-CORE ENCODED MESSAGE:\n'
 echo  $CW_CORE_ENCODED
 
 # init with factory
-INIT_MSG='{"instantiate_contract_with_self_admin":{"code_id":695, "label": "v2 subDAO subDAO", "instantiate_msg":"'$CW_CORE_ENCODED'"}}'
+INIT_MSG='{"instantiate_contract_with_self_admin":{"code_id":843, "label": "v2 subDAO subDAO", "instantiate_msg":"'$CW_CORE_ENCODED'"}}'
 
 # instantiate with factory 
 echo 'instantiating cw-core with factory'
