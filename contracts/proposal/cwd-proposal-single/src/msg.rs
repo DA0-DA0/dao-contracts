@@ -214,8 +214,13 @@ pub enum MigrateMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
-        /// TODO(zeke): write a nice description of what is going on
-        /// here.
+        /// This field was not present in DAO DAO v1. To migrate, a
+        /// value must be specified.
+        ///
+        /// This contains information about how a pre-propose module may be configured.
+        /// If set to "AnyoneMayPropose", there will be no pre-propose module and consequently,
+        /// no deposit or membership checks when submitting a proposal. The "ModuleMayPropose"
+        /// option allows for instantiating a prepropose module which will handle deposit verification and return logic.
         pre_propose_info: PreProposeInfo,
     },
     FromCompatible {},

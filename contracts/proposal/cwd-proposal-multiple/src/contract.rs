@@ -862,35 +862,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
-            // When firing off proposal hooks indexes `[0,
-            // hook_count)` are used to represent hooks that have been
-            // fired via the regular PROPOSAL_HOOKS method. Index
-            // `hook_count` is used to represent the pre-propose
-            // module.
-            let count = PROPOSAL_HOOKS.hook_count(deps.storage)?;
-            let addr = if idx == count as u64 {
-                match CREATION_POLICY.load(deps.storage)? {
-                    ProposalCreationPolicy::Anyone {} => {
-                        // Something is off if we're getting this
-                        // reply and we don't have a pre-propose
-                        // module installed. This should be
-                        // unreachable.
-                        return Err(ContractError::InvalidHookIndex { idx });
-                    }
-                    ProposalCreationPolicy::Module { addr } => {
-                        // If we are here, our pre-propose module has
-                        // errored while receiving a proposal
-                        // hook. Rest in peace pre-propose module.
-                        CREATION_POLICY.save(deps.storage, &ProposalCreationPolicy::Anyone {})?;
-                        addr
-                    }
-                }
-            } else {
-                // The index we're getting a response to is one of our
-                // regular proposal hooks.
-                PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?
-            };
-
+            PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?
             Ok(Response::new().add_attribute("removed_proposal_hook", format!("{addr}:{idx}")))
         }
         TaggedReplyId::FailedVoteHook(idx) => {

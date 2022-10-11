@@ -173,7 +173,7 @@ mod test {
     #[test]
     fn test_display_multiple_choice_vote() {
         let vote = MultipleChoiceVote { option_id: 0 };
-        assert_eq!("0", format!("{}", vote))
+        assert_eq!("0", vote.to_string())
     }
 
     #[test]
@@ -243,6 +243,7 @@ mod test {
         );
     }
 
+    #[should_panic(expected = "Wrong number of choices")]
     #[test]
     fn test_into_checked_wrong_num_choices() {
         let options = vec![super::MultipleChoiceOption {
@@ -251,7 +252,6 @@ mod test {
         }];
 
         let mc_options = super::MultipleChoiceOptions { options };
-        let res = mc_options.into_checked();
-        assert!(res.is_err())
+        let res = mc_options.into_checked().unwrap();
     }
 }

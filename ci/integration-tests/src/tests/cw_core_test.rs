@@ -58,7 +58,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("cw_core", &cwd_core::msg::QueryMsg::PauseInfo {})
+        .query("cwd_core", &cwd_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
     let res: PauseInfoResponse = res.data().unwrap();
 
@@ -96,7 +96,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
 
     let res = chain
         .orc
-        .query("cw_core", &cwd_core::msg::QueryMsg::PauseInfo {})
+        .query("cwd_core", &cwd_core::msg::QueryMsg::PauseInfo {})
         .unwrap();
 
     let res: PauseInfoResponse = res.data().unwrap();
@@ -124,7 +124,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cw_core",
+            "cwd_core",
             &cwd_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -158,7 +158,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cw_core",
+            "cwd_core",
             &cwd_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },
@@ -192,7 +192,7 @@ fn execute_items(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cw_core",
+            "cwd_core",
             &cwd_core::msg::QueryMsg::GetItem {
                 key: "meme".to_string(),
             },

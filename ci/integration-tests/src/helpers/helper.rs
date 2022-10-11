@@ -35,10 +35,7 @@ pub fn create_dao(
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: chain
-                .orc
-                .contract_map
-                .code_id("cw20_staked_balance_voting")?,
+            code_id: chain.orc.contract_map.code_id("cwd_voting_cw20_staked")?,
             msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
                 token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: chain.orc.contract_map.code_id("cw20_base")?,
@@ -61,7 +58,7 @@ pub fn create_dao(
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: chain.orc.contract_map.code_id("cw_proposal_single")?,
+            code_id: chain.orc.contract_map.code_id("cwd_proposal_single")?,
             msg: to_binary(&cwd_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
@@ -74,7 +71,7 @@ pub fn create_dao(
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
-                        code_id: chain.orc.contract_map.code_id("cw_pre_propose_single")?,
+                        code_id: chain.orc.contract_map.code_id("cwd_pre_propose_single")?,
                         msg: to_binary(&cwd_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},
@@ -102,7 +99,7 @@ pub fn create_dao(
 
     let res = chain
         .orc
-        .query("cw_core", &cwd_core::msg::QueryMsg::DumpState {})?;
+        .query("cwd_core", &cwd_core::msg::QueryMsg::DumpState {})?;
 
     Ok(DaoState {
         addr: chain.orc.contract_map.address("cwd_core")?,
