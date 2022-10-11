@@ -1,7 +1,7 @@
 # Single choice proposal deposit contract
 
 This is a pre-propose module that manages proposal deposits for the
-`cw-dao-proposal-single` proposal module.
+`cwd-proposal-single` proposal module.
 
 It may accept either native ([bank
 module](https://docs.cosmos.network/main/modules/bank/)),
@@ -23,4 +23,5 @@ members (addresses with voting power) of the DAO.
 Here is a flowchart showing the proposal creation process using this
 module:
 
-![](https://bafkreibymt3n6avrpdeukwqplw366yyk5cgrrjtwszib2hk2updmyy7apa.ipfs.nftstorage.link/)
+![](https://bafkreig42cxswefi2ks7vhrwyvkcnumbnwdk7ov643yaafm7loi6vh2gja.ipfs.nftstorage.link)
+

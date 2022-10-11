@@ -2,32 +2,34 @@
 
 [![codecov](https://codecov.io/gh/DA0-DA0/dao-contracts/branch/main/graph/badge.svg?token=SCKOIPYZPV)](https://codecov.io/gh/DA0-DA0/dao-contracts)
 
-This is a collection for smart contracts for building composable,
-modular, and upgradable DAOs.
+This is a collection of smart contracts for building composable,
+modular, and upgradable DAOs. 
 
 For an overview of our contract design, see [our
 wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 
-| Audited contracts                                                        | Description                                                |
-| :----------------------------------------------------------------------- | :--------------------------------------------------------- |
-| [cw-core](contracts/cw-core)                                             | The core module for a DAO DAO DAO.                         |
-| [cw-proposal-single](contracts/cw-proposal-single)                       | A proposal module for single choice (yes / no) voting.     |
-| [cw20-staked-balance-voting](contracts/cw20-staked-balance-voting)       | A voting power module for staked governance tokens.        |
-| [cw4-voting](contracts/cw4-voting)                                       | A voting power module for multisig-style voting.           |
-| [cw20-stake](contracts/cw20-stake)                                       | A contract for staking cw20 tokens.                        |
-| [stake-external-rewards](contracts/cw20-stake-external-rewards)          | A contract for providing external stakinig rewards.        |
-| [cw20-stake-reward-distributor](contracts/cw20-stake-external-rewards)   | A contract for distributing rewards via stake-cw20.        |
-
-
-| Unaudited contracts                                                      | Description                                                |
-| :----------------------------------------------------------------------- | :--------------------------------------------------------- |
-| [cw-named-groups](contracts/cw-named-groups)                             | A contract for managing named groups of addresses.         |
-| [cw-proposal-multiple](contracts/cw-proposal-multiple)                   | A proposal module for multiple choice proposals.           |
+| Audited contracts (tag: v1.0.0)                                                | Description                                            |
+|:-------------------------------------------------------------------------------|:-------------------------------------------------------|
+| [cwd-core](contracts/cwd-core)                                                 | The core module for a DAO DAO DAO.                     |
+| [cwd-proposal-single](contracts/proposal/cwd-proposal-single)                  | A proposal module for single choice (yes / no) voting. |
+| [cwd-voting-cw20-staked](contracts/voting/cwd-voting-cw20-staked)              | A voting power module for staked governance tokens.    |
+| [cwd-voting-cw4](contracts/voting/cwd-voting-cw4)                              | A voting power module for multisig-style voting.       |
+| [cw20-stake](contracts/staking/cw20-stake)                                     | A contract for staking cw20 tokens.                    |
+| [cw20-stake-external-rewards](contracts/staking/cw20-stake-external-rewards)   | A contract for providing external stakinig rewards.    |
+| [cw20-stake-reward-distributor](contracts/staking/cw20-stake-external-rewards) | A contract for distributing rewards via stake-cw20.    |
+|                                                                                |                                                        |
+| Unaudited contracts                                                            | Description                                            |
+|:-------------------------------------------------------------------------------|:-------------------------------------------------------|
+| [cwd-proposal-multiple](contracts/proposal/cwd-proposal-multiple)              | A proposal module for multiple choice proposals.       |
+| [cwd-pre-propose-single](contracts/pre-propose/cwd-pre-propose-single)         | A pre-propose module for single choice proposals.      |
+| [cwd-pre-propose-multiple](contracts/pre-propose/cwd-pre-propose-multiple)     | A pre-propose module for multiple choice proposals.    |
+|                                                                                |                                                        |
 
 Audited contracts have completed audits by
 [securityDAO](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
 and [Oak
-Security](https://github.com/oak-security/audit-reports/blob/2377ba8cfcfd505283c789d706311b06771d6db4/DAO%20DAO/2022-06-22%20Audit%20Report%20-%20DAO%20DAO%20v1.0.pdf).
+Security](https://github.com/oak-security/audit-reports/blob/2377ba8cfcfd505283c789d706311b06771d6db4/DAO%20DAO/2022-06-22%20Audit%20Report%20-%20DAO%20DAO%20v1.0.pdf)
+on the `v1.0.0` tag. An audit for the v2 contracts is forthcoming.
 
 ## Developers
 
@@ -38,13 +40,16 @@ be found in [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ### Unit tests
 
-Run `cargo test`, or `just test` from the project root to run the unit tests.
+Run `cargo test`, or `just test` from the project root to run the unit
+tests.
 
 ### Integration tests
 
-Run `just integration-test` to run all of the integration tests.
+Run `just bootstrap-dev` to spin up a local environment and `just
+integration-test-dev` to run tests against it.
 
-See [ci/integration_tests/README.md](ci/integration_tests/README.md) for more information.
+See [ci/integration_tests/README.md](ci/integration_tests/README.md)
+for more information.
 
 ## Disclaimer
 
