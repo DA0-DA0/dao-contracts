@@ -4,14 +4,14 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Empty, Timestamp, Uint128, WasmMsg,
 };
 use cw20::Cw20Coin;
-use cw20_staked_balance_voting::msg::ActiveThreshold;
+use cwd_voting_cw20_staked::msg::ActiveThreshold;
 use cw_asset::{AssetInfo, AssetInfoUnchecked};
-use cw_core::state::ProposalModule;
+use cwd_core::state::ProposalModule;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_utils::Duration;
-use indexable_hooks::HooksResponse;
+use cwd_hooks::HooksResponse;
 use rand::{prelude::SliceRandom, Rng};
-use voting::{
+use cwd_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     status::Status,
     threshold::{PercentageThreshold, Threshold},
@@ -177,7 +177,7 @@ where
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -800,7 +800,7 @@ fn test_propose() {
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -918,7 +918,7 @@ fn test_propose_wrong_num_choices() {
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -1114,7 +1114,7 @@ fn test_migrate() {
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -1170,9 +1170,9 @@ fn test_proposal_count_initialized_to_zero() {
         None,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -1220,9 +1220,9 @@ fn test_no_early_pass_with_min_duration() {
         ]),
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -1318,9 +1318,9 @@ fn test_propose_with_messages() {
         ]),
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -1510,9 +1510,9 @@ fn test_min_duration_same_as_proposal_duration() {
         ]),
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -1621,9 +1621,9 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         None,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
     let voting_module = gov_state.voting_module;
@@ -1639,7 +1639,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
         .wrap()
         .query_wasm_smart(
             voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
+            &cwd_interface::voting::Query::TokenContract {},
         )
         .unwrap();
 
@@ -1710,7 +1710,7 @@ fn test_different_token_proposal_deposit() {
 /// proposal deposit token. This should error as the `TokenInfo {}`
 /// query ought to fail.
 #[test]
-#[should_panic(expected = "Error parsing into type cw20_balance_voting::msg::QueryMsg")]
+#[should_panic(expected = "Error parsing into type cwd_voting_cw20_balance::msg::QueryMsg")]
 fn test_bad_token_proposal_deposit() {
     let mut app = App::default();
     let govmod_id = app.store_code(proposal_contract());
@@ -1721,8 +1721,8 @@ fn test_bad_token_proposal_deposit() {
         .instantiate_contract(
             votemod_id,
             Addr::unchecked(CREATOR_ADDR),
-            &cw20_balance_voting::msg::InstantiateMsg {
-                token_info: cw20_balance_voting::msg::TokenInfo::New {
+            &cwd_voting_cw20_balance::msg::InstantiateMsg {
+                token_info: cwd_voting_cw20_balance::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token".to_string(),
                     name: "DAO".to_string(),
@@ -1806,9 +1806,9 @@ fn test_take_proposal_deposit() {
         }]),
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -1920,9 +1920,9 @@ fn test_native_proposal_deposit() {
         }]),
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2063,9 +2063,9 @@ fn test_deposit_return_on_execute() {
         true,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2122,9 +2122,9 @@ fn test_deposit_return_zero() {
         true,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2177,9 +2177,9 @@ fn test_query_list_votes() {
         true,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2253,9 +2253,9 @@ fn test_cant_vote_executed_or_closed() {
         true,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2360,9 +2360,9 @@ fn test_cant_propose_zero_power() {
         ]),
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -2460,9 +2460,9 @@ fn test_cant_vote_not_registered() {
         false,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2524,7 +2524,7 @@ fn test_cant_execute_not_member() {
         .wrap()
         .query_wasm_smart(
             governance_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -2533,9 +2533,9 @@ fn test_cant_execute_not_member() {
 
     assert_eq!(governance_modules.len(), 1);
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2626,7 +2626,7 @@ fn test_open_proposal_submission() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -2733,9 +2733,9 @@ fn test_close_open_proposal() {
         false,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2799,9 +2799,9 @@ fn test_no_refund_failed_proposal() {
         false,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2878,9 +2878,9 @@ fn test_deposit_return_on_close() {
         }),
         false,
     );
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -2946,9 +2946,9 @@ fn test_execute_expired_proposal() {
         ]),
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = gov_state.proposal_modules;
 
@@ -3065,9 +3065,9 @@ fn test_update_config() {
         false,
     );
 
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -3195,9 +3195,9 @@ fn test_no_return_if_no_refunds() {
         }),
         true,
     );
-    let gov_state: cw_core::query::DumpStateResponse = app
+    let gov_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(governance_addr, &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(governance_addr, &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let governance_modules = gov_state.proposal_modules;
 
@@ -3256,7 +3256,7 @@ fn test_query_list_proposals() {
         .wrap()
         .query_wasm_smart(
             gov_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -3423,7 +3423,7 @@ fn test_hooks() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -3585,7 +3585,7 @@ fn test_active_threshold_absolute() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -3602,20 +3602,20 @@ fn test_active_threshold_absolute() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &cwd_core::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+            &cwd_voting_cw20_staked::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
+            &cwd_interface::voting::Query::TokenContract {},
         )
         .unwrap();
 
@@ -3725,7 +3725,7 @@ fn test_active_threshold_percent() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -3742,20 +3742,20 @@ fn test_active_threshold_percent() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &cwd_core::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+            &cwd_voting_cw20_staked::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
+            &cwd_interface::voting::Query::TokenContract {},
         )
         .unwrap();
 
@@ -3862,7 +3862,7 @@ fn test_active_threshold_none() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -3879,20 +3879,20 @@ fn test_active_threshold_none() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &cwd_core::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+            &cwd_voting_cw20_staked::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
+            &cwd_interface::voting::Query::TokenContract {},
         )
         .unwrap();
 
@@ -3950,7 +3950,7 @@ fn test_active_threshold_none() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -4012,7 +4012,7 @@ fn test_revoting() {
         .wrap()
         .query_wasm_smart(
             core_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -4160,7 +4160,7 @@ fn test_allow_revoting_config_changes() {
         .wrap()
         .query_wasm_smart(
             core_addr.clone(),
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -4324,7 +4324,7 @@ fn test_revoting_same_vote_twice() {
         .wrap()
         .query_wasm_smart(
             core_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -4426,7 +4426,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         .wrap()
         .query_wasm_smart(
             core_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -4555,9 +4555,9 @@ fn test_return_deposit_to_dao_on_proposal_failure() {
         false,
     );
 
-    let core_state: cw_core::query::DumpStateResponse = app
+    let core_state: cwd_core::query::DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr.clone(), &cw_core::msg::QueryMsg::DumpState {})
+        .query_wasm_smart(core_addr.clone(), &cwd_core::msg::QueryMsg::DumpState {})
         .unwrap();
     let proposal_modules = core_state.proposal_modules;
 
@@ -4619,7 +4619,7 @@ fn test_close_failed_proposal() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -4636,20 +4636,20 @@ fn test_close_failed_proposal() {
     let dao = govmod_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &cwd_core::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+            &cwd_voting_cw20_staked::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
+            &cwd_interface::voting::Query::TokenContract {},
         )
         .unwrap();
 
@@ -4895,7 +4895,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         .wrap()
         .query_wasm_smart(
             core_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },
@@ -4912,20 +4912,20 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     let dao = proposal_config.dao;
     let voting_module: Addr = app
         .wrap()
-        .query_wasm_smart(dao, &cw_core::msg::QueryMsg::VotingModule {})
+        .query_wasm_smart(dao, &cwd_core::msg::QueryMsg::VotingModule {})
         .unwrap();
     let staking_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module.clone(),
-            &cw20_staked_balance_voting::msg::QueryMsg::StakingContract {},
+            &cwd_voting_cw20_staked::msg::QueryMsg::StakingContract {},
         )
         .unwrap();
     let token_contract: Addr = app
         .wrap()
         .query_wasm_smart(
             voting_module,
-            &cw_core_interface::voting::Query::TokenContract {},
+            &cwd_interface::voting::Query::TokenContract {},
         )
         .unwrap();
 
@@ -5123,7 +5123,7 @@ fn test_timestamp_updated() {
         .wrap()
         .query_wasm_smart(
             governance_addr,
-            &cw_core::msg::QueryMsg::ProposalModules {
+            &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
             },

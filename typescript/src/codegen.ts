@@ -5,7 +5,12 @@ import { readSchemas, generate } from "@cosmwasm/ts-codegen";
 
 enum OutputType {
   contracts = "contracts",
-  packages = "packages"
+  packages = "packages",
+  proposal = "proposal",
+  staking = "staking",
+  voting = "voting",
+  "pre-propose" = "pre-propose",
+  external = "external",
 }
 
 export type CompilationSpec = {
@@ -56,22 +61,54 @@ const DEFAULT_CONFIG = {
       outputDir: CONTRACTS_OUTPUT_DIR,
     },
     {
+      name: OutputType.contracts,
+      paths: [`../contracts/${OutputType.external}`],
+      outputName: OutputType.contracts,
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
+      name: OutputType.contracts,
+      paths: [`../contracts/${OutputType["pre-propose"]}`],
+      outputName: OutputType.contracts,
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
+      name: OutputType.contracts,
+      paths: [`../contracts/${OutputType.proposal}`],
+      outputName: OutputType.contracts,
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
+      name: OutputType.contracts,
+      paths: [`../contracts/${OutputType.staking}`],
+      outputName: OutputType.contracts,
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
+      name: OutputType.contracts,
+      paths: [`../contracts/${OutputType.voting}`],
+      outputName: OutputType.contracts,
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
       name: OutputType.packages,
       paths: [`../${OutputType.packages}`],
       outputName: OutputType.packages,
       outputDir: CONTRACTS_OUTPUT_DIR,
     },
-  ]
+  ],
 };
 
 async function generateTs(spec: CompilationSpec): Promise<void> {
   const out = `${spec.outputPath}/${spec.outputType}/${spec.contractName}`;
   const name = spec.contractName;
 
-  const schemas = readSchemas({ schemaDir: spec.schemaDir, argv: { packed: false } });
+  const schemas = readSchemas({
+    schemaDir: spec.schemaDir,
+    argv: { packed: false },
+  });
   return await generate(name, schemas, out);
 }
-
 
 function getSchemaDirectories(
   rootDir: string,
@@ -106,7 +143,7 @@ function getSchemaDirectories(
               fs.existsSync(schemaDir) &&
               fs.lstatSync(schemaDir).isDirectory()
             ) {
-              directories.push([schemaDir.replaceAll('\\', '/'), entry]);
+              directories.push([schemaDir.replaceAll("\\", "/"), entry]);
             } else {
               log(`${schemaDir} is not a directory`, LogLevels.Verbose);
             }

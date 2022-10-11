@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Timestamp, Uint128};
 use cw_utils::Expiration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use voting::{
+use cwd_voting::{
     deposit::CheckedDepositInfo,
     proposal::Proposal,
     status::Status,

@@ -1,0 +1,34 @@
+[package]
+name = "cwd-testing"
+version = "0.2.0"
+edition = "2021"
+authors = ["ekez ekez@withoutdoing.com"]
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "Testing helper functions and interfaces for testing DAO modules."
+
+# This crate depends on multi-test and rand. These are not features in
+# wasm builds of cosmwasm. Despite this crate only being used as a dev
+# dependency, because it is part of the workspace it will always be
+# compiled. There is no good way to remove a member from a workspace
+# conditionally. As such, we don't compile anything here if we're
+# targeting wasm.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rand = "0.8"
+cosmwasm-std = { version = "1.0.0" }
+cw-multi-test = {  version = "0.13" }
+cw20-base = "0.13"
+cw4 = "0.13"
+cw4-group = "0.13"
+cw-utils = "0.13"
+cw2 = "0.13"
+cw20 = "0.13"
+
+cw20-stake = { path = "../../contracts/staking/cw20-stake" }
+cwd-voting = { path = "../cwd-voting" }
+cwd-voting-cw4 = { path = "../../contracts/voting/cwd-voting-cw4" }
+cwd-voting-cw20-balance = { path = "../../test-contracts/cwd-voting-cw20-balance" }
+cwd-voting-cw20-staked = { path = "../../contracts/voting/cwd-voting-cw20-staked" }
+cwd-hooks = { version = "*", path = "../cwd-hooks" }
+cwd-core = { path = "../../contracts/cwd-core", features = ["library"] }
+cosmwasm-schema = { version = "1.0.0" }
+cwd-interface = { path = "../cwd-interface" }

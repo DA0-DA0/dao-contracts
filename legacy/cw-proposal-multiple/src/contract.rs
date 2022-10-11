@@ -4,14 +4,14 @@ use cosmwasm_std::{
 };
 
 use cw2::set_contract_version;
-use cw_core_interface::voting::IsActiveResponse;
+use cwd_interface::voting::IsActiveResponse;
 use cw_storage_plus::Bound;
 use cw_utils::Duration;
-use indexable_hooks::Hooks;
-use proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
+use cwd_hooks::Hooks;
+use cwd_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 
-use vote_hooks::new_vote_hooks;
-use voting::{
+use cwd_vote_hooks::new_vote_hooks;
+use cwd_voting::{
     deposit::{get_deposit_msg, get_return_deposit_msg, DepositRefundPolicy, UncheckedDepositInfo},
     proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
     reply::{mask_proposal_execution_proposal_id, TaggedReplyId},
@@ -141,7 +141,7 @@ pub fn execute_propose(
 
     let voting_module: Addr = deps
         .querier
-        .query_wasm_smart(config.dao.clone(), &cw_core::msg::QueryMsg::VotingModule {})?;
+        .query_wasm_smart(config.dao.clone(), &cwd_core::msg::QueryMsg::VotingModule {})?;
 
     // Voting modules are not required to implement this
     // query. Lacking an implementation they are active by default.
@@ -149,7 +149,7 @@ pub fn execute_propose(
         .querier
         .query_wasm_smart(
             voting_module,
-            &cw_core_interface::voting::Query::IsActive {},
+            &cwd_interface::voting::Query::IsActive {},
         )
         .unwrap_or(IsActiveResponse { active: true });
 
@@ -385,7 +385,7 @@ pub fn execute_execute(
                     if !msgs.is_empty() {
                         let execute_message = WasmMsg::Execute {
                             contract_addr: config.dao.to_string(),
-                            msg: to_binary(&cw_core::msg::ExecuteMsg::ExecuteProposalHook {
+                            msg: to_binary(&cwd_core::msg::ExecuteMsg::ExecuteProposalHook {
                                 msgs,
                             })?,
                             funds: vec![],
@@ -757,7 +757,7 @@ pub fn query_list_votes(
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
-    to_binary(&cw_core_interface::voting::InfoResponse { info })
+    to_binary(&cwd_interface::voting::InfoResponse { info })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

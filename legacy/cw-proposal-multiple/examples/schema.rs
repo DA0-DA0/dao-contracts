@@ -3,13 +3,13 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use cosmwasm_std::Addr;
-use cw_core_interface::voting::InfoResponse;
+use cwd_interface::voting::InfoResponse;
 use cw_proposal_multiple::{
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
     state::Config,
 };
-use indexable_hooks::HooksResponse;
+use cwd_hooks::HooksResponse;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

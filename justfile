@@ -25,7 +25,7 @@ integration-test: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
 
 integration-test-dev test_name="": 
-	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}} 
+	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}  
 
 bootstrap-dev: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env

@@ -46,15 +46,15 @@ jobs:
 
       - name: Install just
         run: cargo install just || true
-      
+
       - name: Run Integration Tests
         run: just integration-test
 
       - name: Combine Test Gas Reports
-        run: cd ci/integration_tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
+        run: cd ci/integration-tests/ && jq -rs 'reduce .[] as $item ({}; . * $item)' gas_reports/*.json > gas_report.json
 
       - name: Raw Gas Report
-        run: cat ci/integration_tests/gas_report.json
+        run: cat ci/integration-tests/gas_report.json
 
       - name: Set GIT_BRANCH
         run: echo "GIT_BRANCH=$(echo ${{ github.ref }} | sed 's|/|-|g')" >> $GITHUB_ENV
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: dao-dao-gas-report-${{ env.GIT_BRANCH }}
-          path: ci/integration_tests/gas_report.json
+          path: ci/integration-tests/gas_report.json
           retention-days: 90
 
       - name: Download main gas report
@@ -79,7 +79,7 @@ jobs:
         uses: dawidd6/action-download-artifact@v2
         with:
           branch: main
-          workflow: integration_tests.yml
+          workflow: integration-tests.yml
           name: dao-dao-gas-report-refs-heads-main
 
       - name: Post gas diff to PR
@@ -87,5 +87,5 @@ jobs:
         uses: de-husk/cosm-orc-gas-diff-action@v0.6.2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          current_json: ci/integration_tests/gas_report.json
+          current_json: ci/integration-tests/gas_report.json
           old_json: gas_report.json

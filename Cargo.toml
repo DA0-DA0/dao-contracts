@@ -1,6 +1,16 @@
 [workspace]
-members = ["contracts/*", "packages/*", "debug/*", "ci/*"]
-exclude = ["ci/configs/", "contracts/cw-proposal-multiple"]
+members = [
+	"contracts/cwd-core",
+	"contracts/proposal/*",
+	"contracts/pre-propose/*",
+	"contracts/staking/*",
+	"contracts/voting/*",
+	"contracts/external/*",
+	"packages/*",
+	"test-contracts/*",
+	"ci/*"
+	]
+exclude = ["ci/configs/"]
 
 [profile.release.package.stake-cw20-external-rewards]
 codegen-units = 1
