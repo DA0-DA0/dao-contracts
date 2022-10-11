@@ -252,6 +252,6 @@ mod test {
         }];
 
         let mc_options = super::MultipleChoiceOptions { options };
-        let res = mc_options.into_checked().unwrap();
+        mc_options.into_checked().unwrap();
     }
 }

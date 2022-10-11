@@ -862,7 +862,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
-            PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?
+            let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
             Ok(Response::new().add_attribute("removed_proposal_hook", format!("{addr}:{idx}")))
         }
         TaggedReplyId::FailedVoteHook(idx) => {
