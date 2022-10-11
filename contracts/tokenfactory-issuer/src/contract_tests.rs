@@ -15,7 +15,7 @@ static CREATOR_ADDRESS: &str = "creator";
 #[allow(unused_assignments)]
 fn initialize_contract(deps: DepsMut) -> (Addr, String) {
     let denom = String::from("factory/creator/uusd");
-    let msg = InstantiateMsg {
+    let msg = InstantiateMsg::ExistingToken {
         denom: denom.clone(),
     };
     let info = mock_info(CREATOR_ADDRESS, &[]);
