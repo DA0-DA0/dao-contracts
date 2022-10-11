@@ -36,6 +36,7 @@ export interface ConfigResponse {
   voting_strategy: VotingStrategy;
   [k: string]: unknown;
 }
+export type DaoResponse = string;
 export type ExecuteMsg = {
   propose: {
     choices: MultipleChoiceOptions;
