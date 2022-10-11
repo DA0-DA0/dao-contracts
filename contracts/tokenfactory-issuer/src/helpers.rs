@@ -88,3 +88,15 @@ pub fn check_is_not_blacklisted(deps: Deps, address: String) -> Result<(), Contr
     };
     Ok(())
 }
+
+pub fn check_is_not_frozen(deps: Deps, denom: &str) -> Result<(), ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let is_denom_frozen = config.is_frozen && denom == config.denom;
+    if is_denom_frozen {
+        return Err(ContractError::ContractFrozen {
+            denom: config.denom,
+        });
+    }
+
+    Ok(())
+}
