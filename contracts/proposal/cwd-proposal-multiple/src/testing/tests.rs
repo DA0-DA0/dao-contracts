@@ -172,8 +172,6 @@ fn test_propose() {
         },
         allow_revoting: false,
         min_voting_period: None,
-        created: current_block.time,
-        last_updated: current_block.time,
     };
 
     assert_eq!(created.proposal, expected);
@@ -1683,8 +1681,6 @@ fn test_open_proposal_submission() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::zero(); 3],
         },
-        created: current_block.time,
-        last_updated: current_block.time,
     };
 
     assert_eq!(created.proposal, expected);
@@ -2276,8 +2272,6 @@ fn test_query_list_proposals() {
             },
             allow_revoting: false,
             min_voting_period: None,
-            created: current_block.time,
-            last_updated: current_block.time,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -2306,8 +2300,6 @@ fn test_query_list_proposals() {
             },
             allow_revoting: false,
             min_voting_period: None,
-            created: current_block.time,
-            last_updated: current_block.time,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -3469,7 +3461,6 @@ fn test_close_failed_proposal() {
     let failed: ProposalResponse = query_proposal(&app, &govmod, 1);
 
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
-    assert_eq!(failed.proposal.last_updated, app.block_info().time);
     // With disabled feature
     // Disable feature first
     {
@@ -3741,7 +3732,6 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     let failed: ProposalResponse = query_proposal(&app, &govmod, 1);
 
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
-    assert_eq!(failed.proposal.last_updated, app.block_info().time);
 
     // Check that our deposit has been refunded.
     let balance = query_balance_cw20(&app, token_contract.to_string(), CREATOR_ADDR);
@@ -3841,19 +3831,6 @@ fn test_timestamp_updated() {
     )
     .unwrap();
 
-    let created_1: ProposalResponse = query_proposal(&app, &govmod, 1);
-    let current_block = app.block_info();
-
-    // Verify created and last updated
-    assert_eq!(created_1.proposal.created, current_block.time);
-    assert_eq!(created_1.proposal.last_updated, current_block.time);
-
-    let created_2: ProposalResponse = query_proposal(&app, &govmod, 2);
-
-    // Verify created and last updated
-    assert_eq!(created_2.proposal.created, current_block.time);
-    assert_eq!(created_2.proposal.last_updated, current_block.time);
-
     // Update block
     let timestamp = Timestamp::from_seconds(300_000_000);
     app.update_block(|block| block.time = timestamp);
@@ -3870,16 +3847,13 @@ fn test_timestamp_updated() {
     )
     .unwrap();
 
-    // Expect that last_updated changed because of status change
     let updated: ProposalResponse = query_proposal(&app, &govmod, 1);
 
-    assert_eq!(updated.proposal.last_updated, app.block_info().time);
     assert_eq!(updated.proposal.status, Status::Passed);
 
     // Update block
     let timestamp = Timestamp::from_seconds(500_000_000);
     app.update_block(|block| block.time = timestamp);
-    let latest_time = app.block_info().time;
 
     // Execute proposal
     app.execute_contract(
@@ -3893,12 +3867,10 @@ fn test_timestamp_updated() {
     // Status should have changed to 'Executed'
     let updated: ProposalResponse = query_proposal(&app, &govmod, 1);
 
-    assert_eq!(updated.proposal.last_updated, latest_time);
     assert_eq!(updated.proposal.status, Status::Executed);
 
     let timestamp = Timestamp::from_seconds(700_000_000);
     app.update_block(|block| block.time = timestamp);
-    let latest_time = app.block_info().time;
 
     // Vote no on second proposal
     app.execute_contract(
@@ -3915,12 +3887,10 @@ fn test_timestamp_updated() {
     // Status should have changed to 'Rejected'
     let updated: ProposalResponse = query_proposal(&app, &govmod, 2);
 
-    assert_eq!(updated.proposal.last_updated, latest_time);
     assert_eq!(updated.proposal.status, Status::Rejected);
 
     let timestamp = Timestamp::from_seconds(900_000_000);
     app.update_block(|block| block.time = timestamp);
-    let latest_time = app.block_info().time;
 
     // Close second proposal
     app.execute_contract(
@@ -3934,6 +3904,5 @@ fn test_timestamp_updated() {
     // Status should have changed to 'Closed'
     let updated: ProposalResponse = query_proposal(&app, &govmod, 2);
 
-    assert_eq!(updated.proposal.last_updated, latest_time);
     assert_eq!(updated.proposal.status, Status::Closed);
 }

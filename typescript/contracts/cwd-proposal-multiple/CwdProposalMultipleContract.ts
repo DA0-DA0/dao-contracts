@@ -341,10 +341,8 @@ export interface ProposalResponse {
 export interface MultipleChoiceProposal {
   allow_revoting: boolean;
   choices: CheckedMultipleChoiceOption[];
-  created: Timestamp;
   description: string;
   expiration: Expiration;
-  last_updated: Timestamp;
   min_voting_period?: Expiration | null;
   proposer: Addr;
   start_height: number;

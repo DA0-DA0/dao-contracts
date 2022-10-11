@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, Storage, SubMsg, Timestamp, WasmMsg,
+    Response, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_proposal_single_v1 as v1;
@@ -198,8 +198,6 @@ pub fn execute_propose(
             status: Status::Open,
             votes: Votes::zero(),
             allow_revoting: config.allow_revoting,
-            created: env.block.time,
-            last_updated: env.block.time,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -293,8 +291,6 @@ pub fn execute_execute(
     }
 
     prop.status = Status::Executed;
-    // Update proposal's last updated timestamp.
-    prop.last_updated = env.block.time;
 
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
@@ -466,8 +462,6 @@ pub fn execute_close(
     let old_status = prop.status;
 
     prop.status = Status::Closed;
-    // Update proposal's last updated timestamp.
-    prop.last_updated = env.block.time;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let hooks = proposal_status_changed_hooks(
@@ -812,7 +806,7 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -879,12 +873,6 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
                         status: v1_status_to_v2(prop.status),
                         votes: v1_votes_to_v2(prop.votes),
                         allow_revoting: prop.allow_revoting,
-                        // CosmWasm does not expose a way to query the timestamp
-                        // of a block given block height. As such, we assign migrated
-                        // proposals a created timestamp of 0 so that the frontend may
-                        // query for the true timestamp given `start_height`.
-                        created: Timestamp::from_seconds(0),
-                        last_updated: env.block.time,
                     };
 
                     PROPOSALS
@@ -905,15 +893,14 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let repl = TaggedReplyId::new(msg.id)?;
     match repl {
         TaggedReplyId::FailedProposalExecution(proposal_id) => {
             PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
                 Some(mut prop) => {
                     prop.status = Status::ExecutionFailed;
-                    // Update proposal's last updated timestamp.
-                    prop.last_updated = env.block.time;
+
                     Ok(prop)
                 }
                 None => Err(ContractError::NoSuchProposal { id: proposal_id }),

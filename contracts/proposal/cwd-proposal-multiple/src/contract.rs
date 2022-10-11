@@ -210,8 +210,6 @@ pub fn execute_propose(
             votes: MultipleChoiceVotes::zero(checked_multiple_choice_options.len()),
             allow_revoting: config.allow_revoting,
             choices: checked_multiple_choice_options,
-            created: env.block.time,
-            last_updated: env.block.time,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
@@ -401,8 +399,6 @@ pub fn execute_execute(
     }
 
     prop.status = Status::Executed;
-    // Update proposal's last updated timestamp.
-    prop.last_updated = env.block.time;
 
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
@@ -494,8 +490,7 @@ pub fn execute_close(
     let old_status = prop.status;
 
     prop.status = Status::Closed;
-    // Update proposal's last updated timestamp.
-    prop.last_updated = env.block.time;
+
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let hooks = proposal_status_changed_hooks(
@@ -846,15 +841,13 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let repl = TaggedReplyId::new(msg.id)?;
     match repl {
         TaggedReplyId::FailedProposalExecution(proposal_id) => {
             PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
                 Some(mut prop) => {
                     prop.status = Status::ExecutionFailed;
-                    // Update proposal's last updated timestamp.
-                    prop.last_updated = env.block.time;
                     Ok(prop)
                 }
                 None => Err(ContractError::NoSuchProposal { id: proposal_id }),
