@@ -22,7 +22,7 @@ the underlying CW20 token's address.
 
 `StakingContract` - Returns the underlying staking contract used to
 derive voting power at a given height. Should point to an instance of
-`stake-cw20`.
+`cw20-stake`.
 
 `VotingPowerAtHeight` - Given an address and an optional height,
 return the voting power that address has at that height. If no height
