@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -78,21 +80,9 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>, ContractError> {
+    //
     if msg.id == CREATE_DENOM_REPLY_ID {
-        // parse response from create denom
-        let response = msg
-            .result
-            .into_result()
-            .map_err(|e| StdError::GenericErr { msg: e })?
-            .data
-            .ok_or_else(|| StdError::NotFound {
-                kind: stringify!(MsgCreateDenomResponse).to_string(),
-            })?;
-
-        let MsgCreateDenomResponse { new_token_denom } =
-            prost::Message::decode(response.to_vec().as_slice()).map_err(|e| {
-                StdError::parse_err(stringify!(MsgCreateDenomResponse), e.to_string())
-            })?;
+        let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
 
         CONFIG.update(deps.storage, |config| {
             Result::<Config, ContractError>::Ok(Config {
