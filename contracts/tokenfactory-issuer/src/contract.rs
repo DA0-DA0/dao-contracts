@@ -37,12 +37,6 @@ pub fn instantiate(
 
     match msg {
         InstantiateMsg::NewToken { subdenom } => {
-            let msg_create_denom: CosmosMsg<OsmosisMsg> = MsgCreateDenom {
-                sender: env.contract.address.to_string(),
-                subdenom: subdenom.clone(),
-            }
-            .into();
-
             let config = Config {
                 owner: info.sender.clone(),
                 is_frozen: false,
@@ -55,11 +49,18 @@ pub fn instantiate(
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("owner", info.sender)
-                .add_attribute("subdenom", subdenom)
-                .add_submessage(SubMsg::reply_on_success(
-                    msg_create_denom,
-                    CREATE_DENOM_REPLY_ID,
-                )))
+                .add_attribute("subdenom", subdenom.clone())
+                .add_submessage(
+                    // create new denom, if denom is created successfully,
+                    // set beforesend listener to this contract on reply
+                    SubMsg::reply_on_success(
+                        <CosmosMsg<OsmosisMsg>>::from(MsgCreateDenom {
+                            sender: env.contract.address.to_string(),
+                            subdenom,
+                        }),
+                        CREATE_DENOM_REPLY_ID,
+                    ),
+                ))
         }
         InstantiateMsg::ExistingToken { denom } => {
             let config = Config {
@@ -91,6 +92,9 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>
             })
         })?;
 
+        // set beforesend listener to this contract
+        // this will trigger sudo endpoint before any bank send
+        // which makes blacklisting / freezing possible
         let msg_set_beforesend_listener: CosmosMsg<OsmosisMsg> = MsgSetBeforeSendListener {
             sender: env.contract.address.to_string(),
             denom: new_token_denom.clone(),
