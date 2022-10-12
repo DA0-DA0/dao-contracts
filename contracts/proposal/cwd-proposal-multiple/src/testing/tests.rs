@@ -172,8 +172,6 @@ fn test_propose() {
         },
         allow_revoting: false,
         min_voting_period: None,
-        created: current_block.time,
-        last_updated: current_block.time,
     };
 
     assert_eq!(created.proposal, expected);
@@ -1683,8 +1681,6 @@ fn test_open_proposal_submission() {
         votes: MultipleChoiceVotes {
             vote_weights: vec![Uint128::zero(); 3],
         },
-        created: current_block.time,
-        last_updated: current_block.time,
     };
 
     assert_eq!(created.proposal, expected);
@@ -2276,8 +2272,6 @@ fn test_query_list_proposals() {
             },
             allow_revoting: false,
             min_voting_period: None,
-            created: current_block.time,
-            last_updated: current_block.time,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -2306,8 +2300,6 @@ fn test_query_list_proposals() {
             },
             allow_revoting: false,
             min_voting_period: None,
-            created: current_block.time,
-            last_updated: current_block.time,
         },
     };
     assert_eq!(proposals_forward.proposals[0], expected);
@@ -3469,7 +3461,6 @@ fn test_close_failed_proposal() {
     let failed: ProposalResponse = query_proposal(&app, &govmod, 1);
 
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
-    assert_eq!(failed.proposal.last_updated, app.block_info().time);
     // With disabled feature
     // Disable feature first
     {
@@ -3741,7 +3732,6 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     let failed: ProposalResponse = query_proposal(&app, &govmod, 1);
 
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
-    assert_eq!(failed.proposal.last_updated, app.block_info().time);
 
     // Check that our deposit has been refunded.
     let balance = query_balance_cw20(&app, token_contract.to_string(), CREATOR_ADDR);
@@ -3764,176 +3754,4 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     // Check that our deposit was not refunded a second time on close.
     let balance = query_balance_cw20(&app, token_contract.to_string(), CREATOR_ADDR);
     assert_eq!(balance, Uint128::new(1));
-}
-
-#[test]
-fn test_timestamp_updated() {
-    let mut app = App::default();
-    let _govmod_id = app.store_code(proposal_multiple_contract());
-
-    let voting_strategy = VotingStrategy::SingleChoice {
-        quorum: PercentageThreshold::Majority {},
-    };
-    let max_voting_period = cw_utils::Duration::Height(6);
-    let instantiate = InstantiateMsg {
-        voting_strategy,
-        max_voting_period,
-        min_voting_period: None,
-        only_members_execute: false,
-        close_proposal_on_execution_failure: true,
-        allow_revoting: false,
-        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
-    };
-
-    let core_addr = instantiate_with_staked_balances_governance(
-        &mut app,
-        instantiate,
-        Some(vec![
-            Cw20Coin {
-                address: "voter".to_string(),
-                amount: Uint128::new(3),
-            },
-            Cw20Coin {
-                address: "voter2".to_string(),
-                amount: Uint128::new(2),
-            },
-        ]),
-    );
-    let govmod = query_multiple_proposal_module(&app, &core_addr);
-
-    let options = vec![
-        MultipleChoiceOption {
-            description: "Option 1".to_string(),
-            msgs: None,
-        },
-        MultipleChoiceOption {
-            description: "Option 2".to_string(),
-            msgs: None,
-        },
-    ];
-
-    let mc_options = MultipleChoiceOptions { options };
-
-    // Create 2 proposals.
-    app.execute_contract(
-        Addr::unchecked("voter"),
-        govmod.clone(),
-        &ExecuteMsg::Propose {
-            title: "A simple text proposal".to_string(),
-            description: "This is a simple text proposal".to_string(),
-            choices: mc_options.clone(),
-            proposer: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    app.execute_contract(
-        Addr::unchecked("voter"),
-        govmod.clone(),
-        &ExecuteMsg::Propose {
-            title: "A simple text proposal".to_string(),
-            description: "This is a simple text proposal".to_string(),
-            choices: mc_options,
-            proposer: None,
-        },
-        &[],
-    )
-    .unwrap();
-
-    let created_1: ProposalResponse = query_proposal(&app, &govmod, 1);
-    let current_block = app.block_info();
-
-    // Verify created and last updated
-    assert_eq!(created_1.proposal.created, current_block.time);
-    assert_eq!(created_1.proposal.last_updated, current_block.time);
-
-    let created_2: ProposalResponse = query_proposal(&app, &govmod, 2);
-
-    // Verify created and last updated
-    assert_eq!(created_2.proposal.created, current_block.time);
-    assert_eq!(created_2.proposal.last_updated, current_block.time);
-
-    // Update block
-    let timestamp = Timestamp::from_seconds(300_000_000);
-    app.update_block(|block| block.time = timestamp);
-
-    // Vote on proposal
-    app.execute_contract(
-        Addr::unchecked("voter"),
-        govmod.clone(),
-        &ExecuteMsg::Vote {
-            proposal_id: 1,
-            vote: MultipleChoiceVote { option_id: 0 },
-        },
-        &[],
-    )
-    .unwrap();
-
-    // Expect that last_updated changed because of status change
-    let updated: ProposalResponse = query_proposal(&app, &govmod, 1);
-
-    assert_eq!(updated.proposal.last_updated, app.block_info().time);
-    assert_eq!(updated.proposal.status, Status::Passed);
-
-    // Update block
-    let timestamp = Timestamp::from_seconds(500_000_000);
-    app.update_block(|block| block.time = timestamp);
-    let latest_time = app.block_info().time;
-
-    // Execute proposal
-    app.execute_contract(
-        Addr::unchecked("voter"),
-        govmod.clone(),
-        &ExecuteMsg::Execute { proposal_id: 1 },
-        &[],
-    )
-    .unwrap();
-
-    // Status should have changed to 'Executed'
-    let updated: ProposalResponse = query_proposal(&app, &govmod, 1);
-
-    assert_eq!(updated.proposal.last_updated, latest_time);
-    assert_eq!(updated.proposal.status, Status::Executed);
-
-    let timestamp = Timestamp::from_seconds(700_000_000);
-    app.update_block(|block| block.time = timestamp);
-    let latest_time = app.block_info().time;
-
-    // Vote no on second proposal
-    app.execute_contract(
-        Addr::unchecked("voter"),
-        govmod.clone(),
-        &ExecuteMsg::Vote {
-            proposal_id: 2,
-            vote: MultipleChoiceVote { option_id: 2 },
-        },
-        &[],
-    )
-    .unwrap();
-
-    // Status should have changed to 'Rejected'
-    let updated: ProposalResponse = query_proposal(&app, &govmod, 2);
-
-    assert_eq!(updated.proposal.last_updated, latest_time);
-    assert_eq!(updated.proposal.status, Status::Rejected);
-
-    let timestamp = Timestamp::from_seconds(900_000_000);
-    app.update_block(|block| block.time = timestamp);
-    let latest_time = app.block_info().time;
-
-    // Close second proposal
-    app.execute_contract(
-        Addr::unchecked("voter"),
-        govmod.clone(),
-        &ExecuteMsg::Close { proposal_id: 2 },
-        &[],
-    )
-    .unwrap();
-
-    // Status should have changed to 'Closed'
-    let updated: ProposalResponse = query_proposal(&app, &govmod, 2);
-
-    assert_eq!(updated.proposal.last_updated, latest_time);
-    assert_eq!(updated.proposal.status, Status::Closed);
 }

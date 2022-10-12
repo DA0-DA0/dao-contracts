@@ -124,8 +124,6 @@ fn test_simple_propose_staked_balances() {
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
-        created: current_block.time,
-        last_updated: current_block.time,
     };
 
     assert_eq!(created.proposal, expected);
@@ -175,8 +173,6 @@ fn test_simple_proposal_cw4_voting() {
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
-        created: current_block.time,
-        last_updated: current_block.time,
     };
 
     assert_eq!(created.proposal, expected);
@@ -281,8 +277,6 @@ fn test_instantiate_with_non_voting_module_cw20_deposit() {
         msgs: vec![],
         status: Status::Open,
         votes: Votes::zero(),
-        created: current_block.time,
-        last_updated: current_block.time,
     };
 
     assert_eq!(created.proposal, expected);
@@ -664,8 +658,6 @@ fn test_anyone_may_propose_and_proposal_listing() {
                     no: Uint128::zero(),
                     abstain: Uint128::zero()
                 },
-                created: current_block.time,
-                last_updated: current_block.time,
             }
         }
     )
@@ -1485,128 +1477,6 @@ fn test_proposal_count_initialized_to_zero() {
 }
 
 #[test]
-fn test_timestamps_updated() {
-    let CommonTest {
-        mut app,
-        core_addr,
-        proposal_module,
-        gov_token,
-        proposal_id: first_id,
-    } = setup_test(vec![]);
-
-    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
-    let second_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
-
-    let first_proposal = query_proposal(&app, &proposal_module, first_id);
-    let second_proposal = query_proposal(&app, &proposal_module, second_id);
-    let current_block = app.block_info();
-
-    // Verify creation and last updated are set on proposal creation.
-    assert_eq!(first_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(first_proposal.proposal.created, current_block.time);
-    assert_eq!(second_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(second_proposal.proposal.created, current_block.time);
-
-    // Advance time.
-    app.update_block(next_block);
-
-    // Pass the first one, fail the second one.
-    vote_on_proposal(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        first_id,
-        Vote::Yes,
-    );
-    vote_on_proposal(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        second_id,
-        Vote::No,
-    );
-
-    let first_proposal = query_proposal(&app, &proposal_module, first_id);
-    let second_proposal = query_proposal(&app, &proposal_module, second_id);
-    let (start_block, current_block) = (current_block, app.block_info());
-
-    // Verify last updated and not created is set on proposal status change.
-    assert_eq!(first_proposal.proposal.status, Status::Passed);
-    assert_eq!(second_proposal.proposal.status, Status::Rejected);
-    assert_eq!(first_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(first_proposal.proposal.created, start_block.time);
-    assert_eq!(second_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(second_proposal.proposal.created, start_block.time);
-
-    // Advance time.
-    app.update_block(next_block);
-
-    // Execute the first, close the second.
-    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, first_id);
-    close_proposal(&mut app, &proposal_module, CREATOR_ADDR, second_id);
-
-    let first_proposal = query_proposal(&app, &proposal_module, first_id);
-    let second_proposal = query_proposal(&app, &proposal_module, second_id);
-    let current_block = app.block_info();
-
-    // Verify last updated and not created is set on proposal status change.
-    assert_eq!(first_proposal.proposal.status, Status::Executed);
-    assert_eq!(second_proposal.proposal.status, Status::Closed);
-    assert_eq!(first_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(first_proposal.proposal.created, start_block.time);
-    assert_eq!(second_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(second_proposal.proposal.created, start_block.time);
-
-    // Test that Status::ExecutionFailed works as expected.
-    let third_id = make_proposal(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        vec![BankMsg::Send {
-            to_address: "ekez".to_string(),
-            amount: coins(100, "ujuno"),
-        }
-        .into()],
-    );
-
-    let third_proposal = query_proposal(&app, &proposal_module, third_id);
-    assert_eq!(third_proposal.proposal.created, current_block.time);
-    assert_eq!(third_proposal.proposal.last_updated, current_block.time);
-
-    // Advance time.
-    app.update_block(next_block);
-
-    // Pass the proposal.
-    vote_on_proposal(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        third_id,
-        Vote::Yes,
-    );
-
-    let (start_block, current_block) = (current_block, app.block_info());
-    let third_proposal = query_proposal(&app, &proposal_module, third_id);
-
-    // Verify last updated and not created is set on proposal status change.
-    assert_eq!(third_proposal.proposal.status, Status::Passed);
-    assert_eq!(third_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(third_proposal.proposal.created, start_block.time);
-
-    // Advance time and execute the proposal. This should move us to
-    // ExecutionFailed as the DAO does not have sufficent balance to
-    // execute the bank message.
-    app.update_block(next_block);
-    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, third_id);
-
-    let current_block = app.block_info();
-    let third_proposal = query_proposal(&app, &proposal_module, third_id);
-    assert_eq!(third_proposal.proposal.status, Status::ExecutionFailed);
-    assert_eq!(third_proposal.proposal.last_updated, current_block.time);
-    assert_eq!(third_proposal.proposal.created, start_block.time);
-}
-
-#[test]
 fn test_migrate_from_compatible() {
     let CommonTest {
         mut app,
@@ -2030,8 +1900,6 @@ fn test_reply_proposal_mock() {
                 msgs: vec![],
                 status: Status::Open,
                 votes: Votes::zero(),
-                created: env.block.time,
-                last_updated: env.block.time,
             },
         )
         .unwrap();

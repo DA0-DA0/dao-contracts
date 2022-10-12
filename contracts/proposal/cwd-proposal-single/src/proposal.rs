@@ -1,8 +1,6 @@
 use crate::query::ProposalResponse;
 use crate::state::PROPOSAL_COUNT;
-use cosmwasm_std::{
-    Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Timestamp, Uint128,
-};
+use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Uint128};
 use cw_utils::Expiration;
 use cwd_voting::status::Status;
 use cwd_voting::threshold::{PercentageThreshold, Threshold};
@@ -34,17 +32,9 @@ pub struct SingleChoiceProposal {
     pub total_power: Uint128,
     /// The messages that will be executed should this proposal pass.
     pub msgs: Vec<CosmosMsg<Empty>>,
-
     pub status: Status,
     pub votes: Votes,
     pub allow_revoting: bool,
-
-    /// The timestamp at which this proposal was created.
-    pub created: Timestamp,
-    /// The timestamp at which this proposal's status last changed. Note that in the scenario when
-    /// a proposal expires and passes upon expiration, this field will not be updated because it can only update
-    /// upon actions on the contract.
-    pub last_updated: Timestamp,
 }
 
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
@@ -82,10 +72,6 @@ impl SingleChoiceProposal {
     /// Sets a proposals status to its current status.
     pub fn update_status(&mut self, block: &BlockInfo) {
         let new_status = self.current_status(block);
-        // Update last_updated only if status changed.
-        if new_status != self.status {
-            self.last_updated = block.time
-        }
         self.status = new_status
     }
 
@@ -285,8 +271,6 @@ mod test {
             threshold,
             total_power,
             votes,
-            created: block.time,
-            last_updated: block.time,
         };
         (prop, block)
     }
