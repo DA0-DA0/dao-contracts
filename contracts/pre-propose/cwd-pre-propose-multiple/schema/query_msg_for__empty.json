@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg_for_Empty",
+  "oneOf": [
+    {
+      "description": "Gets the proposal module that this pre propose module is associated with. Returns `Addr`.",
+      "type": "object",
+      "required": [
+        "proposal_module"
+      ],
+      "properties": {
+        "proposal_module": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the DAO (cw-dao-core) module this contract is associated with. Returns `Addr`.",
+      "type": "object",
+      "required": [
+        "dao"
+      ],
+      "properties": {
+        "dao": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the module's configuration. Returns `state::Config`.",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the deposit info for the proposal identified by PROPOSAL_ID. Returns `DepositInfoResponse`.",
+      "type": "object",
+      "required": [
+        "deposit_info"
+      ],
+      "properties": {
+        "deposit_info": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Extension for queries. The default implementation will do nothing if queried for will return `Binary::default()`.",
+      "type": "object",
+      "required": [
+        "extension"
+      ],
+      "properties": {
+        "extension": {
+          "type": "object",
+          "required": [
+            "msg"
+          ],
+          "properties": {
+            "msg": {
+              "$ref": "#/definitions/Empty"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "Empty": {
+      "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+      "type": "object"
+    }
+  }
+}

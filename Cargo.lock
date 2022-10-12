@@ -1030,6 +1030,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "cwd-pre-propose-multiple"
+version = "0.2.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-multi-test 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20",
+ "cw20-base",
+ "cw4-group",
+ "cwd-core",
+ "cwd-interface",
+ "cwd-pre-propose-base",
+ "cwd-proposal-hooks",
+ "cwd-proposal-multiple",
+ "cwd-testing",
+ "cwd-voting",
+ "cwd-voting-cw20-staked",
+ "cwd-voting-cw4",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cwd-pre-propose-single"
 version = "0.2.0"
 dependencies = [
@@ -1089,6 +1115,47 @@ dependencies = [
  "cwd-voting",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cwd-proposal-multiple"
+version = "0.2.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-denom",
+ "cw-multi-test 0.13.4",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20",
+ "cw20-base",
+ "cw20-stake",
+ "cw3",
+ "cw4",
+ "cw4-group",
+ "cw721-base",
+ "cwd-core",
+ "cwd-hooks",
+ "cwd-interface",
+ "cwd-macros",
+ "cwd-pre-propose-base",
+ "cwd-pre-propose-multiple",
+ "cwd-proposal-hooks",
+ "cwd-testing",
+ "cwd-vote-hooks",
+ "cwd-voting",
+ "cwd-voting-cw20-balance",
+ "cwd-voting-cw20-staked",
+ "cwd-voting-cw4",
+ "cwd-voting-cw721-staked",
+ "cwd-voting-native-staked",
+ "rand",
+ "schemars",
+ "serde",
+ "thiserror",
+ "voting",
 ]
 
 [[package]]
@@ -1156,6 +1223,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test 0.13.4",
+ "cw-proposal-single",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
  "cw20",
@@ -1163,14 +1231,21 @@ dependencies = [
  "cw20-stake",
  "cw4",
  "cw4-group",
+ "cw721-base",
  "cwd-core",
  "cwd-hooks",
  "cwd-interface",
+ "cwd-pre-propose-multiple",
+ "cwd-pre-propose-single",
+ "cwd-proposal-single",
  "cwd-voting",
  "cwd-voting-cw20-balance",
  "cwd-voting-cw20-staked",
  "cwd-voting-cw4",
+ "cwd-voting-cw721-staked",
+ "cwd-voting-native-staked",
  "rand",
+ "voting",
 ]
 
 [[package]]

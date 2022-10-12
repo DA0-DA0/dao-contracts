@@ -1,43 +1,45 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdResult, Storage, SubMsg, WasmMsg,
+    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult,
+    Storage, SubMsg, WasmMsg,
 };
+
 use cw2::set_contract_version;
-use cw_proposal_single_v1 as v1;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
+
 use cwd_hooks::Hooks;
 use cwd_interface::voting::IsActiveResponse;
-use cwd_pre_propose_single::contract::ExecuteMsg as PreProposeMsg;
+use cwd_pre_propose_multiple::contract::ExecuteMsg as PreProposeMsg;
 use cwd_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use cwd_vote_hooks::new_vote_hooks;
-use cwd_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
-use cwd_voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
-use cwd_voting::reply::{
-    failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id, TaggedReplyId,
+use cwd_voting::{
+    multiple_choice::{
+        MultipleChoiceOptions, MultipleChoiceVote, MultipleChoiceVotes, VotingStrategy,
+    },
+    pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+    proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE},
+    reply::{
+        failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id, TaggedReplyId,
+    },
+    status::Status,
+    voting::{get_total_power, get_voting_power, validate_voting_period},
 };
-use cwd_voting::status::Status;
-use cwd_voting::threshold::Threshold;
-use cwd_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
-use crate::msg::MigrateMsg;
-use crate::proposal::SingleChoiceProposal;
-use crate::state::{Config, CREATION_POLICY};
-
-use crate::v1_state::{v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2};
+use crate::{msg::MigrateMsg, state::CREATION_POLICY};
 use crate::{
-    error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::advance_proposal_id,
-    query::ProposalListResponse,
-    query::{ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
-    state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
+    proposal::{MultipleChoiceProposal, VoteResult},
+    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
+    state::{
+        Ballot, Config, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS,
+    },
+    ContractError,
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-proposal-single";
-pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const CONTRACT_NAME: &str = "crates.io:cw-proposal-multiple";
+pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -48,7 +50,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    msg.threshold.validate()?;
+    msg.voting_strategy.validate()?;
 
     let dao = info.sender;
 
@@ -60,12 +62,12 @@ pub fn instantiate(
         .into_initial_policy_and_messages(dao.clone())?;
 
     let config = Config {
-        threshold: msg.threshold,
-        max_voting_period,
+        voting_strategy: msg.voting_strategy,
         min_voting_period,
+        max_voting_period,
         only_members_execute: msg.only_members_execute,
-        dao: dao.clone(),
         allow_revoting: msg.allow_revoting,
+        dao,
         close_proposal_on_execution_failure: msg.close_proposal_on_execution_failure,
     };
 
@@ -78,7 +80,7 @@ pub fn instantiate(
     Ok(Response::default()
         .add_submessages(pre_propose_messages)
         .add_attribute("action", "instantiate")
-        .add_attribute("dao", dao))
+        .add_attribute("dao", config.dao))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -87,21 +89,29 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+) -> Result<Response<Empty>, ContractError> {
     match msg {
         ExecuteMsg::Propose {
             title,
             description,
-            msgs,
+            choices,
             proposer,
-        } => execute_propose(deps, env, info.sender, title, description, msgs, proposer),
+        } => execute_propose(
+            deps,
+            env,
+            info.sender,
+            title,
+            description,
+            choices,
+            proposer,
+        ),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
         ExecuteMsg::UpdateConfig {
-            threshold,
-            max_voting_period,
+            voting_strategy,
             min_voting_period,
+            max_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -109,9 +119,9 @@ pub fn execute(
         } => execute_update_config(
             deps,
             info,
-            threshold,
-            max_voting_period,
+            voting_strategy,
             min_voting_period,
+            max_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -139,9 +149,9 @@ pub fn execute_propose(
     sender: Addr,
     title: String,
     description: String,
-    msgs: Vec<CosmosMsg<Empty>>,
+    options: MultipleChoiceOptions,
     proposer: Option<String>,
-) -> Result<Response, ContractError> {
+) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
 
@@ -179,29 +189,31 @@ pub fn execute_propose(
         return Err(ContractError::InactiveDao {});
     }
 
-    let expiration = config.max_voting_period.after(&env.block);
+    // Validate options.
+    let checked_multiple_choice_options = options.into_checked()?.options;
 
-    let total_power = get_total_power(deps.as_ref(), config.dao, Some(env.block.height))?;
+    let expiration = config.max_voting_period.after(&env.block);
+    let total_power = get_total_power(deps.as_ref(), config.dao, None)?;
 
     let proposal = {
         // Limit mutability to this block.
-        let mut proposal = SingleChoiceProposal {
+        let mut proposal = MultipleChoiceProposal {
             title,
             description,
             proposer: proposer.clone(),
             start_height: env.block.height,
             min_voting_period: config.min_voting_period.map(|min| min.after(&env.block)),
             expiration,
-            threshold: config.threshold,
+            voting_strategy: config.voting_strategy,
             total_power,
-            msgs,
             status: Status::Open,
-            votes: Votes::zero(),
+            votes: MultipleChoiceVotes::zero(checked_multiple_choice_options.len()),
             allow_revoting: config.allow_revoting,
+            choices: checked_multiple_choice_options,
         };
         // Update the proposal's status. Addresses case where proposal
         // expires on the same block as it is created.
-        proposal.update_status(&env.block);
+        proposal.update_status(&env.block)?;
         proposal
     };
     let id = advance_proposal_id(deps.storage)?;
@@ -231,7 +243,6 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer.as_str())?;
-
     // Add prepropose / deposit module hook which will save deposit info. This
     // needs to be called after execute_propose because we don't know the
     // proposal ID beforehand.
@@ -263,109 +274,24 @@ pub fn execute_propose(
         .add_attribute("status", proposal.status.to_string()))
 }
 
-pub fn execute_execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    proposal_id: u64,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if config.only_members_execute {
-        let power = get_voting_power(deps.as_ref(), info.sender.clone(), config.dao.clone(), None)?;
-        if power.is_zero() {
-            return Err(ContractError::Unauthorized {});
-        }
-    }
-
-    let mut prop = PROPOSALS
-        .may_load(deps.storage, proposal_id)?
-        .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
-
-    // Check here that the proposal is passed. Allow it to be executed
-    // even if it is expired so long as it passed during its voting
-    // period.
-    let old_status = prop.status;
-    prop.update_status(&env.block);
-    if prop.status != Status::Passed {
-        return Err(ContractError::NotPassed {});
-    }
-
-    prop.status = Status::Executed;
-
-    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
-    let response = {
-        if !prop.msgs.is_empty() {
-            let execute_message = WasmMsg::Execute {
-                contract_addr: config.dao.to_string(),
-                msg: to_binary(&cwd_core::msg::ExecuteMsg::ExecuteProposalHook {
-                    msgs: prop.msgs,
-                })?,
-                funds: vec![],
-            };
-            match config.close_proposal_on_execution_failure {
-                true => {
-                    let masked_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
-                    Response::default()
-                        .add_submessage(SubMsg::reply_on_error(execute_message, masked_proposal_id))
-                }
-                false => Response::default().add_message(execute_message),
-            }
-        } else {
-            Response::default()
-        }
-    };
-
-    let hooks = proposal_status_changed_hooks(
-        PROPOSAL_HOOKS,
-        deps.storage,
-        proposal_id,
-        old_status.to_string(),
-        prop.status.to_string(),
-    )?;
-
-    // Add prepropose / deposit module hook which will handle deposit refunds.
-    let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
-    let hooks = match proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => hooks,
-        ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
-                proposal_id,
-                new_status: prop.status,
-            })?;
-            let mut hooks = hooks;
-            hooks.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                failed_pre_propose_module_hook_id(),
-            ));
-            hooks
-        }
-    };
-
-    Ok(response
-        .add_submessages(hooks)
-        .add_attribute("action", "execute")
-        .add_attribute("sender", info.sender)
-        .add_attribute("proposal_id", proposal_id.to_string())
-        .add_attribute("dao", config.dao))
-}
-
 pub fn execute_vote(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     proposal_id: u64,
-    vote: Vote,
-) -> Result<Response, ContractError> {
+    vote: MultipleChoiceVote,
+) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut prop = PROPOSALS
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
-    if prop.current_status(&env.block) != Status::Open {
+
+    // Check that this is a valid vote.
+    if vote.option_id as usize >= prop.choices.len() {
+        return Err(ContractError::InvalidVote {});
+    }
+
+    if prop.current_status(&env.block)? != Status::Open {
         return Err(ContractError::NotOpen { id: proposal_id });
     }
 
@@ -393,7 +319,7 @@ pub fn execute_vote(
                     } else {
                         // Remove the old vote if this is a re-vote.
                         prop.votes
-                            .remove_vote(current_ballot.vote, current_ballot.power);
+                            .remove_vote(current_ballot.vote, current_ballot.power)?;
                         Ok(Ballot {
                             power: vote_power,
                             vote,
@@ -404,19 +330,17 @@ pub fn execute_vote(
                 }
             }
             None => Ok(Ballot {
-                power: vote_power,
                 vote,
+                power: vote_power,
             }),
         },
     )?;
 
     let old_status = prop.status;
 
-    prop.votes.add_vote(vote, vote_power);
-    prop.update_status(&env.block);
-
+    prop.votes.add_vote(vote, vote_power)?;
+    prop.update_status(&env.block)?;
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
-
     let new_status = prop.status;
     let change_hooks = proposal_status_changed_hooks(
         PROPOSAL_HOOKS,
@@ -425,7 +349,6 @@ pub fn execute_vote(
         old_status.to_string(),
         new_status.to_string(),
     )?;
-
     let vote_hooks = new_vote_hooks(
         VOTE_HOOKS,
         deps.storage,
@@ -433,7 +356,6 @@ pub fn execute_vote(
         info.sender.to_string(),
         vote.to_string(),
     )?;
-
     Ok(Response::default()
         .add_submessages(change_hooks)
         .add_submessages(vote_hooks)
@@ -444,17 +366,123 @@ pub fn execute_vote(
         .add_attribute("status", prop.status.to_string()))
 }
 
-pub fn execute_close(
+pub fn execute_execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if config.only_members_execute {
+        let power = get_voting_power(
+            deps.as_ref(),
+            info.sender.clone(),
+            config.dao.clone(),
+            Some(env.block.height),
+        )?;
+        if power.is_zero() {
+            return Err(ContractError::Unauthorized {});
+        }
+    }
+
+    let mut prop = PROPOSALS
+        .may_load(deps.storage, proposal_id)?
+        .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
+
+    // Check here that the proposal is passed. Allow it to be
+    // executed even if it is expired so long as it passed during its
+    // voting period.
+    prop.update_status(&env.block)?;
+    let old_status = prop.status;
+    if prop.status != Status::Passed {
+        return Err(ContractError::NotPassed {});
+    }
+
+    prop.status = Status::Executed;
+
+    PROPOSALS.save(deps.storage, proposal_id, &prop)?;
+
+    let vote_result = prop.calculate_vote_result()?;
+    match vote_result {
+        VoteResult::Tie => Err(ContractError::Tie {}), // We don't anticipate this case as the proposal would not be in passed state, checked above.
+        VoteResult::SingleWinner(winning_choice) => {
+            let response = match winning_choice.msgs {
+                Some(msgs) => {
+                    if !msgs.is_empty() {
+                        let execute_message = WasmMsg::Execute {
+                            contract_addr: config.dao.to_string(),
+                            msg: to_binary(&cwd_core::msg::ExecuteMsg::ExecuteProposalHook {
+                                msgs,
+                            })?,
+                            funds: vec![],
+                        };
+                        match config.close_proposal_on_execution_failure {
+                            true => {
+                                let masked_proposal_id =
+                                    mask_proposal_execution_proposal_id(proposal_id);
+                                Response::default().add_submessage(SubMsg::reply_on_error(
+                                    execute_message,
+                                    masked_proposal_id,
+                                ))
+                            }
+                            false => Response::default().add_message(execute_message),
+                        }
+                    } else {
+                        Response::default()
+                    }
+                }
+                None => Response::default(),
+            };
+
+            let hooks = proposal_status_changed_hooks(
+                PROPOSAL_HOOKS,
+                deps.storage,
+                proposal_id,
+                old_status.to_string(),
+                prop.status.to_string(),
+            )?;
+
+            // Add prepropose / deposit module hook which will handle deposit refunds.
+            let proposal_creation_policy = CREATION_POLICY.load(deps.storage)?;
+            let hooks = match proposal_creation_policy {
+                ProposalCreationPolicy::Anyone {} => hooks,
+                ProposalCreationPolicy::Module { addr } => {
+                    let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
+                        proposal_id,
+                        new_status: prop.status,
+                    })?;
+                    let mut hooks = hooks;
+                    hooks.push(SubMsg::reply_on_error(
+                        WasmMsg::Execute {
+                            contract_addr: addr.into_string(),
+                            msg,
+                            funds: vec![],
+                        },
+                        failed_pre_propose_module_hook_id(),
+                    ));
+                    hooks
+                }
+            };
+
+            Ok(response
+                .add_submessages(hooks)
+                .add_attribute("action", "execute")
+                .add_attribute("sender", info.sender)
+                .add_attribute("proposal_id", proposal_id.to_string())
+                .add_attribute("dao", config.dao))
+        }
+    }
+}
+
+pub fn execute_close(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    proposal_id: u64,
+) -> Result<Response<Empty>, ContractError> {
     let mut prop = PROPOSALS.load(deps.storage, proposal_id)?;
 
-    // Update status to ensure that proposals which were open and have
-    // expired are moved to "rejected."
-    prop.update_status(&env.block);
+    prop.update_status(&env.block)?;
     if prop.status != Status::Rejected {
         return Err(ContractError::WrongCloseStatus {});
     }
@@ -462,6 +490,7 @@ pub fn execute_close(
     let old_status = prop.status;
 
     prop.status = Status::Closed;
+
     PROPOSALS.save(deps.storage, proposal_id, &prop)?;
 
     let hooks = proposal_status_changed_hooks(
@@ -493,7 +522,6 @@ pub fn execute_close(
             hooks
         }
     };
-
     Ok(Response::default()
         .add_submessages(hooks)
         .add_attribute("action", "close")
@@ -505,9 +533,9 @@ pub fn execute_close(
 pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
-    threshold: Threshold,
-    max_voting_period: Duration,
+    voting_strategy: VotingStrategy,
     min_voting_period: Option<Duration>,
+    max_voting_period: Duration,
     only_members_execute: bool,
     allow_revoting: bool,
     dao: String,
@@ -520,7 +548,8 @@ pub fn execute_update_config(
         return Err(ContractError::Unauthorized {});
     }
 
-    threshold.validate()?;
+    voting_strategy.validate()?;
+
     let dao = deps.api.addr_validate(&dao)?;
 
     let (min_voting_period, max_voting_period) =
@@ -529,9 +558,9 @@ pub fn execute_update_config(
     CONFIG.save(
         deps.storage,
         &Config {
-            threshold,
-            max_voting_period,
+            voting_strategy,
             min_voting_period,
+            max_voting_period,
             only_members_execute,
             allow_revoting,
             dao,
@@ -562,28 +591,6 @@ pub fn execute_update_proposal_creation_policy(
         .add_attribute("action", "update_proposal_creation_policy")
         .add_attribute("sender", info.sender)
         .add_attribute("new_policy", format!("{:?}", initial_policy)))
-}
-
-pub fn add_hook(
-    hooks: Hooks,
-    storage: &mut dyn Storage,
-    validated_address: Addr,
-) -> Result<(), ContractError> {
-    hooks
-        .add_hook(storage, validated_address)
-        .map_err(ContractError::HookError)?;
-    Ok(())
-}
-
-pub fn remove_hook(
-    hooks: Hooks,
-    storage: &mut dyn Storage,
-    validate_address: Addr,
-) -> Result<(), ContractError> {
-    hooks
-        .remove_hook(storage, validate_address)
-        .map_err(ContractError::HookError)?;
-    Ok(())
 }
 
 pub fn execute_add_proposal_hook(
@@ -670,11 +677,38 @@ pub fn execute_remove_vote_hook(
         .add_attribute("address", address))
 }
 
+pub fn add_hook(
+    hooks: Hooks,
+    storage: &mut dyn Storage,
+    validated_address: Addr,
+) -> Result<(), ContractError> {
+    hooks
+        .add_hook(storage, validated_address)
+        .map_err(ContractError::HookError)?;
+    Ok(())
+}
+
+pub fn remove_hook(
+    hooks: Hooks,
+    storage: &mut dyn Storage,
+    validate_address: Addr,
+) -> Result<(), ContractError> {
+    hooks
+        .remove_hook(storage, validate_address)
+        .map_err(ContractError::HookError)?;
+    Ok(())
+}
+
+pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
+    let id: u64 = PROPOSAL_COUNT.load(store)? + 1;
+    PROPOSAL_COUNT.save(store, &id)?;
+    Ok(id)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::Proposal { proposal_id } => query_proposal(deps, env, proposal_id),
         QueryMsg::ListProposals { start_after, limit } => {
             query_list_proposals(deps, env, start_after, limit)
@@ -694,6 +728,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ProposalCreationPolicy {} => query_creation_policy(deps),
         QueryMsg::ProposalHooks {} => to_binary(&PROPOSAL_HOOKS.query_hooks(deps)?),
         QueryMsg::VoteHooks {} => to_binary(&VOTE_HOOKS.query_hooks(deps)?),
+        QueryMsg::Dao {} => query_dao(deps),
     }
 }
 
@@ -709,7 +744,7 @@ pub fn query_dao(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_proposal(deps: Deps, env: Env, id: u64) -> StdResult<Binary> {
     let proposal = PROPOSALS.load(deps.storage, id)?;
-    to_binary(&proposal.into_response(&env.block, id))
+    to_binary(&proposal.into_response(&env.block, id)?)
 }
 
 pub fn query_creation_policy(deps: Deps) -> StdResult<Binary> {
@@ -728,10 +763,10 @@ pub fn query_list_proposals(
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, min, None, cosmwasm_std::Order::Ascending)
         .take(limit as usize)
-        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
+        .collect::<Result<Vec<(u64, MultipleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
-        .collect();
+        .collect::<StdResult<Vec<ProposalResponse>>>()?;
 
     to_binary(&ProposalListResponse { proposals: props })
 }
@@ -747,10 +782,10 @@ pub fn query_reverse_proposals(
     let props: Vec<ProposalResponse> = PROPOSALS
         .range(deps.storage, None, max, cosmwasm_std::Order::Descending)
         .take(limit as usize)
-        .collect::<Result<Vec<(u64, SingleChoiceProposal)>, _>>()?
+        .collect::<Result<Vec<(u64, MultipleChoiceProposal)>, _>>()?
         .into_iter()
         .map(|(id, proposal)| proposal.into_response(&env.block, id))
-        .collect();
+        .collect::<StdResult<Vec<ProposalResponse>>>()?;
 
     to_binary(&ProposalListResponse { proposals: props })
 }
@@ -806,93 +841,6 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    match msg {
-        MigrateMsg::FromV1 {
-            close_proposal_on_execution_failure,
-            pre_propose_info,
-        } => {
-            // Update the stored config to have the new
-            // `close_proposal_on_execution_falure` field.
-            let current_config = v1::state::CONFIG.load(deps.storage)?;
-            CONFIG.save(
-                deps.storage,
-                &Config {
-                    threshold: v1_threshold_to_v2(current_config.threshold),
-                    max_voting_period: current_config.max_voting_period,
-                    min_voting_period: current_config.min_voting_period,
-                    only_members_execute: current_config.only_members_execute,
-                    allow_revoting: current_config.allow_revoting,
-                    dao: current_config.dao.clone(),
-                    // Loads of text, but we're only updating this field.
-                    close_proposal_on_execution_failure,
-                },
-            )?;
-
-            let (initial_policy, pre_propose_messages) =
-                pre_propose_info.into_initial_policy_and_messages(current_config.dao)?;
-            CREATION_POLICY.save(deps.storage, &initial_policy)?;
-
-            // Update the module's proposals to v2.
-
-            let current_proposals = v1::state::PROPOSALS
-                .range(deps.storage, None, None, Order::Ascending)
-                .collect::<StdResult<Vec<(u64, v1::proposal::Proposal)>>>()?;
-
-            // Based on gas usage testing, we estimate that we will be
-            // able to migrate ~4200 proposals at a time before
-            // reaching the block max_gas limit.
-            current_proposals
-                .into_iter()
-                .try_for_each::<_, Result<_, ContractError>>(|(id, prop)| {
-                    if prop
-                        .deposit_info
-                        .map(|info| !info.deposit.is_zero())
-                        .unwrap_or(false)
-                        && prop.status != voting_v1::Status::Closed
-                        && prop.status != voting_v1::Status::Executed
-                    {
-                        // No migration path for outstanding
-                        // deposits.
-                        return Err(ContractError::PendingProposals {});
-                    }
-
-                    let migrated_proposal = SingleChoiceProposal {
-                        title: prop.title,
-                        description: prop.description,
-                        proposer: prop.proposer,
-                        start_height: prop.start_height,
-                        min_voting_period: prop.min_voting_period,
-                        expiration: prop.expiration,
-                        threshold: v1_threshold_to_v2(prop.threshold),
-                        total_power: prop.total_power,
-                        msgs: prop.msgs,
-                        status: v1_status_to_v2(prop.status),
-                        votes: v1_votes_to_v2(prop.votes),
-                        allow_revoting: prop.allow_revoting,
-                    };
-
-                    PROPOSALS
-                        .save(deps.storage, id, &migrated_proposal)
-                        .map_err(|e| e.into())
-                })?;
-
-            Ok(Response::default()
-                .add_attribute("action", "migrate")
-                .add_attribute("from", "v1")
-                .add_submessages(pre_propose_messages))
-        }
-
-        MigrateMsg::FromCompatible {} => Ok(Response::default()
-            .add_attribute("action", "migrate")
-            .add_attribute("from", "compatible")),
-    }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     let repl = TaggedReplyId::new(msg.id)?;
     match repl {
@@ -900,13 +848,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             PROPOSALS.update(deps.storage, proposal_id, |prop| match prop {
                 Some(mut prop) => {
                     prop.status = Status::ExecutionFailed;
-
                     Ok(prop)
                 }
                 None => Err(ContractError::NoSuchProposal { id: proposal_id }),
             })?;
-
-            Ok(Response::new().add_attribute("proposal_execution_failed", proposal_id.to_string()))
+            Ok(Response::new().add_attribute("proposal execution failed", proposal_id.to_string()))
         }
         TaggedReplyId::FailedProposalHook(idx) => {
             let addr = PROPOSAL_HOOKS.remove_hook_by_index(deps.storage, idx)?;
@@ -914,7 +860,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         }
         TaggedReplyId::FailedVoteHook(idx) => {
             let addr = VOTE_HOOKS.remove_hook_by_index(deps.storage, idx)?;
-            Ok(Response::new().add_attribute("removed_vote_hook", format!("{addr}:{idx}")))
+            Ok(Response::new().add_attribute("removed vote hook", format!("{addr}:{idx}")))
         }
         TaggedReplyId::PreProposeModuleInstantiation => {
             let res = parse_reply_instantiate_data(msg)?;
@@ -948,4 +894,10 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             Ok(Response::new().add_attribute("failed_prepropose_hook", format!("{addr}")))
         }
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::default())
 }

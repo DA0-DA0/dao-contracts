@@ -125,8 +125,6 @@ fn test_migrate_mock() {
 
     let migrated_proposal = &proposals[0];
     assert_eq!(migrated_proposal.0, 0);
-    assert_eq!(migrated_proposal.1.created, Timestamp::from_seconds(0));
-    assert_eq!(migrated_proposal.1.last_updated, env.block.time);
 
     let new_item: Item<Config> = Item::new("config_v2");
     let migrated_config = new_item.load(&deps.storage).unwrap();
@@ -276,7 +274,6 @@ fn test_close_failed_proposal() {
         )
         .unwrap();
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
-    assert_eq!(failed.proposal.last_updated, app.block_info().time);
 
     // With disabled feature
     // Disable feature first
@@ -562,7 +559,6 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         )
         .unwrap();
     assert_eq!(failed.proposal.status, Status::ExecutionFailed);
-    assert_eq!(failed.proposal.last_updated, app.block_info().time);
 
     // Check that our deposit has been refunded.
     let balance: cw20::BalanceResponse = app

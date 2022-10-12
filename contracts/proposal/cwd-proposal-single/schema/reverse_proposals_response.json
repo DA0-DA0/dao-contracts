@@ -549,10 +549,8 @@
       "type": "object",
       "required": [
         "allow_revoting",
-        "created",
         "description",
         "expiration",
-        "last_updated",
         "msgs",
         "proposer",
         "start_height",
@@ -566,14 +564,6 @@
         "allow_revoting": {
           "type": "boolean"
         },
-        "created": {
-          "description": "The timestamp at which this proposal was created.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Timestamp"
-            }
-          ]
-        },
         "description": {
           "type": "string"
         },
@@ -582,14 +572,6 @@
           "allOf": [
             {
               "$ref": "#/definitions/Expiration"
-            }
-          ]
-        },
-        "last_updated": {
-          "description": "The timestamp at which this proposal's status last changed. Note that in the scenario when a proposal expires and passes upon expiration, this field will not be updated because it can only update upon actions on the contract.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Timestamp"
             }
           ]
         },
