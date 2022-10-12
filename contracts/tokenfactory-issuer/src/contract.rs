@@ -3,7 +3,7 @@ use std::convert::TryInto;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, SubMsg,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
 };
 use cosmwasm_std::{CosmosMsg, Reply};
 use cw2::set_contract_version;
@@ -80,7 +80,7 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>, ContractError> {
-    //
+    // after instantiate contract
     if msg.id == CREATE_DENOM_REPLY_ID {
         let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
 
