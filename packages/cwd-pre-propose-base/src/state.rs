@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
-use serde::{Deserialize, Serialize};
 
 use cwd_voting::deposit::CheckedDepositInfo;
 
-#[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+#[cw_serde]
 pub struct Config {
     /// Information about the deposit required to create a
     /// proposal. If `None`, no deposit is required.

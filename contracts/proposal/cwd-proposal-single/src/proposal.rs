@@ -1,14 +1,13 @@
 use crate::query::ProposalResponse;
 use crate::state::PROPOSAL_COUNT;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, CosmosMsg, Decimal, Empty, StdResult, Storage, Uint128};
 use cw_utils::Expiration;
 use cwd_voting::status::Status;
 use cwd_voting::threshold::{PercentageThreshold, Threshold};
 use cwd_voting::voting::{does_vote_count_fail, does_vote_count_pass, Votes};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct SingleChoiceProposal {
     pub title: String,
     pub description: String,

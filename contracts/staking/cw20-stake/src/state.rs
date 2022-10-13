@@ -1,13 +1,11 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Claims;
 use cw_controllers::Hooks;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct Config {
     pub owner: Option<Addr>,
     pub manager: Option<Addr>,

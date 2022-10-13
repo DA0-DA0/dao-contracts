@@ -1527,7 +1527,7 @@ fn test_migrate_from_v1() {
         threshold: voting_v1::Threshold::AbsolutePercentage {
             percentage: voting_v1::PercentageThreshold::Majority {},
         },
-        max_voting_period: cw_utils::Duration::Height(6),
+        max_voting_period: cw_utils_v1::Duration::Height(6),
         min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
@@ -1621,7 +1621,7 @@ fn test_migrate_from_v1() {
     // Stake all the initial balances.
     for Cw20Coin { address, amount } in initial_balances {
         app.execute_contract(
-            Addr::unchecked(&address),
+            Addr::unchecked(address),
             token_contract.clone(),
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking_contract.to_string(),

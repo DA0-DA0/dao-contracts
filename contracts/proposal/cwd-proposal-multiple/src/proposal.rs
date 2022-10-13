@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, StdError, StdResult, Uint128};
 use cw_utils::Expiration;
 use cwd_voting::{
@@ -8,12 +9,10 @@ use cwd_voting::{
     status::Status,
     voting::does_vote_count_pass,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::query::ProposalResponse;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct MultipleChoiceProposal {
     pub title: String,
     pub description: String,

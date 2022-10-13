@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -28,7 +29,7 @@ pub use cw20_base::contract::{
     execute_upload_logo, query_balance, query_download_logo, query_marketing_info, query_minter,
     query_token_info,
 };
-pub use cw20_base::enumerable::{query_all_accounts, query_all_allowances};
+pub use cw20_base::enumerable::{query_all_accounts, query_owner_allowances};
 use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
 
@@ -294,7 +295,7 @@ pub fn execute_unstake(
                 .add_submessages(hook_msgs)
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
-                .add_attribute("claim_duration", format!("{}", duration)))
+                .add_attribute("claim_duration", format!("{duration}")))
         }
     }
 }
@@ -495,12 +496,10 @@ pub fn query_list_stakers(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    use serde::{Deserialize, Serialize};
-
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    #[derive(Serialize, Deserialize, Clone)]
+    #[cw_serde]
     struct BetaConfig {
         pub admin: Addr,
         pub token_address: Addr,

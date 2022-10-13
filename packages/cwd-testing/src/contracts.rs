@@ -42,12 +42,12 @@ pub fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
 
 pub fn v1_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cwd_proposal_single_v1::contract::execute,
-        cwd_proposal_single_v1::contract::instantiate,
-        cwd_proposal_single_v1::contract::query,
+        cw_proposal_single_v1::contract::execute,
+        cw_proposal_single_v1::contract::instantiate,
+        cw_proposal_single_v1::contract::query,
     )
-    .with_reply(cwd_proposal_single_v1::contract::reply)
-    .with_migrate(cwd_proposal_single_v1::contract::migrate);
+    .with_reply(cw_proposal_single_v1::contract::reply)
+    .with_migrate(cw_proposal_single_v1::contract::migrate);
     Box::new(contract)
 }
 

@@ -1,3 +1,4 @@
+use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, WasmMsg,
 };
@@ -25,6 +26,7 @@ impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
     PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
 where
     ProposalMessage: Serialize,
+    QueryExt: JsonSchema,
 {
     pub fn instantiate(
         &self,
@@ -111,7 +113,7 @@ where
                     proposer,
                 })
             }
-            QueryMsg::Extension { .. } => Ok(Binary::default()),
+            QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
         }
     }
 

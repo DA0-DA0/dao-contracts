@@ -1,15 +1,13 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, BankMsg, Coin, CosmosMsg, Deps, StdError, Uint128, WasmMsg};
 use cw_storage_plus::Item;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     msg::{Counterparty, TokenInfo},
     ContractError,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum CheckedTokenInfo {
     Native {
         denom: String,
@@ -21,7 +19,7 @@ pub enum CheckedTokenInfo {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct CheckedCounterparty {
     pub address: Addr,
     pub promise: CheckedTokenInfo,

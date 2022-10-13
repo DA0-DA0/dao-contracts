@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -10,14 +11,11 @@ use cwd_pre_propose_base::{
     msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
     state::PreProposeContract,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-#[derive(Serialize, JsonSchema, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ProposeMessage {
     Propose {
         title: String,
@@ -33,8 +31,7 @@ pub type QueryMsg = QueryBase<Empty>;
 /// Internal version of the propose message that includes the
 /// `proposer` field. The module will fill this in based on the sender
 /// of the external message.
-#[derive(Serialize, JsonSchema, Deserialize, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 enum ProposeMessageInternal {
     Propose {
         title: String,

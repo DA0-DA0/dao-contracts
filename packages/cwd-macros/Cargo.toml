@@ -10,11 +10,12 @@ description = "A package macros for deriving DAO module interfaces."
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0", features = ["derive"] }
-quote = "1.0"
-proc-macro2 = "1.0"
+cosmwasm-schema = { workspace = true }
+syn = { workspace = true }
+quote = { workspace = true }
+proc-macro2 = { workspace = true }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0" }
-schemars = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"] }
+cwd-interface = { workspace = true }
+cosmwasm-std = { workspace = true }
+

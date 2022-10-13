@@ -1,6 +1,7 @@
 //! Helper methods for migrating from v1 to v2 state. These will need
 //! to be updated when we bump our CosmWasm version for v2.
 
+use cw_utils::{Duration, Expiration};
 use cwd_voting::{
     status::Status,
     threshold::{PercentageThreshold, Threshold},
@@ -27,6 +28,21 @@ pub fn v1_threshold_to_v2(v1: voting_v1::Threshold) -> Threshold {
     }
 }
 
+pub fn v1_duration_to_v2(v1: cw_utils_v1::Duration) -> Duration {
+    match v1 {
+        cw_utils_v1::Duration::Height(height) => Duration::Height(height),
+        cw_utils_v1::Duration::Time(time) => Duration::Time(time),
+    }
+}
+
+pub fn v1_expiration_to_v2(v1: cw_utils_v1::Expiration) -> Expiration {
+    match v1 {
+        cw_utils_v1::Expiration::AtHeight(height) => Expiration::AtHeight(height),
+        cw_utils_v1::Expiration::AtTime(time) => Expiration::AtTime(time),
+        cw_utils_v1::Expiration::Never {} => Expiration::Never {},
+    }
+}
+
 pub fn v1_votes_to_v2(v1: voting_v1::Votes) -> Votes {
     Votes {
         yes: v1.yes,
@@ -47,7 +63,7 @@ pub fn v1_status_to_v2(v1: voting_v1::Status) -> Status {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::{Decimal, Uint128};
+    use cosmwasm_std::{Decimal, Timestamp, Uint128};
 
     use super::*;
 
@@ -63,6 +79,36 @@ mod tests {
             )),
             PercentageThreshold::Percent(Decimal::percent(80))
         )
+    }
+
+    #[test]
+    fn test_duration_conversion() {
+        assert_eq!(
+            v1_duration_to_v2(cw_utils_v1::Duration::Height(100)),
+            Duration::Height(100)
+        );
+        assert_eq!(
+            v1_duration_to_v2(cw_utils_v1::Duration::Time(100)),
+            Duration::Time(100)
+        );
+    }
+
+    #[test]
+    fn test_expiration_conversion() {
+        assert_eq!(
+            v1_expiration_to_v2(cw_utils_v1::Expiration::AtHeight(100)),
+            Expiration::AtHeight(100)
+        );
+        assert_eq!(
+            v1_expiration_to_v2(cw_utils_v1::Expiration::AtTime(Timestamp::from_seconds(
+                100
+            ))),
+            Expiration::AtTime(Timestamp::from_seconds(100))
+        );
+        assert_eq!(
+            v1_expiration_to_v2(cw_utils_v1::Expiration::Never {}),
+            Expiration::Never {}
+        );
     }
 
     #[test]

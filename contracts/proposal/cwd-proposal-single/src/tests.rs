@@ -8,20 +8,18 @@ use cosmwasm_std::{
 use cw20::Cw20Coin;
 use cwd_voting_cw20_staked::msg::ActiveThreshold;
 
-use cwd_core::state::ProposalModule;
-use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 use cw_pre_propose_base_proposal_single as cppbps;
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
 use cw_utils::Expiration;
+use cwd_core::state::ProposalModule;
+use cwd_interface::{Admin, ModuleInstantiateInfo};
 
 use cwd_hooks::HooksResponse;
 
 use cw_denom::{CheckedDenom, UncheckedDenom};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-use testing::{ShouldExecute, TestSingleChoiceVote};
+
 use cwd_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
@@ -29,6 +27,7 @@ use cwd_voting::{
     threshold::{PercentageThreshold, Threshold},
     voting::{Vote, Votes},
 };
+use testing::{ShouldExecute, TestSingleChoiceVote};
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -41,7 +40,7 @@ use crate::{
 
 const CREATOR_ADDR: &str = "creator";
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 struct V1Proposal {
     pub title: String,
     pub description: String,

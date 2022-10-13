@@ -28,3 +28,58 @@ incremental = false
 # Please do not disable these. Doing so will cause overflow checks in
 # all workspace members to stop working. Overflows should be errors.
 overflow-checks = true
+
+[workspace.dependencies]
+cosmwasm-std = { version = "1.1", features = ["ibc3"] }
+cosmwasm-storage = { version = "1.1" }
+cosmwasm-schema = { version = "1.1" }
+cw-utils = "0.16"
+thiserror = { version = "1.0.30" }
+cw-storage-plus = "0.16"
+cw2 = "0.16"
+cw20 = "0.16"
+cw721 = "0.16"
+cw20-base = "0.16"
+cw-core-v1 = { package = "cw-core", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw-multi-test = "0.16"
+cw721-base = "0.16"
+cw-controllers = "0.16"
+anyhow = { version = "1.0.51"}
+cw4-group = "0.16"
+rand = "0.8"
+cw4 = "0.16"
+cw3 = "0.16"
+indexmap = "1.9"
+serde = "1.0"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0", features = ["derive"] }
+
+cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
+cwd-core = { path = "./contracts/cwd-core" }
+
+cwd-proposal-single = { path = "./contracts/proposal/cwd-proposal-single" }
+cwd-proposal-multiple = { path = "./contracts/proposal/cwd-proposal-multiple" }
+cwd-pre-propose-single = { path = "./contracts/pre-propose/cwd-pre-propose-single" }
+cwd-pre-propose-multiple = { path = "./contracts/pre-propose/cwd-pre-propose-multiple" }
+cw20-stake = { path = "./contracts/staking/cw20-stake" }
+cwd-voting-cw4 = { path = "./contracts/voting/cwd-voting-cw4" }
+cwd-voting-cw20-staked = { path = "./contracts/voting/cwd-voting-cw20-staked" }
+cwd-voting-native-staked = { path = "./contracts/voting/cwd-voting-native-staked" }
+cwd-voting-cw721-staked = { path = "./contracts/voting/cwd-voting-cw721-staked" }
+cwd-voting-cw20-balance = { path = "./test-contracts/cwd-voting-cw20-balance"}
+cw-denom = { path = "./packages/cw-denom" }
+cwd-hooks = { path = "./packages/cwd-hooks" }
+cw721-controllers = { path = "./packages/cw721-controllers" }
+cwd-macros = { path = "./packages/cwd-macros" }
+cwd-pre-propose-base = { path = "./packages/cwd-pre-propose-base" }
+cwd-proposal-hooks = { path = "./packages/cwd-proposal-hooks" }
+cwd-proposal-sudo = { path = "./test-contracts/cwd-proposal-sudo" }
+cwd-testing = { path = "./packages/cwd-testing" }
+cwd-vote-hooks = { path = "./packages/cwd-vote-hooks" }
+cw-paginate = { path = "./packages/cw-paginate" }
+cwd-interface = { path = "./packages/cwd-interface" }
+cwd-voting = { path = "./packages/cwd-voting" }
+cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw-utils-v1 = {package = "cw-utils", version = "0.13"}

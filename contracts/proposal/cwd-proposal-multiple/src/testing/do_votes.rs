@@ -712,7 +712,7 @@ where
             .into_iter()
             .enumerate()
             .map(|(idx, weight)| TestMultipleChoiceVote {
-                voter: format!("zero_{}", idx),
+                voter: format!("zero_{idx}"),
                 position: MultipleChoiceVote { option_id: 0 },
                 weight: Uint128::new(weight as u128),
                 should_execute: ShouldExecute::Meh,
@@ -721,7 +721,7 @@ where
             .into_iter()
             .enumerate()
             .map(|(idx, weight)| TestMultipleChoiceVote {
-                voter: format!("one_{}", idx),
+                voter: format!("one_{idx}"),
                 position: MultipleChoiceVote { option_id: 1 },
                 weight: Uint128::new(weight as u128),
                 should_execute: ShouldExecute::Meh,
@@ -731,7 +731,7 @@ where
             .into_iter()
             .enumerate()
             .map(|(idx, weight)| TestMultipleChoiceVote {
-                voter: format!("none_{}", idx),
+                voter: format!("none_{idx}"),
                 position: MultipleChoiceVote { option_id: 2 },
                 weight: Uint128::new(weight as u128),
                 should_execute: ShouldExecute::Meh,

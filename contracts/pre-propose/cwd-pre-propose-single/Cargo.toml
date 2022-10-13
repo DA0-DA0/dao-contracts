@@ -16,25 +16,23 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = "1.0.0"
-cw2 = "0.13.2"
-serde = { version = "1.0.137", default-features = false, features = ["derive"] }
-cwd-pre-propose-base = { version = "*", path = "../../../packages/cwd-pre-propose-base" }
-schemars = "0.8.8"
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw2 = { workspace = true }
+cwd-pre-propose-base = { workspace = true }
 
 [dev-dependencies]
-cosmwasm-schema = "1.0.0"
-cw-multi-test = "0.13.2"
-cw-utils = "0.13.2"
-cw4-group = "0.13.2"
-cw20 = "0.13.2"
-cw20-base = "0.13.2"
-cwd-voting-cw20-staked = { path = "../../voting/cwd-voting-cw20-staked" }
-cwd-proposal-single = { path = "../../proposal/cwd-proposal-single" }
-cwd-core = { path = "../../cwd-core" }
-cwd-voting-cw4 = { path = "../../voting/cwd-voting-cw4" }
-cwd-voting = { path = "../../../packages/cwd-voting" }
-cw-denom = { path = "../../../packages/cw-denom" }
-cwd-interface = { path = "../../../packages/cwd-interface" }
-cwd-testing = { path = "../../../packages/cwd-testing" }
-cwd-proposal-hooks = { path = "../../../packages/cwd-proposal-hooks" }
+cw-multi-test = { workspace = true }
+cw-utils = { workspace = true }
+cw4-group = { workspace = true }
+cw20 = { workspace = true }
+cw20-base = { workspace = true }
+cwd-voting-cw20-staked = { workspace = true }
+cwd-proposal-single = { workspace = true }
+cwd-core = { workspace = true }
+cwd-voting-cw4 = { workspace = true }
+cwd-voting = { workspace = true }
+cw-denom = { workspace = true }
+cwd-interface = { workspace = true }
+cwd-testing = { workspace = true }
+cwd-proposal-hooks = { workspace = true }

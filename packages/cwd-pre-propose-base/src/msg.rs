@@ -1,14 +1,14 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
+use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
+use cosmwasm_std::{Addr, Binary};
 use cw_denom::UncheckedDenom;
 use cwd_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     status::Status,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+use crate::state::Config;
+
+#[cw_serde]
 pub struct InstantiateMsg<InstantiateExt> {
     /// Information about the deposit requirements for this
     /// module. None if no deposit.
@@ -22,8 +22,7 @@ pub struct InstantiateMsg<InstantiateExt> {
     pub extension: InstantiateExt,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// Creates a new proposal in the pre-propose module. MSG will be
     /// serialized and used as the proposal creation message.
@@ -91,26 +90,34 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg<QueryExt> {
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryMsg<QueryExt>
+where
+    QueryExt: JsonSchema,
+{
     /// Gets the proposal module that this pre propose module is
     /// associated with. Returns `Addr`.
+    #[returns(Addr)]
     ProposalModule {},
     /// Gets the DAO (cw-dao-core) module this contract is associated
     /// with. Returns `Addr`.
+    #[returns(Addr)]
     Dao {},
-    /// Gets the module's configuration. Returns `state::Config`.
+    /// Gets the module's configuration.
+    #[returns(Config)]
     Config {},
     /// Gets the deposit info for the proposal identified by
-    /// PROPOSAL_ID. Returns `DepositInfoResponse`.
+    /// PROPOSAL_ID.
+    #[returns(DepositInfoResponse)]
     DepositInfo { proposal_id: u64 },
     /// Extension for queries. The default implementation will do
     /// nothing if queried for will return `Binary::default()`.
-    Extension { msg: QueryExt },
+    #[returns(Binary)]
+    QueryExtension { msg: QueryExt },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct DepositInfoResponse {
     /// The deposit that has been paid for the specified proposal.
     pub deposit_info: Option<CheckedDepositInfo>,

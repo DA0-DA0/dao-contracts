@@ -17,12 +17,12 @@ mod integration_tests;
 
 use std::fmt::{self};
 
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, BankMsg, Coin, CosmosMsg, CustomQuery, Deps, QuerierWrapper, StdError,
     StdResult, Uint128, WasmMsg,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -46,8 +46,7 @@ pub enum DenomError {
 /// A denom that has been checked to point to a valid asset. This enum
 /// should never be constructed literally and should always be built
 /// by calling `into_checked` on an `UncheckedDenom` instance.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum CheckedDenom {
     /// A native (bank module) asset.
     Native(String),
@@ -57,8 +56,7 @@ pub enum CheckedDenom {
 
 /// A denom that has not been checked to confirm it points to a valid
 /// asset.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum UncheckedDenom {
     /// A native (bank module) asset.
     Native(String),
@@ -169,8 +167,8 @@ pub fn validate_native_denom(denom: String) -> Result<CheckedDenom, DenomError> 
 impl fmt::Display for CheckedDenom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Native(inner) => write!(f, "{}", inner),
-            Self::Cw20(inner) => write!(f, "{}", inner),
+            Self::Native(inner) => write!(f, "{inner}"),
+            Self::Cw20(inner) => write!(f, "{inner}"),
         }
     }
 }
@@ -243,7 +241,7 @@ mod tests {
             err,
             DenomError::InvalidCw20 {
                 err: StdError::GenericErr {
-                    msg: format!("Querier system error: No such contract: {}", CW20_ADDR)
+                    msg: format!("Querier system error: No such contract: {CW20_ADDR}",)
                 }
             }
         )

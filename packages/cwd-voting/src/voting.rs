@@ -1,8 +1,7 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128, Uint256};
 use cw_utils::Duration;
 use cwd_interface::voting;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::threshold::PercentageThreshold;
 
@@ -10,15 +9,15 @@ use crate::threshold::PercentageThreshold;
 // up properly.
 const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct Votes {
     pub yes: Uint128,
     pub no: Uint128,
     pub abstain: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "lowercase")]
+#[cw_serde]
+#[derive(Copy)]
 #[repr(u8)]
 pub enum Vote {
     /// Marks support for the proposal.
@@ -30,7 +29,7 @@ pub enum Vote {
     Abstain,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct MultipleChoiceVote {
     // A vote indicates which option the user has selected.
     pub option_id: u32,
@@ -42,7 +41,7 @@ impl std::fmt::Display for MultipleChoiceVote {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct MultipleChoiceVotes {
     // Vote counts is a vector of integers indicating the vote weight for each option
     // (the index corresponds to the option).
@@ -502,7 +501,7 @@ mod test {
     #[test]
     fn test_display_multiple_choice_vote() {
         let vote = MultipleChoiceVote { option_id: 0 };
-        assert_eq!("0", format!("{}", vote))
+        assert_eq!("0", format!("{vote}"))
     }
 
     #[test]

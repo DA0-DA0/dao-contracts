@@ -1,9 +1,8 @@
 use crate::state::Config;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,
     pub staking_addr: String,
@@ -11,8 +10,7 @@ pub struct InstantiateMsg {
     pub reward_token: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     UpdateConfig {
         owner: String,
@@ -24,18 +22,19 @@ pub enum ExecuteMsg {
     Withdraw {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(InfoResponse)]
     Info {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InfoResponse {
     pub config: Config,
     pub last_payment_block: u64,
     pub balance: Uint128,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
 pub struct MigrateMsg {}

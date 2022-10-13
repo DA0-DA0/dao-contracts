@@ -1,17 +1,14 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
-
 use cwd_hooks::Hooks;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use cwd_voting::{pre_propose::ProposalCreationPolicy, threshold::Threshold, voting::Vote};
 
 use crate::proposal::SingleChoiceProposal;
 
 /// A vote cast for a proposal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Ballot {
     /// The amount of voting power behind the vote.
     pub power: Uint128,
@@ -19,7 +16,7 @@ pub struct Ballot {
     pub vote: Vote,
 }
 /// The governance module's configuration.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     /// The threshold a proposal must reach to complete.
     pub threshold: Threshold,

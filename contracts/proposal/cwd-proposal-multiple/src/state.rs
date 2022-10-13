@@ -1,4 +1,5 @@
 use crate::proposal::MultipleChoiceProposal;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use cw_utils::Duration;
@@ -7,11 +8,9 @@ use cwd_voting::{
     multiple_choice::{MultipleChoiceVote, VotingStrategy},
     pre_propose::ProposalCreationPolicy,
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-/// The governance module's configuration.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+/// The proposal module's configuration.
+#[cw_serde]
 pub struct Config {
     /// The threshold a proposal must reach to complete.
     pub voting_strategy: VotingStrategy,
@@ -48,7 +47,7 @@ pub struct Config {
 
 // we cast a ballot with our chosen vote and a given weight
 // stored under the key that voted
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct Ballot {
     /// The amount of voting power behind the vote.
     pub power: Uint128,

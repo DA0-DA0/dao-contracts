@@ -186,21 +186,23 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             app.execute_contract(
                 Addr::unchecked("ekez"),
                 nft_address.clone(),
-                &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
-                    token_id: format!("{}_{}", address, i),
-                    owner: address.clone(),
-                    token_uri: None,
-                    extension: None,
-                }),
+                &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(
+                    cw721_base::msg::MintMsg::<Option<Empty>> {
+                        token_id: format!("{address}_{i}"),
+                        owner: address.clone(),
+                        token_uri: None,
+                        extension: None,
+                    },
+                ),
                 &[],
             )
             .unwrap();
             app.execute_contract(
                 Addr::unchecked(address.clone()),
                 nft_address.clone(),
-                &cw721_base::msg::ExecuteMsg::SendNft::<Option<Empty>> {
+                &cw721_base::msg::ExecuteMsg::SendNft::<Option<Empty>, Empty> {
                     contract: staking_addr.to_string(),
-                    token_id: format!("{}_{}", address, i),
+                    token_id: format!("{address}_{i}"),
                     msg: to_binary("").unwrap(),
                 },
                 &[],
@@ -428,7 +430,7 @@ pub(crate) fn instantiate_with_staked_balances_governance(
     // Stake all the initial balances.
     for Cw20Coin { address, amount } in initial_balances {
         app.execute_contract(
-            Addr::unchecked(&address),
+            Addr::unchecked(address),
             token_contract.clone(),
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking_contract.to_string(),

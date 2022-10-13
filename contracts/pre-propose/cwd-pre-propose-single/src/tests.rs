@@ -56,7 +56,7 @@ fn get_default_proposal_module_instantiate(
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
-        max_voting_period: Duration::Time(86400),
+        max_voting_period: cw_utils::Duration::Time(86400),
         min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,
@@ -525,7 +525,7 @@ fn test_cw20_permutation(
     };
 
     let proposer_balance = get_balance_cw20(&app, &cw20_address, "ekez");
-    let dao_balance = get_balance_cw20(&app, &cw20_address, &core_addr);
+    let dao_balance = get_balance_cw20(&app, &cw20_address, core_addr);
     assert_eq!(proposer_expected, proposer_balance.u128());
     assert_eq!(dao_expected, dao_balance.u128())
 }

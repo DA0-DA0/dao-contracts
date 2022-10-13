@@ -7,9 +7,8 @@ description = "A package for managing cw721 claims."
 repository = "https://github.com/DA0-DA0/dao-contracts"
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta6" }
-cw-utils = { version = "0.13.1" }
-cw-storage-plus = { version = "0.13.1" }
-schemars = "0.8.1"
-serde = { version = "1.0.103", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.21" }
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-utils = { workspace = true }
+cw-storage-plus = { workspace = true }
+thiserror = { workspace = true }
