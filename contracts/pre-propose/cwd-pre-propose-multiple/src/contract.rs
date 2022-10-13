@@ -12,7 +12,7 @@ use cwd_voting::multiple_choice::MultipleChoiceOptions;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-pre-propose-multiple";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-multiple";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Serialize, JsonSchema, Deserialize, Debug, Clone)]

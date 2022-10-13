@@ -23,8 +23,7 @@ use crate::state::{
     SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
-// version info for migration info
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-core";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-core";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;

@@ -20,7 +20,7 @@ use crate::state::{
     STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-staked-balance-voting";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-voting-cw20-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_TOKEN_REPLY_ID: u64 = 0;

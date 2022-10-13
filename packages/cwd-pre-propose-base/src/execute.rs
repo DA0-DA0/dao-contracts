@@ -18,7 +18,7 @@ use crate::{
     state::{Config, PreProposeContract},
 };
 
-const CONTRACT_NAME: &str = "crates.io::cw-dao-pre-propose-base";
+const CONTRACT_NAME: &str = "crates.io::cwd-pre-propose-base";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
