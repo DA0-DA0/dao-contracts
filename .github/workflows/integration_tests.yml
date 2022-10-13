@@ -79,11 +79,11 @@ jobs:
         uses: dawidd6/action-download-artifact@v2
         with:
           branch: main
-          workflow: integration-tests.yml
+          workflow: integration_tests.yml
           name: dao-dao-gas-report-refs-heads-main
 
       - name: Post gas diff to PR
-        if: ${{ github.ref != 'refs/heads/main' && steps.download_gas.outputs.error_message == ''}}
+        if: ${{ github.ref != 'refs/heads/main' && steps.download_gas.outputs.found_artifact == 'true' }}
         uses: de-husk/cosm-orc-gas-diff-action@v0.6.2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
