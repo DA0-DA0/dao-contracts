@@ -1,12 +1,10 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty, WasmMsg};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 pub mod voting;
 
 /// The cw-core interface.
-#[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Causes the core module to execute all of MSGS in order. Only
     /// callabale by a proposal module.1
@@ -15,8 +13,7 @@ pub enum ExecuteMsg {
 
 /// Information about the CosmWasm level admin of a contract. Used in
 /// conjunction with `ModuleInstantiateInfo` to instantiate modules.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Admin {
     /// Set the admin to a specified address.
     Address { addr: String },
@@ -25,7 +22,7 @@ pub enum Admin {
 }
 
 /// Information needed to instantiate a module.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct ModuleInstantiateInfo {
     /// Code ID of the contract to be instantiated.
     pub code_id: u64,

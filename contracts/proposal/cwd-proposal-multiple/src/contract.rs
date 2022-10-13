@@ -8,7 +8,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
-
 use cwd_hooks::Hooks;
 use cwd_interface::voting::IsActiveResponse;
 use cwd_pre_propose_multiple::contract::ExecuteMsg as PreProposeMsg;

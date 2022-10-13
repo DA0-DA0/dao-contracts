@@ -1,13 +1,12 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw721_controllers::NftClaims;
 use cw_controllers::Hooks;
 use cw_storage_plus::{Item, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
 use indexmap::set::IndexSet;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     pub owner: Option<Addr>,
     pub manager: Option<Addr>,

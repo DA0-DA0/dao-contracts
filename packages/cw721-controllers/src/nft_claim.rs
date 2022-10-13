@@ -1,15 +1,14 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, CustomQuery, Deps, StdResult, Storage};
 use cw_storage_plus::Map;
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct NftClaimsResponse {
     pub nft_claims: Vec<NftClaim>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct NftClaim {
     pub token_id: String,
     pub release_at: Expiration,

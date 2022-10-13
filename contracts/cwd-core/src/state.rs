@@ -1,12 +1,11 @@
+use cosmwasm_schema::cw_serde;
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Empty};
 use cw_storage_plus::{Item, Map};
 
 /// Top level config type for core module.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Config {
     /// The name of the contract.
     pub name: String,
@@ -25,7 +24,7 @@ pub struct Config {
     pub dao_uri: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 /// Top level type describing a proposal module.
 pub struct ProposalModule {
     /// The address of the proposal module.
@@ -37,7 +36,7 @@ pub struct ProposalModule {
     pub status: ProposalModuleStatus,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 /// The status of a proposal module.
 pub enum ProposalModuleStatus {
     Enabled,

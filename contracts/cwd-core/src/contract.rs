@@ -12,7 +12,7 @@ use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
 use cwd_interface::{voting, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{DaoURIResponse, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::{
     AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
     PauseInfoResponse, SubDao,
@@ -822,7 +822,9 @@ pub fn query_list_sub_daos(
 
 pub fn query_dao_uri(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
-    to_binary(&config.dao_uri)
+    to_binary(&DaoURIResponse {
+        dao_uri: config.dao_uri,
+    })
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -1,30 +1,30 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cwd_proposal_hooks::ProposalHookMsg;
 use cwd_vote_hooks::VoteHookMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub should_error: bool, // Debug flag to test when hooks fail over
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     ProposalHook(ProposalHookMsg),
     VoteHook(VoteHookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(u64)]
     VoteCounter {},
+    #[returns(u64)]
     ProposalCounter {},
+    #[returns(u64)]
     StatusChangedCounter {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct CountResponse {
     pub count: u64,
 }

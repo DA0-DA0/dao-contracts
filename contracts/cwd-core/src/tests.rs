@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_slice,
     testing::{mock_dependencies, mock_env},
@@ -7,12 +8,10 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
 use cwd_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiateInfo};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{DaoURIResponse, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
         PauseInfoResponse, SubDao,
@@ -318,11 +317,11 @@ fn test_update_config() {
 
     assert_eq!(expected_config, config);
 
-    let dao_uri: Option<String> = app
+    let dao_uri: DaoURIResponse = app
         .wrap()
         .query_wasm_smart(gov_addr, &QueryMsg::DaoURI {})
         .unwrap();
-    assert_eq!(dao_uri, expected_config.dao_uri);
+    assert_eq!(dao_uri.dao_uri, expected_config.dao_uri);
 }
 
 fn test_swap_governance(swaps: Vec<(u32, u32)>) {
@@ -2601,7 +2600,7 @@ fn test_migrate_mock() {
     deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
 
     // Write to storage in old config format
-    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+    #[cw_serde]
     struct V1Config {
         pub name: String,
         pub description: String,

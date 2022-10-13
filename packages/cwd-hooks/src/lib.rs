@@ -1,11 +1,10 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, CustomQuery, Deps, StdError, StdResult, Storage, SubMsg};
 use cw_storage_plus::Item;
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct HooksResponse {
     pub hooks: Vec<String>,
 }

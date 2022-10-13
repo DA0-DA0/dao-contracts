@@ -16,11 +16,11 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = "1.0.0"
-cw-storage-plus = "0.13.2"
-cw2 = "0.13.2"
-schemars = "0.8.8"
+cosmwasm-std = "1.1"
+cosmwasm-schema = "1.1"
+cw-storage-plus = "0.15"
 serde = { version = "1.0.137", default-features = false, features = ["derive"] }
+cw2 = "0.15"
 thiserror = { version = "1.0.31" }
 cwd-voting = { path = "../cwd-voting" }
 cwd-proposal-hooks = { path = "../cwd-proposal-hooks" }
@@ -28,5 +28,4 @@ cwd-interface = { path = "../cwd-interface" }
 cw-denom = { path = "../cw-denom" }
 
 [dev-dependencies]
-cosmwasm-schema = "1.0.0"
 cw-multi-test = "0.13.2"

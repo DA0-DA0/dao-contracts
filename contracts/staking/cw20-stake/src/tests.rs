@@ -8,6 +8,7 @@ use crate::msg::{
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{from_slice, to_binary, Addr, Empty, MessageInfo, Storage, Uint128};
 use cw20::Cw20Coin;
@@ -19,7 +20,6 @@ use anyhow::Result as AnyResult;
 
 use cw_controllers::{Claim, ClaimsResponse};
 use cw_utils::Expiration::AtHeight;
-use serde::{Deserialize, Serialize};
 
 const ADDR1: &str = "addr0001";
 const ADDR2: &str = "addr0002";
@@ -399,7 +399,7 @@ fn test_migrate_from_beta() {
 
     // Write to storage in old config format
     let key = b"config";
-    #[derive(Serialize, Deserialize, Clone)]
+    #[cw_serde]
     struct BetaConfig {
         pub admin: Addr,
         pub token_address: Addr,

@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
@@ -495,12 +496,10 @@ pub fn query_list_stakers(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    use serde::{Deserialize, Serialize};
-
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    #[derive(Serialize, Deserialize, Clone)]
+    #[cw_serde]
     struct BetaConfig {
         pub admin: Addr,
         pub token_address: Addr,

@@ -8,9 +8,9 @@ description = "A package for validation and handling of cw20 and native Cosmos S
 
 
 [dependencies]
-cosmwasm-std = "1.0"
-schemars = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"] }
+cosmwasm-std = "1.1"
+cosmwasm-schema = "1.1"
+
 thiserror = { version = "1.0" }
 cw20 = "0.13"
 

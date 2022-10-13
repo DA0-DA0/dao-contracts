@@ -1,196 +1,177 @@
-import dotenv from "dotenv";
-import fs from "fs";
-import path from "path";
-import { readSchemas, generate } from "@cosmwasm/ts-codegen";
+import codegen from '@cosmwasm/ts-codegen';
 
 enum OutputType {
-  contracts = "contracts",
-  packages = "packages",
-  proposal = "proposal",
-  staking = "staking",
-  voting = "voting",
-  "pre-propose" = "pre-propose",
-  external = "external",
+    contracts = "contracts",
+    packages = "packages",
+    proposal = "proposal",
+    staking = "staking",
+    voting = "voting",
+    "pre-propose" = "pre-propose",
+    external = "external",
 }
 
-export type CompilationSpec = {
-  contractName: string;
-  schemaDir: string;
-  outputPath: string;
-  outputType: OutputType;
-};
-
-dotenv.config();
-
-const CONTRACTS_OUTPUT_DIR = ".";
-
-const CODEGEN_LOG_LEVEL = (() => {
-  const logLevel = process.env.CODEGEN_LOG_LEVEL || "";
-  if (logLevel === "verbose") {
-    return 2;
-  }
-  if (logLevel === "debug") {
-    return 3;
-  }
-  if (logLevel === "silent") {
-    return -1;
-  }
-  return 1;
-})();
-
-enum LogLevels {
-  Silent = -1,
-  Verbose = 2,
-  Debug = 3,
-  Normal = 1,
-}
-
-function log(msg: string, level = LogLevels.Normal) {
-  if (CODEGEN_LOG_LEVEL < level) {
-    return;
-  }
-  console.log(msg);
-}
-
-const DEFAULT_CONFIG = {
-  schemaRoots: [
-    {
-      name: OutputType.contracts,
-      paths: [`../${OutputType.contracts}`],
-      outputName: OutputType.contracts,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-    {
-      name: OutputType.contracts,
-      paths: [`../contracts/${OutputType.external}`],
-      outputName: OutputType.contracts,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-    {
-      name: OutputType.contracts,
-      paths: [`../contracts/${OutputType["pre-propose"]}`],
-      outputName: OutputType.contracts,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-    {
-      name: OutputType.contracts,
-      paths: [`../contracts/${OutputType.proposal}`],
-      outputName: OutputType.contracts,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-    {
-      name: OutputType.contracts,
-      paths: [`../contracts/${OutputType.staking}`],
-      outputName: OutputType.contracts,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-    {
-      name: OutputType.contracts,
-      paths: [`../contracts/${OutputType.voting}`],
-      outputName: OutputType.contracts,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-    {
-      name: OutputType.packages,
-      paths: [`../${OutputType.packages}`],
-      outputName: OutputType.packages,
-      outputDir: CONTRACTS_OUTPUT_DIR,
-    },
-  ],
-};
-
-async function generateTs(spec: CompilationSpec): Promise<void> {
-  const out = `${spec.outputPath}/${spec.outputType}/${spec.contractName}`;
-  const name = spec.contractName;
-
-  const schemas = readSchemas({
-    schemaDir: spec.schemaDir,
-    argv: { packed: false },
-  });
-  return await generate(name, schemas, out);
-}
-
-function getSchemaDirectories(
-  rootDir: string,
-  contracts?: string
-): Promise<string[][]> {
-  return new Promise((resolve, reject) => {
-    const contractList = contracts?.split(",").map((dir) => dir.trim()) ?? [];
-    const directories: string[][] = [];
-    if (contractList.length) {
-      // get the schema directory for each contract
-      for (const contractName of contractList) {
-        const schemaDir = path.join(rootDir, contractName, "schema");
-        directories.push([schemaDir, contractName]);
-      }
-      resolve(directories);
-    } else {
-      // get all the schema directories in all the contract directories
-      fs.readdir(rootDir, (err, dirEntries) => {
-        if (err) {
-          console.error(err);
-          return;
-        }
-        if (!dirEntries) {
-          console.warn(`no entries found in ${rootDir}`);
-          resolve([]);
-          return;
-        }
-        dirEntries.forEach((entry) => {
-          try {
-            const schemaDir = path.resolve(rootDir, entry, "schema");
-            if (
-              fs.existsSync(schemaDir) &&
-              fs.lstatSync(schemaDir).isDirectory()
-            ) {
-              directories.push([schemaDir.replaceAll("\\", "/"), entry]);
-            } else {
-              log(`${schemaDir} is not a directory`, LogLevels.Verbose);
-            }
-          } catch (e) {
-            console.warn(e);
-          }
-        });
-        resolve(directories);
-      });
-    }
-  });
-}
-
-async function main() {
-  let config = {
-    ...DEFAULT_CONFIG,
-  };
-
-  const compilationSpecs: CompilationSpec[] = [];
-  log("Calculating generation specs...");
-  for (const root of config.schemaRoots) {
-    const { name, paths, outputName, outputDir } = root;
-    for (const path of paths) {
-      const schemaDirectories = await getSchemaDirectories(path);
-      for (const [directory, contractName] of schemaDirectories) {
-        compilationSpecs.push({
-          contractName: contractName,
-          schemaDir: directory,
-          outputPath: outputDir,
-          outputType: outputName,
-        });
-      }
-    }
-  }
-  log(`code generating for ${compilationSpecs?.length ?? 0} specs...`);
-  if (CODEGEN_LOG_LEVEL === LogLevels.Debug) {
-    console.log("Compilation specs:");
-    console.dir(compilationSpecs);
-  }
-
-  const codegenResponses: Promise<void>[] = [];
-  for (const spec of compilationSpecs) {
-    codegenResponses.push(generateTs(spec));
-  }
-  await Promise.all(codegenResponses);
-
-  log(`code generation complete`, LogLevels.Normal);
-}
-
-main();
+codegen({
+    contracts: [
+        {
+            name: 'cwd-core',
+            dir: `../${OutputType.contracts}/cwd-core/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-core`,
+}).then(() => {
+    console.log('cwd-core done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-admin-factory',
+            dir: `../${OutputType.contracts}/${OutputType.external}/cw-admin-factory/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cw-admin-factory`,
+}).then(() => {
+    console.log('cw-admin-factory done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-token-swap',
+            dir: `../${OutputType.contracts}/${OutputType.external}/cw-token-swap/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cw-token-swap`,
+}).then(() => {
+    console.log('cw-token-swap done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-pre-propose-multiple',
+            dir: `../${OutputType.contracts}/${OutputType['pre-propose']}/cwd-pre-propose-multiple/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-pre-propose-multiple`,
+}).then(() => {
+    console.log('cwd-pre-propose-multiple done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-pre-propose-single',
+            dir: `../${OutputType.contracts}/${OutputType['pre-propose']}/cwd-pre-propose-single/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-pre-propose-single`,
+}).then(() => {
+    console.log('cwd-pre-propose-single done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-proposal-multiple',
+            dir: `../${OutputType.contracts}/${OutputType.proposal}/cwd-proposal-multiple/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-proposal-multiple`,
+}).then(() => {
+    console.log('cwd-proposal-multiple done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-proposal-single',
+            dir: `../${OutputType.contracts}/${OutputType.proposal}/cwd-proposal-single/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-proposal-single`,
+}).then(() => {
+    console.log('cwd-proposal-single done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cw20-stake',
+            dir: `../${OutputType.contracts}/${OutputType.staking}/cw20-stake/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cw20-stake`,
+}).then(() => {
+    console.log('cw20-stake done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cw20-stake-external-rewards',
+            dir: `../${OutputType.contracts}/${OutputType.staking}/cw20-stake-external-rewards/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cw20-stake-external-rewards`,
+}).then(() => {
+    console.log('cw20-stake-external-rewards done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cw20-stake-reward-distributor',
+            dir: `../${OutputType.contracts}/${OutputType.staking}/cw20-stake-reward-distributor/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cw20-stake-reward-distributor`,
+}).then(() => {
+    console.log('cw20-stake-reward-distributor done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-voting-cw4',
+            dir: `../${OutputType.contracts}/${OutputType.voting}/cwd-voting-cw4/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-voting-cw4`,
+}).then(() => {
+    console.log('cwd-voting-cw4 done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-voting-cw20-staked',
+            dir: `../${OutputType.contracts}/${OutputType.voting}/cwd-voting-cw20-staked/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-voting-cw20-staked`,
+}).then(() => {
+    console.log('cwd-voting-cw20-staked done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-voting-cw721-staked',
+            dir: `../${OutputType.contracts}/${OutputType.voting}/cwd-voting-cw721-staked/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-voting-cw721-staked`,
+}).then(() => {
+    console.log('cwd-voting-cw721-staked done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-voting-native-staked',
+            dir: `../${OutputType.contracts}/${OutputType.voting}/cwd-voting-native-staked/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-voting-native-staked`,
+}).then(() => {
+    console.log('cwd-voting-native-staked done!');
+});
+codegen({
+    contracts: [
+        {
+            name: 'cwd-voting-staking-denom-staked',
+            dir: `../${OutputType.contracts}/${OutputType.voting}/cwd-voting-staking-denom-staked/schema`
+        },
+    ],
+    outPath: `./${OutputType.contracts}/cwd-voting-staking-denom-staked`,
+}).then(() => {
+    console.log('cwd-voting-staking-denom-staked done!');
+});

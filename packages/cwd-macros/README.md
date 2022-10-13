@@ -8,7 +8,6 @@ the voting module interface on an enum:
 #[token_query]
 #[voting_query]
 #[info_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum Query {}
 ```

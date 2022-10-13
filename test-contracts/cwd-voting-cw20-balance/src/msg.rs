@@ -1,11 +1,13 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Addr;
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
+use cwd_interface::voting::InfoResponse;
+use cwd_interface::voting::TotalPowerAtHeightResponse;
+use cwd_interface::voting::VotingPowerAtHeightResponse;
 use cwd_macros::{info_query, token_query, voting_query};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum TokenInfo {
     Existing {
         address: String,
@@ -22,18 +24,17 @@ pub enum TokenInfo {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub token_info: TokenInfo,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {}
 
 #[token_query]
 #[voting_query]
 #[info_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {}

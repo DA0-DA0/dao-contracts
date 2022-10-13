@@ -567,14 +567,12 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20-base",
  "cwd-core",
  "cwd-interface",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -638,12 +636,11 @@ dependencies = [
 name = "cw-denom"
 version = "0.2.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test 0.13.4",
  "cw20",
  "cw20-base",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -703,7 +700,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "serde",
 ]
 
@@ -754,19 +751,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-plus"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dc6cf70ef7686e2da9ad7b067c5942cd3e88dd9453f7af42f54557f8af300fb0"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw-token-swap"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -821,6 +827,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw2"
+version = "0.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5abb8ecea72e09afff830252963cb60faf945ce6cef2c20a43814516082653da"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-storage-plus 0.15.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw20"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -859,13 +878,11 @@ dependencies = [
  "cw-controllers",
  "cw-multi-test 0.13.4",
  "cw-paginate 0.2.0",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -942,11 +959,11 @@ dependencies = [
 name = "cw721-controllers"
 version = "0.2.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -960,9 +977,9 @@ dependencies = [
  "cw-core",
  "cw-multi-test 0.14.0",
  "cw-paginate 0.2.0",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw721",
@@ -971,8 +988,6 @@ dependencies = [
  "cwd-macros",
  "cwd-proposal-sudo",
  "cwd-voting-cw20-balance",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -980,10 +995,9 @@ dependencies = [
 name = "cwd-hooks"
 version = "0.2.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.13.4",
- "schemars",
- "serde",
+ "cw-storage-plus 0.15.1",
  "thiserror",
 ]
 
@@ -993,10 +1007,8 @@ version = "0.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cwd-macros",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1004,10 +1016,10 @@ name = "cwd-macros"
 version = "0.2.0"
 dependencies = [
  "cosmwasm-schema",
+ "cosmwasm-std",
+ "cwd-interface",
  "proc-macro2",
  "quote",
- "schemars",
- "serde",
  "syn",
 ]
 
@@ -1019,12 +1031,11 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
- "cw2 0.13.4",
+ "cw-storage-plus 0.15.1",
+ "cw2 0.15.1",
  "cwd-interface",
  "cwd-proposal-hooks",
  "cwd-voting",
- "schemars",
  "serde",
  "thiserror",
 ]
@@ -1038,7 +1049,7 @@ dependencies = [
  "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw4-group",
@@ -1051,8 +1062,6 @@ dependencies = [
  "cwd-voting",
  "cwd-voting-cw20-staked",
  "cwd-voting-cw4",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1064,7 +1073,7 @@ dependencies = [
  "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw4-group",
@@ -1077,8 +1086,6 @@ dependencies = [
  "cwd-voting",
  "cwd-voting-cw20-staked",
  "cwd-voting-cw4",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1088,9 +1095,9 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cwd-core",
@@ -1101,8 +1108,6 @@ dependencies = [
  "cwd-vote-hooks",
  "cwd-voting",
  "cwd-voting-cw20-balance",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1110,11 +1115,10 @@ dependencies = [
 name = "cwd-proposal-hooks"
 version = "0.2.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cwd-hooks",
  "cwd-voting",
- "schemars",
- "serde",
 ]
 
 [[package]]
@@ -1126,9 +1130,9 @@ dependencies = [
  "cosmwasm-storage",
  "cw-denom",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw20-stake",
@@ -1152,8 +1156,6 @@ dependencies = [
  "cwd-voting-cw721-staked",
  "cwd-voting-native-staked",
  "rand",
- "schemars",
- "serde",
  "thiserror",
  "voting",
 ]
@@ -1168,9 +1170,9 @@ dependencies = [
  "cw-denom",
  "cw-multi-test 0.13.4",
  "cw-proposal-single",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw20-stake",
@@ -1193,8 +1195,6 @@ dependencies = [
  "cwd-voting-cw4",
  "cwd-voting-cw721-staked",
  "cwd-voting-native-staked",
- "schemars",
- "serde",
  "thiserror",
  "voting",
 ]
@@ -1207,12 +1207,10 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
- "cw2 0.13.4",
+ "cw-storage-plus 0.15.1",
+ "cw2 0.15.1",
  "cwd-interface",
  "cwd-macros",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1225,7 +1223,7 @@ dependencies = [
  "cw-multi-test 0.13.4",
  "cw-proposal-single",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw20-stake",
@@ -1252,27 +1250,25 @@ dependencies = [
 name = "cwd-vote-hooks"
 version = "0.2.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cwd-hooks",
  "cwd-voting",
- "schemars",
- "serde",
 ]
 
 [[package]]
 name = "cwd-voting"
 version = "0.2.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
  "cw20",
  "cwd-core",
  "cwd-interface",
  "cwd-macros",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1283,15 +1279,13 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cwd-interface",
  "cwd-macros",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1303,16 +1297,14 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw20-stake",
  "cwd-interface",
  "cwd-macros",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1324,15 +1316,13 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw4",
  "cw4-group",
  "cwd-interface",
  "cwd-macros",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1346,17 +1336,15 @@ dependencies = [
  "cw-controllers",
  "cw-multi-test 0.13.4",
  "cw-paginate 0.2.0",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw721",
  "cw721-base",
  "cw721-controllers",
  "cwd-interface",
  "cwd-macros",
  "indexmap",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1371,13 +1359,11 @@ dependencies = [
  "cw-controllers",
  "cw-multi-test 0.13.4",
  "cw-paginate 0.2.0",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cwd-interface",
  "cwd-macros",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -1389,12 +1375,10 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
- "cw2 0.13.4",
+ "cw-storage-plus 0.15.1",
+ "cw2 0.15.1",
  "cwd-interface",
  "cwd-macros",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -3094,14 +3078,12 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw20-stake",
- "schemars",
- "serde",
  "thiserror",
 ]
 
@@ -3113,14 +3095,12 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test 0.13.4",
- "cw-storage-plus 0.13.4",
+ "cw-storage-plus 0.15.1",
  "cw-utils 0.13.4",
- "cw2 0.13.4",
+ "cw2 0.15.1",
  "cw20",
  "cw20-base",
  "cw20-stake",
- "schemars",
- "serde",
  "thiserror",
 ]
 
