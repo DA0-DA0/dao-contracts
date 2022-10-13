@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/DA0-DA0/dao-contracts/branch/main/graph/badge.svg?token=SCKOIPYZPV)](https://codecov.io/gh/DA0-DA0/dao-contracts)
 
 This is a collection of smart contracts for building composable,
-modular, and upgradable DAOs. 
+modular, and upgradable DAOs.
 
 For an overview of our contract design, see [our
 wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
