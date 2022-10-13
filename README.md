@@ -17,7 +17,7 @@ wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 | [cw20-stake](contracts/staking/cw20-stake)                                     | A contract for staking cw20 tokens.                    |
 | [cw20-stake-external-rewards](contracts/staking/cw20-stake-external-rewards)   | A contract for providing external stakinig rewards.    |
 | [cw20-stake-reward-distributor](contracts/staking/cw20-stake-external-rewards) | A contract for distributing rewards via stake-cw20.    |
-|                                                                                |                                                        |
+
 | Unaudited contracts                                                            | Description                                            |
 |:-------------------------------------------------------------------------------|:-------------------------------------------------------|
 | [cwd-proposal-multiple](contracts/proposal/cwd-proposal-multiple)              | A proposal module for multiple choice proposals.       |
