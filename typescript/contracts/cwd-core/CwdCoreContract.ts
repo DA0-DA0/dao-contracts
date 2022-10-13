@@ -38,8 +38,6 @@ export interface Cw20BalancesResponse {
 export type Cw20TokenListResponse = Addr[];
 export type Cw721TokenListResponse = Addr[];
 export type DaoURIResponse = string | null;
-export type Timestamp = Uint64;
-export type Uint64 = string;
 export type PauseInfoResponse = {
   Paused: {
     expiration: Expiration;
@@ -59,11 +57,12 @@ export type Expiration = {
     [k: string]: unknown;
   };
 };
+export type Timestamp = Uint64;
+export type Uint64 = string;
 export interface DumpStateResponse {
   active_proposal_module_count: number;
   admin: Addr;
   config: Config;
-  created_timestamp?: Timestamp | null;
   pause_info: PauseInfoResponse;
   proposal_modules: ProposalModule[];
   total_proposal_module_count: number;
