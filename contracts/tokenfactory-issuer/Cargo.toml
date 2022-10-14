@@ -44,3 +44,4 @@ thiserror = {version = "1.0.31"}
 [dev-dependencies]
 cosmwasm-schema = "1.0.0"
 cw-multi-test = "0.13.2"
+osmosis-testing = {git = "https://github.com/osmosis-labs/osmosis-rust", branch = "boss/tokenfactory-ext"}
