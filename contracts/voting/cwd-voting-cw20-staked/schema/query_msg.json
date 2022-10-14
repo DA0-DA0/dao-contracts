@@ -17,6 +17,18 @@
     {
       "type": "object",
       "required": [
+        "vesting_contract"
+      ],
+      "properties": {
+        "vesting_contract": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "dao"
       ],
       "properties": {

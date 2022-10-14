@@ -6,6 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::{Cw20Coin, TokenInfoResponse};
+use cw20_vest::msg::{GetVestingStatusAtHeightResponse, GetFundingStatusAtHeightResponse};
 use cw_utils::parse_reply_instantiate_data;
 use cwd_interface::voting::IsActiveResponse;
 use std::convert::TryInto;
@@ -13,11 +14,11 @@ use std::convert::TryInto;
 use crate::error::ContractError;
 use crate::msg::{
     ActiveThreshold, ActiveThresholdResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
-    StakingInfo, TokenInfo,
+    StakingInfo, TokenInfo, VestingInfo, VestingInfoNew,
 };
 use crate::state::{
     ACTIVE_THRESHOLD, DAO, STAKING_CONTRACT, STAKING_CONTRACT_CODE_ID,
-    STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN,
+    STAKING_CONTRACT_UNSTAKING_DURATION, TOKEN, VESTING_CONTRACT, VESTING_INFO,
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-staked-balance-voting";
@@ -25,6 +26,7 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_TOKEN_REPLY_ID: u64 = 0;
 const INSTANTIATE_STAKING_REPLY_ID: u64 = 1;
+const INSTANTIATE_VESTING_REPLY_ID: u64 = 2;
 
 // We multiply by this when calculating needed power for being active
 // when using active threshold with percent
@@ -52,6 +54,7 @@ pub fn instantiate(
         TokenInfo::Existing {
             address,
             staking_contract,
+            vesting_contract,
         } => {
             let address = deps.api.addr_validate(&address)?;
             TOKEN.save(deps.storage, &address)?;
@@ -75,16 +78,13 @@ pub fn instantiate(
                     }
 
                     STAKING_CONTRACT.save(deps.storage, &staking_contract_address)?;
-                    Ok(Response::default()
-                        .add_attribute("action", "instantiate")
-                        .add_attribute("token", "existing_token")
-                        .add_attribute("token_address", address)
-                        .add_attribute("staking_contract", staking_contract_address))
+                    maybe_instantiate_vesting_contract(deps, env, vesting_contract)
                 }
                 StakingInfo::New {
                     staking_code_id,
                     unstaking_duration,
                 } => {
+                    VESTING_INFO.save(deps.storage, &vesting_contract)?;
                     let msg = WasmMsg::Instantiate {
                         code_id: staking_code_id,
                         funds: vec![],
@@ -117,6 +117,7 @@ pub fn instantiate(
             marketing,
             staking_code_id,
             unstaking_duration,
+            mut vesting_info,
         } => {
             let initial_supply = initial_balances
                 .iter()
@@ -137,8 +138,27 @@ pub fn instantiate(
                 }
             }
 
+            // Has the acceptable side-effect of pre-sorting the vesting schedules chronologically
+            if let Some(vesting_info) = &mut vesting_info {
+                let mut vest_total = Uint128::from(0u128);
+                let schedules = &mut vesting_info.schedules;
+                for schedule in schedules.into_iter() {
+                    schedule.vests.sort_by_key(|v| v.expiration);
+                    if let Some(last) = schedule.vests.last() {
+                        vest_total = vest_total.checked_add(last.amount)?;
+                    }
+                }
+                if vest_total > Uint128::zero() {
+                    initial_balances.push(Cw20Coin {
+                        address: env.contract.address.to_string(),
+                        amount: vest_total,
+                    });
+                }
+            }
+
             STAKING_CONTRACT_CODE_ID.save(deps.storage, &staking_code_id)?;
             STAKING_CONTRACT_UNSTAKING_DURATION.save(deps.storage, &unstaking_duration)?;
+            VESTING_INFO.save(deps.storage, &vesting_info.map(|ve| VestingInfo::New(ve)))?;
 
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
@@ -163,6 +183,71 @@ pub fn instantiate(
                 .add_attribute("action", "instantiate")
                 .add_attribute("token", "new_token")
                 .add_submessage(msg))
+        }
+    }
+}
+
+pub fn maybe_instantiate_vesting_contract(deps: DepsMut, env: Env, vesting_contract: Option<VestingInfo>) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    let token_address = TOKEN.load(deps.storage)?;
+    let staking_contract_address = STAKING_CONTRACT.load(deps.storage)?;
+    match vesting_contract {
+        Some(VestingInfo::Existing { vesting_contract_address }) => {
+            let vesting_contract_address =
+                deps.api.addr_validate(&vesting_contract_address)?;
+            let resp: cw20_vest::state::Config = deps.querier.query_wasm_smart(
+                &vesting_contract_address,
+                &cw20_vest::msg::QueryMsg::GetConfig {},
+            )?;
+
+            if token_address != resp.token_address {
+                return Err(ContractError::VestingContractTokenMismatch {});
+            }
+            if staking_contract_address != resp.stake_address {
+                return Err(ContractError::VestingContractStakingMismatch {});
+            }
+
+            VESTING_CONTRACT.save(deps.storage, &Some(vesting_contract_address.clone()))?;
+            Ok(Response::default()
+                .add_attribute("action", "instantiate")
+                .add_attribute("token", "existing_token")
+                .add_attribute("token_address", token_address)
+                .add_attribute("staking_contract", staking_contract_address)
+                .add_attribute("vesting_contract", vesting_contract_address))
+        }
+        Some(VestingInfo::New(VestingInfoNew{
+            vesting_code_id,
+            schedules,
+        })) => {
+            let msg = WasmMsg::Instantiate {
+                code_id: vesting_code_id,
+                funds: vec![],
+                admin: Some(dao.to_string()),
+                label: env.contract.address.to_string(),
+                msg: to_binary(&cw20_vest::msg::InstantiateMsg {
+                    owner: Some(dao.to_string()),
+                    manager: None,
+                    token_address: token_address.to_string(),
+                    stake_address: staking_contract_address.to_string(),
+                    schedules,
+                })?,
+            };
+            let msg = SubMsg::reply_on_success(msg, INSTANTIATE_VESTING_REPLY_ID);
+            Ok(Response::default()
+                .add_attribute("action", "instantiate")
+                .add_attribute("token", "existing_token")
+                .add_attribute("token_address", token_address)
+                .add_attribute("staking_contract", staking_contract_address)
+                .add_submessage(msg))
+        }
+        None => {
+            VESTING_CONTRACT.save(deps.storage, &None)?;
+            Ok(Response::default()
+                .add_attribute("action", "instantiate")
+                .add_attribute("token", "existing_token")
+                .add_attribute("token_address", token_address)
+                .add_attribute("staking_contract", staking_contract_address)
+                .add_attribute("vesting_contract", "None"))
         }
     }
 }
@@ -230,6 +315,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::TokenContract {} => query_token_contract(deps),
         QueryMsg::StakingContract {} => query_staking_contract(deps),
+        QueryMsg::VestingContract {} => query_vesting_contract(deps),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, env, address, height)
         }
@@ -251,6 +337,11 @@ pub fn query_staking_contract(deps: Deps) -> StdResult<Binary> {
     to_binary(&staking_contract)
 }
 
+pub fn query_vesting_contract(deps: Deps) -> StdResult<Binary> {
+    let vesting_contract = VESTING_CONTRACT.load(deps.storage)?;
+    to_binary(&vesting_contract)
+}
+
 pub fn query_voting_power_at_height(
     deps: Deps,
     _env: Env,
@@ -259,16 +350,40 @@ pub fn query_voting_power_at_height(
 ) -> StdResult<Binary> {
     let staking_contract = STAKING_CONTRACT.load(deps.storage)?;
     let address = deps.api.addr_validate(&address)?;
-    let res: cw20_stake::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
+    let stake_res: cw20_stake::msg::StakedBalanceAtHeightResponse = deps.querier.query_wasm_smart(
         staking_contract,
         &cw20_stake::msg::QueryMsg::StakedBalanceAtHeight {
             address: address.to_string(),
             height,
         },
     )?;
+    let mut power = stake_res.balance;
+
+    let vesting_contract = VESTING_CONTRACT.may_load(deps.storage)?;
+    if let Some(Some(vesting_contract)) = vesting_contract {
+        let vest_funding_res: GetFundingStatusAtHeightResponse = deps.querier.query_wasm_smart(
+            vesting_contract.to_string(),
+            &cw20_vest::msg::QueryMsg::GetFundingStatusAtHeight {
+                height: height,
+            }
+        )?;
+        if vest_funding_res.activated {
+            let vest_status_res: GetVestingStatusAtHeightResponse = deps.querier.query_wasm_smart(
+                vesting_contract.to_string(),
+                &cw20_vest::msg::QueryMsg::GetVestingStatusAtHeight {
+                    address: address.to_string(),
+                    height: height,
+                }
+            )?;
+            power = power
+                .checked_add(vest_status_res.unvested_staked)?
+                .checked_add(vest_status_res.vested_staked)?;
+        }
+    }
+
     to_binary(&cwd_interface::voting::VotingPowerAtHeightResponse {
-        power: res.balance,
-        height: res.height,
+        power,
+        height: stake_res.height,
     })
 }
 
@@ -407,8 +522,48 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
                     // Save staking contract addr
                     STAKING_CONTRACT.save(deps.storage, &staking_contract_addr)?;
+                    let vesting_info = VESTING_INFO.load(deps.storage)?;
+                    maybe_instantiate_vesting_contract(deps, env, vesting_info)
+                }
+                Err(_) => Err(ContractError::StakingInstantiateError {}),
+            }
+        }
+        INSTANTIATE_VESTING_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg);
+            match res {
+                Ok(res) => {
+                    // Validate contract address
+                    let vesting_contract_addr = deps.api.addr_validate(&res.contract_address)?;
 
-                    Ok(Response::new().add_attribute("staking_contract", staking_contract_addr))
+                    // Check if we have a duplicate
+                    let vesting = VESTING_CONTRACT.may_load(deps.storage)?;
+                    if vesting.is_some() {
+                        return Err(ContractError::DuplicateVestingContract {});
+                    }
+
+                    // Save staking contract addr
+                    VESTING_CONTRACT.save(deps.storage, &Some(vesting_contract_addr.clone()))?;
+
+                    let vesting_config: cw20_vest::state::Config = deps.querier.query_wasm_smart(
+                        vesting_contract_addr.clone(), 
+                        &cw20_vest::msg::QueryMsg::GetConfig {},
+                    )?;
+
+                    let token = TOKEN.load(deps.storage)?;
+
+                    let msg = WasmMsg::Execute {
+                        contract_addr: token.clone().to_string(),
+                        msg: to_binary(&cw20_base::msg::ExecuteMsg::Send {
+                            contract: vesting_contract_addr.clone().to_string(),
+                            amount: vesting_config.vest_total,
+                            msg: to_binary(&cw20_vest::msg::ReceiveMsg::Fund {})?
+                        })?,
+                        funds: vec![],
+                    };
+
+                    Ok(Response::new()
+                        .add_message(msg)
+                        .add_attribute("vesting_contract", vesting_contract_addr.clone().to_string()))
                 }
                 Err(_) => Err(ContractError::TokenInstantiateError {}),
             }

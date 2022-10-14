@@ -29,6 +29,7 @@ cwd-macros = { path = "../../../packages/cwd-macros" }
 cwd-interface = { path = "../../../packages/cwd-interface" }
 cw20-stake = { path = "../../staking/cw20-stake" }
 cw20-base = {  version = "0.13", features = ["library"] }
+cw20-vest = { path = "../../vesting/cw20-vest" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }

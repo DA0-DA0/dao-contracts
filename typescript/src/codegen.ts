@@ -9,6 +9,7 @@ enum OutputType {
   proposal = "proposal",
   staking = "staking",
   voting = "voting",
+  vesting = "vesting",
   "pre-propose" = "pre-propose",
   external = "external",
 }
@@ -87,6 +88,12 @@ const DEFAULT_CONFIG = {
     {
       name: OutputType.contracts,
       paths: [`../contracts/${OutputType.voting}`],
+      outputName: OutputType.contracts,
+      outputDir: CONTRACTS_OUTPUT_DIR,
+    },
+    {
+      name: OutputType.contracts,
+      paths: [`../contracts/${OutputType.vesting}`],
       outputName: OutputType.contracts,
       outputDir: CONTRACTS_OUTPUT_DIR,
     },

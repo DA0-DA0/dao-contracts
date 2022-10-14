@@ -75,6 +75,7 @@ fn main() -> Result<()> {
                     staking_code_id: orc.contract_map.code_id("cw20_stake")?,
                     unstaking_duration: Some(cw_utils::Duration::Time(1209600)),
                     initial_dao_balance: None,
+                    vesting_info: None,
                 },
                 active_threshold: None,
             })?,

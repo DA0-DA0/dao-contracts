@@ -460,6 +460,7 @@ pub fn instantiate_with_staked_balances_governance(
                     staking_code_id: cw20_stake_id,
                     unstaking_duration: Some(Duration::Height(6)),
                     initial_dao_balance: None,
+                    vesting_info: None,
                 },
             })
             .unwrap(),
@@ -569,6 +570,7 @@ pub fn instantiate_with_staking_active_threshold(
                     staking_code_id: cw20_staking_id,
                     unstaking_duration: None,
                     initial_dao_balance: None,
+                    vesting_info: None,
                 },
                 active_threshold,
             })

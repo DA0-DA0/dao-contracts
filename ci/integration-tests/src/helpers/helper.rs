@@ -51,6 +51,7 @@ pub fn create_dao(
                     staking_code_id: chain.orc.contract_map.code_id("cw20_stake")?,
                     unstaking_duration: Some(Duration::Time(1209600)),
                     initial_dao_balance: None,
+                    vesting_info: None,
                 },
                 active_threshold: None,
             })?,

@@ -43,6 +43,7 @@ export type TokenInfo = {
   existing: {
     address: string;
     staking_contract: StakingInfo;
+    vesting_contract?: VestingInfo | null;
     [k: string]: unknown;
   };
 } | {
@@ -57,6 +58,7 @@ export type TokenInfo = {
     staking_code_id: number;
     symbol: string;
     unstaking_duration?: Duration | null;
+    vesting_info?: VestingInfoNew | null;
     [k: string]: unknown;
   };
 };
@@ -77,6 +79,16 @@ export type Duration = {
 } | {
   time: number;
 };
+export type VestingInfo = {
+  existing: {
+    vesting_contract_address: string;
+    [k: string]: unknown;
+  };
+} | {
+  new: VestingInfoNew;
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
 export type Logo = {
   url: string;
 } | {
@@ -92,6 +104,19 @@ export interface InstantiateMsg {
   active_threshold?: ActiveThreshold | null;
   token_info: TokenInfo;
   [k: string]: unknown;
+}
+export interface VestingInfoNew {
+  schedules: Schedule[];
+  vesting_code_id: number;
+  [k: string]: unknown;
+}
+export interface Schedule {
+  address: string;
+  vests: Vest[];
+}
+export interface Vest {
+  amount: Uint128;
+  expiration: Timestamp;
 }
 export interface Cw20Coin {
   address: string;
@@ -114,6 +139,10 @@ export interface MigrateMsg {
 }
 export type QueryMsg = {
   staking_contract: {
+    [k: string]: unknown;
+  };
+} | {
+  vesting_contract: {
     [k: string]: unknown;
   };
 } | {
@@ -163,6 +192,7 @@ export interface VotingPowerAtHeightResponse {
 export interface CwdVotingCw20StakedReadOnlyInterface {
   contractAddress: string;
   stakingContract: () => Promise<StakingContractResponse>;
+  vestingContract: () => Promise<VestingContractResponse>;
   dao: () => Promise<DaoResponse>;
   activeThreshold: () => Promise<ActiveThresholdResponse>;
   votingPowerAtHeight: ({
@@ -189,6 +219,7 @@ export class CwdVotingCw20StakedQueryClient implements CwdVotingCw20StakedReadOn
     this.client = client;
     this.contractAddress = contractAddress;
     this.stakingContract = this.stakingContract.bind(this);
+    this.vestingContract = this.vestingContract.bind(this);
     this.dao = this.dao.bind(this);
     this.activeThreshold = this.activeThreshold.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
@@ -201,6 +232,11 @@ export class CwdVotingCw20StakedQueryClient implements CwdVotingCw20StakedReadOn
   stakingContract = async (): Promise<StakingContractResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       staking_contract: {}
+    });
+  };
+  vestingContract = async (): Promise<VestingContractResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      vesting_contract: {}
     });
   };
   dao = async (): Promise<DaoResponse> => {

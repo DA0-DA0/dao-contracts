@@ -1571,6 +1571,7 @@ fn test_migrate_from_v1() {
                     staking_code_id: cw20_stake_id,
                     unstaking_duration: Some(Duration::Height(6)),
                     initial_dao_balance: None,
+                    vesting_info: None,
                 },
             })
             .unwrap(),
