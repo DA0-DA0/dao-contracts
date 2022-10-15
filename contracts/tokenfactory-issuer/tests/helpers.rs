@@ -160,6 +160,20 @@ impl TokenfactoryIssuer {
         wasm.execute(&self.contract_addr, execute_msg, funds, signer)
     }
 
+    pub fn change_contract_owner(
+        &self,
+        new_owner: &str,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::ChangeContractOwner {
+                new_owner: new_owner.to_string(),
+            },
+            &[],
+            signer,
+        )
+    }
+
     pub fn set_minter(
         &self,
         address: &str,
