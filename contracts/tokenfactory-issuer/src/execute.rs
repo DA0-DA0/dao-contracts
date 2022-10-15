@@ -176,9 +176,16 @@ pub fn set_freezer(
     // Only allow current contract owner to set freezer permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
+    let address = deps.api.addr_validate(&address)?;
+
     // set freezer status
     // NOTE: Does not check if new status is same as old status
-    FREEZER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
+    // but if status is false, remove if exist to reduce space usage
+    if status {
+        FREEZER_ALLOWANCES.save(deps.storage, &address, &status)?;
+    } else {
+        FREEZER_ALLOWANCES.remove(deps.storage, &address);
+    }
 
     // return OK
     Ok(Response::new()

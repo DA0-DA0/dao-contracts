@@ -13,8 +13,9 @@ use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 use tokenfactory_issuer::{
     msg::{
-        AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
-        IsFrozenResponse, OwnerResponse, QueryMsg,
+        AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg,
+        FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse, OwnerResponse, QueryMsg,
+        StatusResponse,
     },
     ContractError,
 };
@@ -256,6 +257,20 @@ impl TokenfactoryIssuer {
 
     pub fn query_denom(&self) -> Result<DenomResponse, RunnerError> {
         self.query(&QueryMsg::Denom {})
+    }
+
+    pub fn query_is_freezer(&self, address: &str) -> Result<StatusResponse, RunnerError> {
+        self.query(&QueryMsg::IsFreezer {
+            address: address.to_string(),
+        })
+    }
+
+    pub fn query_freezer_allowances(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<FreezerAllowancesResponse, RunnerError> {
+        self.query(&QueryMsg::FreezerAllowances { start_after, limit })
     }
 
     pub fn query_is_frozen(&self) -> Result<IsFrozenResponse, RunnerError> {
