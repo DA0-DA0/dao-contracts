@@ -487,7 +487,7 @@ fn minting() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(res.allowance, 1000);
+    assert_eq!(res.allowance.u128(), 1000);
 
     // new minter can mint 500 coins
     let res = contract::execute(
@@ -514,7 +514,7 @@ fn minting() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(res.allowance, 500);
+    assert_eq!(res.allowance.u128(), 500);
 
     // make sure that minter can't mint more than remaining allowance
     contract::execute(
@@ -552,7 +552,7 @@ fn minting() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(res.allowance, 100000);
+    assert_eq!(res.allowance.u128(), 100000);
 }
 
 #[test]
@@ -616,7 +616,7 @@ fn burning() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(res.allowance, 1000);
+    assert_eq!(res.allowance.u128(), 1000);
 
     // new burner can burn 500 coins
     let res = contract::execute(
@@ -643,7 +643,7 @@ fn burning() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(res.allowance, 500);
+    assert_eq!(res.allowance.u128(), 500);
 
     // make sure that burner can't burn more than remaining allowance
     contract::execute(
@@ -681,5 +681,5 @@ fn burning() {
         .unwrap(),
     )
     .unwrap();
-    assert_eq!(res.allowance, 100000);
+    assert_eq!(res.allowance.u128(), 100000);
 }

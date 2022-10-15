@@ -11,8 +11,12 @@ use osmosis_testing::{
 };
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
-use tokenfactory_issuer::msg::{
-    DenomResponse, ExecuteMsg, InstantiateMsg, IsFrozenResponse, OwnerResponse, QueryMsg,
+use tokenfactory_issuer::{
+    msg::{
+        AllowanceResponse, DenomResponse, ExecuteMsg, InstantiateMsg, IsFrozenResponse,
+        OwnerResponse, QueryMsg,
+    },
+    ContractError,
 };
 
 pub struct TestEnv {
@@ -226,6 +230,11 @@ impl TokenfactoryIssuer {
     pub fn query_owner(&self) -> Result<OwnerResponse, RunnerError> {
         self.query(&QueryMsg::Owner {})
     }
+    pub fn query_mint_allowance(&self, address: &str) -> Result<AllowanceResponse, RunnerError> {
+        self.query(&QueryMsg::MintAllowance {
+            address: address.to_string(),
+        })
+    }
 
     fn get_wasm_byte_code() -> Vec<u8> {
         let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -239,5 +248,14 @@ impl TokenfactoryIssuer {
                 .join("tokenfactory_issuer.wasm"),
         )
         .unwrap()
+    }
+
+    pub fn execute_error(err: ContractError) -> RunnerError {
+        RunnerError::ExecuteError {
+            msg: format!(
+                "failed to execute message; message index: 0: {}: execute wasm contract failed",
+                err
+            ),
+        }
     }
 }
