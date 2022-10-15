@@ -75,7 +75,7 @@ pub fn query_allowances(
             let (k, v) = item?;
             Ok(AllowanceInfo {
                 address: k.to_string(),
-                allowance: v.u128(),
+                allowance: v,
             })
         })
         .collect()

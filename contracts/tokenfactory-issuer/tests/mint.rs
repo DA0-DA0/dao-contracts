@@ -1,8 +1,8 @@
 mod helpers;
-use cosmwasm_std::{OverflowError, OverflowOperation, StdError};
+use cosmwasm_std::{OverflowError, OverflowOperation, StdError, Uint128};
 use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_testing::{cosmrs::proto::cosmos::bank::v1beta1::QueryBalanceRequest, Account};
-use tokenfactory_issuer::ContractError;
+use tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
 
 #[test]
 fn set_minter_performed_by_contract_owner_should_pass() {
@@ -141,4 +141,132 @@ fn mint_0_should_fail() {
             TokenfactoryIssuer::execute_error(ContractError::ZeroAmount {})
         );
     });
+}
+
+#[test]
+fn query_mint_allowances_within_limit() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+
+    let mut sorted_addrs = env
+        .test_accs
+        .iter()
+        .map(|acc| acc.address())
+        .collect::<Vec<_>>();
+    sorted_addrs.sort();
+
+    // construct allowances and set mint allowance
+    let allowances = sorted_addrs
+        .iter()
+        .enumerate()
+        .map(|(i, addr)| AllowanceInfo {
+            address: addr.to_string(),
+            allowance: Uint128::from((i as u128 + 1) * 10000u128),
+        })
+        .collect::<Vec<_>>();
+
+    allowances.iter().for_each(|allowance| {
+        env.tokenfactory_issuer
+            .set_minter(&allowance.address, allowance.allowance.u128(), owner)
+            .unwrap();
+    });
+
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(None, None)
+            .unwrap()
+            .allowances,
+        allowances
+    );
+
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(None, Some(1))
+            .unwrap()
+            .allowances,
+        allowances[0..1]
+    );
+
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(Some(sorted_addrs[1].clone()), Some(1))
+            .unwrap()
+            .allowances,
+        allowances[2..3]
+    );
+
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(Some(sorted_addrs[1].clone()), Some(10))
+            .unwrap()
+            .allowances,
+        allowances[2..]
+    );
+}
+
+#[test]
+fn query_mint_allowance_off_limit() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+
+    let test_accs_with_allowance =
+        TestEnv::create_default_test_accs(&env.tokenfactory_issuer.app, 40);
+
+    let mut sorted_addrs = test_accs_with_allowance
+        .iter()
+        .map(|acc| acc.address())
+        .collect::<Vec<_>>();
+    sorted_addrs.sort();
+
+    // construct allowances and set mint allowance
+    let allowances = sorted_addrs
+        .iter()
+        .enumerate()
+        .map(|(i, addr)| AllowanceInfo {
+            address: addr.to_string(),
+            allowance: Uint128::from(i as u128 * 10000u128),
+        })
+        .collect::<Vec<_>>();
+
+    allowances.iter().for_each(|allowance| {
+        env.tokenfactory_issuer
+            .set_minter(&allowance.address, allowance.allowance.u128(), owner)
+            .unwrap();
+    });
+
+    // default limit 10
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(None, None)
+            .unwrap()
+            .allowances,
+        allowances[..10]
+    );
+
+    // start after nth, get n+1 .. n+1+limit (10)
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(Some(sorted_addrs[4].clone()), None)
+            .unwrap()
+            .allowances,
+        allowances[5..15]
+    );
+
+    // max limit 30
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(None, Some(40))
+            .unwrap()
+            .allowances,
+        allowances[..30]
+    );
+
+    // start after nth, get n+1 .. n+1+limit (30)
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(Some(sorted_addrs[4].clone()), Some(40))
+            .unwrap()
+            .allowances,
+        allowances[5..35]
+    );
 }

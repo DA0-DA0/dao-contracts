@@ -13,8 +13,8 @@ use serde::de::DeserializeOwned;
 use std::path::PathBuf;
 use tokenfactory_issuer::{
     msg::{
-        AllowanceResponse, DenomResponse, ExecuteMsg, InstantiateMsg, IsFrozenResponse,
-        OwnerResponse, QueryMsg,
+        AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg, InstantiateMsg,
+        IsFrozenResponse, OwnerResponse, QueryMsg,
     },
     ContractError,
 };
@@ -27,7 +27,8 @@ pub struct TestEnv {
 impl TestEnv {
     pub fn new(instantiate_msg: InstantiateMsg, signer_index: usize) -> Result<Self, RunnerError> {
         let app = OsmosisTestApp::new();
-        let test_accs = Self::create_default_test_accs(&app);
+        let test_accs_count: u64 = 4;
+        let test_accs = Self::create_default_test_accs(&app, test_accs_count);
 
         let tokenfactory_issuer =
             TokenfactoryIssuer::new(app, &instantiate_msg, &test_accs[signer_index])?;
@@ -38,8 +39,10 @@ impl TestEnv {
         })
     }
 
-    pub fn create_default_test_accs(app: &OsmosisTestApp) -> Vec<SigningAccount> {
-        let test_accs_count: u64 = 10;
+    pub fn create_default_test_accs(
+        app: &OsmosisTestApp,
+        test_accs_count: u64,
+    ) -> Vec<SigningAccount> {
         let default_initial_balance = [Coin::new(100_000_000_000, "uosmo")];
 
         app.init_accounts(&default_initial_balance, test_accs_count)
@@ -187,6 +190,37 @@ impl TokenfactoryIssuer {
         )
     }
 
+    pub fn set_burner(
+        &self,
+        address: &str,
+        allowance: u128,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::SetBurner {
+                address: address.to_string(),
+                allowance: allowance.into(),
+            },
+            &[],
+            signer,
+        )
+    }
+    pub fn burn(
+        &self,
+        address: &str,
+        amount: u128,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::Burn {
+                from_address: address.to_string(),
+                amount: amount.into(),
+            },
+            &[],
+            signer,
+        )
+    }
+
     pub fn set_freezer(
         &self,
         address: &str,
@@ -234,6 +268,28 @@ impl TokenfactoryIssuer {
         self.query(&QueryMsg::MintAllowance {
             address: address.to_string(),
         })
+    }
+
+    pub fn query_mint_allowances(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<AllowancesResponse, RunnerError> {
+        self.query(&QueryMsg::MintAllowances { start_after, limit })
+    }
+
+    pub fn query_burn_allowance(&self, address: &str) -> Result<AllowanceResponse, RunnerError> {
+        self.query(&QueryMsg::BurnAllowance {
+            address: address.to_string(),
+        })
+    }
+
+    pub fn query_burn_allowances(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<AllowancesResponse, RunnerError> {
+        self.query(&QueryMsg::BurnAllowances { start_after, limit })
     }
 
     fn get_wasm_byte_code() -> Vec<u8> {
