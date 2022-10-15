@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
 
-use crate::state::{BLACKLISTED_ADDRESSES, CONFIG};
+use crate::state::{BLACKLISTED_ADDRESSES, CONFIG, OWNER};
 use crate::ContractError;
 
 pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractError> {
@@ -48,8 +48,8 @@ pub fn check_contract_has_funds(
 }
 
 pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
-    let config = CONFIG.load(deps.storage).unwrap();
-    if config.owner != sender {
+    let owner = OWNER.load(deps.storage)?;
+    if owner != sender {
         Err(ContractError::Unauthorized {})
     } else {
         Ok(())

@@ -8,7 +8,7 @@ use crate::msg::{
 };
 use crate::state::{
     BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG, FREEZER_ALLOWANCES,
-    MINTER_ALLOWANCES,
+    MINTER_ALLOWANCES, OWNER,
 };
 
 // Default settings for pagination
@@ -30,9 +30,9 @@ pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
 }
 
 pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
-    let config = CONFIG.load(deps.storage)?;
+    let owner = OWNER.load(deps.storage)?;
     Ok(OwnerResponse {
-        address: config.owner.into_string(),
+        address: owner.into_string(),
     })
 }
 

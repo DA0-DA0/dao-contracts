@@ -6,7 +6,7 @@ use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};
 use crate::state::{
     Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
-    FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
+    FREEZER_ALLOWANCES, MINTER_ALLOWANCES, OWNER,
 };
 
 pub fn mint(
@@ -109,13 +109,7 @@ pub fn change_contract_owner(
     let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
     // update the contract owner in the contract config
-    CONFIG.update(
-        deps.storage,
-        |mut config: Config| -> Result<Config, ContractError> {
-            config.owner = new_owner_addr;
-            Ok(config)
-        },
-    )?;
+    OWNER.save(deps.storage, &new_owner_addr)?;
 
     // return OK
     Ok(Response::new()
