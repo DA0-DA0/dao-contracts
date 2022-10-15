@@ -9,12 +9,12 @@ of a contract can delegate minting allowance of 1000 tokens to a new address.
 The contract would be the admin of a tokenfactory denom.  For minting and burning, users then interact with the contract using its own ExecuteMsgs which trigger the contract's access control logic, and the contract then dispatches tokenfactory sdk.Msgs
 from its own contract account.
 
-The contract also contains a SudoMsg::BeforeSend hook that allows for the blacklisting of specific accounts as well as the
+The contract also contains a SudoMsg::BlockBeforeSend hook that allows for the blacklisting of specific accounts as well as the
 freezing of all transfers if necessary.
 
 ## Deployment
 
-The contract does not create its own tokenfactory denom.  Instead, it is expected that a tokenfactory denom is created by an external account which sets denom metadata, points to the contract as the BeforeSend hook, and then passes over admin control to the contract.
+The contract does not create its own tokenfactory denom.  Instead, it is expected that a tokenfactory denom is created by an external account which sets denom metadata, points to the contract as the BlockBeforeSend hook, and then passes over admin control to the contract.
 
 Here we will present guide for getting the contract deployed and setup.
 
@@ -114,15 +114,15 @@ This process could take a little while to compile and download dependencies if i
 
 The contract by default makes the instantiator of the contract the original owner. So the current owner of the contract is the `osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks` account. We can transfer ownership later if we would like.
 
-#### Set BeforeSend hook
+#### Set BlockBeforeSend hook
 
-Now that the contract is deployed, we want to set the token's BeforeSend hook to call the Sudo::BeforeSend function
+Now that the contract is deployed, we want to set the token's BlockBeforeSend hook to call the Sudo::BlockBeforeSend function
 in the CosmWasm contract.
 
 To do this we use the following command:
 
 ```
-osmosisd tx tokenfactory set-beforesend-hook factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
+osmosisd tx tokenfactory set-beforesend-listener factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
 ```
 
 #### Transfer Admin Control
@@ -133,7 +133,7 @@ Finally we will transfer tokenfactory admin control over to the contract.
 osmosisd tx tokenfactory change-admin factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9 --from test1
 ```
 
-Great! Now we have a deployed contract with beforesend hook and admin control over a new tokenfactory denom!
+Great! Now we have a deployed contract with blockBeforeSend hook and admin control over a new tokenfactory denom!
 
 
 ## Interacting
