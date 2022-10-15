@@ -5,8 +5,8 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
 use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};
 use crate::state::{
-    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG, DENOM,
-    FREEZER_ALLOWANCES, MINTER_ALLOWANCES, OWNER,
+    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
+    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
 };
 
 pub fn mint(
@@ -238,13 +238,7 @@ pub fn freeze(
 
     // Update config frozen status
     // NOTE: Does not check if new status is same as old status
-    CONFIG.update(
-        deps.storage,
-        |mut config: Config| -> Result<_, ContractError> {
-            config.is_frozen = status;
-            Ok(config)
-        },
-    )?;
+    IS_FROZEN.save(deps.storage, &status)?;
 
     // return OK
     Ok(Response::new()

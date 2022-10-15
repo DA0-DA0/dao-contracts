@@ -18,7 +18,7 @@ use crate::execute;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{Config, CONFIG, DENOM, OWNER};
+use crate::state::{DENOM, IS_FROZEN, OWNER};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:tokenfactory-issuer";
@@ -34,14 +34,12 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     OWNER.save(deps.storage, &info.sender)?;
+    IS_FROZEN.save(deps.storage, &false)?;
 
     match msg {
         InstantiateMsg::NewToken { subdenom } => {
-            let config = Config { is_frozen: false };
-
-            CONFIG.save(deps.storage, &config)?;
-
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("owner", info.sender)
@@ -60,9 +58,6 @@ pub fn instantiate(
         }
         InstantiateMsg::ExistingToken { denom } => {
             DENOM.save(deps.storage, &denom)?;
-            let config = Config { is_frozen: false };
-
-            CONFIG.save(deps.storage, &config)?;
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")

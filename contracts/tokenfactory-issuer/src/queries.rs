@@ -7,8 +7,8 @@ use crate::msg::{
     OwnerResponse, StatusInfo, StatusResponse,
 };
 use crate::state::{
-    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG, DENOM,
-    FREEZER_ALLOWANCES, MINTER_ALLOWANCES, OWNER,
+    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
+    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
 };
 
 // Default settings for pagination
@@ -21,10 +21,8 @@ pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
 }
 
 pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(IsFrozenResponse {
-        is_frozen: config.is_frozen,
-    })
+    let is_frozen = IS_FROZEN.load(deps.storage)?;
+    Ok(IsFrozenResponse { is_frozen })
 }
 
 pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {

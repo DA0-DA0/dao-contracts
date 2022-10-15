@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
 
-use crate::state::{BLACKLISTED_ADDRESSES, CONFIG, DENOM, OWNER};
+use crate::state::{BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER};
 use crate::ContractError;
 
 pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractError> {
@@ -90,9 +90,14 @@ pub fn check_is_not_blacklisted(deps: Deps, address: String) -> Result<(), Contr
 }
 
 pub fn check_is_not_frozen(deps: Deps, denom: &str) -> Result<(), ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    let is_frozen = IS_FROZEN.load(deps.storage)?;
     let contract_denom = DENOM.load(deps.storage)?;
-    let is_denom_frozen = config.is_frozen && denom == contract_denom;
+
+    // check if issuer is configured to be frozen and the arriving denom is the same
+    // as this contract denom.
+    // Denom can be different since setting beforesend listener doesn't check
+    // contract's denom.
+    let is_denom_frozen = is_frozen && denom == contract_denom;
     if is_denom_frozen {
         return Err(ContractError::ContractFrozen {
             denom: contract_denom,
