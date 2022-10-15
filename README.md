@@ -111,7 +111,7 @@ Beaker provides a single command to compile your contracts, deploy wasm code, an
 To do this, you just need to use the following command from the root folder of the cw-tokenfactory-issuer repo. Note that you put the denom from the previous section in the InstantiateMsg raw json.
 
 ```
-beaker wasm deploy tokenfactory-issuer --signer-account test1  --raw '{ { "existing_token": "denom":"factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd" } }'
+beaker wasm deploy tokenfactory-issuer --signer-account test1  --raw '{ "existing_token": { "denom":"factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd" } }'
 ```
 
 This process could take a little while to compile and download dependencies if it is your first time. Once it is completed, it will give you the address that the contract was deployed to. For the rest of this demo, we will assume it was deployed to the address `osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9`.
@@ -138,6 +138,16 @@ osmosisd tx tokenfactory change-admin factory/osmo1cyyzpxplxdzkeea7kwsydadg87357
 ```
 
 Great! Now we have a deployed contract with blockBeforeSend hook and admin control over a new tokenfactory denom!
+
+## Create denom and setup hook on contract instantiation
+
+Previous contract instantiation method is good for transferring ownership from exising token, if you want to create completly new token, you can use the following contract instatiation method which will create a new token and set up the hook automatically.
+
+```
+beaker wasm deploy tokenfactory-issuer --signer-account test1  --raw '{ "new_token": { "subdenom":"uusd" } }'
+```
+
+Note that the resulted denom will be `factory/{contract_addr}/uusd` which will not be deterministic. For the sake of the rest of this guide, we will use the previously created token as reference, so the command is copy-pastable.
 
 ## Interacting
 
