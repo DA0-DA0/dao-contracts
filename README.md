@@ -111,7 +111,7 @@ Beaker provides a single command to compile your contracts, deploy wasm code, an
 To do this, you just need to use the following command from the root folder of the cw-tokenfactory-issuer repo. Note that you put the denom from the previous section in the InstantiateMsg raw json.
 
 ```
-beaker wasm deploy tokenfactory-issuer --signer-account test1  --raw '{"denom":"factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd"}'
+beaker wasm deploy tokenfactory-issuer --signer-account test1  --raw '{ { "existing_token": "denom":"factory/osmo1cyyzpxplxdzkeea7kwsydadg87357qnahakaks/uusd" } }'
 ```
 
 This process could take a little while to compile and download dependencies if it is your first time. Once it is completed, it will give you the address that the contract was deployed to. For the rest of this demo, we will assume it was deployed to the address `osmo14hj2tavq8fpesdwxxcu44rty3hh90vhujrvcmstl4zr3txmfvw9sq2r9g9`.
