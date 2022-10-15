@@ -8,7 +8,7 @@ pub enum InstantiateMsg {
     /// It will be attached to the contract setup the beforesend listener automatically.
     NewToken { subdenom: String },
     /// `ExistingToken` will use already created token. So to set this up,
-    /// token admin needs to create a new token and set beforesend listener manually.
+    /// tokenfactory admin needs to create a new token and set beforesend listener manually.
     ExistingToken { denom: String },
 }
 
