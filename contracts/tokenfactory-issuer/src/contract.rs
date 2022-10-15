@@ -1,9 +1,17 @@
+use std::convert::TryInto;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+};
+use cosmwasm_std::{CosmosMsg, Reply};
 use cw2::set_contract_version;
 
 use osmo_bindings::OsmosisMsg;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
+    MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendListener,
+};
 
 use crate::error::ContractError;
 use crate::execute;
@@ -16,27 +24,90 @@ use crate::state::{Config, CONFIG};
 const CONTRACT_NAME: &str = "crates.io:tokenfactory-issuer";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+const CREATE_DENOM_REPLY_ID: u64 = 1;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let config = Config {
-        owner: info.sender.clone(),
-        is_frozen: false,
-        denom: msg.denom.clone(),
-    };
+    match msg {
+        InstantiateMsg::NewToken { subdenom } => {
+            let config = Config {
+                owner: info.sender.clone(),
+                is_frozen: false,
+                // to be updated after create denom
+                denom: "".to_string(),
+            };
 
-    CONFIG.save(deps.storage, &config)?;
+            CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new()
-        .add_attribute("action", "instantiate")
-        .add_attribute("owner", info.sender)
-        .add_attribute("denom", msg.denom))
+            Ok(Response::new()
+                .add_attribute("action", "instantiate")
+                .add_attribute("owner", info.sender)
+                .add_attribute("subdenom", subdenom.clone())
+                .add_submessage(
+                    // create new denom, if denom is created successfully,
+                    // set beforesend listener to this contract on reply
+                    SubMsg::reply_on_success(
+                        <CosmosMsg<OsmosisMsg>>::from(MsgCreateDenom {
+                            sender: env.contract.address.to_string(),
+                            subdenom,
+                        }),
+                        CREATE_DENOM_REPLY_ID,
+                    ),
+                ))
+        }
+        InstantiateMsg::ExistingToken { denom } => {
+            let config = Config {
+                owner: info.sender.clone(),
+                is_frozen: false,
+                denom: denom.clone(),
+            };
+
+            CONFIG.save(deps.storage, &config)?;
+
+            Ok(Response::new()
+                .add_attribute("action", "instantiate")
+                .add_attribute("owner", info.sender)
+                .add_attribute("denom", denom))
+        }
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>, ContractError> {
+    // after instantiate contract
+    if msg.id == CREATE_DENOM_REPLY_ID {
+        let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
+
+        CONFIG.update(deps.storage, |config| {
+            Result::<Config, ContractError>::Ok(Config {
+                denom: new_token_denom.clone(),
+                ..config
+            })
+        })?;
+
+        // set beforesend listener to this contract
+        // this will trigger sudo endpoint before any bank send
+        // which makes blacklisting / freezing possible
+        let msg_set_beforesend_listener: CosmosMsg<OsmosisMsg> = MsgSetBeforeSendListener {
+            sender: env.contract.address.to_string(),
+            denom: new_token_denom.clone(),
+            cosmwasm_address: env.contract.address.to_string(),
+        }
+        .into();
+
+        return Ok(Response::new()
+            .add_attribute("denom", new_token_denom)
+            .add_message(msg_set_beforesend_listener));
+    }
+
+    unreachable!()
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
