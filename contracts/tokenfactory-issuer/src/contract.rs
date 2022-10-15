@@ -38,6 +38,7 @@ pub fn instantiate(
     match msg {
         InstantiateMsg::NewToken { subdenom } => {
             let config = Config {
+                // TODO: use cw-plus admin instead https://github.com/CosmWasm/cw-plus/blob/main/packages/controllers/src/admin.rs
                 owner: info.sender.clone(),
                 is_frozen: false,
                 // to be updated after create denom
