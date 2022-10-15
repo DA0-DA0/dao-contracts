@@ -6,6 +6,8 @@ use tokenfactory_issuer::msg::InstantiateMsg;
 mod helpers;
 use helpers::{TestEnv, TokenfactoryIssuer};
 
+// new denom
+
 #[test]
 fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
     let subdenom = "uthb".to_string();
@@ -89,6 +91,8 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
         panic!("unexpected error: {:?}", err);
     }
 }
+
+// existing denom
 
 #[test]
 fn instantiate_with_existing_denom_should_set_initial_state_correctly() {
