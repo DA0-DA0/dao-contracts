@@ -173,6 +173,19 @@ impl TokenfactoryIssuer {
             signer,
         )
     }
+    pub fn change_tokenfactory_admin(
+        &self,
+        new_admin: &str,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::ChangeTokenFactoryAdmin {
+                new_admin: new_admin.to_string(),
+            },
+            &[],
+            signer,
+        )
+    }
 
     pub fn set_minter(
         &self,
