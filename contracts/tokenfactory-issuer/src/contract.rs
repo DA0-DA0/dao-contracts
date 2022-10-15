@@ -18,7 +18,7 @@ use crate::execute;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{Config, CONFIG, OWNER};
+use crate::state::{Config, CONFIG, DENOM, OWNER};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:tokenfactory-issuer";
@@ -38,11 +38,7 @@ pub fn instantiate(
 
     match msg {
         InstantiateMsg::NewToken { subdenom } => {
-            let config = Config {
-                is_frozen: false,
-                // to be updated after create denom
-                denom: "".to_string(),
-            };
+            let config = Config { is_frozen: false };
 
             CONFIG.save(deps.storage, &config)?;
 
@@ -63,10 +59,8 @@ pub fn instantiate(
                 ))
         }
         InstantiateMsg::ExistingToken { denom } => {
-            let config = Config {
-                is_frozen: false,
-                denom: denom.clone(),
-            };
+            DENOM.save(deps.storage, &denom)?;
+            let config = Config { is_frozen: false };
 
             CONFIG.save(deps.storage, &config)?;
 
@@ -83,13 +77,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>
     // after instantiate contract
     if msg.id == CREATE_DENOM_REPLY_ID {
         let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
-
-        CONFIG.update(deps.storage, |config| {
-            Result::<Config, ContractError>::Ok(Config {
-                denom: new_token_denom.clone(),
-                ..config
-            })
-        })?;
+        DENOM.save(deps.storage, &new_token_denom)?;
 
         // set beforesend listener to this contract
         // this will trigger sudo endpoint before any bank send

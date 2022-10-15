@@ -7,8 +7,8 @@ use crate::msg::{
     OwnerResponse, StatusInfo, StatusResponse,
 };
 use crate::state::{
-    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG, FREEZER_ALLOWANCES,
-    MINTER_ALLOWANCES, OWNER,
+    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG, DENOM,
+    FREEZER_ALLOWANCES, MINTER_ALLOWANCES, OWNER,
 };
 
 // Default settings for pagination
@@ -16,10 +16,8 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(DenomResponse {
-        denom: config.denom,
-    })
+    let denom = DENOM.load(deps.storage)?;
+    Ok(DenomResponse { denom })
 }
 
 pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {

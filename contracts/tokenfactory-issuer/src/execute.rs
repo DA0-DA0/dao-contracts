@@ -5,7 +5,7 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
 use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};
 use crate::state::{
-    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
+    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG, DENOM,
     FREEZER_ALLOWANCES, MINTER_ALLOWANCES, OWNER,
 };
 
@@ -33,8 +33,8 @@ pub fn mint(
             .map_err(StdError::overflow)
     })?;
 
-    // get token denom from contract config
-    let denom = CONFIG.load(deps.storage)?.denom;
+    // get token denom from contract
+    let denom = DENOM.load(deps.storage)?;
 
     // create tokenfactory MsgMint which mints coins to the contract address
     let mint_tokens_msg =
@@ -77,7 +77,7 @@ pub fn burn(
     })?;
 
     // get token denom from contract config
-    let denom = CONFIG.load(deps.storage)?.denom;
+    let denom = DENOM.load(deps.storage)?;
 
     // create tokenfactory MsgBurn which burns coins from the contract address
     // NOTE: this requires the contract to own the tokens already
@@ -130,7 +130,7 @@ pub fn change_tokenfactory_admin(
 
     // construct tokenfactory change admin msg
     let change_admin_msg = OsmosisMsg::ChangeAdmin {
-        denom: CONFIG.load(deps.storage)?.denom,
+        denom: DENOM.load(deps.storage)?,
         new_admin_address: new_admin_addr.into(),
     };
 
