@@ -21,7 +21,7 @@ pub fn mint(
 
     // don't allow minting of 0 coins
     if amount.is_zero() {
-        return Result::Err(ContractError::ZeroAmount {});
+        return Err(ContractError::ZeroAmount {});
     }
 
     // decrease minter allowance
@@ -64,7 +64,7 @@ pub fn burn(
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     // don't allow burning of 0 coins
     if amount.is_zero() {
-        return Result::Err(ContractError::ZeroAmount {});
+        return Err(ContractError::ZeroAmount {});
     }
 
     // decrease burner allowance

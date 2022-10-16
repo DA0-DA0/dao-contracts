@@ -6,4 +6,3 @@
 // [x] blacklist
 // [x] hooks
 // update state clean up
-// rename tests to be more explanatory

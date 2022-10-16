@@ -4,25 +4,6 @@ use cw_storage_plus::Map;
 use crate::state::{BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER};
 use crate::ContractError;
 
-pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractError> {
-    // Minimum validation checks on the full denom.
-    // https://github.com/cosmos/cosmos-sdk/blob/2646b474c7beb0c93d4fafd395ef345f41afc251/types/coin.go#L706-L711
-    // https://github.com/cosmos/cosmos-sdk/blob/2646b474c7beb0c93d4fafd395ef345f41afc251/types/coin.go#L677
-    let full_denom = format!("factory/{}/{}", creator, subdenom);
-    if full_denom.len() < 3
-        || full_denom.len() > 128
-        || creator.as_str().contains('/')
-        || subdenom.len() > 44
-        || creator.as_str().len() > 75
-    {
-        return Err(ContractError::InvalidDenom {
-            denom: full_denom,
-            message: "".to_string(),
-        });
-    }
-    Ok(full_denom)
-}
-
 pub fn check_contract_has_funds(
     denom: String,
     funds: &[Coin],

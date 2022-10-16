@@ -91,7 +91,7 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
 // existing denom
 
 #[test]
-fn instantiate_with_existing_denom_should_set_initial_state_correctly() {
+fn instantiate_with_existing_token_should_set_initial_state_correctly() {
     let app = OsmosisTestApp::new();
     let test_accs = TestEnv::create_default_test_accs(&app, 1);
 

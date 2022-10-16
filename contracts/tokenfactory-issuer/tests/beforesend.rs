@@ -1,10 +1,8 @@
 mod helpers;
 
 use cosmwasm_std::coins;
-use osmosis_testing::{Account, RunnerError};
 use helpers::TestEnv;
-
-
+use osmosis_testing::{Account, RunnerError};
 
 #[test]
 fn bank_send_should_be_allowed_by_default() {
@@ -71,10 +69,11 @@ fn bank_send_from_blacklisted_address_should_be_blocked() {
 
     // blacklist
     env.tokenfactory_issuer
-        .set_blacklister(&owner.address(), true, owner).unwrap();
+        .set_blacklister(&owner.address(), true, owner)
+        .unwrap();
     env.tokenfactory_issuer
-        .blacklist(&blacklistee.address(), true, owner).unwrap();
-
+        .blacklist(&blacklistee.address(), true, owner)
+        .unwrap();
 
     // bank send should fail
     let err = env
@@ -106,18 +105,15 @@ fn bank_send_to_blacklisted_address_should_be_blocked() {
 
     // blacklist
     env.tokenfactory_issuer
-        .set_blacklister(&owner.address(), true, owner).unwrap();
+        .set_blacklister(&owner.address(), true, owner)
+        .unwrap();
     env.tokenfactory_issuer
-        .blacklist(&blacklistee.address(), true, owner).unwrap();
-
+        .blacklist(&blacklistee.address(), true, owner)
+        .unwrap();
 
     // bank send should fail
     let err = env
-        .send_tokens(
-            blacklistee.address(),
-            coins(10000, denom.clone()),
-            owner,
-        )
+        .send_tokens(blacklistee.address(), coins(10000, denom.clone()), owner)
         .unwrap_err();
 
     let blacklistee_addr = blacklistee.address();
