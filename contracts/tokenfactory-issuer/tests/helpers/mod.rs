@@ -6,22 +6,24 @@ use cosmwasm_std::Coin;
 
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest;
 use osmosis_testing::{
-    cosmrs::proto::{
+    Account,
+    Bank, cosmrs::proto::{
         cosmos::bank::v1beta1::{MsgSend, MsgSendResponse},
         cosmwasm::wasm::v1::MsgExecuteContractResponse,
-    },
-    Account, Bank, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult,
+    }, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult,
     SigningAccount, TokenFactory, Wasm,
 };
 use serde::de::DeserializeOwned;
 use std::path::PathBuf;
+use std::rc::Rc;
+use std::fmt::Debug;
 use tokenfactory_issuer::{
+    ContractError,
     msg::{
         AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg,
         FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse, OwnerResponse, QueryMsg,
         StatusResponse,
     },
-    ContractError,
 };
 
 pub struct TestEnv {
@@ -360,4 +362,120 @@ impl TokenfactoryIssuer {
             ),
         }
     }
+}
+
+pub fn test_query_within_default_limit<QueryResult, SetAllowanceClosure, QueryAllowanceClosure>(
+    gen_result: impl FnMut((usize, &String)) -> QueryResult,
+    set_allowance: impl Fn(Rc<TestEnv>) -> SetAllowanceClosure,
+    query_allowance: impl Fn(Rc<TestEnv>) -> QueryAllowanceClosure,
+) where
+    QueryResult: PartialEq + Debug + Clone,
+    SetAllowanceClosure: Fn(QueryResult),
+    QueryAllowanceClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
+{
+    let env = Rc::new(TestEnv::default());
+    let test_accs_count = 10;
+    let test_accs_with_allowance =
+        TestEnv::create_default_test_accs(&env.tokenfactory_issuer.app, test_accs_count);
+
+    let mut sorted_addrs = test_accs_with_allowance
+        .iter()
+        .map(|acc| acc.address())
+        .collect::<Vec<_>>();
+    sorted_addrs.sort();
+
+    let allowances = sorted_addrs
+        .iter()
+        .enumerate()
+        .map(gen_result)
+        .collect::<Vec<_>>();
+
+    allowances
+        .iter()
+        .for_each(|allowance| set_allowance(env.clone())(allowance.clone()));
+
+    let query = query_allowance(env);
+
+    // let <n> be allowance for the sorted_addrs with index n
+
+    // query from start with default limit
+    // = [<0>..<10>] (since test_accs_count is 10)
+    assert_eq!(query(None, None), allowances);
+
+    // query from start with limit 1
+    // = [<0>]
+    assert_eq!(query(None, Some(1)), allowances[0..1]);
+
+    // query start after sorted_addrs[1], limit 1
+    // = [<2>]
+    assert_eq!(
+        query(Some(sorted_addrs[1].clone()), Some(1)),
+        allowances[2..3]
+    );
+
+    // query start after sorted_addrs[1], limit 10
+    // = [<2>..<10>] (since test_accs_count is 10)
+    assert_eq!(
+        query(Some(sorted_addrs[1].clone()), Some(10)),
+        allowances[2..10]
+    );
+
+    // query start after sorted_addrs[9], with default limit
+    // = []
+    assert_eq!(query(Some(sorted_addrs[9].clone()), None), vec![]);
+}
+
+pub fn test_query_over_default_limit<QueryResult, SetAllowanceClosure, QueryAllowanceClosure>(
+    gen_result: impl FnMut((usize, &String)) -> QueryResult,
+    set_allowance: impl Fn(Rc<TestEnv>) -> SetAllowanceClosure,
+    query_allowance: impl Fn(Rc<TestEnv>) -> QueryAllowanceClosure,
+) where
+    QueryResult: PartialEq + Debug + Clone,
+    SetAllowanceClosure: Fn(QueryResult),
+    QueryAllowanceClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
+{
+    let env = Rc::new(TestEnv::default());
+    let test_accs_count = 40;
+    let test_accs_with_allowance =
+        TestEnv::create_default_test_accs(&env.tokenfactory_issuer.app, test_accs_count);
+
+    let mut sorted_addrs = test_accs_with_allowance
+        .iter()
+        .map(|acc| acc.address())
+        .collect::<Vec<_>>();
+    sorted_addrs.sort();
+
+    let allowances = sorted_addrs
+        .iter()
+        .enumerate()
+        .map(gen_result)
+        .collect::<Vec<_>>();
+
+    allowances
+        .iter()
+        .for_each(|allowance| set_allowance(env.clone())(allowance.clone()));
+
+    let query = query_allowance(env);
+
+    // let <n> be allowance for the sorted_addrs with index n
+
+    // query from start with default limit
+    // = [<0>..<10>]
+    assert_eq!(query(None, None), allowances[..10]);
+
+    // query start after sorted_addrs[4] with default limit
+    // = [<5>..<15>] (<5> is after <4>, <15> is <5> + limit 10)
+    assert_eq!(
+        query(Some(sorted_addrs[4].clone()), None),
+        allowances[5..15]
+    );
+
+    // max limit = 30
+    assert_eq!(query(None, Some(40)), allowances[..30]);
+
+    // start after nth, get n+1 .. n+1+limit (30)
+    assert_eq!(
+        query(Some(sorted_addrs[4].clone()), Some(40)),
+        allowances[5..35]
+    );
 }

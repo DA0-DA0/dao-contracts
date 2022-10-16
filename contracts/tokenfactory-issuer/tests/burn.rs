@@ -196,129 +196,53 @@ fn burn_0_should_fail() {
 }
 
 #[test]
-fn query_burn_allowances_within_limit() {
-    let env = TestEnv::default();
-    let owner = &env.test_accs[0];
-
-    let mut sorted_addrs = env
-        .test_accs
-        .iter()
-        .map(|acc| acc.address())
-        .collect::<Vec<_>>();
-    sorted_addrs.sort();
-
-    // construct allowances and set burn allowance
-    let allowances = sorted_addrs
-        .iter()
-        .enumerate()
-        .map(|(i, addr)| AllowanceInfo {
+fn test_query_burn_allowances_within_default_limit() {
+    helpers::test_query_within_default_limit::<AllowanceInfo, _, _>(
+        |(i, addr)| AllowanceInfo {
             address: addr.to_string(),
-            allowance: Uint128::from((i as u128 + 1) * 10000u128),
-        })
-        .collect::<Vec<_>>();
-
-    allowances.iter().for_each(|allowance| {
-        env.tokenfactory_issuer
-            .set_burner(&allowance.address, allowance.allowance.u128(), owner)
-            .unwrap();
-    });
-
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(None, None)
-            .unwrap()
-            .allowances,
-        allowances
-    );
-
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(None, Some(1))
-            .unwrap()
-            .allowances,
-        allowances[0..1]
-    );
-
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(Some(sorted_addrs[1].clone()), Some(1))
-            .unwrap()
-            .allowances,
-        allowances[2..3]
-    );
-
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(Some(sorted_addrs[1].clone()), Some(10))
-            .unwrap()
-            .allowances,
-        allowances[2..]
+            allowance: Uint128::from((i as u128 + 1) * 10000u128), // generate distincted allowance
+        },
+        |env| {
+            move |allowance| {
+                let owner = &env.test_accs[0];
+                env.tokenfactory_issuer
+                    .set_burner(&allowance.address, allowance.allowance.u128(), owner)
+                    .unwrap();
+            }
+        },
+        |env| {
+            move |start_after, limit| {
+                env.tokenfactory_issuer
+                    .query_burn_allowances(start_after, limit)
+                    .unwrap()
+                    .allowances
+            }
+        },
     );
 }
 
 #[test]
-fn query_burn_allowance_off_limit() {
-    let env = TestEnv::default();
-    let owner = &env.test_accs[0];
-
-    let test_accs_with_allowance =
-        TestEnv::create_default_test_accs(&env.tokenfactory_issuer.app, 40);
-
-    let mut sorted_addrs = test_accs_with_allowance
-        .iter()
-        .map(|acc| acc.address())
-        .collect::<Vec<_>>();
-    sorted_addrs.sort();
-
-    // construct allowances and set burn allowance
-    let allowances = sorted_addrs
-        .iter()
-        .enumerate()
-        .map(|(i, addr)| AllowanceInfo {
+fn test_query_burn_allowance_over_default_limit() {
+    helpers::test_query_over_default_limit::<AllowanceInfo, _, _>(
+        |(i, addr)| AllowanceInfo {
             address: addr.to_string(),
-            allowance: Uint128::from(i as u128 * 10000u128),
-        })
-        .collect::<Vec<_>>();
-
-    allowances.iter().for_each(|allowance| {
-        env.tokenfactory_issuer
-            .set_burner(&allowance.address, allowance.allowance.u128(), owner)
-            .unwrap();
-    });
-
-    // default limit 10
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(None, None)
-            .unwrap()
-            .allowances,
-        allowances[..10]
-    );
-
-    // start after nth, get n+1 .. n+1+limit (10)
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(Some(sorted_addrs[4].clone()), None)
-            .unwrap()
-            .allowances,
-        allowances[5..15]
-    );
-
-    // max limit 30
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(None, Some(40))
-            .unwrap()
-            .allowances,
-        allowances[..30]
-    );
-
-    // start after nth, get n+1 .. n+1+limit (30)
-    assert_eq!(
-        env.tokenfactory_issuer
-            .query_burn_allowances(Some(sorted_addrs[4].clone()), Some(40))
-            .unwrap()
-            .allowances,
-        allowances[5..35]
+            allowance: Uint128::from((i as u128 + 1) * 10000u128), // generate distincted allowance
+        },
+        |env| {
+            move |allowance| {
+                let owner = &env.test_accs[0];
+                env.tokenfactory_issuer
+                    .set_burner(&allowance.address, allowance.allowance.u128(), owner)
+                    .unwrap();
+            }
+        },
+        |env| {
+            move |start_after, limit| {
+                env.tokenfactory_issuer
+                    .query_burn_allowances(start_after, limit)
+                    .unwrap()
+                    .allowances
+            }
+        },
     );
 }
