@@ -5,7 +5,7 @@ use osmosis_testing::Account;
 use tokenfactory_issuer::{msg::StatusInfo, ContractError};
 
 #[test]
-fn set_freezeer_performed_by_contract_owner_should_pass() {
+fn set_freezer_performed_by_contract_owner_should_pass() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
