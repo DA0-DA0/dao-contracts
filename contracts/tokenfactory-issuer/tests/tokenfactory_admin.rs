@@ -4,8 +4,6 @@ use tokenfactory_issuer::ContractError;
 mod helpers;
 use helpers::{TestEnv, TokenfactoryIssuer};
 
-// new denom
-
 #[test]
 fn transfer_token_factory_admin_by_contract_owner_should_pass() {
     let env = TestEnv::default();
