@@ -6,24 +6,25 @@ use cosmwasm_std::Coin;
 
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest;
 use osmosis_testing::{
-    Account,
-    Bank, cosmrs::proto::{
+    cosmrs::proto::{
         cosmos::bank::v1beta1::{MsgSend, MsgSendResponse},
         cosmwasm::wasm::v1::MsgExecuteContractResponse,
-    }, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult,
+    },
+    Account, Bank, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult,
     SigningAccount, TokenFactory, Wasm,
 };
 use serde::de::DeserializeOwned;
+use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::fmt::Debug;
+use tokenfactory_issuer::msg::{BlacklisteesResponse, BlacklisterAllowancesResponse};
 use tokenfactory_issuer::{
-    ContractError,
     msg::{
         AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg,
         FreezerAllowancesResponse, InstantiateMsg, IsFrozenResponse, OwnerResponse, QueryMsg,
         StatusResponse,
     },
+    ContractError,
 };
 
 pub struct TestEnv {
@@ -271,12 +272,44 @@ impl TokenfactoryIssuer {
         )
     }
 
+    pub fn set_blacklister(
+        &self,
+        address: &str,
+        status: bool,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::SetBlacklister {
+                address: address.to_string(),
+                status,
+            },
+            &[],
+            signer,
+        )
+    }
+
     pub fn freeze(
         &self,
         status: bool,
         signer: &SigningAccount,
     ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
         self.execute(&ExecuteMsg::Freeze { status }, &[], signer)
+    }
+
+    pub fn blacklist(
+        &self,
+        address: &str,
+        status: bool,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(
+            &ExecuteMsg::Blacklist {
+                address: address.to_string(),
+                status,
+            },
+            &[],
+            signer,
+        )
     }
 
     // queries
@@ -298,6 +331,12 @@ impl TokenfactoryIssuer {
         })
     }
 
+    pub fn query_is_blacklister(&self, address: &str) -> Result<StatusResponse, RunnerError> {
+        self.query(&QueryMsg::IsBlacklister {
+            address: address.to_string(),
+        })
+    }
+
     pub fn query_freezer_allowances(
         &self,
         start_after: Option<String>,
@@ -306,8 +345,30 @@ impl TokenfactoryIssuer {
         self.query(&QueryMsg::FreezerAllowances { start_after, limit })
     }
 
+    pub fn query_blacklister_allowances(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<BlacklisterAllowancesResponse, RunnerError> {
+        self.query(&QueryMsg::BlacklisterAllowances { start_after, limit })
+    }
+
+    pub fn query_blacklistees(
+        &self,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    ) -> Result<BlacklisteesResponse, RunnerError> {
+        self.query(&QueryMsg::Blacklistees { start_after, limit })
+    }
+
     pub fn query_is_frozen(&self) -> Result<IsFrozenResponse, RunnerError> {
         self.query(&QueryMsg::IsFrozen {})
+    }
+
+    pub fn query_is_blacklisted(&self, address: &str) -> Result<StatusResponse, RunnerError> {
+        self.query(&QueryMsg::IsBlacklisted {
+            address: address.to_string(),
+        })
     }
     pub fn query_owner(&self) -> Result<OwnerResponse, RunnerError> {
         self.query(&QueryMsg::Owner {})
@@ -364,14 +425,14 @@ impl TokenfactoryIssuer {
     }
 }
 
-pub fn test_query_within_default_limit<QueryResult, SetAllowanceClosure, QueryAllowanceClosure>(
+pub fn test_query_within_default_limit<QueryResult, SetStateClosure, QueryStateClosure>(
     gen_result: impl FnMut((usize, &String)) -> QueryResult,
-    set_allowance: impl Fn(Rc<TestEnv>) -> SetAllowanceClosure,
-    query_allowance: impl Fn(Rc<TestEnv>) -> QueryAllowanceClosure,
+    set_state: impl Fn(Rc<TestEnv>) -> SetStateClosure,
+    query_state: impl Fn(Rc<TestEnv>) -> QueryStateClosure,
 ) where
     QueryResult: PartialEq + Debug + Clone,
-    SetAllowanceClosure: Fn(QueryResult),
-    QueryAllowanceClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
+    SetStateClosure: Fn(QueryResult),
+    QueryStateClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
 {
     let env = Rc::new(TestEnv::default());
     let test_accs_count = 10;
@@ -392,9 +453,9 @@ pub fn test_query_within_default_limit<QueryResult, SetAllowanceClosure, QueryAl
 
     allowances
         .iter()
-        .for_each(|allowance| set_allowance(env.clone())(allowance.clone()));
+        .for_each(|allowance| set_state(env.clone())(allowance.clone()));
 
-    let query = query_allowance(env);
+    let query = query_state(env);
 
     // let <n> be allowance for the sorted_addrs with index n
 
@@ -425,14 +486,14 @@ pub fn test_query_within_default_limit<QueryResult, SetAllowanceClosure, QueryAl
     assert_eq!(query(Some(sorted_addrs[9].clone()), None), vec![]);
 }
 
-pub fn test_query_over_default_limit<QueryResult, SetAllowanceClosure, QueryAllowanceClosure>(
+pub fn test_query_over_default_limit<QueryResult, SetStateClosure, QueryStateClosure>(
     gen_result: impl FnMut((usize, &String)) -> QueryResult,
-    set_allowance: impl Fn(Rc<TestEnv>) -> SetAllowanceClosure,
-    query_allowance: impl Fn(Rc<TestEnv>) -> QueryAllowanceClosure,
+    set_state: impl Fn(Rc<TestEnv>) -> SetStateClosure,
+    query_state: impl Fn(Rc<TestEnv>) -> QueryStateClosure,
 ) where
     QueryResult: PartialEq + Debug + Clone,
-    SetAllowanceClosure: Fn(QueryResult),
-    QueryAllowanceClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
+    SetStateClosure: Fn(QueryResult),
+    QueryStateClosure: Fn(Option<String>, Option<u32>) -> Vec<QueryResult>,
 {
     let env = Rc::new(TestEnv::default());
     let test_accs_count = 40;
@@ -453,9 +514,9 @@ pub fn test_query_over_default_limit<QueryResult, SetAllowanceClosure, QueryAllo
 
     allowances
         .iter()
-        .for_each(|allowance| set_allowance(env.clone())(allowance.clone()));
+        .for_each(|allowance| set_state(env.clone())(allowance.clone()));
 
-    let query = query_allowance(env);
+    let query = query_state(env);
 
     // let <n> be allowance for the sorted_addrs with index n
 

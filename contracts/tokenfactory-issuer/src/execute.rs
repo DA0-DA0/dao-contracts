@@ -150,9 +150,16 @@ pub fn set_blacklister(
     // Only allow current contract owner to set blacklister permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
+    let address = deps.api.addr_validate(&address)?;
+
     // set blacklister status
     // NOTE: Does not check if new status is same as old status
-    BLACKLISTER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
+    // but if status is false, remove if exist to reduce space usage
+    if status {
+        BLACKLISTER_ALLOWANCES.save(deps.storage, &address, &status)?;
+    } else {
+        BLACKLISTER_ALLOWANCES.remove(deps.storage, &address);
+    }
 
     // Return OK
     Ok(Response::new()
@@ -255,10 +262,17 @@ pub fn blacklist(
     // check to make sure that the sender has blacklister permissions
     check_bool_allowance(deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
+    let address = deps.api.addr_validate(&address)?;
+
     // update blacklisted status
     // validate that blacklisteed is a valid address
     // NOTE: Does not check if new status is same as old status
-    BLACKLISTED_ADDRESSES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
+    // but if status is false, remove if exist to reduce space usage
+    if status {
+        BLACKLISTED_ADDRESSES.save(deps.storage, &address, &status)?;
+    } else {
+        BLACKLISTED_ADDRESSES.remove(deps.storage, &address);
+    }
 
     // return OK
     Ok(Response::new()

@@ -1,8 +1,8 @@
 mod helpers;
 use cosmwasm_std::{OverflowError, OverflowOperation, StdError, Uint128};
 use helpers::{TestEnv, TokenfactoryIssuer};
-use osmosis_testing::{Account, cosmrs::proto::cosmos::bank::v1beta1::QueryBalanceRequest};
-use tokenfactory_issuer::{ContractError, msg::AllowanceInfo};
+use osmosis_testing::{cosmrs::proto::cosmos::bank::v1beta1::QueryBalanceRequest, Account};
+use tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
 
 #[test]
 fn set_minter_performed_by_contract_owner_should_pass() {

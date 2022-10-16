@@ -151,7 +151,7 @@ fn query_freezer_within_default_limit() {
         },
         |env| {
             move |allowance| {
-                let owner  = &env.test_accs[0];
+                let owner = &env.test_accs[0];
                 env.tokenfactory_issuer
                     .set_freezer(&allowance.address, true, owner)
                     .unwrap();
@@ -177,7 +177,7 @@ fn query_freezer_over_default_limit() {
         },
         |env| {
             move |allowance| {
-                let owner  = &env.test_accs[0];
+                let owner = &env.test_accs[0];
                 env.tokenfactory_issuer
                     .set_freezer(&allowance.address, true, owner)
                     .unwrap();
