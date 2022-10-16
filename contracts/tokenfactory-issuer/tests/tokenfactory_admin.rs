@@ -1,7 +1,5 @@
-use cosmwasm_std::coins;
-
-use osmosis_testing::{Account, OsmosisTestApp, RunnerError};
-use tokenfactory_issuer::{msg::InstantiateMsg, ContractError};
+use osmosis_testing::Account;
+use tokenfactory_issuer::ContractError;
 
 mod helpers;
 use helpers::{TestEnv, TokenfactoryIssuer};

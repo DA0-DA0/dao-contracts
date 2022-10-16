@@ -1,3 +1,7 @@
+// the code is used in test but reported as dead code
+// see https://github.com/rust-lang/rust/issues/46379
+#![allow(dead_code)]
+
 use cosmwasm_std::Coin;
 
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetadataRequest;
