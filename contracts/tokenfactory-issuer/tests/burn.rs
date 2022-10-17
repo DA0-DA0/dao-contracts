@@ -7,7 +7,7 @@ use osmosis_testing::{
 use tokenfactory_issuer::{msg::AllowanceInfo, ContractError};
 
 #[test]
-fn set_burner_performed_by_contract_owner_should_pass() {
+fn set_burner_performed_by_contract_owner_should_work() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let non_owner = &env.test_accs[1];
@@ -45,7 +45,7 @@ fn set_burner_performed_by_non_contract_owner_should_fail() {
 }
 
 #[test]
-fn burn_whole_balance_but_less_than_or_eq_allowance_should_pass() {
+fn burn_whole_balance_but_less_than_or_eq_allowance_should_work_and_deduct_allowance() {
     let cases = vec![
         (u128::MAX, u128::MAX),
         (u128::MAX, u128::MAX - 1),
@@ -80,6 +80,17 @@ fn burn_whole_balance_but_less_than_or_eq_allowance_should_pass() {
             .burn(&burn_to.address(), burn_amount, burner)
             .unwrap();
 
+        // check if allowance is deducted properly
+        let resulted_allowance = env
+            .tokenfactory_issuer
+            .query_burn_allowance(&burner.address())
+            .unwrap()
+            .allowance
+            .u128();
+
+        assert_eq!(resulted_allowance, allowance - burn_amount);
+
+        // check if resulted balance is 0
         let amount = env
             .bank()
             .query_balance(&QueryBalanceRequest {
@@ -96,7 +107,7 @@ fn burn_whole_balance_but_less_than_or_eq_allowance_should_pass() {
 }
 
 #[test]
-fn burn_more_than_balance_should_fail() {
+fn burn_more_than_balance_should_fail_and_not_deduct_allowance() {
     let cases = vec![(u128::MAX - 1, u128::MAX), (1, 2)];
 
     cases.into_iter().for_each(|(balance, burn_amount)| {
@@ -106,6 +117,8 @@ fn burn_more_than_balance_should_fail() {
 
         let burner = &env.test_accs[1];
         let burn_from = &env.test_accs[2];
+
+        let allowance = burn_amount;
 
         // mint
         env.tokenfactory_issuer
@@ -118,12 +131,12 @@ fn burn_more_than_balance_should_fail() {
 
         // burn
         env.tokenfactory_issuer
-            .set_burner(&burner.address(), burn_amount, owner)
+            .set_burner(&burner.address(), allowance, owner)
             .unwrap();
 
         let err = env
             .tokenfactory_issuer
-            .burn(&burn_from.address(), burn_amount, burner)
+            .burn(&burn_from.address(), allowance, burner)
             .unwrap_err();
 
         assert_eq!(
@@ -132,11 +145,21 @@ fn burn_more_than_balance_should_fail() {
                 msg: format!("failed to execute message; message index: 0: dispatch: submessages: {balance}{denom} is smaller than {burn_amount}{denom}: insufficient funds")
             }
         );
+
+        // check if allowance stays the same
+        let resulted_allowance = env
+           .tokenfactory_issuer
+           .query_burn_allowance(&burner.address())
+           .unwrap()
+           .allowance
+           .u128();
+
+       assert_eq!(resulted_allowance, allowance);
     });
 }
 
 #[test]
-fn burn_over_allowance_should_fail() {
+fn burn_over_allowance_should_fail_and_not_deduct_allowance() {
     let cases = vec![(u128::MAX - 1, u128::MAX), (0, 1)];
 
     cases.into_iter().for_each(|(allowance, burn_amount)| {
@@ -165,11 +188,21 @@ fn burn_over_allowance_should_fail() {
                 }
             }))
         );
+
+        // check if allowance stays the same
+        let resulted_allowance = env
+            .tokenfactory_issuer
+            .query_burn_allowance(&burner.address())
+            .unwrap()
+            .allowance
+            .u128();
+
+        assert_eq!(resulted_allowance, allowance);
     });
 }
 
 #[test]
-fn burn_0_should_fail() {
+fn burn_0_should_fail_and_not_deduct_allowance() {
     let cases = vec![(u128::MAX, 0), (0, 0)];
 
     cases.into_iter().for_each(|(allowance, burn_amount)| {
@@ -192,6 +225,16 @@ fn burn_0_should_fail() {
             err,
             TokenfactoryIssuer::execute_error(ContractError::ZeroAmount {})
         );
+
+        // check if allowance stays the same
+        let resulted_allowance = env
+            .tokenfactory_issuer
+            .query_burn_allowance(&burner.address())
+            .unwrap()
+            .allowance
+            .u128();
+
+        assert_eq!(resulted_allowance, allowance);
     });
 }
 

@@ -36,57 +36,6 @@ fn set_blacklister_performed_by_contract_owner_should_pass() {
 }
 
 #[test]
-fn blacklist_by_blacklister_should_pass() {
-    let env = TestEnv::default();
-    let owner = &env.test_accs[0];
-    let non_owner = &env.test_accs[1];
-    let blacklistee = &env.test_accs[2];
-
-    env.tokenfactory_issuer
-        .set_blacklister(&non_owner.address(), true, owner)
-        .unwrap();
-    env.tokenfactory_issuer
-        .blacklist(&blacklistee.address(), true, non_owner)
-        .unwrap();
-
-    // should be blacklisted after set true
-    assert!(
-        env.tokenfactory_issuer
-            .query_is_blacklisted(&blacklistee.address())
-            .unwrap()
-            .status
-    );
-
-    env.tokenfactory_issuer
-        .blacklist(&blacklistee.address(), false, non_owner)
-        .unwrap();
-
-    // should be unblacklisted after set false
-    assert!(
-        !env.tokenfactory_issuer
-            .query_is_blacklisted(&blacklistee.address())
-            .unwrap()
-            .status
-    );
-}
-
-#[test]
-fn blacklist_by_non_blacklister_should_fail() {
-    let env = TestEnv::default();
-    let owner = &env.test_accs[0];
-    let blacklistee = &env.test_accs[2];
-    let err = env
-        .tokenfactory_issuer
-        .blacklist(&blacklistee.address(), true, owner)
-        .unwrap_err();
-
-    assert_eq!(
-        err,
-        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
-    );
-}
-
-#[test]
 fn set_blacklister_performed_by_non_contract_owner_should_fail() {
     let env = TestEnv::default();
     let non_owner = &env.test_accs[1];
@@ -158,6 +107,57 @@ fn set_blacklister_to_false_should_remove_it_from_state() {
             .query_is_blacklister(&sorted_addrs[1])
             .unwrap()
             .status
+    );
+}
+
+#[test]
+fn blacklist_by_blacklister_should_pass() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let non_owner = &env.test_accs[1];
+    let blacklistee = &env.test_accs[2];
+
+    env.tokenfactory_issuer
+        .set_blacklister(&non_owner.address(), true, owner)
+        .unwrap();
+    env.tokenfactory_issuer
+        .blacklist(&blacklistee.address(), true, non_owner)
+        .unwrap();
+
+    // should be blacklisted after set true
+    assert!(
+        env.tokenfactory_issuer
+            .query_is_blacklisted(&blacklistee.address())
+            .unwrap()
+            .status
+    );
+
+    env.tokenfactory_issuer
+        .blacklist(&blacklistee.address(), false, non_owner)
+        .unwrap();
+
+    // should be unblacklisted after set false
+    assert!(
+        !env.tokenfactory_issuer
+            .query_is_blacklisted(&blacklistee.address())
+            .unwrap()
+            .status
+    );
+}
+
+#[test]
+fn blacklist_by_non_blacklister_should_fail() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let blacklistee = &env.test_accs[2];
+    let err = env
+        .tokenfactory_issuer
+        .blacklist(&blacklistee.address(), true, owner)
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenfactoryIssuer::execute_error(ContractError::Unauthorized {})
     );
 }
 

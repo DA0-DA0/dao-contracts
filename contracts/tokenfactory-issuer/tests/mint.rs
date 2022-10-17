@@ -43,7 +43,7 @@ fn set_minter_performed_by_non_contract_owner_should_fail() {
 }
 
 #[test]
-fn mint_less_than_or_eq_allowance_should_pass() {
+fn mint_less_than_or_eq_allowance_should_pass_and_deduct_allowance() {
     let cases = vec![
         (u128::MAX, u128::MAX),
         (u128::MAX, u128::MAX - 1),
@@ -68,6 +68,16 @@ fn mint_less_than_or_eq_allowance_should_pass() {
             .mint(&mint_to.address(), mint_amount, minter)
             .unwrap();
 
+        // check if allowance is deducted properly
+        let resulted_allowance = env
+            .tokenfactory_issuer
+            .query_mint_allowance(&minter.address())
+            .unwrap()
+            .allowance
+            .u128();
+
+        assert_eq!(resulted_allowance, allowance - mint_amount);
+
         let amount = env
             .bank()
             .query_balance(&QueryBalanceRequest {
@@ -84,7 +94,7 @@ fn mint_less_than_or_eq_allowance_should_pass() {
 }
 
 #[test]
-fn mint_over_allowance_should_fail() {
+fn mint_over_allowance_should_fail_and_not_deduct_allowance() {
     let cases = vec![(u128::MAX - 1, u128::MAX), (0, 1)];
 
     cases.into_iter().for_each(|(allowance, mint_amount)| {
@@ -113,11 +123,21 @@ fn mint_over_allowance_should_fail() {
                 }
             }))
         );
+
+        // check if allowance stays the same
+        let resulted_allowance = env
+            .tokenfactory_issuer
+            .query_mint_allowance(&minter.address())
+            .unwrap()
+            .allowance
+            .u128();
+
+        assert_eq!(resulted_allowance, allowance);
     });
 }
 
 #[test]
-fn mint_0_should_fail() {
+fn mint_0_should_fail_and_not_deduct_allowance() {
     let cases = vec![(u128::MAX, 0), (0, 0)];
 
     cases.into_iter().for_each(|(allowance, mint_amount)| {
@@ -140,6 +160,16 @@ fn mint_0_should_fail() {
             err,
             TokenfactoryIssuer::execute_error(ContractError::ZeroAmount {})
         );
+
+        // check if allowance stays the same
+        let resulted_allowance = env
+            .tokenfactory_issuer
+            .query_mint_allowance(&minter.address())
+            .unwrap()
+            .allowance
+            .u128();
+
+        assert_eq!(resulted_allowance, allowance);
     });
 }
 

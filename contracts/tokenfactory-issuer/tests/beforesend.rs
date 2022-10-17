@@ -5,7 +5,7 @@ use helpers::TestEnv;
 use osmosis_testing::{Account, RunnerError};
 
 #[test]
-fn bank_send_should_be_allowed_by_default() {
+fn before_send_should_not_block_anything_by_default() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
@@ -28,7 +28,7 @@ fn bank_send_should_be_allowed_by_default() {
 }
 
 #[test]
-fn frozen_contract_should_block_bank_send() {
+fn before_send_should_block_on_frozen() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let denom = env.tokenfactory_issuer.query_denom().unwrap().denom;
@@ -53,7 +53,7 @@ fn frozen_contract_should_block_bank_send() {
 }
 
 #[test]
-fn bank_send_from_blacklisted_address_should_be_blocked() {
+fn before_send_should_block_sending_from_blacklisted_address() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let blacklistee = &env.test_accs[1];
@@ -89,7 +89,7 @@ fn bank_send_from_blacklisted_address_should_be_blocked() {
 }
 
 #[test]
-fn bank_send_to_blacklisted_address_should_be_blocked() {
+fn before_send_should_block_sending_to_blacklisted_address() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
     let blacklistee = &env.test_accs[1];
