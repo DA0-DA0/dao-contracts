@@ -18,13 +18,17 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Set up rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Compile WASM contract
-        uses: actions-rs/cargo@v1
-        with:
-          command: wasm
-          args: --locked
+        run: |
+          cargo wasm --locked
         env:
           RUSTFLAGS: "-C link-arg=-s"
 
@@ -55,25 +59,25 @@ jobs:
           components: rustfmt, clippy
 
       - name: Set up rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: |
+          cargo fmt --all -- --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+        run: |
+          cargo clippy -- -D warnings
 
       - name: Generate Schema
-        uses: actions-rs/cargo@v1
-        with:
-          command: schema
-          args: --locked
+        run: |
+          cargo schema --locked
 
       - name: Schema Changes
         # fails if any changes not committed
