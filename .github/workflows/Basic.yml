@@ -24,12 +24,9 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: 1.63.0
           target: wasm32-unknown-unknown
-          override: true
 
       - name: Compile WASM contract
         uses: actions-rs/cargo@v1
@@ -72,11 +69,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: 1.63.0
-          override: true
           components: rustfmt, clippy
 
       - name: Run cargo fmt
