@@ -36,7 +36,7 @@ use crate::{
     state::{Ballot, BALLOTS, CONFIG, PROPOSALS, PROPOSAL_COUNT, PROPOSAL_HOOKS, VOTE_HOOKS},
 };
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-proposal-single";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-proposal-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -166,7 +166,7 @@ fn test_contract_info() {
         info,
         InfoResponse {
             info: ContractVersion {
-                contract: "crates.io:cw20-staked-balance-voting".to_string(),
+                contract: "crates.io:cwd-voting-cw20-staked".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string()
             }
         }

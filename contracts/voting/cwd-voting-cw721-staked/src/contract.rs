@@ -20,7 +20,7 @@ use cwd_interface::Admin;
 use indexmap::IndexSet;
 use std::convert::{From, TryFrom};
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw721_stake";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

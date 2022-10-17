@@ -19,12 +19,11 @@ use crate::query::{
 };
 use crate::state::{
     Config, ProposalModule, ProposalModuleStatus, ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG,
-    CREATED_TIMESTAMP, CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES,
-    SUBDAO_LIST, TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
+    CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, SUBDAO_LIST,
+    TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
-// version info for migration info
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-core";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-core";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PROPOSAL_MODULE_REPLY_ID: u64 = 0;
@@ -78,12 +77,8 @@ pub fn instantiate(
         ITEMS.save(deps.storage, key, &value)?;
     }
 
-    // Save total and active proposal module counts
     TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
     ACTIVE_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
-
-    // Set created timestamp.
-    CREATED_TIMESTAMP.save(deps.storage, &env.block.time)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -675,7 +670,6 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
     let version = get_contract_version(deps.storage)?;
     let active_proposal_module_count = ACTIVE_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
     let total_proposal_module_count = TOTAL_PROPOSAL_MODULE_COUNT.load(deps.storage)?;
-    let created_timestamp = CREATED_TIMESTAMP.may_load(deps.storage)?;
     to_binary(&DumpStateResponse {
         admin,
         config,
@@ -685,7 +679,6 @@ pub fn query_dump_state(deps: Deps, env: Env) -> StdResult<Binary> {
         voting_module,
         active_proposal_module_count,
         total_proposal_module_count,
-        created_timestamp,
     })
 }
 

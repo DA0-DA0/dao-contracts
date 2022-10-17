@@ -36,17 +36,6 @@
         }
       ]
     },
-    "created_timestamp": {
-      "description": "The timestamp of this DAO's creation. Will only be present for DAOs created v2 and after.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Timestamp"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "pause_info": {
       "$ref": "#/definitions/PauseInfoResponse"
     },

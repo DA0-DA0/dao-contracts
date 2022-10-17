@@ -6,6 +6,26 @@
 
 import { CosmWasmClient, ExecuteResult, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
+export type DaoResponse = string;
+export type Uint128 = string;
+export type CheckedDenom = {
+  native: string;
+} | {
+  cw20: Addr;
+};
+export type Addr = string;
+export type DepositRefundPolicy = "always" | "only_passed" | "never";
+export interface DepositInfoResponse {
+  deposit_info?: CheckedDepositInfo | null;
+  proposer: Addr;
+  [k: string]: unknown;
+}
+export interface CheckedDepositInfo {
+  amount: Uint128;
+  denom: CheckedDenom;
+  refund_policy: DepositRefundPolicy;
+  [k: string]: unknown;
+}
 export type ExecuteMsgForProposeMessageAnd_Empty = {
   propose: {
     msg: ProposeMessage;
@@ -81,7 +101,6 @@ export type BankMsg = {
     [k: string]: unknown;
   };
 };
-export type Uint128 = string;
 export type StakingMsg = {
   delegate: {
     amount: Coin;
@@ -195,7 +214,6 @@ export type UncheckedDenom = {
 } | {
   cw20: string;
 };
-export type DepositRefundPolicy = "always" | "only_passed" | "never";
 export type Status = "open" | "rejected" | "passed" | "executed" | "closed" | "execution_failed";
 export interface MultipleChoiceOptions {
   options: MultipleChoiceOption[];
@@ -236,6 +254,7 @@ export interface InstantiateMsgForEmpty {
   open_proposal_submission: boolean;
   [k: string]: unknown;
 }
+export type ProposalModuleResponse = string;
 export type QueryMsgForEmpty = {
   proposal_module: {
     [k: string]: unknown;

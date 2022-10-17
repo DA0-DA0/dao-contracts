@@ -13,7 +13,7 @@ use cwd_pre_propose_base::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-pre-propose-single";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Serialize, JsonSchema, Deserialize, Debug, Clone)]

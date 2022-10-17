@@ -38,7 +38,7 @@ use crate::{
     ContractError,
 };
 
-pub const CONTRACT_NAME: &str = "crates.io:cw-proposal-multiple";
+pub const CONTRACT_NAME: &str = "crates.io:cwd-proposal-multiple";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
