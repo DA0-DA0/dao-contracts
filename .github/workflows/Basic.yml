@@ -18,7 +18,7 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Set up rust cache
-      - uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2
 
       - name: Compile WASM contract
         uses: actions-rs/cargo@v1
@@ -55,7 +55,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Set up rust cache
-      - uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@v2
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
