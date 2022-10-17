@@ -19,12 +19,8 @@ fn before_send_should_not_block_anything_by_default() {
         .unwrap();
 
     // bank send should pass
-    env.send_tokens(
-        env.test_accs[1].address(),
-        coins(10000, denom.clone()),
-        owner,
-    )
-    .unwrap();
+    env.send_tokens(env.test_accs[1].address(), coins(10000, denom), owner)
+        .unwrap();
 }
 
 #[test]

@@ -1,5 +1,5 @@
 mod helpers;
-use cosmwasm_std::{OverflowError, OverflowOperation, StdError, Uint128};
+use cosmwasm_std::Uint128;
 use helpers::{TestEnv, TokenfactoryIssuer};
 use osmosis_testing::{
     cosmrs::proto::cosmos::bank::v1beta1::QueryBalanceRequest, Account, RunnerError,
@@ -243,13 +243,10 @@ fn burn_over_allowance_should_fail_and_not_deduct_allowance() {
 
         assert_eq!(
             err,
-            TokenfactoryIssuer::execute_error(ContractError::Std(StdError::Overflow {
-                source: OverflowError {
-                    operation: OverflowOperation::Sub,
-                    operand1: allowance.to_string(),
-                    operand2: burn_amount.to_string(),
-                }
-            }))
+            TokenfactoryIssuer::execute_error(ContractError::not_enough_burn_allowance(
+                burn_amount,
+                allowance
+            ))
         );
 
         // check if allowance stays the same

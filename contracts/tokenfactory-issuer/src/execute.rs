@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, StdError, Uint128};
+use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, Uint128};
 use osmo_bindings::OsmosisMsg;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
 
@@ -25,14 +25,16 @@ pub fn mint(
     }
 
     // decrease minter allowance
-    // if minter allowance goes negative, throw error
-    // if minter allowance goes 0, remove from storage
-    let allowance = MINTER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
-    let updated_allowance = allowance
-        .unwrap_or_else(Uint128::zero)
-        .checked_sub(amount)
-        .map_err(StdError::overflow)?;
+    let allowance = MINTER_ALLOWANCES
+        .may_load(deps.storage, &info.sender)?
+        .unwrap_or_else(Uint128::zero);
 
+    // if minter allowance goes negative, throw error
+    let updated_allowance = allowance
+        .checked_sub(amount)
+        .map_err(|_| ContractError::not_enough_mint_allowance(amount, allowance))?;
+
+    // if minter allowance goes 0, remove from storage
     if updated_allowance.is_zero() {
         MINTER_ALLOWANCES.remove(deps.storage, &info.sender);
     } else {
@@ -74,14 +76,16 @@ pub fn burn(
     }
 
     // decrease burner allowance
-    // if burner allowance goes negative, throw error
-    // if burner allowance goes 0, remove from storage
-    let allowance = BURNER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
-    let updated_allowance = allowance
-        .unwrap_or_else(Uint128::zero)
-        .checked_sub(amount)
-        .map_err(StdError::overflow)?;
+    let allowance = BURNER_ALLOWANCES
+        .may_load(deps.storage, &info.sender)?
+        .unwrap_or_else(Uint128::zero);
 
+    // if burner allowance goes negative, throw error
+    let updated_allowance = allowance
+        .checked_sub(amount)
+        .map_err(|_| ContractError::not_enough_burn_allowance(amount, allowance))?;
+
+    // if burner allowance goes 0, remove from storage
     if updated_allowance.is_zero() {
         BURNER_ALLOWANCES.remove(deps.storage, &info.sender);
     } else {
