@@ -719,10 +719,7 @@ fn test_query_info() {
 
     let msg = QueryMsg::Info {};
     let resp: InfoResponse = app.wrap().query_wasm_smart(addr, &msg).unwrap();
-    assert_eq!(
-        resp.info.contract,
-        "crates.io:cw-native-staked-balance-voting"
-    );
+    assert_eq!(resp.info.contract, "crates.io:cwd-voting-native-staked");
 }
 
 #[test]

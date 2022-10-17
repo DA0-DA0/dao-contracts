@@ -89,7 +89,10 @@ fn test_instantiate() {
     assert_eq!(dao, Addr::unchecked(DAO_ADDR));
 
     let info = get_info(deps.as_ref(), env);
-    assert_eq!(info.info.contract, "crates.io:cw-staking-denom-voting");
+    assert_eq!(
+        info.info.contract,
+        "crates.io:cwd-voting-staking-denom-staked"
+    );
 }
 
 #[test]
