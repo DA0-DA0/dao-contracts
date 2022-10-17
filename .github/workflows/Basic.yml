@@ -12,7 +12,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install stable toolchain
+      - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
@@ -40,6 +40,13 @@ jobs:
           args: --locked
         env:
           RUSTFLAGS: "-C link-arg=-s"
+
+      # Go is required for tests
+      - name: Install Go
+      - uses: actions/setup-go@v3
+        with:
+          go-version: ">=1.19.0"
+      - run: go version
 
       - name: Run all tests
         uses: actions-rs/cargo@v1
