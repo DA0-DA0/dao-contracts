@@ -26,12 +26,18 @@ pub fn mint(
 
     // decrease minter allowance
     // if minter allowance goes negative, throw error
-    MINTER_ALLOWANCES.update(deps.storage, &info.sender, |allowance| {
-        allowance
-            .unwrap_or_else(Uint128::zero)
-            .checked_sub(amount)
-            .map_err(StdError::overflow)
-    })?;
+    // if minter allowance goes 0, remove from storage
+    let allowance = MINTER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
+    let updated_allowance = allowance
+        .unwrap_or_else(Uint128::zero)
+        .checked_sub(amount)
+        .map_err(StdError::overflow)?;
+
+    if updated_allowance.is_zero() {
+        MINTER_ALLOWANCES.remove(deps.storage, &info.sender);
+    } else {
+        MINTER_ALLOWANCES.save(deps.storage, &info.sender, &updated_allowance)?;
+    }
 
     // get token denom from contract
     let denom = DENOM.load(deps.storage)?;
@@ -69,12 +75,18 @@ pub fn burn(
 
     // decrease burner allowance
     // if burner allowance goes negative, throw error
-    BURNER_ALLOWANCES.update(deps.storage, &info.sender, |allowance| {
-        allowance
-            .unwrap_or_else(Uint128::zero)
-            .checked_sub(amount)
-            .map_err(StdError::overflow)
-    })?;
+    // if burner allowance goes 0, remove from storage
+    let allowance = BURNER_ALLOWANCES.may_load(deps.storage, &info.sender)?;
+    let updated_allowance = allowance
+        .unwrap_or_else(Uint128::zero)
+        .checked_sub(amount)
+        .map_err(StdError::overflow)?;
+
+    if updated_allowance.is_zero() {
+        BURNER_ALLOWANCES.remove(deps.storage, &info.sender);
+    } else {
+        BURNER_ALLOWANCES.save(deps.storage, &info.sender, &updated_allowance)?;
+    }
 
     // get token denom from contract config
     let denom = DENOM.load(deps.storage)?;
@@ -204,9 +216,16 @@ pub fn set_burner(
     // Only allow current contract owner to set burner allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // update allowance of burner
     // validate that burner is a valid address
-    BURNER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &allowance)?;
+    let address = deps.api.addr_validate(&address)?;
+
+    // update allowance of burner
+    // remove key from state if set to 0
+    if allowance.is_zero() {
+        BURNER_ALLOWANCES.remove(deps.storage, &address);
+    } else {
+        BURNER_ALLOWANCES.save(deps.storage, &address, &allowance)?;
+    }
 
     // return OK
     Ok(Response::new()
@@ -224,9 +243,16 @@ pub fn set_minter(
     // Only allow current contract owner to set minter allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // update allowance of minter
     // validate that minter is a valid address
-    MINTER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &allowance)?;
+    let address = deps.api.addr_validate(&address)?;
+
+    // update allowance of minter
+    // remove key from state if set to 0
+    if allowance.is_zero() {
+        MINTER_ALLOWANCES.remove(deps.storage, &address);
+    } else {
+        MINTER_ALLOWANCES.save(deps.storage, &address, &allowance)?;
+    }
 
     // return OK
     Ok(Response::new()

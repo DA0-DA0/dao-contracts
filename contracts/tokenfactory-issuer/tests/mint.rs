@@ -43,6 +43,60 @@ fn set_minter_performed_by_non_contract_owner_should_fail() {
 }
 
 #[test]
+fn set_allowance_to_0_should_remove_it_from_storage() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let minter = &env.test_accs[1];
+
+    // set allowance to some value
+    let allowance = 1000000;
+    env.tokenfactory_issuer
+        .set_minter(&minter.address(), allowance, owner)
+        .unwrap();
+
+    // set allowance to 0
+    env.tokenfactory_issuer
+        .set_minter(&minter.address(), 0, owner)
+        .unwrap();
+
+    // check if key for the minter address is removed
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(None, None)
+            .unwrap()
+            .allowances,
+        vec![]
+    );
+}
+
+#[test]
+fn used_up_allowance_should_be_removed_from_storage() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let minter = &env.test_accs[1];
+
+    // set allowance to some value
+    let allowance = 1000000;
+    env.tokenfactory_issuer
+        .set_minter(&minter.address(), allowance, owner)
+        .unwrap();
+
+    // use all allowance
+    env.tokenfactory_issuer
+        .mint(&minter.address(), allowance, minter)
+        .unwrap();
+
+    // check if key for the minter address is removed
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_mint_allowances(None, None)
+            .unwrap()
+            .allowances,
+        vec![]
+    );
+}
+
+#[test]
 fn mint_less_than_or_eq_allowance_should_pass_and_deduct_allowance() {
     let cases = vec![
         (u128::MAX, u128::MAX),

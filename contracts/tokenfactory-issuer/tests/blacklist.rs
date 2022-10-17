@@ -52,7 +52,7 @@ fn set_blacklister_performed_by_non_contract_owner_should_fail() {
 }
 
 #[test]
-fn set_blacklister_to_false_should_remove_it_from_state() {
+fn set_blacklister_to_false_should_remove_it_from_storage() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
 
@@ -162,7 +162,7 @@ fn blacklist_by_non_blacklister_should_fail() {
 }
 
 #[test]
-fn set_blacklist_to_false_should_remove_it_from_state() {
+fn set_blacklist_to_false_should_remove_it_from_storage() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
 

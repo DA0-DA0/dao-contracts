@@ -52,7 +52,7 @@ fn set_freezer_performed_by_non_contract_owner_should_fail() {
 }
 
 #[test]
-fn set_freezer_to_false_should_remove_it_from_state() {
+fn set_freezer_to_false_should_remove_it_from_storage() {
     let env = TestEnv::default();
     let owner = &env.test_accs[0];
 

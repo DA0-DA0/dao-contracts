@@ -45,6 +45,69 @@ fn set_burner_performed_by_non_contract_owner_should_fail() {
 }
 
 #[test]
+fn set_allowance_to_0_should_remove_it_from_storage() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let burner = &env.test_accs[1];
+
+    // set allowance to some value
+    let allowance = 1000000;
+    env.tokenfactory_issuer
+        .set_burner(&burner.address(), allowance, owner)
+        .unwrap();
+
+    // set allowance to 0
+    env.tokenfactory_issuer
+        .set_burner(&burner.address(), 0, owner)
+        .unwrap();
+
+    // check if key for the minter address is removed
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_burn_allowances(None, None)
+            .unwrap()
+            .allowances,
+        vec![]
+    );
+}
+
+#[test]
+fn used_up_allowance_should_be_removed_from_storage() {
+    let env = TestEnv::default();
+    let owner = &env.test_accs[0];
+    let burner = &env.test_accs[1];
+
+    // set allowance to some value
+    let allowance = 1000000;
+    env.tokenfactory_issuer
+        .set_minter(&burner.address(), allowance, owner)
+        .unwrap();
+
+    // mint the whole allowance to be burned the same amount later
+    env.tokenfactory_issuer
+        .mint(&burner.address(), allowance, burner)
+        .unwrap();
+
+    env.tokenfactory_issuer
+        .set_burner(&burner.address(), allowance, owner)
+        .unwrap();
+
+    // use all allowance
+    env.tokenfactory_issuer
+        .burn(&burner.address(), allowance, burner)
+        .unwrap();
+
+    // check if key for the burner address is removed
+    assert_eq!(
+        env.tokenfactory_issuer
+            .query_burn_allowances(None, None)
+            .unwrap()
+            .allowances,
+        vec![]
+    );
+}
+
+#[test]
 fn burn_whole_balance_but_less_than_or_eq_allowance_should_work_and_deduct_allowance() {
     let cases = vec![
         (u128::MAX, u128::MAX),
