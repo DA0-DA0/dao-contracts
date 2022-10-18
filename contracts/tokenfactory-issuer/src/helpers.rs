@@ -100,20 +100,29 @@ pub fn create_metadata(
         symbol,
     }: AdditionalMetadata,
 ) -> Metadata {
+    let has_base_denom_units = denom_units.iter().any(|unit| unit.denom == denom);
     Metadata {
-        denom_units: vec![
-            vec![DenomUnit {
-                denom: denom.clone(),
-                exponent: 0,
-                aliases: vec![],
-            }],
-            denom_units,
-        ]
-        .concat(),
+        denom_units: if has_base_denom_units {
+            denom_units
+        } else {
+            prepend_default_base_denom_unit(denom.clone(), denom_units)
+        },
         base: denom,
         description,
         display,
         name,
         symbol,
     }
+}
+
+fn prepend_default_base_denom_unit(denom: String, denom_units: Vec<DenomUnit>) -> Vec<DenomUnit> {
+    vec![
+        vec![DenomUnit {
+            denom,
+            exponent: 0,
+            aliases: vec![],
+        }],
+        denom_units,
+    ]
+    .concat()
 }

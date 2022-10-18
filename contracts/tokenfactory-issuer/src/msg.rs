@@ -33,8 +33,7 @@ pub enum ExecuteMsg {
     },
     SetDenomMetadata {
         /// Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
-        /// Leave this field empty to unset the metadata.
-        metadata: Option<Metadata>,
+        metadata: AdditionalMetadata,
     },
 
     /// Grant/revoke mint allowance.

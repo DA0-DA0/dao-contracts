@@ -42,8 +42,16 @@ pub fn instantiate(
     match msg {
         InstantiateMsg::NewToken { subdenom, metadata } => {
             let denom = format!("factory/{}/{}", env.contract.address, subdenom);
-            let metadata =
-                metadata.map(|additional_metadata| create_metadata(denom, additional_metadata));
+
+            // vector contains set denom metadata if metadata is present
+            // else containis empty vector (not sendng the msg)
+            let msg_set_denom_metadata = metadata
+                .map(|additional_metadata| MsgSetDenomMetadata {
+                    sender: env.contract.address.to_string(),
+                    metadata: Some(create_metadata(denom, additional_metadata)),
+                })
+                .into_iter()
+                .collect::<Vec<_>>();
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
@@ -60,10 +68,7 @@ pub fn instantiate(
                         CREATE_DENOM_REPLY_ID,
                     ),
                 )
-                .add_message(MsgSetDenomMetadata {
-                    sender: env.contract.address.to_string(),
-                    metadata,
-                }))
+                .add_messages(msg_set_denom_metadata))
         }
         InstantiateMsg::ExistingToken { denom } => {
             DENOM.save(deps.storage, &denom)?;
@@ -141,7 +146,9 @@ pub fn execute(
         ExecuteMsg::SetFreezer { address, status } => {
             execute::set_freezer(deps, info, address, status)
         }
-        ExecuteMsg::SetDenomMetadata { metadata } => todo!(),
+        ExecuteMsg::SetDenomMetadata { metadata } => {
+            execute::set_denom_metadata(deps, env, info, metadata)
+        }
     }
 }
 

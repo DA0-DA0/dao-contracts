@@ -1,9 +1,10 @@
 use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, Uint128};
 use osmo_bindings::OsmosisMsg;
-use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
+use osmosis_std::types::osmosis::tokenfactory::v1beta1::{MsgBurn, MsgSetDenomMetadata};
 
 use crate::error::ContractError;
-use crate::helpers::{check_bool_allowance, check_is_contract_owner};
+use crate::helpers::{check_bool_allowance, check_is_contract_owner, create_metadata};
+use crate::msg::AdditionalMetadata;
 use crate::state::{
     BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
     IS_FROZEN, MINTER_ALLOWANCES, OWNER,
@@ -155,6 +156,25 @@ pub fn change_tokenfactory_admin(
         .add_message(change_admin_msg)
         .add_attribute("action", "change_tokenfactory_admin")
         .add_attribute("new_admin", new_admin))
+}
+
+pub fn set_denom_metadata(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    additional_metadata: AdditionalMetadata,
+) -> Result<Response<OsmosisMsg>, ContractError> {
+    // only allow current contract owner to set denom metadata
+    check_is_contract_owner(deps.as_ref(), info.sender)?;
+
+    let denom = DENOM.load(deps.storage)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "set_denom_metadata")
+        .add_message(MsgSetDenomMetadata {
+            sender: env.contract.address.to_string(),
+            metadata: Some(create_metadata(denom, additional_metadata)),
+        }))
 }
 
 pub fn set_blacklister(
