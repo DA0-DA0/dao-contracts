@@ -6,6 +6,8 @@ use tokenfactory_issuer::msg::InstantiateMsg;
 mod helpers;
 use helpers::{TestEnv, TokenfactoryIssuer};
 
+// new denom
+
 #[test]
 fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
     let subdenom = "uthb".to_string();
@@ -83,17 +85,15 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
         )
         .unwrap_err();
 
-    if let RunnerError::ExecuteError { msg } = err {
-        assert_eq!(msg, format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed", denom = denom))
-    } else {
-        panic!("unexpected error: {:?}", err);
-    }
+    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
 }
 
+// existing denom
+
 #[test]
-fn instantiate_with_existing_denom_should_set_initial_state_correctly() {
+fn instantiate_with_existing_token_should_set_initial_state_correctly() {
     let app = OsmosisTestApp::new();
-    let test_accs = TestEnv::create_default_test_accs(&app);
+    let test_accs = TestEnv::create_default_test_accs(&app, 1);
 
     let denom = format!("factory/{}/uthb", test_accs[0].address());
     let tokenfactory_issuer = TokenfactoryIssuer::new(

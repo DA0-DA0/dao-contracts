@@ -143,13 +143,13 @@ pub struct OwnerResponse {
 
 #[cw_serde]
 pub struct AllowanceResponse {
-    pub allowance: u128,
+    pub allowance: Uint128,
 }
 
 #[cw_serde]
 pub struct AllowanceInfo {
     pub address: String,
-    pub allowance: u128,
+    pub allowance: Uint128,
 }
 
 #[cw_serde]

@@ -7,8 +7,8 @@ use crate::msg::{
     OwnerResponse, StatusInfo, StatusResponse,
 };
 use crate::state::{
-    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG, FREEZER_ALLOWANCES,
-    MINTER_ALLOWANCES,
+    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
+    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
 };
 
 // Default settings for pagination
@@ -16,39 +16,33 @@ const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
 
 pub fn query_denom(deps: Deps) -> StdResult<DenomResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(DenomResponse {
-        denom: config.denom,
-    })
+    let denom = DENOM.load(deps.storage)?;
+    Ok(DenomResponse { denom })
 }
 
 pub fn query_is_frozen(deps: Deps) -> StdResult<IsFrozenResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(IsFrozenResponse {
-        is_frozen: config.is_frozen,
-    })
+    let is_frozen = IS_FROZEN.load(deps.storage)?;
+    Ok(IsFrozenResponse { is_frozen })
 }
 
 pub fn query_owner(deps: Deps) -> StdResult<OwnerResponse> {
-    let config = CONFIG.load(deps.storage)?;
+    let owner = OWNER.load(deps.storage)?;
     Ok(OwnerResponse {
-        address: config.owner.into_string(),
+        address: owner.into_string(),
     })
 }
 
 pub fn query_mint_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = MINTER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
-        .unwrap_or_else(Uint128::zero)
-        .u128();
+        .unwrap_or_else(Uint128::zero);
     Ok(AllowanceResponse { allowance })
 }
 
 pub fn query_burn_allowance(deps: Deps, address: String) -> StdResult<AllowanceResponse> {
     let allowance = BURNER_ALLOWANCES
         .may_load(deps.storage, &deps.api.addr_validate(&address)?)?
-        .unwrap_or_else(Uint128::zero)
-        .u128();
+        .unwrap_or_else(Uint128::zero);
     Ok(AllowanceResponse { allowance })
 }
 
@@ -77,7 +71,7 @@ pub fn query_allowances(
             let (k, v) = item?;
             Ok(AllowanceInfo {
                 address: k.to_string(),
-                allowance: v.u128(),
+                allowance: v,
             })
         })
         .collect()

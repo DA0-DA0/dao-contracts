@@ -1,12 +1,12 @@
-use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, StdError, Uint128};
+use cosmwasm_std::{coins, BankMsg, Coin, DepsMut, Env, MessageInfo, Response, Uint128};
 use osmo_bindings::OsmosisMsg;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::MsgBurn;
 
 use crate::error::ContractError;
 use crate::helpers::{check_bool_allowance, check_is_contract_owner};
 use crate::state::{
-    Config, BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, CONFIG,
-    FREEZER_ALLOWANCES, MINTER_ALLOWANCES,
+    BLACKLISTED_ADDRESSES, BLACKLISTER_ALLOWANCES, BURNER_ALLOWANCES, DENOM, FREEZER_ALLOWANCES,
+    IS_FROZEN, MINTER_ALLOWANCES, OWNER,
 };
 
 pub fn mint(
@@ -21,20 +21,28 @@ pub fn mint(
 
     // don't allow minting of 0 coins
     if amount.is_zero() {
-        return Result::Err(ContractError::ZeroAmount {});
+        return Err(ContractError::ZeroAmount {});
     }
 
     // decrease minter allowance
-    // if minter allowance goes negative, throw error
-    MINTER_ALLOWANCES.update(deps.storage, &info.sender, |allowance| {
-        allowance
-            .unwrap_or_else(Uint128::zero)
-            .checked_sub(amount)
-            .map_err(StdError::overflow)
-    })?;
+    let allowance = MINTER_ALLOWANCES
+        .may_load(deps.storage, &info.sender)?
+        .unwrap_or_else(Uint128::zero);
 
-    // get token denom from contract config
-    let denom = CONFIG.load(deps.storage)?.denom;
+    // if minter allowance goes negative, throw error
+    let updated_allowance = allowance
+        .checked_sub(amount)
+        .map_err(|_| ContractError::not_enough_mint_allowance(amount, allowance))?;
+
+    // if minter allowance goes 0, remove from storage
+    if updated_allowance.is_zero() {
+        MINTER_ALLOWANCES.remove(deps.storage, &info.sender);
+    } else {
+        MINTER_ALLOWANCES.save(deps.storage, &info.sender, &updated_allowance)?;
+    }
+
+    // get token denom from contract
+    let denom = DENOM.load(deps.storage)?;
 
     // create tokenfactory MsgMint which mints coins to the contract address
     let mint_tokens_msg =
@@ -64,20 +72,28 @@ pub fn burn(
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     // don't allow burning of 0 coins
     if amount.is_zero() {
-        return Result::Err(ContractError::ZeroAmount {});
+        return Err(ContractError::ZeroAmount {});
     }
 
     // decrease burner allowance
+    let allowance = BURNER_ALLOWANCES
+        .may_load(deps.storage, &info.sender)?
+        .unwrap_or_else(Uint128::zero);
+
     // if burner allowance goes negative, throw error
-    BURNER_ALLOWANCES.update(deps.storage, &info.sender, |allowance| {
-        allowance
-            .unwrap_or_else(Uint128::zero)
-            .checked_sub(amount)
-            .map_err(StdError::overflow)
-    })?;
+    let updated_allowance = allowance
+        .checked_sub(amount)
+        .map_err(|_| ContractError::not_enough_burn_allowance(amount, allowance))?;
+
+    // if burner allowance goes 0, remove from storage
+    if updated_allowance.is_zero() {
+        BURNER_ALLOWANCES.remove(deps.storage, &info.sender);
+    } else {
+        BURNER_ALLOWANCES.save(deps.storage, &info.sender, &updated_allowance)?;
+    }
 
     // get token denom from contract config
-    let denom = CONFIG.load(deps.storage)?.denom;
+    let denom = DENOM.load(deps.storage)?;
 
     // create tokenfactory MsgBurn which burns coins from the contract address
     // NOTE: this requires the contract to own the tokens already
@@ -109,13 +125,7 @@ pub fn change_contract_owner(
     let new_owner_addr = deps.api.addr_validate(&new_owner)?;
 
     // update the contract owner in the contract config
-    CONFIG.update(
-        deps.storage,
-        |mut config: Config| -> Result<Config, ContractError> {
-            config.owner = new_owner_addr;
-            Ok(config)
-        },
-    )?;
+    OWNER.save(deps.storage, &new_owner_addr)?;
 
     // return OK
     Ok(Response::new()
@@ -136,7 +146,7 @@ pub fn change_tokenfactory_admin(
 
     // construct tokenfactory change admin msg
     let change_admin_msg = OsmosisMsg::ChangeAdmin {
-        denom: CONFIG.load(deps.storage)?.denom,
+        denom: DENOM.load(deps.storage)?,
         new_admin_address: new_admin_addr.into(),
     };
 
@@ -156,9 +166,16 @@ pub fn set_blacklister(
     // Only allow current contract owner to set blacklister permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
+    let address = deps.api.addr_validate(&address)?;
+
     // set blacklister status
     // NOTE: Does not check if new status is same as old status
-    BLACKLISTER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
+    // but if status is false, remove if exist to reduce space usage
+    if status {
+        BLACKLISTER_ALLOWANCES.save(deps.storage, &address, &status)?;
+    } else {
+        BLACKLISTER_ALLOWANCES.remove(deps.storage, &address);
+    }
 
     // Return OK
     Ok(Response::new()
@@ -176,9 +193,16 @@ pub fn set_freezer(
     // Only allow current contract owner to set freezer permission
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
+    let address = deps.api.addr_validate(&address)?;
+
     // set freezer status
     // NOTE: Does not check if new status is same as old status
-    FREEZER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
+    // but if status is false, remove if exist to reduce space usage
+    if status {
+        FREEZER_ALLOWANCES.save(deps.storage, &address, &status)?;
+    } else {
+        FREEZER_ALLOWANCES.remove(deps.storage, &address);
+    }
 
     // return OK
     Ok(Response::new()
@@ -196,9 +220,16 @@ pub fn set_burner(
     // Only allow current contract owner to set burner allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // update allowance of burner
     // validate that burner is a valid address
-    BURNER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &allowance)?;
+    let address = deps.api.addr_validate(&address)?;
+
+    // update allowance of burner
+    // remove key from state if set to 0
+    if allowance.is_zero() {
+        BURNER_ALLOWANCES.remove(deps.storage, &address);
+    } else {
+        BURNER_ALLOWANCES.save(deps.storage, &address, &allowance)?;
+    }
 
     // return OK
     Ok(Response::new()
@@ -216,9 +247,16 @@ pub fn set_minter(
     // Only allow current contract owner to set minter allowance
     check_is_contract_owner(deps.as_ref(), info.sender)?;
 
-    // update allowance of minter
     // validate that minter is a valid address
-    MINTER_ALLOWANCES.save(deps.storage, &deps.api.addr_validate(&address)?, &allowance)?;
+    let address = deps.api.addr_validate(&address)?;
+
+    // update allowance of minter
+    // remove key from state if set to 0
+    if allowance.is_zero() {
+        MINTER_ALLOWANCES.remove(deps.storage, &address);
+    } else {
+        MINTER_ALLOWANCES.save(deps.storage, &address, &allowance)?;
+    }
 
     // return OK
     Ok(Response::new()
@@ -237,13 +275,7 @@ pub fn freeze(
 
     // Update config frozen status
     // NOTE: Does not check if new status is same as old status
-    CONFIG.update(
-        deps.storage,
-        |mut config: Config| -> Result<_, ContractError> {
-            config.is_frozen = status;
-            Ok(config)
-        },
-    )?;
+    IS_FROZEN.save(deps.storage, &status)?;
 
     // return OK
     Ok(Response::new()
@@ -260,10 +292,17 @@ pub fn blacklist(
     // check to make sure that the sender has blacklister permissions
     check_bool_allowance(deps.as_ref(), info, BLACKLISTER_ALLOWANCES)?;
 
+    let address = deps.api.addr_validate(&address)?;
+
     // update blacklisted status
     // validate that blacklisteed is a valid address
     // NOTE: Does not check if new status is same as old status
-    BLACKLISTED_ADDRESSES.save(deps.storage, &deps.api.addr_validate(&address)?, &status)?;
+    // but if status is false, remove if exist to reduce space usage
+    if status {
+        BLACKLISTED_ADDRESSES.save(deps.storage, &address, &status)?;
+    } else {
+        BLACKLISTED_ADDRESSES.remove(deps.storage, &address);
+    }
 
     // return OK
     Ok(Response::new()

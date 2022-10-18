@@ -1,27 +1,8 @@
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
 
-use crate::state::{BLACKLISTED_ADDRESSES, CONFIG};
+use crate::state::{BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER};
 use crate::ContractError;
-
-pub fn build_denom(creator: &Addr, subdenom: &str) -> Result<String, ContractError> {
-    // Minimum validation checks on the full denom.
-    // https://github.com/cosmos/cosmos-sdk/blob/2646b474c7beb0c93d4fafd395ef345f41afc251/types/coin.go#L706-L711
-    // https://github.com/cosmos/cosmos-sdk/blob/2646b474c7beb0c93d4fafd395ef345f41afc251/types/coin.go#L677
-    let full_denom = format!("factory/{}/{}", creator, subdenom);
-    if full_denom.len() < 3
-        || full_denom.len() > 128
-        || creator.as_str().contains('/')
-        || subdenom.len() > 44
-        || creator.as_str().len() > 75
-    {
-        return Err(ContractError::InvalidDenom {
-            denom: full_denom,
-            message: "".to_string(),
-        });
-    }
-    Ok(full_denom)
-}
 
 pub fn check_contract_has_funds(
     denom: String,
@@ -48,8 +29,8 @@ pub fn check_contract_has_funds(
 }
 
 pub fn check_is_contract_owner(deps: Deps, sender: Addr) -> Result<(), ContractError> {
-    let config = CONFIG.load(deps.storage).unwrap();
-    if config.owner != sender {
+    let owner = OWNER.load(deps.storage)?;
+    if owner != sender {
         Err(ContractError::Unauthorized {})
     } else {
         Ok(())
@@ -90,11 +71,17 @@ pub fn check_is_not_blacklisted(deps: Deps, address: String) -> Result<(), Contr
 }
 
 pub fn check_is_not_frozen(deps: Deps, denom: &str) -> Result<(), ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    let is_denom_frozen = config.is_frozen && denom == config.denom;
+    let is_frozen = IS_FROZEN.load(deps.storage)?;
+    let contract_denom = DENOM.load(deps.storage)?;
+
+    // check if issuer is configured to be frozen and the arriving denom is the same
+    // as this contract denom.
+    // Denom can be different since setting beforesend listener doesn't check
+    // contract's denom.
+    let is_denom_frozen = is_frozen && denom == contract_denom;
     if is_denom_frozen {
         return Err(ContractError::ContractFrozen {
-            denom: config.denom,
+            denom: contract_denom,
         });
     }
 

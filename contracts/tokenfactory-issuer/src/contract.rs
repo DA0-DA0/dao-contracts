@@ -18,7 +18,7 @@ use crate::execute;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::queries;
-use crate::state::{Config, CONFIG};
+use crate::state::{DENOM, IS_FROZEN, OWNER};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:tokenfactory-issuer";
@@ -35,18 +35,11 @@ pub fn instantiate(
 ) -> Result<Response<OsmosisMsg>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    OWNER.save(deps.storage, &info.sender)?;
+    IS_FROZEN.save(deps.storage, &false)?;
+
     match msg {
         InstantiateMsg::NewToken { subdenom } => {
-            let config = Config {
-                // TODO: use cw-plus admin instead https://github.com/CosmWasm/cw-plus/blob/main/packages/controllers/src/admin.rs
-                owner: info.sender.clone(),
-                is_frozen: false,
-                // to be updated after create denom
-                denom: "".to_string(),
-            };
-
-            CONFIG.save(deps.storage, &config)?;
-
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("owner", info.sender)
@@ -64,13 +57,7 @@ pub fn instantiate(
                 ))
         }
         InstantiateMsg::ExistingToken { denom } => {
-            let config = Config {
-                owner: info.sender.clone(),
-                is_frozen: false,
-                denom: denom.clone(),
-            };
-
-            CONFIG.save(deps.storage, &config)?;
+            DENOM.save(deps.storage, &denom)?;
 
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
@@ -85,13 +72,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response<OsmosisMsg>
     // after instantiate contract
     if msg.id == CREATE_DENOM_REPLY_ID {
         let MsgCreateDenomResponse { new_token_denom } = msg.result.try_into()?;
-
-        CONFIG.update(deps.storage, |config| {
-            Result::<Config, ContractError>::Ok(Config {
-                denom: new_token_denom.clone(),
-                ..config
-            })
-        })?;
+        DENOM.save(deps.storage, &new_token_denom)?;
 
         // set beforesend listener to this contract
         // this will trigger sudo endpoint before any bank send

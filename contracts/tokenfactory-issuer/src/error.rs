@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -25,6 +25,13 @@ pub enum ContractError {
         needed: u128,
     },
 
+    #[error("Not enough {action} allowance: attempted to {action} {amount}, but remaining allowance is {allowance}")]
+    NotEnoughAllowance {
+        action: String,
+        amount: Uint128,
+        allowance: Uint128,
+    },
+
     #[error("address is not supported yet, was: {address:?}")]
     BurnFromAddressNotSupported { address: String },
 
@@ -36,4 +43,28 @@ pub enum ContractError {
 
     #[error("The contract is frozen for denom {denom:?}")]
     ContractFrozen { denom: String },
+}
+
+impl ContractError {
+    pub fn not_enough_mint_allowance(
+        amount: impl Into<Uint128>,
+        allowance: impl Into<Uint128>,
+    ) -> ContractError {
+        ContractError::NotEnoughAllowance {
+            action: "mint".to_string(),
+            amount: amount.into(),
+            allowance: allowance.into(),
+        }
+    }
+
+    pub fn not_enough_burn_allowance(
+        amount: impl Into<Uint128>,
+        allowance: impl Into<Uint128>,
+    ) -> ContractError {
+        ContractError::NotEnoughAllowance {
+            action: "burn".to_string(),
+            amount: amount.into(),
+            allowance: allowance.into(),
+        }
+    }
 }
