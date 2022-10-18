@@ -10,11 +10,12 @@ use cw2::set_contract_version;
 
 use osmo_bindings::OsmosisMsg;
 use osmosis_std::types::osmosis::tokenfactory::v1beta1::{
-    MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendListener,
+    MsgCreateDenom, MsgCreateDenomResponse, MsgSetBeforeSendListener, MsgSetDenomMetadata,
 };
 
 use crate::error::ContractError;
 use crate::execute;
+use crate::helpers::create_metadata;
 use crate::hooks;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
 use crate::queries;
@@ -39,7 +40,11 @@ pub fn instantiate(
     IS_FROZEN.save(deps.storage, &false)?;
 
     match msg {
-        InstantiateMsg::NewToken { subdenom } => {
+        InstantiateMsg::NewToken { subdenom, metadata } => {
+            let denom = format!("factory/{}/{}", env.contract.address, subdenom);
+            let metadata =
+                metadata.map(|additional_metadata| create_metadata(denom, additional_metadata));
+
             Ok(Response::new()
                 .add_attribute("action", "instantiate")
                 .add_attribute("owner", info.sender)
@@ -54,7 +59,11 @@ pub fn instantiate(
                         }),
                         CREATE_DENOM_REPLY_ID,
                     ),
-                ))
+                )
+                .add_message(MsgSetDenomMetadata {
+                    sender: env.contract.address.to_string(),
+                    metadata,
+                }))
         }
         InstantiateMsg::ExistingToken { denom } => {
             DENOM.save(deps.storage, &denom)?;
@@ -132,6 +141,7 @@ pub fn execute(
         ExecuteMsg::SetFreezer { address, status } => {
             execute::set_freezer(deps, info, address, status)
         }
+        ExecuteMsg::SetDenomMetadata { metadata } => todo!(),
     }
 }
 

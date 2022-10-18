@@ -1,9 +1,15 @@
+use std::vec;
+
 use cosmwasm_std::coins;
 
-use osmosis_testing::{Account, OsmosisTestApp, RunnerError};
+use osmosis_testing::{
+    cosmrs::proto::cosmos::bank::v1beta1::{DenomUnit, Metadata, QueryDenomMetadataRequest},
+    Account, OsmosisTestApp, RunnerError,
+};
 use tokenfactory_issuer::msg::InstantiateMsg;
 
 mod helpers;
+
 use helpers::{TestEnv, TokenfactoryIssuer};
 
 // new denom
@@ -14,6 +20,7 @@ fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
             subdenom: subdenom.clone(),
+            metadata: None,
         },
         0,
     )
@@ -57,6 +64,7 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
             subdenom: subdenom.clone(),
+            metadata: None,
         },
         0,
     )
@@ -85,7 +93,74 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
         )
         .unwrap_err();
 
-    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
+    assert_eq!(err, RunnerError::ExecuteError { msg: format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
+}
+
+#[test]
+fn instantiate_with_denom_metadata() {
+    let subdenom = "usthb".to_string();
+    let additional_metadata = tokenfactory_issuer::msg::AdditionalMetadata {
+        description: "Thai Baht stablecoin".to_string(),
+        denom_units: vec![tokenfactory_issuer::msg::DenomUnit {
+            denom: "sthb".to_string(),
+            exponent: 6,
+            aliases: vec![],
+        }],
+        display: "sthb".to_string(),
+        name: "Stable Thai Baht".to_string(),
+        symbol: "STHB".to_string(),
+    };
+
+    let env = TestEnv::new(
+        InstantiateMsg::NewToken {
+            subdenom: subdenom.clone(),
+            metadata: Some(additional_metadata.clone()),
+        },
+        0,
+    )
+    .unwrap();
+
+    let denom = format!(
+        "factory/{}/{}",
+        env.tokenfactory_issuer.contract_addr, subdenom
+    );
+
+    assert_eq!(
+        env.bank()
+            .query_denom_metadata(&QueryDenomMetadataRequest {
+                denom: denom.clone()
+            })
+            .unwrap()
+            .metadata
+            .unwrap(),
+        Metadata {
+            description: additional_metadata.description,
+            denom_units: vec![
+                vec![
+                    // must start with `denom` with exponent 0
+                    DenomUnit {
+                        denom: denom.clone(),
+                        exponent: 0,
+                        aliases: vec![],
+                    }
+                ],
+                additional_metadata
+                    .denom_units
+                    .into_iter()
+                    .map(|d| DenomUnit {
+                        denom: d.denom,
+                        exponent: d.exponent,
+                        aliases: d.aliases,
+                    })
+                    .collect()
+            ]
+            .concat(),
+            base: denom,
+            display: additional_metadata.display,
+            name: additional_metadata.name,
+            symbol: additional_metadata.symbol,
+        }
+    );
 }
 
 // existing denom

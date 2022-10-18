@@ -110,6 +110,7 @@ impl Default for TestEnv {
         Self::new(
             InstantiateMsg::NewToken {
                 subdenom: "uusd".to_string(),
+                metadata: None,
             },
             0,
         )

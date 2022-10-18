@@ -1,6 +1,8 @@
 use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
 use cw_storage_plus::Map;
+use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
 
+use crate::msg::AdditionalMetadata;
 use crate::state::{BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER};
 use crate::ContractError;
 
@@ -86,4 +88,32 @@ pub fn check_is_not_frozen(deps: Deps, denom: &str) -> Result<(), ContractError>
     }
 
     Ok(())
+}
+
+pub fn create_metadata(
+    denom: String,
+    AdditionalMetadata {
+        description,
+        denom_units,
+        display,
+        name,
+        symbol,
+    }: AdditionalMetadata,
+) -> Metadata {
+    Metadata {
+        denom_units: vec![
+            vec![DenomUnit {
+                denom: denom.clone(),
+                exponent: 0,
+                aliases: vec![],
+            }],
+            denom_units,
+        ]
+        .concat(),
+        base: denom,
+        description,
+        display,
+        name,
+        symbol,
+    }
 }
