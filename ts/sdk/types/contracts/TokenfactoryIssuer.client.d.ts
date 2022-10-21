@@ -5,7 +5,7 @@
 */
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { Uint128, Coin, BlacklisteesResponse, BlacklisterAllowancesResponse, AllowanceResponse, AllowancesResponse, DenomResponse, FreezerAllowancesResponse, StatusResponse, IsFrozenResponse, OwnerResponse } from "./TokenfactoryIssuer.types";
+import { AdditionalMetadata, Uint128, Coin, BlacklisteesResponse, BlacklisterAllowancesResponse, AllowanceResponse, AllowancesResponse, DenomResponse, FreezerAllowancesResponse, StatusResponse, IsFrozenResponse, OwnerResponse } from "./TokenfactoryIssuer.types";
 export interface TokenfactoryIssuerReadOnlyInterface {
     contractAddress: string;
     isFrozen: () => Promise<IsFrozenResponse>;
@@ -99,6 +99,9 @@ export interface TokenfactoryIssuerInterface extends TokenfactoryIssuerReadOnlyI
     changeContractOwner: ({ newOwner }: {
         newOwner: string;
     }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+    setDenomMetadata: ({ metadata }: {
+        metadata: AdditionalMetadata;
+    }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
     setMinter: ({ address, allowance }: {
         address: string;
         allowance: Uint128;
@@ -141,6 +144,9 @@ export declare class TokenfactoryIssuerClient extends TokenfactoryIssuerQueryCli
     }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
     changeContractOwner: ({ newOwner }: {
         newOwner: string;
+    }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+    setDenomMetadata: ({ metadata }: {
+        metadata: AdditionalMetadata;
     }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
     setMinter: ({ address, allowance }: {
         address: string;

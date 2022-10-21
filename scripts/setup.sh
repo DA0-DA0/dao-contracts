@@ -59,7 +59,7 @@ deploy_tokenfactory_issuer() {
         state_file="state.local.json"
     fi
 
-    beaker wasm deploy tokenfactory-issuer --signer-account test1 --raw "$msg" --network "$NETWORK" > /dev/null
+    beaker wasm deploy tokenfactory-issuer --signer-account test1 --no-wasm-opt --raw "$msg" --funds "10000000uosmo" --network "$NETWORK" > /dev/null
 
 
     TOKENFACTORY_ISSUER_CONTRACT_ADDR=$(cat "$SCRIPT_DIR/../.beaker/$state_file" | jq '.local."tokenfactory-issuer".addresses.default' | sed 's/"//g') 
