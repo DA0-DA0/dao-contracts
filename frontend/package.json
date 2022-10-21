@@ -9,10 +9,22 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/icons": "^2.0.11",
+    "@chakra-ui/react": "^2.3.5",
+    "@emotion/react": "^11",
+    "@emotion/styled": "^11",
+    "@types/express": "^4.17.14",
+    "chakra-react-select": "^4.3.0",
     "cosmwasm": "^1.1.1",
+    "cw-tokenfactory-issuer-sdk": "../ts/sdk",
+    "framer-motion": "^5",
+    "http-proxy-middleware": "^2.0.6",
     "next": "12.1.6",
+    "next-http-proxy-middleware": "^1.2.4",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-hook-form": "^7.37.0",
+    "react-json-view": "^1.21.3",
     "swr": "^1.3.0"
   },
   "devDependencies": {

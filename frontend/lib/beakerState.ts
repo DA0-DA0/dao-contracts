@@ -12,7 +12,7 @@ const getState = () => {
 };
 
 export const getContractAddr = () => {
-  const contractAddr = getState()?.counter.addresses.default;
+  const contractAddr = getState()?.["tokenfactory-issuer"].addresses.default;
 
   if (!contractAddr) {
     throw Error("Contract address not found, please check your state file");
