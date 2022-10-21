@@ -11,8 +11,10 @@ const getState = () => {
   }[process.env.NEXT_PUBLIC_NETWORK];
 };
 
-export const getContractAddr = () => {
-  const contractAddr = getState()?.["tokenfactory-issuer"].addresses.default;
+export const getContractAddr = (
+  contract: "tokenfactory-issuer" | "cw3-flex-multisig" | "cw4-group"
+) => {
+  const contractAddr = getState()?.[contract].addresses.default;
 
   if (!contractAddr) {
     throw Error("Contract address not found, please check your state file");

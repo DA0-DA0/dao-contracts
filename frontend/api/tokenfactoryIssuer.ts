@@ -7,7 +7,7 @@ export const getTokenIssuerQueryClient = async () => {
   const client = await getClient();
   return new contracts.TokenfactoryIssuer.TokenfactoryIssuerQueryClient(
     client,
-    getContractAddr()
+    getContractAddr("tokenfactory-issuer")
   );
 };
 
@@ -17,7 +17,7 @@ export const getTokenIssuerSigningClient = async () => {
   return new contracts.TokenfactoryIssuer.TokenfactoryIssuerClient(
     client,
     sender,
-    getContractAddr()
+    getContractAddr("tokenfactory-issuer")
   );
 };
 

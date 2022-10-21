@@ -18,7 +18,9 @@ import { Select, useStateManager } from "chakra-react-select";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import type { NextPage } from "next";
 import { useState } from "react";
+import { propose } from "../api/multisig";
 import { MintForm, SetMinterForm } from "../components/minting";
+import { getContractAddr } from "../lib/beakerState";
 
 const Action = ({
   msg,
@@ -125,6 +127,33 @@ const Home: NextPage = () => {
             }
           />
         </Box>
+        <Button
+          color="teal"
+          variant="outline"
+          onClick={async () => {
+            const contract_addr = getContractAddr("tokenfactory-issuer");
+            const cosmosMsgs = actions.map((action) => {
+              const msg = Buffer.from(JSON.stringify(action)).toString(
+                "base64"
+              );
+              // wrap in a cosmwasm msg structure
+              return {
+                wasm: {
+                  execute: {
+                    contract_addr,
+                    msg,
+                    funds: [],
+                  },
+                },
+              };
+            });
+
+            // TODO: expose title and description inputs
+            await propose("helllo", "wassup", cosmosMsgs);
+          }}
+        >
+          Submit Proposal
+        </Button>
       </VStack>
     </Center>
   );
