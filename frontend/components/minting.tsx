@@ -1,12 +1,6 @@
-import { AddIcon } from "@chakra-ui/icons";
 import {
   Box,
-  Button,
-  Divider,
-  FormControl,
-  FormLabel,
   Heading,
-  Input,
   Table,
   TableContainer,
   Tbody,
@@ -15,12 +9,9 @@ import {
   Tr,
   VStack,
 } from "@chakra-ui/react";
-import {
-  ExecuteMsg,
-  Uint128,
-} from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
-import { useForm } from "react-hook-form";
+import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import { useDenom, useMintAllowances } from "../api/tokenfactoryIssuer";
+import { AddressField, NumberField, ProposalMsgForm } from "./formHelpers";
 
 const Minting = () => {
   const { data: denomRes } = useDenom();
@@ -66,62 +57,30 @@ const Allowances = () => {
     </>
   );
 };
+
+// form
 export const SetMinterForm = ({
   onSubmitForm,
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
-  const {
-    handleSubmit,
-    register,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<{ address: string; allowance: Uint128 }>();
-
-  const onSubmit = async (values: { address: string; allowance: Uint128 }) => {
-    onSubmitForm({
-      set_minter: values,
-    });
-    reset();
-  };
   return (
-    <Box
-      my="10"
-      border="2px"
-      borderColor="gray.200"
-      borderRadius="md"
-      p="9"
-      minWidth="container.md"
-    >
-      <Heading my="5" as="h3" size="md">
-        Set Allowances
-      </Heading>
-      <Divider />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <FormControl isRequired my="5">
-          <FormLabel>Mint allowance</FormLabel>
-          <Input
-            type="number"
-            id="allowance"
-            disabled={isSubmitting}
-            {...register("allowance")}
-          ></Input>
-        </FormControl>
-        <FormControl isRequired my="5">
-          <FormLabel>address</FormLabel>
-          <Input
-            type="text"
-            id="address"
-            disabled={isSubmitting}
-            {...register("address")}
-          />
-        </FormControl>
-
-        <Button variant="outline" type="submit" isLoading={isSubmitting}>
-          <AddIcon w={3} h={3} mr={3} /> Add action
-        </Button>
-      </form>
-    </Box>
+    <ProposalMsgForm
+      msgType={"set_minter"}
+      fields={[
+        {
+          name: "allowance",
+          isRequired: true,
+          component: NumberField,
+        },
+        {
+          name: "address",
+          isRequired: true,
+          component: AddressField,
+        },
+      ]}
+      onSubmitForm={onSubmitForm}
+    />
   );
 };
 
@@ -130,56 +89,23 @@ export const MintForm = ({
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
-  const { mutate } = useMintAllowances();
-  const {
-    handleSubmit,
-    register,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<{ to_address: string; amount: Uint128 }>();
-  const onSubmit = async (values: { to_address: string; amount: Uint128 }) => {
-    onSubmitForm({
-      mint: values,
-    });
-    reset();
-  };
   return (
-    <Box
-      my="10"
-      border="2px"
-      borderColor="gray.200"
-      borderRadius="md"
-      p="9"
-      minWidth="container.md"
-    >
-      <Heading my="5" as="h3" size="md">
-        Mint
-      </Heading>
-      <Divider />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <FormControl isRequired my="5">
-          <FormLabel>mint amount</FormLabel>
-          <Input
-            type="number"
-            id="amount"
-            disabled={isSubmitting}
-            {...register("amount")}
-          ></Input>
-        </FormControl>
-        <FormControl isRequired my="5">
-          <FormLabel>to address</FormLabel>
-          <Input
-            type="text"
-            id="toAddress"
-            disabled={isSubmitting}
-            {...register("to_address")}
-          />
-        </FormControl>
-        <Button variant="outline" type="submit" isLoading={isSubmitting}>
-          <AddIcon w={3} h={3} mr={3} /> Add action
-        </Button>
-      </form>
-    </Box>
+    <ProposalMsgForm
+      msgType={"mint"}
+      fields={[
+        {
+          name: "amount",
+          isRequired: true,
+          component: NumberField,
+        },
+        {
+          name: "to_address",
+          isRequired: true,
+          component: AddressField,
+        },
+      ]}
+      onSubmitForm={onSubmitForm}
+    />
   );
 };
 

@@ -1,12 +1,6 @@
 import {
   Box,
-  Button,
-  Divider,
-  FormControl,
-  FormHelperText,
-  FormLabel,
   Heading,
-  Input,
   Table,
   TableContainer,
   Tbody,
@@ -15,12 +9,9 @@ import {
   Tr,
   VStack,
 } from "@chakra-ui/react";
-import { useForm } from "react-hook-form";
-import {
-  getTokenIssuerSigningClient,
-  useBurnAllowances,
-  useDenom,
-} from "../api/tokenfactoryIssuer";
+import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
+import { useBurnAllowances, useDenom } from "../api/tokenfactoryIssuer";
+import { AddressField, NumberField, ProposalMsgForm } from "./formHelpers";
 
 const Burning = () => {
   const { data: denomRes } = useDenom();
@@ -66,128 +57,55 @@ const Allowances = () => {
     </>
   );
 };
-const SetBurnerForm = ({ denom }: { denom: string }) => {
-  const { mutate } = useBurnAllowances();
-  const {
-    handleSubmit,
-    register,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm();
-  const onSubmit = async (values) => {
-    const client = await getTokenIssuerSigningClient();
-    await client.setBurner(values);
-    mutate();
-    reset();
-  };
+
+// form
+export const SetBurnerForm = ({
+  onSubmitForm,
+}: {
+  onSubmitForm: (msg: ExecuteMsg) => void;
+}) => {
   return (
-    <Box
-      my="10"
-      border="2px"
-      borderColor="gray.200"
-      borderRadius="md"
-      p="9"
-      minWidth="container.md"
-    >
-      <Heading my="5" as="h3" size="md">
-        Set Allowances
-      </Heading>
-      <Divider />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <FormControl isRequired my="5">
-          <FormLabel>Burn allowance</FormLabel>
-          <Input
-            type="number"
-            id="allowance"
-            disabled={isSubmitting}
-            {...register("allowance")}
-          ></Input>
-          <FormHelperText>
-            amount of `{denom}` to allow burner to burn
-          </FormHelperText>
-        </FormControl>
-        <FormControl isRequired my="5">
-          <FormLabel>address</FormLabel>
-          <Input
-            type="text"
-            id="address"
-            disabled={isSubmitting}
-            {...register("address")}
-          />
-          <FormHelperText>burner address</FormHelperText>
-        </FormControl>
-        <Button
-          mt={4}
-          colorScheme="teal"
-          isLoading={isSubmitting}
-          type="submit"
-        >
-          Set Burner
-        </Button>
-      </form>
-    </Box>
+    <ProposalMsgForm
+      msgType={"set_burner"}
+      fields={[
+        {
+          name: "allowance",
+          isRequired: true,
+          component: NumberField,
+        },
+        {
+          name: "address",
+          isRequired: true,
+          component: AddressField,
+        },
+      ]}
+      onSubmitForm={onSubmitForm}
+    />
   );
 };
 
-const BurnForm = ({ denom }: { denom: string }) => {
-  const { mutate } = useBurnAllowances();
-  const {
-    handleSubmit,
-    register,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm();
-  const onSubmit = async (values) => {
-    const client = await getTokenIssuerSigningClient();
-    await client.burn(values);
-    mutate();
-    reset();
-  };
+export const BurnForm = ({
+  onSubmitForm,
+}: {
+  onSubmitForm: (msg: ExecuteMsg) => void;
+}) => {
   return (
-    <Box
-      my="10"
-      border="2px"
-      borderColor="gray.200"
-      borderRadius="md"
-      p="9"
-      minWidth="container.md"
-    >
-      <Heading my="5" as="h3" size="md">
-        Burn
-      </Heading>
-      <Divider />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <FormControl isRequired my="5">
-          <FormLabel>burn amount</FormLabel>
-          <Input
-            type="number"
-            id="amount"
-            disabled={isSubmitting}
-            {...register("amount")}
-          ></Input>
-          <FormHelperText>amount of `{denom}` to be burned</FormHelperText>
-        </FormControl>
-        <FormControl isRequired my="5">
-          <FormLabel>from address</FormLabel>
-          <Input
-            type="text"
-            id="fromAddress"
-            disabled={isSubmitting}
-            {...register("fromAddress")}
-          />
-          <FormHelperText> address to be burned from</FormHelperText>
-        </FormControl>
-        <Button
-          mt={4}
-          colorScheme="teal"
-          isLoading={isSubmitting}
-          type="submit"
-        >
-          Burn
-        </Button>
-      </form>
-    </Box>
+    <ProposalMsgForm
+      msgType={"burn"}
+      fields={[
+        {
+          name: "amount",
+          isRequired: true,
+          component: NumberField,
+        },
+        {
+          name: "from_address",
+          isRequired: true,
+          component: AddressField,
+        },
+      ]}
+      onSubmitForm={onSubmitForm}
+    />
   );
 };
-
 export default Burning;

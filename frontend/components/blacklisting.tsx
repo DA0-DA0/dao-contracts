@@ -1,13 +1,6 @@
 import {
   Box,
-  Button,
-  Divider,
-  FormControl,
-  FormHelperText,
-  FormLabel,
   Heading,
-  Input,
-  Switch,
   Table,
   TableContainer,
   Tbody,
@@ -16,13 +9,17 @@ import {
   Tr,
   VStack,
 } from "@chakra-ui/react";
-import { useForm } from "react-hook-form";
+import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import {
-  getTokenIssuerSigningClient,
   useBlacklistees,
   useBlacklisterAllowances,
   useDenom,
 } from "../api/tokenfactoryIssuer";
+import {
+  AddressField,
+  BooleanSelectField,
+  ProposalMsgForm,
+} from "./formHelpers";
 
 const Blacklistng = () => {
   const { data: denomRes } = useDenom();
@@ -91,120 +88,53 @@ const Allowances = () => {
     </>
   );
 };
-const SetBlacklisterForm = ({ denom }: { denom: string }) => {
-  const { mutate } = useBlacklisterAllowances();
-  const {
-    handleSubmit,
-    register,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm();
-  const onSubmit = async (values) => {
-    const client = await getTokenIssuerSigningClient();
-    await client.setBlacklister(values);
-    mutate();
-    reset();
-  };
+export const SetBlacklisterForm = ({
+  onSubmitForm,
+}: {
+  onSubmitForm: (msg: ExecuteMsg) => void;
+}) => {
   return (
-    <Box
-      my="10"
-      border="2px"
-      borderColor="gray.200"
-      borderRadius="md"
-      p="9"
-      minWidth="container.md"
-    >
-      <Heading my="5" as="h3" size="md">
-        Set Blacklister
-      </Heading>
-      <Divider />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <FormControl isRequired my="5">
-          <FormLabel>address</FormLabel>
-          <Input
-            type="text"
-            id="address"
-            disabled={isSubmitting}
-            {...register("address")}
-          />
-          <FormHelperText>blacklister address</FormHelperText>
-        </FormControl>
-        <FormControl my="5">
-          <FormLabel>Blacklister status</FormLabel>
-          <Switch id="status" disabled={isSubmitting} {...register("status")} />
-
-          <FormHelperText>set if the address can blacklist</FormHelperText>
-        </FormControl>
-        <Button
-          mt={4}
-          colorScheme="teal"
-          isLoading={isSubmitting}
-          type="submit"
-        >
-          Set Blacklister
-        </Button>
-      </form>
-    </Box>
+    <ProposalMsgForm
+      msgType={"set_blacklister"}
+      fields={[
+        {
+          name: "address",
+          isRequired: true,
+          component: AddressField,
+        },
+        {
+          name: "status",
+          isRequired: true,
+          component: BooleanSelectField,
+        },
+      ]}
+      onSubmitForm={onSubmitForm}
+    />
   );
 };
 
-const BlacklistForm = ({ denom }: { denom: string }) => {
-  const { mutate } = useBlacklistees();
-  const {
-    handleSubmit,
-    register,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm();
-  const onSubmit = async (values) => {
-    const client = await getTokenIssuerSigningClient();
-    await client.blacklist(values);
-    mutate();
-    reset();
-  };
+export const BlacklistForm = ({
+  onSubmitForm,
+}: {
+  onSubmitForm: (msg: ExecuteMsg) => void;
+}) => {
   return (
-    <Box
-      my="10"
-      border="2px"
-      borderColor="gray.200"
-      borderRadius="md"
-      p="9"
-      minWidth="container.md"
-    >
-      <Heading my="5" as="h3" size="md">
-        Set Blacklistee
-      </Heading>
-      <Divider />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <FormControl isRequired my="5">
-          <FormLabel>address</FormLabel>
-          <Input
-            type="text"
-            id="address"
-            disabled={isSubmitting}
-            {...register("address")}
-          />
-          <FormHelperText>target address</FormHelperText>
-        </FormControl>
-        <FormControl my="5">
-          <FormLabel>Blacklistee status</FormLabel>
-          <Switch id="status" disabled={isSubmitting} {...register("status")} />
-
-          <FormHelperText>
-            set if the address blacklisted / un-blacklisted
-          </FormHelperText>
-        </FormControl>
-
-        <Button
-          mt={4}
-          colorScheme="teal"
-          isLoading={isSubmitting}
-          type="submit"
-        >
-          Set Blacklistee
-        </Button>
-      </form>
-    </Box>
+    <ProposalMsgForm
+      msgType={"blacklist"}
+      fields={[
+        {
+          name: "address",
+          isRequired: true,
+          component: AddressField,
+        },
+        {
+          name: "status",
+          isRequired: true,
+          component: BooleanSelectField,
+        },
+      ]}
+      onSubmitForm={onSubmitForm}
+    />
   );
 };
 

@@ -19,6 +19,8 @@ import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/Tokenfact
 import type { NextPage } from "next";
 import { useState } from "react";
 import { propose } from "../api/multisig";
+import { BlacklistForm, SetBlacklisterForm } from "../components/blacklisting";
+import { BurnForm, SetBurnerForm } from "../components/burning";
 import { MintForm, SetMinterForm } from "../components/minting";
 import { getContractAddr } from "../lib/beakerState";
 
@@ -63,7 +65,7 @@ const Action = ({
                   <Text as="b">{k}</Text>
                 </Td>
                 {/* @ts-ignore */}
-                <Td>{v}</Td>
+                <Td>{`${v}`}</Td>
               </Tr>
             ))}
           </Tbody>
@@ -85,23 +87,30 @@ const Home: NextPage = () => {
     });
   };
 
+  const option = (value: string) => ({
+    label: value,
+    value,
+  });
   const stateMgr = useStateManager({
     colorScheme: "purple",
     options: [
-      {
-        label: "Set minter",
-        value: "set_minter",
-      },
-      {
-        label: "Mint",
-        value: "mint",
-      },
+      option("set_minter"),
+      option("mint"),
+      option("set_burner"),
+      option("burn"),
+      option("set_blacklister"),
+      option("blacklist"),
     ],
   });
 
   return (
     <Center my="10" minWidth="container.xl">
-      <VStack maxW="container.xl" spacing={10} align="stretch">
+      <VStack
+        maxW="container.xl"
+        minW="container.md"
+        spacing={10}
+        align="stretch"
+      >
         <Heading>New Proposal</Heading>
 
         <VStack>
@@ -123,7 +132,7 @@ const Home: NextPage = () => {
             addAction={addAction}
             actionType={
               (!(stateMgr.value instanceof Array) && stateMgr.value?.value) ||
-              undefined
+              ""
             }
           />
         </Box>
@@ -164,16 +173,18 @@ const AddAction = ({
   actionType,
 }: {
   addAction: (action: ExecuteMsg) => void;
-  actionType: string | undefined;
+  actionType: string;
 }) => {
-  switch (actionType) {
-    case "set_minter":
-      return <SetMinterForm onSubmitForm={addAction} />;
-    case "mint":
-      return <MintForm onSubmitForm={addAction} />;
-    default:
-      return <></>;
-  }
+  return (
+    {
+      set_minter: <SetMinterForm onSubmitForm={addAction} />,
+      mint: <MintForm onSubmitForm={addAction} />,
+      set_burner: <SetBurnerForm onSubmitForm={addAction} />,
+      burn: <BurnForm onSubmitForm={addAction} />,
+      set_blacklister: <SetBlacklisterForm onSubmitForm={addAction} />,
+      blacklist: <BlacklistForm onSubmitForm={addAction} />,
+    }[actionType] || <></>
+  );
 };
 
 export default Home;
