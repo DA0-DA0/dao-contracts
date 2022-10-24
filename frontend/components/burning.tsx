@@ -7,21 +7,22 @@ import {
   Td,
   Th,
   Tr,
-  VStack,
 } from "@chakra-ui/react";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import { useBurnAllowances, useDenom } from "../api/tokenfactoryIssuer";
-import { AddressField, NumberField, ProposalMsgForm } from "./formHelpers";
+import {
+  AddressField,
+  assertMsgType,
+  NumberField,
+  PickType,
+  ProposalMsgForm,
+} from "./formHelpers";
 
 const Burning = () => {
   const { data: denomRes } = useDenom();
   return (
     <Box>
       <Allowances></Allowances>
-      <VStack>
-        <SetBurnerForm denom={denomRes?.denom || ""}></SetBurnerForm>
-        <BurnForm denom={denomRes?.denom || ""}></BurnForm>
-      </VStack>
     </Box>
   );
 };
@@ -64,17 +65,22 @@ export const SetBurnerForm = ({
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
+  function assertName<N extends PickType<ExecuteMsg, "set_burner">>(
+    name: keyof N
+  ) {
+    return name;
+  }
   return (
     <ProposalMsgForm
-      msgType={"set_burner"}
+      msgType={assertMsgType("set_burner")}
       fields={[
         {
-          name: "allowance",
+          name: assertName("allowance"),
           isRequired: true,
           component: NumberField,
         },
         {
-          name: "address",
+          name: assertName("address"),
           isRequired: true,
           component: AddressField,
         },
@@ -89,17 +95,20 @@ export const BurnForm = ({
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
+  function assertName<N extends PickType<ExecuteMsg, "burn">>(name: keyof N) {
+    return name;
+  }
   return (
     <ProposalMsgForm
-      msgType={"burn"}
+      msgType={assertMsgType("burn")}
       fields={[
         {
-          name: "amount",
+          name: assertName("amount"),
           isRequired: true,
           component: NumberField,
         },
         {
-          name: "from_address",
+          name: assertName("from_address"),
           isRequired: true,
           component: AddressField,
         },

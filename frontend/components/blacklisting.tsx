@@ -7,7 +7,6 @@ import {
   Td,
   Th,
   Tr,
-  VStack,
 } from "@chakra-ui/react";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import {
@@ -17,7 +16,9 @@ import {
 } from "../api/tokenfactoryIssuer";
 import {
   AddressField,
+  assertMsgType,
   BooleanSelectField,
+  PickType,
   ProposalMsgForm,
 } from "./formHelpers";
 
@@ -48,11 +49,6 @@ const Blacklistng = () => {
           </Tbody>
         </Table>
       </TableContainer>
-      <VStack>
-        <SetBlacklisterForm denom={denomRes?.denom || ""}></SetBlacklisterForm>
-
-        <BlacklistForm denom={denomRes?.denom || ""}></BlacklistForm>
-      </VStack>
     </Box>
   );
 };
@@ -93,17 +89,23 @@ export const SetBlacklisterForm = ({
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
+  function assertName<N extends PickType<ExecuteMsg, "set_blacklister">>(
+    name: keyof N
+  ) {
+    return name;
+  }
+
   return (
     <ProposalMsgForm
-      msgType={"set_blacklister"}
+      msgType={assertMsgType("set_blacklister")}
       fields={[
         {
-          name: "address",
+          name: assertName("address"),
           isRequired: true,
           component: AddressField,
         },
         {
-          name: "status",
+          name: assertName("status"),
           isRequired: true,
           component: BooleanSelectField,
         },
@@ -118,17 +120,23 @@ export const BlacklistForm = ({
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
+  function assertName<N extends PickType<ExecuteMsg, "blacklist">>(
+    name: keyof N
+  ) {
+    return name;
+  }
+
   return (
     <ProposalMsgForm
-      msgType={"blacklist"}
+      msgType={assertMsgType("blacklist")}
       fields={[
         {
-          name: "address",
+          name: assertName("address"),
           isRequired: true,
           component: AddressField,
         },
         {
-          name: "status",
+          name: assertName("status"),
           isRequired: true,
           component: BooleanSelectField,
         },

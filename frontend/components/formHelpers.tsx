@@ -21,8 +21,23 @@ import {
   UseFormRegister,
 } from "react-hook-form";
 
+export type FieldDef<Values extends FieldValues> = {
+  name: FieldPath<Values>;
+  isRequired: boolean;
+  component: React.FC<FieldProps<Values>>;
+};
+
+export type AllKeys<T> = T extends any ? keyof T : never;
+export type PickType<T, K extends AllKeys<T>> = T extends { [k in K]?: any }
+  ? T[K]
+  : never;
+
+export function assertMsgType<M extends AllKeys<ExecuteMsg>>(m: M) {
+  return m;
+}
+
 export function ProposalMsgForm<
-  MessageType extends string,
+  MessageType extends AllKeys<ExecuteMsg>,
   Values extends FieldValues
 >({
   msgType,
@@ -30,11 +45,7 @@ export function ProposalMsgForm<
   onSubmitForm,
 }: {
   msgType: MessageType;
-  fields: {
-    name: FieldPath<Values>;
-    isRequired: boolean;
-    component: React.FC<FieldProps<Values>>;
-  }[];
+  fields: FieldDef<Values>[];
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) {
   const {

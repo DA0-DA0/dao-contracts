@@ -7,21 +7,22 @@ import {
   Td,
   Th,
   Tr,
-  VStack,
 } from "@chakra-ui/react";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import { useDenom, useMintAllowances } from "../api/tokenfactoryIssuer";
-import { AddressField, NumberField, ProposalMsgForm } from "./formHelpers";
+import {
+  AddressField,
+  assertMsgType,
+  NumberField,
+  PickType,
+  ProposalMsgForm,
+} from "./formHelpers";
 
 const Minting = () => {
   const { data: denomRes } = useDenom();
   return (
     <Box>
       <Allowances></Allowances>
-      <VStack>
-        <SetMinterForm denom={denomRes?.denom || ""}></SetMinterForm>
-        <MintForm denom={denomRes?.denom || ""}></MintForm>
-      </VStack>
     </Box>
   );
 };
@@ -64,17 +65,22 @@ export const SetMinterForm = ({
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
+  function assertName<N extends PickType<ExecuteMsg, "set_minter">>(
+    name: keyof N
+  ) {
+    return name;
+  }
   return (
     <ProposalMsgForm
-      msgType={"set_minter"}
+      msgType={assertMsgType("set_minter")}
       fields={[
         {
-          name: "allowance",
+          name: assertName("allowance"),
           isRequired: true,
           component: NumberField,
         },
         {
-          name: "address",
+          name: assertName("address"),
           isRequired: true,
           component: AddressField,
         },
@@ -89,17 +95,20 @@ export const MintForm = ({
 }: {
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) => {
+  function assertName<N extends PickType<ExecuteMsg, "mint">>(name: keyof N) {
+    return name;
+  }
   return (
     <ProposalMsgForm
-      msgType={"mint"}
+      msgType={assertMsgType("mint")}
       fields={[
         {
-          name: "amount",
+          name: assertName("amount"),
           isRequired: true,
           component: NumberField,
         },
         {
-          name: "to_address",
+          name: assertName("to_address"),
           isRequired: true,
           component: AddressField,
         },
