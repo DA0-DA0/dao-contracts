@@ -28,3 +28,29 @@ incremental = false
 # Please do not disable these. Doing so will cause overflow checks in
 # all workspace members to stop working. Overflows should be errors.
 overflow-checks = true
+
+[workspace.dependencies]
+cosmwasm-std = { version = "1.1", features = ["ibc3"] }
+cosmwasm-storage = { version = "1.1" }
+cosmwasm-schema = { version = "1.1" }
+cw-utils = "0.15"
+thiserror = { version = "1.0.30" }
+cw-storage-plus = "0.15"
+cw2 = "0.15"
+cw20 = "0.15"
+cw721 = "0.15"
+cw20-base = "0.15"
+cw-core-v1 = { package = "cw-core", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw-multi-test = "0.16"
+cw721-base = "0.15"
+cw-controllers = "0.15"
+anyhow = { version = "1.0.51"}
+cw4-group = "0.15"
+rand = "0.8"
+cw4 = "0.15"
+cw3 = "0.15"
+indexmap = "1.9"
+serde = "1.0"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "1.0", features = ["derive"] }

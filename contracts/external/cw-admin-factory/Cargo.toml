@@ -16,17 +16,17 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = "1.1"
-cosmwasm-storage = "1.1"
-cosmwasm-schema = "1.1"
-cw-storage-plus = "0.15"
-cw2 = "0.15"
-thiserror = { version = "1.0.31" }
-cw-utils = "0.13"
+cosmwasm-std.workspace = true
+cosmwasm-storage.workspace = true
+cosmwasm-schema.workspace = true
+cw-storage-plus.workspace = true
+cw2.workspace = true
+thiserror.workspace = true
+cw-utils.workspace = true
 
 [dev-dependencies]
-cosmwasm-schema = "1.1"
-cw-multi-test = "0.13.2"
+cosmwasm-schema.workspace = true
+cw-multi-test.workspace = true
 cwd-core = { path = "../../cwd-core", features = ["library"] }
 cwd-interface = { path = "../../../packages/cwd-interface" }
 cw20-base = { version = "0.13", features = ["library"] }

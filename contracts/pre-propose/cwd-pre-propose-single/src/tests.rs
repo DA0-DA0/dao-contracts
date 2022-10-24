@@ -56,7 +56,7 @@ fn get_default_proposal_module_instantiate(
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
-        max_voting_period: Duration::Time(86400),
+        max_voting_period: cw_utils::Duration::Time(86400),
         min_voting_period: None,
         only_members_execute: false,
         allow_revoting: false,

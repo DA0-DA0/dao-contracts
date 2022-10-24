@@ -8,13 +8,14 @@ description = "A package macros for deriving DAO module interfaces."
 
 [lib]
 proc-macro = true
+
 [dependencies]
-cosmwasm-schema = { version = "1.1" }
-syn = { version = "1.0", features = ["derive"] }
-quote = "1.0"
-proc-macro2 = "1.0"
+cosmwasm-schema.workspace = true
+syn.workspace = true
+quote.workspace = true
+proc-macro2.workspace = true
 
 [dev-dependencies]
 cwd-interface = { path = "../cwd-interface"}
-cosmwasm-std = { version = "1.1" }
+cosmwasm-std.workspace = true
 

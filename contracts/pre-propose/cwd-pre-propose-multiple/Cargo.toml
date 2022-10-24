@@ -16,18 +16,18 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-std = "1.1"
-cosmwasm-schema = "1.1"
-cw2 = "0.15"
+cosmwasm-std.workspace = true
+cosmwasm-schema.workspace = true
+cw2.workspace = true
 cwd-pre-propose-base = { version = "*", path = "../../../packages/cwd-pre-propose-base" }
 cwd-voting = { path = "../../../packages/cwd-voting" }
 
 [dev-dependencies]
-cw-multi-test = "0.13.2"
-cw-utils = "0.13.2"
-cw4-group = "0.13.2"
-cw20 = "0.13.2"
-cw20-base = "0.13.2"
+cw-multi-test.workspace = true
+cw-utils.workspace = true
+cw4-group.workspace = true
+cw20.workspace = true
+cw20-base.workspace = true
 cwd-voting-cw20-staked = { path = "../../voting/cwd-voting-cw20-staked" }
 cwd-proposal-multiple = { path = "../../proposal/cwd-proposal-multiple" }
 cwd-core = { path = "../../cwd-core" }

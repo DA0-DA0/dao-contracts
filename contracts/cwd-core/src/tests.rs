@@ -1963,7 +1963,9 @@ fn test_cw721_receive() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(cw721_base::msg::MintMsg::<
+            Option<Empty>,
+        > {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
@@ -1976,7 +1978,7 @@ fn test_cw721_receive() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
             msg: to_binary("").unwrap(),
@@ -2077,7 +2079,9 @@ fn test_cw721_receive_no_auto_add() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(cw721_base::msg::MintMsg::<
+            Option<Empty>,
+        > {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
@@ -2090,7 +2094,7 @@ fn test_cw721_receive_no_auto_add() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
             msg: to_binary("").unwrap(),
