@@ -24,6 +24,7 @@ import {
   Tr,
   useBoolean,
   useDisclosure,
+  useToast,
   VStack,
 } from "@chakra-ui/react";
 import { Select, useStateManager } from "chakra-react-select";
@@ -40,6 +41,7 @@ import { getContractAddr } from "../lib/beakerState";
 
 const Proposal: NextPage = () => {
   const router = useRouter();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useBoolean();
   const [actions, setActions] = useState<ExecuteMsg[]>([]);
   const addAction = (action: ExecuteMsg) =>
@@ -105,8 +107,14 @@ const Proposal: NextPage = () => {
               await submitProposal();
             } catch (error) {
               setIsLoading.off();
-              // TODO: handle error
               console.error(error);
+
+              toast({
+                title: "Error submiting proposal",
+                isClosable: true,
+                description: `${error}`,
+                status: "error",
+              });
             }
           }}
         >
