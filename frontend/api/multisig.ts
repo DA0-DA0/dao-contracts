@@ -1,3 +1,4 @@
+import { JsonObject } from "@cosmjs/cosmwasm-stargate";
 import useSWR from "swr";
 import { getContractAddr } from "../lib/beakerState";
 import { getAddress, getClient, getSigningClient } from "../lib/client";
@@ -44,5 +45,13 @@ export const getProposal = async (proposal_id: number) => {
   return res;
 };
 
-export const useProposal = (proposal_id: number) =>
-  useSWR("/cw3-flex-multisig/proposal", () => getProposal(proposal_id));
+export const useProposal = (
+  proposal_id: number,
+  disableFetch: boolean = false
+) =>
+  useSWR(
+    "/cw3-flex-multisig/proposal",
+    disableFetch
+      ? async function (): Promise<JsonObject> {}
+      : () => getProposal(proposal_id)
+  );
