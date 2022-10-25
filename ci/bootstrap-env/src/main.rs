@@ -162,7 +162,7 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_CW4VOTING_CODE_ID={}",
-        orc.contract_map.code_id("cw4_voting")?
+        orc.contract_map.code_id("cwd_voting_cw4")?
     );
     println!(
         "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID={}",
