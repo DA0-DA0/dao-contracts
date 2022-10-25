@@ -28,6 +28,7 @@ import {
 import { Select, useStateManager } from "chakra-react-select";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import type { NextPage } from "next";
+import { useRouter } from "next/router";
 import React, { useRef, useState } from "react";
 import { propose } from "../api/multisig";
 import { BlacklistForm, SetBlacklisterForm } from "../components/blacklisting";
@@ -36,58 +37,8 @@ import { FreezeForm, SetFreezerForm } from "../components/freezing";
 import { MintForm, SetMinterForm } from "../components/minting";
 import { getContractAddr } from "../lib/beakerState";
 
-const Action = ({
-  msg,
-  deleteAction,
-}: {
-  msg: ExecuteMsg;
-  deleteAction: () => void;
-}) => {
-  const msgType = Object.keys(msg)[0];
-  // @ts-ignore
-  const kvs = Object.entries(msg[msgType]);
-
-  return (
-    <Box
-      border="2px"
-      borderColor="gray.200"
-      borderRadius="md"
-      p="9"
-      minWidth="container.md"
-    >
-      <TableContainer>
-        <Flex>
-          <Box>
-            <Heading mb="3" size="sm">
-              {msgType}
-            </Heading>
-          </Box>
-
-          <Spacer />
-          <Button variant="ghost" onClick={deleteAction}>
-            <DeleteIcon w={3} h={3} />
-          </Button>
-        </Flex>
-
-        <Table variant="simple" size="sm">
-          <Tbody>
-            {kvs.map(([k, v], i) => (
-              <Tr key={i}>
-                <Td width="20%">
-                  <Text as="b">{k}</Text>
-                </Td>
-                {/* @ts-ignore */}
-                <Td>{`${v}`}</Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
-};
-
-const Home: NextPage = () => {
+const Proposal: NextPage = () => {
+  const router = useRouter();
   const [actions, setActions] = useState<ExecuteMsg[]>([]);
   const addAction = (action: ExecuteMsg) =>
     setActions((prev) => [...prev, action]);
@@ -133,8 +84,11 @@ const Home: NextPage = () => {
 
     const proposal = await propose(title, description, cosmosMsgs);
 
-    // TODO: redirect to proposal list page
-    console.log(proposal.transactionHash);
+    const proposalId = proposal?.logs[0]?.events
+      .find((e) => e.type === "wasm")
+      ?.attributes?.find((attr) => attr.key === "proposal_id")?.value;
+
+    router.push(`/proposal/${proposalId}`);
   };
 
   return (
@@ -261,4 +215,54 @@ const AddAction = ({
   );
 };
 
-export default Home;
+const Action = ({
+  msg,
+  deleteAction,
+}: {
+  msg: ExecuteMsg;
+  deleteAction: () => void;
+}) => {
+  const msgType = Object.keys(msg)[0];
+  // @ts-ignore
+  const kvs = Object.entries(msg[msgType]);
+
+  return (
+    <Box
+      border="2px"
+      borderColor="gray.200"
+      borderRadius="md"
+      p="9"
+      minWidth="container.md"
+    >
+      <TableContainer>
+        <Flex>
+          <Box>
+            <Heading mb="3" size="sm">
+              {msgType}
+            </Heading>
+          </Box>
+
+          <Spacer />
+          <Button variant="ghost" onClick={deleteAction}>
+            <DeleteIcon w={3} h={3} />
+          </Button>
+        </Flex>
+
+        <Table variant="simple" size="sm">
+          <Tbody>
+            {kvs.map(([k, v], i) => (
+              <Tr key={i}>
+                <Td width="20%">
+                  <Text as="b">{k}</Text>
+                </Td>
+                {/* @ts-ignore */}
+                <Td>{`${v}`}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+};
+export default Proposal;
