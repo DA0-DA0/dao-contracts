@@ -10,6 +10,7 @@ import {
   Heading,
   Input,
   Select,
+  useToast,
 } from "@chakra-ui/react";
 import { fromBech32 } from "cosmwasm";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
@@ -48,6 +49,7 @@ export function ProposalMsgForm<
   fields: FieldDef<Values>[];
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) {
+  const toast = useToast();
   const {
     handleSubmit,
     register,
@@ -60,6 +62,12 @@ export function ProposalMsgForm<
       [msgType]: values,
     });
     reset();
+    toast({
+      title: `'${msgType}' successfully added.`,
+      status: "success",
+      duration: 2000,
+      isClosable: true,
+    });
   };
   return (
     <Box

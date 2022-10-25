@@ -1,9 +1,17 @@
-import { DeleteIcon } from "@chakra-ui/icons";
+import { DeleteIcon, InfoIcon } from "@chakra-ui/icons";
 import {
   Box,
   Button,
   Center,
+  Drawer,
+  DrawerBody,
+  DrawerCloseButton,
+  DrawerContent,
+  DrawerHeader,
+  DrawerOverlay,
   Flex,
+  FormControl,
+  FormLabel,
   Heading,
   Input,
   Spacer,
@@ -14,15 +22,17 @@ import {
   Text,
   Textarea,
   Tr,
+  useDisclosure,
   VStack,
 } from "@chakra-ui/react";
 import { Select, useStateManager } from "chakra-react-select";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import type { NextPage } from "next";
-import { useState } from "react";
+import React, { useRef, useState } from "react";
 import { propose } from "../api/multisig";
 import { BlacklistForm, SetBlacklisterForm } from "../components/blacklisting";
 import { BurnForm, SetBurnerForm } from "../components/burning";
+import { FreezeForm, SetFreezerForm } from "../components/freezing";
 import { MintForm, SetMinterForm } from "../components/minting";
 import { getContractAddr } from "../lib/beakerState";
 
@@ -63,7 +73,7 @@ const Action = ({
           <Tbody>
             {kvs.map(([k, v], i) => (
               <Tr key={i}>
-                <Td>
+                <Td width="20%">
                   <Text as="b">{k}</Text>
                 </Td>
                 {/* @ts-ignore */}
@@ -85,6 +95,9 @@ const Home: NextPage = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const btnRef = useRef(null);
+
   const deleteActionAt = (index: number) => () => {
     setActions((prev) => {
       let updateActions = [...prev];
@@ -99,96 +112,135 @@ const Home: NextPage = () => {
   });
   const stateMgr = useStateManager({
     colorScheme: "purple",
-    options: [
-      option("set_minter"),
-      option("mint"),
-      option("set_burner"),
-      option("burn"),
-      option("set_blacklister"),
-      option("blacklist"),
-    ],
+    options: Object.keys(actionFormMap).map(option),
   });
 
+  const submitProposal = async () => {
+    const contract_addr = getContractAddr("tokenfactory-issuer");
+    const cosmosMsgs = actions.map((action) => {
+      const msg = Buffer.from(JSON.stringify(action)).toString("base64");
+      // wrap in a cosmwasm msg structure
+      return {
+        wasm: {
+          execute: {
+            contract_addr,
+            msg,
+            funds: [],
+          },
+        },
+      };
+    });
+
+    const proposal = await propose(title, description, cosmosMsgs);
+
+    // TODO: redirect to proposal list page
+    console.log(proposal.transactionHash);
+  };
+
   return (
-    <Center my="10" minWidth="container.xl">
-      <VStack
-        maxW="container.xl"
-        minW="container.md"
-        spacing={10}
-        align="stretch"
-      >
-        <Heading>New Proposal</Heading>
-
-        <Box>
-          <Input
-            type="text"
-            my="2"
-            placeholder="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <Textarea
-            my="2"
-            placeholder="description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </Box>
-
-        <VStack>
-          {actions.map((action, i) => (
-            <Action
-              key={i}
-              msg={action}
-              deleteAction={deleteActionAt(i)}
-            ></Action>
-          ))}
-        </VStack>
-
-        <Box>
-          <Box>
-            <Select {...stateMgr} />
-          </Box>
-
-          <AddAction
-            addAction={addAction}
-            actionType={
-              (!(stateMgr.value instanceof Array) && stateMgr.value?.value) ||
-              ""
+    <>
+      <Center my="10" minWidth="container.xl">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await submitProposal();
+            } catch (error) {
+              // TODO: handle error
+              console.error(error);
             }
-          />
-        </Box>
-        <Button
-          color="teal"
-          variant="outline"
-          onClick={async () => {
-            const contract_addr = getContractAddr("tokenfactory-issuer");
-            const cosmosMsgs = actions.map((action) => {
-              const msg = Buffer.from(JSON.stringify(action)).toString(
-                "base64"
-              );
-              // wrap in a cosmwasm msg structure
-              return {
-                wasm: {
-                  execute: {
-                    contract_addr,
-                    msg,
-                    funds: [],
-                  },
-                },
-              };
-            });
-
-            const proposal = await propose(title, description, cosmosMsgs);
-
-            // TODO: redirect to proposal list page
           }}
         >
-          Submit Proposal
-        </Button>
-      </VStack>
-    </Center>
+          <VStack
+            maxW="container.xl"
+            minW="container.md"
+            spacing={10}
+            align="stretch"
+          >
+            <Heading>New Proposal</Heading>
+
+            <Box>
+              <FormControl my="2">
+                <FormLabel>Title</FormLabel>
+                <Input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </FormControl>
+              <FormControl my="2">
+                <FormLabel>Description</FormLabel>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </FormControl>
+            </Box>
+            <VStack>
+              {actions.map((action, i) => (
+                <Action
+                  key={i}
+                  msg={action}
+                  deleteAction={deleteActionAt(i)}
+                ></Action>
+              ))}
+            </VStack>
+
+            <Button onClick={onOpen}>Add Action</Button>
+
+            <Button color="teal" variant="outline" type="submit">
+              Submit Proposal
+            </Button>
+          </VStack>
+        </form>
+      </Center>
+
+      {/* hack for dev mode chakra ui portal problem: https://github.com/chakra-ui/chakra-ui/issues/6297 */}
+      {(isOpen || process.env.NODE_ENV === "production") && (
+        <Drawer
+          isOpen={isOpen}
+          placement="top"
+          onClose={onClose}
+          finalFocusRef={btnRef}
+        >
+          <DrawerOverlay />
+          <DrawerContent>
+            <DrawerCloseButton />
+            <DrawerHeader>Add Action</DrawerHeader>
+
+            <DrawerBody>
+              <Box>
+                <Select placeholder="Select action type..." {...stateMgr} />
+              </Box>
+
+              <AddAction
+                addAction={addAction}
+                actionType={
+                  (!(stateMgr.value instanceof Array) &&
+                    stateMgr.value?.value) ||
+                  ""
+                }
+              />
+            </DrawerBody>
+          </DrawerContent>
+        </Drawer>
+      )}
+    </>
   );
+};
+
+const actionFormMap: Record<
+  string,
+  React.FC<{ onSubmitForm: (msg: ExecuteMsg) => void }> | undefined
+> = {
+  set_minter: SetMinterForm,
+  mint: MintForm,
+  set_burner: SetBurnerForm,
+  burn: BurnForm,
+  set_blacklister: SetBlacklisterForm,
+  blacklist: BlacklistForm,
+  set_freezer: SetFreezerForm,
+  freeze: FreezeForm,
 };
 
 const AddAction = ({
@@ -198,15 +250,14 @@ const AddAction = ({
   addAction: (action: ExecuteMsg) => void;
   actionType: string;
 }) => {
-  return (
-    {
-      set_minter: <SetMinterForm onSubmitForm={addAction} />,
-      mint: <MintForm onSubmitForm={addAction} />,
-      set_burner: <SetBurnerForm onSubmitForm={addAction} />,
-      burn: <BurnForm onSubmitForm={addAction} />,
-      set_blacklister: <SetBlacklisterForm onSubmitForm={addAction} />,
-      blacklist: <BlacklistForm onSubmitForm={addAction} />,
-    }[actionType] || <></>
+  const FormComponent = actionFormMap[actionType];
+  return typeof FormComponent !== "undefined" ? (
+    <FormComponent onSubmitForm={addAction} />
+  ) : (
+    <Center py="60" color="grey">
+      <InfoIcon mr="2" />
+      Please select action type to add.
+    </Center>
   );
 };
 
