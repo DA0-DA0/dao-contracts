@@ -22,6 +22,7 @@ import {
   Text,
   Textarea,
   Tr,
+  useBoolean,
   useDisclosure,
   VStack,
 } from "@chakra-ui/react";
@@ -39,6 +40,7 @@ import { getContractAddr } from "../lib/beakerState";
 
 const Proposal: NextPage = () => {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useBoolean();
   const [actions, setActions] = useState<ExecuteMsg[]>([]);
   const addAction = (action: ExecuteMsg) =>
     setActions((prev) => [...prev, action]);
@@ -82,7 +84,9 @@ const Proposal: NextPage = () => {
       };
     });
 
+    setIsLoading.on();
     const proposal = await propose(title, description, cosmosMsgs);
+    setIsLoading.off();
 
     const proposalId = proposal?.logs[0]?.events
       .find((e) => e.type === "wasm")
@@ -100,6 +104,7 @@ const Proposal: NextPage = () => {
             try {
               await submitProposal();
             } catch (error) {
+              setIsLoading.off();
               // TODO: handle error
               console.error(error);
             }
@@ -114,7 +119,7 @@ const Proposal: NextPage = () => {
             <Heading>New Proposal</Heading>
 
             <Box>
-              <FormControl my="2">
+              <FormControl my="2" isDisabled={isLoading}>
                 <FormLabel>Title</FormLabel>
                 <Input
                   type="text"
@@ -122,7 +127,7 @@ const Proposal: NextPage = () => {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </FormControl>
-              <FormControl my="2">
+              <FormControl my="2" isDisabled={isLoading}>
                 <FormLabel>Description</FormLabel>
                 <Textarea
                   value={description}
@@ -130,7 +135,7 @@ const Proposal: NextPage = () => {
                 />
               </FormControl>
             </Box>
-            <VStack>
+            <VStack opacity={isLoading ? "0.5" : 1}>
               {actions.map((action, i) => (
                 <Action
                   key={i}
@@ -140,9 +145,16 @@ const Proposal: NextPage = () => {
               ))}
             </VStack>
 
-            <Button onClick={onOpen}>Add Action</Button>
+            <Button onClick={onOpen} isDisabled={isLoading} variant="outline">
+              Add Action
+            </Button>
 
-            <Button color="teal" variant="outline" type="submit">
+            <Button
+              color="teal"
+              variant="outline"
+              type="submit"
+              isLoading={isLoading}
+            >
               Submit Proposal
             </Button>
           </VStack>
