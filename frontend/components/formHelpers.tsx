@@ -65,7 +65,6 @@ export function ProposalMsgForm<
     toast({
       title: `'${msgType}' successfully added.`,
       status: "success",
-      duration: 2000,
       isClosable: true,
     });
   };
