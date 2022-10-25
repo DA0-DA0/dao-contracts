@@ -17,7 +17,6 @@ library = []
 
 [dependencies]
 cosmwasm-std.workspace = true
-cosmwasm-schema.workspace = true
 cw-storage-plus.workspace = true
 cw-utils.workspace = true
 cw2.workspace = true
@@ -25,5 +24,6 @@ cw20.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+cosmwasm-schema.workspace = true
 cw-multi-test.workspace = true
 cw20-base.workspace = true
