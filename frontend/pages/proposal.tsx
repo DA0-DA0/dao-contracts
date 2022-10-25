@@ -5,12 +5,14 @@ import {
   Center,
   Flex,
   Heading,
+  Input,
   Spacer,
   Table,
   TableContainer,
   Tbody,
   Td,
   Text,
+  Textarea,
   Tr,
   VStack,
 } from "@chakra-ui/react";
@@ -74,10 +76,14 @@ const Action = ({
     </Box>
   );
 };
+
 const Home: NextPage = () => {
   const [actions, setActions] = useState<ExecuteMsg[]>([]);
   const addAction = (action: ExecuteMsg) =>
     setActions((prev) => [...prev, action]);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
 
   const deleteActionAt = (index: number) => () => {
     setActions((prev) => {
@@ -112,6 +118,22 @@ const Home: NextPage = () => {
         align="stretch"
       >
         <Heading>New Proposal</Heading>
+
+        <Box>
+          <Input
+            type="text"
+            my="2"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <Textarea
+            my="2"
+            placeholder="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </Box>
 
         <VStack>
           {actions.map((action, i) => (
@@ -157,8 +179,9 @@ const Home: NextPage = () => {
               };
             });
 
-            // TODO: expose title and description inputs
-            await propose("helllo", "wassup", cosmosMsgs);
+            const proposal = await propose(title, description, cosmosMsgs);
+
+            // TODO: redirect to proposal list page
           }}
         >
           Submit Proposal
