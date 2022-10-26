@@ -8,7 +8,6 @@ use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::CheckedDenom;
 use cw_multi_test::{next_block, App, Executor};
-use cw_proposal_single_v1::ContractError::NotPassed;
 use cw_utils::Duration;
 use cwd_hooks::{HookError, HooksResponse};
 use cwd_interface::{voting::InfoResponse, Admin, ModuleInstantiateInfo};
@@ -25,7 +24,6 @@ use cwd_voting::{
     threshold::{PercentageThreshold, Threshold},
     voting::{Vote, Votes},
 };
-use cwd_voting::status::Status::ExecutionFailed;
 use cwd_voting_cw20_staked::msg::ActiveThreshold;
 
 use crate::{
@@ -65,7 +63,6 @@ use crate::{
     },
     ContractError,
 };
-use crate::msg::ExecuteMsg::Execute;
 
 use super::{do_votes::do_votes_staked_balances, CREATOR_ADDR};
 
@@ -493,176 +490,6 @@ fn test_execute_no_non_passed_execution() {
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
     // Can't execute more than once.
     let err = execute_proposal_should_fail(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
-    assert!(matches!(err, ContractError::NotPassed {}));
-}
-
-#[test]
-fn test_execute_proposal_open() {
-    let CommonTest {
-        mut app,
-        core_addr,
-        proposal_module,
-        gov_token,
-        proposal_id,
-    } = setup_test(vec![BankMsg::Send {
-        to_address: CREATOR_ADDR.to_string(),
-        amount: coins(10, "ujuno"),
-    }
-    .into()]);
-
-    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
-
-    let proposal_id = make_proposal(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        vec![BankMsg::Send {
-            to_address: CREATOR_ADDR.to_string(),
-            amount: coins(10, "ujuno"),
-        }
-        .into()],
-    );
-
-    app.update_block(next_block);
-
-    // assert proposal is open
-    let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Open);
-
-    app.update_block(next_block);
-
-    let err = execute_proposal_should_fail(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
-    assert!(matches!(err, ContractError::NotPassed {}))
-}
-
-#[test]
-fn test_execute_proposal_rejected_closed() {
-    let mut app = App::default();
-    let mut instantiate = get_default_non_token_dao_proposal_module_instantiate(&mut app);
-    instantiate.threshold = Threshold::AbsoluteCount {
-        threshold: Uint128::new(3),
-    };
-    instantiate.pre_propose_info = PreProposeInfo::AnyoneMayPropose {};
-    let core_addr = instantiate_with_cw4_groups_governance(
-        &mut app,
-        instantiate,
-        Some(vec![
-            Cw20Coin {
-                address: "one".to_string(),
-                amount: Uint128::new(1),
-            },
-            Cw20Coin {
-                address: "two".to_string(),
-                amount: Uint128::new(1),
-            },
-            Cw20Coin {
-                address: "three".to_string(),
-                amount: Uint128::new(1),
-            },
-        ]),
-    );
-
-    let core_state: cwd_core::query::DumpStateResponse = app
-        .wrap()
-        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
-        .unwrap();
-    let proposal_module = core_state
-        .proposal_modules
-        .into_iter()
-        .next()
-        .unwrap()
-        .address;
-
-    let proposal_id = make_proposal(&mut app, &proposal_module, "one", vec![]);
-
-    // Make sure it doesn't pass early.
-    let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
-    assert_eq!(proposal.proposal.status, Status::Open);
-
-    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "three", proposal_id, Vote::No);
-
-    app.update_block(|mut b| b.height = b.height + 5000);
-
-    // Assert proposal is rejected
-    let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
-    assert_eq!(proposal.proposal.status, Status::Rejected);
-
-    // Attempt to execute
-    let err = execute_proposal_should_fail(&mut app, &proposal_module, "one", proposal_id);
-    assert!(matches!(err, ContractError::NotPassed {}));
-
-    // close the proposal
-    close_proposal(&mut app, &proposal_module, "one", proposal_id);
-    app.update_block(next_block);
-    let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Closed);
-    app.update_block(next_block);
-
-    // Attempt to execute
-    let err = execute_proposal_should_fail(&mut app, &proposal_module, "one", proposal_id);
-    assert!(matches!(err, ContractError::NotPassed {}))
-}
-
-#[test]
-fn test_execute_proposal_more_than_once() {
-    let mut app = App::default();
-    let mut instantiate = get_default_non_token_dao_proposal_module_instantiate(&mut app);
-    instantiate.threshold = Threshold::AbsoluteCount {
-        threshold: Uint128::new(2),
-    };
-    instantiate.pre_propose_info = PreProposeInfo::AnyoneMayPropose {};
-    let core_addr = instantiate_with_cw4_groups_governance(
-        &mut app,
-        instantiate,
-        Some(vec![
-            Cw20Coin {
-                address: "one".to_string(),
-                amount: Uint128::new(1),
-            },
-            Cw20Coin {
-                address: "two".to_string(),
-                amount: Uint128::new(1),
-            },
-        ]),
-    );
-
-    let core_state: cwd_core::query::DumpStateResponse = app
-        .wrap()
-        .query_wasm_smart(core_addr, &cwd_core::msg::QueryMsg::DumpState {})
-        .unwrap();
-    let proposal_module = core_state
-        .proposal_modules
-        .into_iter()
-        .next()
-        .unwrap()
-        .address;
-
-    let proposal_id = make_proposal(&mut app, &proposal_module, "one", vec![]);
-
-    let proposal: ProposalResponse = query_proposal(&app, &proposal_module, 1);
-    assert_eq!(proposal.proposal.status, Status::Open);
-
-    vote_on_proposal(&mut app, &proposal_module, "one", proposal_id, Vote::Yes);
-    vote_on_proposal(&mut app, &proposal_module, "two", proposal_id, Vote::Yes);
-
-    // assert proposal is passed, execute it
-    app.update_block(next_block);
-    let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Passed);
-    execute_proposal(&mut app, &proposal_module, "one", proposal_id);
-
-    // assert proposal executed and attempt to execute it again
-    app.update_block(next_block);
-    let proposal = query_proposal(&app, &proposal_module, proposal_id);
-    assert_eq!(proposal.proposal.status, Status::Executed);
-    let err: ContractError = execute_proposal_should_fail(
-        &mut app,
-        &proposal_module,
-        "one",
-        proposal_id
-    );
     assert!(matches!(err, ContractError::NotPassed {}));
 }
 
