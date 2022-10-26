@@ -13,3 +13,11 @@ export const getChainId = () => {
 
   return process.env.NEXT_PUBLIC_CHAIN_ID;
 };
+
+export const getPrefix = () => {
+  if (!process.env.NEXT_PUBLIC_PREFIX) {
+    throw Error("`NEXT_PUBLIC_PREFIX` env variable not found, please set");
+  }
+
+  return process.env.NEXT_PUBLIC_PREFIX;
+};

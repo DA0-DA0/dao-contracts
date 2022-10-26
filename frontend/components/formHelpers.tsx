@@ -21,6 +21,7 @@ import {
   useForm,
   UseFormRegister,
 } from "react-hook-form";
+import { getPrefix } from "../lib/conf";
 
 export type FieldDef<Values extends FieldValues> = {
   name: FieldPath<Values>;
@@ -201,7 +202,10 @@ export function AddressField<Values extends FieldValues>({
           required: isRequired && `"${fieldNameString}" is required`,
           validate: (address) => {
             try {
-              fromBech32(address);
+              const account = fromBech32(address);
+              if (account.prefix !== getPrefix()) {
+                return `Invalid address: prefix must be ${getPrefix()}`;
+              }
             } catch (e) {
               return `Invalid address: ${e}`;
             }
