@@ -20,6 +20,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     DivideByZero(#[from] DivideByZeroError),
+
+    #[error("Unexpected state")]
+    UnexpectedState {},
     
     #[error("Unfunded")]
     Unfunded {},
@@ -35,6 +38,12 @@ pub enum ContractError {
 
     #[error("Nothing to claim")]
     NothingToClaim {},
+
+    #[error("The first point of the vest schedule should be a (<timestamp>, 0) pair: Instead the first point is {amount1} at time {time1}. This invariant is required because otherwise the zero-point would be undefined")]
+    VestScheduleDoesNotContainInitialZeroPoint {
+        amount1: Uint128,
+        time1: u64,
+    },
     
     #[error("Vest amounts not monotonically increasing over time: Vest amount {amount1} at time {time1} is greater than amount {amount2} at time {time2}")]
     VestScheduleNotMonotonicallyIncreasing {
@@ -44,6 +53,19 @@ pub enum ContractError {
         time2: u64,
     },
 
+    #[error("Three consecutive vest points defined for the same timestamp, a maximum of two can be used to define a cliff: Vest amount {amount1} at time {time1}, {amount2} at time {time2}, {amount3} at time {time3}")]
+    VestScheduleFeaturesMalformedCliff {
+        amount1: Uint128,
+        time1: u64,
+        amount2: Uint128,
+        time2: u64,
+        amount3: Uint128,
+        time3: u64,
+    },
+
     #[error("Only the owner can change the owner")]
     OnlyOwnerCanChangeOwner {},
+
+    #[error("Failure to query the staking contract")]
+    QueryFailure {},
 }

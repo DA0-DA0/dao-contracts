@@ -47,6 +47,8 @@ pub enum QueryMsg {
     GetFundingStatusAtHeight { height: Option<u64> },
     #[returns(Config)]
     GetConfig {},
+    #[returns(GetVestingScheduleResponse)]
+    GetVestingSchedule { address: String },
 }
 
 #[cw_serde]
@@ -69,4 +71,9 @@ pub enum MigrateMsg {
 pub struct GetFundingStatusAtHeightResponse {
     pub activated: bool,
     pub height: u64,
+}
+
+#[cw_serde]
+pub struct GetVestingScheduleResponse {
+    schedule: Vec<Vest>,
 }

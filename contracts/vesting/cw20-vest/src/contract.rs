@@ -1,3 +1,5 @@
+use std::collections::BinaryHeap;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, DepsMut, Env, MessageInfo, Response, Uint128, Deps, StdResult, Binary, Timestamp, Addr, from_slice, StdError, to_vec};
@@ -5,7 +7,7 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, Schedule, MigrateMsg};
-use crate::state::{Config, CONFIG, Vest, SCHEDULES, ACTIVATED};
+use crate::state::{Config, CONFIG, SCHEDULES, ACTIVATED, Vest};
 use crate::query_helpers::query_balance;
 
 // version info for migration info
@@ -20,19 +22,21 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let owner = match msg.owner {
-        Some(owner) => Some(deps.api.addr_validate(owner.as_str())?),
-        None => None,
-    };
+    let owner = msg
+        .owner
+        .as_deref()
+        .map(|h| deps.api.addr_validate(h))
+        .transpose()?;
 
-    let manager = match msg.manager {
-        Some(manager) => Some(deps.api.addr_validate(manager.as_str())?),
-        None => None,
-    };
+    let manager = msg
+        .manager
+        .as_deref()
+        .map(|h| deps.api.addr_validate(h))
+        .transpose()?;
 
     let token_address = deps.api.addr_validate(&msg.token_address)?;
     let stake_address = deps.api.addr_validate(&msg.stake_address)?;
-    let vest_total = save_schedules(deps.branch(), &msg.schedules)?;
+    let vest_total = save_schedules(deps.branch(), msg.schedules)?;
     let config = Config {
         owner,
         manager,
@@ -72,6 +76,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query::vesting_status_at_height(deps, env, address, height)?),
         QueryMsg::GetFundingStatusAtHeight { height } => 
             to_binary(&query::funding_status_at_height(deps, env, height)?),
+        QueryMsg::GetVestingSchedule { address } => 
+            to_binary(&query::vesting_schedule(deps, env, address)?),
         QueryMsg::GetConfig {} => 
             to_binary(&query::config(deps)?),
     }
@@ -116,13 +122,14 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     }
 }
 
-fn calculate_cumulative_vest(env: &Env, vests: &Vec<Vest>) -> StdResult<Uint128> {
+fn calculate_cumulative_vest(env: &Env, vests: BinaryHeap<Vest>) -> StdResult<Uint128> {
     let now = env.block.time;
+    let vests = vests.into_sorted_vec();
     let pos = vests.iter().position(|v| now < v.expiration);
     match pos {
         Some(0) => Ok(0u128.into()),
         Some(idx) => interpolate_vests(&vests[idx - 1], &vests[idx], now),
-        None => Ok(vests[vests.len() - 1].amount),
+        None => Ok(vests.last().unwrap().amount),
     }
 }
 
@@ -130,6 +137,10 @@ fn interpolate_vests(left: &Vest, right: &Vest, now: Timestamp) -> StdResult<Uin
     let rise = right.amount.checked_sub(left.amount)?;
     let run = right.expiration.seconds() - left.expiration.seconds();
     let run: Uint128 = run.into();
+    // this function should never be called on a two points with the same timestamp.
+    if run.is_zero() {
+        return Err(StdError::GenericErr { msg: "Bad invariant, left and right should have different timestamps".to_string() })
+    }
     let x = now.seconds() - left.expiration.seconds();
     let x: Uint128 = x.into();
     let y = left.amount.checked_add(x.checked_mul(rise.checked_div(run)?)?)?;
@@ -138,34 +149,59 @@ fn interpolate_vests(left: &Vest, right: &Vest, now: Timestamp) -> StdResult<Uin
 
 fn save_schedules(
     deps: DepsMut,
-    schedules: &Vec<Schedule>,
+    schedules: Vec<Schedule>,
 ) -> Result<Uint128, ContractError> {
 
-    let mut vest_total: Uint128 = 0u128.into();
-    for Schedule { address, vests } in schedules.iter() {
+    let mut vest_total = Uint128::zero();
+    for Schedule { address, vests } in schedules.into_iter() {
         let addr = deps.api.addr_validate(&address)?;
 
         if vests.is_empty() {
             return Err(ContractError::BadConfig {});
         }
+        let vests: BinaryHeap<Vest> = vests.into_iter().collect();
+        let vests_vec = vests.clone().into_sorted_vec();
+        
+        let first_vest = vests_vec.first().unwrap();
+        if !first_vest.amount.is_zero() {
+            return Err(ContractError::VestScheduleDoesNotContainInitialZeroPoint {
+                amount1: first_vest.amount,
+                time1: first_vest.expiration.seconds(),
+            });
+        }
 
         // check that amounts are monotonically increasing
-        let mut validated_vests = vests.clone();
-        validated_vests.sort_by_key(|v| v.expiration);
-        for i in 0..(validated_vests.len() - 1) {
-            let vest = &validated_vests[i];
-            let next_vest = &validated_vests[i + 1];
-            if next_vest.amount < vest.amount {
-                return Err(ContractError::VestScheduleNotMonotonicallyIncreasing {
-                    amount1: vest.amount,
-                    time1: vest.expiration.seconds(),
-                    amount2: next_vest.amount,
-                    time2: next_vest.expiration.seconds(),
-                });
+        // .into_sorted_vec() gives us an ascending vector so we don't need vests to be BinaryHeap<Reverse<Vest>>
+        for window in vests_vec.windows(2) {
+            if let [vest, next_vest] = window {
+                if next_vest.amount < vest.amount {
+                    return Err(ContractError::VestScheduleNotMonotonicallyIncreasing {
+                        amount1: vest.amount,
+                        time1: vest.expiration.seconds(),
+                        amount2: next_vest.amount,
+                        time2: next_vest.expiration.seconds(),
+                    });
+                }
             }
         }
-        vest_total = vest_total.checked_add(validated_vests[validated_vests.len() - 1].amount)?;
-        SCHEDULES.save(deps.storage, addr, &validated_vests)?;
+
+        // check that there are no malformed cliffs (cliffs defined by more than two points at the same timestamp)
+        for window in vests_vec.windows(3) {
+            if let [vest_a, vest_b, vest_c] = window {
+                if vest_a.expiration == vest_b.expiration && vest_b.expiration == vest_c.expiration {
+                    return Err(ContractError::VestScheduleFeaturesMalformedCliff {
+                        amount1: vest_a.amount,
+                        time1: vest_a.expiration.seconds(),
+                        amount2: vest_b.amount,
+                        time2: vest_b.expiration.seconds(),
+                        amount3: vest_c.amount,
+                        time3: vest_c.expiration.seconds(),
+                    });
+                }
+            }
+        }
+        vest_total = vest_total.checked_add(vests.peek().unwrap().amount)?;
+        SCHEDULES.save(deps.storage, addr, &vests)?;
     }
 
     Ok(vest_total)
@@ -173,8 +209,9 @@ fn save_schedules(
 
 pub mod execute {
     use super::*;
-    use cosmwasm_std::{WasmMsg, from_binary};
+    use cosmwasm_std::{WasmMsg, from_binary, QueryRequest, WasmQuery};
     use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, Cw20Contract};
+    use cw20_stake::msg::{StakedValueResponse, StakedBalanceAtHeightResponse};
     use crate::{state::{CLAIMS, SCHEDULES, MAX_CLAIMS, CLAIMED_TOTAL}, query_helpers::query_staking_config, msg::ReceiveMsg};
 
     pub fn receive(
@@ -233,15 +270,42 @@ pub mod execute {
         let vests = SCHEDULES.load(deps.storage, info.sender.clone())?;
         let claimed = CLAIMED_TOTAL.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
 
-        let vested = calculate_cumulative_vest(&env, &vests)?;
+        let vested = calculate_cumulative_vest(&env, vests)?;
         let claimable = vested.checked_sub(claimed)?;
         let total_payout = claimed.checked_add(claimable)?;
+
+        if claimable.is_zero() {
+            return Ok(Response::new()
+                .add_attribute("action", "vest")
+                .add_attribute("from", info.sender)
+                .add_attribute("amount", claimable));
+        }
+
         CLAIMED_TOTAL.save(deps.storage, info.sender.clone(), &total_payout, env.block.height)?;
+
+        // Need to calculate what we'll receive back in staking rewards.
+        let StakedValueResponse { value } = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: config.stake_address.to_string(),
+            msg: to_binary(&cw20_stake::msg::QueryMsg::StakedValue { address: env.contract.address.to_string() })?,
+        }))?;
+        let StakedBalanceAtHeightResponse { balance, height } = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: config.stake_address.to_string(),
+            msg: to_binary(&cw20_stake::msg::QueryMsg::StakedBalanceAtHeight { address: env.contract.address.to_string(), height: None })?,
+        }))?;
+        let amount_to_claim = if !value.is_zero() && !balance.is_zero() {
+            value
+                .checked_div(balance)
+                .map_err(|e| ContractError::DivideByZero(e))?
+                .checked_mul(claimable)
+                .map_err(|e| ContractError::Overflow(e))?
+        } else {
+            Uint128::zero()
+        };
 
         let unstake_msg = WasmMsg::Execute {
             contract_addr: config.stake_address.to_string(),
             msg: to_binary(&cw20_stake::msg::ExecuteMsg::Unstake {
-                amount: claimable,
+                amount: amount_to_claim,
             })?,
             funds: vec![],
         };
@@ -253,7 +317,7 @@ pub mod execute {
                     contract_addr: config.token_address.to_string(),
                     msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
                         recipient: info.sender.to_string(),
-                        amount: claimable,
+                        amount: amount_to_claim,
                     })?,
                     funds: vec![],
                 };
@@ -262,7 +326,7 @@ pub mod execute {
                     .add_message(transfer_msg)
                     .add_attribute("action", "vest")
                     .add_attribute("from", info.sender)
-                    .add_attribute("amount", claimable)
+                    .add_attribute("amount", amount_to_claim)
                     .add_attribute("claim_duration", "None"))
             }
             Some(duration) => {
@@ -274,14 +338,14 @@ pub mod execute {
                 CLAIMS.create_claim(
                     deps.storage,
                     &info.sender,
-                    claimable,
+                    amount_to_claim,
                     duration.after(&env.block),
                 )?;
                 Ok(Response::new()
                     .add_message(unstake_msg)
                     .add_attribute("action", "vest")
                     .add_attribute("from", info.sender)
-                    .add_attribute("amount", claimable)
+                    .add_attribute("amount", amount_to_claim)
                     .add_attribute("claim_duration", format!("{}", duration)))
             }
         }
@@ -298,41 +362,32 @@ pub mod execute {
         }
         let config = CONFIG.load(deps.storage)?;
         let balance = query_balance(deps.as_ref(), &config.token_address, &env.contract.address)?;
-        if balance < release {
-            let claim_msg = WasmMsg::Execute {
+
+        let messages = if balance < release {
+            vec![WasmMsg::Execute {
                 contract_addr: config.stake_address.to_string(),
                 msg: to_binary(&cw20_stake::msg::ExecuteMsg::Claim {})?,
                 funds: vec![],
-            };
-            let transfer_msg = cosmwasm_std::WasmMsg::Execute {
-                contract_addr: config.token_address.to_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                    recipient: info.sender.to_string(),
-                    amount: release,
-                })?,
-                funds: vec![],
-            };
-            Ok(Response::new()
-                .add_message(claim_msg)
-                .add_message(transfer_msg)
-                .add_attribute("action", "claim")
-                .add_attribute("from", info.sender)
-                .add_attribute("amount", release))
+            }]
         } else {
-            let transfer_msg = cosmwasm_std::WasmMsg::Execute {
-                contract_addr: config.token_address.to_string(),
-                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                    recipient: info.sender.to_string(),
-                    amount: release,
-                })?,
-                funds: vec![],
-            };
-            Ok(Response::new()
-                .add_message(transfer_msg)
-                .add_attribute("action", "claim")
-                .add_attribute("from", info.sender)
-                .add_attribute("amount", release))
-        }
+            vec![]
+        };
+
+        let transfer_msg = cosmwasm_std::WasmMsg::Execute {
+            contract_addr: config.token_address.to_string(),
+            msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
+                amount: release,
+            })?,
+            funds: vec![],
+        };
+        messages.push(transfer_msg);
+
+        Ok(Response::new()
+            .add_messages(messages)
+            .add_attribute("action", "claim")
+            .add_attribute("from", info.sender)
+            .add_attribute("amount", release))
     }
 
     pub fn update_config(
@@ -350,7 +405,7 @@ pub mod execute {
             .transpose()?;
 
         let mut config: Config = CONFIG.load(deps.storage)?;
-        if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+        if config.owner.as_ref().map_or(true, |owner| &info.sender != owner) && config.manager.as_ref().map_or(true, |manager| &info.sender != manager) {
             return Err(ContractError::Unauthorized {});
         };
         if Some(info.sender) != config.owner && new_owner != config.owner {
@@ -384,7 +439,7 @@ pub mod execute {
 pub mod query {
     use super::*;
 
-    use crate::{msg::{GetVestingStatusAtHeightResponse, GetFundingStatusAtHeightResponse}, state::{CLAIMS, CLAIMED_TOTAL}};
+    use crate::{msg::{GetVestingStatusAtHeightResponse, GetFundingStatusAtHeightResponse, GetVestingScheduleResponse}, state::{CLAIMS, CLAIMED_TOTAL}};
 
     pub fn vesting_status_at_height(deps: Deps, env: Env, addr: String, height: Option<u64>) -> StdResult<GetVestingStatusAtHeightResponse> {
         let addr = deps.api.addr_validate(&addr)?;
@@ -394,8 +449,9 @@ pub mod query {
         let claims = CLAIMS.query_claims(deps, &addr)?.claims;
         let claimed = CLAIMED_TOTAL.may_load_at_height(deps.storage, addr.clone(), height)?.unwrap_or_default();
 
-        let vested_u_unvested = &vests[vests.len() - 1].amount;
-        let vested = calculate_cumulative_vest(&env, &vests)?;
+        // vests is validated to not be empty
+        let vested_u_unvested = vests.peek().unwrap().amount;
+        let vested = calculate_cumulative_vest(&env, vests)?;
         let unvested = vested_u_unvested.checked_sub(vested)?;
         let vested_staked = vested.checked_sub(claimed)?;
 
@@ -438,6 +494,12 @@ pub mod query {
     pub fn config(deps: Deps) -> StdResult<Config> {
         Ok(CONFIG.load(deps.storage)?)
     }
+
+    pub fn vesting_schedule(deps: Deps, env: Env, address: String) -> StdResult<GetVestingScheduleResponse> {
+        let address = deps.api.addr_validate(&address)?;
+        let schedule = SCHEDULES.load(deps.storage, address)?;
+        Ok(GetVestingScheduleResponse { schedule: schedule.into_sorted_vec() })
+    }
 }
 
 #[cfg(test)]
@@ -449,7 +511,7 @@ mod tests {
     use cw_multi_test::{App, ContractWrapper, Contract, next_block, Executor};
     use cw_utils::Duration;
 
-    use crate::msg::{ReceiveMsg, GetVestingStatusAtHeightResponse};
+    use crate::{msg::{ReceiveMsg, GetVestingStatusAtHeightResponse}, state::Vest};
 
     #[test]
     fn test_with_unstake_duration() {

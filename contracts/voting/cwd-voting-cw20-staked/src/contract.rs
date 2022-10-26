@@ -148,7 +148,7 @@ pub fn instantiate(
                         vest_total = vest_total.checked_add(last.amount)?;
                     }
                 }
-                if vest_total > Uint128::zero() {
+                if !vest_total.is_zero() {
                     initial_balances.push(Cw20Coin {
                         address: env.contract.address.to_string(),
                         amount: vest_total,
