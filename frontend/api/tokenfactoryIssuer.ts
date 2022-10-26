@@ -24,9 +24,6 @@ export const getTokenIssuerSigningClient = async () => {
 export const useDenom = () =>
   useSWR("/tokenfactory-issuer/denom", async () => {
     const client = await getTokenIssuerQueryClient();
-    if (window) {
-      console.log(client);
-    }
     return await client.denom();
   });
 
