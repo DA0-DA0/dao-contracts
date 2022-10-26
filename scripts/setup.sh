@@ -71,6 +71,11 @@ cw4_group_exec() {
     beaker wasm execute cw4-group --signer-account test1 --raw "$msg" > /dev/null
 }
 
+tokenfactory_issuer_exec() {
+    local msg="$1"
+    beaker wasm execute tokenfactory-issuer --signer-account test1 --raw "$msg" > /dev/null
+}
+
 # assuming test1,test2 has been setup to keyring
 echo ">>> Deploying cw4-group contract ..."
 echo
@@ -158,3 +163,16 @@ EOF
 
 echo "$MSG" | jq
 deploy_tokenfactory_issuer "$MSG"
+
+
+echo
+echo ">>> Transfer ownership of tokenfactory issuer to multisig ..."
+echo
+
+read -r -d '' MSG <<- EOF
+{ "change_contract_owner": { "new_owner": "$MULTISIG_CONTRACT_ADDR" }}
+EOF
+
+echo "$MSG" | jq
+tokenfactory_issuer_exec "$MSG"
+
