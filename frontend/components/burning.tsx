@@ -75,14 +75,14 @@ export const SetBurnerForm = ({
       msgType={assertMsgType("set_burner")}
       fields={[
         {
-          name: assertName("allowance"),
-          isRequired: true,
-          component: NumberField,
-        },
-        {
           name: assertName("address"),
           isRequired: true,
           component: AddressField,
+        },
+        {
+          name: assertName("allowance"),
+          isRequired: true,
+          component: NumberField,
         },
       ]}
       onSubmitForm={onSubmitForm}
@@ -103,14 +103,14 @@ export const BurnForm = ({
       msgType={assertMsgType("burn")}
       fields={[
         {
-          name: assertName("amount"),
-          isRequired: true,
-          component: NumberField,
-        },
-        {
           name: assertName("from_address"),
           isRequired: true,
           component: AddressField,
+        },
+        {
+          name: assertName("amount"),
+          isRequired: true,
+          component: NumberField,
         },
       ]}
       onSubmitForm={onSubmitForm}

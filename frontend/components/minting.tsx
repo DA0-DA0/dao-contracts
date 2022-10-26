@@ -75,14 +75,14 @@ export const SetMinterForm = ({
       msgType={assertMsgType("set_minter")}
       fields={[
         {
-          name: assertName("allowance"),
-          isRequired: true,
-          component: NumberField,
-        },
-        {
           name: assertName("address"),
           isRequired: true,
           component: AddressField,
+        },
+        {
+          name: assertName("allowance"),
+          isRequired: true,
+          component: NumberField,
         },
       ]}
       onSubmitForm={onSubmitForm}
@@ -103,14 +103,14 @@ export const MintForm = ({
       msgType={assertMsgType("mint")}
       fields={[
         {
-          name: assertName("amount"),
-          isRequired: true,
-          component: NumberField,
-        },
-        {
           name: assertName("to_address"),
           isRequired: true,
           component: AddressField,
+        },
+        {
+          name: assertName("amount"),
+          isRequired: true,
+          component: NumberField,
         },
       ]}
       onSubmitForm={onSubmitForm}
