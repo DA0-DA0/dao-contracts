@@ -1621,7 +1621,7 @@ fn test_migrate_from_v1() {
     // Stake all the initial balances.
     for Cw20Coin { address, amount } in initial_balances {
         app.execute_contract(
-            Addr::unchecked(&address),
+            Addr::unchecked(address),
             token_contract.clone(),
             &cw20::Cw20ExecuteMsg::Send {
                 contract: staking_contract.to_string(),

@@ -122,7 +122,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
                 code_id: cw20_id,
                 msg: to_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                label: format!("governance module {}", n),
+                label: format!("governance module {n}"),
             })
             .collect(),
         initial_items: None,
@@ -131,7 +131,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
 
     let state: DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(&gov_addr, &QueryMsg::DumpState {})
+        .query_wasm_smart(gov_addr, &QueryMsg::DumpState {})
         .unwrap();
 
     assert_eq!(
@@ -187,7 +187,7 @@ fn test_instantiate_with_submessage_failure() {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            label: format!("governance module {}", n),
+            label: format!("governance module {n}"),
         })
         .collect::<Vec<_>>();
     governance_modules.push(ModuleInstantiateInfo {
@@ -399,7 +399,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
                 code_id: propmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                label: format!("governance module {}", n),
+                label: format!("governance module {n}"),
             })
             .collect();
 

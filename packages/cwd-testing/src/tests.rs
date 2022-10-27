@@ -566,7 +566,7 @@ where
             .into_iter()
             .enumerate()
             .map(|(idx, weight)| TestSingleChoiceVote {
-                voter: format!("yes_{}", idx),
+                voter: format!("yes_{idx}"),
                 position: Vote::Yes,
                 weight: Uint128::new(weight as u128),
                 should_execute: ShouldExecute::Meh,
@@ -575,7 +575,7 @@ where
             .into_iter()
             .enumerate()
             .map(|(idx, weight)| TestSingleChoiceVote {
-                voter: format!("no_{}", idx),
+                voter: format!("no_{idx}"),
                 position: Vote::No,
                 weight: Uint128::new(weight as u128),
                 should_execute: ShouldExecute::Meh,
