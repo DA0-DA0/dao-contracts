@@ -192,7 +192,7 @@ pub fn _instantiate_with_staked_cw721_governance(
                 nft_address.clone(),
                 &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(
                     cw721_base::msg::MintMsg::<Option<Empty>> {
-                        token_id: format!("{}_{}", address, i),
+                        token_id: format!("{address}_{i}"),
                         owner: address.clone(),
                         token_uri: None,
                         extension: None,
@@ -206,7 +206,7 @@ pub fn _instantiate_with_staked_cw721_governance(
                 nft_address.clone(),
                 &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
                     contract: staking_addr.to_string(),
-                    token_id: format!("{}_{}", address, i),
+                    token_id: format!("{address}_{i}"),
                     msg: to_binary("").unwrap(),
                 },
                 &[],

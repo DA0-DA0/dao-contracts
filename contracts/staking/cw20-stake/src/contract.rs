@@ -295,7 +295,7 @@ pub fn execute_unstake(
                 .add_submessages(hook_msgs)
                 .add_attribute("from", info.sender)
                 .add_attribute("amount", amount)
-                .add_attribute("claim_duration", format!("{}", duration)))
+                .add_attribute("claim_duration", format!("{duration}")))
         }
     }
 }

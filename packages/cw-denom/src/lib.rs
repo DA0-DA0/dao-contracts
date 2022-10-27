@@ -167,8 +167,8 @@ pub fn validate_native_denom(denom: String) -> Result<CheckedDenom, DenomError> 
 impl fmt::Display for CheckedDenom {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Native(inner) => write!(f, "{}", inner),
-            Self::Cw20(inner) => write!(f, "{}", inner),
+            Self::Native(inner) => write!(f, "{inner}"),
+            Self::Cw20(inner) => write!(f, "{inner}"),
         }
     }
 }
@@ -241,7 +241,7 @@ mod tests {
             err,
             DenomError::InvalidCw20 {
                 err: StdError::GenericErr {
-                    msg: format!("Querier system error: No such contract: {}", CW20_ADDR)
+                    msg: format!("Querier system error: No such contract: {CW20_ADDR}",)
                 }
             }
         )

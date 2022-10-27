@@ -501,7 +501,7 @@ mod test {
     #[test]
     fn test_display_multiple_choice_vote() {
         let vote = MultipleChoiceVote { option_id: 0 };
-        assert_eq!("0", format!("{}", vote))
+        assert_eq!("0", format!("{vote}"))
     }
 
     #[test]
