@@ -485,7 +485,7 @@ pub fn limit_variant_count(metadata: TokenStream, input: TokenStream) -> TokenSt
             if variants.len() > limit {
                 return syn::Error::new_spanned(
                     variants[limit].clone(),
-                    format!("this enum's variant count is limited to {}", limit),
+                    format!("this enum's variant count is limited to {limit}"),
                 )
                 .to_compile_error()
                 .into();
