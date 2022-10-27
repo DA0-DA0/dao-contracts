@@ -202,7 +202,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
                 nft_address.clone(),
                 &cw721_base::msg::ExecuteMsg::SendNft::<Option<Empty>, Empty> {
                     contract: staking_addr.to_string(),
-                    token_id: format!("{}_{}", address, i),
+                    token_id: format!("{address}_{i}"),
                     msg: to_binary("").unwrap(),
                 },
                 &[],

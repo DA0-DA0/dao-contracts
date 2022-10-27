@@ -563,7 +563,7 @@ pub fn execute_update_proposal_creation_policy(
         .add_submessages(messages)
         .add_attribute("action", "update_proposal_creation_policy")
         .add_attribute("sender", info.sender)
-        .add_attribute("new_policy", format!("{:?}", initial_policy)))
+        .add_attribute("new_policy", format!("{initial_policy:?}")))
 }
 
 pub fn add_hook(
