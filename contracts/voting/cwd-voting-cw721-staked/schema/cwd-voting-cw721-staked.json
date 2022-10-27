@@ -276,7 +276,8 @@
           "token_id": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "Duration": {
         "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
@@ -761,7 +762,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false

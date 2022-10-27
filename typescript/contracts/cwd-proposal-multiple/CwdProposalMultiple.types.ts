@@ -339,9 +339,7 @@ export type Expiration = {
 } | {
   at_time: Timestamp;
 } | {
-  never: {
-    [k: string]: unknown;
-  };
+  never: {};
 };
 export type Status = "open" | "rejected" | "passed" | "executed" | "closed" | "execution_failed";
 export interface ProposalListResponse {

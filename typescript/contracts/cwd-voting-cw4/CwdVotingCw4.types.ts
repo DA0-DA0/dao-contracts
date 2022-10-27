@@ -11,7 +11,6 @@ export interface InstantiateMsg {
 export interface Member {
   addr: string;
   weight: number;
-  [k: string]: unknown;
 }
 export type ExecuteMsg = {
   member_changed_hook: {
@@ -22,7 +21,6 @@ export interface MemberDiff {
   key: string;
   new?: number | null;
   old?: number | null;
-  [k: string]: unknown;
 }
 export type QueryMsg = {
   group_contract: {};

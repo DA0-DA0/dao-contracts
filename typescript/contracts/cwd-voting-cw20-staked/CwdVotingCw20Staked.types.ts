@@ -67,14 +67,12 @@ export interface InstantiateMsg {
 export interface Cw20Coin {
   address: string;
   amount: Uint128;
-  [k: string]: unknown;
 }
 export interface InstantiateMarketingInfo {
   description?: string | null;
   logo?: Logo | null;
   marketing?: string | null;
   project?: string | null;
-  [k: string]: unknown;
 }
 export type ExecuteMsg = {
   update_active_threshold: {

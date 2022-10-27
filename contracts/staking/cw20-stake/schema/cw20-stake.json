@@ -227,7 +227,8 @@
           "sender": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "Duration": {
         "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
@@ -494,6 +495,7 @@
           }
         }
       },
+      "additionalProperties": false,
       "definitions": {
         "Claim": {
           "type": "object",
@@ -508,7 +510,8 @@
             "release_at": {
               "$ref": "#/definitions/Expiration"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "Expiration": {
           "description": "Expiration represents a point in time when some event happens. It can compare with a BlockInfo and will return is_expired() == true once the condition is hit (and for every block in the future)",
@@ -549,7 +552,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false

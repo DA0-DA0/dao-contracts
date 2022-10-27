@@ -254,13 +254,11 @@ export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
   sender: string;
-  [k: string]: unknown;
 }
 export interface Cw721ReceiveMsg {
   msg: Binary;
   sender: string;
   token_id: string;
-  [k: string]: unknown;
 }
 export interface Config {
   automatically_add_cw20s: boolean;
@@ -377,9 +375,7 @@ export type Expiration = {
 } | {
   at_time: Timestamp;
 } | {
-  never: {
-    [k: string]: unknown;
-  };
+  never: {};
 };
 export interface DumpStateResponse {
   active_proposal_module_count: number;

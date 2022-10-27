@@ -2756,7 +2756,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -3986,7 +3987,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -5015,7 +5017,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false

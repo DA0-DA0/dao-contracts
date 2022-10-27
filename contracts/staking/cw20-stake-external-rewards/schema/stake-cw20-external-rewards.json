@@ -219,7 +219,8 @@
           "sender": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "StakeChangedHookMsg": {
         "oneOf": [

@@ -36,7 +36,6 @@ export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
   sender: string;
-  [k: string]: unknown;
 }
 export type QueryMsg = {
   status: {};

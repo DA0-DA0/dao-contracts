@@ -69,20 +69,16 @@ export type Expiration = {
 } | {
   at_time: Timestamp;
 } | {
-  never: {
-    [k: string]: unknown;
-  };
+  never: {};
 };
 export type Timestamp = Uint64;
 export type Uint64 = string;
 export interface ClaimsResponse {
   claims: Claim[];
-  [k: string]: unknown;
 }
 export interface Claim {
   amount: Uint128;
   release_at: Expiration;
-  [k: string]: unknown;
 }
 export type Addr = string;
 export interface Config {

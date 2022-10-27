@@ -50,7 +50,6 @@ export interface Cw721ReceiveMsg {
   msg: Binary;
   sender: string;
   token_id: string;
-  [k: string]: unknown;
 }
 export type QueryMsg = {
   staked_balance_at_height: {
@@ -116,9 +115,7 @@ export type Expiration = {
 } | {
   at_time: Timestamp;
 } | {
-  never: {
-    [k: string]: unknown;
-  };
+  never: {};
 };
 export type Timestamp = Uint64;
 export type Uint64 = string;

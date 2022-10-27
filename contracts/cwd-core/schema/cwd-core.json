@@ -852,7 +852,8 @@
           "sender": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "Cw721ReceiveMsg": {
         "description": "Cw721ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
@@ -872,7 +873,8 @@
           "token_id": {
             "type": "string"
           }
-        }
+        },
+        "additionalProperties": false
       },
       "DistributionMsg": {
         "description": "The message types of the distribution module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto",
@@ -2324,7 +2326,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
@@ -2592,7 +2595,8 @@
               ],
               "properties": {
                 "never": {
-                  "type": "object"
+                  "type": "object",
+                  "additionalProperties": false
                 }
               },
               "additionalProperties": false
