@@ -1,7 +1,11 @@
+use std::num::ParseIntError;
+
 use cosmwasm_std::StdError;
 use cw_denom::DenomError;
+use cw_utils::ParseReplyError;
 use thiserror::Error;
 
+use cwd_hooks::HookError;
 use cwd_voting::{deposit::DepositError, status::Status};
 
 #[derive(Error, Debug, PartialEq)]
@@ -14,6 +18,15 @@ pub enum PreProposeError {
 
     #[error(transparent)]
     Deposit(#[from] DepositError),
+
+    #[error(transparent)]
+    Hooks(#[from] HookError),
+
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
+
+    #[error(transparent)]
+    ParseIntError(#[from] ParseIntError),
 
     #[error("Message sender is not proposal module")]
     NotModule {},
@@ -32,4 +45,13 @@ pub enum PreProposeError {
 
     #[error("Proposal status ({status}) not closed or executed")]
     NotClosedOrExecuted { status: Status },
+
+    #[error("Proposal not found")]
+    ProposalNotFound {},
+
+    #[error("Unauthorized")]
+    Unauthorized {},
+
+    #[error("An unknown reply ID was received.")]
+    UnknownReplyID {},
 }

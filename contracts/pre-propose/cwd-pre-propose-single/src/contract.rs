@@ -11,12 +11,17 @@ use cwd_pre_propose_base::{
     msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
     state::PreProposeContract,
 };
+use cwd_proposal_single::msg::ProposeMsg;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cw_serde]
 pub enum ProposeMessage {
+    /// The propose message used to make a proposal to this
+    /// module. Note that this is identical to the propose message
+    /// used by cwd-proposal-single, except that it omits the
+    /// `proposer` field which it fills in for the sender.
     Propose {
         title: String,
         description: String,
@@ -33,12 +38,7 @@ pub type QueryMsg = QueryBase<Empty>;
 /// of the external message.
 #[cw_serde]
 enum ProposeMessageInternal {
-    Propose {
-        title: String,
-        description: String,
-        msgs: Vec<CosmosMsg<Empty>>,
-        proposer: Option<String>,
-    },
+    Propose(ProposeMsg),
 }
 
 type PrePropose = PreProposeContract<Empty, Empty, Empty, ProposeMessageInternal>;
@@ -76,13 +76,13 @@ pub fn execute(
                     msgs,
                 },
         } => ExecuteInternal::Propose {
-            msg: ProposeMessageInternal::Propose {
+            msg: ProposeMessageInternal::Propose(ProposeMsg {
                 // Fill in proposer based on message sender.
                 proposer: Some(info.sender.to_string()),
                 title,
                 description,
                 msgs,
-            },
+            }),
         },
         ExecuteMsg::Extension { msg } => ExecuteInternal::Extension { msg },
         ExecuteMsg::Withdraw { denom } => ExecuteInternal::Withdraw { denom },
@@ -93,6 +93,12 @@ pub fn execute(
             deposit_info,
             open_proposal_submission,
         },
+        ExecuteMsg::AddProposalSubmittedHook { address } => {
+            ExecuteInternal::AddProposalSubmittedHook { address }
+        }
+        ExecuteMsg::RemoveProposalSubmittedHook { address } => {
+            ExecuteInternal::RemoveProposalSubmittedHook { address }
+        }
         ExecuteMsg::ProposalCreatedHook {
             proposal_id,
             proposer,

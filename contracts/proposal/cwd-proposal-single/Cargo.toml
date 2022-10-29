@@ -28,7 +28,6 @@ thiserror = { workspace = true }
 cwd-core = { workspace = true, features = ["library"] }
 cwd-macros = { workspace = true }
 cwd-pre-propose-base = { workspace = true }
-cwd-pre-propose-single = { workspace = true }
 cwd-interface = { workspace = true }
 cwd-voting = { workspace = true }
 cwd-hooks = { workspace = true }
@@ -37,7 +36,7 @@ cwd-vote-hooks = { workspace = true }
 
 cw-utils-v1 = { workspace = true}
 voting-v1 = { workspace = true }
-cw-proposal-single-v1 = { workspace = true }
+cw-proposal-single-v1 = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

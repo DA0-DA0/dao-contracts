@@ -70,17 +70,24 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// will do nothing if this variant is executed.
     Extension { msg: ExecuteExt },
 
-    /// Handles proposal hook fired by the associated proposal
-    /// module when a proposal is created. By default, the base contract will return deposits
-    /// proposals, when they are closed.
-    /// when proposals are executed, or, if it is refunding failed
+    /// Adds a proposal submitted hook. Fires when a new proposal is submitted
+    /// to the pre-propose contract. Only the DAO may call this method.
+    AddProposalSubmittedHook { address: String },
+
+    /// Removes a proposal submitted hook. Only the DAO may call this method.
+    RemoveProposalSubmittedHook { address: String },
+
+    /// Handles proposal hook fired by the associated proposal module when a
+    /// proposal is created. By default, the base contract will return deposits
+    /// proposals, when they are closed, when proposals are executed, or,
+    /// if it is refunding failed.
     ProposalCreatedHook { proposal_id: u64, proposer: String },
 
     /// Handles proposal hook fired by the associated proposal
     /// module when a proposal is completed (ie executed or rejected).
     /// By default, the base contract will return deposits
-    /// proposals, when they are closed.
-    /// when proposals are executed, or, if it is refunding failed
+    /// proposals, when they are closed, when proposals are executed, or,
+    /// if it is refunding failed.
     ProposalCompletedHook {
         proposal_id: u64,
         new_status: Status,
@@ -108,6 +115,9 @@ where
     /// PROPOSAL_ID.
     #[returns(DepositInfoResponse)]
     DepositInfo { proposal_id: u64 },
+    /// Returns list of proposal submitted hooks.
+    #[returns(cwd_hooks::HooksResponse)]
+    ProposalSubmittedHooks {},
     /// Extension for queries. The default implementation will do
     /// nothing if queried for will return `Binary::default()`.
     #[returns(cosmwasm_std::Binary)]

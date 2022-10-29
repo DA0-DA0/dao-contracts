@@ -49,6 +49,14 @@ export type ExecuteMsg = {
     msg: Empty;
   };
 } | {
+  add_proposal_submitted_hook: {
+    address: string;
+  };
+} | {
+  remove_proposal_submitted_hook: {
+    address: string;
+  };
+} | {
   proposal_created_hook: {
     proposal_id: number;
     proposer: string;
@@ -224,6 +232,8 @@ export type QueryMsg = {
     proposal_id: number;
   };
 } | {
+  proposal_submitted_hooks: {};
+} | {
   query_extension: {
     msg: Empty;
   };
@@ -246,4 +256,7 @@ export interface CheckedDepositInfo {
 export interface DepositInfoResponse {
   deposit_info?: CheckedDepositInfo | null;
   proposer: Addr;
+}
+export interface HooksResponse {
+  hooks: string[];
 }

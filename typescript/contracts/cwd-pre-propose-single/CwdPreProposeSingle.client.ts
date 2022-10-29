@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, InstantiateMsg, UncheckedDepositInfo, Empty, ExecuteMsg, ProposeMessage, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, Binary, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Status, Coin, IbcTimeout, IbcTimeoutBlock, QueryMsg, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse } from "./CwdPreProposeSingle.types";
+import { Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, InstantiateMsg, UncheckedDepositInfo, Empty, ExecuteMsg, ProposeMessage, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, Binary, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Status, Coin, IbcTimeout, IbcTimeoutBlock, QueryMsg, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse, HooksResponse } from "./CwdPreProposeSingle.types";
 export interface CwdPreProposeSingleReadOnlyInterface {
   contractAddress: string;
   proposalModule: () => Promise<Addr>;
@@ -17,6 +17,7 @@ export interface CwdPreProposeSingleReadOnlyInterface {
   }: {
     proposalId: number;
   }) => Promise<DepositInfoResponse>;
+  proposalSubmittedHooks: () => Promise<HooksResponse>;
   queryExtension: ({
     msg
   }: {
@@ -34,6 +35,7 @@ export class CwdPreProposeSingleQueryClient implements CwdPreProposeSingleReadOn
     this.dao = this.dao.bind(this);
     this.config = this.config.bind(this);
     this.depositInfo = this.depositInfo.bind(this);
+    this.proposalSubmittedHooks = this.proposalSubmittedHooks.bind(this);
     this.queryExtension = this.queryExtension.bind(this);
   }
 
@@ -61,6 +63,11 @@ export class CwdPreProposeSingleQueryClient implements CwdPreProposeSingleReadOn
       deposit_info: {
         proposal_id: proposalId
       }
+    });
+  };
+  proposalSubmittedHooks = async (): Promise<HooksResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      proposal_submitted_hooks: {}
     });
   };
   queryExtension = async ({
@@ -100,6 +107,16 @@ export interface CwdPreProposeSingleInterface extends CwdPreProposeSingleReadOnl
   }: {
     msg: Empty;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  addProposalSubmittedHook: ({
+    address
+  }: {
+    address: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  removeProposalSubmittedHook: ({
+    address
+  }: {
+    address: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   proposalCreatedHook: ({
     proposalId,
     proposer
@@ -129,6 +146,8 @@ export class CwdPreProposeSingleClient extends CwdPreProposeSingleQueryClient im
     this.updateConfig = this.updateConfig.bind(this);
     this.withdraw = this.withdraw.bind(this);
     this.extension = this.extension.bind(this);
+    this.addProposalSubmittedHook = this.addProposalSubmittedHook.bind(this);
+    this.removeProposalSubmittedHook = this.removeProposalSubmittedHook.bind(this);
     this.proposalCreatedHook = this.proposalCreatedHook.bind(this);
     this.proposalCompletedHook = this.proposalCompletedHook.bind(this);
   }
@@ -177,6 +196,28 @@ export class CwdPreProposeSingleClient extends CwdPreProposeSingleQueryClient im
     return await this.client.execute(this.sender, this.contractAddress, {
       extension: {
         msg
+      }
+    }, fee, memo, funds);
+  };
+  addProposalSubmittedHook = async ({
+    address
+  }: {
+    address: string;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      add_proposal_submitted_hook: {
+        address
+      }
+    }, fee, memo, funds);
+  };
+  removeProposalSubmittedHook = async ({
+    address
+  }: {
+    address: string;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      remove_proposal_submitted_hook: {
+        address
       }
     }, fee, memo, funds);
   };

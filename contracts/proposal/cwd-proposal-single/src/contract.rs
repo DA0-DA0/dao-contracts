@@ -10,7 +10,6 @@ use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 use cwd_hooks::Hooks;
 use cwd_interface::voting::IsActiveResponse;
-use cwd_pre_propose_single::contract::ExecuteMsg as PreProposeMsg;
 use cwd_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use cwd_vote_hooks::new_vote_hooks;
 use cwd_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
@@ -22,7 +21,7 @@ use cwd_voting::status::Status;
 use cwd_voting::threshold::Threshold;
 use cwd_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
-use crate::msg::MigrateMsg;
+use crate::msg::{MigrateMsg, ProposeMsg};
 use crate::proposal::SingleChoiceProposal;
 use crate::state::{Config, CREATION_POLICY};
 
@@ -40,6 +39,10 @@ use crate::{
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-proposal-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Message type used for firing hooks to this module's pre-propose
+/// module, if one is installed.
+type PreProposeHookMsg = cwd_pre_propose_base::msg::ExecuteMsg<Empty, Empty>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -91,12 +94,12 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Propose {
+        ExecuteMsg::Propose(ProposeMsg {
             title,
             description,
             msgs,
             proposer,
-        } => execute_propose(deps, env, info.sender, title, description, msgs, proposer),
+        }) => execute_propose(deps, env, info.sender, title, description, msgs, proposer),
         ExecuteMsg::Vote {
             proposal_id,
             vote,
@@ -248,7 +251,7 @@ pub fn execute_propose(
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeMsg::ProposalCreatedHook {
+            let msg = to_binary(&PreProposeHookMsg::ProposalCreatedHook {
                 proposal_id: id,
                 proposer: proposer.into_string(),
             })?;
@@ -339,7 +342,7 @@ pub fn execute_execute(
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
+            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
                 proposal_id,
                 new_status: prop.status,
             })?;
@@ -528,7 +531,7 @@ pub fn execute_close(
     let hooks = match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => hooks,
         ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeMsg::ProposalCompletedHook {
+            let msg = to_binary(&PreProposeHookMsg::ProposalCompletedHook {
                 proposal_id,
                 new_status: prop.status,
             })?;
@@ -969,13 +972,20 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         }
         TaggedReplyId::PreProposeModuleInstantiation => {
             let res = parse_reply_instantiate_data(msg)?;
+
             let module = deps.api.addr_validate(&res.contract_address)?;
             CREATION_POLICY.save(
                 deps.storage,
                 &ProposalCreationPolicy::Module { addr: module },
             )?;
 
-            Ok(Response::new().add_attribute("update_pre_propose_module", res.contract_address))
+            match res.data {
+                Some(data) => Ok(Response::new()
+                    .add_attribute("update_pre_propose_module", res.contract_address)
+                    .set_data(data)),
+                None => Ok(Response::new()
+                    .add_attribute("update_pre_propose_module", res.contract_address)),
+            }
         }
         TaggedReplyId::FailedPreProposeModuleHook => {
             let addr = match CREATION_POLICY.load(deps.storage)? {

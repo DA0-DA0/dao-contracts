@@ -354,37 +354,7 @@
         ],
         "properties": {
           "propose": {
-            "type": "object",
-            "required": [
-              "description",
-              "msgs",
-              "title"
-            ],
-            "properties": {
-              "description": {
-                "description": "A description of the proposal.",
-                "type": "string"
-              },
-              "msgs": {
-                "description": "The messages that should be executed in response to this proposal passing.",
-                "type": "array",
-                "items": {
-                  "$ref": "#/definitions/CosmosMsg_for_Empty"
-                }
-              },
-              "proposer": {
-                "description": "The address creating the proposal. If no pre-propose module is attached to this module this must always be None as the proposer is the sender of the propose message. If a pre-propose module is attached, this must be Some and will set the proposer of the proposal it creates.",
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "title": {
-                "description": "The title of the proposal.",
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
+            "$ref": "#/definitions/ProposeMsg"
           }
         },
         "additionalProperties": false
@@ -1306,6 +1276,40 @@
             "additionalProperties": false
           }
         ]
+      },
+      "ProposeMsg": {
+        "description": "The contents of a message to create a proposal.",
+        "type": "object",
+        "required": [
+          "description",
+          "msgs",
+          "title"
+        ],
+        "properties": {
+          "description": {
+            "description": "A description of the proposal.",
+            "type": "string"
+          },
+          "msgs": {
+            "description": "The messages that should be executed in response to this proposal passing.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/CosmosMsg_for_Empty"
+            }
+          },
+          "proposer": {
+            "description": "The address creating the proposal. If no pre-propose module is attached to this module this must always be None as the proposer is the sender of the propose message. If a pre-propose module is attached, this must be Some and will set the proposer of the proposal it creates.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "title": {
+            "description": "The title of the proposal.",
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "StakingMsg": {
         "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",

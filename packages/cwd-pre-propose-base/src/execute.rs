@@ -1,6 +1,6 @@
 use cosmwasm_schema::schemars::JsonSchema;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, WasmMsg,
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
@@ -89,7 +89,12 @@ where
             ExecuteMsg::Withdraw { denom } => {
                 self.execute_withdraw(deps.as_ref(), env, info, denom)
             }
-            ExecuteMsg::Extension { .. } => Ok(Response::default()),
+            ExecuteMsg::AddProposalSubmittedHook { address } => {
+                self.execute_add_proposal_submitted_hook(deps, info, address)
+            }
+            ExecuteMsg::RemoveProposalSubmittedHook { address } => {
+                self.execute_remove_proposal_submitted_hook(deps, info, address)
+            }
             ExecuteMsg::ProposalCreatedHook {
                 proposal_id,
                 proposer,
@@ -98,22 +103,8 @@ where
                 proposal_id,
                 new_status,
             } => self.execute_proposal_completed_hook(deps.as_ref(), info, proposal_id, new_status),
-        }
-    }
 
-    pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
-        match msg {
-            QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
-            QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
-            QueryMsg::Config {} => to_binary(&self.config.load(deps.storage)?),
-            QueryMsg::DepositInfo { proposal_id } => {
-                let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;
-                to_binary(&DepositInfoResponse {
-                    deposit_info,
-                    proposer,
-                })
-            }
-            QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
+            ExecuteMsg::Extension { .. } => Ok(Response::default()),
         }
     }
 
@@ -154,10 +145,22 @@ where
             funds: vec![],
         };
 
+        let hooks_msgs = self
+            .proposal_submitted_hooks
+            .prepare_hooks(deps.storage, |a| {
+                let execute = WasmMsg::Execute {
+                    contract_addr: a.into_string(),
+                    msg: to_binary(&msg)?,
+                    funds: vec![],
+                };
+                Ok(SubMsg::new(execute))
+            })?;
+
         Ok(Response::default()
             .add_attribute("method", "execute_propose")
             .add_attribute("sender", info.sender)
             .add_attribute("deposit_info", to_binary(&config.deposit_info)?.to_string())
+            .add_submessages(hooks_msgs)
             .add_messages(deposit_messages)
             .add_message(propose_messsage))
     }
@@ -225,6 +228,44 @@ where
                 }
             }
         }
+    }
+
+    pub fn execute_add_proposal_submitted_hook(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        address: String,
+    ) -> Result<Response, PreProposeError> {
+        let dao = self.dao.load(deps.storage)?;
+        if info.sender != dao {
+            return Err(PreProposeError::NotDao {});
+        }
+
+        let addr = deps.api.addr_validate(&address)?;
+        self.proposal_submitted_hooks.add_hook(deps.storage, addr)?;
+
+        Ok(Response::default())
+    }
+
+    pub fn execute_remove_proposal_submitted_hook(
+        &self,
+        deps: DepsMut,
+        info: MessageInfo,
+        address: String,
+    ) -> Result<Response, PreProposeError> {
+        let dao = self.dao.load(deps.storage)?;
+        if info.sender != dao {
+            return Err(PreProposeError::NotDao {});
+        }
+
+        // Validate address
+        let addr = deps.api.addr_validate(&address)?;
+
+        // Remove the hook
+        self.proposal_submitted_hooks
+            .remove_hook(deps.storage, addr)?;
+
+        Ok(Response::default())
     }
 
     pub fn execute_proposal_completed_hook(
@@ -310,5 +351,43 @@ where
         Ok(Response::default()
             .add_attribute("method", "execute_new_proposal_hook")
             .add_attribute("proposal_id", id.to_string()))
+    }
+
+    pub fn check_can_submit(&self, deps: Deps, who: Addr) -> Result<(), PreProposeError> {
+        let config = self.config.load(deps.storage)?;
+
+        if !config.open_proposal_submission {
+            let dao = self.dao.load(deps.storage)?;
+            let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+                dao.into_string(),
+                &CwCoreQuery::VotingPowerAtHeight {
+                    address: who.into_string(),
+                    height: None,
+                },
+            )?;
+            if voting_power.power.is_zero() {
+                return Err(PreProposeError::NotMember {});
+            }
+        }
+        Ok(())
+    }
+
+    pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
+        match msg {
+            QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
+            QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
+            QueryMsg::Config {} => to_binary(&self.config.load(deps.storage)?),
+            QueryMsg::DepositInfo { proposal_id } => {
+                let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;
+                to_binary(&DepositInfoResponse {
+                    deposit_info,
+                    proposer,
+                })
+            }
+            QueryMsg::ProposalSubmittedHooks {} => {
+                to_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)
+            }
+            QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
+        }
     }
 }

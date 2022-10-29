@@ -62,6 +62,8 @@ cwd-proposal-single = { path = "./contracts/proposal/cwd-proposal-single" }
 cwd-proposal-multiple = { path = "./contracts/proposal/cwd-proposal-multiple" }
 cwd-pre-propose-single = { path = "./contracts/pre-propose/cwd-pre-propose-single" }
 cwd-pre-propose-multiple = { path = "./contracts/pre-propose/cwd-pre-propose-multiple" }
+cwd-pre-propose-approval-single = { path = "./contracts/pre-propose/cwd-pre-propose-approval-single" }
+cwd-pre-propose-approver = { path = "./contracts/pre-propose/cwd-pre-propose-approver" }
 cw20-stake = { path = "./contracts/staking/cw20-stake" }
 cwd-voting-cw4 = { path = "./contracts/voting/cwd-voting-cw4" }
 cwd-voting-cw20-staked = { path = "./contracts/voting/cwd-voting-cw20-staked" }
