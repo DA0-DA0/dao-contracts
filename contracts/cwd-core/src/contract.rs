@@ -1,15 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
-    Response, StdError, StdResult, SubMsg,
+    from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Reply, Response, StdError, StdResult, SubMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
-use cwd_interface::{voting, ModuleInstantiateInfo};
+use cwd_interface::{voting, ModuleInstantiateCallback, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -900,7 +900,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 .update::<_, StdError>(deps.storage, |count| Ok(count + 1))?;
             TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &(total_module_count + 1))?;
 
-            Ok(Response::default().add_attribute("prop_module".to_string(), res.contract_address))
+            // Check for module instantiation callbacks
+            let callback_msgs = match res.data {
+                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)?.msgs,
+                None => vec![],
+            };
+
+            Ok(Response::default()
+                .add_attribute("prop_module".to_string(), res.contract_address)
+                .add_messages(callback_msgs))
         }
 
         VOTE_MODULE_INSTANTIATE_REPLY_ID => {
@@ -916,7 +924,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             VOTING_MODULE.save(deps.storage, &vote_module_addr)?;
 
-            Ok(Response::default().add_attribute("voting_module", vote_module_addr))
+            // Check for module instantiation callbacks
+            let callback_msgs = match res.data {
+                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)?.msgs,
+                None => vec![],
+            };
+
+            Ok(Response::default()
+                .add_attribute("voting_module", vote_module_addr)
+                .add_messages(callback_msgs))
         }
         VOTE_MODULE_UPDATE_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;

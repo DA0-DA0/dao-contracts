@@ -1,0 +1,42 @@
+[package]
+name = "cwd-pre-propose-approver"
+version = "0.2.0"
+authors = ["ekez <ekez@withoutdoing.com>", "Jake Hartnell <no-reply@no-reply.com>"]
+edition = "2021"
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "A DAO DAO pre-propose module for automatically making approval proposals for cwd-pre-propose-approval-single."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cwd-interface = { workspace = true }
+cwd-pre-propose-base = { workspace = true }
+cwd-pre-propose-approval-single = { workspace = true, features = ["library"] }
+cwd-voting = { workspace = true }
+
+[dev-dependencies]
+cw-denom = { workspace = true }
+cw-multi-test = { workspace = true }
+cw-utils = { workspace = true }
+cw4-group = { workspace = true }
+cw20 = { workspace = true }
+cw20-base = { workspace = true }
+cwd-core = { workspace = true }
+cwd-proposal-hooks = { workspace = true }
+cwd-proposal-single = { workspace = true, features = ["library"] }
+cwd-testing = { workspace = true }
+cwd-voting = { workspace = true }
+cwd-voting-cw4 = { workspace = true }
+cwd-voting-cw20-staked = { workspace = true }

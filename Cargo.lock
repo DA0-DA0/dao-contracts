@@ -1054,6 +1054,59 @@ dependencies = [
 ]
 
 [[package]]
+name = "cwd-pre-propose-approval-single"
+version = "0.2.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-multi-test",
+ "cw-paginate 0.2.0",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw20-base",
+ "cw4-group",
+ "cwd-core",
+ "cwd-interface",
+ "cwd-pre-propose-base",
+ "cwd-proposal-hooks",
+ "cwd-proposal-single",
+ "cwd-testing",
+ "cwd-voting",
+ "cwd-voting-cw20-staked",
+ "cwd-voting-cw4",
+ "thiserror",
+]
+
+[[package]]
+name = "cwd-pre-propose-approver"
+version = "0.2.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-multi-test",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw20-base",
+ "cw4-group",
+ "cwd-core",
+ "cwd-interface",
+ "cwd-pre-propose-approval-single",
+ "cwd-pre-propose-base",
+ "cwd-proposal-hooks",
+ "cwd-proposal-single",
+ "cwd-testing",
+ "cwd-voting",
+ "cwd-voting-cw20-staked",
+ "cwd-voting-cw4",
+]
+
+[[package]]
 name = "cwd-pre-propose-base"
 version = "0.2.0"
 dependencies = [
@@ -1062,7 +1115,9 @@ dependencies = [
  "cw-denom",
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "cwd-hooks",
  "cwd-interface",
  "cwd-proposal-hooks",
  "cwd-voting",

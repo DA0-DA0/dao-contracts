@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
+use cwd_hooks::Hooks;
 
 use cwd_voting::deposit::CheckedDepositInfo;
 
@@ -27,6 +28,8 @@ pub struct PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposalMess
     pub config: Item<'static, Config>,
     /// Map between proposal IDs and (deposit, proposer) pairs.
     pub deposits: Map<'static, u64, (Option<CheckedDepositInfo>, Addr)>,
+    /// Consumers of proposal submitted hooks.
+    pub proposal_submitted_hooks: Hooks<'static>,
 
     // These types are used in associated functions, but not
     // assocaited data. To stop the compiler complaining about unused
@@ -45,12 +48,14 @@ impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage>
         dao_key: &'static str,
         config_key: &'static str,
         deposits_key: &'static str,
+        proposal_submitted_hooks_key: &'static str,
     ) -> Self {
         Self {
             proposal_module: Item::new(proposal_key),
             dao: Item::new(dao_key),
             config: Item::new(config_key),
             deposits: Map::new(deposits_key),
+            proposal_submitted_hooks: Hooks::new(proposal_submitted_hooks_key),
             execute_type: PhantomData,
             instantiate_type: PhantomData,
             query_type: PhantomData,
@@ -66,6 +71,12 @@ impl<InstantiateExt, ExecuteExt, QueryExt, ProposalMessage> Default
         // Call into constant function here. Presumably, the compiler
         // is clever enough to inline this. This gives us
         // "more-or-less" constant evaluation for our default method.
-        Self::new("proposal_module", "dao", "config", "deposits")
+        Self::new(
+            "proposal_module",
+            "dao",
+            "config",
+            "deposits",
+            "proposal_submitted_hooks",
+        )
     }
 }

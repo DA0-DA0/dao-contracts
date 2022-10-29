@@ -18,14 +18,16 @@ library = []
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
-cw-storage-plus = { workspace = true }
-serde = { workspace = true, default-features = false, features = ["derive"] }
 cw2 = { workspace = true }
-thiserror = { workspace = true }
-cwd-voting = { workspace = true }
+cw-denom = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cwd-hooks = { workspace = true }
 cwd-proposal-hooks = { workspace = true }
 cwd-interface = { workspace = true }
-cw-denom = { workspace = true }
+cwd-voting = { workspace = true }
+serde = { workspace = true, default-features = false, features = ["derive"] }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
