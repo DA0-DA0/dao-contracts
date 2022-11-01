@@ -96,6 +96,25 @@ export const listVotes = async (
 
   return res;
 };
+
+export const reverseProposals = async (
+  start_before: string | undefined,
+  limit: number | undefined
+) => {
+  const client = await getClient();
+  const res = await client.queryContractSmart(
+    getContractAddr("cw3-flex-multisig"),
+    {
+      reverse_proposals: {
+        start_before,
+        limit,
+      },
+    }
+  );
+
+  return res;
+};
+
 export const threshold = async () => {
   const client = await getClient();
   const res = await client.queryContractSmart(
@@ -135,4 +154,14 @@ export const useThreshold = () =>
     "/cw3-flex-multisig/threshold",
 
     () => threshold()
+  );
+
+export const useReverseProposals = (
+  start_before: string | undefined,
+  limit: number | undefined
+) =>
+  useSWR(
+    "/cw3-flex-multisig/reverse-proposals",
+
+    () => reverseProposals(start_before, limit)
   );

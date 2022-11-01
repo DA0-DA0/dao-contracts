@@ -37,14 +37,18 @@ const Proposal: NextPage = () => {
   const toast = useToast();
   const [isLoading, setIsLoading] = useBoolean();
   const [actions, setActions] = useState<ExecuteMsg[]>([]);
-  const addAction = (action: ExecuteMsg) =>
-    setActions((prev) => [...prev, action]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const btnRef = useRef(null);
+  const submitBtnRef = useRef(null);
+  const selectActionRef = useRef<HTMLElement>(null);
+
+  const addAction = (action: ExecuteMsg) => {
+    setActions((prev) => [...prev, action]);
+    selectActionRef?.current?.focus();
+  };
 
   const deleteActionAt = (index: number) => () => {
     setActions((prev) => {
@@ -154,6 +158,7 @@ const Proposal: NextPage = () => {
               color="teal"
               variant="outline"
               type="submit"
+              ref={submitBtnRef}
               isLoading={isLoading}
             >
               Submit Proposal
@@ -168,7 +173,8 @@ const Proposal: NextPage = () => {
           isOpen={isOpen}
           placement="top"
           onClose={onClose}
-          finalFocusRef={btnRef}
+          initialFocusRef={selectActionRef}
+          finalFocusRef={submitBtnRef}
         >
           <DrawerOverlay />
           <DrawerContent>
@@ -177,7 +183,11 @@ const Proposal: NextPage = () => {
 
             <DrawerBody>
               <Box>
-                <Select placeholder="Select action type..." {...stateMgr} />
+                <Select
+                  ref={selectActionRef}
+                  placeholder="Select action type..."
+                  {...stateMgr}
+                />
               </Box>
 
               <AddAction
