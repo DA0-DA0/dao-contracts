@@ -38,7 +38,10 @@ const Proposal: NextPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const toast = useToast();
 
-  const { data, error } = useProposal(proposal_id, typeof id === "undefined");
+  const { data: proposal, error: proposalError } = useProposal(
+    proposal_id,
+    typeof id === "undefined"
+  );
 
   async function broadcastTx<T>(f: () => Promise<T>) {
     setIsLoading(true);
@@ -59,10 +62,10 @@ const Proposal: NextPage = () => {
   }
 
   useEffect(() => {
-    if (error) {
-      console.error(error);
+    if (proposalError) {
+      console.error(proposalError);
     }
-  }, [error]);
+  }, [proposalError]);
 
   useEffect(() => {
     mutate("/cw3-flex-multisig/proposal");
@@ -70,8 +73,9 @@ const Proposal: NextPage = () => {
   }, [id]);
 
   const [navLang, setNavLang] = useState<string>();
-  const actions = data?.msgs?.map((m: { wasm: { execute: { msg: string } } }) =>
-    JSON.parse(Buffer.from(m.wasm.execute.msg, "base64").toString())
+  const actions = proposal?.msgs?.map(
+    (m: { wasm: { execute: { msg: string } } }) =>
+      JSON.parse(Buffer.from(m.wasm.execute.msg, "base64").toString())
   );
 
   const statusBadgeColorMap: Record<string, string> = {
@@ -90,7 +94,7 @@ const Proposal: NextPage = () => {
   }, []);
 
   const expireTimeFormat = () => {
-    const timeStr = data?.expires?.at_time;
+    const timeStr = proposal?.expires?.at_time;
     if (!timeStr) {
       return "";
     }
@@ -103,7 +107,7 @@ const Proposal: NextPage = () => {
 
   return (
     <>
-      {error ? (
+      {proposalError ? (
         <Alert
           status="error"
           variant="subtle"
@@ -126,14 +130,16 @@ const Proposal: NextPage = () => {
             spacing={10}
             align="stretch"
           >
-            <Skeleton isLoaded={data}>
-              <Heading>{data?.title || "..."}</Heading>
+            <Skeleton isLoaded={proposal}>
+              <Heading>{proposal?.title || "..."}</Heading>
               <Box my="2">
                 <Text as="b">status: </Text>
                 <Badge
-                  colorScheme={statusBadgeColorMap[`${data?.status}`] || "gray"}
+                  colorScheme={
+                    statusBadgeColorMap[`${proposal?.status}`] || "gray"
+                  }
                 >
-                  {data?.status || "..."}
+                  {proposal?.status || "..."}
                 </Badge>
               </Box>
               <Box my="2">
@@ -149,7 +155,7 @@ const Proposal: NextPage = () => {
                 borderRadius="md"
                 borderColor="gray.200"
               >
-                <Text>{data?.description || "..."}</Text>
+                <Text>{proposal?.description || "..."}</Text>
               </Box>
               <VStack>
                 {actions?.map((action: ExecuteMsg, i: number) => (
@@ -158,7 +164,7 @@ const Proposal: NextPage = () => {
               </VStack>
               <Votes proposal_id={proposal_id} />
               {/* vote */}
-              {data?.status === "open" && (
+              {proposal?.status === "open" && (
                 <Box my="10">
                   {/* <Heading size="md">Vote</Heading> */}
                   <HStack py="5">
@@ -204,7 +210,7 @@ const Proposal: NextPage = () => {
                 </Box>
               )}
               {/* execute */}
-              {data?.status === "passed" && (
+              {proposal?.status === "passed" && (
                 <Box my="10">
                   <HStack py="5">
                     <Button
