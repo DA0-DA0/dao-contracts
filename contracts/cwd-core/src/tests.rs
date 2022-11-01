@@ -132,7 +132,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
 
     let state: DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(&gov_addr, &QueryMsg::DumpState {})
+        .query_wasm_smart(gov_addr, &QueryMsg::DumpState {})
         .unwrap();
 
     assert_eq!(

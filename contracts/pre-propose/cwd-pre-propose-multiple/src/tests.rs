@@ -585,7 +585,7 @@ fn test_cw20_permutation(
     };
 
     let proposer_balance = get_balance_cw20(&app, &cw20_address, "ekez");
-    let dao_balance = get_balance_cw20(&app, &cw20_address, &core_addr);
+    let dao_balance = get_balance_cw20(&app, &cw20_address, core_addr);
     assert_eq!(proposer_expected, proposer_balance.u128());
     assert_eq!(dao_expected, dao_balance.u128())
 }
