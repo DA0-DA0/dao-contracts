@@ -26,19 +26,17 @@ const Home: NextPage = () => {
   const { data: ownerRes, error: ownerErr } = useOwner();
 
   return (
-    <Center my="10" minWidth="container.xl">
+    <Center my="10" minWidth="container.md">
       <Head>
         <title>Tokenfactory Issuer UI</title>
         <meta name="description" content="Tokenfactory Issuer UI" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <VStack maxW="container.xl" spacing={10} align="stretch">
+      <VStack maxW="container.md" spacing={10} align="stretch">
         <Box>
-          <Heading my="10" as="h2" size="lg">
-            General Info
-          </Heading>
-          <TableContainer>
+          <Heading>Dashboard</Heading>
+          <TableContainer maxW="container.md" py="5">
             <Table variant="simple">
               <Tbody>
                 <Tr>
