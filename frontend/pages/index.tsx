@@ -51,7 +51,7 @@ const Home: NextPage = () => {
             </Table>
           </TableContainer>
         </Box>
-        <Tabs variant="soft-rounded" colorScheme="green">
+        <Tabs variant="line" colorScheme="blackAlpha">
           <TabList>
             <Tab>Minting</Tab>
             <Tab>Blacklisting</Tab>
