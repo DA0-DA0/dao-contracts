@@ -4,10 +4,10 @@ use crate::{
     state::Config,
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+
 use cw_utils::Duration;
 use cwd_hooks::HooksResponse;
-use cwd_interface::voting::InfoResponse;
+
 use cwd_macros::{info_query, proposal_module_query};
 use cwd_voting::{
     multiple_choice::{MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy},

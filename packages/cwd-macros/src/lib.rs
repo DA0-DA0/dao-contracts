@@ -1,6 +1,54 @@
 use proc_macro::TokenStream;
+
 use quote::quote;
-use syn::{parse::Parser, parse_macro_input, AttributeArgs, DataEnum, DeriveInput, Variant};
+use syn::{parse_macro_input, AttributeArgs, DataEnum, DeriveInput, Path};
+
+// Merges the variants of two enums.
+fn merge_variants(metadata: TokenStream, left: TokenStream, right: TokenStream) -> TokenStream {
+    use syn::Data::Enum;
+
+    let args = parse_macro_input!(metadata as AttributeArgs);
+    if let Some(first_arg) = args.first() {
+        return syn::Error::new_spanned(first_arg, "macro takes no arguments")
+            .to_compile_error()
+            .into();
+    }
+
+    let mut left: DeriveInput = parse_macro_input!(left);
+    let right: DeriveInput = parse_macro_input!(right);
+
+    if let (
+        Enum(DataEnum { variants, .. }),
+        Enum(DataEnum {
+            variants: to_add, ..
+        }),
+    ) = (&mut left.data, right.data)
+    {
+        variants.extend(to_add.into_iter());
+
+        quote! { #left }.into()
+    } else {
+        syn::Error::new(left.ident.span(), "variants may only be added for enums")
+            .to_compile_error()
+            .into()
+    }
+}
+
+/// Gets the cwd_interface path for something exported by
+/// cwd_interface. If we are currently compiling the cwd-interface
+/// crate, `crate::{internal}` is returned. If we are not,
+/// `::cwd_interface::{internal}` is returned.
+fn cwd_interface_path(inside: &str) -> Path {
+    let pkg = std::env::var("CARGO_PKG_NAME").unwrap();
+    let base = if pkg == "cwd-interface" {
+        "crate"
+    } else {
+        "::cwd_interface"
+    };
+    let path = format!("{}::{}", base, inside);
+    let path: Path = syn::parse_str(&path).unwrap();
+    path
+}
 
 /// Adds the necessary fields to an enum such that the enum implements the
 /// interface needed to be a voting module.
@@ -61,60 +109,27 @@ use syn::{parse::Parser, parse_macro_input, AttributeArgs, DataEnum, DeriveInput
 /// ```
 #[proc_macro_attribute]
 pub fn voting_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    // Make sure that no arguments were passed in.
-    let args = parse_macro_input!(metadata as AttributeArgs);
-    if let Some(first_arg) = args.first() {
-        return syn::Error::new_spanned(first_arg, "voting query macro takes no arguments")
-            .to_compile_error()
-            .into();
-    }
+    let vp = cwd_interface_path("voting::VotingPowerAtHeightResponse");
+    let tp = cwd_interface_path("voting::TotalPowerAtHeightResponse");
 
-    let mut ast: DeriveInput = parse_macro_input!(input);
-    match &mut ast.data {
-        syn::Data::Enum(DataEnum { variants, .. }) => {
-            let mut voting_power: Variant = syn::parse2(quote! { VotingPowerAtHeight {
-                address: ::std::string::String,
-                height: ::std::option::Option<::std::primitive::u64>
-            } })
-            .unwrap();
-
-            let mut total_power: Variant = syn::parse2(quote! { TotalPowerAtHeight {
-                height: ::std::option::Option<::std::primitive::u64>
-            } })
-            .unwrap();
-
-            let voting_power_attr = syn::Attribute::parse_outer
-                .parse2(quote! {
-                    #[returns(VotingPowerAtHeightResponse)]
-                })
-                .unwrap();
-
-            let total_power_attr = syn::Attribute::parse_outer
-                .parse2(quote! {
-                    #[returns(TotalPowerAtHeightResponse)]
-                })
-                .unwrap();
-
-            voting_power.attrs.push(voting_power_attr[0].clone());
-            total_power.attrs.push(total_power_attr[0].clone());
-
-            variants.push(voting_power);
-            variants.push(total_power);
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            #[returns(#vp)]
+            VotingPowerAtHeight {
+            address: ::std::string::String,
+            height: ::std::option::Option<::std::primitive::u64>
+            },
+            #[returns(#tp)]
+            TotalPowerAtHeight {
+            height: ::std::option::Option<::std::primitive::u64>
+            },
         }
-        _ => {
-            return syn::Error::new(
-                ast.ident.span(),
-                "voting query types can not be only be derived for enums",
-            )
-            .to_compile_error()
-            .into()
         }
-    };
-
-    quote! {
-    #ast
-    }
-    .into()
+        .into(),
+    )
 }
 
 /// Adds the necessary fields to an enum such that it implements the
@@ -163,42 +178,17 @@ pub fn voting_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    // Make sure that no arguments were passed in.
-    let args = parse_macro_input!(metadata as AttributeArgs);
-    if let Some(first_arg) = args.first() {
-        return syn::Error::new_spanned(first_arg, "token query macro takes no arguments")
-            .to_compile_error()
-            .into();
-    }
-
-    let mut ast: DeriveInput = parse_macro_input!(input);
-    match &mut ast.data {
-        syn::Data::Enum(DataEnum { variants, .. }) => {
-            let mut info: Variant = syn::parse2(quote! { TokenContract {} }).unwrap();
-
-            let info_attr = syn::Attribute::parse_outer
-                .parse2(quote! {
-                    #[returns(Addr)]
-                })
-                .unwrap();
-
-            info.attrs.push(info_attr[0].clone());
-            variants.push(info);
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            #[returns(::cosmwasm_std::Addr)]
+            TokenContract {}
         }
-        _ => {
-            return syn::Error::new(
-                ast.ident.span(),
-                "token query types can not be only be derived for enums",
-            )
-            .to_compile_error()
-            .into()
         }
-    };
-
-    quote! {
-    #ast
-    }
-    .into()
+        .into(),
+    )
 }
 
 /// Adds the necessary fields to an enum such that it implements the
@@ -244,42 +234,17 @@ pub fn token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn active_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    // Make sure that no arguments were passed in.
-    let args = parse_macro_input!(metadata as AttributeArgs);
-    if let Some(first_arg) = args.first() {
-        return syn::Error::new_spanned(first_arg, "token query macro takes no arguments")
-            .to_compile_error()
-            .into();
-    }
-
-    let mut ast: DeriveInput = parse_macro_input!(input);
-    match &mut ast.data {
-        syn::Data::Enum(DataEnum { variants, .. }) => {
-            let mut info: Variant = syn::parse2(quote! { IsActive {} }).unwrap();
-
-            let info_attr = syn::Attribute::parse_outer
-                .parse2(quote! {
-                    #[returns(bool)]
-                })
-                .unwrap();
-
-            info.attrs.push(info_attr[0].clone());
-            variants.push(info);
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            #[returns(::std::primitive::bool)]
+            IsActive {}
         }
-        _ => {
-            return syn::Error::new(
-                ast.ident.span(),
-                "token query types can not be only be derived for enums",
-            )
-            .to_compile_error()
-            .into()
         }
-    };
-
-    quote! {
-    #ast
-    }
-    .into()
+        .into(),
+    )
 }
 
 /// Adds the necessary fields to an enum such that it implements the
@@ -326,41 +291,19 @@ pub fn active_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    // Make sure that no arguments were passed in.
-    let args = parse_macro_input!(metadata as AttributeArgs);
-    if let Some(first_arg) = args.first() {
-        return syn::Error::new_spanned(first_arg, "info query macro takes no arguments")
-            .to_compile_error()
-            .into();
-    }
+    let i = cwd_interface_path("voting::InfoResponse");
 
-    let mut ast: DeriveInput = parse_macro_input!(input);
-    match &mut ast.data {
-        syn::Data::Enum(DataEnum { variants, .. }) => {
-            let mut info: Variant = syn::parse2(quote! { Info {} }).unwrap();
-            let info_attr = syn::Attribute::parse_outer
-                .parse2(quote! {
-                    #[returns(InfoResponse)]
-                })
-                .unwrap();
-
-            info.attrs.push(info_attr[0].clone());
-            variants.push(info);
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            #[returns(#i)]
+            Info { },
         }
-        _ => {
-            return syn::Error::new(
-                ast.ident.span(),
-                "info query types can not be only be derived for enums",
-            )
-            .to_compile_error()
-            .into()
         }
-    };
-
-    quote! {
-    #ast
-    }
-    .into()
+        .into(),
+    )
 }
 
 /// Adds the necessary fields to an enum such that it implements the
@@ -410,42 +353,17 @@ pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn proposal_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    // Make sure that no arguments were passed in.
-    let args = parse_macro_input!(metadata as AttributeArgs);
-    if let Some(first_arg) = args.first() {
-        return syn::Error::new_spanned(first_arg, "govmod query macro takes no arguments")
-            .to_compile_error()
-            .into();
-    }
-
-    let mut ast: DeriveInput = parse_macro_input!(input);
-    match &mut ast.data {
-        syn::Data::Enum(DataEnum { variants, .. }) => {
-            let mut dao: Variant = syn::parse2(quote! { Dao {} }).unwrap();
-
-            let dao_attr = syn::Attribute::parse_outer
-                .parse2(quote! {
-                    #[returns(Addr)]
-                })
-                .unwrap();
-
-            dao.attrs.push(dao_attr[0].clone());
-            variants.push(dao);
+    merge_variants(
+        metadata,
+        input,
+        quote! {
+        enum Right {
+            #[returns(::cosmwasm_std::Addr)]
+            Dao {}
         }
-        _ => {
-            return syn::Error::new(
-                ast.ident.span(),
-                "govmod query types can not be only be derived for enums",
-            )
-            .to_compile_error()
-            .into()
         }
-    };
-
-    quote! {
-    #ast
-    }
-    .into()
+        .into(),
+    )
 }
 
 /// Limits the number of variants allowed on an enum at compile

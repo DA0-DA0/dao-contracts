@@ -1,5 +1,4 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
 use cosmwasm_std::Uint128;
 use cw2::ContractVersion;
 use cwd_macros::{active_query, info_query, proposal_module_query, token_query, voting_query};
@@ -41,11 +40,8 @@ mod tests {
     /// fail to compile if not.
     #[test]
     fn test_macro_expansion() {
-        use crate::voting::InfoResponse;
-        use crate::voting::TotalPowerAtHeightResponse;
-        use crate::voting::VotingPowerAtHeightResponse;
         use cosmwasm_schema::{cw_serde, QueryResponses};
-        use cosmwasm_std::Addr;
+
         use cwd_macros::{active_query, info_query, token_query, voting_query};
         let query = Query::TokenContract {};
 
