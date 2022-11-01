@@ -2,9 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
-use cwd_interface::voting::InfoResponse;
-use cwd_interface::voting::TotalPowerAtHeightResponse;
-use cwd_interface::voting::VotingPowerAtHeightResponse;
+
 use cwd_interface::Admin;
 use cwd_macros::{info_query, voting_query};
 

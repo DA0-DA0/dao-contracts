@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+
 use cwd_macros::proposal_module_query;
 
 #[proposal_module_query]
