@@ -96,6 +96,17 @@ export const listVotes = async (
 
   return res;
 };
+export const threshold = async () => {
+  const client = await getClient();
+  const res = await client.queryContractSmart(
+    getContractAddr("cw3-flex-multisig"),
+    {
+      threshold: {},
+    }
+  );
+
+  return res;
+};
 
 export const useProposal = (
   proposal_id: number,
@@ -117,4 +128,11 @@ export const useVotes = (
     "/cw3-flex-multisig/votes",
 
     () => listVotes(proposal_id, start_after, limit)
+  );
+
+export const useThreshold = () =>
+  useSWR(
+    "/cw3-flex-multisig/threshold",
+
+    () => threshold()
   );
