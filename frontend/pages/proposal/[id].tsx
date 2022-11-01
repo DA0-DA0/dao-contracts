@@ -1,3 +1,4 @@
+import { ArrowBackIcon, ArrowForwardIcon } from "@chakra-ui/icons";
 import {
   Alert,
   AlertIcon,
@@ -6,9 +7,11 @@ import {
   Box,
   Button,
   Center,
+  Flex,
   Heading,
   HStack,
   Skeleton,
+  Spacer,
   Table,
   TableContainer,
   Tbody,
@@ -236,14 +239,14 @@ const Votes = ({ proposal_id }: { proposal_id: number }) => {
     data: currentVotes,
     error,
     mutate: mutateCurrentVotes,
-  } = useVotes(proposal_id, startAfter, 1);
+  } = useVotes(proposal_id, startAfter, undefined);
 
   useEffect(() => {
     if (currentVotes?.votes?.length === 0) {
       toast({
         title: "No more votes currently available",
         description:
-          "We've reached the end of vote list. Click `Next` to check if there is any update.",
+          "We've reached the end of vote list. Click `->` again to check if there is any update.",
         status: "info",
         isClosable: true,
       });
@@ -310,37 +313,43 @@ const Votes = ({ proposal_id }: { proposal_id: number }) => {
             </Table>
           </TableContainer>
 
-          <Button
-            disabled={startAfterHistory.length === 0}
-            isLoading={!currentVotes}
-            onClick={() => {
-              setStartAfterHistory((hist) => {
-                const newHist = [...hist];
-                setStartAfter(newHist.pop());
-                return newHist;
-              });
-            }}
-          >
-            Prev
-          </Button>
+          <Flex mt="10">
+            <Spacer />
+            <Button
+              variant="outline"
+              disabled={startAfterHistory.length === 0}
+              isLoading={!currentVotes}
+              onClick={() => {
+                setStartAfterHistory((hist) => {
+                  const newHist = [...hist];
+                  setStartAfter(newHist.pop());
+                  return newHist;
+                });
+              }}
+            >
+              <ArrowBackIcon />
+            </Button>
 
-          <Button
-            isLoading={!currentVotes}
-            onClick={() => {
-              if (currentVotes?.votes.length === 0) {
-                mutateCurrentVotes();
-                return;
-              }
+            <Button
+              variant="outline"
+              isLoading={!currentVotes}
+              onClick={() => {
+                if (currentVotes?.votes.length === 0) {
+                  mutateCurrentVotes();
+                  return;
+                }
 
-              const nextStartAfter =
-                currentVotes?.votes[currentVotes?.votes?.length - 1]?.voter;
+                const nextStartAfter =
+                  currentVotes?.votes[currentVotes?.votes?.length - 1]?.voter;
 
-              setStartAfterHistory((hist) => [...hist, startAfter]);
-              setStartAfter(nextStartAfter);
-            }}
-          >
-            Next
-          </Button>
+                setStartAfterHistory((hist) => [...hist, startAfter]);
+                setStartAfter(nextStartAfter);
+              }}
+            >
+              <ArrowForwardIcon />
+            </Button>
+            <Spacer />
+          </Flex>
         </Skeleton>
       )}
     </Box>
