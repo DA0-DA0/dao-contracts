@@ -1,4 +1,9 @@
-import { ArrowBackIcon, ArrowForwardIcon, LinkIcon } from "@chakra-ui/icons";
+import {
+  AddIcon,
+  ArrowBackIcon,
+  ArrowForwardIcon,
+  LinkIcon,
+} from "@chakra-ui/icons";
 import {
   Alert,
   AlertIcon,
@@ -16,7 +21,6 @@ import {
   Td,
   Th,
   Tr,
-  useToast,
   VStack,
 } from "@chakra-ui/react";
 
@@ -26,7 +30,6 @@ import { useEffect, useState } from "react";
 import { useReverseProposals } from "../api/multisig";
 
 const Proposals: NextPage = () => {
-  const toast = useToast();
   const [startBefore, setStartBefore] = useState<string | undefined>(undefined);
   const [startBeforeHistory, setStartBeforeHistory] = useState<
     (string | undefined)[]
@@ -84,7 +87,15 @@ const Proposals: NextPage = () => {
             spacing={10}
             align="stretch"
           >
-            <Heading>Proposals</Heading>
+            <Flex alignItems="flex-end">
+              <Heading>Proposals</Heading>
+              <Link href="/proposal">
+                <Button mx="5" variant="outline" size="sm">
+                  <AddIcon mr="2" /> New
+                </Button>
+              </Link>
+            </Flex>
+
             <Skeleton isLoaded={proposals}>
               <TableContainer>
                 <Table variant="simple">
