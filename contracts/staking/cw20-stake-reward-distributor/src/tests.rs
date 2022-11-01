@@ -126,7 +126,7 @@ fn test_instantiate() {
     let distributor_addr = instantiate_distributor(&mut app, msg);
     let response: InfoResponse = app
         .wrap()
-        .query_wasm_smart(&distributor_addr, &QueryMsg::Info {})
+        .query_wasm_smart(distributor_addr, &QueryMsg::Info {})
         .unwrap();
 
     assert_eq!(
