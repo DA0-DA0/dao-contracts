@@ -77,13 +77,19 @@ export const getProposal = async (proposal_id: number) => {
   return res;
 };
 
-export const listVotes = async (proposal_id: number) => {
+export const listVotes = async (
+  proposal_id: number,
+  start_after: string | undefined,
+  limit: number | undefined
+) => {
   const client = await getClient();
   const res = await client.queryContractSmart(
     getContractAddr("cw3-flex-multisig"),
     {
       list_votes: {
         proposal_id,
+        start_after,
+        limit,
       },
     }
   );
@@ -102,9 +108,13 @@ export const useProposal = (
       : () => getProposal(proposal_id)
   );
 
-export const useVotes = (proposal_id: number) =>
+export const useVotes = (
+  proposal_id: number,
+  start_after: string | undefined,
+  limit: number | undefined
+) =>
   useSWR(
     "/cw3-flex-multisig/votes",
 
-    () => listVotes(proposal_id)
+    () => listVotes(proposal_id, start_after, limit)
   );

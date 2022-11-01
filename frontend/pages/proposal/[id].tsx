@@ -226,7 +226,34 @@ const Proposal: NextPage = () => {
 };
 
 const Votes = ({ proposal_id }: { proposal_id: number }) => {
-  const { data, error } = useVotes(proposal_id);
+  const toast = useToast();
+  const [startAfter, setStartAfter] = useState<string | undefined>(undefined);
+  const [startAfterHistory, setStartAfterHistory] = useState<
+    (string | undefined)[]
+  >([]);
+
+  const {
+    data: currentVotes,
+    error,
+    mutate: mutateCurrentVotes,
+  } = useVotes(proposal_id, startAfter, 1);
+
+  useEffect(() => {
+    if (currentVotes?.votes?.length === 0) {
+      toast({
+        title: "No more votes currently available",
+        description:
+          "We've reached the end of vote list. Click `Next` to check if there is any update.",
+        status: "info",
+        isClosable: true,
+      });
+    }
+  }, [currentVotes, toast]);
+
+  // update votes when startAfter changes
+  useEffect(() => {
+    mutateCurrentVotes();
+  }, [startAfter, mutateCurrentVotes]);
 
   useEffect(() => {
     console.error(error);
@@ -254,7 +281,7 @@ const Votes = ({ proposal_id }: { proposal_id: number }) => {
           </AlertTitle>
         </Alert>
       ) : (
-        <Skeleton isLoaded={data}>
+        <Skeleton isLoaded={currentVotes}>
           <TableContainer>
             <Table variant="simple">
               <Tbody>
@@ -263,7 +290,7 @@ const Votes = ({ proposal_id }: { proposal_id: number }) => {
                   <Th>vote</Th>
                   <Th>weight</Th>
                 </Tr>
-                {data?.votes.map(
+                {currentVotes?.votes.map(
                   (
                     voteInfo: { voter: string; vote: string; weight: number },
                     i: number
@@ -282,6 +309,38 @@ const Votes = ({ proposal_id }: { proposal_id: number }) => {
               </Tbody>
             </Table>
           </TableContainer>
+
+          <Button
+            disabled={startAfterHistory.length === 0}
+            isLoading={!currentVotes}
+            onClick={() => {
+              setStartAfterHistory((hist) => {
+                const newHist = [...hist];
+                setStartAfter(newHist.pop());
+                return newHist;
+              });
+            }}
+          >
+            Prev
+          </Button>
+
+          <Button
+            isLoading={!currentVotes}
+            onClick={() => {
+              if (currentVotes?.votes.length === 0) {
+                mutateCurrentVotes();
+                return;
+              }
+
+              const nextStartAfter =
+                currentVotes?.votes[currentVotes?.votes?.length - 1]?.voter;
+
+              setStartAfterHistory((hist) => [...hist, startAfter]);
+              setStartAfter(nextStartAfter);
+            }}
+          >
+            Next
+          </Button>
         </Skeleton>
       )}
     </Box>
