@@ -1,12 +1,23 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Coin, Uint128};
 
+// re-export Metadata related structs so that using this contract as lib can access the struct
+pub use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
+
 #[cw_serde]
 pub enum InstantiateMsg {
     /// `NewToken` will create a new token when instantiate the contract.
     /// Newly created token will have full denom as `factory/<contract_address>/<subdenom>`.
     /// It will be attached to the contract setup the beforesend listener automatically.
-    NewToken { subdenom: String },
+    NewToken {
+        /// component of fulldenom (`factory/<contract_address>/<subdenom>`).
+        subdenom: String,
+        /// Optional denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
+        /// first `denom_units` and `base` are required to be specified as `factory/<contract_address>/<subdenom>`.
+        /// So on instantiate, only subset of Metadata is allowed to be set, defined in `AdditionalMetadata`
+        /// Can be set later via `SetDenomMetadata`.
+        metadata: Option<AdditionalMetadata>,
+    },
     /// `ExistingToken` will use already created token. So to set this up,
     /// tokenfactory admin needs to create a new token and set beforesend listener manually.
     ExistingToken { denom: String },
@@ -20,34 +31,56 @@ pub enum ExecuteMsg {
     ChangeContractOwner {
         new_owner: String,
     },
+    SetDenomMetadata {
+        /// Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
+        metadata: AdditionalMetadata,
+    },
+
+    /// Grant/revoke mint allowance.
     SetMinter {
         address: String,
         allowance: Uint128,
     },
+
+    /// Grant/revoke burn allowance.
     SetBurner {
         address: String,
         allowance: Uint128,
     },
+
+    /// Grant/revoke permission to blacklist addresses
     SetBlacklister {
         address: String,
         status: bool,
     },
+
+    /// Grant/revoke permission to freeze the token
     SetFreezer {
         address: String,
         status: bool,
     },
+
+    /// Mint token to address. Mint allowance is required and wiil be deducted after successful mint.
     Mint {
         to_address: String,
         amount: Uint128,
     },
+
+    /// Burn token to address. Burn allowance is required and wiil be deducted after successful burn.
     Burn {
         from_address: String,
         amount: Uint128,
     },
+
+    /// Block target address from sending/receiving token attached to this contract
+    /// tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.
     Blacklist {
         address: String,
         status: bool,
     },
+
+    /// Block every token transfers of the token attached to this contract
+    /// tokenfactory's beforesend listener must be set to this contract in order for it to work as intended.
     Freeze {
         status: bool,
     },
@@ -181,4 +214,24 @@ pub struct BlacklisterAllowancesResponse {
 #[cw_serde]
 pub struct FreezerAllowancesResponse {
     pub freezers: Vec<StatusInfo>,
+}
+
+// Metadata
+#[cw_serde]
+pub struct AdditionalMetadata {
+    pub description: String,
+    /// denom_units represents the list of DenomUnit's for a given coin
+    pub denom_units: Vec<DenomUnit>,
+    /// display indicates the suggested denom that should be
+    /// displayed in clients.
+    pub display: String,
+    /// name defines the name of the token (eg: Cosmos Atom)
+    ///
+    /// Since: cosmos-sdk 0.43
+    pub name: String,
+    /// symbol is the token symbol usually shown on exchanges (eg: ATOM). This can
+    /// be the same as the display.
+    ///
+    /// Since: cosmos-sdk 0.43
+    pub symbol: String,
 }

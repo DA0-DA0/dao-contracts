@@ -1,48 +1,78 @@
+import {
+  Box,
+  Center,
+  Heading,
+  Tab,
+  Table,
+  TableContainer,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  Tbody,
+  Td,
+  Tr,
+  VStack,
+} from "@chakra-ui/react";
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useState } from "react";
-import { useCount } from "../api/counter";
-import styles from "../styles/Home.module.css";
+import { useDenom, useOwner } from "../api/tokenfactoryIssuer";
+import Blacklistng from "../components/blacklisting";
+import Burning from "../components/burning";
+import Minting from "../components/minting";
 
 const Home: NextPage = () => {
-  const { count, error, increase } = useCount();
-  const [isLoading, setLoading] = useState(false);
+  const { data: denomRes, error: denomErr } = useDenom();
+  const { data: ownerRes, error: ownerErr } = useOwner();
 
   return (
-    <div className={styles.container}>
+    <Center my="10" minWidth="container.xl">
       <Head>
-        <title>Counter Dapp</title>
-        <meta name="description" content="Counter dapp: an example dapp" />
+        <title>Tokenfactory Issuer UI</title>
+        <meta name="description" content="Tokenfactory Issuer UI" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className={styles.main}>
-        <h1 className={styles.title}>Count</h1>
-
-        <p
-          className={
-            isLoading ? [styles.count, styles.pulse].join(" ") : styles.count
-          }
-        >
-          {count === undefined ? "?" : count}
-        </p>
-
-        {error ? <p className={styles.error}>Error: {error.message}</p> : <></>}
-
-        <div className={styles.grid}>
-          <a
-            className={styles.card}
-            onClick={async () => {
-              setLoading(true);
-              await increase();
-              setLoading(false);
-            }}
-          >
-            <h2>＋ Increase Counter</h2>
-          </a>
-        </div>
-      </main>
-    </div>
+      <VStack maxW="container.xl" spacing={10} align="stretch">
+        <Box>
+          <Heading my="10" as="h2" size="lg">
+            General Info
+          </Heading>
+          <TableContainer>
+            <Table variant="simple">
+              <Tbody>
+                <Tr>
+                  <Td>denom</Td>
+                  <Td>{denomRes?.denom}</Td>
+                </Tr>
+                <Tr>
+                  <Td>issuer contract owner</Td>
+                  <Td>{ownerRes?.address}</Td>
+                </Tr>
+              </Tbody>
+            </Table>
+          </TableContainer>
+        </Box>
+        <Tabs variant="soft-rounded" colorScheme="green">
+          <TabList>
+            <Tab>Minting</Tab>
+            <Tab>Blacklisting</Tab>
+            <Tab>Burning</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel>
+              <Minting></Minting>
+            </TabPanel>
+            <TabPanel>
+              <Blacklistng></Blacklistng>
+            </TabPanel>
+            <TabPanel>
+              <Burning></Burning>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </VStack>
+    </Center>
   );
 };
 

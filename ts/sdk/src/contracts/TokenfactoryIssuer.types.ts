@@ -4,8 +4,28 @@
 * and run the @cosmwasm/ts-codegen generate command to regenerate this file.
 */
 
-export interface InstantiateMsg {
+export type InstantiateMsg = {
+  new_token: {
+    metadata?: AdditionalMetadata | null;
+    subdenom: string;
+  };
+} | {
+  existing_token: {
+    denom: string;
+  };
+};
+export interface AdditionalMetadata {
+  denom_units: DenomUnit[];
+  description: string;
+  display: string;
+  name: string;
+  symbol: string;
+}
+export interface DenomUnit {
+  aliases: string[];
   denom: string;
+  exponent: number;
+  [k: string]: unknown;
 }
 export type ExecuteMsg = {
   change_token_factory_admin: {
@@ -14,6 +34,10 @@ export type ExecuteMsg = {
 } | {
   change_contract_owner: {
     new_owner: string;
+  };
+} | {
+  set_denom_metadata: {
+    metadata: AdditionalMetadata;
   };
 } | {
   set_minter: {
@@ -131,14 +155,14 @@ export interface BlacklisterAllowancesResponse {
   blacklisters: StatusInfo[];
 }
 export interface AllowanceResponse {
-  allowance: number;
+  allowance: Uint128;
 }
 export interface AllowancesResponse {
   allowances: AllowanceInfo[];
 }
 export interface AllowanceInfo {
   address: string;
-  allowance: number;
+  allowance: Uint128;
 }
 export interface DenomResponse {
   denom: string;

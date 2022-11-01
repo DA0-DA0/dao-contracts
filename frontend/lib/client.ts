@@ -1,7 +1,10 @@
 import { CosmWasmClient, GasPrice, setupWebKeplr } from "cosmwasm";
 import { getChainId, getRpcEndpoint } from "./conf";
 
-export const getClient = () => CosmWasmClient.connect(getRpcEndpoint());
+export const getClient = () => {
+  const endpoint = getRpcEndpoint();
+  return CosmWasmClient.connect(endpoint);
+};
 export const getAddress = async () => {
   if (!window.keplr) {
     throw Error("Unable to detect Keplr");

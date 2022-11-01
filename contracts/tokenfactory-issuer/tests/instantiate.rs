@@ -4,6 +4,7 @@ use osmosis_testing::{Account, OsmosisTestApp, RunnerError};
 use tokenfactory_issuer::msg::InstantiateMsg;
 
 mod helpers;
+
 use helpers::{TestEnv, TokenfactoryIssuer};
 
 // new denom
@@ -14,6 +15,7 @@ fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
             subdenom: subdenom.clone(),
+            metadata: None,
         },
         0,
     )
@@ -57,6 +59,7 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
             subdenom: subdenom.clone(),
+            metadata: None,
         },
         0,
     )
@@ -85,7 +88,7 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
         )
         .unwrap_err();
 
-    assert_eq!(err, RunnerError::ExecuteError { msg:  format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
+    assert_eq!(err, RunnerError::ExecuteError { msg: format!("failed to execute message; message index: 0: failed to call before send hook for denom {denom}: The contract is frozen for denom \"{denom}\": execute wasm contract failed") });
 }
 
 // existing denom

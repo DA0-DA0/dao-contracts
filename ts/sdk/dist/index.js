@@ -306,6 +306,22 @@ var TokenfactoryIssuerClient = /** @class */ (function (_super) {
                 });
             });
         };
+        _this.setDenomMetadata = function (_a, fee, memo, funds) {
+            var metadata = _a.metadata;
+            if (fee === void 0) { fee = "auto"; }
+            return __awaiter(_this, void 0, void 0, function () {
+                return __generator(this, function (_b) {
+                    switch (_b.label) {
+                        case 0: return [4 /*yield*/, this.client.execute(this.sender, this.contractAddress, {
+                                set_denom_metadata: {
+                                    metadata: metadata
+                                }
+                            }, fee, memo, funds)];
+                        case 1: return [2 /*return*/, _b.sent()];
+                    }
+                });
+            });
+        };
         _this.setMinter = function (_a, fee, memo, funds) {
             var address = _a.address, allowance = _a.allowance;
             if (fee === void 0) { fee = "auto"; }
@@ -446,6 +462,7 @@ var TokenfactoryIssuerClient = /** @class */ (function (_super) {
         _this.contractAddress = contractAddress;
         _this.changeTokenFactoryAdmin = _this.changeTokenFactoryAdmin.bind(_this);
         _this.changeContractOwner = _this.changeContractOwner.bind(_this);
+        _this.setDenomMetadata = _this.setDenomMetadata.bind(_this);
         _this.setMinter = _this.setMinter.bind(_this);
         _this.setBurner = _this.setBurner.bind(_this);
         _this.setBlacklister = _this.setBlacklister.bind(_this);

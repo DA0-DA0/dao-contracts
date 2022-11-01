@@ -17,7 +17,9 @@ use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
-use tokenfactory_issuer::msg::{BlacklisteesResponse, BlacklisterAllowancesResponse};
+use tokenfactory_issuer::msg::{
+    AdditionalMetadata, BlacklisteesResponse, BlacklisterAllowancesResponse,
+};
 use tokenfactory_issuer::{
     msg::{
         AllowanceResponse, AllowancesResponse, DenomResponse, ExecuteMsg,
@@ -110,6 +112,7 @@ impl Default for TestEnv {
         Self::new(
             InstantiateMsg::NewToken {
                 subdenom: "uusd".to_string(),
+                metadata: None,
             },
             0,
         )
@@ -192,6 +195,13 @@ impl TokenfactoryIssuer {
             &[],
             signer,
         )
+    }
+    pub fn set_denom_metadata(
+        &self,
+        metadata: AdditionalMetadata,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgExecuteContractResponse> {
+        self.execute(&ExecuteMsg::SetDenomMetadata { metadata }, &[], signer)
     }
 
     pub fn set_minter(

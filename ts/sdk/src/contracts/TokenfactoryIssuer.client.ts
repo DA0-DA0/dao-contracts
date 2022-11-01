@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, QueryMsg, SudoMsg, Coin, BlacklisteesResponse, StatusInfo, BlacklisterAllowancesResponse, AllowanceResponse, AllowancesResponse, AllowanceInfo, DenomResponse, FreezerAllowancesResponse, StatusResponse, IsFrozenResponse, OwnerResponse } from "./TokenfactoryIssuer.types";
+import { InstantiateMsg, AdditionalMetadata, DenomUnit, ExecuteMsg, Uint128, QueryMsg, SudoMsg, Coin, BlacklisteesResponse, StatusInfo, BlacklisterAllowancesResponse, AllowanceResponse, AllowancesResponse, AllowanceInfo, DenomResponse, FreezerAllowancesResponse, StatusResponse, IsFrozenResponse, OwnerResponse } from "./TokenfactoryIssuer.types";
 export interface TokenfactoryIssuerReadOnlyInterface {
   contractAddress: string;
   isFrozen: () => Promise<IsFrozenResponse>;
@@ -249,6 +249,11 @@ export interface TokenfactoryIssuerInterface extends TokenfactoryIssuerReadOnlyI
   }: {
     newOwner: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  setDenomMetadata: ({
+    metadata
+  }: {
+    metadata: AdditionalMetadata;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   setMinter: ({
     address,
     allowance
@@ -316,6 +321,7 @@ export class TokenfactoryIssuerClient extends TokenfactoryIssuerQueryClient impl
     this.contractAddress = contractAddress;
     this.changeTokenFactoryAdmin = this.changeTokenFactoryAdmin.bind(this);
     this.changeContractOwner = this.changeContractOwner.bind(this);
+    this.setDenomMetadata = this.setDenomMetadata.bind(this);
     this.setMinter = this.setMinter.bind(this);
     this.setBurner = this.setBurner.bind(this);
     this.setBlacklister = this.setBlacklister.bind(this);
@@ -345,6 +351,17 @@ export class TokenfactoryIssuerClient extends TokenfactoryIssuerQueryClient impl
     return await this.client.execute(this.sender, this.contractAddress, {
       change_contract_owner: {
         new_owner: newOwner
+      }
+    }, fee, memo, funds);
+  };
+  setDenomMetadata = async ({
+    metadata
+  }: {
+    metadata: AdditionalMetadata;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      set_denom_metadata: {
+        metadata
       }
     }, fee, memo, funds);
   };

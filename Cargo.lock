@@ -938,7 +938,7 @@ dependencies = [
 [[package]]
 name = "osmosis-std"
 version = "0.12.0"
-source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=boss/tokenfactory-ext#3a5a5b3d87f871307c4ccca25e2727ecdc547127"
+source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=boss/tokenfactory-ext#17bf68e6567a3dd910646b49f25efc63953f2dc6"
 dependencies = [
  "chrono",
  "cosmwasm-std",
@@ -953,7 +953,7 @@ dependencies = [
 [[package]]
 name = "osmosis-std-derive"
 version = "0.12.0"
-source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=boss/tokenfactory-ext#3a5a5b3d87f871307c4ccca25e2727ecdc547127"
+source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=boss/tokenfactory-ext#17bf68e6567a3dd910646b49f25efc63953f2dc6"
 dependencies = [
  "itertools",
  "proc-macro2",
@@ -964,7 +964,7 @@ dependencies = [
 [[package]]
 name = "osmosis-testing"
 version = "0.12.0"
-source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=boss/tokenfactory-ext#3a5a5b3d87f871307c4ccca25e2727ecdc547127"
+source = "git+https://github.com/osmosis-labs/osmosis-rust?branch=boss/tokenfactory-ext#17bf68e6567a3dd910646b49f25efc63953f2dc6"
 dependencies = [
  "base64",
  "bindgen",
