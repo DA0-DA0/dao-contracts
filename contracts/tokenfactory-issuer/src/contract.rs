@@ -17,7 +17,7 @@ use crate::error::ContractError;
 use crate::execute;
 use crate::helpers::create_metadata;
 use crate::hooks;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, SudoMsg};
 use crate::queries;
 use crate::state::{DENOM, IS_FROZEN, OWNER};
 
@@ -79,6 +79,11 @@ pub fn instantiate(
                 .add_attribute("denom", denom))
         }
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+    Ok(Response::new().add_attribute("action", "migrate"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
