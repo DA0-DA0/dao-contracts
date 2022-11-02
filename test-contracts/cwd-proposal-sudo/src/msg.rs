@@ -1,6 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, CosmosMsg};
-use cwd_interface::voting::InfoResponse;
 
 use cwd_macros::{info_query, proposal_module_query};
 

@@ -1,8 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
 use cwd_hooks::HooksResponse;
-use cwd_interface::voting::InfoResponse;
 
 use cwd_macros::{info_query, proposal_module_query};
 use cwd_voting::{

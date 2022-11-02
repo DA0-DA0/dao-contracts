@@ -4,9 +4,7 @@ use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
-use cwd_interface::voting::InfoResponse;
-use cwd_interface::voting::TotalPowerAtHeightResponse;
-use cwd_interface::voting::VotingPowerAtHeightResponse;
+
 use cwd_macros::{active_query, info_query, token_query, voting_query};
 
 #[cw_serde]
