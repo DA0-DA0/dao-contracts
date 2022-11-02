@@ -2183,6 +2183,11 @@ cw-tokenfactory-issuer-sdk@../ts/sdk:
   dependencies:
     "@cosmjs/cosmwasm-stargate" "^0.28.11"
 
+"cw-tokenfactory-issuer-sdk@file:../ts/sdk":
+  version "0.0.1"
+  dependencies:
+    "@cosmjs/cosmwasm-stargate" "^0.28.11"
+
 damerau-levenshtein@^1.0.8:
   version "1.0.8"
   resolved "https://registry.yarnpkg.com/damerau-levenshtein/-/damerau-levenshtein-1.0.8.tgz#b43d286ccbd36bc5b2f7ed41caf2d0aba1f8a6e7"

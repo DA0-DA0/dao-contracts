@@ -6,6 +6,7 @@ import {
   Button,
   Divider,
   FormControl,
+  FormHelperText,
   FormLabel,
   Heading,
   Input,
@@ -27,6 +28,7 @@ export type FieldDef<Values extends FieldValues> = {
   name: FieldPath<Values>;
   isRequired: boolean;
   component: React.FC<FieldProps<Values>>;
+  helperText?: string;
 };
 
 export type AllKeys<T> = T extends any ? keyof T : never;
@@ -44,10 +46,12 @@ export function ProposalMsgForm<
 >({
   msgType,
   fields,
+  beforeOnSubmit = (x) => x,
   onSubmitForm,
 }: {
   msgType: MessageType;
   fields: FieldDef<Values>[];
+  beforeOnSubmit?: (msg: Values) => Values;
   onSubmitForm: (msg: ExecuteMsg) => void;
 }) {
   const toast = useToast();
@@ -82,8 +86,8 @@ export function ProposalMsgForm<
         {msgType}
       </Heading>
       <Divider />
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {fields.map(({ name, isRequired, component: Field }, i) => (
+      <form onSubmit={handleSubmit((v) => onSubmit(beforeOnSubmit(v)))}>
+        {fields.map(({ name, isRequired, component: Field, helperText }, i) => (
           <Field
             key={i}
             fieldName={name}
@@ -91,6 +95,7 @@ export function ProposalMsgForm<
             errors={errors}
             isSubmitting={isSubmitting}
             isRequired={isRequired}
+            helperText={helperText}
           />
         ))}
         <AddToProposalButton isSubmitting={isSubmitting} />
@@ -117,6 +122,7 @@ export type FieldProps<Values extends FieldValues> = {
   errors: FieldErrors<Values>;
   isSubmitting: boolean;
   isRequired: boolean;
+  helperText?: string;
 };
 
 export function NumberField<Values extends FieldValues>({
@@ -214,6 +220,35 @@ export function AddressField<Values extends FieldValues>({
       />
       {/* @ts-ignore */}
       <ValidateError message={errors[fieldName]?.message} />
+    </FormControl>
+  );
+}
+
+export function TextField<Values extends FieldValues>({
+  fieldName,
+  register,
+  errors,
+  isSubmitting,
+  isRequired,
+  helperText,
+}: FieldProps<Values>) {
+  const fieldNameString = String(fieldName);
+  return (
+    <FormControl isRequired={isRequired} my="5">
+      <FormLabel>{fieldNameString}</FormLabel>
+      <Input
+        type="text"
+        id={fieldNameString}
+        disabled={isSubmitting}
+        {...register(fieldName, {
+          required: isRequired && `"${fieldNameString}" is required`,
+        })}
+      />
+      {/* @ts-ignore */}
+      <ValidateError message={errors[fieldName]?.message} />
+      {typeof helperText !== "undefined" && (
+        <FormHelperText>{helperText}</FormHelperText>
+      )}
     </FormControl>
   );
 }
