@@ -6,7 +6,6 @@
 
 export type InstantiateMsg = {
   new_token: {
-    metadata?: AdditionalMetadata | null;
     subdenom: string;
   };
 } | {
@@ -14,19 +13,6 @@ export type InstantiateMsg = {
     denom: string;
   };
 };
-export interface AdditionalMetadata {
-  denom_units: DenomUnit[];
-  description: string;
-  display: string;
-  name: string;
-  symbol: string;
-}
-export interface DenomUnit {
-  aliases: string[];
-  denom: string;
-  exponent: number;
-  [k: string]: unknown;
-}
 export type ExecuteMsg = {
   change_token_factory_admin: {
     new_admin: string;
@@ -37,7 +23,7 @@ export type ExecuteMsg = {
   };
 } | {
   set_denom_metadata: {
-    metadata: AdditionalMetadata;
+    metadata: Metadata;
   };
 } | {
   set_minter: {
@@ -80,6 +66,21 @@ export type ExecuteMsg = {
   };
 };
 export type Uint128 = string;
+export interface Metadata {
+  base: string;
+  denom_units: DenomUnit[];
+  description: string;
+  display: string;
+  name: string;
+  symbol: string;
+  [k: string]: unknown;
+}
+export interface DenomUnit {
+  aliases: string[];
+  denom: string;
+  exponent: number;
+  [k: string]: unknown;
+}
 export type QueryMsg = {
   is_frozen: {};
 } | {
