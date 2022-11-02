@@ -2178,11 +2178,6 @@ curve25519-js@0.0.4:
   resolved "https://registry.yarnpkg.com/curve25519-js/-/curve25519-js-0.0.4.tgz#e6ad967e8cd284590d657bbfc90d8b50e49ba060"
   integrity sha512-axn2UMEnkhyDUPWOwVKBMVIzSQy2ejH2xRGy1wq81dqRwApXfIzfbE3hIX0ZRFBIihf/KDqK158DLwESu4AK1w==
 
-cw-tokenfactory-issuer-sdk@../ts/sdk:
-  version "0.0.1"
-  dependencies:
-    "@cosmjs/cosmwasm-stargate" "^0.28.11"
-
 "cw-tokenfactory-issuer-sdk@file:../ts/sdk":
   version "0.0.1"
   dependencies:

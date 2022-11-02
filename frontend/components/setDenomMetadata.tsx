@@ -42,7 +42,6 @@ export const SetDenomMetadataForm = ({
           isRequired: true,
           component: DenomUnitField,
         },
-        // =======================
         {
           name: assertName("description"),
           isRequired: true,
@@ -71,14 +70,8 @@ export const SetDenomMetadataForm = ({
       ]}
       beforeOnSubmit={(v) => {
         const lines = v["denom_units"].split("\n");
-        const denom_units = lines.map((d: string) => {
-          const denomUnit = extractDenomUnits(d);
-          return {
-            ...denomUnit,
-            exponent: +denomUnit.exponent,
-          };
-        });
-        return { ...v, denom_units };
+        const denom_units = lines.map((d: string) => extractDenomUnits(d));
+        return { metadata: { ...v, denom_units } };
       }}
       onSubmitForm={onSubmitForm}
     />

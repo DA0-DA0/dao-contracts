@@ -13,6 +13,8 @@ import {
   Tr,
 } from "@chakra-ui/react";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
+import dynamic from "next/dynamic";
+const ReactJson = dynamic(import("react-json-view"), { ssr: false });
 
 const Action = ({
   msg,
@@ -57,7 +59,17 @@ const Action = ({
                   <Text as="b">{k}</Text>
                 </Td>
                 {/* @ts-ignore */}
-                <Td>{`${v}`}</Td>
+                <Td>
+                  {typeof v === "object" ? (
+                    <ReactJson
+                      name={null}
+                      src={v || {}}
+                      enableClipboard={false}
+                    />
+                  ) : (
+                    `${v}`
+                  )}
+                </Td>
               </Tr>
             ))}
           </Tbody>
