@@ -1,10 +1,7 @@
-use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
-use cw_storage_plus::Map;
-use osmosis_std::types::cosmos::bank::v1beta1::{DenomUnit, Metadata};
-
-use crate::msg::AdditionalMetadata;
 use crate::state::{BLACKLISTED_ADDRESSES, DENOM, IS_FROZEN, OWNER};
 use crate::ContractError;
+use cosmwasm_std::{Addr, Coin, Deps, MessageInfo, Uint128};
+use cw_storage_plus::Map;
 
 pub fn check_contract_has_funds(
     denom: String,
@@ -88,41 +85,4 @@ pub fn check_is_not_frozen(deps: Deps, denom: &str) -> Result<(), ContractError>
     }
 
     Ok(())
-}
-
-pub fn create_metadata(
-    denom: String,
-    AdditionalMetadata {
-        description,
-        denom_units,
-        display,
-        name,
-        symbol,
-    }: AdditionalMetadata,
-) -> Metadata {
-    let has_base_denom_units = denom_units.iter().any(|unit| unit.denom == denom);
-    Metadata {
-        denom_units: if has_base_denom_units {
-            denom_units
-        } else {
-            prepend_default_base_denom_unit(denom.clone(), denom_units)
-        },
-        base: denom,
-        description,
-        display,
-        name,
-        symbol,
-    }
-}
-
-fn prepend_default_base_denom_unit(denom: String, denom_units: Vec<DenomUnit>) -> Vec<DenomUnit> {
-    vec![
-        vec![DenomUnit {
-            denom,
-            exponent: 0,
-            aliases: vec![],
-        }],
-        denom_units,
-    ]
-    .concat()
 }

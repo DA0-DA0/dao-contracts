@@ -15,7 +15,6 @@ fn instantiate_with_new_token_shoud_set_initial_state_correctly() {
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
             subdenom: subdenom.clone(),
-            metadata: None,
         },
         0,
     )
@@ -59,7 +58,6 @@ fn instantiate_with_new_token_shoud_set_hook_correctly() {
     let env = TestEnv::new(
         InstantiateMsg::NewToken {
             subdenom: subdenom.clone(),
-            metadata: None,
         },
         0,
     )

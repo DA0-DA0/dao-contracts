@@ -12,11 +12,6 @@ pub enum InstantiateMsg {
     NewToken {
         /// component of fulldenom (`factory/<contract_address>/<subdenom>`).
         subdenom: String,
-        /// Optional denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
-        /// first `denom_units` and `base` are required to be specified as `factory/<contract_address>/<subdenom>`.
-        /// So on instantiate, only subset of Metadata is allowed to be set, defined in `AdditionalMetadata`
-        /// Can be set later via `SetDenomMetadata`.
-        metadata: Option<AdditionalMetadata>,
     },
     /// `ExistingToken` will use already created token. So to set this up,
     /// tokenfactory admin needs to create a new token and set beforesend listener manually.
@@ -36,7 +31,7 @@ pub enum ExecuteMsg {
     },
     SetDenomMetadata {
         /// Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.
-        metadata: AdditionalMetadata,
+        metadata: Metadata,
     },
 
     /// Grant/revoke mint allowance.
@@ -217,24 +212,4 @@ pub struct BlacklisterAllowancesResponse {
 #[cw_serde]
 pub struct FreezerAllowancesResponse {
     pub freezers: Vec<StatusInfo>,
-}
-
-// Metadata
-#[cw_serde]
-pub struct AdditionalMetadata {
-    pub description: String,
-    /// denom_units represents the list of DenomUnit's for a given coin
-    pub denom_units: Vec<DenomUnit>,
-    /// display indicates the suggested denom that should be
-    /// displayed in clients.
-    pub display: String,
-    /// name defines the name of the token (eg: Cosmos Atom)
-    ///
-    /// Since: cosmos-sdk 0.43
-    pub name: String,
-    /// symbol is the token symbol usually shown on exchanges (eg: ATOM). This can
-    /// be the same as the display.
-    ///
-    /// Since: cosmos-sdk 0.43
-    pub symbol: String,
 }
