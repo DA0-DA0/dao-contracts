@@ -81,6 +81,8 @@ pub fn instantiate(
     }
 }
 
+/// Allow contract to be able to migrate if admin is set.
+/// This provides option for migration, if admin is not set, this functionality will be disabled
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
     Ok(Response::new().add_attribute("action", "migrate"))
