@@ -24,6 +24,9 @@ pub enum InstantiateMsg {
 }
 
 #[cw_serde]
+pub struct MigrateMsg {}
+
+#[cw_serde]
 pub enum ExecuteMsg {
     ChangeTokenFactoryAdmin {
         new_admin: String,

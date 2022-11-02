@@ -8,7 +8,9 @@ use osmosis_std::types::osmosis::tokenfactory::v1beta1::QueryDenomAuthorityMetad
 use osmosis_testing::{
     cosmrs::proto::{
         cosmos::bank::v1beta1::{MsgSend, MsgSendResponse},
-        cosmwasm::wasm::v1::MsgExecuteContractResponse,
+        cosmwasm::wasm::v1::{
+            MsgExecuteContractResponse, MsgMigrateContract, MsgMigrateContractResponse,
+        },
     },
     Account, Bank, Module, OsmosisTestApp, Runner, RunnerError, RunnerExecuteResult,
     SigningAccount, TokenFactory, Wasm,
@@ -18,7 +20,7 @@ use std::fmt::Debug;
 use std::path::PathBuf;
 use std::rc::Rc;
 use tokenfactory_issuer::msg::{
-    AdditionalMetadata, BlacklisteesResponse, BlacklisterAllowancesResponse,
+    AdditionalMetadata, BlacklisteesResponse, BlacklisterAllowancesResponse, MigrateMsg,
 };
 use tokenfactory_issuer::{
     msg::{
@@ -144,7 +146,7 @@ impl TokenfactoryIssuer {
             .instantiate(
                 code_id,
                 &instantiate_msg,
-                None,
+                Some(&signer.address()),
                 None,
                 &[token_creation_fee],
                 signer,
@@ -409,6 +411,29 @@ impl TokenfactoryIssuer {
         limit: Option<u32>,
     ) -> Result<AllowancesResponse, RunnerError> {
         self.query(&QueryMsg::BurnAllowances { start_after, limit })
+    }
+
+    pub fn migrate(
+        &self,
+        testdata: &str,
+        signer: &SigningAccount,
+    ) -> RunnerExecuteResult<MsgMigrateContractResponse> {
+        let wasm = Wasm::new(&self.app);
+        let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let wasm_byte_code =
+            std::fs::read(manifest_path.join("tests").join("testdata").join(testdata)).unwrap();
+
+        let code_id = wasm.store_code(&wasm_byte_code, None, signer)?.data.code_id;
+        self.app.execute(
+            MsgMigrateContract {
+                sender: signer.address(),
+                contract: self.contract_addr.clone(),
+                code_id,
+                msg: serde_json::to_vec(&MigrateMsg {}).unwrap(),
+            },
+            "/cosmwasm.wasm.v1.MsgMigrateContract",
+            signer,
+        )
     }
 
     fn get_wasm_byte_code() -> Vec<u8> {
