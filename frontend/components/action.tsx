@@ -12,8 +12,6 @@ const Action = ({
   deleteAction?: () => void;
 }) => {
   const msgType = Object.keys(msg)[0];
-  // @ts-ignore
-  const kvs = Object.entries(msg[msgType]);
 
   return (
     <Box
