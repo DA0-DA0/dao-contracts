@@ -1,17 +1,5 @@
 import { DeleteIcon } from "@chakra-ui/icons";
-import {
-  Box,
-  Button,
-  Flex,
-  Heading,
-  Spacer,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Text,
-  Tr,
-} from "@chakra-ui/react";
+import { Box, Button, Flex, Heading, Spacer } from "@chakra-ui/react";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
 import dynamic from "next/dynamic";
 const ReactJson = dynamic(import("react-json-view"), { ssr: false });
@@ -35,46 +23,27 @@ const Action = ({
       p="9"
       minWidth="container.md"
     >
-      <TableContainer>
-        <Flex>
-          <Box>
-            <Heading mb="3" size="sm">
-              {msgType}
-            </Heading>
-          </Box>
+      <Flex>
+        <Box>
+          <Heading mb="3" size="sm">
+            {msgType}
+          </Heading>
+        </Box>
 
-          <Spacer />
-          {deleteAction && (
-            <Button variant="ghost" onClick={deleteAction}>
-              <DeleteIcon w={3} h={3} />
-            </Button>
-          )}
-        </Flex>
+        <Spacer />
+        {deleteAction && (
+          <Button variant="ghost" onClick={deleteAction}>
+            <DeleteIcon w={3} h={3} />
+          </Button>
+        )}
+      </Flex>
 
-        <Table variant="simple" size="sm">
-          <Tbody>
-            {kvs.map(([k, v], i) => (
-              <Tr key={i}>
-                <Td width="20%">
-                  <Text as="b">{k}</Text>
-                </Td>
-                {/* @ts-ignore */}
-                <Td>
-                  {typeof v === "object" ? (
-                    <ReactJson
-                      name={null}
-                      src={v || {}}
-                      enableClipboard={false}
-                    />
-                  ) : (
-                    `${v}`
-                  )}
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
+      <ReactJson
+        name={null}
+        // @ts-ignore
+        src={msg[msgType]}
+        enableClipboard={false}
+      />
     </Box>
   );
 };
