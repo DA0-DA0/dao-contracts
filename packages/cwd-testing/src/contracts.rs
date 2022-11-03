@@ -100,15 +100,6 @@ pub fn cw20_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cwd_voting_native_staked::contract::execute,
-        cwd_voting_native_staked::contract::instantiate,
-        cwd_voting_native_staked::contract::query,
-    );
-    Box::new(contract)
-}
-
 pub fn cw721_staked_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cwd_voting_cw721_staked::contract::execute,

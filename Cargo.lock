@@ -753,21 +753,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-token-swap"
-version = "0.2.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus 0.15.1",
- "cw-utils 0.15.1",
- "cw2 0.15.1",
- "cw20 0.15.1",
- "cw20-base 0.15.1",
- "thiserror",
-]
-
-[[package]]
 name = "cw-utils"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1221,7 +1206,6 @@ dependencies = [
  "cwd-voting-cw20-staked",
  "cwd-voting-cw4",
  "cwd-voting-cw721-staked",
- "cwd-voting-native-staked",
  "rand",
  "thiserror",
  "voting",
@@ -1262,7 +1246,6 @@ dependencies = [
  "cwd-voting-cw20-staked",
  "cwd-voting-cw4",
  "cwd-voting-cw721-staked",
- "cwd-voting-native-staked",
  "thiserror",
  "voting",
 ]
@@ -1309,7 +1292,6 @@ dependencies = [
  "cwd-voting-cw20-staked",
  "cwd-voting-cw4",
  "cwd-voting-cw721-staked",
- "cwd-voting-native-staked",
  "rand",
  "voting",
 ]
@@ -1413,40 +1395,6 @@ dependencies = [
  "cwd-interface",
  "cwd-macros",
  "indexmap",
- "thiserror",
-]
-
-[[package]]
-name = "cwd-voting-native-staked"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-controllers",
- "cw-multi-test",
- "cw-paginate 0.2.0",
- "cw-storage-plus 0.15.1",
- "cw-utils 0.15.1",
- "cw2 0.15.1",
- "cwd-interface",
- "cwd-macros",
- "thiserror",
-]
-
-[[package]]
-name = "cwd-voting-staking-denom-staked"
-version = "0.2.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-multi-test",
- "cw-storage-plus 0.15.1",
- "cw2 0.15.1",
- "cwd-interface",
- "cwd-macros",
  "thiserror",
 ]
 

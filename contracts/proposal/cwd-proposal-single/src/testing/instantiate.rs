@@ -1,8 +1,8 @@
-use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cwd_voting_cw20_staked::msg::ActiveThreshold;
 
-use cw_multi_test::{next_block, App, BankSudo, Executor, SudoMsg};
+use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
 use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cwd_pre_propose_single as cppbps;
@@ -19,7 +19,7 @@ use super::{
     contracts::{
         cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract, cw4_contract,
         cw4_voting_contract, cw721_contract, cw721_stake_contract, cw_core_contract,
-        native_staked_balances_voting_contract, proposal_single_contract,
+        proposal_single_contract,
     },
     CREATOR_ADDR,
 };
@@ -213,111 +213,6 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
 
     // Update the block so that staked balances appear.
     app.update_block(|block| block.height += 1);
-
-    core_addr
-}
-
-pub(crate) fn instantiate_with_native_staked_balances_governance(
-    app: &mut App,
-    proposal_module_instantiate: InstantiateMsg,
-    initial_balances: Option<Vec<Cw20Coin>>,
-) -> Addr {
-    let proposal_module_code_id = app.store_code(proposal_single_contract());
-
-    let initial_balances = initial_balances.unwrap_or_else(|| {
-        vec![Cw20Coin {
-            address: CREATOR_ADDR.to_string(),
-            amount: Uint128::new(100_000_000),
-        }]
-    });
-
-    // Collapse balances so that we can test double votes.
-    let initial_balances: Vec<Cw20Coin> = {
-        let mut already_seen = vec![];
-        initial_balances
-            .into_iter()
-            .filter(|Cw20Coin { address, amount: _ }| {
-                if already_seen.contains(address) {
-                    false
-                } else {
-                    already_seen.push(address.clone());
-                    true
-                }
-            })
-            .collect()
-    };
-
-    let native_stake_id = app.store_code(native_staked_balances_voting_contract());
-    let core_contract_id = app.store_code(cw_core_contract());
-
-    let instantiate_core = cwd_core::msg::InstantiateMsg {
-        admin: None,
-        name: "DAO DAO".to_string(),
-        description: "A DAO that builds DAOs".to_string(),
-        dao_uri: None,
-        image_url: None,
-        automatically_add_cw20s: true,
-        automatically_add_cw721s: false,
-        voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: native_stake_id,
-            msg: to_binary(&cwd_voting_native_staked::msg::InstantiateMsg {
-                owner: Some(Admin::CoreModule {}),
-                manager: None,
-                denom: "ujuno".to_string(),
-                unstaking_duration: None,
-            })
-            .unwrap(),
-            admin: None,
-            label: "DAO DAO voting module".to_string(),
-        },
-        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: proposal_module_code_id,
-            label: "DAO DAO governance module.".to_string(),
-            admin: Some(Admin::CoreModule {}),
-            msg: to_binary(&proposal_module_instantiate).unwrap(),
-        }],
-        initial_items: None,
-    };
-
-    let core_addr = app
-        .instantiate_contract(
-            core_contract_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &instantiate_core,
-            &[],
-            "DAO DAO",
-            None,
-        )
-        .unwrap();
-
-    let gov_state: cwd_core::query::DumpStateResponse = app
-        .wrap()
-        .query_wasm_smart(core_addr.clone(), &cwd_core::msg::QueryMsg::DumpState {})
-        .unwrap();
-    let native_staking_addr = gov_state.voting_module;
-
-    for Cw20Coin { address, amount } in initial_balances {
-        app.sudo(SudoMsg::Bank(BankSudo::Mint {
-            to_address: address.clone(),
-            amount: vec![Coin {
-                denom: "ujuno".to_string(),
-                amount,
-            }],
-        }))
-        .unwrap();
-        app.execute_contract(
-            Addr::unchecked(&address),
-            native_staking_addr.clone(),
-            &cwd_voting_native_staked::msg::ExecuteMsg::Stake {},
-            &[Coin {
-                amount,
-                denom: "ujuno".to_string(),
-            }],
-        )
-        .unwrap();
-    }
-
-    app.update_block(next_block);
 
     core_addr
 }

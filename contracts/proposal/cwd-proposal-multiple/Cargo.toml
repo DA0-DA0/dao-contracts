@@ -47,7 +47,6 @@ cw-multi-test.workspace = true
 cwd-voting-cw4 = { path = "../../voting/cwd-voting-cw4" }
 cwd-voting-cw20-balance = { path = "../../../test-contracts/cwd-voting-cw20-balance" }
 cwd-voting-cw20-staked = { path = "../../voting/cwd-voting-cw20-staked" }
-cwd-voting-native-staked = { path = "../../voting/cwd-voting-native-staked" }
 cwd-voting-cw721-staked = { path = "../../voting/cwd-voting-cw721-staked" }
 cw-denom = { path = "../../../packages/cw-denom" }
 cwd-testing = { path = "../../../packages/cwd-testing" }

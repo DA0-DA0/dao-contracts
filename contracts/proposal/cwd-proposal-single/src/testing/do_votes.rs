@@ -51,22 +51,6 @@ pub(crate) fn do_votes_nft_balances(
     );
 }
 
-pub(crate) fn do_votes_native_staked_balances(
-    votes: Vec<TestSingleChoiceVote>,
-    threshold: Threshold,
-    expected_status: Status,
-    total_supply: Option<Uint128>,
-) {
-    do_test_votes(
-        votes,
-        threshold,
-        expected_status,
-        total_supply,
-        None,
-        instantiate_with_native_staked_balances_governance,
-    );
-}
-
 pub(crate) fn do_votes_cw4_weights(
     votes: Vec<TestSingleChoiceVote>,
     threshold: Threshold,
@@ -277,40 +261,34 @@ fn test_vote_simple() {
     cwd_testing::test_simple_votes(do_votes_cw4_weights);
     cwd_testing::test_simple_votes(do_votes_staked_balances);
     cwd_testing::test_simple_votes(do_votes_nft_balances);
-    cwd_testing::test_simple_votes(do_votes_native_staked_balances)
 }
 
 #[test]
 fn test_simple_vote_no_overflow() {
     cwd_testing::test_simple_vote_no_overflow(do_votes_staked_balances);
-    cwd_testing::test_simple_vote_no_overflow(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_vote_no_overflow() {
     cwd_testing::test_vote_no_overflow(do_votes_staked_balances);
-    cwd_testing::test_vote_no_overflow(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_simple_early_rejection() {
     cwd_testing::test_simple_early_rejection(do_votes_cw4_weights);
     cwd_testing::test_simple_early_rejection(do_votes_staked_balances);
-    cwd_testing::test_simple_early_rejection(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_vote_abstain_only() {
     cwd_testing::test_vote_abstain_only(do_votes_cw4_weights);
     cwd_testing::test_vote_abstain_only(do_votes_staked_balances);
-    cwd_testing::test_vote_abstain_only(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_tricky_rounding() {
     cwd_testing::test_tricky_rounding(do_votes_cw4_weights);
     cwd_testing::test_tricky_rounding(do_votes_staked_balances);
-    cwd_testing::test_tricky_rounding(do_votes_native_staked_balances);
 }
 
 #[test]
@@ -318,14 +296,12 @@ fn test_no_double_votes() {
     cwd_testing::test_no_double_votes(do_votes_cw4_weights);
     cwd_testing::test_no_double_votes(do_votes_staked_balances);
     cwd_testing::test_no_double_votes(do_votes_nft_balances);
-    cwd_testing::test_no_double_votes(do_votes_native_staked_balances);
 }
 
 #[test]
 fn test_votes_favor_yes() {
     cwd_testing::test_votes_favor_yes(do_votes_staked_balances);
     cwd_testing::test_votes_favor_yes(do_votes_nft_balances);
-    cwd_testing::test_votes_favor_yes(do_votes_native_staked_balances);
 }
 
 #[test]
@@ -333,7 +309,6 @@ fn test_votes_low_threshold() {
     cwd_testing::test_votes_low_threshold(do_votes_cw4_weights);
     cwd_testing::test_votes_low_threshold(do_votes_staked_balances);
     cwd_testing::test_votes_low_threshold(do_votes_nft_balances);
-    cwd_testing::test_votes_low_threshold(do_votes_native_staked_balances);
 }
 
 #[test]
@@ -341,7 +316,6 @@ fn test_majority_vs_half() {
     cwd_testing::test_majority_vs_half(do_votes_cw4_weights);
     cwd_testing::test_majority_vs_half(do_votes_staked_balances);
     cwd_testing::test_majority_vs_half(do_votes_nft_balances);
-    cwd_testing::test_majority_vs_half(do_votes_native_staked_balances);
 }
 
 #[test]
@@ -349,7 +323,6 @@ fn test_pass_threshold_not_quorum() {
     cwd_testing::test_pass_threshold_not_quorum(do_votes_cw4_weights);
     cwd_testing::test_pass_threshold_not_quorum(do_votes_staked_balances);
     cwd_testing::test_pass_threshold_not_quorum(do_votes_nft_balances);
-    cwd_testing::test_pass_threshold_not_quorum(do_votes_native_staked_balances);
 }
 
 #[test]
@@ -357,7 +330,6 @@ fn test_pass_threshold_exactly_quorum() {
     cwd_testing::test_pass_exactly_quorum(do_votes_cw4_weights);
     cwd_testing::test_pass_exactly_quorum(do_votes_staked_balances);
     cwd_testing::test_pass_exactly_quorum(do_votes_nft_balances);
-    cwd_testing::test_pass_exactly_quorum(do_votes_native_staked_balances);
 }
 
 /// Generate some random voting selections and make sure they behave
@@ -371,9 +343,4 @@ fn fuzz_voting_cw4_weights() {
 #[test]
 fn fuzz_voting_staked_balances() {
     cwd_testing::fuzz_voting(do_votes_staked_balances)
-}
-
-#[test]
-fn fuzz_voting_native_staked_balances() {
-    cwd_testing::fuzz_voting(do_votes_native_staked_balances)
 }
