@@ -22,6 +22,7 @@ import {
   useForm,
   UseFormGetValues,
   UseFormRegister,
+  UseFormSetValue,
 } from "react-hook-form";
 import { getPrefix } from "../lib/conf";
 
@@ -60,6 +61,7 @@ export function ProposalMsgForm<
     handleSubmit,
     register,
     reset,
+    setValue,
     getValues,
     formState: { errors, isSubmitting },
   } = useForm<Values>();
@@ -99,6 +101,7 @@ export function ProposalMsgForm<
             isRequired={isRequired}
             helperText={helperText}
             getValues={getValues}
+            setValue={setValue}
           />
         ))}
         <AddToProposalButton isSubmitting={isSubmitting} />
@@ -126,6 +129,7 @@ export type FieldProps<Values extends FieldValues> = {
   isSubmitting: boolean;
   isRequired: boolean;
   getValues: UseFormGetValues<Values>;
+  setValue: UseFormSetValue<Values>;
   helperText?: string;
 };
 

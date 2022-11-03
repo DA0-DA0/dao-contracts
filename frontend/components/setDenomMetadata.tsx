@@ -7,6 +7,7 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
+import { useEffect, useState } from "react";
 import { FieldValues, Path } from "react-hook-form";
 import { useDenom } from "../api/tokenfactoryIssuer";
 import {
@@ -42,7 +43,7 @@ export const SetDenomMetadataForm = ({
           name: assertName("denom_units"),
           isRequired: true,
           component: DenomUnitField,
-          helperText: `a denom could have multiple units with different exponents and aliases. each line represents a unit describe in form of "<denom> | <exponent> | <aliases[0]>,<aliases[1]>,..." where aliases can be omitted to just "<denom> | <exponent>"`,
+          helperText: `token can have multiple denom units with different exponents and aliases. each line represents a unit describe in form of "<denom> | <exponent> | <aliases[0]>,<aliases[1]>,..." where aliases can be omitted to just "<denom> | <exponent>".`,
         },
         {
           name: assertName("description"),
@@ -90,6 +91,14 @@ export function BaseField<Values extends FieldValues>({
   const fieldNameString = String(fieldName);
   const { data, error } = useDenom();
 
+  const [denom, setDenom] = useState<string>();
+
+  useEffect(() => {
+    if (typeof denom === "undefined" && typeof data !== "undefined") {
+      setDenom(data.denom);
+    }
+  }, [data, denom]);
+
   return (
     <FormControl isRequired={isRequired} my="5">
       <FormLabel>{fieldNameString}</FormLabel>
@@ -97,7 +106,7 @@ export function BaseField<Values extends FieldValues>({
         <Input
           type="text"
           id={fieldNameString}
-          value={data?.denom || ""}
+          value={denom}
           {...register(fieldName, {
             required: isRequired && `"${fieldNameString}" is required`,
           })}
@@ -132,6 +141,16 @@ export function DenomUnitField<Values extends FieldValues>({
   const fieldNameString = String(fieldName);
   const { data, error } = useDenom();
 
+  const [denom, setDenom] = useState<string>();
+  const [denomUnits, setDenomUnits] = useState<string>();
+
+  useEffect(() => {
+    if (typeof denom === "undefined" && typeof data !== "undefined") {
+      setDenom(data.denom);
+      setDenomUnits(`${data.denom} | 0`);
+    }
+  }, [data, denom]);
+
   return (
     <FormControl isRequired={isRequired} my="5">
       <FormLabel>{fieldNameString}</FormLabel>
@@ -139,8 +158,10 @@ export function DenomUnitField<Values extends FieldValues>({
       <Skeleton isLoaded={typeof data !== "undefined"}>
         <Textarea
           id={fieldNameString}
+          value={denomUnits}
           {...register(fieldName, {
             required: isRequired && `"${fieldNameString}" is required`,
+            onChange: (e) => setDenomUnits(e.target.value),
             validate: (value: string) => {
               const lines = value.split("\n");
               for (let i in lines) {
