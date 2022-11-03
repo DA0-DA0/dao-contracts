@@ -19,17 +19,6 @@
               "subdenom"
             ],
             "properties": {
-              "metadata": {
-                "description": "Optional denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata. first `denom_units` and `base` are required to be specified as `factory/<contract_address>/<subdenom>`. So on instantiate, only subset of Metadata is allowed to be set, defined in `AdditionalMetadata` Can be set later via `SetDenomMetadata`.",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/AdditionalMetadata"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
               "subdenom": {
                 "description": "component of fulldenom (`factory/<contract_address>/<subdenom>`).",
                 "type": "string"
@@ -62,72 +51,7 @@
         },
         "additionalProperties": false
       }
-    ],
-    "definitions": {
-      "AdditionalMetadata": {
-        "type": "object",
-        "required": [
-          "denom_units",
-          "description",
-          "display",
-          "name",
-          "symbol"
-        ],
-        "properties": {
-          "denom_units": {
-            "description": "denom_units represents the list of DenomUnit's for a given coin",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/DenomUnit"
-            }
-          },
-          "description": {
-            "type": "string"
-          },
-          "display": {
-            "description": "display indicates the suggested denom that should be displayed in clients.",
-            "type": "string"
-          },
-          "name": {
-            "description": "name defines the name of the token (eg: Cosmos Atom)\n\nSince: cosmos-sdk 0.43",
-            "type": "string"
-          },
-          "symbol": {
-            "description": "symbol is the token symbol usually shown on exchanges (eg: ATOM). This can be the same as the display.\n\nSince: cosmos-sdk 0.43",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
-      "DenomUnit": {
-        "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
-        "type": "object",
-        "required": [
-          "aliases",
-          "denom",
-          "exponent"
-        ],
-        "properties": {
-          "aliases": {
-            "description": "aliases is a list of string aliases for the given denom",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "denom": {
-            "description": "denom represents the string name of the given denom unit (e.g uatom).",
-            "type": "string"
-          },
-          "exponent": {
-            "description": "exponent represents power of 10 exponent that one must raise the base_denom to in order to equal the given DenomUnit's denom 1 denom = 1^exponent base_denom (e.g. with a base_denom of uatom, one can create a DenomUnit of 'atom' with exponent = 6, thus: 1 atom = 10^6 uatom).",
-            "type": "integer",
-            "format": "uint32",
-            "minimum": 0.0
-          }
-        }
-      }
-    }
+    ]
   },
   "execute": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -191,7 +115,7 @@
                 "description": "Set denom metadata. see: https://docs.cosmos.network/main/modules/bank#denom-metadata.",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/AdditionalMetadata"
+                    "$ref": "#/definitions/Metadata"
                   }
                 ]
               }
@@ -407,41 +331,6 @@
       }
     ],
     "definitions": {
-      "AdditionalMetadata": {
-        "type": "object",
-        "required": [
-          "denom_units",
-          "description",
-          "display",
-          "name",
-          "symbol"
-        ],
-        "properties": {
-          "denom_units": {
-            "description": "denom_units represents the list of DenomUnit's for a given coin",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/DenomUnit"
-            }
-          },
-          "description": {
-            "type": "string"
-          },
-          "display": {
-            "description": "display indicates the suggested denom that should be displayed in clients.",
-            "type": "string"
-          },
-          "name": {
-            "description": "name defines the name of the token (eg: Cosmos Atom)\n\nSince: cosmos-sdk 0.43",
-            "type": "string"
-          },
-          "symbol": {
-            "description": "symbol is the token symbol usually shown on exchanges (eg: ATOM). This can be the same as the display.\n\nSince: cosmos-sdk 0.43",
-            "type": "string"
-          }
-        },
-        "additionalProperties": false
-      },
       "DenomUnit": {
         "description": "DenomUnit represents a struct that describes a given denomination unit of the basic token.",
         "type": "object",
@@ -467,6 +356,46 @@
             "type": "integer",
             "format": "uint32",
             "minimum": 0.0
+          }
+        }
+      },
+      "Metadata": {
+        "description": "Metadata represents a struct that describes a basic token.",
+        "type": "object",
+        "required": [
+          "base",
+          "denom_units",
+          "description",
+          "display",
+          "name",
+          "symbol"
+        ],
+        "properties": {
+          "base": {
+            "description": "base represents the base denom (should be the DenomUnit with exponent = 0).",
+            "type": "string"
+          },
+          "denom_units": {
+            "description": "denom_units represents the list of DenomUnit's for a given coin",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/DenomUnit"
+            }
+          },
+          "description": {
+            "type": "string"
+          },
+          "display": {
+            "description": "display indicates the suggested denom that should be displayed in clients.",
+            "type": "string"
+          },
+          "name": {
+            "description": "name defines the name of the token (eg: Cosmos Atom)\n\nSince: cosmos-sdk 0.43",
+            "type": "string"
+          },
+          "symbol": {
+            "description": "symbol is the token symbol usually shown on exchanges (eg: ATOM). This can be the same as the display.\n\nSince: cosmos-sdk 0.43",
+            "type": "string"
           }
         }
       },

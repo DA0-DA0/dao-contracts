@@ -16,7 +16,7 @@
     "@types/express": "^4.17.14",
     "chakra-react-select": "^4.3.0",
     "cosmwasm": "^1.1.1",
-    "cw-tokenfactory-issuer-sdk": "../ts/sdk",
+    "cw-tokenfactory-issuer-sdk": "file:../ts/sdk",
     "framer-motion": "^5",
     "http-proxy-middleware": "^2.0.6",
     "next": "12.1.6",

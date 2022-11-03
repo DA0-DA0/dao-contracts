@@ -30,6 +30,7 @@ import { BlacklistForm, SetBlacklisterForm } from "../components/blacklisting";
 import { BurnForm, SetBurnerForm } from "../components/burning";
 import { FreezeForm, SetFreezerForm } from "../components/freezing";
 import { MintForm, SetMinterForm } from "../components/minting";
+import { SetDenomMetadataForm } from "../components/setDenomMetadata";
 import { getContractAddr } from "../lib/beakerState";
 
 const Proposal: NextPage = () => {
@@ -206,6 +207,7 @@ const Proposal: NextPage = () => {
   );
 };
 
+// register action components
 const actionFormMap: Record<
   string,
   React.FC<{ onSubmitForm: (msg: ExecuteMsg) => void }> | undefined
@@ -218,6 +220,7 @@ const actionFormMap: Record<
   blacklist: BlacklistForm,
   set_freezer: SetFreezerForm,
   freeze: FreezeForm,
+  set_denom_metadata: SetDenomMetadataForm,
 };
 
 const AddAction = ({
