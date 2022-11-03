@@ -7,7 +7,7 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import { ExecuteMsg } from "cw-tokenfactory-issuer-sdk/types/contracts/TokenfactoryIssuer.types";
-import { FieldValues } from "react-hook-form";
+import { FieldValues, Path } from "react-hook-form";
 import { useDenom } from "../api/tokenfactoryIssuer";
 import {
   assertMsgType,
@@ -36,11 +36,13 @@ export const SetDenomMetadataForm = ({
           name: assertName("base"),
           isRequired: true,
           component: BaseField,
+          helperText: "base denom, can't be changed",
         },
         {
           name: assertName("denom_units"),
           isRequired: true,
           component: DenomUnitField,
+          helperText: `a denom could have multiple units with different exponents and aliases. each line represents a unit describe in form of "<denom> | <exponent> | <aliases[0]>,<aliases[1]>,..." where aliases can be omitted to just "<denom> | <exponent>"`,
         },
         {
           name: assertName("description"),
@@ -50,9 +52,9 @@ export const SetDenomMetadataForm = ({
         {
           name: assertName("display"),
           isRequired: true,
-          component: TextField,
+          component: DisplayField,
           helperText:
-            "display indicates the suggested denom that should be displayed in clients.",
+            "display indicates the suggested denom that should be displayed in clients. the suggested denom must exists in denom_units",
         },
         {
           name: assertName("name"),
@@ -173,6 +175,49 @@ export function DenomUnitField<Values extends FieldValues>({
 
       {/* @ts-ignore */}
       <ValidateError message={error || errors[fieldName]?.message} />
+      {typeof helperText !== "undefined" && (
+        <FormHelperText>{helperText}</FormHelperText>
+      )}
+    </FormControl>
+  );
+}
+
+export function DisplayField<Values extends FieldValues>({
+  fieldName,
+  register,
+  errors,
+  isSubmitting,
+  isRequired,
+  getValues,
+  helperText,
+}: FieldProps<Values>) {
+  const fieldNameString = String(fieldName);
+  return (
+    <FormControl isRequired={isRequired} my="5">
+      <FormLabel>{fieldNameString}</FormLabel>
+      <Input
+        type="text"
+        id={fieldNameString}
+        disabled={isSubmitting}
+        {...register(fieldName, {
+          required: isRequired && `"${fieldNameString}" is required`,
+          validate: (value: string) => {
+            const denom_units = getValues("denom_units" as Path<Values>);
+            const denoms = denom_units
+              .split("\n")
+              .map((d: string) => extractDenomUnits(d).denom);
+
+            const isDisplayADenom = denoms.some(
+              (denom: string) => denom === value
+            );
+            if (!isDisplayADenom) {
+              return `display must be one of: ${denoms.join(", ")}`;
+            }
+          },
+        })}
+      />
+      {/* @ts-ignore */}
+      <ValidateError message={errors[fieldName]?.message} />
       {typeof helperText !== "undefined" && (
         <FormHelperText>{helperText}</FormHelperText>
       )}

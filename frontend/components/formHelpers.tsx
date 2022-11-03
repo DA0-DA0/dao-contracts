@@ -20,6 +20,7 @@ import {
   FieldPath,
   FieldValues,
   useForm,
+  UseFormGetValues,
   UseFormRegister,
 } from "react-hook-form";
 import { getPrefix } from "../lib/conf";
@@ -59,6 +60,7 @@ export function ProposalMsgForm<
     handleSubmit,
     register,
     reset,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<Values>();
   const onSubmit = async (values: Values) => {
@@ -96,6 +98,7 @@ export function ProposalMsgForm<
             isSubmitting={isSubmitting}
             isRequired={isRequired}
             helperText={helperText}
+            getValues={getValues}
           />
         ))}
         <AddToProposalButton isSubmitting={isSubmitting} />
@@ -122,6 +125,7 @@ export type FieldProps<Values extends FieldValues> = {
   errors: FieldErrors<Values>;
   isSubmitting: boolean;
   isRequired: boolean;
+  getValues: UseFormGetValues<Values>;
   helperText?: string;
 };
 
