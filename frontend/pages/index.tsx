@@ -20,7 +20,7 @@ import {
 } from "@chakra-ui/react";
 import type { NextPage } from "next";
 import Head from "next/head";
-import { useBalance, useDenomMetadata } from "../api/bank";
+import { useBalance, useDenomMetadata, useSupply } from "../api/bank";
 import { useAddress } from "../api/keplr";
 import { useDenom, useOwner } from "../api/tokenfactoryIssuer";
 import Blacklistng from "../components/blacklisting";
@@ -39,6 +39,8 @@ const Home: NextPage = () => {
   const { data: denomMetadata, error: denomMetadataErr } = useDenomMetadata(
     denomRes?.denom || ""
   );
+
+  const { data: supply, error: supplyErr } = useSupply(denomRes?.denom || "");
 
   const metadata = denomMetadata?.metadata;
 
@@ -63,7 +65,7 @@ const Home: NextPage = () => {
               <Table variant="simple">
                 <Tbody>
                   <Tr>
-                    <Td>denom</Td>
+                    <Td>base denom</Td>
                     <Td>{denomRes?.denom}</Td>
                   </Tr>
                   <Tr>
@@ -85,6 +87,14 @@ const Home: NextPage = () => {
                   <Tr>
                     <Td>symbol</Td>
                     <Td>{metadata?.symbol}</Td>
+                  </Tr>
+                  <Tr>
+                    <Td>supply</Td>
+                    <Td>{supply?.amount?.amount}</Td>
+                  </Tr>
+                  <Tr>
+                    <Td>my token ({address?.substring(0, 10)}...)</Td>
+                    <Td>{balance?.balance?.amount}</Td>
                   </Tr>
                 </Tbody>
               </Table>
