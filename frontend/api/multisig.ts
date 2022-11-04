@@ -132,7 +132,7 @@ export const useProposal = (
   disableFetch: boolean = false
 ) =>
   useSWR(
-    "/cw3-flex-multisig/proposal",
+    `/cw3-flex-multisig/proposal/${proposal_id}`,
     disableFetch
       ? async function (): Promise<JsonObject> {}
       : () => getProposal(proposal_id)
@@ -144,7 +144,7 @@ export const useVotes = (
   limit: number | undefined
 ) =>
   useSWR(
-    "/cw3-flex-multisig/votes",
+    `/cw3-flex-multisig/votes/${proposal_id}/${start_after}/${limit}`,
 
     () => listVotes(proposal_id, start_after, limit)
   );
@@ -161,7 +161,7 @@ export const useReverseProposals = (
   limit: number | undefined
 ) =>
   useSWR(
-    "/cw3-flex-multisig/reverse-proposals",
+    `/cw3-flex-multisig/reverse-proposals/${start_before}/${limit}`,
 
     () => reverseProposals(start_before, limit)
   );

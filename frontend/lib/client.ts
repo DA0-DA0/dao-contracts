@@ -1,5 +1,8 @@
 import { CosmWasmClient, GasPrice, setupWebKeplr } from "cosmwasm";
+import { osmosis } from "osmojs";
 import { getChainId, getRpcEndpoint } from "./conf";
+
+const { createRPCQueryClient } = osmosis.ClientFactory;
 
 export const getClient = () => {
   const endpoint = getRpcEndpoint();
@@ -32,3 +35,8 @@ export const getSigningClient = () =>
     gasPrice: GasPrice.fromString("0uosmo"),
     chainId: getChainId(),
   });
+
+export const getOsmoClient = () => {
+  const rpcEndpoint = getRpcEndpoint();
+  return createRPCQueryClient({ rpcEndpoint });
+};
