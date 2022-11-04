@@ -131,24 +131,26 @@ const Home: NextPage = () => {
             </TableContainer>
           </Skeleton>
         </Box>
-        <Tabs variant="line" colorScheme="blackAlpha">
-          <TabList>
-            <Tab>Minting</Tab>
-            <Tab>Blacklisting</Tab>
-            <Tab>Burning</Tab>
-          </TabList>
-          <TabPanels>
-            <TabPanel>
-              <Minting></Minting>
-            </TabPanel>
-            <TabPanel>
-              <Blacklistng></Blacklistng>
-            </TabPanel>
-            <TabPanel>
-              <Burning></Burning>
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
+        {process.env.NEXT_PUBLIC_TOGGLE_ALLOWANCE && (
+          <Tabs variant="line" colorScheme="blackAlpha">
+            <TabList>
+              <Tab>Minting</Tab>
+              <Tab>Blacklisting</Tab>
+              <Tab>Burning</Tab>
+            </TabList>
+            <TabPanels>
+              <TabPanel>
+                <Minting></Minting>
+              </TabPanel>
+              <TabPanel>
+                <Blacklistng></Blacklistng>
+              </TabPanel>
+              <TabPanel>
+                <Burning></Burning>
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        )}
       </VStack>
     </Center>
   );
