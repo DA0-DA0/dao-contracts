@@ -241,10 +241,10 @@ pub fn execute_unstake(
 
 pub fn execute_claim_nfts(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    let nfts = NFT_CLAIMS.claim_nfts(deps.storage, &info.sender, &_env.block)?;
+    let nfts = NFT_CLAIMS.claim_nfts(deps.storage, &info.sender, &env.block)?;
     if nfts.is_empty() {
         return Err(ContractError::NothingToClaim {});
     }
@@ -373,12 +373,12 @@ pub fn query_staked_balance_at_height(
 ) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&address)?;
     let height = height.unwrap_or(env.block.height);
-    let nft_collection = STAKED_NFTS_PER_OWNER
+    let staked_nfts = STAKED_NFTS_PER_OWNER
         .may_load_at_height(deps.storage, address, height)?
         .unwrap_or_default();
 
     to_binary(&StakedBalanceAtHeightResponse {
-        balance: Uint128::from(u128::try_from(nft_collection.len()).unwrap()),
+        balance: Uint128::new(staked_nfts.len() as u128),
         height,
     })
 }
@@ -391,10 +391,10 @@ pub fn query_voting_power_at_height(
 ) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&address)?;
     let height = height.unwrap_or(env.block.height);
-    let collection = STAKED_NFTS_PER_OWNER
+    let staked_nfts = STAKED_NFTS_PER_OWNER
         .may_load_at_height(deps.storage, address, height)?
         .unwrap_or_default();
-    let power = Uint128::new(collection.len() as u128);
+    let power = Uint128::new(staked_nfts.len() as u128);
 
     to_binary(&cwd_interface::voting::VotingPowerAtHeightResponse { power, height })
 }
@@ -454,7 +454,8 @@ pub fn query_list_stakers(
 
     // Type decoration here isn't strictly needed but we want to make
     // sure the return type of this query doesn't change due to a code
-    // change elsewhere that gets hidden away by generics.
+    // change elsewhere that gets hidden away by generics as we call
+    // to_binary immediately which has weak type requirementse.
     let res: Vec<Addr> = cw_paginate::paginate_snapshot_map_keys(
         deps,
         &STAKED_NFTS_PER_OWNER,

@@ -12,10 +12,12 @@ use crate::state::Config;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // Owner can update all configs including changing the owner. This
-    // will generally be a DAO.
+    /// May change unstaking duration and add hooks.
     pub owner: Option<Admin>,
+    /// Address of the cw721 NFT contract that may be staked.
     pub nft_address: String,
+    /// Amount of time between unstaking and tokens being
+    /// avaliable. To unstake with no delay, leave as `None`.
     pub unstaking_duration: Option<Duration>,
 }
 
