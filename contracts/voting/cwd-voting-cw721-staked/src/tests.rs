@@ -1,7 +1,5 @@
-use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
-use crate::msg::{
-    ExecuteMsg, MigrateMsg, QueryMsg, StakedBalanceAtHeightResponse, TotalStakedAtHeightResponse,
-};
+use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::msg::{ExecuteMsg, QueryMsg};
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
 use anyhow::Result as AnyResult;
@@ -78,7 +76,6 @@ fn instantiate_staking(app: &mut App, cw721: Addr, unstaking_duration: Option<Du
         owner: Some(Admin::Address {
             addr: "owner".to_string(),
         }),
-        manager: Some("manager".to_string()),
         nft_address: cw721.to_string(),
         unstaking_duration,
     };
@@ -103,20 +100,6 @@ fn setup_test_case(app: &mut App, unstaking_duration: Option<Duration>) -> (Addr
     (staking_addr, cw721_addr)
 }
 
-fn query_staked_balance<T: Into<String>, U: Into<String>>(
-    app: &App,
-    contract_addr: T,
-    address: U,
-) -> Uint128 {
-    let msg = QueryMsg::StakedBalanceAtHeight {
-        address: address.into(),
-        height: None,
-    };
-    let result: StakedBalanceAtHeightResponse =
-        app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-    result.balance
-}
-
 fn query_voting_power<T: Into<String>, U: Into<String>>(
     app: &App,
     contract_addr: T,
@@ -133,15 +116,12 @@ fn query_voting_power<T: Into<String>, U: Into<String>>(
 }
 
 fn query_config<T: Into<String>>(app: &App, contract_addr: T) -> Config {
-    let msg = QueryMsg::GetConfig {};
+    let msg = QueryMsg::Config {};
     app.wrap().query_wasm_smart(contract_addr, &msg).unwrap()
 }
 
-fn query_total_staked<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
-    let msg = QueryMsg::TotalStakedAtHeight { height: None };
-    let result: TotalStakedAtHeightResponse =
-        app.wrap().query_wasm_smart(contract_addr, &msg).unwrap();
-    result.total
+fn query_total_power<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
+    query_total_power_at_height(app, contract_addr, None)
 }
 
 fn query_total_power_at_height<T: Into<String>>(
@@ -207,12 +187,10 @@ fn update_config(
     staking_addr: &Addr,
     info: MessageInfo,
     owner: Option<Addr>,
-    manager: Option<Addr>,
     duration: Option<Duration>,
 ) -> AnyResult<AppResponse> {
     let msg = ExecuteMsg::UpdateConfig {
         owner: owner.map(|a| a.to_string()),
-        manager: manager.map(|a| a.to_string()),
         duration,
     };
     app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
@@ -248,7 +226,6 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner2")),
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap();
@@ -264,74 +241,9 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner3")),
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap_err();
-
-    // Add manager
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(100)),
-    )
-    .unwrap();
-
-    let config = query_config(&app, &staking_addr);
-
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2".to_string())));
-    assert_eq!(config.manager, Some(Addr::unchecked("manager".to_string())));
-
-    // Manager can update unstaking duration
-    let info = mock_info("manager", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(50)),
-    )
-    .unwrap();
-    let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2".to_string())));
-    assert_eq!(config.unstaking_duration, Some(Duration::Height(50)));
-
-    // Manager cannot update owner
-    let info = mock_info("manager", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("manager")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(50)),
-    )
-    .unwrap_err();
-
-    // Manager can update manager
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        None,
-        Some(Duration::Height(50)),
-    )
-    .unwrap();
-
-    let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2".to_string())));
-    assert_eq!(config.manager, None);
 
     // Remove owner
     let info = mock_info("owner2", &[]);
@@ -340,7 +252,6 @@ fn test_update_config() {
         &mut app,
         &staking_addr,
         info,
-        None,
         None,
         Some(Duration::Height(100)),
     )
@@ -353,7 +264,6 @@ fn test_update_config() {
         &mut app,
         &staking_addr,
         info,
-        None,
         None,
         Some(Duration::Height(100)),
     )
@@ -368,7 +278,6 @@ fn test_update_config() {
         &mut app,
         &staking_addr,
         info,
-        None,
         None,
         Some(Duration::Height(100)),
     )
@@ -388,7 +297,6 @@ fn test_instantiate_with_instantiator_owner() {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
-            manager: Some("manager".to_string()),
             nft_address: cw721_addr.to_string(),
             unstaking_duration: None,
         };
@@ -456,10 +364,6 @@ fn test_staking() {
     // the next block. This protects us from flash loan hostile
     // takeovers.
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
-        Uint128::zero()
-    );
-    assert_eq!(
         query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::zero()
     );
@@ -467,13 +371,10 @@ fn test_staking() {
     app.update_block(next_block);
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::from(1u128)
     );
-    assert_eq!(
-        query_total_staked(&app, &staking_addr),
-        Uint128::from(1u128)
-    );
+    assert_eq!(query_total_power(&app, &staking_addr), Uint128::from(1u128));
     assert_eq!(
         query_total_power_at_height(&app, &staking_addr, None),
         Uint128::new(1)
@@ -538,13 +439,10 @@ fn test_staking() {
     app.update_block(next_block);
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR2),
+        query_voting_power(&app, &staking_addr, ADDR2, None),
         Uint128::from(1u128)
     );
-    assert_eq!(
-        query_total_staked(&app, &staking_addr),
-        Uint128::from(2u128)
-    );
+    assert_eq!(query_total_power(&app, &staking_addr), Uint128::from(2u128));
 
     // Can't unstake other's staked
     let info = mock_info(ADDR2, &[]);
@@ -557,16 +455,13 @@ fn test_staking() {
     app.update_block(next_block);
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR2),
+        query_voting_power(&app, &staking_addr, ADDR2, None),
         Uint128::from(0u128)
     );
-    assert_eq!(
-        query_total_staked(&app, &staking_addr),
-        Uint128::from(1u128)
-    );
+    assert_eq!(query_total_power(&app, &staking_addr), Uint128::from(1u128));
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1),
+        query_voting_power(&app, &staking_addr, ADDR1, None),
         Uint128::from(1u128)
     );
 }
@@ -726,13 +621,10 @@ fn test_unstaking_with_claims() {
     app.update_block(next_block);
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1),
+        query_voting_power(&app, &staking_addr, ADDR1, None),
         Uint128::from(1u128)
     );
-    assert_eq!(
-        query_total_staked(&app, &staking_addr),
-        Uint128::from(1u128)
-    );
+    assert_eq!(query_total_power(&app, &staking_addr), Uint128::from(1u128));
     assert_eq!(
         get_nft_balance(&app, &cw721_addr, ADDR1),
         Uint128::from(0u128)
@@ -744,13 +636,10 @@ fn test_unstaking_with_claims() {
     app.update_block(next_block);
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1),
+        query_voting_power(&app, &staking_addr, ADDR1, None),
         Uint128::from(0u128)
     );
-    assert_eq!(
-        query_total_staked(&app, &staking_addr),
-        Uint128::from(0u128)
-    );
+    assert_eq!(query_total_power(&app, &staking_addr), Uint128::from(0u128));
     assert_eq!(
         get_nft_balance(&app, &cw721_addr, ADDR1),
         Uint128::from(0u128)
@@ -770,13 +659,10 @@ fn test_unstaking_with_claims() {
     claim_nfts(&mut app, &staking_addr, info).unwrap();
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1),
+        query_voting_power(&app, &staking_addr, ADDR1, None),
         Uint128::from(0u128)
     );
-    assert_eq!(
-        query_total_staked(&app, &staking_addr),
-        Uint128::from(0u128)
-    );
+    assert_eq!(query_total_power(&app, &staking_addr), Uint128::from(0u128));
     assert_eq!(
         get_nft_balance(&app, &cw721_addr, ADDR1),
         Uint128::from(1u128)
@@ -872,13 +758,25 @@ fn multiple_address_staking() {
     .unwrap();
     app.update_block(next_block);
 
-    assert_eq!(query_staked_balance(&app, &staking_addr, ADDR1), amount1);
-    assert_eq!(query_staked_balance(&app, &staking_addr, ADDR2), amount1);
-    assert_eq!(query_staked_balance(&app, &staking_addr, ADDR3), amount1);
-    assert_eq!(query_staked_balance(&app, &staking_addr, ADDR4), amount1);
+    assert_eq!(
+        query_voting_power(&app, &staking_addr, ADDR1, None),
+        amount1
+    );
+    assert_eq!(
+        query_voting_power(&app, &staking_addr, ADDR2, None),
+        amount1
+    );
+    assert_eq!(
+        query_voting_power(&app, &staking_addr, ADDR3, None),
+        amount1
+    );
+    assert_eq!(
+        query_voting_power(&app, &staking_addr, ADDR4, None),
+        amount1
+    );
 
     assert_eq!(
-        query_total_staked(&app, &staking_addr),
+        query_total_power(&app, &staking_addr),
         amount1.checked_mul(Uint128::new(4)).unwrap()
     );
 
@@ -937,11 +835,11 @@ fn test_simple_unstaking_with_duration() {
     .unwrap();
     app.update_block(next_block);
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::from(1u128)
     );
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::from(1u128)
     );
 
@@ -958,11 +856,11 @@ fn test_simple_unstaking_with_duration() {
     app.update_block(next_block);
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::from(0u128)
     );
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR2.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR2.to_string(), None),
         Uint128::from(0u128)
     );
 
@@ -1046,11 +944,11 @@ fn test_simple_unstaking_without_rewards_with_duration() {
     .unwrap();
     app.update_block(next_block);
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::from(1u128)
     );
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::from(1u128)
     );
 
@@ -1067,11 +965,11 @@ fn test_simple_unstaking_without_rewards_with_duration() {
     app.update_block(next_block);
 
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR1.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR1.to_string(), None),
         Uint128::from(0u128)
     );
     assert_eq!(
-        query_staked_balance(&app, &staking_addr, ADDR2.to_string()),
+        query_voting_power(&app, &staking_addr, ADDR2.to_string(), None),
         Uint128::from(0u128)
     );
 
@@ -1157,7 +1055,12 @@ fn test_unstake_that_which_you_do_not_own() {
             .downcast()
             .unwrap();
 
-    assert_eq!(err, ContractError::NotStaked {});
+    assert_eq!(
+        err,
+        ContractError::NotStaked {
+            token_id: NFT_ID1.to_string()
+        }
+    );
 
     // Try to unstaking the same token more than once as the owner of
     // the token.
@@ -1172,9 +1075,14 @@ fn test_unstake_that_which_you_do_not_own() {
     .downcast()
     .unwrap();
 
-    assert_eq!(res, ContractError::NotStaked {});
+    assert_eq!(
+        res,
+        ContractError::NotStaked {
+            token_id: NFT_ID1.to_string()
+        }
+    );
 
-    let total_staked = query_total_staked(&app, &staking_addr);
+    let total_staked = query_total_power(&app, &staking_addr);
     assert_eq!(total_staked, Uint128::new(2));
 
     // Legally unstake more than one token at once and make sure the
@@ -1193,16 +1101,6 @@ fn test_unstake_that_which_you_do_not_own() {
     let voting_power = query_voting_power(&app, &staking_addr, ADDR1, None);
     assert_eq!(voting_power, Uint128::zero());
 
-    let total_staked = query_total_staked(&app, &staking_addr);
+    let total_staked = query_total_power(&app, &staking_addr);
     assert_eq!(total_staked, Uint128::zero());
-}
-
-#[test]
-pub fn test_migrate_update_version() {
-    let mut deps = mock_dependencies();
-    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
-    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
-    let version = cw2::get_contract_version(&deps.storage).unwrap();
-    assert_eq!(version.version, CONTRACT_VERSION);
-    assert_eq!(version.contract, CONTRACT_NAME);
 }

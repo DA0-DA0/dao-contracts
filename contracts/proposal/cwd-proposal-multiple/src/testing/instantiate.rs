@@ -151,7 +151,6 @@ pub fn _instantiate_with_staked_cw721_governance(
             code_id: cw721_stake_id,
             msg: to_binary(&cwd_voting_cw721_staked::msg::InstantiateMsg {
                 owner: Some(Admin::CoreModule {}),
-                manager: None,
                 unstaking_duration: None,
                 nft_address: nft_address.to_string(),
             })
