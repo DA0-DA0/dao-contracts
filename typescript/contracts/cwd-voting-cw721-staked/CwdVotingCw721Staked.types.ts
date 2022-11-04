@@ -17,7 +17,6 @@ export type Duration = {
   time: number;
 };
 export interface InstantiateMsg {
-  manager?: string | null;
   nft_address: string;
   owner?: Admin | null;
   unstaking_duration?: Duration | null;
@@ -33,7 +32,6 @@ export type ExecuteMsg = {
 } | {
   update_config: {
     duration?: Duration | null;
-    manager?: string | null;
     owner?: string | null;
   };
 } | {
@@ -52,27 +50,13 @@ export interface Cw721ReceiveMsg {
   token_id: string;
 }
 export type QueryMsg = {
-  staked_balance_at_height: {
-    address: string;
-    height?: number | null;
-  };
-} | {
-  total_staked_at_height: {
-    height?: number | null;
-  };
-} | {
-  get_config: {};
+  config: {};
 } | {
   nft_claims: {
     address: string;
   };
 } | {
-  get_hooks: {};
-} | {
-  list_stakers: {
-    limit?: number | null;
-    start_after?: string | null;
-  };
+  hooks: {};
 } | {
   staked_nfts: {
     address: string;
@@ -91,15 +75,13 @@ export type QueryMsg = {
 } | {
   info: {};
 };
-export interface MigrateMsg {}
 export type Addr = string;
 export interface Config {
-  manager?: Addr | null;
   nft_address: Addr;
   owner?: Addr | null;
   unstaking_duration?: Duration | null;
 }
-export interface GetHooksResponse {
+export interface HooksResponse {
   hooks: string[];
 }
 export interface InfoResponse {
@@ -109,7 +91,6 @@ export interface ContractVersion {
   contract: string;
   version: string;
 }
-export type ArrayOfAddr = Addr[];
 export type Expiration = {
   at_height: number;
 } | {
@@ -126,19 +107,11 @@ export interface NftClaim {
   release_at: Expiration;
   token_id: string;
 }
-export type Uint128 = string;
-export interface StakedBalanceAtHeightResponse {
-  balance: Uint128;
-  height: number;
-}
 export type ArrayOfString = string[];
+export type Uint128 = string;
 export interface TotalPowerAtHeightResponse {
   height: number;
   power: Uint128;
-}
-export interface TotalStakedAtHeightResponse {
-  height: number;
-  total: Uint128;
 }
 export interface VotingPowerAtHeightResponse {
   height: number;

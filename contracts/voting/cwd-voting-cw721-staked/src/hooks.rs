@@ -35,6 +35,7 @@ pub fn unstake_hook_msgs(
     let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
         StakeChangedHookMsg::Unstake { addr, token_ids },
     ))?;
+
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.into_string(),
@@ -88,7 +89,6 @@ mod tests {
                 deps.as_mut().storage,
                 &Config {
                     owner: Some(Addr::unchecked("ekez")),
-                    manager: None,
                     nft_address: Addr::unchecked("ekez-token"),
                     unstaking_duration: None,
                 },
