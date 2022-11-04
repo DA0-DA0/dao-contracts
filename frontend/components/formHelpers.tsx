@@ -43,7 +43,7 @@ export function assertMsgType<M extends AllKeys<ExecuteMsg>>(m: M) {
 }
 
 export function ProposalMsgForm<
-  MessageType extends AllKeys<ExecuteMsg>,
+  MessageType extends AllKeys<ExecuteMsg> | "update_admin" | "update_members",
   Values extends FieldValues
 >({
   msgType,
@@ -218,10 +218,56 @@ export function AddressField<Values extends FieldValues>({
             try {
               const account = fromBech32(address);
               if (account.prefix !== getPrefix()) {
-                return `Invalid address: prefix must be ${getPrefix()}`;
+                return `Invalid address "${address}": prefix must be ${getPrefix()}`;
               }
             } catch (e) {
-              return `Invalid address: ${e}`;
+              return `Invalid address "${address}": ${e}`;
+            }
+          },
+        })}
+      />
+      {/* @ts-ignore */}
+      <ValidateError message={errors[fieldName]?.message} />
+    </FormControl>
+  );
+}
+
+export function MultipleAddressField<Values extends FieldValues>({
+  fieldName,
+  register,
+  errors,
+  isSubmitting,
+  isRequired,
+}: FieldProps<Values>) {
+  const fieldNameString = String(fieldName);
+  return (
+    <FormControl isRequired={isRequired} my="5">
+      <FormLabel>{fieldNameString}</FormLabel>
+      <Input
+        type="text"
+        id={fieldNameString}
+        disabled={isSubmitting}
+        {...register(fieldName, {
+          required: isRequired && `"${fieldNameString}" is required`,
+          validate: (addressesStr: string) => {
+            if (addressesStr.trim() === "") {
+              return true;
+            }
+
+            const addresses = addressesStr
+              .split(",")
+              .map((a: string) => a.trim());
+
+            for (let i in addresses) {
+              const address = addresses[i];
+              try {
+                const account = fromBech32(address);
+                if (account.prefix !== getPrefix()) {
+                  return `Invalid address "${address}": prefix must be ${getPrefix()}`;
+                }
+              } catch (e) {
+                return `Invalid address "${address}": ${e}`;
+              }
             }
           },
         })}

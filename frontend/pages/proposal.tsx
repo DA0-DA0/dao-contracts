@@ -29,6 +29,7 @@ import Action from "../components/action";
 import { BlacklistForm, SetBlacklisterForm } from "../components/blacklisting";
 import { BurnForm, SetBurnerForm } from "../components/burning";
 import { FreezeForm, SetFreezerForm } from "../components/freezing";
+import * as group from "../components/group";
 import { MintForm, SetMinterForm } from "../components/minting";
 import { SetDenomMetadataForm } from "../components/setDenomMetadata";
 import { getContractAddr } from "../lib/beakerState";
@@ -69,9 +70,20 @@ const Proposal: NextPage = () => {
   });
 
   const submitProposal = async () => {
-    const contract_addr = getContractAddr("tokenfactory-issuer");
+    const tokenfactory_issuer_addr = getContractAddr("tokenfactory-issuer");
+    const cw4_group_addr = getContractAddr("cw4-group");
+
+    const groupMsgs = ["update_members"];
+
     const cosmosMsgs = actions.map((action) => {
       const msg = Buffer.from(JSON.stringify(action)).toString("base64");
+      const msgType = Object.keys(action)[0];
+
+      let contract_addr = tokenfactory_issuer_addr;
+      if (groupMsgs.some((m: string) => m === msgType)) {
+        contract_addr = cw4_group_addr;
+      }
+
       // wrap in a cosmwasm msg structure
       return {
         wasm: {
@@ -212,15 +224,16 @@ const actionFormMap: Record<
   string,
   React.FC<{ onSubmitForm: (msg: ExecuteMsg) => void }> | undefined
 > = {
-  set_minter: SetMinterForm,
-  mint: MintForm,
-  set_burner: SetBurnerForm,
-  burn: BurnForm,
-  set_blacklister: SetBlacklisterForm,
-  blacklist: BlacklistForm,
-  set_freezer: SetFreezerForm,
-  freeze: FreezeForm,
-  set_denom_metadata: SetDenomMetadataForm,
+  "issuer::set_minter": SetMinterForm,
+  "issuer::mint": MintForm,
+  "issuer::set_burner": SetBurnerForm,
+  "issuer::burn": BurnForm,
+  "issuer::set_blacklister": SetBlacklisterForm,
+  "issuer::blacklist": BlacklistForm,
+  "issuer::set_freezer": SetFreezerForm,
+  "issuer::freeze": FreezeForm,
+  "issuer::set_denom_metadata": SetDenomMetadataForm,
+  "group::update_members": group.UpdateMembers,
 };
 
 const AddAction = ({
