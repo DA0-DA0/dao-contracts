@@ -1,55 +1,21 @@
-# DAO DAO bug reporting and feature requests
+If you find a security vulnerability in our contracts it's a very big
+deal and we'd like to work with you to get it fixed. To keep the DAOs
+that use DAO DAO safe, we ask that you don't mention it publicly and
+get in touch with one of us.
 
-The DAO DAO core development team uses GitHub to manage feature requests and bugs. This is done via GitHub Issues.
+For Discord, please DM:
 
-## Triage and progress 🔜
+- ekez#9732 (PST, often up late so may be good for Eastern European and Asian time zone mornings)
+- elsehow#3115 (PST, more avaliable than ekez in PST mornings)
+- Callum#5521 (UTC)
 
-Issues added to GitHub will be triaged as they come in.
+DM as many of us as you need to get a response.
 
-Tracking of in-flight issues will be done through the DAO DAO project board, but of course we reserve the right to not make a public issue if there is a security implication in doing so.
+If you're concerned about Discord's phone number requirements feel
+free to email a report to ekez at `ekez@withoutdoing.com`. That email
+uses [gsuite](https://workspace.google.com/); if you're worried about
+Google you can use this public key:
 
-## Feature request 🚀
-
-For a feature request, e.g. module inclusion, please make a GitHub issue. Clearly state your use case and what value it will bring to other users of DAO DAO.
-
-## Standard priority bug 🐛
-
-For a bug that is non-sensitive and/or operational in nature rather than a critical vulnerability, please add it as a GitHub issue.
-
-If it is not triaged in a couple of days, feel free to tag `@Ben2x4`, `@ekez`, or `@jakehartnell`.
-
-## Critical bug or security issue 💥
-
-If you're here because you're trying to figure out how to notify us of a security issue, go to [Discord](https://discord.gg/wHdzjS5vXx), and alert the core engineers:
-
-
-- Jake (Meow) `Meow Stargaze ✨🔭#1736`
-- Alex (the-frey) `the-frey#8626`
-- ben2x4 `Ben2x4#4071`
-- ekez `ekez#9732`
-- elsehow `elsehow#1825`
-
-Please avoid opening public issues on GitHub that contain information about a potential security vulnerability as this makes it difficult to reduce the impact and harm of valid security issues.
-
-### Coordinated Vulnerability Disclosure Policy
-
-We ask security researchers to keep vulnerabilities and communications around vulnerability submissions private and confidential until a patch is developed. In addition to this, we ask that you:
-
-- Allow us a reasonable amount of time to correct or address security vulnerabilities.
-- Avoid exploiting any vulnerabilities that you discover.
-- Demonstrate good faith by not disrupting or degrading Juno’s network, data, or services.
-
-### Vulnerability Disclosure Process
-
-DAO DAO uses the following disclosure process:
-
-- Once a security report is received, the DAO DAO core development team works to verify the issue.
-- Patches are prepared for eligible releases in private repositories.
-- We notify the community that a security release is coming. Notifications can include Discord messages, tweets, and emails to partners.
-- 24 hours following this notification, the fixes are applied publicly and new releases are issued.
-- Once releases are available for DAO DAO, we notify the community, again, through the same channels as above. We also publish a Security Advisory on Github, as long as the Security Advisory does not include any information on how to exploit these vulnerabilities beyond what information is already available in the patch itself.
-- Once the community is notified, we will pay out any relevant bug bounties to submitters.
-- One week after the releases go out, we will publish a post with further details on the vulnerability as well as our response to it.
-
-This process can take some time. Every effort will be made to handle the bug in as timely a manner as possible. However, it's important that we follow the process described above to ensure that disclosures are handled consistently and to keep DAO DAO and Juno secure.
-
+```
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCvCEX7GpPmUji7jR5XMDJOOSVQM2ne7nJB8OfE1xqEPBruOin1g3t9mLdQmVUkARHOW2lCup4UUeO1F/wAbfSk/CrpxHM7ErtD1FEzbOv/wBUWpsvne6dGfXw/zPQplUJ7Lk04Iln4WAgfxTuXEgJnXf/HRHovWaTWX+Eo3Br2vWQqcUc99Cy1Rvf8QTHT/UgDnqRcx67Yq1ndHAXBhNWcXGysgL4qyt79Q3rB+TR3yPugCBBMxvzEljFGCUc7P4jI+sXVFNzrghLOVwaGGfVDS66FFzEY0Hg/odfK4NdCSjGgHwU8y9oRjkgZFzhsdLp94pkLIAX143+UOribLlrOGSr/1OtJA4aIfenJZVE2vt/A4HPKtlBP6X6figOS+QWgVwGY4tzoeEH6oqCjniF5EgtB741PDzMlnpFcrkrdAeM6WqBkxeyf5tEebahsMEI3ZNkMjKVpBCJfe6Ms4yFA815MVKsBPHWWaJ4XhvhnbinENcFU3rBflOvSsjx0MaxkLb2+Ve1NiEZ3Zj82Nycf1cWtOp0n5LCjEtfCYvzfIy6BXoqAC97gAKf++13t/+3ECJCIPcoXKFWMiXfjSt/GiQwhbmAGWNX+pbpqWMd7QeqT1cQzvAdrvFnOmFe8/wymovYeEaM0Qv7w1gbPYat9eCbBN6IGqX/aJiSCokYl3Q==
+```
