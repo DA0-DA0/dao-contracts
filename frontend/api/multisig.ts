@@ -127,6 +127,21 @@ export const threshold = async () => {
   return res;
 };
 
+export const voters = async (
+  start_after: string | undefined,
+  limit: number | undefined
+): Promise<{ voters: { addr: string; weight: number }[] }> => {
+  const client = await getClient();
+  const res = await client.queryContractSmart(
+    getContractAddr("cw3-flex-multisig"),
+    {
+      list_voters: { start_after, limit },
+    }
+  );
+
+  return res;
+};
+
 export const useProposal = (
   proposal_id: number,
   disableFetch: boolean = false
@@ -164,4 +179,14 @@ export const useReverseProposals = (
     `/cw3-flex-multisig/reverse-proposals`,
 
     () => reverseProposals(start_before, limit)
+  );
+
+export const useVoters = (
+  start_after: string | undefined,
+  limit: number | undefined
+) =>
+  useSWR(
+    `/cw3-flex-multisig/voters`,
+
+    () => voters(start_after, limit)
   );
