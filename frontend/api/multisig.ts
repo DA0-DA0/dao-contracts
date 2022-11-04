@@ -144,7 +144,7 @@ export const useVotes = (
   limit: number | undefined
 ) =>
   useSWR(
-    `/cw3-flex-multisig/votes/${proposal_id}/${start_after}/${limit}`,
+    `/cw3-flex-multisig/votes`,
 
     () => listVotes(proposal_id, start_after, limit)
   );
@@ -161,7 +161,7 @@ export const useReverseProposals = (
   limit: number | undefined
 ) =>
   useSWR(
-    `/cw3-flex-multisig/reverse-proposals/${start_before}/${limit}`,
+    `/cw3-flex-multisig/reverse-proposals`,
 
     () => reverseProposals(start_before, limit)
   );
