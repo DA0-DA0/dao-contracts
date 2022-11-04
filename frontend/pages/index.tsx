@@ -9,6 +9,7 @@ import {
   Divider,
   Flex,
   Heading,
+  Link,
   Skeleton,
   Spacer,
   Tab,
@@ -29,6 +30,7 @@ import {
 import type { NextPage } from "next";
 import dynamic from "next/dynamic";
 import Head from "next/head";
+
 import { useEffect, useState } from "react";
 import { useBalance, useDenomMetadata, useSupply } from "../api/bank";
 import { useAddress } from "../api/keplr";
@@ -169,6 +171,17 @@ const Home: NextPage = () => {
             <Heading size="sm">Threshold</Heading>
             <Box py="3">
               <ReactJson src={threshold} name={null} enableClipboard={false} />
+              <Box fontSize="sm" fontStyle="italic">
+                Note that weight matters.{" "}
+                <Link
+                  target="_blank"
+                  href="https://docs.rs/cw-utils/latest/cw_utils/enum.ThresholdResponse.html#variants"
+                >
+                  <Button size="sm" variant="link">
+                    More info
+                  </Button>
+                </Link>
+              </Box>
             </Box>
           </Box>
           <Box py="5">
