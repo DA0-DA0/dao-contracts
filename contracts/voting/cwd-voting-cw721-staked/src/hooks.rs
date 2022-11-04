@@ -88,7 +88,6 @@ mod tests {
                 deps.as_mut().storage,
                 &Config {
                     owner: Some(Addr::unchecked("ekez")),
-                    manager: None,
                     nft_address: Addr::unchecked("ekez-token"),
                     unstaking_duration: None,
                 },

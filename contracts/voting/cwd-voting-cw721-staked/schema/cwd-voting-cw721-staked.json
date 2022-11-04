@@ -10,12 +10,6 @@
       "nft_address"
     ],
     "properties": {
-      "manager": {
-        "type": [
-          "string",
-          "null"
-        ]
-      },
       "nft_address": {
         "type": "string"
       },
@@ -190,12 +184,6 @@
                   {
                     "type": "null"
                   }
-                ]
-              },
-              "manager": {
-                "type": [
-                  "string",
-                  "null"
                 ]
               },
               "owner": {
@@ -565,16 +553,6 @@
         "nft_address"
       ],
       "properties": {
-        "manager": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "nft_address": {
           "$ref": "#/definitions/Addr"
         },

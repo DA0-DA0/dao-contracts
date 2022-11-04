@@ -30,6 +30,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let owner = msg
         .owner
         .as_ref()
@@ -38,21 +39,14 @@ pub fn instantiate(
             Admin::CoreModule {} => Ok(info.sender),
         })
         .transpose()?;
-    let manager = msg
-        .manager
-        .as_ref()
-        .map(|h| deps.api.addr_validate(h))
-        .transpose()?;
 
     let config = Config {
         owner: owner.clone(),
-        manager,
         nft_address: deps.api.addr_validate(&msg.nft_address)?,
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
     TOTAL_STAKED_NFTS.save(deps.storage, &Uint128::zero(), env.block.height)?;
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     Ok(Response::default()
         .add_attribute("method", "instantiate")
@@ -62,8 +56,7 @@ pub fn instantiate(
             owner
                 .map(|a| a.into_string())
                 .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute("manager", msg.manager.unwrap_or_else(|| "None".to_string())))
+        ))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -77,13 +70,11 @@ pub fn execute(
         ExecuteMsg::ReceiveNft(msg) => execute_stake(deps, env, info, msg),
         ExecuteMsg::Unstake { token_ids } => execute_unstake(deps, env, info, token_ids),
         ExecuteMsg::ClaimNfts {} => execute_claim_nfts(deps, env, info),
-        ExecuteMsg::UpdateConfig {
-            owner,
-            manager,
-            duration,
-        } => execute_update_config(info, deps, owner, manager, duration),
-        ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
-        ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
+        ExecuteMsg::UpdateConfig { owner, duration } => {
+            execute_update_config(info, deps, owner, duration)
+        }
+        ExecuteMsg::AddHook { addr } => execute_add_hook(deps, info, addr),
+        ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
     }
 }
 
@@ -285,27 +276,19 @@ pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
     new_owner: Option<String>,
-    new_manager: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
+    let mut config: Config = CONFIG.load(deps.storage)?;
+
+    if config.owner.map_or(true, |owner| owner != info.sender) {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let new_owner = new_owner
         .map(|new_owner| deps.api.addr_validate(&new_owner))
         .transpose()?;
-    let new_manager = new_manager
-        .map(|new_manager| deps.api.addr_validate(&new_manager))
-        .transpose()?;
-
-    let mut config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
-        return Err(ContractError::Unauthorized {});
-    };
-
-    if Some(info.sender) != config.owner && new_owner != config.owner {
-        return Err(ContractError::OnlyOwnerCanChangeOwner {});
-    };
 
     config.owner = new_owner;
-    config.manager = new_manager;
     config.unstaking_duration = duration;
     CONFIG.save(deps.storage, &config)?;
 
@@ -317,29 +300,21 @@ pub fn execute_update_config(
                 .owner
                 .map(|a| a.to_string())
                 .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute(
-            "manager",
-            config
-                .manager
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
         ))
 }
 
 pub fn execute_add_hook(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
+    if config.owner.map_or(true, |owner| owner != info.sender) {
         return Err(ContractError::Unauthorized {});
-    };
+    }
 
-    HOOKS.add_hook(deps.storage, addr.clone())?;
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.add_hook(deps.storage, hook)?;
 
     Ok(Response::default()
         .add_attribute("action", "add_hook")
@@ -348,17 +323,16 @@ pub fn execute_add_hook(
 
 pub fn execute_remove_hook(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
+    if config.owner.map_or(true, |owner| owner != info.sender) {
         return Err(ContractError::Unauthorized {});
-    };
+    }
 
-    HOOKS.remove_hook(deps.storage, addr.clone())?;
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.remove_hook(deps.storage, hook)?;
 
     Ok(Response::default()
         .add_attribute("action", "remove_hook")

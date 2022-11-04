@@ -17,7 +17,6 @@ export type Duration = {
   time: number;
 };
 export interface InstantiateMsg {
-  manager?: string | null;
   nft_address: string;
   owner?: Admin | null;
   unstaking_duration?: Duration | null;
@@ -33,7 +32,6 @@ export type ExecuteMsg = {
 } | {
   update_config: {
     duration?: Duration | null;
-    manager?: string | null;
     owner?: string | null;
   };
 } | {
@@ -94,7 +92,6 @@ export type QueryMsg = {
 export interface MigrateMsg {}
 export type Addr = string;
 export interface Config {
-  manager?: Addr | null;
   nft_address: Addr;
   owner?: Addr | null;
   unstaking_duration?: Duration | null;

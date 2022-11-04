@@ -15,9 +15,6 @@ pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This
     // will generally be a DAO.
     pub owner: Option<Admin>,
-    // Manager can update all configs except changing the owner. This
-    // will generally be an operations multisig for a DAO.
-    pub manager: Option<String>,
     pub nft_address: String,
     pub unstaking_duration: Option<Duration>,
 }
@@ -34,7 +31,6 @@ pub enum ExecuteMsg {
     ClaimNfts {},
     UpdateConfig {
         owner: Option<String>,
-        manager: Option<String>,
         duration: Option<Duration>,
     },
     AddHook {

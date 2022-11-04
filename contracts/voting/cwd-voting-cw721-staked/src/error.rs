@@ -27,9 +27,6 @@ pub enum ContractError {
     #[error("{0}")]
     HookError(#[from] cw_controllers::HookError),
 
-    #[error("Only owner can change owner")]
-    OnlyOwnerCanChangeOwner {},
-
     #[error("Can't unstake zero NFTs.")]
     ZeroUnstake {},
 }

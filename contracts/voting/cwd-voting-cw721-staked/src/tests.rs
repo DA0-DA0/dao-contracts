@@ -78,7 +78,6 @@ fn instantiate_staking(app: &mut App, cw721: Addr, unstaking_duration: Option<Du
         owner: Some(Admin::Address {
             addr: "owner".to_string(),
         }),
-        manager: Some("manager".to_string()),
         nft_address: cw721.to_string(),
         unstaking_duration,
     };
@@ -207,12 +206,10 @@ fn update_config(
     staking_addr: &Addr,
     info: MessageInfo,
     owner: Option<Addr>,
-    manager: Option<Addr>,
     duration: Option<Duration>,
 ) -> AnyResult<AppResponse> {
     let msg = ExecuteMsg::UpdateConfig {
         owner: owner.map(|a| a.to_string()),
-        manager: manager.map(|a| a.to_string()),
         duration,
     };
     app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
@@ -248,7 +245,6 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner2")),
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap();
@@ -264,74 +260,9 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner3")),
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap_err();
-
-    // Add manager
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(100)),
-    )
-    .unwrap();
-
-    let config = query_config(&app, &staking_addr);
-
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2".to_string())));
-    assert_eq!(config.manager, Some(Addr::unchecked("manager".to_string())));
-
-    // Manager can update unstaking duration
-    let info = mock_info("manager", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(50)),
-    )
-    .unwrap();
-    let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2".to_string())));
-    assert_eq!(config.unstaking_duration, Some(Duration::Height(50)));
-
-    // Manager cannot update owner
-    let info = mock_info("manager", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("manager")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(50)),
-    )
-    .unwrap_err();
-
-    // Manager can update manager
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        None,
-        Some(Duration::Height(50)),
-    )
-    .unwrap();
-
-    let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2".to_string())));
-    assert_eq!(config.manager, None);
 
     // Remove owner
     let info = mock_info("owner2", &[]);
@@ -340,7 +271,6 @@ fn test_update_config() {
         &mut app,
         &staking_addr,
         info,
-        None,
         None,
         Some(Duration::Height(100)),
     )
@@ -353,7 +283,6 @@ fn test_update_config() {
         &mut app,
         &staking_addr,
         info,
-        None,
         None,
         Some(Duration::Height(100)),
     )
@@ -368,7 +297,6 @@ fn test_update_config() {
         &mut app,
         &staking_addr,
         info,
-        None,
         None,
         Some(Duration::Height(100)),
     )
@@ -388,7 +316,6 @@ fn test_instantiate_with_instantiator_owner() {
         let staking_code_id = app.store_code(contract_staking());
         let msg = crate::msg::InstantiateMsg {
             owner: Some(Admin::CoreModule {}),
-            manager: Some("manager".to_string()),
             nft_address: cw721_addr.to_string(),
             unstaking_duration: None,
         };
