@@ -22,7 +22,7 @@ import type { NextPage } from "next";
 import Head from "next/head";
 import { useBalance, useDenomMetadata, useSupply } from "../api/bank";
 import { useAddress } from "../api/keplr";
-import { useDenom, useOwner } from "../api/tokenfactoryIssuer";
+import { useDenom, useIsFrozen, useOwner } from "../api/tokenfactoryIssuer";
 import Blacklistng from "../components/blacklisting";
 import Burning from "../components/burning";
 import Minting from "../components/minting";
@@ -41,6 +41,7 @@ const Home: NextPage = () => {
   );
 
   const { data: supply, error: supplyErr } = useSupply(denomRes?.denom || "");
+  const { data: isFrozen, error: isFrozenErr } = useIsFrozen();
 
   const metadata = denomMetadata?.metadata;
 
@@ -71,6 +72,10 @@ const Home: NextPage = () => {
                   <Tr>
                     <Td>issuer contract owner</Td>
                     <Td>{ownerRes?.address}</Td>
+                  </Tr>
+                  <Tr>
+                    <Td>frozen</Td>
+                    <Td>{`${isFrozen?.is_frozen}`}</Td>
                   </Tr>
                   <Tr>
                     <Td>description</Td>
