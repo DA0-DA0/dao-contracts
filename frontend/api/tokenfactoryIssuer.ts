@@ -55,3 +55,9 @@ export const useBlacklistees = () =>
     const client = await getTokenIssuerQueryClient();
     return await client.blacklistees({});
   });
+
+export const useIsFrozen = () =>
+  useSWR("/tokenfactory-issuer/is-frozen", async () => {
+    const client = await getTokenIssuerQueryClient();
+    return await client.isFrozen();
+  });

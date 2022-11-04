@@ -28,7 +28,14 @@ import type { NextPage } from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { mutate } from "swr";
-import { execute, useProposal, useVotes, vote } from "../../api/multisig";
+import { useAddress } from "../../api/keplr";
+import {
+  execute,
+  useProposal,
+  useVote,
+  useVotes,
+  vote,
+} from "../../api/multisig";
 import Action from "../../components/action";
 
 const Proposal: NextPage = () => {
@@ -42,6 +49,19 @@ const Proposal: NextPage = () => {
     proposal_id,
     typeof id === "undefined"
   );
+
+  const { data: myAddress, error: myAddressError } = useAddress();
+  const {
+    data: myVote,
+    error: myVoteError,
+    mutate: mutateMyVote,
+  } = useVote(proposal_id, myAddress || "");
+
+  useEffect(() => {
+    mutateMyVote();
+  }, [mutateMyVote, myAddress]);
+
+  console.log("vote", myVote);
 
   async function broadcastTx<T>(f: () => Promise<T>) {
     setIsLoading(true);
@@ -163,51 +183,64 @@ const Proposal: NextPage = () => {
                 ))}
               </VStack>
               <Votes proposal_id={proposal_id} />
+              {myVote?.vote && (
+                <Box>
+                  You have voted: <VoteBadge vote={myVote?.vote.vote} />
+                </Box>
+              )}
               {/* vote */}
               {proposal?.status === "open" && (
-                <Box my="10">
-                  {/* <Heading size="md">Vote</Heading> */}
-                  <HStack py="5">
-                    <Button
-                      color="green"
-                      variant="outline"
-                      isLoading={isLoading}
-                      onClick={() =>
-                        broadcastTx(() => vote(proposal_id, "yes"))
-                      }
-                    >
-                      Yes
-                    </Button>
-                    <Button
-                      color="red"
-                      variant="outline"
-                      isLoading={isLoading}
-                      onClick={() => broadcastTx(() => vote(proposal_id, "no"))}
-                    >
-                      No
-                    </Button>
-                    <Button
-                      color="crimson"
-                      variant="outline"
-                      isLoading={isLoading}
-                      onClick={() =>
-                        broadcastTx(() => vote(proposal_id, "veto"))
-                      }
-                    >
-                      Veto
-                    </Button>
-                    <Button
-                      color="gray"
-                      variant="outline"
-                      isLoading={isLoading}
-                      onClick={() =>
-                        broadcastTx(() => vote(proposal_id, "abstain"))
-                      }
-                    >
-                      Abstain
-                    </Button>
-                  </HStack>
-                </Box>
+                <Skeleton isLoaded={!!proposal && !!myVote}>
+                  <Box my="10">
+                    {/* <Heading size="md">Vote</Heading> */}
+                    <HStack py="5">
+                      <Button
+                        color="green"
+                        variant="outline"
+                        isLoading={isLoading}
+                        isDisabled={myVote?.vote}
+                        onClick={() =>
+                          broadcastTx(() => vote(proposal_id, "yes"))
+                        }
+                      >
+                        Yes
+                      </Button>
+                      <Button
+                        color="red"
+                        variant="outline"
+                        isLoading={isLoading}
+                        isDisabled={myVote?.vote}
+                        onClick={() =>
+                          broadcastTx(() => vote(proposal_id, "no"))
+                        }
+                      >
+                        No
+                      </Button>
+                      <Button
+                        color="crimson"
+                        variant="outline"
+                        isLoading={isLoading}
+                        isDisabled={myVote?.vote}
+                        onClick={() =>
+                          broadcastTx(() => vote(proposal_id, "veto"))
+                        }
+                      >
+                        Veto
+                      </Button>
+                      <Button
+                        color="gray"
+                        variant="outline"
+                        isLoading={isLoading}
+                        isDisabled={myVote?.vote}
+                        onClick={() =>
+                          broadcastTx(() => vote(proposal_id, "abstain"))
+                        }
+                      >
+                        Abstain
+                      </Button>
+                    </HStack>
+                  </Box>
+                </Skeleton>
               )}
               {/* execute */}
               {proposal?.status === "passed" && (

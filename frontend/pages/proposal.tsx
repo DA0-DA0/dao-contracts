@@ -197,6 +197,7 @@ const Proposal: NextPage = () => {
             <DrawerBody>
               <Box>
                 <Select
+                  // @ts-ignore
                   ref={selectActionRef}
                   placeholder="Select action type..."
                   {...stateMgr}
