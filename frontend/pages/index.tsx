@@ -73,7 +73,10 @@ const Home: NextPage = () => {
   ];
 
   useEffect(() => {
-    console.error(errors);
+    if (errors.some((e) => typeof e !== "undefined")) {
+      console.error(errors.filter((e) => typeof e !== "undefined"));
+    }
+
     // eslint-disable-next-line
   }, errors);
 
@@ -241,7 +244,9 @@ const Voters = () => {
   }, [startAfter, mutate]);
 
   useEffect(() => {
-    console.error(error);
+    if (error) {
+      console.error(error);
+    }
   }, [error]);
 
   return (
