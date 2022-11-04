@@ -142,12 +142,24 @@ export const voters = async (
   return res;
 };
 
+export const getVote = async (proposal_id: number, voter: string) => {
+  const client = await getClient();
+  const res = await client.queryContractSmart(
+    getContractAddr("cw3-flex-multisig"),
+    {
+      vote: { proposal_id, voter },
+    }
+  );
+
+  return res;
+};
+
 export const useProposal = (
   proposal_id: number,
   disableFetch: boolean = false
 ) =>
   useSWR(
-    `/cw3-flex-multisig/proposal/${proposal_id}`,
+    `/cw3-flex-multisig/proposal`,
     disableFetch
       ? async function (): Promise<JsonObject> {}
       : () => getProposal(proposal_id)
@@ -189,4 +201,11 @@ export const useVoters = (
     `/cw3-flex-multisig/voters`,
 
     () => voters(start_after, limit)
+  );
+
+export const useVote = (proposal_id: number, voter: string) =>
+  useSWR(
+    `/cw3-flex-multisig/vote`,
+
+    () => getVote(proposal_id, voter)
   );
