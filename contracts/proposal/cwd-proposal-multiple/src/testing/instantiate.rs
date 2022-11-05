@@ -45,7 +45,7 @@ fn get_pre_propose_info(
     }
 }
 
-fn _get_default_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
+pub fn _get_default_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
     let quorum = PercentageThreshold::Majority {};
     let voting_strategy = VotingStrategy::SingleChoice { quorum };
 
