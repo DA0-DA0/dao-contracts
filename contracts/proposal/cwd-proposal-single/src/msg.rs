@@ -1,20 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
-use cwd_hooks::HooksResponse;
-
 use cwd_macros::{info_query, proposal_module_query};
-use cwd_voting::{
-    pre_propose::{PreProposeInfo, ProposalCreationPolicy},
-    threshold::Threshold,
-    voting::Vote,
-};
-
-use crate::{
-    proposal::SingleChoiceProposal,
-    query::{ProposalListResponse, VoteListResponse, VoteResponse},
-    state::Config,
-};
+use cwd_voting::{pre_propose::PreProposeInfo, threshold::Threshold, voting::Vote};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -151,14 +139,14 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Gets the proposal module's config.
-    #[returns(Config)]
+    #[returns(crate::state::Config)]
     Config {},
     /// Gets information about a proposal.
-    #[returns(SingleChoiceProposal)]
+    #[returns(crate::proposal::SingleChoiceProposal)]
     Proposal { proposal_id: u64 },
     /// Lists all the proposals that have been cast in this
     /// module.
-    #[returns(ProposalListResponse)]
+    #[returns(crate::query::ProposalListResponse)]
     ListProposals {
         /// The proposal ID to start listing proposals after. For
         /// example, if this is set to 2 proposals with IDs 3 and
@@ -171,7 +159,7 @@ pub enum QueryMsg {
     },
     /// Lists all of the proposals that have been cast in this module
     /// in decending order of proposal ID.
-    #[returns(ProposalListResponse)]
+    #[returns(crate::query::ProposalListResponse)]
     ReverseProposals {
         /// The proposal ID to start listing proposals before. For
         /// example, if this is set to 6 proposals with IDs 5 and
@@ -187,11 +175,11 @@ pub enum QueryMsg {
     #[returns(u64)]
     ProposalCount {},
     /// Returns a voters position on a propsal.
-    #[returns(VoteResponse)]
+    #[returns(crate::query::VoteResponse)]
     GetVote { proposal_id: u64, voter: String },
     /// Lists all of the votes that have been cast on a
     /// proposal.
-    #[returns(VoteListResponse)]
+    #[returns(crate::query::VoteListResponse)]
     ListVotes {
         /// The proposal to list the votes of.
         proposal_id: u64,
@@ -204,14 +192,14 @@ pub enum QueryMsg {
     },
     /// Gets the current proposal creation policy for this
     /// module.
-    #[returns(ProposalCreationPolicy)]
+    #[returns(cwd_voting::pre_propose::ProposalCreationPolicy)]
     ProposalCreationPolicy {},
     /// Lists all of the consumers of proposal hooks for this module.
-    #[returns(HooksResponse)]
+    #[returns(cwd_hooks::HooksResponse)]
     ProposalHooks {},
     /// Lists all of the consumers of vote hooks for this
     /// module.
-    #[returns(HooksResponse)]
+    #[returns(cwd_hooks::HooksResponse)]
     VoteHooks {},
 }
 

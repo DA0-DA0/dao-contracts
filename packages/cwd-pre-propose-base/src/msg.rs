@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
-use cosmwasm_std::{Addr, Binary};
+use cosmwasm_std::Binary;
 use cw_denom::UncheckedDenom;
 use cwd_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
@@ -98,11 +98,11 @@ where
 {
     /// Gets the proposal module that this pre propose module is
     /// associated with. Returns `Addr`.
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     ProposalModule {},
     /// Gets the DAO (cw-dao-core) module this contract is associated
     /// with. Returns `Addr`.
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     Dao {},
     /// Gets the module's configuration.
     #[returns(Config)]

@@ -1,17 +1,10 @@
+use crate::query::SubDao;
+use crate::state::Config;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
-
 use cwd_interface::ModuleInstantiateInfo;
-
 use cwd_macros::{info_query, voting_query};
-
-use crate::query::{
-    AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-    PauseInfoResponse, SubDao,
-};
-use crate::state::{Config, ProposalModule};
 
 /// Information about an item to be stored in the items list.
 #[cw_serde]
@@ -146,31 +139,31 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Get's the DAO's admin. Returns `Addr`.
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     Admin {},
     /// Get's the currently nominated admin (if any).
-    #[returns(AdminNominationResponse)]
+    #[returns(crate::query::AdminNominationResponse)]
     AdminNomination {},
     /// Gets the contract's config.
     #[returns(Config)]
     Config {},
     /// Gets the token balance for each cw20 registered with the
     /// contract.
-    #[returns(Cw20BalanceResponse)]
+    #[returns(crate::query::Cw20BalanceResponse)]
     Cw20Balances {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw20 tokens in this contract's
     /// treasury.
-    #[returns(Vec<Addr>)]
+    #[returns(Vec<cosmwasm_std::Addr>)]
     Cw20TokenList {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw721 tokens in this contract's
     /// treasury.
-    #[returns(Vec<Addr>)]
+    #[returns(Vec<cosmwasm_std::Addr>)]
     Cw721TokenList {
         start_after: Option<String>,
         limit: Option<u32>,
@@ -178,10 +171,10 @@ pub enum QueryMsg {
     /// Dumps all of the core contract's state in a single
     /// query. Useful for frontends as performance for queries is more
     /// limited by network times than compute times.
-    #[returns(DumpStateResponse)]
+    #[returns(crate::query::DumpStateResponse)]
     DumpState {},
     /// Gets the address associated with an item key.
-    #[returns(GetItemResponse)]
+    #[returns(crate::query::GetItemResponse)]
     GetItem { key: String },
     /// Lists all of the items associted with the contract. For
     /// example, given the items `{ "group": "foo", "subdao": "bar"}`
@@ -194,33 +187,33 @@ pub enum QueryMsg {
     },
     /// Gets all proposal modules associated with the
     /// contract.
-    #[returns(Vec<ProposalModule>)]
+    #[returns(Vec<crate::state::ProposalModule>)]
     ProposalModules {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Gets the active proposal modules associated with the
     /// contract.
-    #[returns(Vec<ProposalModule>)]
+    #[returns(Vec<crate::state::ProposalModule>)]
     ActiveProposalModules {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Returns information about if the contract is currently paused.
-    #[returns(PauseInfoResponse)]
+    #[returns(crate::query::PauseInfoResponse)]
     PauseInfo {},
     /// Gets the contract's voting module.
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     VotingModule {},
     /// Returns all SubDAOs with their charters in a vec.
     /// start_after is bound exclusive and asks for a string address.
-    #[returns(Vec<SubDao>)]
+    #[returns(Vec<crate::query::SubDao>)]
     ListSubDaos {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Implements the DAO Star standard: https://daostar.one/EIP
-    #[returns(DaoURIResponse)]
+    #[returns(crate::query::DaoURIResponse)]
     DaoURI {},
 }
 
@@ -228,9 +221,4 @@ pub enum QueryMsg {
 pub enum MigrateMsg {
     FromV1 { dao_uri: Option<String> },
     FromCompatible {},
-}
-
-#[cw_serde]
-pub struct DaoURIResponse {
-    pub dao_uri: Option<String>,
 }

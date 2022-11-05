@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, CosmosMsg};
+use cosmwasm_std::CosmosMsg;
 
 use cwd_macros::{info_query, proposal_module_query};
 
@@ -18,6 +18,6 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     Admin {},
 }

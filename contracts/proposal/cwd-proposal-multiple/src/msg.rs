@@ -1,17 +1,9 @@
-use crate::{
-    proposal::MultipleChoiceProposal,
-    query::{ProposalListResponse, VoteListResponse, VoteResponse},
-    state::Config,
-};
 use cosmwasm_schema::{cw_serde, QueryResponses};
-
 use cw_utils::Duration;
-use cwd_hooks::HooksResponse;
-
 use cwd_macros::{info_query, proposal_module_query};
 use cwd_voting::{
     multiple_choice::{MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy},
-    pre_propose::{PreProposeInfo, ProposalCreationPolicy},
+    pre_propose::PreProposeInfo,
 };
 
 #[cw_serde]
@@ -146,21 +138,21 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Gets the governance module's config.
-    #[returns(Config)]
+    #[returns(crate::state::Config)]
     Config {},
     /// Gets information about a proposal.
-    #[returns(MultipleChoiceProposal)]
+    #[returns(crate::proposal::MultipleChoiceProposal)]
     Proposal { proposal_id: u64 },
     /// Lists all the proposals that have been cast in this
     /// module.
-    #[returns(ProposalListResponse)]
+    #[returns(crate::query::ProposalListResponse)]
     ListProposals {
         start_after: Option<u64>,
         limit: Option<u64>,
     },
     /// Lists all of the proposals that have been cast in this module
     /// in decending order of proposal ID.
-    #[returns(ProposalListResponse)]
+    #[returns(crate::query::ProposalListResponse)]
     ReverseProposals {
         start_before: Option<u64>,
         limit: Option<u64>,
@@ -170,11 +162,11 @@ pub enum QueryMsg {
     #[returns(u64)]
     ProposalCount {},
     /// Returns a voters position on a proposal.
-    #[returns(VoteResponse)]
+    #[returns(crate::query::VoteResponse)]
     GetVote { proposal_id: u64, voter: String },
     /// Lists all of the votes that have been cast on a
     /// proposal.
-    #[returns(VoteListResponse)]
+    #[returns(crate::query::VoteListResponse)]
     ListVotes {
         proposal_id: u64,
         start_after: Option<String>,
@@ -182,14 +174,14 @@ pub enum QueryMsg {
     },
     /// Gets the current proposal creation policy for this
     /// module.
-    #[returns(ProposalCreationPolicy)]
+    #[returns(cwd_voting::pre_propose::ProposalCreationPolicy)]
     ProposalCreationPolicy {},
     /// Lists all of the consumers of proposal hooks for this module.
-    #[returns(HooksResponse)]
+    #[returns(cwd_hooks::HooksResponse)]
     ProposalHooks {},
     /// Lists all of the consumers of vote hooks for this
     /// module.
-    #[returns(HooksResponse)]
+    #[returns(cwd_hooks::HooksResponse)]
     VoteHooks {},
 }
 

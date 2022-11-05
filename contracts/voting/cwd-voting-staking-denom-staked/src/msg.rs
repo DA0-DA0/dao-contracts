@@ -1,6 +1,4 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
-
 use cwd_macros::{info_query, voting_query};
 
 #[cw_serde]
@@ -19,9 +17,9 @@ pub enum ExecuteMsg {}
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     Dao {},
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     StakingModule {},
 }
 

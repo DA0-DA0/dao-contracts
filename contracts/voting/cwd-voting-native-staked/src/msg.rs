@@ -1,12 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
-use cw_controllers::ClaimsResponse;
+use cosmwasm_std::Uint128;
 use cw_utils::Duration;
-
 use cwd_interface::Admin;
 use cwd_macros::{info_query, voting_query};
-
-use crate::state::Config;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -39,11 +35,11 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     Dao {},
-    #[returns(Config)]
+    #[returns(crate::state::Config)]
     GetConfig {},
-    #[returns(ClaimsResponse)]
+    #[returns(cw_controllers::ClaimsResponse)]
     Claims { address: String },
     #[returns(ListStakersResponse)]
     ListStakers {

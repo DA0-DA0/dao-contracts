@@ -45,7 +45,7 @@ fn cwd_interface_path(inside: &str) -> Path {
     } else {
         "::cwd_interface"
     };
-    let path = format!("{}::{}", base, inside);
+    let path = format!("{base}::{inside}");
     let path: Path = syn::parse_str(&path).unwrap();
     path
 }

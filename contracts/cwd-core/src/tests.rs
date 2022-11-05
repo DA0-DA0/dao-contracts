@@ -11,7 +11,7 @@ use cwd_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiat
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{DaoURIResponse, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
         PauseInfoResponse, SubDao,

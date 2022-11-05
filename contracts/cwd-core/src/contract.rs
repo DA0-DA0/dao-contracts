@@ -12,10 +12,10 @@ use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
 use cwd_interface::{voting, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
-use crate::msg::{DaoURIResponse, ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::query::{
-    AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-    PauseInfoResponse, SubDao,
+    AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
+    GetItemResponse, PauseInfoResponse, SubDao,
 };
 use crate::state::{
     Config, ProposalModule, ProposalModuleStatus, ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG,

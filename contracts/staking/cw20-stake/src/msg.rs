@@ -1,12 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
-
-use cw_utils::Duration;
-
 pub use cw_controllers::ClaimsResponse;
-
-use crate::state::Config;
+use cw_utils::Duration;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -58,7 +54,7 @@ pub enum QueryMsg {
     StakedValue { address: String },
     #[returns(TotalValueResponse)]
     TotalValue {},
-    #[returns(Config)]
+    #[returns(crate::state::Config)]
     GetConfig {},
     #[returns(ClaimsResponse)]
     Claims { address: String },

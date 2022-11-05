@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 
@@ -64,7 +64,7 @@ pub enum QueryMsg {
     #[returns(GetHooksResponse)]
     GetHooks {},
     // List all of the addresses staking with this contract.
-    #[returns(Vec<Addr>)]
+    #[returns(Vec<cosmwasm_std::Addr>)]
     ListStakers {
         start_after: Option<String>,
         limit: Option<u32>,

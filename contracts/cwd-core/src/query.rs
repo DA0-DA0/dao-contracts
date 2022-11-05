@@ -67,3 +67,8 @@ pub struct SubDao {
     /// The purpose/constitution for the SubDAO
     pub charter: Option<String>,
 }
+
+#[cw_serde]
+pub struct DaoURIResponse {
+    pub dao_uri: Option<String>,
+}

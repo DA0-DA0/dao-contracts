@@ -46,7 +46,7 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     // Gets the current status of the escrow transaction.
-    #[returns(StatusResponse)]
+    #[returns(crate::msg::StatusResponse)]
     Status {},
 }
 
