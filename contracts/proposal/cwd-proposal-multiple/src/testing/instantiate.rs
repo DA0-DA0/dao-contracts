@@ -6,7 +6,11 @@ use cw_utils::Duration;
 use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cwd_pre_propose_multiple as cppm;
 
-use cwd_testing::contracts::{cw20_balances_voting_contract, cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract, cw4_contract, cw721_contract, cwd_core_contract, native_staked_balances_voting_contract, pre_propose_multiple_contract, pre_propose_single_contract};
+use cwd_testing::contracts::{
+    cw20_balances_voting_contract, cw20_contract, cw20_stake_contract,
+    cw20_staked_balances_voting_contract, cw4_contract, cw721_contract, cwd_core_contract,
+    native_staked_balances_voting_contract, pre_propose_multiple_contract,
+};
 use cwd_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
     multiple_choice::VotingStrategy,
@@ -15,10 +19,10 @@ use cwd_voting::{
 };
 use cwd_voting_cw20_staked::msg::ActiveThreshold;
 
+use crate::testing::tests::ALTERNATIVE_ADDR;
 use crate::{
     msg::InstantiateMsg, testing::tests::proposal_multiple_contract, testing::tests::CREATOR_ADDR,
 };
-use crate::testing::tests::ALTERNATIVE_ADDR;
 
 #[allow(dead_code)]
 fn get_pre_propose_info(
@@ -591,7 +595,7 @@ pub fn instantiate_with_multiple_staked_balances_governance(
                     initial_dao_balance: None,
                 },
             })
-                .unwrap(),
+            .unwrap(),
             admin: None,
             label: "DAO DAO voting module".to_string(),
         },
@@ -649,7 +653,7 @@ pub fn instantiate_with_multiple_staked_balances_governance(
             },
             &[],
         )
-            .unwrap();
+        .unwrap();
     }
 
     // Update the block so that those staked balances appear.

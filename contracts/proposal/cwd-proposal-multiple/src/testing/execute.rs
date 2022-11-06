@@ -119,7 +119,6 @@ pub fn make_proposal(
     id
 }
 
-
 pub(crate) fn mint_cw20s(
     app: &mut App,
     cw20_contract: &Addr,

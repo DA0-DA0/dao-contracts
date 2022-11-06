@@ -1,37 +1,25 @@
-use cosmwasm_std::{
-    Addr, CosmosMsg,
-};
+use cosmwasm_std::{Addr, CosmosMsg};
 use cw_multi_test::{next_block, App};
 
-use cwd_voting::{
-    status::Status,
-    voting::{Vote},
-};
 use crate::testing::{
-    instantiate::{
-        get_default_token_dao_proposal_module_instantiate, instantiate_with_staked_balances_governance,
-    },
-    queries::{
-        query_single_proposal_module, query_dao_token, query_proposal,
-    },
     execute::{
-        mint_cw20s, make_proposal, execute_proposal_should_fail, execute_proposal, close_proposal,
+        close_proposal, execute_proposal, execute_proposal_should_fail, make_proposal, mint_cw20s,
         vote_on_proposal,
-    }
+    },
+    instantiate::{
+        get_default_token_dao_proposal_module_instantiate,
+        instantiate_with_staked_balances_governance,
+    },
+    queries::{query_dao_token, query_proposal, query_single_proposal_module},
 };
+use cwd_voting::{status::Status, voting::Vote};
 
-use crate::{
-    query::{ProposalResponse},
-    ContractError,
-};
-use super::{CREATOR_ADDR};
-
+use super::CREATOR_ADDR;
+use crate::{query::ProposalResponse, ContractError};
 
 struct CommonTest {
     app: App,
-    core_addr: Addr,
     proposal_module: Addr,
-    gov_token: Addr,
     proposal_id: u64,
 }
 fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
@@ -47,9 +35,7 @@ fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
 
     CommonTest {
         app,
-        core_addr,
         proposal_module,
-        gov_token,
         proposal_id,
     }
 }
@@ -58,9 +44,7 @@ fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
 fn test_execute_proposal_open() {
     let CommonTest {
         mut app,
-        core_addr: _,
         proposal_module,
-        gov_token: _,
         proposal_id,
     } = setup_test(vec![]);
 
@@ -79,9 +63,7 @@ fn test_execute_proposal_open() {
 fn test_execute_proposal_rejected_closed() {
     let CommonTest {
         mut app,
-        core_addr: _,
         proposal_module,
-        gov_token: _,
         proposal_id,
     } = setup_test(vec![]);
 
@@ -122,9 +104,7 @@ fn test_execute_proposal_rejected_closed() {
 fn test_execute_proposal_more_than_once() {
     let CommonTest {
         mut app,
-        core_addr: _,
         proposal_module,
-        gov_token: _,
         proposal_id,
     } = setup_test(vec![]);
 
@@ -151,11 +131,7 @@ fn test_execute_proposal_more_than_once() {
     // assert proposal executed and attempt to execute it again
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
     assert_eq!(proposal.proposal.status, Status::Executed);
-    let err: ContractError = execute_proposal_should_fail(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        proposal_id
-    );
+    let err: ContractError =
+        execute_proposal_should_fail(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
     assert!(matches!(err, ContractError::NotPassed {}));
 }
