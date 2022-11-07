@@ -1,14 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
+pub use cw721_controllers::NftClaimsResponse;
 use cw_utils::Duration;
-
 use cwd_interface::Admin;
 use cwd_macros::{info_query, voting_query};
-
-pub use cw721_controllers::NftClaimsResponse;
-
-use crate::state::Config;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -57,7 +53,7 @@ pub enum QueryMsg {
     },
     #[returns(TotalStakedAtHeightResponse)]
     TotalStakedAtHeight { height: Option<u64> },
-    #[returns(Config)]
+    #[returns(crate::state::Config)]
     GetConfig {},
     #[returns(NftClaimsResponse)]
     NftClaims { address: String },

@@ -1,12 +1,9 @@
 use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
-use cosmwasm_std::Binary;
 use cw_denom::UncheckedDenom;
 use cwd_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     status::Status,
 };
-
-use crate::state::Config;
 
 #[cw_serde]
 pub struct InstantiateMsg<InstantiateExt> {
@@ -105,7 +102,7 @@ where
     #[returns(cosmwasm_std::Addr)]
     Dao {},
     /// Gets the module's configuration.
-    #[returns(Config)]
+    #[returns(crate::state::Config)]
     Config {},
     /// Gets the deposit info for the proposal identified by
     /// PROPOSAL_ID.
@@ -113,7 +110,7 @@ where
     DepositInfo { proposal_id: u64 },
     /// Extension for queries. The default implementation will do
     /// nothing if queried for will return `Binary::default()`.
-    #[returns(Binary)]
+    #[returns(cosmwasm_std::Binary)]
     QueryExtension { msg: QueryExt },
 }
 
