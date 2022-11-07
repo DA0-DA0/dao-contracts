@@ -397,12 +397,12 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_staked_balance_at_height(
     deps: Deps,
-    _env: Env,
+    env: Env,
     address: String,
     height: Option<u64>,
 ) -> StdResult<StakedBalanceAtHeightResponse> {
     let address = deps.api.addr_validate(&address)?;
-    let height = height.unwrap_or(_env.block.height);
+    let height = height.unwrap_or(env.block.height);
     let balance = STAKED_BALANCES
         .may_load_at_height(deps.storage, &address, height)?
         .unwrap_or_default();

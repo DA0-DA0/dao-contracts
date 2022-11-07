@@ -1,5 +1,4 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 
@@ -23,6 +22,9 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Used to stake NFTs. To stake a NFT send a cw721 send message
+    /// to this contract with the NFT you would like to stake. The
+    /// `msg` field is ignored.
     ReceiveNft(Cw721ReceiveMsg),
     /// Unstakes the specified token_ids on behalf of the
     /// sender. token_ids must have unique values and have non-zero
@@ -48,25 +50,12 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(StakedBalanceAtHeightResponse)]
-    StakedBalanceAtHeight {
-        address: String,
-        height: Option<u64>,
-    },
-    #[returns(TotalStakedAtHeightResponse)]
-    TotalStakedAtHeight { height: Option<u64> },
     #[returns(Config)]
-    GetConfig {},
+    Config {},
     #[returns(NftClaimsResponse)]
     NftClaims { address: String },
-    #[returns(GetHooksResponse)]
-    GetHooks {},
-    // List all of the addresses staking with this contract.
-    #[returns(Vec<Addr>)]
-    ListStakers {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
+    #[returns(::cw_controllers::HooksResponse)]
+    Hooks {},
     // List the staked NFTs for a given address.
     #[returns(Vec<String>)]
     StakedNfts {
@@ -75,23 +64,3 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 }
-
-#[cw_serde]
-pub struct StakedBalanceAtHeightResponse {
-    pub balance: Uint128,
-    pub height: u64,
-}
-
-#[cw_serde]
-pub struct TotalStakedAtHeightResponse {
-    pub total: Uint128,
-    pub height: u64,
-}
-
-#[cw_serde]
-pub struct GetHooksResponse {
-    pub hooks: Vec<String>,
-}
-
-#[cw_serde]
-pub struct MigrateMsg {}

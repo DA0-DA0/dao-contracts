@@ -15,8 +15,8 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Can not unstake that which you have not staked")]
-    NotStaked {},
+    #[error("Can not unstake that which you have not staked (unstaking {token_id})")]
+    NotStaked { token_id: String },
 
     #[error("Can not stake that which has already been staked")]
     AlreadyStaked {},

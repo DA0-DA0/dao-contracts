@@ -35,6 +35,7 @@ pub fn unstake_hook_msgs(
     let msg = to_binary(&StakeChangedExecuteMsg::StakeChangeHook(
         StakeChangedHookMsg::Unstake { addr, token_ids },
     ))?;
+
     HOOKS.prepare_hooks(storage, |a| {
         let execute = WasmMsg::Execute {
             contract_addr: a.into_string(),
