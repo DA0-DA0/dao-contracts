@@ -13,8 +13,8 @@ use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
-        AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-        PauseInfoResponse, SubDao,
+        AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
+        GetItemResponse, PauseInfoResponse, SubDao,
     },
     state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
     ContractError,
