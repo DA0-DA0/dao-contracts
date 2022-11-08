@@ -16,15 +16,9 @@
 //!
 //! ## Proposal deposits
 //!
-//! This contract may optionally be configured to require a deposit for
-//! proposal creation. Currently, any cw20 token may be used.
-//!
-//! As a convienence one may specify that the module should use the same
-//! token as the DAO's voting module using the `VotingModuleToken` variant
-//! when specifying information about the deposit. For this to work the
-//! voting module associated with the DAO must support the `TokenContract`
-//! query. This query may be derived via the `#[token_query]`
-//! [macro](../../packages/cw-core-macros/src/lib.rs).
+//! Proposal deposits for this module are handled by the
+//! [`cwd-pre-propose-single`](../../pre-propose/cwd-pre-propose-single)
+//! contract.
 //!
 //! ## Hooks
 //!

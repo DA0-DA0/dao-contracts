@@ -34,7 +34,7 @@ use crate::{
     state::Config,
     testing::{
         contracts::{
-            cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
+            cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
             cw_core_contract, pre_propose_single_contract, proposal_single_contract,
             v1_proposal_single_contract,
         },
@@ -1543,7 +1543,7 @@ fn test_migrate_from_v1() {
         address: CREATOR_ADDR.to_string(),
     }];
 
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(cw_core_contract());

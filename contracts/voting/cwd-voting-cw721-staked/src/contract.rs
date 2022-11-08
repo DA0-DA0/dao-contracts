@@ -336,7 +336,7 @@ pub fn query_staked_nfts(
         deps.storage,
         start_after,
         None,
-        cosmwasm_std::Order::Descending,
+        cosmwasm_std::Order::Ascending,
     );
     let range: StdResult<Vec<String>> = match limit {
         Some(l) => range.take(l as usize).collect(),

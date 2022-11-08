@@ -12,7 +12,9 @@ use crate::{
     ContractError,
 };
 
-use super::{contracts::cw20_contract, queries::query_pre_proposal_single_config, CREATOR_ADDR};
+use super::{
+    contracts::cw20_base_contract, queries::query_pre_proposal_single_config, CREATOR_ADDR,
+};
 
 // Creates a proposal then checks that the proposal was created with
 // the specified messages and returns the ID of the proposal.
@@ -246,7 +248,7 @@ pub(crate) fn mint_cw20s(
 }
 
 pub(crate) fn instantiate_cw20_base_default(app: &mut App) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "cw20 token".to_string(),
         symbol: "cwtwenty".to_string(),
