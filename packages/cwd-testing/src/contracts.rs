@@ -4,7 +4,7 @@ use cw_multi_test::{Contract, ContractWrapper};
 use cwd_pre_propose_multiple as cppm;
 use cwd_pre_propose_single as cpps;
 
-pub fn cw20_contract() -> Box<dyn Contract<Empty>> {
+pub fn cw20_base_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
@@ -13,7 +13,7 @@ pub fn cw20_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn cw4_contract() -> Box<dyn Contract<Empty>> {
+pub fn cw4_group_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw4_group::contract::execute,
         cw4_group::contract::instantiate,
@@ -22,7 +22,7 @@ pub fn cw4_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn cw721_contract() -> Box<dyn Contract<Empty>> {
+pub fn cw721_base_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw721_base::entry::execute,
         cw721_base::entry::instantiate,
@@ -109,7 +109,7 @@ pub fn native_staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn cw721_staked_contract() -> Box<dyn Contract<Empty>> {
+pub fn voting_cw721_staked_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cwd_voting_cw721_staked::contract::execute,
         cwd_voting_cw721_staked::contract::instantiate,

@@ -17,9 +17,9 @@ use crate::msg::InstantiateMsg;
 
 use super::{
     contracts::{
-        cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract, cw4_contract,
-        cw4_voting_contract, cw721_contract, cw721_stake_contract, cw_core_contract,
-        native_staked_balances_voting_contract, proposal_single_contract,
+        cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
+        cw4_group_contract, cw4_voting_contract, cw721_base_contract, cw721_stake_contract,
+        cw_core_contract, native_staked_balances_voting_contract, proposal_single_contract,
     },
     CREATOR_ADDR,
 };
@@ -116,7 +116,7 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             .collect()
     };
 
-    let cw721_id = app.store_code(cw721_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
     let cw721_stake_id = app.store_code(cw721_stake_contract());
     let core_contract_id = app.store_code(cw_core_contract());
 
@@ -351,7 +351,7 @@ pub(crate) fn instantiate_with_staked_balances_governance(
             .collect()
     };
 
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(cw_core_contract());
@@ -454,7 +454,7 @@ pub(crate) fn instantiate_with_staking_active_threshold(
     active_threshold: Option<ActiveThreshold>,
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_single_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_staking_id = app.store_code(cw20_stake_contract());
     let core_id = app.store_code(cw_core_contract());
     let votemod_id = app.store_code(cw20_staked_balances_voting_contract());
@@ -521,7 +521,7 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
     initial_weights: Option<Vec<Cw20Coin>>,
 ) -> Addr {
     let proposal_module_code_id = app.store_code(proposal_single_contract());
-    let cw4_id = app.store_code(cw4_contract());
+    let cw4_id = app.store_code(cw4_group_contract());
     let core_id = app.store_code(cw_core_contract());
     let votemod_id = app.store_code(cw4_voting_contract());
 

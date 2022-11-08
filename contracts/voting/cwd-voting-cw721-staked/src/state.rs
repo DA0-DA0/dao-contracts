@@ -77,7 +77,6 @@ pub fn register_unstaked_nft(
                 .map_err(StdError::overflow)
         }
     };
-    let sub_n = subtractor(token_ids.len() as u128);
 
     for token in token_ids {
         let key = (staker, token.as_str());
@@ -90,6 +89,9 @@ pub fn register_unstaked_nft(
         }
     }
 
+    // invariant: token_ids has unique values. for loop asserts this.
+
+    let sub_n = subtractor(token_ids.len() as u128);
     TOTAL_STAKED_NFTS.update(storage, height, sub_n)?;
     NFT_BALANCES.update(storage, staker, height, sub_n)?;
     Ok(())

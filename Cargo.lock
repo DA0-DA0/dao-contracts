@@ -1357,6 +1357,7 @@ dependencies = [
  "cw721-controllers",
  "cwd-interface",
  "cwd-macros",
+ "cwd-testing",
  "indexmap",
  "thiserror",
 ]
