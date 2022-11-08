@@ -175,12 +175,15 @@ fn mint_nft(
     recipient: String,
     info: MessageInfo,
 ) -> AnyResult<AppResponse> {
-    let msg = cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
-        token_id,
-        owner: recipient,
-        token_uri: None,
-        extension: None,
-    });
+    let msg =
+        cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(cw721_base::msg::MintMsg::<
+            Option<Empty>,
+        > {
+            token_id,
+            owner: recipient,
+            token_uri: None,
+            extension: None,
+        });
     app.execute_contract(info.sender, cw721_addr.clone(), &msg, &[])
 }
 

@@ -8,7 +8,6 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
-
 use cwd_hooks::Hooks;
 use cwd_interface::voting::IsActiveResponse;
 use cwd_pre_propose_multiple::contract::ExecuteMsg as PreProposeMsg;
@@ -590,7 +589,7 @@ pub fn execute_update_proposal_creation_policy(
         .add_submessages(messages)
         .add_attribute("action", "update_proposal_creation_policy")
         .add_attribute("sender", info.sender)
-        .add_attribute("new_policy", format!("{:?}", initial_policy)))
+        .add_attribute("new_policy", format!("{initial_policy:?}")))
 }
 
 pub fn execute_add_proposal_hook(

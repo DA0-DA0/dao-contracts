@@ -1,16 +1,13 @@
+use crate::query::SubDao;
+use crate::state::Config;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
 use cwd_interface::ModuleInstantiateInfo;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use cwd_macros::{info_query, voting_query};
 
-use crate::query::SubDao;
-use crate::state::Config;
-
 /// Information about an item to be stored in the items list.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InitialItem {
     /// The name of the item.
     pub key: String,
@@ -18,7 +15,7 @@ pub struct InitialItem {
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// Optional Admin with the ability to execute DAO messages
     /// directly. Useful for building SubDAOs controlled by a parent
@@ -57,8 +54,7 @@ pub struct InstantiateMsg {
     pub dao_uri: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Callable by the Admin, if one is configured.
     /// Executes messages in order.
@@ -139,77 +135,89 @@ pub enum ExecuteMsg {
 
 #[voting_query]
 #[info_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Get's the DAO's admin. Returns `Addr`.
+    #[returns(cosmwasm_std::Addr)]
     Admin {},
-    /// Get's the currently nominated admin (if any). Returns
-    /// `AdminNominationResponse`.
+    /// Get's the currently nominated admin (if any).
+    #[returns(crate::query::AdminNominationResponse)]
     AdminNomination {},
-    /// Gets the contract's config. Returns Config.
+    /// Gets the contract's config.
+    #[returns(Config)]
     Config {},
     /// Gets the token balance for each cw20 registered with the
     /// contract.
+    #[returns(crate::query::Cw20BalanceResponse)]
     Cw20Balances {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw20 tokens in this contract's
     /// treasury.
+    #[returns(Vec<cosmwasm_std::Addr>)]
     Cw20TokenList {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Lists the addresses of the cw721 tokens in this contract's
     /// treasury.
+    #[returns(Vec<cosmwasm_std::Addr>)]
     Cw721TokenList {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Dumps all of the core contract's state in a single
     /// query. Useful for frontends as performance for queries is more
-    /// limited by network times than compute times. Returns
-    /// `DumpStateResponse`.
+    /// limited by network times than compute times.
+    #[returns(crate::query::DumpStateResponse)]
     DumpState {},
     /// Gets the address associated with an item key.
+    #[returns(crate::query::GetItemResponse)]
     GetItem { key: String },
     /// Lists all of the items associted with the contract. For
     /// example, given the items `{ "group": "foo", "subdao": "bar"}`
     /// this query would return `[("group", "foo"), ("subdao",
     /// "bar")]`.
+    #[returns(Vec<String>)]
     ListItems {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Gets all proposal modules associated with the
-    /// contract. Returns Vec<ProposalModule>.
+    /// contract.
+    #[returns(Vec<crate::state::ProposalModule>)]
     ProposalModules {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Gets the active proposal modules associated with the
-    /// contract. Returns Vec<ProposalModule>.
+    /// contract.
+    #[returns(Vec<crate::state::ProposalModule>)]
     ActiveProposalModules {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Returns information about if the contract is currently paused.
+    #[returns(crate::query::PauseInfoResponse)]
     PauseInfo {},
-    /// Gets the contract's voting module. Returns Addr.
+    /// Gets the contract's voting module.
+    #[returns(cosmwasm_std::Addr)]
     VotingModule {},
-    /// Returns all SubDAOs with their charters in a vec
-    /// start_after is bound exclusive and asks for a string address
+    /// Returns all SubDAOs with their charters in a vec.
+    /// start_after is bound exclusive and asks for a string address.
+    #[returns(Vec<crate::query::SubDao>)]
     ListSubDaos {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Implements the DAO Star standard: https://daostar.one/EIP
+    #[returns(crate::query::DaoURIResponse)]
     DaoURI {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum MigrateMsg {
     FromV1 { dao_uri: Option<String> },
     FromCompatible {},

@@ -1,13 +1,10 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
+pub use cw_controllers::ClaimsResponse;
 use cw_utils::Duration;
 
-pub use cw_controllers::ClaimsResponse;
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[cw_serde]
 pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<String>,
@@ -17,8 +14,7 @@ pub struct InstantiateMsg {
     pub unstaking_duration: Option<Duration>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Unstake {
@@ -38,85 +34,78 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ReceiveMsg {
     Stake {},
     Fund {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(StakedBalanceAtHeightResponse)]
     StakedBalanceAtHeight {
         address: String,
         height: Option<u64>,
     },
-    TotalStakedAtHeight {
-        height: Option<u64>,
-    },
-    StakedValue {
-        address: String,
-    },
+    #[returns(TotalStakedAtHeightResponse)]
+    TotalStakedAtHeight { height: Option<u64> },
+    #[returns(StakedValueResponse)]
+    StakedValue { address: String },
+    #[returns(TotalValueResponse)]
     TotalValue {},
+    #[returns(crate::state::Config)]
     GetConfig {},
-    Claims {
-        address: String,
-    },
+    #[returns(ClaimsResponse)]
+    Claims { address: String },
+    #[returns(GetHooksResponse)]
     GetHooks {},
+    #[returns(ListStakersResponse)]
     ListStakers {
         start_after: Option<String>,
         limit: Option<u32>,
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum MigrateMsg {
     FromBeta { manager: Option<String> },
     FromCompatible {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct StakedBalanceAtHeightResponse {
     pub balance: Uint128,
     pub height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct TotalStakedAtHeightResponse {
     pub total: Uint128,
     pub height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct StakedValueResponse {
     pub value: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct TotalValueResponse {
     pub total: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct ListStakersResponse {
     pub stakers: Vec<StakerBalanceResponse>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct StakerBalanceResponse {
     pub address: String,
     pub balance: Uint128,

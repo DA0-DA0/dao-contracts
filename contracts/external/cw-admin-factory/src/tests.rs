@@ -5,7 +5,7 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Empty, Reply, SubMsg, SubMsgResponse, SubMsgResult, WasmMsg,
 };
 
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
 use cwd_interface::{Admin, ModuleInstantiateInfo};
 
 use crate::{
@@ -103,9 +103,7 @@ pub fn test_set_admin() {
         initial_items: None,
     };
 
-    // multi-test does not support UpdateAdmin yet :(
-    // https://github.com/CosmWasm/cw-plus/blob/14f4e922fac9e2097a8efa99e5b71d04747e340a/packages/multi-test/src/wasm.rs#L477
-    let err = app
+    let res: AppResponse = app
         .execute_contract(
             Addr::unchecked("CREATOR"),
             factory_addr,
@@ -116,12 +114,16 @@ pub fn test_set_admin() {
             },
             &[],
         )
-        .unwrap_err();
+        .unwrap();
 
-    assert!(matches!(
-        err.downcast().unwrap(),
-        cw_multi_test::error::Error::UnsupportedWasmMsg(_)
-    ))
+    // Get the core address from the instantiate event
+    let instantiate_event = &res.events[2];
+    assert_eq!(instantiate_event.ty, "instantiate");
+    let core_addr = instantiate_event.attributes[0].value.clone();
+
+    // Check that admin of core address is itself
+    let contract_info = app.wrap().query_wasm_contract_info(&core_addr).unwrap();
+    assert_eq!(contract_info.admin, Some(core_addr))
 }
 
 #[test]

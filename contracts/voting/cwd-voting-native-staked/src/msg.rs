@@ -1,11 +1,10 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw_utils::Duration;
 use cwd_interface::Admin;
 use cwd_macros::{info_query, voting_query};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+#[cw_serde]
 pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<Admin>,
@@ -17,8 +16,7 @@ pub struct InstantiateMsg {
     pub unstaking_duration: Option<Duration>,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     Stake {},
     Unstake {
@@ -34,31 +32,31 @@ pub enum ExecuteMsg {
 
 #[voting_query]
 #[info_query]
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(cosmwasm_std::Addr)]
     Dao {},
+    #[returns(crate::state::Config)]
     GetConfig {},
-    Claims {
-        address: String,
-    },
+    #[returns(cw_controllers::ClaimsResponse)]
+    Claims { address: String },
+    #[returns(ListStakersResponse)]
     ListStakers {
         start_after: Option<String>,
         limit: Option<u32>,
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct ListStakersResponse {
     pub stakers: Vec<StakerBalanceResponse>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct StakerBalanceResponse {
     pub address: String,
     pub balance: Uint128,

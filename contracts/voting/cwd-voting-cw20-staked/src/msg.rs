@@ -1,13 +1,12 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
-use cwd_macros::{active_query, info_query, token_query, voting_query};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+use cwd_macros::{active_query, info_query, token_query, voting_query};
+
+#[cw_serde]
 pub enum StakingInfo {
     Existing {
         staking_contract_address: String,
@@ -18,8 +17,7 @@ pub enum StakingInfo {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 #[allow(clippy::large_enum_variant)]
 pub enum TokenInfo {
     Existing {
@@ -41,21 +39,19 @@ pub enum TokenInfo {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ActiveThreshold {
     AbsoluteCount { count: Uint128 },
     Percentage { percent: Decimal },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub token_info: TokenInfo,
     pub active_threshold: Option<ActiveThreshold>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     UpdateActiveThreshold {
         new_threshold: Option<ActiveThreshold>,
@@ -66,19 +62,21 @@ pub enum ExecuteMsg {
 #[info_query]
 #[token_query]
 #[active_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(cosmwasm_std::Addr)]
     StakingContract {},
+    #[returns(cosmwasm_std::Addr)]
     Dao {},
+    #[returns(ActiveThresholdResponse)]
     ActiveThreshold {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct ActiveThresholdResponse {
     pub active_threshold: Option<ActiveThreshold>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}

@@ -1,9 +1,9 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, Deps, MessageInfo, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw_utils::{must_pay, PaymentError};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+
 use thiserror::Error;
 
 use cw_denom::{CheckedDenom, DenomError, UncheckedDenom};
@@ -28,8 +28,7 @@ pub enum DepositError {
 }
 
 /// Information about the token to use for proposal deposits.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum DepositToken {
     /// Use a specific token address as the deposit token.
     Token { denom: UncheckedDenom },
@@ -43,7 +42,7 @@ pub enum DepositToken {
 }
 
 /// Information about the deposit required to create a proposal.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct UncheckedDepositInfo {
     /// The address of the token to be used for proposal deposits.
     pub denom: DepositToken,
@@ -54,8 +53,7 @@ pub struct UncheckedDepositInfo {
     pub refund_policy: DepositRefundPolicy,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum DepositRefundPolicy {
     /// Deposits should always be refunded.
     Always,
@@ -69,7 +67,7 @@ pub enum DepositRefundPolicy {
 /// processed. This type should never be constructed literally and
 /// should always by built by calling `into_checked` on a
 /// `DepositInfo` instance.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct CheckedDepositInfo {
     /// The address of the cw20 token to be used for proposal
     /// deposits.

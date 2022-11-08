@@ -7,8 +7,8 @@ repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A package for managing a set of hooks which can be accessed by their index."
 
 [dependencies]
-schemars = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0" }
-cosmwasm-std = "1.0.0"
-cw-storage-plus = "0.13"
+
+thiserror = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }

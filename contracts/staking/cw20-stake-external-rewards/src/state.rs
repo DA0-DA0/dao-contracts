@@ -1,12 +1,10 @@
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128, Uint256};
 use cw20::Denom;
 
 use cw_storage_plus::{Item, Map};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct Config {
     pub owner: Option<Addr>,
     pub manager: Option<Addr>,
@@ -15,7 +13,7 @@ pub struct Config {
 }
 pub const CONFIG: Item<Config> = Item::new("config");
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
+#[cw_serde]
 pub struct RewardConfig {
     pub period_finish: u64,
     pub reward_rate: Uint128,

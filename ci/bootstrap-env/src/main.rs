@@ -142,7 +142,7 @@ fn main() -> Result<()> {
     println!(" ------------------------ ");
     println!("Config Variables\n");
 
-    println!("Admin user address: {}", addr);
+    println!("Admin user address: {addr}");
 
     println!(
         "NEXT_PUBLIC_CW20_CODE_ID={}",

@@ -55,6 +55,12 @@ just workspace-optimize
 
 from the repository root.
 
+**NOTE**: If you are using VSCode and are seeing rust-analyzer "proc macro not expanded errors", you may need to add the following to your `settings.json`:
+
+```json
+"rust-analyzer.procMacro.enable": false
+```
+
 ## Getting ready to make a PR
 
 Before making a PR, you'll need to do two things to get CI passing:

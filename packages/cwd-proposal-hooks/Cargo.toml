@@ -7,8 +7,7 @@ repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A package for managing proposal hooks."
 
 [dependencies]
-schemars = "0.8"
-serde = { version = "1.0", default-features = false, features = ["derive"] }
-cosmwasm-std = "1.0.0"
-cwd-hooks = { path = "../cwd-hooks" }
-cwd-voting = { path = "../cwd-voting" }
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cwd-hooks = { workspace = true }
+cwd-voting = { workspace = true }

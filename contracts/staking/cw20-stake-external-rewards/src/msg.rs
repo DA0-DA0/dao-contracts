@@ -1,13 +1,12 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Denom};
 use cw20_stake::hooks::StakeChangedHookMsg;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::state::{Config, RewardConfig};
 pub use cw_controllers::ClaimsResponse;
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
     pub manager: Option<String>,
@@ -16,11 +15,10 @@ pub struct InstantiateMsg {
     pub reward_duration: u64,
 }
 
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+#[cw_serde]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),
     Claim {},
@@ -31,26 +29,27 @@ pub enum ExecuteMsg {
     UpdateManager { new_manager: Option<String> },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ReceiveMsg {
     Fund {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(InfoResponse)]
     Info {},
+    #[returns(PendingRewardsResponse)]
     GetPendingRewards { address: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InfoResponse {
     pub config: Config,
     pub reward: RewardConfig,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct PendingRewardsResponse {
     pub address: String,
     pub pending_rewards: Uint128,

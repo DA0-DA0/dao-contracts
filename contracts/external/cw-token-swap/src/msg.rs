@@ -1,12 +1,10 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::state::CheckedCounterparty;
 
 /// Information about the token being used on one side of the escrow.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum TokenInfo {
     /// A native token.
     Native { denom: String, amount: Uint128 },
@@ -19,7 +17,7 @@ pub enum TokenInfo {
 
 /// Information about a counterparty in this escrow transaction and
 /// their promised funds.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Counterparty {
     /// The address of the counterparty.
     pub address: String,
@@ -27,14 +25,13 @@ pub struct Counterparty {
     pub promise: TokenInfo,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     pub counterparty_one: Counterparty,
     pub counterparty_two: Counterparty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Used to provide cw20 tokens to satisfy a funds promise.
     Receive(cw20::Cw20ReceiveMsg),
@@ -45,19 +42,19 @@ pub enum ExecuteMsg {
     Withdraw {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
-    // Gets the current status of the escrow transaction. Returns
-    // StatusResponse.
+    // Gets the current status of the escrow transaction.
+    #[returns(crate::msg::StatusResponse)]
     Status {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct StatusResponse {
     pub counterparty_one: CheckedCounterparty,
     pub counterparty_two: CheckedCounterparty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}

@@ -1,14 +1,12 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw721::Cw721ReceiveMsg;
+pub use cw721_controllers::NftClaimsResponse;
 use cw_utils::Duration;
 use cwd_interface::Admin;
 use cwd_macros::{info_query, voting_query};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-pub use cw721_controllers::NftClaimsResponse;
-
-#[derive(Serialize, Deserialize, Clone, JsonSchema, Debug)]
+#[cw_serde]
 pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This
     // will generally be a DAO.
@@ -20,8 +18,7 @@ pub struct InstantiateMsg {
     pub unstaking_duration: Option<Duration>,
 }
 
-#[derive(Serialize, Deserialize, Clone, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
     /// Unstakes the specified token_ids on behalf of the
@@ -46,27 +43,30 @@ pub enum ExecuteMsg {
 
 #[voting_query]
 #[info_query]
-#[derive(Serialize, Deserialize, Clone, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
+    #[returns(StakedBalanceAtHeightResponse)]
     StakedBalanceAtHeight {
         address: String,
         height: Option<u64>,
     },
-    TotalStakedAtHeight {
-        height: Option<u64>,
-    },
+    #[returns(TotalStakedAtHeightResponse)]
+    TotalStakedAtHeight { height: Option<u64> },
+    #[returns(crate::state::Config)]
     GetConfig {},
-    NftClaims {
-        address: String,
-    },
+    #[returns(NftClaimsResponse)]
+    NftClaims { address: String },
+    #[returns(GetHooksResponse)]
     GetHooks {},
     // List all of the addresses staking with this contract.
+    #[returns(Vec<cosmwasm_std::Addr>)]
     ListStakers {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     // List the staked NFTs for a given address.
+    #[returns(Vec<String>)]
     StakedNfts {
         address: String,
         start_after: Option<String>,
@@ -74,25 +74,22 @@ pub enum QueryMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct StakedBalanceAtHeightResponse {
     pub balance: Uint128,
     pub height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct TotalStakedAtHeightResponse {
     pub total: Uint128,
     pub height: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct MigrateMsg {}

@@ -1,3 +1,5 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
+
 use cwd_macros::{info_query, voting_query};
 
 /// enum for testing. Important that this derives things / has other
@@ -5,12 +7,16 @@ use cwd_macros::{info_query, voting_query};
 /// with ours.
 #[voting_query]
 #[info_query]
-#[derive(Clone)]
 #[allow(dead_code)]
+#[cw_serde]
+#[derive(QueryResponses)]
 enum Test {
+    #[returns(String)]
     Foo,
+    #[returns(String)]
     Bar(u64),
-    Baz { foo: u64 },
+    #[returns(String)]
+    Baz { waldo: u64 },
 }
 
 #[test]

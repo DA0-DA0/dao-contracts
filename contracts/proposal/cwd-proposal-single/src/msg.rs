@@ -1,12 +1,10 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
 use cwd_macros::{info_query, proposal_module_query};
 use cwd_voting::{pre_propose::PreProposeInfo, threshold::Threshold, voting::Vote};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// The threshold a proposal must reach to complete.
     pub threshold: Threshold,
@@ -40,8 +38,7 @@ pub struct InstantiateMsg {
     pub close_proposal_on_execution_failure: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// Creates a proposal in the module.
     Propose {
@@ -138,16 +135,18 @@ pub enum ExecuteMsg {
 
 #[proposal_module_query]
 #[info_query]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// Gets the governance module's config. Returns `state::Config`.
+    /// Gets the proposal module's config.
+    #[returns(crate::state::Config)]
     Config {},
-    /// Gets information about a proposal. Returns
-    /// `proposals::Proposal`.
+    /// Gets information about a proposal.
+    #[returns(crate::proposal::SingleChoiceProposal)]
     Proposal { proposal_id: u64 },
     /// Lists all the proposals that have been cast in this
-    /// module. Returns `query::ProposalListResponse`.
+    /// module.
+    #[returns(crate::query::ProposalListResponse)]
     ListProposals {
         /// The proposal ID to start listing proposals after. For
         /// example, if this is set to 2 proposals with IDs 3 and
@@ -159,8 +158,8 @@ pub enum QueryMsg {
         limit: Option<u64>,
     },
     /// Lists all of the proposals that have been cast in this module
-    /// in decending order of proposal ID. Returns
-    /// `query::ProposalListResponse`.
+    /// in decending order of proposal ID.
+    #[returns(crate::query::ProposalListResponse)]
     ReverseProposals {
         /// The proposal ID to start listing proposals before. For
         /// example, if this is set to 6 proposals with IDs 5 and
@@ -173,12 +172,14 @@ pub enum QueryMsg {
     },
     /// Returns the number of proposals that have been created in this
     /// module.
+    #[returns(u64)]
     ProposalCount {},
-    /// Returns a voters position on a propsal. Returns
-    /// `query::VoteResponse`.
+    /// Returns a voters position on a propsal.
+    #[returns(crate::query::VoteResponse)]
     GetVote { proposal_id: u64, voter: String },
     /// Lists all of the votes that have been cast on a
-    /// proposal. Returns `VoteListResponse`.
+    /// proposal.
+    #[returns(crate::query::VoteListResponse)]
     ListVotes {
         /// The proposal to list the votes of.
         proposal_id: u64,
@@ -190,17 +191,19 @@ pub enum QueryMsg {
         limit: Option<u64>,
     },
     /// Gets the current proposal creation policy for this
-    /// module. Returns `voting::pre_propose::ProposalCreationPolicy`.
+    /// module.
+    #[returns(cwd_voting::pre_propose::ProposalCreationPolicy)]
     ProposalCreationPolicy {},
     /// Lists all of the consumers of proposal hooks for this module.
+    #[returns(cwd_hooks::HooksResponse)]
     ProposalHooks {},
     /// Lists all of the consumers of vote hooks for this
-    /// module. Returns cwd_hooks::HooksResponse.
+    /// module.
+    #[returns(cwd_hooks::HooksResponse)]
     VoteHooks {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum MigrateMsg {
     FromV1 {
         /// This field was not present in DAO DAO v1. To migrate, a

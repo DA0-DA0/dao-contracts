@@ -1,11 +1,9 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, StdResult, Storage, SubMsg, WasmMsg};
 use cwd_hooks::Hooks;
 use cwd_voting::reply::mask_vote_hook_index;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum VoteHookMsg {
     NewVote {
         proposal_id: u64,
@@ -15,8 +13,7 @@ pub enum VoteHookMsg {
 }
 
 // This is just a helper to properly serialize the above message
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum VoteHookExecuteMsg {
     VoteHook(VoteHookMsg),
 }

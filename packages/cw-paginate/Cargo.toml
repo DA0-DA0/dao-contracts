@@ -8,10 +8,10 @@ description = "A package for paginating cosmwasm maps."
 
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0" }
-cosmwasm-storage = { version = "1.0.0" }
-cw-storage-plus = "0.13"
-serde = { version = "1.0", default-features = false }
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+serde = { workspace = true, default-features = false }
 
 [dev-dependencies]
-cw-multi-test = "0.13"
+cw-multi-test = { workspace = true }

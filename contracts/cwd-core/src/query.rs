@@ -1,14 +1,13 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw2::ContractVersion;
 use cw_utils::Expiration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::state::{Config, ProposalModule};
 
 /// Relevant state for the governance module. Returned by the
 /// `DumpState` query.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct DumpStateResponse {
     /// Optional DAO Admin
     pub admin: Addr,
@@ -30,14 +29,14 @@ pub struct DumpStateResponse {
 }
 
 /// Information about if the contract is currently paused.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub enum PauseInfoResponse {
     Paused { expiration: Expiration },
     Unpaused {},
 }
 
 /// Returned by the `GetItem` query.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct GetItemResponse {
     /// `None` if no item with the provided key was found, `Some`
     /// otherwise.
@@ -45,7 +44,7 @@ pub struct GetItemResponse {
 }
 
 /// Returned by the `Cw20Balances` query.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct Cw20BalanceResponse {
     /// The address of the token.
     pub addr: Addr,
@@ -54,17 +53,22 @@ pub struct Cw20BalanceResponse {
 }
 
 /// Returned by the `AdminNomination` query.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct AdminNominationResponse {
     /// The currently nominated admin or None if no nomination is
     /// pending.
     pub nomination: Option<Addr>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+#[cw_serde]
 pub struct SubDao {
     /// The contract address of the SubDAO
     pub addr: String,
     /// The purpose/constitution for the SubDAO
     pub charter: Option<String>,
+}
+
+#[cw_serde]
+pub struct DaoURIResponse {
+    pub dao_uri: Option<String>,
 }

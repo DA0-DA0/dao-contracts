@@ -26,7 +26,9 @@ use crate::msg::MigrateMsg;
 use crate::proposal::SingleChoiceProposal;
 use crate::state::{Config, CREATION_POLICY};
 
-use crate::v1_state::{v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2};
+use crate::v1_state::{
+    v1_duration_to_v2, v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
+};
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
@@ -561,7 +563,7 @@ pub fn execute_update_proposal_creation_policy(
         .add_submessages(messages)
         .add_attribute("action", "update_proposal_creation_policy")
         .add_attribute("sender", info.sender)
-        .add_attribute("new_policy", format!("{:?}", initial_policy)))
+        .add_attribute("new_policy", format!("{initial_policy:?}")))
 }
 
 pub fn add_hook(
@@ -822,12 +824,11 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 deps.storage,
                 &Config {
                     threshold: v1_threshold_to_v2(current_config.threshold),
-                    max_voting_period: current_config.max_voting_period,
-                    min_voting_period: current_config.min_voting_period,
+                    max_voting_period: v1_duration_to_v2(current_config.max_voting_period),
+                    min_voting_period: current_config.min_voting_period.map(v1_duration_to_v2),
                     only_members_execute: current_config.only_members_execute,
                     allow_revoting: current_config.allow_revoting,
                     dao: current_config.dao.clone(),
-                    // Loads of text, but we're only updating this field.
                     close_proposal_on_execution_failure,
                 },
             )?;
@@ -865,8 +866,8 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                         description: prop.description,
                         proposer: prop.proposer,
                         start_height: prop.start_height,
-                        min_voting_period: prop.min_voting_period,
-                        expiration: prop.expiration,
+                        min_voting_period: prop.min_voting_period.map(v1_expiration_to_v2),
+                        expiration: v1_expiration_to_v2(prop.expiration),
                         threshold: v1_threshold_to_v2(prop.threshold),
                         total_power: prop.total_power,
                         msgs: prop.msgs,

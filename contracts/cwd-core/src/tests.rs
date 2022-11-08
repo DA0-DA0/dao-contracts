@@ -1,3 +1,4 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     from_slice,
     testing::{mock_dependencies, mock_env},
@@ -7,15 +8,13 @@ use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
 use cwd_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiateInfo};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
-        AdminNominationResponse, Cw20BalanceResponse, DumpStateResponse, GetItemResponse,
-        PauseInfoResponse, SubDao,
+        AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
+        GetItemResponse, PauseInfoResponse, SubDao,
     },
     state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
     ContractError,
@@ -123,7 +122,7 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
                 code_id: cw20_id,
                 msg: to_binary(&cw20_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                label: format!("governance module {}", n),
+                label: format!("governance module {n}"),
             })
             .collect(),
         initial_items: None,
@@ -188,7 +187,7 @@ fn test_instantiate_with_submessage_failure() {
             code_id: cw20_id,
             msg: to_binary(&cw20_instantiate).unwrap(),
             admin: Some(Admin::CoreModule {}),
-            label: format!("governance module {}", n),
+            label: format!("governance module {n}"),
         })
         .collect::<Vec<_>>();
     governance_modules.push(ModuleInstantiateInfo {
@@ -318,11 +317,11 @@ fn test_update_config() {
 
     assert_eq!(expected_config, config);
 
-    let dao_uri: Option<String> = app
+    let dao_uri: DaoURIResponse = app
         .wrap()
         .query_wasm_smart(gov_addr, &QueryMsg::DaoURI {})
         .unwrap();
-    assert_eq!(dao_uri, expected_config.dao_uri);
+    assert_eq!(dao_uri.dao_uri, expected_config.dao_uri);
 }
 
 fn test_swap_governance(swaps: Vec<(u32, u32)>) {
@@ -400,7 +399,7 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
                 code_id: propmod_id,
                 msg: to_binary(&govmod_instantiate).unwrap(),
                 admin: Some(Admin::CoreModule {}),
-                label: format!("governance module {}", n),
+                label: format!("governance module {n}"),
             })
             .collect();
 
@@ -1964,7 +1963,9 @@ fn test_cw721_receive() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(cw721_base::msg::MintMsg::<
+            Option<Empty>,
+        > {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
@@ -1977,7 +1978,7 @@ fn test_cw721_receive() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
             msg: to_binary("").unwrap(),
@@ -2078,7 +2079,9 @@ fn test_cw721_receive_no_auto_add() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::Mint(cw721_base::msg::MintMsg::<Option<Empty>> {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(cw721_base::msg::MintMsg::<
+            Option<Empty>,
+        > {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
@@ -2091,7 +2094,7 @@ fn test_cw721_receive_no_auto_add() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>>::SendNft {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::SendNft {
             contract: gov_addr.to_string(),
             token_id: "ekez".to_string(),
             msg: to_binary("").unwrap(),
@@ -2601,7 +2604,7 @@ fn test_migrate_mock() {
     deps.storage.set(&path, &to_binary(&Empty {}).unwrap());
 
     // Write to storage in old config format
-    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+    #[cw_serde]
     struct V1Config {
         pub name: String,
         pub description: String,
