@@ -32,3 +32,4 @@ indexmap = { workspace = true, features = ["serde"] }
 cw721-base = { workspace = true }
 cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
+cwd-testing = { workspace = true }

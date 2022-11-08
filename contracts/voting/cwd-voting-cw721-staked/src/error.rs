@@ -3,7 +3,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
 
     #[error("Nothing to claim")]
@@ -24,7 +24,7 @@ pub enum ContractError {
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
 
-    #[error("{0}")]
+    #[error(transparent)]
     HookError(#[from] cw_controllers::HookError),
 
     #[error("Can't unstake zero NFTs.")]
