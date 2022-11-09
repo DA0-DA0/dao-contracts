@@ -9,7 +9,7 @@ pub enum ContractError {
     #[error("Nothing to claim")]
     NothingToClaim {},
 
-    #[error("Invalid token")]
+    #[error("Invalid token. Got ({received}), expected ({expected})")]
     InvalidToken { received: Addr, expected: Addr },
 
     #[error("Unauthorized")]
