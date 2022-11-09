@@ -1,0 +1,26 @@
+[package]
+name = "gauge-orchestrator"
+version = { workspace = true }
+authors = [ "Cosmorama <cosmorama@proton.me>" ]
+edition = { workspace = true }
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+schemars = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+wynd-stake = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
