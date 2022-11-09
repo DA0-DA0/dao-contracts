@@ -1,6 +1,6 @@
 [alias]
 wasm = "build --release --lib --target wasm32-unknown-unknown"
 wasm-debug = "build --lib --target wasm32-unknown-unknown"
-t = "test --workspace"
-unit-test = "test --workspace"
+t = "test --workspace --exclude integration_tests"
+unit-test = "test --workspace --exclude integration_tests"
 integration-test = "test --package integration-tests -- --ignored --test-threads 1"

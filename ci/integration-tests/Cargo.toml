@@ -13,12 +13,15 @@ edition = "2021"
 cosm-orc = { version = "2.3.1" }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
+cw721-base = { workspace = true }
+cw721 = { workspace = true }
 cw-utils = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["ibc3"] }
 
 cwd-core = { workspace = true }
 cw20-stake = { workspace = true }
 cwd-voting-cw20-staked = { workspace = true }
+cwd-voting-cw721-staked = { workspace = true }
 cwd-proposal-single = { workspace = true }
 cwd-pre-propose-single = { workspace = true }
 cwd-interface = { workspace = true }
