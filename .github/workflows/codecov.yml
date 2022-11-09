@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Generate code coverage
         run: >
-          cargo +nightly tarpaulin --verbose --workspace --out Xml --exclude integration_tests --exclude-files debug/* *test*.rs packages/testing/* packages/cw-core-macros/* legacy/* ci/*
+          cargo +nightly tarpaulin --verbose --workspace --out Xml --exclude-files test-contracts/* *test*.rs packages/cwd-macros/* packages/cwd-testing/* ci/*
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v3
         with:
