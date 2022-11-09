@@ -51,7 +51,7 @@ tests.
 Run `just bootstrap-dev` to spin up a local environment and `just
 integration-test-dev` to run tests against it.
 
-See [ci/integration_tests/README.md](ci/integration_tests/README.md)
+See [ci/integration-tests/README.md](ci/integration_tests/README.md)
 for more information.
 
 ## Disclaimer
