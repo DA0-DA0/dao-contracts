@@ -1,12 +1,10 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Uint128;
 use cw721_controllers::{NftClaim, NftClaimsResponse};
-use cw_multi_test::{next_block, App, Executor};
+use cw_multi_test::next_block;
 use cw_utils::Duration;
 use cwd_interface::Admin;
-use cwd_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
 
 use crate::{
-    msg::InstantiateMsg,
     state::{Config, MAX_CLAIMS},
     testing::{
         execute::{
@@ -18,50 +16,10 @@ use crate::{
 
 use super::{
     execute::{add_hook, remove_hook},
+    is_error,
     queries::{query_claims, query_info, query_staked_nfts, query_total_power, query_voting_power},
-    CREATOR_ADDR,
+    setup_test, CommonTest, CREATOR_ADDR,
 };
-
-struct CommonTest {
-    app: App,
-    module: Addr,
-    nft: Addr,
-}
-fn setup_test(owner: Option<Admin>, unstaking_duration: Option<Duration>) -> CommonTest {
-    let mut app = App::default();
-    let cw721_id = app.store_code(cw721_base_contract());
-    let module_id = app.store_code(voting_cw721_staked_contract());
-
-    let nft = app
-        .instantiate_contract(
-            cw721_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &cw721_base::InstantiateMsg {
-                name: "bad kids".to_string(),
-                symbol: "bad kids".to_string(),
-                minter: CREATOR_ADDR.to_string(),
-            },
-            &[],
-            "cw721_base".to_string(),
-            None,
-        )
-        .unwrap();
-    let module = app
-        .instantiate_contract(
-            module_id,
-            Addr::unchecked(CREATOR_ADDR),
-            &InstantiateMsg {
-                owner,
-                nft_address: nft.to_string(),
-                unstaking_duration,
-            },
-            &[],
-            "cw721_voting",
-            None,
-        )
-        .unwrap();
-    CommonTest { app, module, nft }
-}
 
 // I can stake tokens, voting power and total power is updated one
 // block later.
@@ -141,22 +99,18 @@ fn test_unstake_tokens_no_claims() -> anyhow::Result<()> {
 
     // I can not unstake tokens I do not own. Anyhow can't figure out
     // how to downcast this error so we check for the expected string.
-    let err = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["4"]).unwrap_err();
-    assert!(format!("{:?}", err)
-        .contains("Can not unstake that which you have not staked (unstaking 4)"));
+    let res = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["4"]);
+    is_error!(res => "Can not unstake that which you have not staked (unstaking 4)");
 
-    let err = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["5", "4"]).unwrap_err();
-    assert!(format!("{:?}", err)
-        .contains("Can not unstake that which you have not staked (unstaking 5)"));
+    let res = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["5", "4"]);
+    is_error!(res => "Can not unstake that which you have not staked (unstaking 5)");
 
-    let err = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["☯️", "4"]).unwrap_err();
-    assert!(format!("{:?}", err)
-        .contains("Can not unstake that which you have not staked (unstaking ☯️)"));
+    let res = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["☯️", "4"]);
+    is_error!(res => "Can not unstake that which you have not staked (unstaking ☯️)");
 
     // I can not unstake tokens more than once.
-    let err = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["1"]).unwrap_err();
-    assert!(format!("{:?}", err)
-        .contains("Can not unstake that which you have not staked (unstaking 1)"));
+    let res = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["1"]);
+    is_error!(res => "Can not unstake that which you have not staked (unstaking 1)");
 
     Ok(())
 }
@@ -244,15 +198,14 @@ fn test_update_config() -> anyhow::Result<()> {
     assert_eq!(claims, NftClaimsResponse { nft_claims: vec![] });
 
     // Creator can no longer do config updates.
-    let err = update_config(
+    let res = update_config(
         &mut app,
         &module,
         CREATOR_ADDR,
         Some("friend"),
         Some(Duration::Time(1)),
-    )
-    .unwrap_err();
-    assert!(format!("{:?}", err).contains("Unauthorized"));
+    );
+    is_error!(res => "Unauthorized");
 
     // Friend can still do config updates, and even remove themselves
     // as the owner.
@@ -268,15 +221,14 @@ fn test_update_config() -> anyhow::Result<()> {
     );
 
     // Friend has removed themselves.
-    let err = update_config(
+    let res = update_config(
         &mut app,
         &module,
         "friend",
         Some("friend"),
         Some(Duration::Time(1)),
-    )
-    .unwrap_err();
-    assert!(format!("{:?}", err).contains("Unauthorized"));
+    );
+    is_error!(res => "Unauthorized");
 
     Ok(())
 }
@@ -299,8 +251,8 @@ fn test_claims() -> anyhow::Result<()> {
     let claims = query_claims(&app, &module, CREATOR_ADDR)?;
     assert_eq!(claims.nft_claims, vec![]);
 
-    let err = claim_nfts(&mut app, &module, CREATOR_ADDR).unwrap_err();
-    assert!(format!("{:?}", err).contains("Nothing to claim"));
+    let res = claim_nfts(&mut app, &module, CREATOR_ADDR);
+    is_error!(res => "Nothing to claim");
 
     unstake_nfts(&mut app, &module, CREATOR_ADDR, &["2"])?;
 
@@ -314,8 +266,8 @@ fn test_claims() -> anyhow::Result<()> {
     );
 
     // Claim now exists, but is not yet expired. Nothing to claim.
-    let err = claim_nfts(&mut app, &module, CREATOR_ADDR).unwrap_err();
-    assert!(format!("{:?}", err).contains("Nothing to claim"));
+    let res = claim_nfts(&mut app, &module, CREATOR_ADDR);
+    is_error!(res => "Nothing to claim");
 
     app.update_block(next_block);
     claim_nfts(&mut app, &module, CREATOR_ADDR)?;
@@ -342,9 +294,8 @@ fn test_max_claims() -> anyhow::Result<()> {
     }
 
     mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "a")?;
-    let err = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["a"]).unwrap_err();
-    assert!(format!("{:?}", err)
-        .contains("Too many outstanding claims. Claim some tokens before unstaking more."));
+    let res = unstake_nfts(&mut app, &module, CREATOR_ADDR, &["a"]);
+    is_error!(res => "Too many outstanding claims. Claim some tokens before unstaking more.");
 
     Ok(())
 }
@@ -427,28 +378,14 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     let hooks = query_hooks(&app, &module)?;
     assert_eq!(hooks.hooks, vec!["meow".to_string()]);
 
-    let err = add_hook(&mut app, &module, CREATOR_ADDR, "meow").unwrap_err();
-    assert!(format!("{:?}", err).contains("Given address already registered as a hook"));
+    let res = add_hook(&mut app, &module, CREATOR_ADDR, "meow");
+    is_error!(res => "Given address already registered as a hook");
 
-    let err = remove_hook(&mut app, &module, CREATOR_ADDR, "blue").unwrap_err();
-    assert!(format!("{:?}", err).contains("Given address not registered as a hook"));
+    let res = remove_hook(&mut app, &module, CREATOR_ADDR, "blue");
+    is_error!(res => "Given address not registered as a hook");
 
-    let err = add_hook(&mut app, &module, "ekez", "evil").unwrap_err();
-    assert!(format!("{:?}", err).contains("Unauthorized"));
+    let res = add_hook(&mut app, &module, "ekez", "evil");
+    is_error!(res => "Unauthorized");
 
     Ok(())
 }
-
-// ----
-// adversarial
-
-// I can not unstake tokens that do not belong to me.
-
-// I can not stake tokens from a collection that is not the configured
-// one.
-
-// What happens if I query for voting power for a block in the future?
-
-// What happens if you repeatedly stake and unstake a NFT in a single
-// TX. can you inflate voting power? can we make the snapshot map do
-// something strange?
