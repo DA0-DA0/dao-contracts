@@ -405,32 +405,26 @@ pub fn execute_execute(
     match vote_result {
         VoteResult::Tie => Err(ContractError::Tie {}), // We don't anticipate this case as the proposal would not be in passed state, checked above.
         VoteResult::SingleWinner(winning_choice) => {
-            let response = match winning_choice.msgs {
-                Some(msgs) => {
-                    if !msgs.is_empty() {
-                        let execute_message = WasmMsg::Execute {
-                            contract_addr: config.dao.to_string(),
-                            msg: to_binary(&cwd_core::msg::ExecuteMsg::ExecuteProposalHook {
-                                msgs,
-                            })?,
-                            funds: vec![],
-                        };
-                        match config.close_proposal_on_execution_failure {
-                            true => {
-                                let masked_proposal_id =
-                                    mask_proposal_execution_proposal_id(proposal_id);
-                                Response::default().add_submessage(SubMsg::reply_on_error(
-                                    execute_message,
-                                    masked_proposal_id,
-                                ))
-                            }
-                            false => Response::default().add_message(execute_message),
-                        }
-                    } else {
-                        Response::default()
+            let response = if !winning_choice.msgs.is_empty() {
+                let execute_message = WasmMsg::Execute {
+                    contract_addr: config.dao.to_string(),
+                    msg: to_binary(&cwd_core::msg::ExecuteMsg::ExecuteProposalHook {
+                        msgs: winning_choice.msgs,
+                    })?,
+                    funds: vec![],
+                };
+                match config.close_proposal_on_execution_failure {
+                    true => {
+                        let masked_proposal_id = mask_proposal_execution_proposal_id(proposal_id);
+                        Response::default().add_submessage(SubMsg::reply_on_error(
+                            execute_message,
+                            masked_proposal_id,
+                        ))
                     }
+                    false => Response::default().add_message(execute_message),
                 }
-                None => Response::default(),
+            } else {
+                Response::default()
             };
 
             let hooks = proposal_status_changed_hooks(

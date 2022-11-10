@@ -192,11 +192,11 @@ where
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 

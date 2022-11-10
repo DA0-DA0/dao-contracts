@@ -99,7 +99,7 @@ pub struct MultipleChoiceOptions {
 #[cw_serde]
 pub struct MultipleChoiceOption {
     pub description: String,
-    pub msgs: Option<Vec<CosmosMsg<Empty>>>,
+    pub msgs: Vec<CosmosMsg<Empty>>,
 }
 
 /// Multiple choice options that have been verified for correctness, and have all fields
@@ -117,7 +117,7 @@ pub struct CheckedMultipleChoiceOption {
     pub index: u32,
     pub option_type: MultipleChoiceOptionType,
     pub description: String,
-    pub msgs: Option<Vec<CosmosMsg<Empty>>>,
+    pub msgs: Vec<CosmosMsg<Empty>>,
     pub vote_count: Uint128,
 }
 
@@ -152,7 +152,7 @@ impl MultipleChoiceOptions {
             index: (checked_options.capacity() - 1) as u32,
             option_type: MultipleChoiceOptionType::None,
             description: NONE_OPTION_DESCRIPTION.to_string(),
-            msgs: None,
+            msgs: vec![],
             vote_count: Uint128::zero(),
         };
 
@@ -167,6 +167,8 @@ impl MultipleChoiceOptions {
 
 #[cfg(test)]
 mod test {
+    use std::vec;
+
     use super::*;
 
     #[test]
@@ -204,11 +206,11 @@ mod test {
         let options = vec![
             super::MultipleChoiceOption {
                 description: "multiple choice option 1".to_string(),
-                msgs: None,
+                msgs: vec![],
             },
             super::MultipleChoiceOption {
                 description: "multiple choice option 2".to_string(),
-                msgs: None,
+                msgs: vec![],
             },
         ];
 
@@ -247,7 +249,7 @@ mod test {
     fn test_into_checked_wrong_num_choices() {
         let options = vec![super::MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         }];
 
         let mc_options = super::MultipleChoiceOptions { options };

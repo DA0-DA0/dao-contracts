@@ -140,11 +140,11 @@ fn test_propose() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -234,7 +234,7 @@ fn test_propose_wrong_num_choices() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         };
         std::convert::TryInto::try_into(MAX_NUM_CHOICES + 1).unwrap()
     ];
@@ -334,11 +334,11 @@ fn test_no_early_pass_with_min_duration() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -443,11 +443,11 @@ fn test_propose_with_messages() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: Some(vec![CosmosMsg::Wasm(wasm_msg)]),
+            msgs: vec![CosmosMsg::Wasm(wasm_msg)],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -604,11 +604,11 @@ fn test_min_duration_same_as_proposal_duration() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -877,11 +877,11 @@ fn test_take_proposal_deposit() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -991,11 +991,11 @@ fn test_native_proposal_deposit() {
             options: vec![
                 MultipleChoiceOption {
                     description: "multiple choice option 1".to_string(),
-                    msgs: None,
+                    msgs: vec![],
                 },
                 MultipleChoiceOption {
                     description: "multiple choice option 2".to_string(),
-                    msgs: None,
+                    msgs: vec![],
                 },
             ],
         };
@@ -1401,11 +1401,11 @@ fn test_cant_propose_zero_power() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -1549,11 +1549,11 @@ fn test_cant_execute_not_member() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -1630,11 +1630,11 @@ fn test_open_proposal_submission() {
             options: vec![
                 MultipleChoiceOption {
                     description: "multiple choice option 1".to_string(),
-                    msgs: None,
+                    msgs: vec![],
                 },
                 MultipleChoiceOption {
                     description: "multiple choice option 2".to_string(),
-                    msgs: None,
+                    msgs: vec![],
                 },
             ],
         },
@@ -1658,21 +1658,21 @@ fn test_open_proposal_submission() {
         choices: vec![
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 1".to_string(),
-                msgs: None,
+                msgs: vec![],
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 0,
             },
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 2".to_string(),
-                msgs: None,
+                msgs: vec![],
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 1,
             },
             CheckedMultipleChoiceOption {
                 description: "None of the above".to_string(),
-                msgs: None,
+                msgs: vec![],
                 option_type: MultipleChoiceOptionType::None,
                 vote_count: Uint128::zero(),
                 index: 2,
@@ -1935,11 +1935,11 @@ fn test_execute_expired_proposal() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -2221,11 +2221,11 @@ fn test_query_list_proposals() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -2487,11 +2487,11 @@ fn test_active_threshold_absolute() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -2613,11 +2613,11 @@ fn test_active_threshold_percent() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -2742,11 +2742,11 @@ fn test_active_threshold_none() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -2828,11 +2828,11 @@ fn test_revoting() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -2955,11 +2955,11 @@ fn test_allow_revoting_config_changes() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -3100,11 +3100,11 @@ fn test_revoting_same_vote_twice() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -3190,11 +3190,11 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
     let options = vec![
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -3404,16 +3404,16 @@ fn test_close_failed_proposal() {
     let options = vec![
         MultipleChoiceOption {
             description: "Burn or burn".to_string(),
-            msgs: Some(vec![WasmMsg::Execute {
+            msgs: vec![WasmMsg::Execute {
                 contract_addr: token_contract.to_string(),
                 msg: binary_msg,
                 funds: vec![],
             }
-            .into()]),
+            .into()],
         },
         MultipleChoiceOption {
             description: "Don't burn".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 
@@ -3476,7 +3476,7 @@ fn test_close_failed_proposal() {
                     options: vec![
                         MultipleChoiceOption {
                             description: "Disable closing failed proposals".to_string(),
-                            msgs: Some(vec![WasmMsg::Execute {
+                            msgs: vec![WasmMsg::Execute {
                                 contract_addr: govmod.to_string(),
                                 msg: to_binary(&ExecuteMsg::UpdateConfig {
                                     voting_strategy: VotingStrategy::SingleChoice { quorum },
@@ -3490,11 +3490,11 @@ fn test_close_failed_proposal() {
                                 .unwrap(),
                                 funds: vec![],
                             }
-                            .into()]),
+                            .into()],
                         },
                         MultipleChoiceOption {
                             description: "Don't disable".to_string(),
-                            msgs: None,
+                            msgs: vec![],
                         },
                     ],
                 },
@@ -3683,16 +3683,16 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         options: vec![
             MultipleChoiceOption {
                 description: "Burning more tokens, than dao treasury have".to_string(),
-                msgs: Some(vec![WasmMsg::Execute {
+                msgs: vec![WasmMsg::Execute {
                     contract_addr: token_contract.to_string(),
                     msg: binary_msg,
                     funds: vec![],
                 }
-                .into()]),
+                .into()],
             },
             MultipleChoiceOption {
                 description: "hi there".to_string(),
-                msgs: None,
+                msgs: vec![],
             },
         ],
     };
