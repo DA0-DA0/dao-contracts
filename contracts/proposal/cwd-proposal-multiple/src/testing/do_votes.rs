@@ -193,10 +193,12 @@ where
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 

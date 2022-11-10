@@ -141,10 +141,12 @@ fn test_propose() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -235,6 +237,7 @@ fn test_propose_wrong_num_choices() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         };
         std::convert::TryInto::try_into(MAX_NUM_CHOICES + 1).unwrap()
     ];
@@ -335,10 +338,12 @@ fn test_no_early_pass_with_min_duration() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -444,10 +449,12 @@ fn test_propose_with_messages() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![CosmosMsg::Wasm(wasm_msg)],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -605,10 +612,12 @@ fn test_min_duration_same_as_proposal_duration() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -878,10 +887,12 @@ fn test_take_proposal_deposit() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -992,10 +1003,12 @@ fn test_native_proposal_deposit() {
                 MultipleChoiceOption {
                     description: "multiple choice option 1".to_string(),
                     msgs: vec![],
+                    title: "title".to_string(),
                 },
                 MultipleChoiceOption {
                     description: "multiple choice option 2".to_string(),
                     msgs: vec![],
+                    title: "title".to_string(),
                 },
             ],
         };
@@ -1402,10 +1415,12 @@ fn test_cant_propose_zero_power() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -1550,10 +1565,12 @@ fn test_cant_execute_not_member() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -1631,10 +1648,12 @@ fn test_open_proposal_submission() {
                 MultipleChoiceOption {
                     description: "multiple choice option 1".to_string(),
                     msgs: vec![],
+                    title: "title".to_string(),
                 },
                 MultipleChoiceOption {
                     description: "multiple choice option 2".to_string(),
                     msgs: vec![],
+                    title: "title".to_string(),
                 },
             ],
         },
@@ -1662,6 +1681,7 @@ fn test_open_proposal_submission() {
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 0,
+                title: "title".to_string(),
             },
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 2".to_string(),
@@ -1669,6 +1689,7 @@ fn test_open_proposal_submission() {
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 1,
+                title: "title".to_string(),
             },
             CheckedMultipleChoiceOption {
                 description: "None of the above".to_string(),
@@ -1676,6 +1697,7 @@ fn test_open_proposal_submission() {
                 option_type: MultipleChoiceOptionType::None,
                 vote_count: Uint128::zero(),
                 index: 2,
+                title: "None of the above".to_string(),
             },
         ],
         votes: MultipleChoiceVotes {
@@ -1936,10 +1958,12 @@ fn test_execute_expired_proposal() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -2222,10 +2246,12 @@ fn test_query_list_proposals() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -2488,10 +2514,12 @@ fn test_active_threshold_absolute() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -2614,10 +2642,12 @@ fn test_active_threshold_percent() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -2743,10 +2773,12 @@ fn test_active_threshold_none() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -2829,10 +2861,12 @@ fn test_revoting() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -2956,10 +2990,12 @@ fn test_allow_revoting_config_changes() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -3101,10 +3137,12 @@ fn test_revoting_same_vote_twice() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -3191,10 +3229,12 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "multiple choice option 2".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
     let mc_options = MultipleChoiceOptions { options };
@@ -3410,10 +3450,12 @@ fn test_close_failed_proposal() {
                 funds: vec![],
             }
             .into()],
+            title: "title".to_string(),
         },
         MultipleChoiceOption {
             description: "Don't burn".to_string(),
             msgs: vec![],
+            title: "title".to_string(),
         },
     ];
 
@@ -3491,10 +3533,12 @@ fn test_close_failed_proposal() {
                                 funds: vec![],
                             }
                             .into()],
+                            title: "title".to_string(),
                         },
                         MultipleChoiceOption {
                             description: "Don't disable".to_string(),
                             msgs: vec![],
+                            title: "title".to_string(),
                         },
                     ],
                 },
@@ -3689,10 +3733,12 @@ fn test_no_double_refund_on_execute_fail_and_close() {
                     funds: vec![],
                 }
                 .into()],
+                title: "title".to_string(),
             },
             MultipleChoiceOption {
                 description: "hi there".to_string(),
                 msgs: vec![],
+                title: "title".to_string(),
             },
         ],
     };

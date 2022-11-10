@@ -1147,7 +1147,8 @@
         "type": "object",
         "required": [
           "description",
-          "msgs"
+          "msgs",
+          "title"
         ],
         "properties": {
           "description": {
@@ -1158,6 +1159,9 @@
             "items": {
               "$ref": "#/definitions/CosmosMsg_for_Empty"
             }
+          },
+          "title": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -2388,6 +2392,7 @@
             "index",
             "msgs",
             "option_type",
+            "title",
             "vote_count"
           ],
           "properties": {
@@ -2407,6 +2412,9 @@
             },
             "option_type": {
               "$ref": "#/definitions/MultipleChoiceOptionType"
+            },
+            "title": {
+              "type": "string"
             },
             "vote_count": {
               "$ref": "#/definitions/Uint128"
@@ -3545,6 +3553,7 @@
             "index",
             "msgs",
             "option_type",
+            "title",
             "vote_count"
           ],
           "properties": {
@@ -3564,6 +3573,9 @@
             },
             "option_type": {
               "$ref": "#/definitions/MultipleChoiceOptionType"
+            },
+            "title": {
+              "type": "string"
             },
             "vote_count": {
               "$ref": "#/definitions/Uint128"
@@ -4673,6 +4685,7 @@
             "index",
             "msgs",
             "option_type",
+            "title",
             "vote_count"
           ],
           "properties": {
@@ -4692,6 +4705,9 @@
             },
             "option_type": {
               "$ref": "#/definitions/MultipleChoiceOptionType"
+            },
+            "title": {
+              "type": "string"
             },
             "vote_count": {
               "$ref": "#/definitions/Uint128"

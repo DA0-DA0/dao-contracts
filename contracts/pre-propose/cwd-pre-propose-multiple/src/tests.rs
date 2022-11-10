@@ -193,10 +193,12 @@ fn make_proposal(
                             MultipleChoiceOption {
                                 description: "multiple choice option 1".to_string(),
                                 msgs: vec![],
+                                title: "title".to_string(),
                             },
                             MultipleChoiceOption {
                                 description: "multiple choice option 2".to_string(),
                                 msgs: vec![],
+                                title: "title".to_string(),
                             },
                         ],
                     },
@@ -233,6 +235,7 @@ fn make_proposal(
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 0,
+                title: "title".to_string(),
             },
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 2".to_string(),
@@ -240,6 +243,7 @@ fn make_proposal(
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 1,
+                title: "title".to_string(),
             },
             CheckedMultipleChoiceOption {
                 description: "None of the above".to_string(),
@@ -247,6 +251,7 @@ fn make_proposal(
                 option_type: MultipleChoiceOptionType::None,
                 vote_count: Uint128::zero(),
                 index: 2,
+                title: "None of the above".to_string(),
             },
         ]
     );
@@ -875,6 +880,7 @@ fn test_permissions() {
                         options: vec![MultipleChoiceOption {
                             description: "multiple choice option 1".to_string(),
                             msgs: vec![],
+                            title: "title".to_string(),
                         }],
                     },
                 },
@@ -980,6 +986,7 @@ fn test_no_deposit_required_members_submission() {
                         options: vec![MultipleChoiceOption {
                             description: "multiple choice option 1".to_string(),
                             msgs: vec![],
+                            title: "title".to_string(),
                         }],
                     },
                 },

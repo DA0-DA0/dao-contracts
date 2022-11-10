@@ -204,6 +204,7 @@ export interface MultipleChoiceOptions {
 export interface MultipleChoiceOption {
   description: string;
   msgs: CosmosMsgForEmpty[];
+  title: string;
 }
 export interface Coin {
   amount: Uint128;

@@ -842,7 +842,8 @@
         "type": "object",
         "required": [
           "description",
-          "msgs"
+          "msgs",
+          "title"
         ],
         "properties": {
           "description": {
@@ -853,6 +854,9 @@
             "items": {
               "$ref": "#/definitions/CosmosMsg_for_Empty"
             }
+          },
+          "title": {
+            "type": "string"
           }
         },
         "additionalProperties": false
