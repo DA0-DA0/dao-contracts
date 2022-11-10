@@ -237,7 +237,7 @@ export interface MultipleChoiceOptions {
 }
 export interface MultipleChoiceOption {
   description: string;
-  msgs?: CosmosMsgForEmpty[] | null;
+  msgs: CosmosMsgForEmpty[];
 }
 export interface Coin {
   amount: Uint128;
@@ -366,7 +366,7 @@ export interface MultipleChoiceProposal {
 export interface CheckedMultipleChoiceOption {
   description: string;
   index: number;
-  msgs?: CosmosMsgForEmpty[] | null;
+  msgs: CosmosMsgForEmpty[];
   option_type: MultipleChoiceOptionType;
   vote_count: Uint128;
 }

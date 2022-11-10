@@ -841,17 +841,15 @@
         "description": "Unchecked multiple choice option",
         "type": "object",
         "required": [
-          "description"
+          "description",
+          "msgs"
         ],
         "properties": {
           "description": {
             "type": "string"
           },
           "msgs": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": "array",
             "items": {
               "$ref": "#/definitions/CosmosMsg_for_Empty"
             }

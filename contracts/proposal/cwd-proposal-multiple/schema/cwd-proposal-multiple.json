@@ -1146,17 +1146,15 @@
         "description": "Unchecked multiple choice option",
         "type": "object",
         "required": [
-          "description"
+          "description",
+          "msgs"
         ],
         "properties": {
           "description": {
             "type": "string"
           },
           "msgs": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": "array",
             "items": {
               "$ref": "#/definitions/CosmosMsg_for_Empty"
             }
@@ -2388,6 +2386,7 @@
           "required": [
             "description",
             "index",
+            "msgs",
             "option_type",
             "vote_count"
           ],
@@ -2401,10 +2400,7 @@
               "minimum": 0.0
             },
             "msgs": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/definitions/CosmosMsg_for_Empty"
               }
@@ -3547,6 +3543,7 @@
           "required": [
             "description",
             "index",
+            "msgs",
             "option_type",
             "vote_count"
           ],
@@ -3560,10 +3557,7 @@
               "minimum": 0.0
             },
             "msgs": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/definitions/CosmosMsg_for_Empty"
               }
@@ -4677,6 +4671,7 @@
           "required": [
             "description",
             "index",
+            "msgs",
             "option_type",
             "vote_count"
           ],
@@ -4690,10 +4685,7 @@
               "minimum": 0.0
             },
             "msgs": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/definitions/CosmosMsg_for_Empty"
               }

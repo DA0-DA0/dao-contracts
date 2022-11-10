@@ -203,7 +203,7 @@ export interface MultipleChoiceOptions {
 }
 export interface MultipleChoiceOption {
   description: string;
-  msgs?: CosmosMsgForEmpty[] | null;
+  msgs: CosmosMsgForEmpty[];
 }
 export interface Coin {
   amount: Uint128;
