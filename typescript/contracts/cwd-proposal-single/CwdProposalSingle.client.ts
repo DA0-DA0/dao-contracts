@@ -14,7 +14,7 @@ export interface CwdProposalSingleReadOnlyInterface {
     proposalId
   }: {
     proposalId: number;
-  }) => Promise<SingleChoiceProposal>;
+  }) => Promise<ProposalResponse>;
   listProposals: ({
     limit,
     startAfter
@@ -82,7 +82,7 @@ export class CwdProposalSingleQueryClient implements CwdProposalSingleReadOnlyIn
     proposalId
   }: {
     proposalId: number;
-  }): Promise<SingleChoiceProposal> => {
+  }): Promise<ProposalResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       proposal: {
         proposal_id: proposalId
