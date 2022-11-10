@@ -2,7 +2,6 @@ use cosm_orc::config::key::SigningKey;
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw_utils::Duration;
 use cwd_interface::Admin;
-use module::state::MAX_CLAIMS;
 use test_context::test_context;
 
 use cwd_voting_cw721_staked as module;
@@ -183,10 +182,15 @@ fn cw721_stake_tokens(chain: &mut Chain) {
     assert_eq!(voting_power, Uint128::zero());
 }
 
+// Running this test takes about 28 minutes in CI as MAX_CLAIMS is
+// 100. We only run slow tests on merge to main.
+#[cfg(feature = "slow-tests")]
 #[test_context(Chain)]
 #[test]
 #[ignore]
 fn cw721_stake_max_claims_works(chain: &mut Chain) {
+    use module::state::MAX_CLAIMS;
+
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
 
