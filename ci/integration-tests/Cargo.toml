@@ -3,7 +3,10 @@ name = "integration-tests"
 version = "0.1.0"
 edition = "2021"
 
-# This crate depends on rand. These are not features in
+[features]
+slow-tests = []
+
+# This crate depends on rand. These are not featured in
 # wasm builds of cosmwasm. Despite this crate only being used as a dev
 # dependency, because it is part of the workspace it will always be
 # compiled. There is no good way to remove a member from a workspace
