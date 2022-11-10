@@ -14,6 +14,16 @@ thresholds see
 [this](https://github.com/DA0-DA0/dao-contracts/wiki/A-brief-overview-of-DAO-DAO-voting#proposal-status)
 wiki page.
 
+## Undesired behavior
+
+The undesired behavior of this contract is tested under `testing/adversarial_tests.rs`.
+
+In general, it should cover:
+- Executing unpassed proposals
+- Executing proposals more than once
+- Social engineering proposals for financial benefit
+- Convincing proposal modules to spend someone else's allowance
+
 ## Proposal deposits
 
 Proposal deposits for this module are handled by the
@@ -35,3 +45,9 @@ The format for these hook messages can be located in the
 To stop an invalid hook receiver from locking the proposal module
 receivers will be removed from the hook list if they error when
 handling a hook.
+
+## Revoting
+
+The proposals may be configured to allow revoting.
+In such cases, users are able to change their vote as long as the proposal is still open.
+Revoting for the currently cast option will return an error.

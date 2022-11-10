@@ -40,6 +40,9 @@ fn setup_test(messages: Vec<CosmosMsg>) -> CommonTest {
     }
 }
 
+// A proposal that is still accepting votes (is open) cannot
+// be executed. Any attempts to do so should fail and return
+// an error.
 #[test]
 fn test_execute_proposal_open() {
     let CommonTest {
@@ -59,6 +62,9 @@ fn test_execute_proposal_open() {
     assert!(matches!(err, ContractError::NotPassed {}))
 }
 
+// A proposal can be executed if and only if it passed.
+// Any attempts to execute a proposal that has been rejected
+// or closed (after rejection) should fail and return an error.
 #[test]
 fn test_execute_proposal_rejected_closed() {
     let CommonTest {
@@ -100,6 +106,8 @@ fn test_execute_proposal_rejected_closed() {
     assert!(matches!(err, ContractError::NotPassed {}))
 }
 
+// A proposal can only be executed once. Any subsequent
+// attempts to execute it should fail and return an error.
 #[test]
 fn test_execute_proposal_more_than_once() {
     let CommonTest {
