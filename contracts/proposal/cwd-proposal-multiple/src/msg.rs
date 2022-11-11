@@ -158,7 +158,7 @@ pub enum QueryMsg {
         limit: Option<u64>,
     },
     /// Returns the number of proposals that have been created in this
-    /// module./// Returns a voters position on a propsal.
+    /// module.
     #[returns(u64)]
     ProposalCount {},
     /// Returns a voters position on a proposal.
