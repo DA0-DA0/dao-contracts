@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
 use cw_denom::UncheckedDenom;
+use cwd_hooks::HooksResponse;
 use cwd_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     status::Status,
@@ -70,6 +71,13 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// will do nothing if this variant is executed.
     Extension { msg: ExecuteExt },
 
+    /// Adds a proposal submitted hook. Fires when a new proposal is
+    /// submitted to the pre-propose contract.
+    AddProposalSubmittedHook { address: String },
+
+    /// Removes a proposal submitted hook.
+    RemoveProposalSubmittedHook { address: String },
+
     /// Handles proposal hook fired by the associated proposal
     /// module when a proposal is created. By default, the base contract will return deposits
     /// proposals, when they are closed.
@@ -87,6 +95,7 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     },
 }
 
+// TODO add ProposalSubmittedHooks query
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg<QueryExt>
@@ -108,6 +117,9 @@ where
     /// PROPOSAL_ID.
     #[returns(DepositInfoResponse)]
     DepositInfo { proposal_id: u64 },
+    /// Returns list of proposal submitted hooks.
+    #[returns(HooksResponse)]
+    ProposalSubmittedHooks {},
     /// Extension for queries. The default implementation will do
     /// nothing if queried for will return `Binary::default()`.
     #[returns(cosmwasm_std::Binary)]
