@@ -1,0 +1,29 @@
+[package]
+name = "cwd-voting-staking-denom-staked"
+version = "0.2.0"
+authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "A DAO DAO voting module based on natively staked tokens."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+cwd-macros = { workspace = true }
+cwd-interface = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

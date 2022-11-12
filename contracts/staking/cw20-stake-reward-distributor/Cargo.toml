@@ -1,0 +1,45 @@
+[package]
+name = "stake-cw20-reward-distributor"
+version = "0.2.0"
+edition = "2018"
+authors = ["Vernon Johnson <vtj2105@columbia.edu>"]
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[package.metadata.scripts]
+optimize = """docker run --rm -v "$(pwd)":/code \
+  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+  cosmwasm/workspace-optimizer:0.12.6
+"""
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+cw20 = { workspace = true }
+cw-utils = { workspace = true }
+
+cw20-base = {  workspace = true, features = ["library"] }
+cw20-stake = { workspace = true, features = ["library"]}
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }

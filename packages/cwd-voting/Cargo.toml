@@ -1,0 +1,19 @@
+[package]
+name = "cwd-voting"
+version = "0.2.0"
+edition = "2021"
+authors = ["ekez ekez@withoutdoing.com"]
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "Types and methods for CosmWasm DAO voting."
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+thiserror = { workspace = true }
+cw20 = { workspace = true }
+cwd-interface = { workspace = true }
+cwd-macros = { workspace = true }
+cwd-core = { workspace = true }
+cw-denom = { workspace = true }
+cw-utils = { workspace = true }
+cw-storage-plus = { workspace = true }

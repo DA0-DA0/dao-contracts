@@ -1,0 +1,16 @@
+[package]
+name = "cwd-interface"
+version = "0.2.0"
+edition = "2021"
+authors = ["ekez ekez@withoutdoing.com"]
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "A package containing interface definitions for DAO DAO DAOs."
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cwd-macros = { workspace = true }
+cw2 = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-schema = { workspace = true }

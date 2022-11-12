@@ -1,0 +1,27 @@
+[package]
+name = "cwd-proposal-sudo"
+version = "0.2.0"
+authors = ["ekez <ekez@withoutdoing.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+cwd-macros = { workspace = true }
+cwd-interface = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
