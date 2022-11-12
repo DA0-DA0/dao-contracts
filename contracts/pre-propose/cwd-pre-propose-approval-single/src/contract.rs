@@ -30,7 +30,6 @@ pub struct InstantiateExt {
     pub approver: String,
 }
 
-/// TODO: Add remove hooks for approver? Maybe in the base? DAO or approver can add these hooks?
 #[cw_serde]
 pub enum ExecuteExt {
     /// Approve a proposal, only callable by approver
@@ -39,7 +38,6 @@ pub enum ExecuteExt {
     Reject { id: u64 },
 }
 
-//// TODO what to do with this?
 #[cw_serde]
 pub enum QueryExt {
     /// List the approver address
@@ -90,11 +88,20 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, PreProposeError> {
     match msg {
+        // Override pre-propose-base behavior
         ExecuteMsg::Propose { msg } => execute_propose(deps, env, info, msg),
+        ExecuteMsg::AddProposalSubmittedHook { address } => {
+            execute_add_approver_hook(deps, info, address)
+        }
+        ExecuteMsg::RemoveProposalSubmittedHook { address } => {
+            execute_remove_approver_hook(deps, info, address)
+        }
+        // Extension
         ExecuteMsg::Extension { msg } => match msg {
             ExecuteExt::Approve { id } => execute_approve(deps, env, info, id),
             ExecuteExt::Reject { id } => execute_reject(deps, env, info, id),
         },
+        // Default pre-propose-base behavior for all other messages
         _ => PrePropose::default().execute(deps, env, info, msg),
     }
 }
@@ -169,28 +176,44 @@ pub fn execute_reject(
 
 pub fn execute_add_approver_hook(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
+    address: String,
 ) -> Result<Response, PreProposeError> {
     // Check sender is the approver
     let approver = APPROVER.load(deps.storage)?;
     if approver != info.sender {
         return Err(PreProposeError::Unauthorized {});
     }
+
+    // Validate address
+    let addr = deps.api.addr_validate(&address)?;
+
+    // Add hook
+    PrePropose::default()
+        .proposal_submitted_hooks
+        .add_hook(deps.storage, addr)?;
 
     Ok(Response::default())
 }
 
 pub fn execute_remove_approver_hook(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
+    address: String,
 ) -> Result<Response, PreProposeError> {
     // Check sender is the approver
     let approver = APPROVER.load(deps.storage)?;
     if approver != info.sender {
         return Err(PreProposeError::Unauthorized {});
     }
+
+    // Validate address
+    let addr = deps.api.addr_validate(&address)?;
+
+    // Add hook
+    PrePropose::default()
+        .proposal_submitted_hooks
+        .remove_hook(deps.storage, addr)?;
 
     Ok(Response::default())
 }

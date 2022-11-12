@@ -25,16 +25,18 @@ pub enum ProposeMessage {
 }
 
 #[cw_serde]
-pub struct InstantiateExt {
-    // TODO better name
-    pub dao_addr_to_approve_proposal_flows_for: String,
+pub struct InstantiateMsg {
+    pub dao_to_approve_for: String,
 }
 
-// TODO hard code instantiate message to have no deposits
-pub type InstantiateMsg = InstantiateBase<InstantiateExt>;
+#[cw_serde]
+pub enum QueryExt {
+    DaoToApproveFor {},
+}
+
+pub type BaseInstantiateMsg = InstantiateBase<Empty>;
 pub type ExecuteMsg = ExecuteBase<ProposeMessage, Empty>;
-// TODO Query extension?
-pub type QueryMsg = QueryBase<Empty>;
+pub type QueryMsg = QueryBase<QueryExt>;
 
 /// Internal version of the propose message that includes the
 /// `proposer` field. The module will fill this in based on the sender
@@ -49,7 +51,7 @@ pub enum ProposeMessageInternal {
     },
 }
 
-type PrePropose = PreProposeContract<Empty, Empty, Empty, ProposeMessageInternal>;
+type PrePropose = PreProposeContract<Empty, Empty, QueryExt, ProposeMessageInternal>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -58,9 +60,18 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, PreProposeError> {
-    let resp = PrePropose::default().instantiate(deps.branch(), env, info, msg)?;
+    // This contract does not handle deposits or have open submissions
+    // Here we hardcode the pre-propose-base instantiate message
+    let base_instantiate_msg = BaseInstantiateMsg {
+        deposit_info: None,
+        open_proposal_submission: false,
+        extension: Empty {},
+    };
+
+    let resp = PrePropose::default().instantiate(deps.branch(), env, info, base_instantiate_msg)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    // TODO register hook with approval flow contract
+
+    // TODO submessage to register hook with approval flow contract
     Ok(resp)
 }
 
@@ -77,6 +88,7 @@ pub fn execute(
     // internal message which sets it.
     type ExecuteInternal = ExecuteBase<ProposeMessageInternal, Empty>;
     let internalized = match msg {
+        // TODO override propose? add a recieve hook?
         ExecuteMsg::Propose {
             msg:
                 ProposeMessage::Propose {
@@ -102,6 +114,12 @@ pub fn execute(
             deposit_info,
             open_proposal_submission,
         },
+        ExecuteMsg::AddProposalSubmittedHook { address } => {
+            ExecuteInternal::AddProposalSubmittedHook { address }
+        }
+        ExecuteMsg::RemoveProposalSubmittedHook { address } => {
+            ExecuteInternal::RemoveProposalSubmittedHook { address }
+        }
         ExecuteMsg::ProposalCreatedHook {
             proposal_id,
             proposer,
@@ -124,5 +142,10 @@ pub fn execute(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    PrePropose::default().query(deps, env, msg)
+    match msg {
+        QueryMsg::QueryExtension { msg } => match msg {
+            QueryExt::DaoToApproveFor {} => unimplemented!(),
+        },
+        _ => PrePropose::default().query(deps, env, msg),
+    }
 }

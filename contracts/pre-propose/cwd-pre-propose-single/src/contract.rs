@@ -93,6 +93,12 @@ pub fn execute(
             deposit_info,
             open_proposal_submission,
         },
+        ExecuteMsg::AddProposalSubmittedHook { address } => {
+            ExecuteInternal::AddProposalSubmittedHook { address }
+        }
+        ExecuteMsg::RemoveProposalSubmittedHook { address } => {
+            ExecuteInternal::RemoveProposalSubmittedHook { address }
+        }
         ExecuteMsg::ProposalCreatedHook {
             proposal_id,
             proposer,

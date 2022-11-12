@@ -2,6 +2,7 @@ use cosmwasm_std::StdError;
 use cw_denom::DenomError;
 use thiserror::Error;
 
+use cwd_hooks::HookError;
 use cwd_voting::{deposit::DepositError, status::Status};
 
 #[derive(Error, Debug, PartialEq)]
@@ -14,6 +15,9 @@ pub enum PreProposeError {
 
     #[error(transparent)]
     Deposit(#[from] DepositError),
+
+    #[error(transparent)]
+    Hooks(#[from] HookError),
 
     #[error("Message sender is not proposal module")]
     NotModule {},
