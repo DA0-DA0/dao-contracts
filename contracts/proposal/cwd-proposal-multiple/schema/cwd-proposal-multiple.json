@@ -1688,7 +1688,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the number of proposals that have been created in this module./// Returns a voters position on a propsal.",
+        "description": "Returns the number of proposals that have been created in this module.",
         "type": "object",
         "required": [
           "proposal_count"
