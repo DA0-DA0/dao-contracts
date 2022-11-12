@@ -1113,6 +1113,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
+ "cwd-hooks",
  "cwd-interface",
  "cwd-proposal-hooks",
  "cwd-voting",
