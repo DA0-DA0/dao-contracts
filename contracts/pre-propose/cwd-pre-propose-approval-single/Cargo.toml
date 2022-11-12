@@ -20,7 +20,10 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
+cwd-interface = { workspace = true }
 cwd-pre-propose-base = { workspace = true }
+cwd-proposal-single = { workspace = true }
+cwd-voting = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
