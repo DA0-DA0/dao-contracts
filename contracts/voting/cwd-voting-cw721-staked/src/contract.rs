@@ -205,7 +205,7 @@ pub fn execute_update_config(
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NotOwner {});
     }
 
     let new_owner = new_owner
@@ -234,7 +234,7 @@ pub fn execute_add_hook(
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NotOwner {});
     }
 
     let hook = deps.api.addr_validate(&addr)?;
@@ -252,7 +252,7 @@ pub fn execute_remove_hook(
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
     if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::NotOwner {});
     }
 
     let hook = deps.api.addr_validate(&addr)?;
