@@ -1146,20 +1146,22 @@
         "description": "Unchecked multiple choice option",
         "type": "object",
         "required": [
-          "description"
+          "description",
+          "msgs",
+          "title"
         ],
         "properties": {
           "description": {
             "type": "string"
           },
           "msgs": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": "array",
             "items": {
               "$ref": "#/definitions/CosmosMsg_for_Empty"
             }
+          },
+          "title": {
+            "type": "string"
           }
         },
         "additionalProperties": false
@@ -1686,7 +1688,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the number of proposals that have been created in this module./// Returns a voters position on a propsal.",
+        "description": "Returns the number of proposals that have been created in this module.",
         "type": "object",
         "required": [
           "proposal_count"
@@ -2388,7 +2390,9 @@
           "required": [
             "description",
             "index",
+            "msgs",
             "option_type",
+            "title",
             "vote_count"
           ],
           "properties": {
@@ -2401,16 +2405,16 @@
               "minimum": 0.0
             },
             "msgs": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/definitions/CosmosMsg_for_Empty"
               }
             },
             "option_type": {
               "$ref": "#/definitions/MultipleChoiceOptionType"
+            },
+            "title": {
+              "type": "string"
             },
             "vote_count": {
               "$ref": "#/definitions/Uint128"
@@ -3457,103 +3461,21 @@
     },
     "proposal": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "MultipleChoiceProposal",
+      "title": "ProposalResponse",
+      "description": "Information about a proposal returned by proposal queries.",
       "type": "object",
       "required": [
-        "allow_revoting",
-        "choices",
-        "description",
-        "expiration",
-        "proposer",
-        "start_height",
-        "status",
-        "title",
-        "total_power",
-        "votes",
-        "voting_strategy"
+        "id",
+        "proposal"
       ],
       "properties": {
-        "allow_revoting": {
-          "description": "Whether DAO members are allowed to change their votes. When disabled, proposals can be executed as soon as they pass. When enabled, proposals can only be executed after the voting perid has ended and the proposal passed.",
-          "type": "boolean"
-        },
-        "choices": {
-          "description": "The options to be chosen from in the vote.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CheckedMultipleChoiceOption"
-          }
-        },
-        "description": {
-          "type": "string"
-        },
-        "expiration": {
-          "description": "The the time at which this proposal will expire and close for additional votes.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            }
-          ]
-        },
-        "min_voting_period": {
-          "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "proposer": {
-          "description": "The address that created this proposal.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            }
-          ]
-        },
-        "start_height": {
-          "description": "The block height at which this proposal was created. Voting power queries should query for voting power at this block height.",
+        "id": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "status": {
-          "description": "Prosal status (Open, rejected, executed, execution failed, closed, passed)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Status"
-            }
-          ]
-        },
-        "title": {
-          "type": "string"
-        },
-        "total_power": {
-          "description": "The total power when the proposal started (used to calculate percentages)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            }
-          ]
-        },
-        "votes": {
-          "description": "The vote tally.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/MultipleChoiceVotes"
-            }
-          ]
-        },
-        "voting_strategy": {
-          "description": "Voting settings (threshold, quorum, etc.)",
-          "allOf": [
-            {
-              "$ref": "#/definitions/VotingStrategy"
-            }
-          ]
+        "proposal": {
+          "$ref": "#/definitions/MultipleChoiceProposal"
         }
       },
       "additionalProperties": false,
@@ -3629,7 +3551,9 @@
           "required": [
             "description",
             "index",
+            "msgs",
             "option_type",
+            "title",
             "vote_count"
           ],
           "properties": {
@@ -3642,16 +3566,16 @@
               "minimum": 0.0
             },
             "msgs": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/definitions/CosmosMsg_for_Empty"
               }
             },
             "option_type": {
               "$ref": "#/definitions/MultipleChoiceOptionType"
+            },
+            "title": {
+              "type": "string"
             },
             "vote_count": {
               "$ref": "#/definitions/Uint128"
@@ -4092,6 +4016,107 @@
               ]
             }
           ]
+        },
+        "MultipleChoiceProposal": {
+          "type": "object",
+          "required": [
+            "allow_revoting",
+            "choices",
+            "description",
+            "expiration",
+            "proposer",
+            "start_height",
+            "status",
+            "title",
+            "total_power",
+            "votes",
+            "voting_strategy"
+          ],
+          "properties": {
+            "allow_revoting": {
+              "description": "Whether DAO members are allowed to change their votes. When disabled, proposals can be executed as soon as they pass. When enabled, proposals can only be executed after the voting perid has ended and the proposal passed.",
+              "type": "boolean"
+            },
+            "choices": {
+              "description": "The options to be chosen from in the vote.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/CheckedMultipleChoiceOption"
+              }
+            },
+            "description": {
+              "type": "string"
+            },
+            "expiration": {
+              "description": "The the time at which this proposal will expire and close for additional votes.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
+            "min_voting_period": {
+              "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "proposer": {
+              "description": "The address that created this proposal.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "start_height": {
+              "description": "The block height at which this proposal was created. Voting power queries should query for voting power at this block height.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "status": {
+              "description": "Prosal status (Open, rejected, executed, execution failed, closed, passed)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Status"
+                }
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "total_power": {
+              "description": "The total power when the proposal started (used to calculate percentages)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "votes": {
+              "description": "The vote tally.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/MultipleChoiceVotes"
+                }
+              ]
+            },
+            "voting_strategy": {
+              "description": "Voting settings (threshold, quorum, etc.)",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/VotingStrategy"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
         },
         "MultipleChoiceVotes": {
           "type": "object",
@@ -4658,7 +4683,9 @@
           "required": [
             "description",
             "index",
+            "msgs",
             "option_type",
+            "title",
             "vote_count"
           ],
           "properties": {
@@ -4671,16 +4698,16 @@
               "minimum": 0.0
             },
             "msgs": {
-              "type": [
-                "array",
-                "null"
-              ],
+              "type": "array",
               "items": {
                 "$ref": "#/definitions/CosmosMsg_for_Empty"
               }
             },
             "option_type": {
               "$ref": "#/definitions/MultipleChoiceOptionType"
+            },
+            "title": {
+              "type": "string"
             },
             "vote_count": {
               "$ref": "#/definitions/Uint128"

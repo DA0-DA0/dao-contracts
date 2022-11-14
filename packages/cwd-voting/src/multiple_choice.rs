@@ -3,8 +3,9 @@ use cosmwasm_std::{CosmosMsg, Empty, StdError, StdResult, Uint128};
 
 use crate::threshold::{validate_quorum, PercentageThreshold, ThresholdError};
 
-/// Maximum number of choices for multiple choice votes
-pub const MAX_NUM_CHOICES: u32 = 10;
+/// Maximum number of choices for multiple choice votes. Chosen
+/// in order to impose a bound on state / queries.
+pub const MAX_NUM_CHOICES: u32 = 20;
 const NONE_OPTION_DESCRIPTION: &str = "None of the above";
 
 /// Determines how many choices may be selected.
@@ -98,8 +99,9 @@ pub struct MultipleChoiceOptions {
 /// Unchecked multiple choice option
 #[cw_serde]
 pub struct MultipleChoiceOption {
+    pub title: String,
     pub description: String,
-    pub msgs: Option<Vec<CosmosMsg<Empty>>>,
+    pub msgs: Vec<CosmosMsg<Empty>>,
 }
 
 /// Multiple choice options that have been verified for correctness, and have all fields
@@ -116,8 +118,9 @@ pub struct CheckedMultipleChoiceOption {
     // Workaround due to not being able to use HashMaps in Cosmwasm.
     pub index: u32,
     pub option_type: MultipleChoiceOptionType,
+    pub title: String,
     pub description: String,
-    pub msgs: Option<Vec<CosmosMsg<Empty>>>,
+    pub msgs: Vec<CosmosMsg<Empty>>,
     pub vote_count: Uint128,
 }
 
@@ -143,8 +146,9 @@ impl MultipleChoiceOptions {
                     description: choice.description,
                     msgs: choice.msgs,
                     vote_count: Uint128::zero(),
+                    title: choice.title,
                 };
-                checked_options.push(checked_option);
+                checked_options.push(checked_option)
             });
 
         // Add a "None of the above" option, required for every multiple choice proposal.
@@ -152,8 +156,9 @@ impl MultipleChoiceOptions {
             index: (checked_options.capacity() - 1) as u32,
             option_type: MultipleChoiceOptionType::None,
             description: NONE_OPTION_DESCRIPTION.to_string(),
-            msgs: None,
+            msgs: vec![],
             vote_count: Uint128::zero(),
+            title: NONE_OPTION_DESCRIPTION.to_string(),
         };
 
         checked_options.push(none_option);
@@ -167,6 +172,8 @@ impl MultipleChoiceOptions {
 
 #[cfg(test)]
 mod test {
+    use std::vec;
+
     use super::*;
 
     #[test]
@@ -204,11 +211,13 @@ mod test {
         let options = vec![
             super::MultipleChoiceOption {
                 description: "multiple choice option 1".to_string(),
-                msgs: None,
+                msgs: vec![],
+                title: "title".to_string(),
             },
             super::MultipleChoiceOption {
                 description: "multiple choice option 2".to_string(),
-                msgs: None,
+                msgs: vec![],
+                title: "title".to_string(),
             },
         ];
 
@@ -247,7 +256,8 @@ mod test {
     fn test_into_checked_wrong_num_choices() {
         let options = vec![super::MultipleChoiceOption {
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
+            title: "title".to_string(),
         }];
 
         let mc_options = super::MultipleChoiceOptions { options };

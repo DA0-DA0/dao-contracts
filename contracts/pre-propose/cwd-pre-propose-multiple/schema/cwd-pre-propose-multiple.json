@@ -841,20 +841,22 @@
         "description": "Unchecked multiple choice option",
         "type": "object",
         "required": [
-          "description"
+          "description",
+          "msgs",
+          "title"
         ],
         "properties": {
           "description": {
             "type": "string"
           },
           "msgs": {
-            "type": [
-              "array",
-              "null"
-            ],
+            "type": "array",
             "items": {
               "$ref": "#/definitions/CosmosMsg_for_Empty"
             }
+          },
+          "title": {
+            "type": "string"
           }
         },
         "additionalProperties": false

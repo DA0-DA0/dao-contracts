@@ -3608,92 +3608,22 @@
     },
     "proposal": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SingleChoiceProposal",
+      "title": "ProposalResponse",
+      "description": "Information about a proposal returned by proposal queries.",
       "type": "object",
       "required": [
-        "allow_revoting",
-        "description",
-        "expiration",
-        "msgs",
-        "proposer",
-        "start_height",
-        "status",
-        "threshold",
-        "title",
-        "total_power",
-        "votes"
+        "id",
+        "proposal"
       ],
       "properties": {
-        "allow_revoting": {
-          "type": "boolean"
-        },
-        "description": {
-          "type": "string"
-        },
-        "expiration": {
-          "description": "The the time at which this proposal will expire and close for additional votes.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            }
-          ]
-        },
-        "min_voting_period": {
-          "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expiration"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "msgs": {
-          "description": "The messages that will be executed should this proposal pass.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/CosmosMsg_for_Empty"
-          }
-        },
-        "proposer": {
-          "description": "The address that created this proposal.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            }
-          ]
-        },
-        "start_height": {
-          "description": "The block height at which this proposal was created. Voting power queries should query for voting power at this block height.",
+        "id": {
+          "description": "The ID of the proposal being returned.",
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "status": {
-          "$ref": "#/definitions/Status"
-        },
-        "threshold": {
-          "description": "The threshold at which this proposal will pass.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Threshold"
-            }
-          ]
-        },
-        "title": {
-          "type": "string"
-        },
-        "total_power": {
-          "description": "The total amount of voting power at the time of this proposal's creation.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            }
-          ]
-        },
-        "votes": {
-          "$ref": "#/definitions/Votes"
+        "proposal": {
+          "$ref": "#/definitions/SingleChoiceProposal"
         }
       },
       "additionalProperties": false,
@@ -4210,6 +4140,96 @@
               "additionalProperties": false
             }
           ]
+        },
+        "SingleChoiceProposal": {
+          "type": "object",
+          "required": [
+            "allow_revoting",
+            "description",
+            "expiration",
+            "msgs",
+            "proposer",
+            "start_height",
+            "status",
+            "threshold",
+            "title",
+            "total_power",
+            "votes"
+          ],
+          "properties": {
+            "allow_revoting": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string"
+            },
+            "expiration": {
+              "description": "The the time at which this proposal will expire and close for additional votes.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                }
+              ]
+            },
+            "min_voting_period": {
+              "description": "The minimum amount of time this proposal must remain open for voting. The proposal may not pass unless this is expired or None.",
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Expiration"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "msgs": {
+              "description": "The messages that will be executed should this proposal pass.",
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/CosmosMsg_for_Empty"
+              }
+            },
+            "proposer": {
+              "description": "The address that created this proposal.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
+            },
+            "start_height": {
+              "description": "The block height at which this proposal was created. Voting power queries should query for voting power at this block height.",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "status": {
+              "$ref": "#/definitions/Status"
+            },
+            "threshold": {
+              "description": "The threshold at which this proposal will pass.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Threshold"
+                }
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "total_power": {
+              "description": "The total amount of voting power at the time of this proposal's creation.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                }
+              ]
+            },
+            "votes": {
+              "$ref": "#/definitions/Votes"
+            }
+          },
+          "additionalProperties": false
         },
         "StakingMsg": {
           "description": "The message types of the staking module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto",

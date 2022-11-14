@@ -14,7 +14,7 @@ export interface CwdProposalMultipleReadOnlyInterface {
     proposalId
   }: {
     proposalId: number;
-  }) => Promise<MultipleChoiceProposal>;
+  }) => Promise<ProposalResponse>;
   listProposals: ({
     limit,
     startAfter
@@ -82,7 +82,7 @@ export class CwdProposalMultipleQueryClient implements CwdProposalMultipleReadOn
     proposalId
   }: {
     proposalId: number;
-  }): Promise<MultipleChoiceProposal> => {
+  }): Promise<ProposalResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       proposal: {
         proposal_id: proposalId

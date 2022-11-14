@@ -192,11 +192,13 @@ fn make_proposal(
                         options: vec![
                             MultipleChoiceOption {
                                 description: "multiple choice option 1".to_string(),
-                                msgs: None,
+                                msgs: vec![],
+                                title: "title".to_string(),
                             },
                             MultipleChoiceOption {
                                 description: "multiple choice option 2".to_string(),
-                                msgs: None,
+                                msgs: vec![],
+                                title: "title".to_string(),
                             },
                         ],
                     },
@@ -229,24 +231,27 @@ fn make_proposal(
         vec![
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 1".to_string(),
-                msgs: None,
+                msgs: vec![],
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 0,
+                title: "title".to_string(),
             },
             CheckedMultipleChoiceOption {
                 description: "multiple choice option 2".to_string(),
-                msgs: None,
+                msgs: vec![],
                 option_type: MultipleChoiceOptionType::Standard,
                 vote_count: Uint128::zero(),
                 index: 1,
+                title: "title".to_string(),
             },
             CheckedMultipleChoiceOption {
                 description: "None of the above".to_string(),
-                msgs: None,
+                msgs: vec![],
                 option_type: MultipleChoiceOptionType::None,
                 vote_count: Uint128::zero(),
                 index: 2,
+                title: "None of the above".to_string(),
             },
         ]
     );
@@ -874,7 +879,8 @@ fn test_permissions() {
                     choices: MultipleChoiceOptions {
                         options: vec![MultipleChoiceOption {
                             description: "multiple choice option 1".to_string(),
-                            msgs: None,
+                            msgs: vec![],
+                            title: "title".to_string(),
                         }],
                     },
                 },
@@ -979,7 +985,8 @@ fn test_no_deposit_required_members_submission() {
                     choices: MultipleChoiceOptions {
                         options: vec![MultipleChoiceOption {
                             description: "multiple choice option 1".to_string(),
-                            msgs: None,
+                            msgs: vec![],
+                            title: "title".to_string(),
                         }],
                     },
                 },
