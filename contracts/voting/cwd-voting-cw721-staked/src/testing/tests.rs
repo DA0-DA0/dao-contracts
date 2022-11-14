@@ -205,7 +205,7 @@ fn test_update_config() -> anyhow::Result<()> {
         Some("friend"),
         Some(Duration::Time(1)),
     );
-    is_error!(res => "Unauthorized");
+    is_error!(res => "Only the owner of this contract my execute this message");
 
     // Friend can still do config updates, and even remove themselves
     // as the owner.
@@ -228,7 +228,7 @@ fn test_update_config() -> anyhow::Result<()> {
         Some("friend"),
         Some(Duration::Time(1)),
     );
-    is_error!(res => "Unauthorized");
+    is_error!(res => "Only the owner of this contract my execute this message");
 
     Ok(())
 }
@@ -385,7 +385,7 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     is_error!(res => "Given address not registered as a hook");
 
     let res = add_hook(&mut app, &module, "ekez", "evil");
-    is_error!(res => "Unauthorized");
+    is_error!(res => "Only the owner of this contract my execute this message");
 
     Ok(())
 }

@@ -12,8 +12,8 @@ pub enum ContractError {
     #[error("Invalid token. Got ({received}), expected ({expected})")]
     InvalidToken { received: Addr, expected: Addr },
 
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error("Only the owner of this contract my execute this message")]
+    NotOwner {},
 
     #[error("Can not unstake that which you have not staked (unstaking {token_id})")]
     NotStaked { token_id: String },
