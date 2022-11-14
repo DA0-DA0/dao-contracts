@@ -208,7 +208,7 @@ impl SingleChoiceProposal {
                                 // and there are possible votes, then this is
                                 // rejected if there is a single no vote.
                                 //
-                                // We need this check becuase otherwise
+                                // We need this check because otherwise
                                 // when we invert the threshold
                                 // (`Decimal::one() - threshold`) we
                                 // get a 0% requirement for no

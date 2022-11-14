@@ -9,7 +9,7 @@ use cwd_pre_propose_multiple as cppm;
 use cwd_testing::contracts::{
     cw20_balances_voting_contract, cw20_contract, cw20_stake_contract,
     cw20_staked_balances_voting_contract, cw4_contract, cw721_contract, cwd_core_contract,
-    native_staked_balances_voting_contract, pre_propose_single_contract,
+    native_staked_balances_voting_contract, pre_propose_multiple_contract,
 };
 use cwd_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
@@ -19,6 +19,7 @@ use cwd_voting::{
 };
 use cwd_voting_cw20_staked::msg::ActiveThreshold;
 
+use crate::testing::tests::ALTERNATIVE_ADDR;
 use crate::{
     msg::InstantiateMsg, testing::tests::proposal_multiple_contract, testing::tests::CREATOR_ADDR,
 };
@@ -29,7 +30,7 @@ fn get_pre_propose_info(
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
 ) -> PreProposeInfo {
-    let pre_propose_contract = app.store_code(pre_propose_single_contract());
+    let pre_propose_contract = app.store_code(pre_propose_multiple_contract());
     PreProposeInfo::ModuleMayPropose {
         info: ModuleInstantiateInfo {
             code_id: pre_propose_contract,
@@ -45,7 +46,7 @@ fn get_pre_propose_info(
     }
 }
 
-fn _get_default_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
+pub fn _get_default_token_dao_proposal_module_instantiate(app: &mut App) -> InstantiateMsg {
     let quorum = PercentageThreshold::Majority {};
     let voting_strategy = VotingStrategy::SingleChoice { quorum };
 
@@ -417,6 +418,138 @@ pub fn instantiate_with_staked_balances_governance(
             address: CREATOR_ADDR.to_string(),
             amount: Uint128::new(100_000_000),
         }]
+    });
+
+    // Collapse balances so that we can test double votes.
+    let initial_balances: Vec<Cw20Coin> = {
+        let mut already_seen = vec![];
+        initial_balances
+            .into_iter()
+            .filter(|Cw20Coin { address, amount: _ }| {
+                if already_seen.contains(address) {
+                    false
+                } else {
+                    already_seen.push(address.clone());
+                    true
+                }
+            })
+            .collect()
+    };
+
+    let cw20_id = app.store_code(cw20_contract());
+    let cw20_stake_id = app.store_code(cw20_stake_contract());
+    let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
+    let core_contract_id = app.store_code(cwd_core_contract());
+
+    let instantiate_core = cwd_core::msg::InstantiateMsg {
+        admin: None,
+        name: "DAO DAO".to_string(),
+        description: "A DAO that builds DAOs".to_string(),
+        image_url: None,
+        automatically_add_cw20s: true,
+        automatically_add_cw721s: false,
+        voting_module_instantiate_info: ModuleInstantiateInfo {
+            code_id: staked_balances_voting_id,
+            msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
+                active_threshold: None,
+                token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
+                    code_id: cw20_id,
+                    label: "DAO DAO governance token.".to_string(),
+                    name: "DAO DAO".to_string(),
+                    symbol: "DAO".to_string(),
+                    decimals: 6,
+                    initial_balances: initial_balances.clone(),
+                    marketing: None,
+                    staking_code_id: cw20_stake_id,
+                    unstaking_duration: Some(Duration::Height(6)),
+                    initial_dao_balance: None,
+                },
+            })
+            .unwrap(),
+            admin: None,
+            label: "DAO DAO voting module".to_string(),
+        },
+        proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
+            code_id: proposal_module_code_id,
+            label: "DAO DAO governance module.".to_string(),
+            admin: Some(Admin::CoreModule {}),
+            msg: to_binary(&proposal_module_instantiate).unwrap(),
+        }],
+        initial_items: None,
+        dao_uri: None,
+    };
+
+    let core_addr = app
+        .instantiate_contract(
+            core_contract_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &instantiate_core,
+            &[],
+            "DAO DAO",
+            None,
+        )
+        .unwrap();
+
+    let gov_state: cwd_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr.clone(), &cwd_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let voting_module = gov_state.voting_module;
+
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &cwd_voting_cw20_staked::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &cwd_interface::voting::Query::TokenContract {},
+        )
+        .unwrap();
+
+    // Stake all the initial balances.
+    for Cw20Coin { address, amount } in initial_balances {
+        app.execute_contract(
+            Addr::unchecked(address),
+            token_contract.clone(),
+            &cw20::Cw20ExecuteMsg::Send {
+                contract: staking_contract.to_string(),
+                amount,
+                msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+            },
+            &[],
+        )
+        .unwrap();
+    }
+
+    // Update the block so that those staked balances appear.
+    app.update_block(|block| block.height += 1);
+
+    core_addr
+}
+
+pub fn instantiate_with_multiple_staked_balances_governance(
+    app: &mut App,
+    proposal_module_instantiate: InstantiateMsg,
+    initial_balances: Option<Vec<Cw20Coin>>,
+) -> Addr {
+    let proposal_module_code_id = app.store_code(proposal_multiple_contract());
+
+    let initial_balances = initial_balances.unwrap_or_else(|| {
+        vec![
+            Cw20Coin {
+                address: CREATOR_ADDR.to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: ALTERNATIVE_ADDR.to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]
     });
 
     // Collapse balances so that we can test double votes.

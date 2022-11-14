@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, Addr};
+use cosmwasm_std::{coins, Addr, Uint128};
 use cw_multi_test::{App, Executor};
 
 use cw_denom::CheckedDenom;
@@ -117,4 +117,23 @@ pub fn make_proposal(
     assert_eq!(proposal.proposal.description, "description".to_string());
 
     id
+}
+
+pub(crate) fn mint_cw20s(
+    app: &mut App,
+    cw20_contract: &Addr,
+    sender: &Addr,
+    receiver: &str,
+    amount: u128,
+) {
+    app.execute_contract(
+        sender.clone(),
+        cw20_contract.clone(),
+        &cw20::Cw20ExecuteMsg::Mint {
+            recipient: receiver.to_string(),
+            amount: Uint128::new(amount),
+        },
+        &[],
+    )
+    .unwrap();
 }

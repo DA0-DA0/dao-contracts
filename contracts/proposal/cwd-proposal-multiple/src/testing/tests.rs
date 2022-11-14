@@ -49,6 +49,7 @@ use cwd_testing::{
 };
 
 pub const CREATOR_ADDR: &str = "creator";
+pub const ALTERNATIVE_ADDR: &str = "alternative";
 
 pub struct TestMultipleChoiceVote {
     /// The address casting the vote.
