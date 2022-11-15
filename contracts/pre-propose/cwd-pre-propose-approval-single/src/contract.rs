@@ -157,6 +157,13 @@ pub fn execute_propose(
         )?,
     }
 
+    // Save info about deposits when this prop was created
+    PrePropose::default().deposits.save(
+        deps.storage,
+        id,
+        &(config.deposit_info.clone(), info.sender.clone()),
+    )?;
+
     // Handle deposit if configured
     let deposit_messages = if let Some(ref deposit_info) = config.deposit_info {
         deposit_info.check_native_deposit_paid(&info)?;
@@ -239,13 +246,9 @@ pub fn execute_reject(
     match PrePropose::default().deposits.may_load(deps.storage, id)? {
         Some((deposit_info, proposer)) => {
             let messages = if let Some(ref deposit_info) = deposit_info {
-                // Refund can be issued if proposal if it is going to
-                // closed or executed.
-                let should_refund_to_proposer = (deposit_info.refund_policy
-                    == DepositRefundPolicy::Always)
-                    || (deposit_info.refund_policy != DepositRefundPolicy::Never);
-
-                if should_refund_to_proposer {
+                // Refund can be issued if proposal if deposits are always refunded
+                // OnlyPassed and Never refund deposit policies do not apply here
+                if deposit_info.refund_policy == DepositRefundPolicy::Always {
                     deposit_info.get_return_deposit_message(&proposer)?
                 } else {
                     // If the proposer doesn't get the deposit, the DAO does.

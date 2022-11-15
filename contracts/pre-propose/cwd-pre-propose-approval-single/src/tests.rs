@@ -108,6 +108,7 @@ struct DefaultTestSetup {
     proposal_single: Addr,
     pre_propose: Addr,
 }
+
 fn setup_default_test(
     app: &mut App,
     deposit_info: Option<UncheckedDepositInfo>,
@@ -395,15 +396,18 @@ fn approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
 }
 
 fn reject_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
-    app.execute_contract(
-        Addr::unchecked(sender),
-        module,
-        &ExecuteMsg::Extension {
-            msg: ExecuteExt::Reject { id: proposal_id },
-        },
-        &[],
-    )
-    .unwrap();
+    let res = app
+        .execute_contract(
+            Addr::unchecked(sender),
+            module,
+            &ExecuteMsg::Extension {
+                msg: ExecuteExt::Reject { id: proposal_id },
+            },
+            &[],
+        )
+        .unwrap();
+
+    println!("{:?}", res);
 }
 
 enum ApprovalStatus {
@@ -453,24 +457,34 @@ fn test_native_permutation(
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(balance, Uint128::zero());
 
-    // TODO approve or reject proposal
-    // Returns proposal id from the proposal module
-    let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+    // Approver approves or rejects proposal
+    match approval_status {
+        ApprovalStatus::Approved => {
+            // Approver approves, new proposal id is returned
+            let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
 
-    #[allow(clippy::type_complexity)]
-    let (position, expected_status, trigger_refund): (
-        _,
-        _,
-        fn(&mut App, Addr, &str, u64) -> (),
-    ) = match end_status {
-        EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
-        EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+            // Voting happens on newly created proposal
+            #[allow(clippy::type_complexity)]
+            let (position, expected_status, trigger_refund): (
+                _,
+                _,
+                fn(&mut App, Addr, &str, u64) -> (),
+            ) = match end_status {
+                EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
+                EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+            };
+            let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
+            assert_eq!(new_status, expected_status);
+
+            // Close or execute the proposal to trigger a refund.
+            trigger_refund(&mut app, proposal_single, "ekez", id);
+        }
+        ApprovalStatus::Rejected => {
+            // Proposal is rejected by approver
+            // No proposal is created so there is no voting
+            reject_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+        }
     };
-    let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
-    assert_eq!(new_status, expected_status);
-
-    // Close or execute the proposal to trigger a refund.
-    trigger_refund(&mut app, proposal_single, "ekez", id);
 
     let (dao_expected, proposer_expected) = match receiver {
         RefundReceiver::Proposer => (0, 10),
@@ -522,24 +536,34 @@ fn test_cw20_permutation(
     let balance = get_balance_cw20(&app, cw20_address.clone(), "ekez");
     assert_eq!(balance, Uint128::zero());
 
-    // TODO approve or reject proposal
-    // Returns proposal id from the proposal module
-    let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+    // Approver approves or rejects proposal
+    match approval_status {
+        ApprovalStatus::Approved => {
+            // Approver approves, new proposal id is returned
+            let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
 
-    #[allow(clippy::type_complexity)]
-    let (position, expected_status, trigger_refund): (
-        _,
-        _,
-        fn(&mut App, Addr, &str, u64) -> (),
-    ) = match end_status {
-        EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
-        EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+            // Voting happens on newly created proposal
+            #[allow(clippy::type_complexity)]
+            let (position, expected_status, trigger_refund): (
+                _,
+                _,
+                fn(&mut App, Addr, &str, u64) -> (),
+            ) = match end_status {
+                EndStatus::Passed => (Vote::Yes, Status::Passed, execute_proposal),
+                EndStatus::Failed => (Vote::No, Status::Rejected, close_proposal),
+            };
+            let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
+            assert_eq!(new_status, expected_status);
+
+            // Close or execute the proposal to trigger a refund.
+            trigger_refund(&mut app, proposal_single, "ekez", id);
+        }
+        ApprovalStatus::Rejected => {
+            // Proposal is rejected by approver
+            // No proposal is created so there is no voting
+            reject_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+        }
     };
-    let new_status = vote(&mut app, proposal_single.clone(), "ekez", id, position);
-    assert_eq!(new_status, expected_status);
-
-    // Close or execute the proposal to trigger a refund.
-    trigger_refund(&mut app, proposal_single, "ekez", id);
 
     let (dao_expected, proposer_expected) = match receiver {
         RefundReceiver::Proposer => (0, 10),
@@ -561,6 +585,17 @@ fn test_native_failed_always_refund() {
         ApprovalStatus::Approved,
     )
 }
+
+#[test]
+fn test_native_rejected_always_refund() {
+    test_native_permutation(
+        EndStatus::Failed,
+        DepositRefundPolicy::Always,
+        RefundReceiver::Proposer,
+        ApprovalStatus::Rejected,
+    )
+}
+
 #[test]
 fn test_cw20_failed_always_refund() {
     test_cw20_permutation(
@@ -568,6 +603,16 @@ fn test_cw20_failed_always_refund() {
         DepositRefundPolicy::Always,
         RefundReceiver::Proposer,
         ApprovalStatus::Approved,
+    )
+}
+
+#[test]
+fn test_cw20_rejected_always_refund() {
+    test_cw20_permutation(
+        EndStatus::Failed,
+        DepositRefundPolicy::Always,
+        RefundReceiver::Proposer,
+        ApprovalStatus::Rejected,
     )
 }
 
@@ -600,6 +645,7 @@ fn test_native_passed_never_refund() {
         ApprovalStatus::Approved,
     )
 }
+
 #[test]
 fn test_cw20_passed_never_refund() {
     test_cw20_permutation(
@@ -619,6 +665,17 @@ fn test_native_failed_never_refund() {
         ApprovalStatus::Approved,
     )
 }
+
+#[test]
+fn test_native_rejected_never_refund() {
+    test_native_permutation(
+        EndStatus::Failed,
+        DepositRefundPolicy::Never,
+        RefundReceiver::Dao,
+        ApprovalStatus::Rejected,
+    )
+}
+
 #[test]
 fn test_cw20_failed_never_refund() {
     test_cw20_permutation(
@@ -626,6 +683,16 @@ fn test_cw20_failed_never_refund() {
         DepositRefundPolicy::Never,
         RefundReceiver::Dao,
         ApprovalStatus::Approved,
+    )
+}
+
+#[test]
+fn test_cw20_rejected_never_refund() {
+    test_cw20_permutation(
+        EndStatus::Failed,
+        DepositRefundPolicy::Never,
+        RefundReceiver::Dao,
+        ApprovalStatus::Rejected,
     )
 }
 
@@ -657,6 +724,17 @@ fn test_native_failed_passed_refund() {
         ApprovalStatus::Approved,
     )
 }
+
+#[test]
+fn test_native_rejected_passed_refund() {
+    test_native_permutation(
+        EndStatus::Failed,
+        DepositRefundPolicy::OnlyPassed,
+        RefundReceiver::Dao,
+        ApprovalStatus::Rejected,
+    )
+}
+
 #[test]
 fn test_cw20_failed_passed_refund() {
     test_cw20_permutation(
@@ -664,6 +742,16 @@ fn test_cw20_failed_passed_refund() {
         DepositRefundPolicy::OnlyPassed,
         RefundReceiver::Dao,
         ApprovalStatus::Approved,
+    )
+}
+
+#[test]
+fn test_cw20_rejected_passed_refund() {
+    test_cw20_permutation(
+        EndStatus::Failed,
+        DepositRefundPolicy::OnlyPassed,
+        RefundReceiver::Dao,
+        ApprovalStatus::Rejected,
     )
 }
 
