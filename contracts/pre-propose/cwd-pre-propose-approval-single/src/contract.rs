@@ -2,8 +2,8 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
-    WasmMsg,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
@@ -79,7 +79,7 @@ pub fn instantiate(
     APPROVER.save(deps.storage, &approver)?;
 
     // Initialize first proposal ID
-    CURRENT_ID.save(deps.storage, &1)?;
+    CURRENT_ID.save(deps.storage, &0)?;
 
     let resp = PrePropose::default().instantiate(deps.branch(), env, info, msg)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -139,7 +139,7 @@ pub fn execute_propose(
     let id = CURRENT_ID.load(deps.storage)?;
 
     // Save the proposal as pending
-    // TODO this match is qwkward?
+    // TODO this match is awkward?
     match msg {
         ProposeMessage::Propose {
             title,
@@ -181,7 +181,9 @@ pub fn execute_propose(
     //         Ok(SubMsg::new(execute))
     //     })?;
 
-    Ok(Response::default().add_messages(deposit_messages))
+    Ok(Response::default()
+        .add_messages(deposit_messages)
+        .add_attribute("id", id.to_string()))
 }
 
 pub fn execute_approve(
@@ -316,14 +318,21 @@ pub fn execute_remove_approver_hook(
     Ok(Response::default())
 }
 
-// TODO queries
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryExtension { msg } => match msg {
-            QueryExt::Approver {} => unimplemented!(),
-            QueryExt::Proposals {} => unimplemented!(),
+            QueryExt::Approver {} => to_binary(&APPROVER.load(deps.storage)?),
+            QueryExt::Proposals {} => query_pending_proposals(deps, msg),
         },
         _ => PrePropose::default().query(deps, env, msg),
     }
+}
+
+// TODO potentially add other options to pending props query
+pub fn query_pending_proposals(deps: Deps, _msg: QueryExt) -> StdResult<Binary> {
+    let pending_proposals = PENDING_PROPOSALS
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(u64, ProposeMessageInternal)>>>()?;
+    Ok(to_binary(&pending_proposals)?)
 }
