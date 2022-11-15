@@ -461,7 +461,7 @@ fn test_native_permutation(
     match approval_status {
         ApprovalStatus::Approved => {
             // Approver approves, new proposal id is returned
-            let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+            let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
 
             // Voting happens on newly created proposal
             #[allow(clippy::type_complexity)]
@@ -482,7 +482,7 @@ fn test_native_permutation(
         ApprovalStatus::Rejected => {
             // Proposal is rejected by approver
             // No proposal is created so there is no voting
-            reject_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+            reject_proposal(&mut app, pre_propose, "approver", pre_propose_id);
         }
     };
 
@@ -798,12 +798,7 @@ fn test_multiple_open_proposals() {
     assert_eq!(0, balance.u128());
 
     // Approver approves prop, balance remains the same
-    let second_id = approve_proposal(
-        &mut app,
-        pre_propose.clone(),
-        "approver",
-        second_pre_propose_id,
-    );
+    let second_id = approve_proposal(&mut app, pre_propose, "approver", second_pre_propose_id);
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(0, balance.u128());
 
@@ -952,7 +947,66 @@ fn test_permissions() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, PreProposeError::NotMember {})
+    assert_eq!(err, PreProposeError::NotMember {});
+}
+
+#[test]
+fn test_approval_and_rejection_permissions() {
+    let mut app = App::default();
+    let DefaultTestSetup {
+        core_addr: _,
+        proposal_single: _,
+        pre_propose,
+    } = setup_default_test(
+        &mut app,
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
+                denom: UncheckedDenom::Native("ujuno".to_string()),
+            },
+            amount: Uint128::new(10),
+            refund_policy: DepositRefundPolicy::Always,
+        }),
+        true, // yes, open proposal submission.
+    );
+
+    // Non-member proposes.
+    mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
+    let pre_propose_id = make_pre_proposal(
+        &mut app,
+        pre_propose.clone(),
+        "nonmember",
+        &coins(10, "ujuno"),
+    );
+
+    // Only approver can propose
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("nonmember"),
+            pre_propose.clone(),
+            &ExecuteMsg::Extension {
+                msg: ExecuteExt::Approve { id: pre_propose_id },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
+
+    // Only approver can propose
+    let err: PreProposeError = app
+        .execute_contract(
+            Addr::unchecked("nonmember"),
+            pre_propose,
+            &ExecuteMsg::Extension {
+                msg: ExecuteExt::Reject { id: pre_propose_id },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, PreProposeError::Unauthorized {});
 }
 
 #[test]

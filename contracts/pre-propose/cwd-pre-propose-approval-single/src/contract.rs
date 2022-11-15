@@ -337,5 +337,5 @@ pub fn query_pending_proposals(deps: Deps, _msg: QueryExt) -> StdResult<Binary> 
     let pending_proposals = PENDING_PROPOSALS
         .range(deps.storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<(u64, ProposeMessageInternal)>>>()?;
-    Ok(to_binary(&pending_proposals)?)
+    to_binary(&pending_proposals)
 }
