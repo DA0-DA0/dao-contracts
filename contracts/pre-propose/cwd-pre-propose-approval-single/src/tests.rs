@@ -66,7 +66,9 @@ fn get_default_proposal_module_instantiate(
                 msg: to_binary(&InstantiateMsg {
                     deposit_info,
                     open_proposal_submission,
-                    extension: Empty::default(),
+                    extension: InstantiateExt {
+                        approver: "approver".to_string(),
+                    },
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
@@ -171,49 +173,34 @@ fn setup_default_test(
     }
 }
 
-fn make_proposal(
-    app: &mut App,
-    pre_propose: Addr,
-    proposal_module: Addr,
-    proposer: &str,
-    funds: &[Coin],
-) -> u64 {
-    let res = app
-        .execute_contract(
-            Addr::unchecked(proposer),
-            pre_propose,
-            &ExecuteMsg::Propose {
-                msg: ProposeMessage::Propose {
-                    title: "title".to_string(),
-                    description: "description".to_string(),
-                    msgs: vec![],
-                },
+fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[Coin]) -> u64 {
+    app.execute_contract(
+        Addr::unchecked(proposer),
+        pre_propose.clone(),
+        &ExecuteMsg::Propose {
+            msg: ProposeMessage::Propose {
+                title: "title".to_string(),
+                description: "description".to_string(),
+                msgs: vec![],
             },
-            funds,
-        )
-        .unwrap();
+        },
+        funds,
+    )
+    .unwrap();
 
-    // The new proposal hook is the last message that fires in
-    // this process so we get the proposal ID from it's
-    // attributes. We could do this by looking at the proposal
-    // creation attributes but this changes relative position
-    // depending on if a cw20 or native deposit is being used.
-    let attrs = res.custom_attrs(res.events.len() - 1);
-    let id = attrs[attrs.len() - 1].value.parse().unwrap();
-    let proposal: ProposalResponse = app
+    // Query for pending proposal and return latest id
+    let mut pending: Vec<(u64, ProposeMessageInternal)> = app
         .wrap()
         .query_wasm_smart(
-            proposal_module,
-            &cps::msg::QueryMsg::Proposal { proposal_id: id },
+            pre_propose,
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::Proposals {},
+            },
         )
         .unwrap();
 
-    assert_eq!(proposal.proposal.proposer, Addr::unchecked(proposer));
-    assert_eq!(proposal.proposal.title, "title".to_string());
-    assert_eq!(proposal.proposal.description, "description".to_string());
-    assert_eq!(proposal.proposal.msgs, vec![]);
-
-    id
+    // Return last item in list, id is first element of tuple
+    pending.pop().unwrap().0
 }
 
 fn mint_natives(app: &mut App, receiver: &str, coins: Vec<Coin>) {
@@ -389,10 +376,46 @@ fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     .unwrap();
 }
 
+fn approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) -> u64 {
+    let res = app
+        .execute_contract(
+            Addr::unchecked(sender),
+            module,
+            &ExecuteMsg::Extension {
+                msg: ExecuteExt::Approve { id: proposal_id },
+            },
+            &[],
+        )
+        .unwrap();
+
+    // Parse attrs from approve_proposal response
+    let attrs = res.custom_attrs(res.events.len() - 1);
+    // Return ID
+    attrs[attrs.len() - 1].value.parse().unwrap()
+}
+
+fn reject_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        module,
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::Reject { id: proposal_id },
+        },
+        &[],
+    )
+    .unwrap();
+}
+
+enum ApprovalStatus {
+    Approved,
+    Rejected,
+}
+
 enum EndStatus {
     Passed,
     Failed,
 }
+
 enum RefundReceiver {
     Proposer,
     Dao,
@@ -402,6 +425,7 @@ fn test_native_permutation(
     end_status: EndStatus,
     refund_policy: DepositRefundPolicy,
     receiver: RefundReceiver,
+    approval_status: ApprovalStatus,
 ) {
     let mut app = App::default();
 
@@ -422,17 +446,16 @@ fn test_native_permutation(
     );
 
     mint_natives(&mut app, "ekez", coins(10, "ujuno"));
-    let id = make_proposal(
-        &mut app,
-        pre_propose,
-        proposal_single.clone(),
-        "ekez",
-        &coins(10, "ujuno"),
-    );
+    let pre_propose_id =
+        make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
 
     // Make sure it went away.
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(balance, Uint128::zero());
+
+    // TODO approve or reject proposal
+    // Returns proposal id from the proposal module
+    let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
 
     #[allow(clippy::type_complexity)]
     let (position, expected_status, trigger_refund): (
@@ -464,6 +487,7 @@ fn test_cw20_permutation(
     end_status: EndStatus,
     refund_policy: DepositRefundPolicy,
     receiver: RefundReceiver,
+    approval_status: ApprovalStatus,
 ) {
     let mut app = App::default();
 
@@ -492,17 +516,15 @@ fn test_cw20_permutation(
         cw20_address.clone(),
         Uint128::new(10),
     );
-    let id = make_proposal(
-        &mut app,
-        pre_propose.clone(),
-        proposal_single.clone(),
-        "ekez",
-        &[],
-    );
+    let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &[]);
 
     // Make sure it went await.
     let balance = get_balance_cw20(&app, cw20_address.clone(), "ekez");
     assert_eq!(balance, Uint128::zero());
+
+    // TODO approve or reject proposal
+    // Returns proposal id from the proposal module
+    let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
 
     #[allow(clippy::type_complexity)]
     let (position, expected_status, trigger_refund): (
@@ -536,6 +558,7 @@ fn test_native_failed_always_refund() {
         EndStatus::Failed,
         DepositRefundPolicy::Always,
         RefundReceiver::Proposer,
+        ApprovalStatus::Approved,
     )
 }
 #[test]
@@ -544,6 +567,7 @@ fn test_cw20_failed_always_refund() {
         EndStatus::Failed,
         DepositRefundPolicy::Always,
         RefundReceiver::Proposer,
+        ApprovalStatus::Approved,
     )
 }
 
@@ -553,6 +577,7 @@ fn test_native_passed_always_refund() {
         EndStatus::Passed,
         DepositRefundPolicy::Always,
         RefundReceiver::Proposer,
+        ApprovalStatus::Approved,
     )
 }
 
@@ -562,6 +587,7 @@ fn test_cw20_passed_always_refund() {
         EndStatus::Passed,
         DepositRefundPolicy::Always,
         RefundReceiver::Proposer,
+        ApprovalStatus::Approved,
     )
 }
 
@@ -571,6 +597,7 @@ fn test_native_passed_never_refund() {
         EndStatus::Passed,
         DepositRefundPolicy::Never,
         RefundReceiver::Dao,
+        ApprovalStatus::Approved,
     )
 }
 #[test]
@@ -579,6 +606,7 @@ fn test_cw20_passed_never_refund() {
         EndStatus::Passed,
         DepositRefundPolicy::Never,
         RefundReceiver::Dao,
+        ApprovalStatus::Approved,
     )
 }
 
@@ -588,6 +616,7 @@ fn test_native_failed_never_refund() {
         EndStatus::Failed,
         DepositRefundPolicy::Never,
         RefundReceiver::Dao,
+        ApprovalStatus::Approved,
     )
 }
 #[test]
@@ -596,6 +625,7 @@ fn test_cw20_failed_never_refund() {
         EndStatus::Failed,
         DepositRefundPolicy::Never,
         RefundReceiver::Dao,
+        ApprovalStatus::Approved,
     )
 }
 
@@ -605,6 +635,7 @@ fn test_native_passed_passed_refund() {
         EndStatus::Passed,
         DepositRefundPolicy::OnlyPassed,
         RefundReceiver::Proposer,
+        ApprovalStatus::Approved,
     )
 }
 #[test]
@@ -613,6 +644,7 @@ fn test_cw20_passed_passed_refund() {
         EndStatus::Passed,
         DepositRefundPolicy::OnlyPassed,
         RefundReceiver::Proposer,
+        ApprovalStatus::Approved,
     )
 }
 
@@ -622,6 +654,7 @@ fn test_native_failed_passed_refund() {
         EndStatus::Failed,
         DepositRefundPolicy::OnlyPassed,
         RefundReceiver::Dao,
+        ApprovalStatus::Approved,
     )
 }
 #[test]
@@ -630,6 +663,7 @@ fn test_cw20_failed_passed_refund() {
         EndStatus::Failed,
         DepositRefundPolicy::OnlyPassed,
         RefundReceiver::Dao,
+        ApprovalStatus::Approved,
     )
 }
 
@@ -655,22 +689,32 @@ fn test_multiple_open_proposals() {
     );
 
     mint_natives(&mut app, "ekez", coins(20, "ujuno"));
-    let first_id = make_proposal(
+    let first_pre_propose_id =
+        make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+    let balance = get_balance_native(&app, "ekez", "ujuno");
+    assert_eq!(10, balance.u128());
+
+    // Approver approves prop, balance remains the same
+    let first_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        proposal_single.clone(),
-        "ekez",
-        &coins(10, "ujuno"),
+        "approver",
+        first_pre_propose_id,
     );
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(10, balance.u128());
 
-    let second_id = make_proposal(
+    let second_pre_propose_id =
+        make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+    let balance = get_balance_native(&app, "ekez", "ujuno");
+    assert_eq!(0, balance.u128());
+
+    // Approver approves prop, balance remains the same
+    let second_id = approve_proposal(
         &mut app,
-        pre_propose,
-        proposal_single.clone(),
-        "ekez",
-        &coins(10, "ujuno"),
+        pre_propose.clone(),
+        "approver",
+        second_pre_propose_id,
     );
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(0, balance.u128());
@@ -844,13 +888,16 @@ fn test_propose_open_proposal_submission() {
 
     // Non-member proposes.
     mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
-    let id = make_proposal(
+    let pre_propose_id = make_pre_proposal(
         &mut app,
-        pre_propose,
-        proposal_single.clone(),
+        pre_propose.clone(),
         "nonmember",
         &coins(10, "ujuno"),
     );
+
+    // Approver approves
+    let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+
     // Member votes.
     let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
     assert_eq!(Status::Passed, new_status)
@@ -868,13 +915,11 @@ fn test_no_deposit_required_open_submission() {
     );
 
     // Non-member proposes.
-    let id = make_proposal(
-        &mut app,
-        pre_propose,
-        proposal_single.clone(),
-        "nonmember",
-        &[],
-    );
+    let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "nonmember", &[]);
+
+    // Approver approves
+    let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+
     // Member votes.
     let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
     assert_eq!(Status::Passed, new_status)
@@ -910,41 +955,13 @@ fn test_no_deposit_required_members_submission() {
         .unwrap();
     assert_eq!(err, PreProposeError::NotMember {});
 
-    let id = make_proposal(&mut app, pre_propose, proposal_single.clone(), "ekez", &[]);
+    let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &[]);
+
+    // Approver approves
+    let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+
     let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
     assert_eq!(Status::Passed, new_status)
-}
-
-#[test]
-fn test_execute_extension_does_nothing() {
-    let mut app = App::default();
-    let DefaultTestSetup {
-        core_addr: _,
-        proposal_single: _,
-        pre_propose,
-    } = setup_default_test(
-        &mut app, None, false, // no open proposal submission.
-    );
-
-    let res = app
-        .execute_contract(
-            Addr::unchecked("ekez"),
-            pre_propose,
-            &ExecuteMsg::Extension {
-                msg: Empty::default(),
-            },
-            &[],
-        )
-        .unwrap();
-
-    // There should be one event which is the invocation of the contract.
-    assert_eq!(res.events.len(), 1);
-    assert_eq!(res.events[0].ty, "execute".to_string());
-    assert_eq!(res.events[0].attributes.len(), 1);
-    assert_eq!(
-        res.events[0].attributes[0].key,
-        "_contract_addr".to_string()
-    )
 }
 
 #[test]
@@ -977,7 +994,9 @@ fn test_instantiate_with_zero_native_deposit() {
                             refund_policy: DepositRefundPolicy::OnlyPassed,
                         }),
                         open_proposal_submission: false,
-                        extension: Empty::default(),
+                        extension: InstantiateExt {
+                            approver: "approver".to_string(),
+                        },
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
@@ -1038,7 +1057,9 @@ fn test_instantiate_with_zero_cw20_deposit() {
                             refund_policy: DepositRefundPolicy::OnlyPassed,
                         }),
                         open_proposal_submission: false,
-                        extension: Empty::default(),
+                        extension: InstantiateExt {
+                            approver: "approver".to_string(),
+                        },
                     })
                     .unwrap(),
                     admin: Some(Admin::CoreModule {}),
@@ -1085,13 +1106,10 @@ fn test_update_config() {
         }
     );
 
-    let id = make_proposal(
-        &mut app,
-        pre_propose.clone(),
-        proposal_single.clone(),
-        "ekez",
-        &[],
-    );
+    let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &[]);
+
+    // Approver approves
+    let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
 
     update_config(
         &mut app,
@@ -1132,13 +1150,17 @@ fn test_update_config() {
 
     // New proposals should have the new deposit info.
     mint_natives(&mut app, "ekez", coins(10, "ujuno"));
-    let new_id = make_proposal(
+    let new_pre_propose_id =
+        make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+
+    // Approver approves
+    let new_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        proposal_single.clone(),
-        "ekez",
-        &coins(10, "ujuno"),
+        "approver",
+        new_pre_propose_id,
     );
+
     let info = get_deposit_info(&app, pre_propose.clone(), new_id);
     assert_eq!(
         info,
@@ -1231,12 +1253,15 @@ fn test_withdraw() {
 
     // Make a proposal with the native tokens to put some in the system.
     mint_natives(&mut app, "ekez", coins(10, "ujuno"));
-    let native_id = make_proposal(
+    let native_pre_propose_id =
+        make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+
+    // Approver approves
+    let native_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        proposal_single.clone(),
-        "ekez",
-        &coins(10, "ujuno"),
+        "approver",
+        native_pre_propose_id,
     );
 
     // Update the config to use a cw20 token.
@@ -1262,12 +1287,14 @@ fn test_withdraw() {
         cw20_address.clone(),
         Uint128::new(10),
     );
-    let cw20_id = make_proposal(
+    let cw20_pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &[]);
+
+    // Approver approves
+    let cw20_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        proposal_single.clone(),
-        "ekez",
-        &[],
+        "approver",
+        cw20_pre_propose_id,
     );
 
     // There is now a pending proposal and cw20 tokens in the
