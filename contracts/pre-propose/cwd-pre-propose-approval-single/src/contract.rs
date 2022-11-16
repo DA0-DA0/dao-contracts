@@ -284,6 +284,8 @@ pub fn execute_add_approver_hook(
 ) -> Result<Response, PreProposeError> {
     // Check sender is the approver
     let approver = APPROVER.load(deps.storage)?;
+
+    // TODO the parent DAO should also be able to add an approver hook
     if approver != info.sender {
         return Err(PreProposeError::Unauthorized {});
     }
