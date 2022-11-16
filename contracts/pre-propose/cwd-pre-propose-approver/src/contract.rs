@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Reply, Response,
     StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -10,6 +10,7 @@ use cw2::set_contract_version;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 use cw_utils::parse_reply_execute_data;
+use cwd_interface::ModuleInstantiateCallback;
 use cwd_pre_propose_approval_single::{
     ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };
@@ -94,27 +95,17 @@ pub fn instantiate(
     let addr = deps.api.addr_validate(&msg.pre_propose_approval_contract)?;
     PRE_PROPOSE_APPROVAL_CONTRACT.save(deps.storage, &addr)?;
 
-    // Proposal to register hook is the
-    let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
-    let propose_messsage = WasmMsg::Execute {
-        contract_addr: proposal_module.into_string(),
-        msg: to_binary(&ProposalSingleExecuteMsg::Propose {
-            title: "Complete approver setup by registering hook".to_string(),
-            description: "This proposal completes the setup of the approver proposal module."
-                .to_string(),
-            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: addr.to_string(),
-                msg: to_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
-                    address: env.contract.address.to_string(),
-                })?,
-                funds: vec![],
-            })],
-            proposer: None,
-        })?,
-        funds: vec![],
-    };
+    let dao = PrePropose::default().dao.load(deps.storage)?;
 
-    Ok(resp.add_message(propose_messsage))
+    Ok(resp.set_data(to_binary(&ModuleInstantiateCallback {
+        msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: addr.to_string(),
+            msg: to_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
+                address: env.contract.address.to_string(),
+            })?,
+            funds: vec![],
+        })],
+    })?))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -50,8 +50,15 @@ impl ModuleInstantiateInfo {
     }
 }
 
+/// Callbacks to be executed when a module is instantiated
+#[cw_serde]
+pub struct ModuleInstantiateCallback {
+    pub msgs: Vec<CosmosMsg>,
+}
+
 #[cfg(test)]
 mod tests {
+    use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{to_binary, Addr, WasmMsg};
 
     use crate::{Admin, ModuleInstantiateInfo};
