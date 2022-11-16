@@ -1,5 +1,6 @@
 use cosmwasm_std::StdError;
 use cw_denom::DenomError;
+use cw_utils::ParseReplyError;
 use thiserror::Error;
 
 use cwd_hooks::HookError;
@@ -18,6 +19,9 @@ pub enum PreProposeError {
 
     #[error(transparent)]
     Hooks(#[from] HookError),
+
+    #[error(transparent)]
+    ParseReplyError(#[from] ParseReplyError),
 
     #[error("Message sender is not proposal module")]
     NotModule {},
