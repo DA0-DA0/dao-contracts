@@ -60,7 +60,7 @@ pub enum ProposeMessageInternal {
     },
 }
 
-// TODO rename to pre-propose approval contract?
+// Stores the address of the pre-propose approval contract
 pub const PRE_PROPOSE_APPROVAL_CONTRACT: Item<Addr> = Item::new("pre_propose_approval_contract");
 // Maps proposal ids to pre-propose ids
 pub const PROPOSAL_IDS: Map<u64, u64> = Map::new("proposal_ids");
@@ -81,15 +81,40 @@ pub fn instantiate(
         open_proposal_submission: false,
         extension: Empty {},
     };
-    let resp = PrePropose::default().instantiate(deps.branch(), env, info, base_instantiate_msg)?;
+    // Default pre-propose-base instantiation
+    let resp = PrePropose::default().instantiate(
+        deps.branch(),
+        env.clone(),
+        info.clone(),
+        base_instantiate_msg,
+    )?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // TODO fetch the module address?
+    // Validate and save the address of the pre-propose-approval-single contract
     let addr = deps.api.addr_validate(&msg.pre_propose_approval_contract)?;
     PRE_PROPOSE_APPROVAL_CONTRACT.save(deps.storage, &addr)?;
 
-    // TODO submessage to register hook with approval flow contract
-    Ok(resp)
+    // Proposal to register hook is the
+    let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
+    let propose_messsage = WasmMsg::Execute {
+        contract_addr: proposal_module.into_string(),
+        msg: to_binary(&ProposalSingleExecuteMsg::Propose {
+            title: "Complete approver setup by registering hook".to_string(),
+            description: "This proposal completes the setup of the approver proposal module."
+                .to_string(),
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: addr.to_string(),
+                msg: to_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
+                    address: env.contract.address.to_string(),
+                })?,
+                funds: vec![],
+            })],
+            proposer: None,
+        })?,
+        funds: vec![],
+    };
+
+    Ok(resp.add_message(propose_messsage))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -211,7 +236,7 @@ pub fn execute_proposal_completed(
         //     })?,
         //     funds: vec![],
         // }),
-        // Maybe don't default reject?
+        // TODO Maybe don't default reject?
         _ => None,
     };
 
