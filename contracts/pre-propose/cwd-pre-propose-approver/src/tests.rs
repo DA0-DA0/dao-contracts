@@ -85,7 +85,8 @@ fn get_proposal_module_approval_single_instantiate(
                     deposit_info,
                     open_proposal_submission,
                     extension: InstantiateExt {
-                        approver: "approver".to_string(),
+                        // The approver dao is the 5th contract instantiated
+                        approver: "contract5".to_string(),
                     },
                 })
                 .unwrap(),

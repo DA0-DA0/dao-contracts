@@ -21,6 +21,7 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
+cwd-interface = { workspace = true }
 cwd-pre-propose-base = { workspace = true }
 cwd-pre-propose-approval-single = { workspace = true }
 cwd-proposal-single = { workspace = true }
@@ -38,6 +39,5 @@ cwd-core = { workspace = true }
 cwd-voting-cw4 = { workspace = true }
 cwd-voting = { workspace = true }
 cw-denom = { workspace = true }
-cwd-interface = { workspace = true }
 cwd-testing = { workspace = true }
 cwd-proposal-hooks = { workspace = true }
