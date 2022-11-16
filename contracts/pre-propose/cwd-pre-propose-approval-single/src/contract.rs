@@ -3,7 +3,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
-    StdResult, WasmMsg,
+    StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
@@ -138,24 +138,22 @@ pub fn execute_propose(
     // Load current id
     let id = CURRENT_ID.load(deps.storage)?;
 
-    // Save the proposal as pending
-    // TODO this match is awkward?
-    match msg {
+    // Convert msg to to internal format
+    let propose_msg_internal = match msg {
         ProposeMessage::Propose {
             title,
             description,
             msgs,
-        } => PENDING_PROPOSALS.save(
-            deps.storage,
-            id,
-            &ProposeMessageInternal {
-                title,
-                description,
-                msgs,
-                proposer: Some(info.sender.to_string()),
-            },
-        )?,
-    }
+        } => ProposeMessageInternal {
+            title,
+            description,
+            msgs,
+            proposer: Some(info.sender.to_string()),
+        },
+    };
+
+    // Save the proposal as pending
+    PENDING_PROPOSALS.save(deps.storage, id, &propose_msg_internal)?;
 
     // Save info about deposits when this prop was created
     PrePropose::default().deposits.save(
@@ -175,21 +173,23 @@ pub fn execute_propose(
     // Increment next id
     CURRENT_ID.save(deps.storage, &(id + 1))?;
 
-    // // TODO Prepare hooks msg to notify approver
-    // // TODO Figure out what should be in this message
-    // let hooks_msgs = PrePropose::default()
-    //     .proposal_submitted_hooks
-    //     .prepare_hooks(deps.storage, |a| {
-    //         let execute = WasmMsg::Execute {
-    //             contract_addr: a.into_string(),
-    //             msg: to_binary(&msg)?,
-    //             funds: vec![],
-    //         };
-    //         Ok(SubMsg::new(execute))
-    //     })?;
+    // TODO Prepare hooks msg to notify approver
+    // TODO Figure out what should be in this message
+    // TODO Approver needs to know the pre-propose ID
+    let hooks_msgs = PrePropose::default()
+        .proposal_submitted_hooks
+        .prepare_hooks(deps.storage, |a| {
+            let execute = WasmMsg::Execute {
+                contract_addr: a.into_string(),
+                msg: to_binary(&propose_msg_internal)?,
+                funds: vec![],
+            };
+            Ok(SubMsg::new(execute))
+        })?;
 
     Ok(Response::default()
         .add_messages(deposit_messages)
+        .add_submessages(hooks_msgs)
         .add_attribute("id", id.to_string()))
 }
 
@@ -333,6 +333,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 // TODO potentially add other options to pending props query
+// TODO add response type and return data in a nicer format
 pub fn query_pending_proposals(deps: Deps, _msg: QueryExt) -> StdResult<Binary> {
     let pending_proposals = PENDING_PROPOSALS
         .range(deps.storage, None, None, Order::Ascending)

@@ -18,8 +18,13 @@ library = []
 [dependencies]
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cwd-pre-propose-base = { workspace = true }
+cwd-pre-propose-approval-single = { workspace = true }
+cwd-proposal-single = { workspace = true }
+cwd-voting = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

@@ -21,6 +21,7 @@ cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 cw-denom = { workspace = true }
 cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
 cwd-hooks = { workspace = true }
 cwd-proposal-hooks = { workspace = true }
 cwd-interface = { workspace = true }

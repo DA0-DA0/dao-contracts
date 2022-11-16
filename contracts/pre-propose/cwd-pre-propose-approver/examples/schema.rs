@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 use cosmwasm_std::Empty;
-use cwd_pre_propose_approval_single::ProposeMessage;
+use cwd_pre_propose_approver::ProposeMessage;
 use cwd_pre_propose_base::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
