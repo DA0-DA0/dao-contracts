@@ -18,7 +18,7 @@ use cwd_voting::{
     voting::Vote,
 };
 
-use crate::contract::*;
+use crate::{contract::*, state::PendingProposal};
 
 fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -190,7 +190,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     .unwrap();
 
     // Query for pending proposal and return latest id
-    let mut pending: Vec<(u64, ProposeMessageInternal)> = app
+    let mut pending: Vec<(u64, PendingProposal)> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,

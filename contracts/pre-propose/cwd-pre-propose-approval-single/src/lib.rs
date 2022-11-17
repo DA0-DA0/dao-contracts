@@ -5,8 +5,8 @@ pub mod state;
 mod tests;
 
 pub use contract::{
-    ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage, ProposeMessageInternal,
-    QueryExt, QueryMsg,
+    ApproverProposeMessage, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
+    ProposeMessageInternal, QueryExt, QueryMsg,
 };
 
 // Exporting these means that contracts interacting with this one don't

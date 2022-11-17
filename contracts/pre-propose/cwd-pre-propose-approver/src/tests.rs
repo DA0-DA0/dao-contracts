@@ -8,8 +8,8 @@ use cw_utils::Duration;
 use cwd_core::state::ProposalModule;
 use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cwd_pre_propose_approval_single::{
-    ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage, ProposeMessageInternal,
-    QueryExt, QueryMsg,
+    state::PendingProposal, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
+    ProposeMessageInternal, QueryExt, QueryMsg,
 };
 use cwd_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
 use cwd_proposal_single as cps;
@@ -23,6 +23,9 @@ use cwd_voting::{
 };
 
 use crate::contract::{InstantiateMsg as ApproverInstantiateMsg, CONTRACT_NAME, CONTRACT_VERSION};
+
+// The approver dao contract is the 6th contract instantiated
+const APPROVER: &str = "contract6";
 
 fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -85,8 +88,7 @@ fn get_proposal_module_approval_single_instantiate(
                     deposit_info,
                     open_proposal_submission,
                     extension: InstantiateExt {
-                        // The approver dao is the 5th contract instantiated
-                        approver: "contract5".to_string(),
+                        approver: APPROVER.to_string(),
                     },
                 })
                 .unwrap(),
@@ -304,7 +306,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     .unwrap();
 
     // Query for pending proposal and return latest id
-    let mut pending: Vec<(u64, ProposeMessageInternal)> = app
+    let mut pending: Vec<(u64, PendingProposal)> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
@@ -491,6 +493,11 @@ fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     .unwrap();
 }
 
+// TODO vote to approve
+fn vote_to_approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) -> Status {
+    vote(app, module, sender, proposal_id, Vote::Yes)
+}
+
 fn approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) -> u64 {
     let res = app
         .execute_contract(
@@ -509,6 +516,7 @@ fn approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     attrs[attrs.len() - 1].value.parse().unwrap()
 }
 
+// TODO vote to reject
 fn reject_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
     app.execute_contract(
         Addr::unchecked(sender),
@@ -544,6 +552,9 @@ fn test_native_permutation(
 ) {
     let mut app = App::default();
 
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
     let DefaultTestSetup {
         core_addr,
         proposal_single,
@@ -575,7 +586,23 @@ fn test_native_permutation(
     match approval_status {
         ApprovalStatus::Approved => {
             // Approver approves, new proposal id is returned
-            let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+            let id = approve_proposal(&mut app, pre_propose, APPROVER, pre_propose_id);
+
+            let proposal: ProposalResponse = app
+                .wrap()
+                .query_wasm_smart(
+                    proposal_single_approver.clone(),
+                    &cps::msg::QueryMsg::Proposal { proposal_id: 1 },
+                )
+                .unwrap();
+            println!("PROP: {:?}", proposal);
+
+            // TODO get propoer proposal id
+            let status =
+                vote_to_approve_proposal(&mut app, proposal_single_approver.clone(), "ekez", 1);
+            println!("STATUS: {:?}", status);
+
+            execute_proposal(&mut app, proposal_single_approver, "ekez", 1);
 
             // Voting happens on newly created proposal
             #[allow(clippy::type_complexity)]
@@ -596,7 +623,7 @@ fn test_native_permutation(
         ApprovalStatus::Rejected => {
             // Proposal is rejected by approver
             // No proposal is created so there is no voting
-            reject_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+            reject_proposal(&mut app, pre_propose, APPROVER, pre_propose_id);
         }
     };
 
@@ -657,7 +684,7 @@ fn test_cw20_permutation(
     match approval_status {
         ApprovalStatus::Approved => {
             // Approver approves, new proposal id is returned
-            let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+            let id = approve_proposal(&mut app, pre_propose.clone(), APPROVER, pre_propose_id);
 
             // Voting happens on newly created proposal
             #[allow(clippy::type_complexity)]
@@ -678,7 +705,7 @@ fn test_cw20_permutation(
         ApprovalStatus::Rejected => {
             // Proposal is rejected by approver
             // No proposal is created so there is no voting
-            reject_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+            reject_proposal(&mut app, pre_propose.clone(), APPROVER, pre_propose_id);
         }
     };
 
@@ -877,6 +904,9 @@ fn test_cw20_rejected_passed_refund() {
 fn test_multiple_open_proposals() {
     let mut app = App::default();
 
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
     let DefaultTestSetup {
         core_addr: _,
         proposal_single,
@@ -906,7 +936,7 @@ fn test_multiple_open_proposals() {
     let first_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        "approver",
+        APPROVER,
         first_pre_propose_id,
     );
     let balance = get_balance_native(&app, "ekez", "ujuno");
@@ -918,7 +948,7 @@ fn test_multiple_open_proposals() {
     assert_eq!(0, balance.u128());
 
     // Approver approves prop, balance remains the same
-    let second_id = approve_proposal(&mut app, pre_propose, "approver", second_pre_propose_id);
+    let second_id = approve_proposal(&mut app, pre_propose, APPROVER, second_pre_propose_id);
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(0, balance.u128());
 
@@ -967,12 +997,15 @@ fn test_multiple_open_proposals() {
 fn test_set_version() {
     let mut app = App::default();
 
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
     let DefaultTestSetup {
         core_addr: _,
         proposal_single: _,
-        pre_propose,
-        approver_core_addr,
-        proposal_single_approver,
+        pre_propose: _,
+        approver_core_addr: _,
+        proposal_single_approver: _,
         pre_propose_approver,
     } = setup_default_test(
         &mut app,
@@ -1005,6 +1038,9 @@ fn test_set_version() {
 #[test]
 fn test_permissions() {
     let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
 
     let DefaultTestSetup {
         core_addr,
@@ -1079,6 +1115,10 @@ fn test_permissions() {
 #[test]
 fn test_approval_and_rejection_permissions() {
     let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
     let DefaultTestSetup {
         core_addr: _,
         proposal_single: _,
@@ -1141,6 +1181,10 @@ fn test_approval_and_rejection_permissions() {
 #[test]
 fn test_propose_open_proposal_submission() {
     let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
     let DefaultTestSetup {
         core_addr: _,
         proposal_single,
@@ -1170,7 +1214,7 @@ fn test_propose_open_proposal_submission() {
     );
 
     // Approver approves
-    let id = approve_proposal(&mut app, pre_propose, "approver", pre_propose_id);
+    let id = approve_proposal(&mut app, pre_propose, APPROVER, pre_propose_id);
 
     // Member votes.
     let new_status = vote(&mut app, proposal_single, "ekez", id, Vote::Yes);
@@ -1180,6 +1224,10 @@ fn test_propose_open_proposal_submission() {
 #[test]
 fn test_update_config() {
     let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
+
     let DefaultTestSetup {
         core_addr,
         proposal_single,
@@ -1201,7 +1249,7 @@ fn test_update_config() {
     let pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &[]);
 
     // Approver approves
-    let id = approve_proposal(&mut app, pre_propose.clone(), "approver", pre_propose_id);
+    let id = approve_proposal(&mut app, pre_propose.clone(), APPROVER, pre_propose_id);
 
     update_config(
         &mut app,
@@ -1246,12 +1294,7 @@ fn test_update_config() {
         make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
 
     // Approver approves
-    let new_id = approve_proposal(
-        &mut app,
-        pre_propose.clone(),
-        "approver",
-        new_pre_propose_id,
-    );
+    let new_id = approve_proposal(&mut app, pre_propose.clone(), APPROVER, new_pre_propose_id);
 
     let info = get_deposit_info(&app, pre_propose.clone(), new_id);
     assert_eq!(
@@ -1284,6 +1327,9 @@ fn test_update_config() {
 #[test]
 fn test_withdraw() {
     let mut app = App::default();
+
+    // Need to instantiate this so contract addresses match with cw20 test cases
+    let _ = instantiate_cw20_base_default(&mut app);
 
     let DefaultTestSetup {
         core_addr,
@@ -1355,7 +1401,7 @@ fn test_withdraw() {
     let native_id = approve_proposal(
         &mut app,
         pre_propose.clone(),
-        "approver",
+        APPROVER,
         native_pre_propose_id,
     );
 
@@ -1385,12 +1431,7 @@ fn test_withdraw() {
     let cw20_pre_propose_id = make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &[]);
 
     // Approver approves
-    let cw20_id = approve_proposal(
-        &mut app,
-        pre_propose.clone(),
-        "approver",
-        cw20_pre_propose_id,
-    );
+    let cw20_id = approve_proposal(&mut app, pre_propose.clone(), APPROVER, cw20_pre_propose_id);
 
     // There is now a pending proposal and cw20 tokens in the
     // pre-propose module that should be returned on that proposal's
