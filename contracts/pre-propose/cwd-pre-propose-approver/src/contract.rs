@@ -3,16 +3,16 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Reply, Response,
-    StdResult, SubMsg, WasmMsg,
+    StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
 };
 use cw2::set_contract_version;
 
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
-use cw_utils::parse_reply_execute_data;
+use cw_utils::{parse_execute_response_data, parse_reply_execute_data};
 use cwd_interface::ModuleInstantiateCallback;
 use cwd_pre_propose_approval_single::{
-    ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
+    ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };
 use cwd_pre_propose_base::{
     error::PreProposeError,
@@ -26,16 +26,8 @@ pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approver";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cw_serde]
-pub enum ProposeMessage {
-    Propose {
-        title: String,
-        description: String,
-        pre_propose_id: u64,
-    },
-}
-
-#[cw_serde]
 pub struct InstantiateMsg {
+    // TODO add prefix?
     pub pre_propose_approval_contract: String,
 }
 
@@ -45,7 +37,7 @@ pub enum QueryExt {
 }
 
 pub type BaseInstantiateMsg = InstantiateBase<Empty>;
-pub type ExecuteMsg = ExecuteBase<ProposeMessage, Empty>;
+pub type ExecuteMsg = ExecuteBase<ApproverProposeMessage, Empty>;
 pub type QueryMsg = QueryBase<QueryExt>;
 
 /// Internal version of the propose message that includes the
@@ -63,10 +55,14 @@ pub enum ProposeMessageInternal {
 
 // Stores the address of the pre-propose approval contract
 pub const PRE_PROPOSE_APPROVAL_CONTRACT: Item<Addr> = Item::new("pre_propose_approval_contract");
+// Stores the current pre-propose-id for use in submessage reply
+pub const CURRENT_PRE_PROPOSE_ID: Item<u64> = Item::new("current_pre_propose_id");
 // Maps proposal ids to pre-propose ids
 pub const PROPOSAL_IDS: Map<u64, u64> = Map::new("proposal_ids");
 
-type PrePropose = PreProposeContract<Empty, Empty, QueryExt, ProposeMessage>;
+type PrePropose = PreProposeContract<Empty, Empty, QueryExt, ApproverProposeMessage>;
+
+const APPROVER_PROPOSE_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -129,7 +125,7 @@ pub fn execute(
 pub fn execute_propose(
     deps: DepsMut,
     info: MessageInfo,
-    msg: ProposeMessage,
+    msg: ApproverProposeMessage,
 ) -> Result<Response, PreProposeError> {
     // Check that this is coming from the expected approval contract
     let approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
@@ -140,7 +136,7 @@ pub fn execute_propose(
     // Get pre_prospose_id, transform proposal for the approver
     // Here we make sure that there are no messages that can be executed
     let (pre_propose_id, sanitized_msg) = match msg {
-        ProposeMessage::Propose {
+        ApproverProposeMessage::Propose {
             title,
             description,
             pre_propose_id,
@@ -155,9 +151,6 @@ pub fn execute_propose(
         ),
     };
 
-    // TODO save proposal_id / pre_proposal_id map
-    // May need to get this in a reply...
-
     // Get proposal id from submessage?
     let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
     let propose_messsage = SubMsg::reply_on_success(
@@ -165,10 +158,12 @@ pub fn execute_propose(
             contract_addr: proposal_module.into_string(),
             msg: to_binary(&sanitized_msg)?,
             funds: vec![],
-            // Is this clever or dumb?
         },
-        pre_propose_id,
+        APPROVER_PROPOSE_REPLY_ID,
     );
+
+    // Save current pre-propose-id for use in submessage reply
+    CURRENT_PRE_PROPOSE_ID.save(deps.storage, &pre_propose_id)?;
 
     Ok(Response::default().add_submessage(propose_messsage))
 }
@@ -185,48 +180,47 @@ pub fn execute_proposal_completed(
         return Err(PreProposeError::NotModule {});
     }
 
-    // Get pre-propose id
+    // Get approval pre-propose id
     let pre_propose_id = PROPOSAL_IDS.load(deps.storage, proposal_id)?;
 
     // Get approval contract address
     let approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
 
-    // // TODO should we only handle passed and rejected?
-    // // These are the only proposal statuses we handle deposits for.
-    // if new_status != Status::Closed && new_status != Status::Executed {
-    //     return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
-    // }
+    // TODO should we only handle passed and rejected?
+    if new_status != Status::Closed && new_status != Status::Executed {
+        return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
+    }
 
     // On completion send rejection or approval message
     let msg = match new_status {
         Status::Closed => Some(WasmMsg::Execute {
             contract_addr: approval_contract.into_string(),
             msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
-                msg: ApprovalExt::Reject { id: proposal_id },
+                msg: ApprovalExt::Reject { id: pre_propose_id },
             })?,
             funds: vec![],
         }),
         Status::Executed => Some(WasmMsg::Execute {
             contract_addr: approval_contract.into_string(),
             msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
-                msg: ApprovalExt::Approve { id: proposal_id },
+                msg: ApprovalExt::Approve { id: pre_propose_id },
             })?,
             funds: vec![],
         }),
-        // Status::Passed => Some(WasmMsg::Execute {
-        //     contract_addr: approval_contract.into_string(),
-        //     msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
-        //         msg: ApprovalExt::Reject { id: proposal_id },
-        //     })?,
-        //     funds: vec![],
-        // }),
-        // Status::Rejected => Some(WasmMsg::Execute {
-        //     contract_addr: approval_contract.into_string(),
-        //     msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
-        //         msg: ApprovalExt::Approve { id: proposal_id },
-        //     })?,
-        //     funds: vec![],
-        // }),
+        Status::Passed => Some(WasmMsg::Execute {
+            contract_addr: approval_contract.into_string(),
+            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+                msg: ApprovalExt::Reject { id: pre_propose_id },
+            })?,
+            funds: vec![],
+        }),
+        Status::Rejected => Some(WasmMsg::Execute {
+            contract_addr: approval_contract.into_string(),
+            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+                msg: ApprovalExt::Approve { id: pre_propose_id },
+            })?,
+            funds: vec![],
+        }),
         // TODO Maybe don't default reject?
         _ => None,
     };
@@ -253,13 +247,26 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, PreProposeError> {
-    let data = parse_reply_execute_data(msg.clone())?;
+    match msg.id {
+        APPROVER_PROPOSE_REPLY_ID => {
+            match msg.result {
+                SubMsgResult::Ok(result) => {
+                    let pre_propose_id = CURRENT_PRE_PROPOSE_ID.load(deps.storage)?;
 
-    println!("DATA: {:?}", data);
+                    // Parse SubMessageResponse to get proposal id
+                    let event = &result.events[result.events.len() - 1];
+                    let proposal_id = event.attributes[event.attributes.len() - 1]
+                        .value
+                        .parse::<u64>()?;
 
-    println!("ID: {:?}", msg.id);
+                    // Save mapping of proposal id to pre propose id
+                    PROPOSAL_IDS.save(deps.storage, proposal_id, &pre_propose_id)?;
 
-    // TODO save mapping
-
-    Ok(Response::default())
+                    Ok(Response::default())
+                }
+                SubMsgResult::Err(e) => Err(PreProposeError::Std(StdError::GenericErr { msg: e })),
+            }
+        }
+        _ => Err(PreProposeError::UnknownReplyID {}),
+    }
 }
