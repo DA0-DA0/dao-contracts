@@ -15,10 +15,19 @@ use cwd_pre_propose_base::{
 use cwd_proposal_single::msg::ExecuteMsg as ProposalSingleExecuteMsg;
 use cwd_voting::deposit::DepositRefundPolicy;
 
-use crate::state::{APPROVER, CURRENT_ID, PENDING_PROPOSALS};
+use crate::state::{PendingProposal, APPROVER, CURRENT_ID, PENDING_PROPOSALS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approval-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cw_serde]
+pub enum ApproverProposeMessage {
+    Propose {
+        title: String,
+        description: String,
+        pre_propose_id: u64,
+    },
+}
 
 #[cw_serde]
 pub enum ProposeMessage {
@@ -153,7 +162,14 @@ pub fn execute_propose(
     };
 
     // Save the proposal as pending
-    PENDING_PROPOSALS.save(deps.storage, id, &propose_msg_internal)?;
+    PENDING_PROPOSALS.save(
+        deps.storage,
+        id,
+        &PendingProposal {
+            id,
+            msg: propose_msg_internal.clone(),
+        },
+    )?;
 
     // Save info about deposits when this prop was created
     PrePropose::default().deposits.save(
@@ -170,22 +186,26 @@ pub fn execute_propose(
         vec![]
     };
 
-    // Increment next id
-    CURRENT_ID.save(deps.storage, &(id + 1))?;
-
-    // TODO Prepare hooks msg to notify approver
-    // TODO Figure out what should be in this message
-    // TODO Approver needs to know the pre-propose ID
+    // Prepare proposal submitted hooks msg to notify approver
     let hooks_msgs = PrePropose::default()
         .proposal_submitted_hooks
         .prepare_hooks(deps.storage, |a| {
-            let execute = WasmMsg::Execute {
+            let execute_msg = WasmMsg::Execute {
                 contract_addr: a.into_string(),
-                msg: to_binary(&propose_msg_internal)?,
+                msg: to_binary(&ExecuteBase::<ApproverProposeMessage, Empty>::Propose {
+                    msg: ApproverProposeMessage::Propose {
+                        title: propose_msg_internal.clone().title,
+                        description: propose_msg_internal.clone().description,
+                        pre_propose_id: id,
+                    },
+                })?,
                 funds: vec![],
             };
-            Ok(SubMsg::new(execute))
+            Ok(SubMsg::new(execute_msg))
         })?;
+
+    // Increment next id
+    CURRENT_ID.save(deps.storage, &(id + 1))?;
 
     Ok(Response::default()
         .add_messages(deposit_messages)
@@ -205,7 +225,7 @@ pub fn execute_approve(
     }
 
     // Check proposal id exists and load proposal
-    let proposal = PENDING_PROPOSALS.load(deps.storage, id)?;
+    let proposal = PENDING_PROPOSALS.load(deps.storage, id)?.msg;
 
     let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
     let propose_messsage = WasmMsg::Execute {
@@ -308,6 +328,8 @@ pub fn execute_remove_approver_hook(
 ) -> Result<Response, PreProposeError> {
     // Check sender is the approver
     let approver = APPROVER.load(deps.storage)?;
+
+    // TODO the parent DAO should also be able to add an approver hook
     if approver != info.sender {
         return Err(PreProposeError::Unauthorized {});
     }
@@ -335,10 +357,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 // TODO potentially add other options to pending props query
-// TODO add response type and return data in a nicer format
+// TODO add response type and return data in a new cosmwasm schema format
 pub fn query_pending_proposals(deps: Deps, _msg: QueryExt) -> StdResult<Binary> {
     let pending_proposals = PENDING_PROPOSALS
         .range(deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<(u64, ProposeMessageInternal)>>>()?;
+        .collect::<StdResult<Vec<(u64, PendingProposal)>>>()?;
     to_binary(&pending_proposals)
 }
