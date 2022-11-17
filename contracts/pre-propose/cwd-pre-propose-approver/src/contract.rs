@@ -186,11 +186,6 @@ pub fn execute_proposal_completed(
     // Get approval contract address
     let approval_contract = PRE_PROPOSE_APPROVAL_CONTRACT.load(deps.storage)?;
 
-    // TODO should we only handle passed and rejected?
-    if new_status != Status::Closed && new_status != Status::Executed {
-        return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
-    }
-
     // On completion send rejection or approval message
     let msg = match new_status {
         Status::Closed => Some(WasmMsg::Execute {
@@ -207,29 +202,13 @@ pub fn execute_proposal_completed(
             })?,
             funds: vec![],
         }),
-        Status::Passed => Some(WasmMsg::Execute {
-            contract_addr: approval_contract.into_string(),
-            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
-                msg: ApprovalExt::Reject { id: pre_propose_id },
-            })?,
-            funds: vec![],
-        }),
-        Status::Rejected => Some(WasmMsg::Execute {
-            contract_addr: approval_contract.into_string(),
-            msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
-                msg: ApprovalExt::Approve { id: pre_propose_id },
-            })?,
-            funds: vec![],
-        }),
-        // TODO Maybe don't default reject?
         _ => None,
     };
 
-    // TODO two match expressions annoys me
+    // If Status is not Executed or Closed, throw error
     match msg {
         Some(msg) => Ok(Response::default().add_message(msg)),
-        // TODO Not sure what we want to do here...
-        None => Err(PreProposeError::Unauthorized {}),
+        None => Err(PreProposeError::NotClosedOrExecuted { status: new_status }),
     }
 }
 
