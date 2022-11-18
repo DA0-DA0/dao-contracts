@@ -49,6 +49,8 @@ pub enum ExecuteExt {
     Approve { id: u64 },
     /// Reject a proposal, only callable by approver
     Reject { id: u64 },
+    /// Updates the approver, can only be called the current approver
+    UpdateApprover { address: String },
 }
 
 #[cw_serde]
@@ -115,6 +117,7 @@ pub fn execute(
         ExecuteMsg::Extension { msg } => match msg {
             ExecuteExt::Approve { id } => execute_approve(deps, info, id),
             ExecuteExt::Reject { id } => execute_reject(deps, info, id),
+            ExecuteExt::UpdateApprover { address } => execute_update_approver(deps, info, address),
         },
         // Default pre-propose-base behavior for all other messages
         _ => PrePropose::default().execute(deps, env, info, msg),
@@ -187,6 +190,7 @@ pub fn execute_propose(
     };
 
     // Prepare proposal submitted hooks msg to notify approver
+    // Make a proposal on the approver DAO to approve this pre-proposal
     let hooks_msgs = PrePropose::default()
         .proposal_submitted_hooks
         .prepare_hooks(deps.storage, |a| {
@@ -299,6 +303,24 @@ pub fn execute_reject(
             .add_attribute("method", "proposal_rejected")
             .add_attribute("proposal", id.to_string())),
     }
+}
+
+pub fn execute_update_approver(
+    deps: DepsMut,
+    info: MessageInfo,
+    address: String,
+) -> Result<Response, PreProposeError> {
+    // Check sender is the approver
+    let approver = APPROVER.load(deps.storage)?;
+    if approver != info.sender {
+        return Err(PreProposeError::Unauthorized {});
+    }
+
+    // Validate address and save new approver
+    let addr = deps.api.addr_validate(&address)?;
+    APPROVER.save(deps.storage, &addr)?;
+
+    Ok(Response::default())
 }
 
 pub fn execute_add_approver_hook(
