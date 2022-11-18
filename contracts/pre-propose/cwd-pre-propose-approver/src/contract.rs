@@ -2,14 +2,14 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, Event, MessageInfo, Reply, Response,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
     StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
 };
 use cw2::set_contract_version;
 
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
-use cw_utils::{parse_execute_response_data, parse_reply_execute_data};
+
 use cwd_interface::ModuleInstantiateCallback;
 use cwd_pre_propose_approval_single::{
     ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
@@ -91,16 +91,25 @@ pub fn instantiate(
     let addr = deps.api.addr_validate(&msg.pre_propose_approval_contract)?;
     PRE_PROPOSE_APPROVAL_CONTRACT.save(deps.storage, &addr)?;
 
-    let dao = PrePropose::default().dao.load(deps.storage)?;
-
     Ok(resp.set_data(to_binary(&ModuleInstantiateCallback {
-        msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: addr.to_string(),
-            msg: to_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
-                address: env.contract.address.to_string(),
-            })?,
-            funds: vec![],
-        })],
+        msgs: vec![
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: addr.to_string(),
+                msg: to_binary(&PreProposeApprovalExecuteMsg::AddProposalSubmittedHook {
+                    address: env.contract.address.to_string(),
+                })?,
+                funds: vec![],
+            }),
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: addr.to_string(),
+                msg: to_binary(&PreProposeApprovalExecuteMsg::Extension {
+                    msg: ApprovalExt::UpdateApprover {
+                        address: env.contract.address.to_string(),
+                    },
+                })?,
+                funds: vec![],
+            }),
+        ],
     })?))
 }
 
@@ -151,7 +160,7 @@ pub fn execute_propose(
         ),
     };
 
-    // Get proposal id from submessage?
+    // Get proposal id from submessage
     let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
     let propose_messsage = SubMsg::reply_on_success(
         WasmMsg::Execute {
@@ -239,6 +248,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, PrePropos
                     let event = &result.events[result.events.len() - 1];
                     let proposal_id = event.attributes[event.attributes.len() - 1]
                         .value
+                        .trim()
                         .parse::<u64>()?;
 
                     // Save mapping of proposal id to pre propose id
