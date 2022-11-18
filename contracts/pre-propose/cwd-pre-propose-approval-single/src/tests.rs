@@ -18,7 +18,7 @@ use cwd_voting::{
     voting::Vote,
 };
 
-use crate::{contract::*, state::PendingProposal};
+use crate::{contract::*, msg::*, state::PendingProposal};
 
 fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -899,7 +899,7 @@ fn test_pending_proposal_queries() {
     let reverse_pre_propose_props: Vec<PendingProposal> = app
         .wrap()
         .query_wasm_smart(
-            pre_propose.clone(),
+            pre_propose,
             &QueryMsg::QueryExtension {
                 msg: QueryExt::ReversePendingProposals {
                     start_after: None,

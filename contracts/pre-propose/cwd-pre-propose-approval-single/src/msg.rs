@@ -1,0 +1,76 @@
+use crate::state::PendingProposal;
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{Addr, CosmosMsg, Empty};
+use cwd_pre_propose_base::msg::{
+    ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
+};
+
+#[cw_serde]
+pub enum ApproverProposeMessage {
+    Propose {
+        title: String,
+        description: String,
+        pre_propose_id: u64,
+    },
+}
+
+#[cw_serde]
+pub enum ProposeMessage {
+    Propose {
+        title: String,
+        description: String,
+        msgs: Vec<CosmosMsg<Empty>>,
+    },
+}
+
+#[cw_serde]
+pub struct InstantiateExt {
+    pub approver: String,
+}
+
+#[cw_serde]
+pub enum ExecuteExt {
+    /// Approve a proposal, only callable by approver
+    Approve { id: u64 },
+    /// Reject a proposal, only callable by approver
+    Reject { id: u64 },
+    /// Updates the approver, can only be called the current approver
+    UpdateApprover { address: String },
+}
+
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum QueryExt {
+    /// List the approver address
+    #[returns(Addr)]
+    Approver {},
+    /// A pending proposal
+    #[returns(PendingProposal)]
+    PendingProposal { id: u64 },
+    /// List of proposals awaiting approval
+    #[returns(Vec<PendingProposal>)]
+    PendingProposals {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<PendingProposal>)]
+    ReversePendingProposals {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+}
+
+pub type InstantiateMsg = InstantiateBase<InstantiateExt>;
+pub type ExecuteMsg = ExecuteBase<ProposeMessage, ExecuteExt>;
+pub type QueryMsg = QueryBase<QueryExt>;
+
+/// Internal version of the propose message that includes the
+/// `proposer` field. The module will fill this in based on the sender
+/// of the external message.
+#[cw_serde]
+pub struct ProposeMessageInternal {
+    pub title: String,
+    pub description: String,
+    pub msgs: Vec<CosmosMsg<Empty>>,
+    pub proposer: Option<String>,
+}
