@@ -190,18 +190,21 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     .unwrap();
 
     // Query for pending proposal and return latest id
-    let mut pending: Vec<(u64, PendingProposal)> = app
+    let mut pending: Vec<PendingProposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
             &QueryMsg::QueryExtension {
-                msg: QueryExt::Proposals {},
+                msg: QueryExt::PendingProposals {
+                    start_after: None,
+                    limit: None,
+                },
             },
         )
         .unwrap();
 
     // Return last item in list, id is first element of tuple
-    pending.pop().unwrap().0
+    pending.pop().unwrap().id
 }
 
 fn mint_natives(app: &mut App, receiver: &str, coins: Vec<Coin>) {
@@ -396,18 +399,15 @@ fn approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
 }
 
 fn reject_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
-    let res = app
-        .execute_contract(
-            Addr::unchecked(sender),
-            module,
-            &ExecuteMsg::Extension {
-                msg: ExecuteExt::Reject { id: proposal_id },
-            },
-            &[],
-        )
-        .unwrap();
-
-    println!("{:?}", res);
+    app.execute_contract(
+        Addr::unchecked(sender),
+        module,
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::Reject { id: proposal_id },
+        },
+        &[],
+    )
+    .unwrap();
 }
 
 enum ApprovalStatus {
@@ -841,6 +841,76 @@ fn test_multiple_open_proposals() {
     // All deposits have been refunded.
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(20, balance.u128());
+}
+
+#[test]
+fn test_pending_proposal_queries() {
+    let mut app = App::default();
+
+    let DefaultTestSetup {
+        core_addr: _,
+        proposal_single: _,
+        pre_propose,
+    } = setup_default_test(
+        &mut app,
+        Some(UncheckedDepositInfo {
+            denom: DepositToken::Token {
+                denom: UncheckedDenom::Native("ujuno".to_string()),
+            },
+            amount: Uint128::new(10),
+            refund_policy: DepositRefundPolicy::Always,
+        }),
+        false,
+    );
+
+    mint_natives(&mut app, "ekez", coins(20, "ujuno"));
+    make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+    make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+
+    // Query for individual proposal
+    let prop1: PendingProposal = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::PendingProposal { id: 1 },
+            },
+        )
+        .unwrap();
+    assert_eq!(prop1.id, 1);
+
+    // Query for the pre-propose proposals
+    let pre_propose_props: Vec<PendingProposal> = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::PendingProposals {
+                    start_after: None,
+                    limit: None,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(pre_propose_props.len(), 2);
+    assert_eq!(pre_propose_props[0].id, 2);
+
+    // Query props in reverse
+    let reverse_pre_propose_props: Vec<PendingProposal> = app
+        .wrap()
+        .query_wasm_smart(
+            pre_propose.clone(),
+            &QueryMsg::QueryExtension {
+                msg: QueryExt::ReversePendingProposals {
+                    start_after: None,
+                    limit: None,
+                },
+            },
+        )
+        .unwrap();
+
+    assert_eq!(reverse_pre_propose_props.len(), 2);
+    assert_eq!(reverse_pre_propose_props[0].id, 1);
 }
 
 #[test]
