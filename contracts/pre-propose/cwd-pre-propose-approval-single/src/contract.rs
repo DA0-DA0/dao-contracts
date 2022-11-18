@@ -6,7 +6,6 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_paginate::paginate_map_values;
-use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use cwd_pre_propose_base::{
     error::PreProposeError, msg::ExecuteMsg as ExecuteBase, state::PreProposeContract,
 };
@@ -76,22 +75,12 @@ pub fn execute_propose(
     info: MessageInfo,
     msg: ProposeMessage,
 ) -> Result<Response, PreProposeError> {
-    // TODO do with less code duplication from pre-propose-base?
+    // Base pre-propose contract with our configured exetensions
+    let pre_propose_base = PrePropose::default();
+    let config = pre_propose_base.config.load(deps.storage)?;
+
     // Check that sender can propose
-    let config = PrePropose::default().config.load(deps.storage)?;
-    if !config.open_proposal_submission {
-        let dao = PrePropose::default().dao.load(deps.storage)?;
-        let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-            dao.into_string(),
-            &CwCoreQuery::VotingPowerAtHeight {
-                address: info.sender.to_string(),
-                height: None,
-            },
-        )?;
-        if voting_power.power.is_zero() {
-            return Err(PreProposeError::NotMember {});
-        }
-    }
+    pre_propose_base.check_can_submit(deps.as_ref(), info.clone())?;
 
     // Load current id
     let id = advance_proposal_id(deps.storage)?;
@@ -121,7 +110,7 @@ pub fn execute_propose(
     )?;
 
     // Save info about deposits when this prop was created
-    PrePropose::default().deposits.save(
+    pre_propose_base.deposits.save(
         deps.storage,
         id,
         &(config.deposit_info.clone(), info.sender.clone()),
@@ -137,22 +126,23 @@ pub fn execute_propose(
 
     // Prepare proposal submitted hooks msg to notify approver
     // Make a proposal on the approver DAO to approve this pre-proposal
-    let hooks_msgs = PrePropose::default()
-        .proposal_submitted_hooks
-        .prepare_hooks(deps.storage, |a| {
-            let execute_msg = WasmMsg::Execute {
-                contract_addr: a.into_string(),
-                msg: to_binary(&ExecuteBase::<ApproverProposeMessage, Empty>::Propose {
-                    msg: ApproverProposeMessage::Propose {
-                        title: propose_msg_internal.clone().title,
-                        description: propose_msg_internal.clone().description,
-                        pre_propose_id: id,
-                    },
-                })?,
-                funds: vec![],
-            };
-            Ok(SubMsg::new(execute_msg))
-        })?;
+    let hooks_msgs =
+        pre_propose_base
+            .proposal_submitted_hooks
+            .prepare_hooks(deps.storage, |a| {
+                let execute_msg = WasmMsg::Execute {
+                    contract_addr: a.into_string(),
+                    msg: to_binary(&ExecuteBase::<ApproverProposeMessage, Empty>::Propose {
+                        msg: ApproverProposeMessage::Propose {
+                            title: propose_msg_internal.clone().title,
+                            description: propose_msg_internal.clone().description,
+                            pre_propose_id: id,
+                        },
+                    })?,
+                    funds: vec![],
+                };
+                Ok(SubMsg::new(execute_msg))
+            })?;
 
     Ok(Response::default()
         .add_messages(deposit_messages)
@@ -274,11 +264,13 @@ pub fn execute_add_approver_hook(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, PreProposeError> {
-    // Check sender is the approver
+    let pre_propose_base = PrePropose::default();
+
+    let dao = pre_propose_base.dao.load(deps.storage)?;
     let approver = APPROVER.load(deps.storage)?;
 
-    // TODO the parent DAO should also be able to add an approver hook
-    if approver != info.sender {
+    // Check sender is the approver or the parent DAO
+    if approver != info.sender && dao != info.sender {
         return Err(PreProposeError::Unauthorized {});
     }
 
@@ -286,7 +278,7 @@ pub fn execute_add_approver_hook(
     let addr = deps.api.addr_validate(&address)?;
 
     // Add hook
-    PrePropose::default()
+    pre_propose_base
         .proposal_submitted_hooks
         .add_hook(deps.storage, addr)?;
 
@@ -298,11 +290,13 @@ pub fn execute_remove_approver_hook(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, PreProposeError> {
-    // Check sender is the approver
+    let pre_propose_base = PrePropose::default();
+
+    let dao = pre_propose_base.dao.load(deps.storage)?;
     let approver = APPROVER.load(deps.storage)?;
 
-    // TODO the parent DAO should also be able to add an approver hook
-    if approver != info.sender {
+    // Check sender is the approver or the parent DAO
+    if approver != info.sender && dao != info.sender {
         return Err(PreProposeError::Unauthorized {});
     }
 
@@ -310,7 +304,7 @@ pub fn execute_remove_approver_hook(
     let addr = deps.api.addr_validate(&address)?;
 
     // Add hook
-    PrePropose::default()
+    pre_propose_base
         .proposal_submitted_hooks
         .remove_hook(deps.storage, addr)?;
 
