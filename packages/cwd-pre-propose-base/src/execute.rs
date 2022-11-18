@@ -107,25 +107,6 @@ where
         }
     }
 
-    pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
-        match msg {
-            QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
-            QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
-            QueryMsg::Config {} => to_binary(&self.config.load(deps.storage)?),
-            QueryMsg::DepositInfo { proposal_id } => {
-                let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;
-                to_binary(&DepositInfoResponse {
-                    deposit_info,
-                    proposer,
-                })
-            }
-            QueryMsg::ProposalSubmittedHooks {} => {
-                to_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)
-            }
-            QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
-        }
-    }
-
     pub fn execute_propose(
         &self,
         deps: Deps,
@@ -372,5 +353,24 @@ where
         Ok(Response::default()
             .add_attribute("method", "execute_new_proposal_hook")
             .add_attribute("proposal_id", id.to_string()))
+    }
+
+    pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
+        match msg {
+            QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
+            QueryMsg::Dao {} => to_binary(&self.dao.load(deps.storage)?),
+            QueryMsg::Config {} => to_binary(&self.config.load(deps.storage)?),
+            QueryMsg::DepositInfo { proposal_id } => {
+                let (deposit_info, proposer) = self.deposits.load(deps.storage, proposal_id)?;
+                to_binary(&DepositInfoResponse {
+                    deposit_info,
+                    proposer,
+                })
+            }
+            QueryMsg::ProposalSubmittedHooks {} => {
+                to_binary(&self.proposal_submitted_hooks.query_hooks(deps)?)
+            }
+            QueryMsg::QueryExtension { .. } => Ok(Binary::default()),
+        }
     }
 }

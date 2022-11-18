@@ -27,7 +27,6 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // TODO add prefix?
     pub pre_propose_approval_contract: String,
 }
 
