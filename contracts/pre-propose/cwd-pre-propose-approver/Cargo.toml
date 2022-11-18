@@ -4,7 +4,7 @@ version = "0.2.0"
 authors = ["ekez <ekez@withoutdoing.com>", "Jake Hartnell <no-reply@no-reply.com>"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
-description = "A DAO DAO pre-propose module for cwd-proposal-single for native and cw20 deposits."
+description = "A DAO DAO pre-propose module for automatically making approval proposals for cwd-pre-propose-approval-single."
 
 [lib]
 crate-type = ["cdylib", "rlib"]

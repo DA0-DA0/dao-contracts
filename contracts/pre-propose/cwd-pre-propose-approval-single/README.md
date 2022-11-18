@@ -4,23 +4,7 @@ This contract implements an approval flow for proposals, it also handles deposit
 
 ## Approval Logic
 
-This contract is instantatied with an `approver` address. This address is allowed to call methods on this contract (approve / reject / add hook / remove hook).
-
-### Queries
-
-TODO what queries should this support?
-
-## Approver logic
-
-The defined approver can call approve or reject on the `pre-propose-approval-flow module`.
-
-To improve UX, an approver contract can be instantiated. This registers a hook with the approval contract to automatically create proposals in the approver DAO.
-
-When SubDAO recieves prop as hook, it makes an approval prop. If approved, the approval prop calls the approve message on this contract. When prop fails it fires off reject call.
-
-### Open Questions
-QUESTION: is this contract the same for the approver? Probably cleaner to have it separate... Some methods aren't needed like approve and reject. Maybe just don't allow extension when admin?
-What happens with deposit? Goes to DAO? Pre-propose approver maybe should not allow deposits?
+This contract is instantatied with an `approver` address. This address is allowed to call methods on this contract (approve / reject / add prop submission hook / remove prop submission hook).
 
 ## Deposit Logic
 
