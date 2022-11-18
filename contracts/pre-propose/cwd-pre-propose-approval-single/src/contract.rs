@@ -6,6 +6,7 @@ use cosmwasm_std::{
     StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
+use cw_paginate::paginate_map_values;
 use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use cwd_pre_propose_base::{
     error::PreProposeError,
@@ -57,8 +58,17 @@ pub enum ExecuteExt {
 pub enum QueryExt {
     /// List the approver address
     Approver {},
+    /// A pending proposal
+    PendingProposal { id: u64 },
     /// List of proposals awaiting approval
-    Proposals {},
+    PendingProposals {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
+    ReversePendingProposals {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 }
 
 pub type InstantiateMsg = InstantiateBase<InstantiateExt>;
@@ -382,18 +392,26 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryExtension { msg } => match msg {
             QueryExt::Approver {} => to_binary(&APPROVER.load(deps.storage)?),
-            QueryExt::Proposals {} => query_pending_proposals(deps, msg),
+            QueryExt::PendingProposal { id } => {
+                to_binary(&PENDING_PROPOSALS.load(deps.storage, id)?)
+            }
+            QueryExt::PendingProposals { start_after, limit } => to_binary(&paginate_map_values(
+                deps,
+                &PENDING_PROPOSALS,
+                start_after,
+                limit,
+                Order::Descending,
+            )?),
+            QueryExt::ReversePendingProposals { start_after, limit } => {
+                to_binary(&paginate_map_values(
+                    deps,
+                    &PENDING_PROPOSALS,
+                    start_after,
+                    limit,
+                    Order::Ascending,
+                )?)
+            }
         },
         _ => PrePropose::default().query(deps, env, msg),
     }
-}
-
-// TODO potentially add other options to pending props query
-// TODO add response type and return data in a new cosmwasm schema format
-// TODO use cw-paginate: https://github.com/DA0-DA0/dao-contracts/tree/main/packages/cw-paginate
-pub fn query_pending_proposals(deps: Deps, _msg: QueryExt) -> StdResult<Binary> {
-    let pending_proposals = PENDING_PROPOSALS
-        .range(deps.storage, None, None, Order::Ascending)
-        .collect::<StdResult<Vec<(u64, PendingProposal)>>>()?;
-    to_binary(&pending_proposals)
 }
