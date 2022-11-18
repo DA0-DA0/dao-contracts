@@ -82,7 +82,7 @@ pub fn instantiate(
     let resp = PrePropose::default().instantiate(
         deps.branch(),
         env.clone(),
-        info.clone(),
+        info,
         base_instantiate_msg,
     )?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

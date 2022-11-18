@@ -8,7 +8,8 @@ use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
 use cwd_core::state::ProposalModule;
 use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cwd_pre_propose_approval_single::{
-    state::PendingProposal, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage, QueryExt, QueryMsg,
+    state::PendingProposal, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
+    QueryExt, QueryMsg,
 };
 use cwd_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
 use cwd_proposal_single as cps;
@@ -158,7 +159,7 @@ struct DefaultTestSetup {
     core_addr: Addr,
     proposal_single: Addr,
     pre_propose: Addr,
-    approver_core_addr: Addr,
+    _approver_core_addr: Addr,
     pre_propose_approver: Addr,
     proposal_single_approver: Addr,
 }
@@ -230,7 +231,7 @@ fn setup_default_test(
         pre_propose.to_string(),
     );
 
-    let approver_core_addr = instantiate_with_cw4_groups_governance(
+    let _approver_core_addr = instantiate_with_cw4_groups_governance(
         app,
         cps_id,
         to_binary(&proposal_module_instantiate).unwrap(),
@@ -248,7 +249,7 @@ fn setup_default_test(
     let proposal_modules: Vec<ProposalModule> = app
         .wrap()
         .query_wasm_smart(
-            approver_core_addr.clone(),
+            _approver_core_addr.clone(),
             &cwd_core::msg::QueryMsg::ProposalModules {
                 start_after: None,
                 limit: None,
@@ -275,7 +276,7 @@ fn setup_default_test(
         get_proposal_module(app, pre_propose_approver.clone())
     );
     assert_eq!(
-        approver_core_addr,
+        _approver_core_addr,
         get_dao(app, pre_propose_approver.clone())
     );
 
@@ -283,7 +284,7 @@ fn setup_default_test(
         core_addr,
         proposal_single,
         pre_propose,
-        approver_core_addr,
+        _approver_core_addr,
         proposal_single_approver,
         pre_propose_approver,
     }
@@ -526,13 +527,6 @@ fn approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     execute_proposal(app, module, sender, proposal_id);
 }
 
-fn reject_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
-    // Approver votes on prop
-    vote(app, module.clone(), sender, proposal_id, Vote::No);
-    // Approver executes prop
-    close_proposal(app, module, sender, proposal_id);
-}
-
 enum ApprovalStatus {
     Approved,
     Rejected,
@@ -563,7 +557,7 @@ fn test_native_permutation(
         core_addr,
         proposal_single,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -579,8 +573,7 @@ fn test_native_permutation(
     );
 
     mint_natives(&mut app, "ekez", coins(10, "ujuno"));
-    let _pre_propose_id =
-        make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+    let _pre_propose_id = make_pre_proposal(&mut app, pre_propose, "ekez", &coins(10, "ujuno"));
 
     // Check no props created on main DAO yet
     let props = get_proposals(&app, proposal_single.clone());
@@ -642,7 +635,7 @@ fn test_native_permutation(
             close_proposal(&mut app, proposal_single_approver, "ekez", 1);
 
             // No prop created
-            let props = get_proposals(&app, proposal_single.clone());
+            let props = get_proposals(&app, proposal_single);
             assert_eq!(props.proposals.len(), 0);
         }
     };
@@ -672,7 +665,7 @@ fn test_cw20_permutation(
         core_addr,
         proposal_single,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -756,7 +749,7 @@ fn test_cw20_permutation(
             close_proposal(&mut app, proposal_single_approver, "ekez", 1);
 
             // No prop created
-            let props = get_proposals(&app, proposal_single.clone());
+            let props = get_proposals(&app, proposal_single);
             assert_eq!(props.proposals.len(), 0);
         }
     };
@@ -964,7 +957,7 @@ fn test_multiple_open_proposals() {
         core_addr: _,
         proposal_single,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -998,18 +991,13 @@ fn test_multiple_open_proposals() {
     assert_eq!(10, balance.u128());
 
     let _second_pre_propose_id =
-        make_pre_proposal(&mut app, pre_propose.clone(), "ekez", &coins(10, "ujuno"));
+        make_pre_proposal(&mut app, pre_propose, "ekez", &coins(10, "ujuno"));
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(0, balance.u128());
 
     // Approver DAO votes to approves, balance remains the same
     let approver_prop_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
-    approve_proposal(
-        &mut app,
-        proposal_single_approver.clone(),
-        "ekez",
-        approver_prop_id,
-    );
+    approve_proposal(&mut app, proposal_single_approver, "ekez", approver_prop_id);
     let second_id = get_latest_proposal_id(&app, proposal_single.clone());
     let balance = get_balance_native(&app, "ekez", "ujuno");
     assert_eq!(0, balance.u128());
@@ -1066,7 +1054,7 @@ fn test_set_version() {
         core_addr: _,
         proposal_single: _,
         pre_propose: _,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver,
     } = setup_default_test(
@@ -1108,7 +1096,7 @@ fn test_permissions() {
         core_addr,
         proposal_single: _,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1185,7 +1173,7 @@ fn test_approval_and_rejection_permissions() {
         core_addr: _,
         proposal_single: _,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver: _,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1251,7 +1239,7 @@ fn test_propose_open_proposal_submission() {
         core_addr: _,
         proposal_single,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(
@@ -1268,21 +1256,12 @@ fn test_propose_open_proposal_submission() {
 
     // Non-member proposes.
     mint_natives(&mut app, "nonmember", coins(10, "ujuno"));
-    let _pre_propose_id = make_pre_proposal(
-        &mut app,
-        pre_propose.clone(),
-        "nonmember",
-        &coins(10, "ujuno"),
-    );
+    let _pre_propose_id =
+        make_pre_proposal(&mut app, pre_propose, "nonmember", &coins(10, "ujuno"));
 
     // Approver DAO votes to approves
     let approver_prop_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
-    approve_proposal(
-        &mut app,
-        proposal_single_approver.clone(),
-        "ekez",
-        approver_prop_id,
-    );
+    approve_proposal(&mut app, proposal_single_approver, "ekez", approver_prop_id);
     let id = get_latest_proposal_id(&app, proposal_single.clone());
 
     // Member votes.
@@ -1301,7 +1280,7 @@ fn test_update_config() {
         core_addr,
         proposal_single,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(&mut app, None, false);
@@ -1377,7 +1356,7 @@ fn test_update_config() {
         "ekez",
         approver_prop_id,
     );
-    let new_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
+    let new_id = get_latest_proposal_id(&app, proposal_single_approver);
 
     let info = get_deposit_info(&app, pre_propose.clone(), new_id);
     assert_eq!(
@@ -1418,7 +1397,7 @@ fn test_withdraw() {
         core_addr,
         proposal_single,
         pre_propose,
-        approver_core_addr: _,
+        _approver_core_addr: _,
         proposal_single_approver,
         pre_propose_approver: _,
     } = setup_default_test(&mut app, None, false);
@@ -1517,12 +1496,7 @@ fn test_withdraw() {
 
     // Approver DAO votes to approve
     let approver_prop_id = get_latest_proposal_id(&app, proposal_single_approver.clone());
-    approve_proposal(
-        &mut app,
-        proposal_single_approver.clone(),
-        "ekez",
-        approver_prop_id,
-    );
+    approve_proposal(&mut app, proposal_single_approver, "ekez", approver_prop_id);
     let cw20_id = get_latest_proposal_id(&app, proposal_single.clone());
 
     // There is now a pending proposal and cw20 tokens in the
