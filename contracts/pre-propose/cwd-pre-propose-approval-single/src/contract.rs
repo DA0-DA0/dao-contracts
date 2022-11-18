@@ -1,90 +1,26 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    ensure, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
-    StdResult, Storage, SubMsg, WasmMsg,
+    ensure, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult,
+    Storage, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_paginate::paginate_map_values;
 use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
 use cwd_pre_propose_base::{
-    error::PreProposeError,
-    msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
-    state::PreProposeContract,
+    error::PreProposeError, msg::ExecuteMsg as ExecuteBase, state::PreProposeContract,
 };
 use cwd_proposal_single::msg::ExecuteMsg as ProposalSingleExecuteMsg;
 use cwd_voting::deposit::DepositRefundPolicy;
 
+use crate::msg::{
+    ApproverProposeMessage, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
+    ProposeMessageInternal, QueryExt, QueryMsg,
+};
 use crate::state::{PendingProposal, APPROVER, CURRENT_ID, PENDING_PROPOSALS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approval-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[cw_serde]
-pub enum ApproverProposeMessage {
-    Propose {
-        title: String,
-        description: String,
-        pre_propose_id: u64,
-    },
-}
-
-#[cw_serde]
-pub enum ProposeMessage {
-    Propose {
-        title: String,
-        description: String,
-        msgs: Vec<CosmosMsg<Empty>>,
-    },
-}
-
-#[cw_serde]
-pub struct InstantiateExt {
-    pub approver: String,
-}
-
-#[cw_serde]
-pub enum ExecuteExt {
-    /// Approve a proposal, only callable by approver
-    Approve { id: u64 },
-    /// Reject a proposal, only callable by approver
-    Reject { id: u64 },
-    /// Updates the approver, can only be called the current approver
-    UpdateApprover { address: String },
-}
-
-#[cw_serde]
-pub enum QueryExt {
-    /// List the approver address
-    Approver {},
-    /// A pending proposal
-    PendingProposal { id: u64 },
-    /// List of proposals awaiting approval
-    PendingProposals {
-        start_after: Option<u64>,
-        limit: Option<u32>,
-    },
-    ReversePendingProposals {
-        start_after: Option<u64>,
-        limit: Option<u32>,
-    },
-}
-
-pub type InstantiateMsg = InstantiateBase<InstantiateExt>;
-pub type ExecuteMsg = ExecuteBase<ProposeMessage, ExecuteExt>;
-pub type QueryMsg = QueryBase<QueryExt>;
-
-/// Internal version of the propose message that includes the
-/// `proposer` field. The module will fill this in based on the sender
-/// of the external message.
-#[cw_serde]
-pub struct ProposeMessageInternal {
-    title: String,
-    description: String,
-    msgs: Vec<CosmosMsg<Empty>>,
-    proposer: Option<String>,
-}
 
 type PrePropose = PreProposeContract<InstantiateExt, ExecuteExt, QueryExt, ProposeMessage>;
 

@@ -8,8 +8,10 @@ use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor};
 use cwd_core::state::ProposalModule;
 use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cwd_pre_propose_approval_single::{
-    state::PendingProposal, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
-    QueryExt, QueryMsg,
+    msg::{
+        ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage, QueryExt, QueryMsg,
+    },
+    state::PendingProposal,
 };
 use cwd_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
 use cwd_proposal_single as cps;
@@ -22,7 +24,8 @@ use cwd_voting::{
     voting::Vote,
 };
 
-use crate::contract::{InstantiateMsg as ApproverInstantiateMsg, CONTRACT_NAME, CONTRACT_VERSION};
+use crate::contract::{CONTRACT_NAME, CONTRACT_VERSION};
+use crate::msg::InstantiateMsg as ApproverInstantiateMsg;
 
 // The approver dao contract is the 6th contract instantiated
 const APPROVER: &str = "contract6";
@@ -306,18 +309,21 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
     .unwrap();
 
     // Query for pending proposal and return latest id
-    let mut pending: Vec<(u64, PendingProposal)> = app
+    let mut pending: Vec<PendingProposal> = app
         .wrap()
         .query_wasm_smart(
             pre_propose,
             &QueryMsg::QueryExtension {
-                msg: QueryExt::Proposals {},
+                msg: QueryExt::PendingProposals {
+                    start_after: None,
+                    limit: None,
+                },
             },
         )
         .unwrap();
 
     // Return last item in list, id is first element of tuple
-    pending.pop().unwrap().0
+    pending.pop().unwrap().id
 }
 
 fn mint_natives(app: &mut App, receiver: &str, coins: Vec<Coin>) {

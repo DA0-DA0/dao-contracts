@@ -20,7 +20,7 @@ export type UncheckedDenom = {
 export type DepositRefundPolicy = "always" | "only_passed" | "never";
 export interface InstantiateMsg {
   deposit_info?: UncheckedDepositInfo | null;
-  extension: Empty;
+  extension: InstantiateExt;
   open_proposal_submission: boolean;
 }
 export interface UncheckedDepositInfo {
@@ -28,8 +28,8 @@ export interface UncheckedDepositInfo {
   denom: DepositToken;
   refund_policy: DepositRefundPolicy;
 }
-export interface Empty {
-  [k: string]: unknown;
+export interface InstantiateExt {
+  approver: string;
 }
 export type ExecuteMsg = {
   propose: {
@@ -46,7 +46,7 @@ export type ExecuteMsg = {
   };
 } | {
   extension: {
-    msg: Empty;
+    msg: ExecuteExt;
   };
 } | {
   add_proposal_submitted_hook: {
@@ -205,10 +205,26 @@ export type GovMsg = {
   };
 };
 export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
+export type ExecuteExt = {
+  approve: {
+    id: number;
+  };
+} | {
+  reject: {
+    id: number;
+  };
+} | {
+  update_approver: {
+    address: string;
+  };
+};
 export type Status = "open" | "rejected" | "passed" | "executed" | "closed" | "execution_failed";
 export interface Coin {
   amount: Uint128;
   denom: string;
+  [k: string]: unknown;
+}
+export interface Empty {
   [k: string]: unknown;
 }
 export interface IbcTimeout {
@@ -235,7 +251,24 @@ export type QueryMsg = {
   proposal_submitted_hooks: {};
 } | {
   query_extension: {
-    msg: Empty;
+    msg: QueryExt;
+  };
+};
+export type QueryExt = {
+  approver: {};
+} | {
+  pending_proposal: {
+    id: number;
+  };
+} | {
+  pending_proposals: {
+    limit?: number | null;
+    start_after?: number | null;
+  };
+} | {
+  reverse_pending_proposals: {
+    limit?: number | null;
+    start_after?: number | null;
   };
 };
 export type CheckedDenom = {
