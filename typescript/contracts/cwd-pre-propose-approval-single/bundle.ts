@@ -4,10 +4,10 @@
 * and run the @cosmwasm/ts-codegen generate command to regenerate this file.
 */
 
-import * as _12 from "./CwdPreProposeMultiple.types";
-import * as _13 from "./CwdPreProposeMultiple.client";
+import * as _8 from "./CwdPreProposeApprovalSingle.types";
+import * as _9 from "./CwdPreProposeApprovalSingle.client";
 export namespace contracts {
-  export const CwdPreProposeMultiple = { ..._12,
-    ..._13
+  export const CwdPreProposeApprovalSingle = { ..._8,
+    ..._9
   };
 }

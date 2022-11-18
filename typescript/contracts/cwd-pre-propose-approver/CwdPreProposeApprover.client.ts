@@ -5,9 +5,9 @@
 */
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
-import { StdFee } from "@cosmjs/amino";
-import { Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, InstantiateMsg, UncheckedDepositInfo, Empty, ExecuteMsg, ProposeMessage, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, Binary, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Status, Coin, IbcTimeout, IbcTimeoutBlock, QueryMsg, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse, HooksResponse } from "./CwdPreProposeSingle.types";
-export interface CwdPreProposeSingleReadOnlyInterface {
+import { Coin, StdFee } from "@cosmjs/amino";
+import { InstantiateMsg, ExecuteMsg, ApproverProposeMessage, Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, Status, UncheckedDepositInfo, Empty, QueryMsg, QueryExt, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse, HooksResponse, Binary } from "./CwdPreProposeApprover.types";
+export interface CwdPreProposeApproverReadOnlyInterface {
   contractAddress: string;
   proposalModule: () => Promise<Addr>;
   dao: () => Promise<Addr>;
@@ -21,10 +21,10 @@ export interface CwdPreProposeSingleReadOnlyInterface {
   queryExtension: ({
     msg
   }: {
-    msg: Empty;
+    msg: QueryExt;
   }) => Promise<Binary>;
 }
-export class CwdPreProposeSingleQueryClient implements CwdPreProposeSingleReadOnlyInterface {
+export class CwdPreProposeApproverQueryClient implements CwdPreProposeApproverReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -73,7 +73,7 @@ export class CwdPreProposeSingleQueryClient implements CwdPreProposeSingleReadOn
   queryExtension = async ({
     msg
   }: {
-    msg: Empty;
+    msg: QueryExt;
   }): Promise<Binary> => {
     return this.client.queryContractSmart(this.contractAddress, {
       query_extension: {
@@ -82,13 +82,13 @@ export class CwdPreProposeSingleQueryClient implements CwdPreProposeSingleReadOn
     });
   };
 }
-export interface CwdPreProposeSingleInterface extends CwdPreProposeSingleReadOnlyInterface {
+export interface CwdPreProposeApproverInterface extends CwdPreProposeApproverReadOnlyInterface {
   contractAddress: string;
   sender: string;
   propose: ({
     msg
   }: {
-    msg: ProposeMessage;
+    msg: ApproverProposeMessage;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
     depositInfo,
@@ -132,7 +132,7 @@ export interface CwdPreProposeSingleInterface extends CwdPreProposeSingleReadOnl
     proposalId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
-export class CwdPreProposeSingleClient extends CwdPreProposeSingleQueryClient implements CwdPreProposeSingleInterface {
+export class CwdPreProposeApproverClient extends CwdPreProposeApproverQueryClient implements CwdPreProposeApproverInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;
@@ -155,7 +155,7 @@ export class CwdPreProposeSingleClient extends CwdPreProposeSingleQueryClient im
   propose = async ({
     msg
   }: {
-    msg: ProposeMessage;
+    msg: ApproverProposeMessage;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       propose: {
