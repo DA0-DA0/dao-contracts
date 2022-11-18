@@ -162,28 +162,32 @@ pub fn execute_approve(
         return Err(PreProposeError::Unauthorized {});
     }
 
-    // Check proposal id exists and load proposal
-    let proposal = PENDING_PROPOSALS.load(deps.storage, id)?.msg;
+    // Load proposal and send propose message to the proposal module
+    let proposal = PENDING_PROPOSALS.may_load(deps.storage, id)?;
+    match proposal {
+        Some(proposal) => {
+            let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
+            let propose_messsage = WasmMsg::Execute {
+                contract_addr: proposal_module.into_string(),
+                msg: to_binary(&ProposalSingleExecuteMsg::Propose {
+                    title: proposal.msg.title,
+                    description: proposal.msg.description,
+                    msgs: proposal.msg.msgs,
+                    proposer: proposal.msg.proposer,
+                })?,
+                funds: vec![],
+            };
 
-    let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
-    let propose_messsage = WasmMsg::Execute {
-        contract_addr: proposal_module.into_string(),
-        msg: to_binary(&ProposalSingleExecuteMsg::Propose {
-            title: proposal.title,
-            description: proposal.description,
-            msgs: proposal.msgs,
-            proposer: proposal.proposer,
-        })?,
-        funds: vec![],
-    };
+            // Remove proposal
+            PENDING_PROPOSALS.remove(deps.storage, id);
 
-    // Remove proposal
-    PENDING_PROPOSALS.remove(deps.storage, id);
-
-    Ok(Response::default()
-        .add_message(propose_messsage)
-        .add_attribute("method", "proposal_approved")
-        .add_attribute("proposal", id.to_string()))
+            Ok(Response::default()
+                .add_message(propose_messsage)
+                .add_attribute("method", "proposal_approved")
+                .add_attribute("proposal", id.to_string()))
+        }
+        None => Err(PreProposeError::ProposalNotFound {}),
+    }
 }
 
 pub fn execute_reject(
