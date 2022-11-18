@@ -23,8 +23,8 @@ cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cwd-interface = { workspace = true }
 cwd-pre-propose-base = { workspace = true }
-cwd-pre-propose-approval-single = { workspace = true }
-cwd-proposal-single = { workspace = true }
+cwd-pre-propose-approval-single = { workspace = true, features = ["library"] }
+cwd-proposal-single = { workspace = true, features = ["library"] }
 cwd-voting = { workspace = true }
 
 [dev-dependencies]

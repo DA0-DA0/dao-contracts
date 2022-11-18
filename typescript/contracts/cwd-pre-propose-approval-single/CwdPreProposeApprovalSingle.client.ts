@@ -6,8 +6,8 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, InstantiateMsg, UncheckedDepositInfo, Empty, ExecuteMsg, ProposeMessage, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, Binary, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Status, Coin, IbcTimeout, IbcTimeoutBlock, QueryMsg, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse, HooksResponse } from "./CwdPreProposeSingle.types";
-export interface CwdPreProposeSingleReadOnlyInterface {
+import { Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, InstantiateMsg, UncheckedDepositInfo, Empty, ExecuteMsg, ProposeMessage, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, Binary, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Status, Coin, IbcTimeout, IbcTimeoutBlock, QueryMsg, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse, HooksResponse } from "./CwdPreProposeApprovalSingle.types";
+export interface CwdPreProposeApprovalSingleReadOnlyInterface {
   contractAddress: string;
   proposalModule: () => Promise<Addr>;
   dao: () => Promise<Addr>;
@@ -24,7 +24,7 @@ export interface CwdPreProposeSingleReadOnlyInterface {
     msg: Empty;
   }) => Promise<Binary>;
 }
-export class CwdPreProposeSingleQueryClient implements CwdPreProposeSingleReadOnlyInterface {
+export class CwdPreProposeApprovalSingleQueryClient implements CwdPreProposeApprovalSingleReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -82,7 +82,7 @@ export class CwdPreProposeSingleQueryClient implements CwdPreProposeSingleReadOn
     });
   };
 }
-export interface CwdPreProposeSingleInterface extends CwdPreProposeSingleReadOnlyInterface {
+export interface CwdPreProposeApprovalSingleInterface extends CwdPreProposeApprovalSingleReadOnlyInterface {
   contractAddress: string;
   sender: string;
   propose: ({
@@ -132,7 +132,7 @@ export interface CwdPreProposeSingleInterface extends CwdPreProposeSingleReadOnl
     proposalId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
-export class CwdPreProposeSingleClient extends CwdPreProposeSingleQueryClient implements CwdPreProposeSingleInterface {
+export class CwdPreProposeApprovalSingleClient extends CwdPreProposeApprovalSingleQueryClient implements CwdPreProposeApprovalSingleInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;
