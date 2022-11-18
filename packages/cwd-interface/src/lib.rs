@@ -60,7 +60,6 @@ pub struct ModuleInstantiateCallback {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_schema::cw_serde;
     use cosmwasm_std::{to_binary, Addr, WasmMsg};
 
     use crate::{Admin, ModuleInstantiateInfo};
