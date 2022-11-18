@@ -14,6 +14,12 @@ pub struct Ballot {
     pub power: Uint128,
     /// The position.
     pub vote: Vote,
+
+    /// An optional rationale for why this vote was cast. If the key
+    /// is missing (i.e. the ballot was cast in a v1 proposal module),
+    /// we deserialize into None (i.e. Option::default()).
+    #[serde(default)]
+    pub rationale: Option<String>,
 }
 /// The governance module's configuration.
 #[cw_serde]
@@ -57,7 +63,7 @@ pub const CONFIG: Item<Config> = Item::new("config_v2");
 /// The number of proposals that have been created.
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const PROPOSALS: Map<u64, SingleChoiceProposal> = Map::new("proposals_v2");
-pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
+pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("ballots");
 /// Consumers of proposal state change hooks.
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
 /// Consumers of vote hooks.
