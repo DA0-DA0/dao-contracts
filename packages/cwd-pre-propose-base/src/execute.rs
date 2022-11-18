@@ -355,6 +355,29 @@ where
             .add_attribute("proposal_id", id.to_string()))
     }
 
+    pub fn check_can_submit(
+        &self,
+        deps: Deps,
+        info: MessageInfo,
+    ) -> Result<Response, PreProposeError> {
+        let config = self.config.load(deps.storage)?;
+
+        if !config.open_proposal_submission {
+            let dao = self.dao.load(deps.storage)?;
+            let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+                dao.into_string(),
+                &CwCoreQuery::VotingPowerAtHeight {
+                    address: info.sender.to_string(),
+                    height: None,
+                },
+            )?;
+            if voting_power.power.is_zero() {
+                return Err(PreProposeError::NotMember {});
+            }
+        }
+        Ok(Response::default())
+    }
+
     pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
         match msg {
             QueryMsg::ProposalModule {} => to_binary(&self.proposal_module.load(deps.storage)?),
