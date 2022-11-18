@@ -46,6 +46,9 @@ pub enum PreProposeError {
     #[error("Proposal status ({status}) not closed or executed")]
     NotClosedOrExecuted { status: Status },
 
+    #[error("Proposal not found")]
+    ProposalNotFound {},
+
     #[error("Unauthorized")]
     Unauthorized {},
 
