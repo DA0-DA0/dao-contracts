@@ -207,7 +207,10 @@ pub fn execute_proposal_completed(
 
     // If Status is not Executed or Closed, throw error
     match msg {
-        Some(msg) => Ok(Response::default().add_message(msg)),
+        Some(msg) => Ok(Response::default()
+            .add_message(msg)
+            .add_attribute("method", "execute_proposal_completed_hook")
+            .add_attribute("proposal", proposal_id.to_string())),
         None => Err(PreProposeError::NotClosedOrExecuted { status: new_status }),
     }
 }
