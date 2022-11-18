@@ -4,9 +4,43 @@ This contract works in conjuction with `cwd-pre-propose-approval-single` and all
 
 ## Approver Logic
 
-This contract registers a hook with the approval contract to automatically create proposals in the approver DAO.
+On instantiation, this contract registers a hook with the approval contract to automatically create proposals in the approver DAO.
 
-When this contract recieves a prop as hook from `cwd-pre-propose-approval-single`, it makes an approval prop. If approved, the approval prop calls the approve message on this contract. When prop fails it fires off reject call.
+When this contract recieves a prop as hook from `cwd-pre-propose-approval-single`, it makes an approval prop. If approved, the approval prop calls the approve message on this contract when executed. When prop is rejected and closed it fires off reject call.
+
+``` 
+┌──────────┐         Approver DAO Registers Prop Submission Hook
+│          │       ┌──────────────────────────────────────────────┐
+│  Account │       │                                              │
+│          │       │                                              │
+└─────┬────┘       │    Prop Submission Hook creates              │
+      │            │    new prop in Approver DAO                  │
+      │ Makes prop │   ┌───────────────────────────┐              │
+      ▼            ▼   │                           ▼              │
+┌──────────────────────┴─┐             ┌────────────────────────┐ │
+│                        │             │                        │ │
+│  Pre-propose Approval  │             │  Pre-propose Approver  │ │
+│                        │◄──┐         │                        │ │
+└───────────┬────────────┘   │         └───────────┬────────────┘ │
+            │                │                     │              │
+            │ Creates prop   │                     │ Creates      │
+            │ on approval    │                     │ prop         │
+            ▼                │                     ▼              │
+┌────────────────────────┐   │         ┌────────────────────────┐ │
+│                        │   │         │                        │ │
+│     Proposal Single    │   │         │     Proposal Single    │ │
+│                        │   │         │                        │ │
+└───────────┬────────────┘   │         └───────────┬────────────┘ │
+            │                │ Approver            │              │
+            │ Normal voting  │ Approves            │ Voting       │
+            │                │ or                  │              │
+            ▼                │ Rejects             ▼              │
+┌────────────────────────┐   │         ┌────────────────────────┐ │
+│                        │   │         │                        │ │
+│       Main DAO         │   └─────────┤     Approver DAO       ├─┘
+│                        │             │                        │
+└────────────────────────┘             └────────────────────────┘
+```
 
 ## Deposits
 

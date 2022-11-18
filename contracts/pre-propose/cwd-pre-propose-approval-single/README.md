@@ -4,7 +4,43 @@ This contract implements an approval flow for proposals, it also handles deposit
 
 ## Approval Logic
 
-This contract is instantatied with an `approver` address. This address is allowed to call methods on this contract (approve / reject / add prop submission hook / remove prop submission hook).
+This contract is instantatied with an `approver` address. This address is allowed to approve or reject the proposal.
+
+```
+      ┌──────────┐
+      │          │
+      │  Account │
+      │          │
+      └─────┬────┘
+            │
+            │ Makes prop
+            ▼
+┌────────────────────────┐               ┌────────────────────────┐
+│                        │               │                        │
+│  Pre-propose Approval  │ ◄─────────────┤    Approver Address    │
+│                        │    Approves   │                        │
+└───────────┬────────────┘    or rejects └────────────────────────┘
+            │
+            │ Creates prop
+            │ on approval
+            ▼
+┌────────────────────────┐
+│                        │
+│     Proposal Single    │
+│                        │
+└───────────┬────────────┘
+            │
+            │ Normal votin
+            │
+            ▼
+┌────────────────────────┐
+│                        │
+│       Main DAO         │
+│                        │
+└────────────────────────┘
+```
+
+The `approver` may also register a `ProposalSubmitHook`, which fires every time a proposal is submitted to the `cwd-pre-propose-approval-single` contract.
 
 ## Deposit Logic
 
