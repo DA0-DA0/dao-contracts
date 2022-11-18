@@ -2,8 +2,8 @@ use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
-    StdResult, SubMsg, WasmMsg,
+    ensure, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 use cwd_interface::voting::{Query as CwCoreQuery, VotingPowerAtHeightResponse};
@@ -145,7 +145,7 @@ pub fn execute_propose(
     }
 
     // Load current id
-    let id = CURRENT_ID.load(deps.storage)?;
+    let id = advance_proposal_id(deps.storage)?;
 
     // Convert msg to to internal format
     let propose_msg_internal = match msg {
@@ -204,12 +204,10 @@ pub fn execute_propose(
             Ok(SubMsg::new(execute_msg))
         })?;
 
-    // Increment next id
-    CURRENT_ID.save(deps.storage, &(id + 1))?;
-
     Ok(Response::default()
         .add_messages(deposit_messages)
         .add_submessages(hooks_msgs)
+        .add_attribute("method", "pre-propose")
         .add_attribute("id", id.to_string()))
 }
 
@@ -242,7 +240,10 @@ pub fn execute_approve(
     // Remove proposal
     PENDING_PROPOSALS.remove(deps.storage, id);
 
-    Ok(Response::default().add_message(propose_messsage))
+    Ok(Response::default()
+        .add_message(propose_messsage)
+        .add_attribute("method", "proposal_approved")
+        .add_attribute("proposal", id.to_string()))
 }
 
 pub fn execute_reject(
@@ -257,7 +258,10 @@ pub fn execute_reject(
     }
 
     // Check proposal id exists
-    PENDING_PROPOSALS.load(deps.storage, id)?;
+    ensure!(
+        PENDING_PROPOSALS.has(deps.storage, id),
+        PreProposeError::ProposalNotFound {}
+    );
 
     // Remove proposal
     PENDING_PROPOSALS.remove(deps.storage, id);
@@ -345,6 +349,12 @@ pub fn execute_remove_approver_hook(
     Ok(Response::default())
 }
 
+pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
+    let id: u64 = CURRENT_ID.may_load(store)?.unwrap_or_default() + 1;
+    CURRENT_ID.save(store, &id)?;
+    Ok(id)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -358,6 +368,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 // TODO potentially add other options to pending props query
 // TODO add response type and return data in a new cosmwasm schema format
+// TODO use cw-paginate: https://github.com/DA0-DA0/dao-contracts/tree/main/packages/cw-paginate
 pub fn query_pending_proposals(deps: Deps, _msg: QueryExt) -> StdResult<Binary> {
     let pending_proposals = PENDING_PROPOSALS
         .range(deps.storage, None, None, Order::Ascending)
