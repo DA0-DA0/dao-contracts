@@ -1,4 +1,3 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -7,57 +6,19 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 
-use cosmwasm_std::Addr;
-use cw_storage_plus::{Item, Map};
-
 use cwd_interface::ModuleInstantiateCallback;
-use cwd_pre_propose_approval_single::{
+use cwd_pre_propose_approval_single::msg::{
     ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };
-use cwd_pre_propose_base::{
-    error::PreProposeError,
-    msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
-    state::PreProposeContract,
-};
+use cwd_pre_propose_base::{error::PreProposeError, state::PreProposeContract};
 use cwd_proposal_single::msg::ExecuteMsg as ProposalSingleExecuteMsg;
 use cwd_voting::status::Status;
 
+use crate::msg::{BaseInstantiateMsg, ExecuteMsg, InstantiateMsg, QueryExt, QueryMsg};
+use crate::state::{CURRENT_PRE_PROPOSE_ID, PRE_PROPOSE_APPROVAL_CONTRACT, PROPOSAL_IDS};
+
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approver";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-#[cw_serde]
-pub struct InstantiateMsg {
-    pub pre_propose_approval_contract: String,
-}
-
-#[cw_serde]
-pub enum QueryExt {
-    PreProposeApprovalContract {},
-}
-
-pub type BaseInstantiateMsg = InstantiateBase<Empty>;
-pub type ExecuteMsg = ExecuteBase<ApproverProposeMessage, Empty>;
-pub type QueryMsg = QueryBase<QueryExt>;
-
-/// Internal version of the propose message that includes the
-/// `proposer` field. The module will fill this in based on the sender
-/// of the external message.
-#[cw_serde]
-pub enum ProposeMessageInternal {
-    Propose {
-        title: String,
-        description: String,
-        msgs: Vec<CosmosMsg<Empty>>,
-        proposer: Option<String>,
-    },
-}
-
-// Stores the address of the pre-propose approval contract
-pub const PRE_PROPOSE_APPROVAL_CONTRACT: Item<Addr> = Item::new("pre_propose_approval_contract");
-// Stores the current pre-propose-id for use in submessage reply
-pub const CURRENT_PRE_PROPOSE_ID: Item<u64> = Item::new("current_pre_propose_id");
-// Maps proposal ids to pre-propose ids
-pub const PROPOSAL_IDS: Map<u64, u64> = Map::new("proposal_ids");
 
 type PrePropose = PreProposeContract<Empty, Empty, QueryExt, ApproverProposeMessage>;
 

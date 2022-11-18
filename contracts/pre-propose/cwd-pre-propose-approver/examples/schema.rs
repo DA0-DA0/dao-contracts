@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use cwd_pre_propose_approver::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cwd_pre_propose_approver::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

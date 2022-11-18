@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, InstantiateMsg, UncheckedDepositInfo, Empty, ExecuteMsg, ProposeMessage, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, Binary, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Status, Coin, IbcTimeout, IbcTimeoutBlock, QueryMsg, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse, HooksResponse } from "./CwdPreProposeApprovalSingle.types";
+import { Uint128, DepositToken, UncheckedDenom, DepositRefundPolicy, InstantiateMsg, UncheckedDepositInfo, InstantiateExt, ExecuteMsg, ProposeMessage, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, Binary, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, ExecuteExt, Status, Coin, Empty, IbcTimeout, IbcTimeoutBlock, QueryMsg, QueryExt, CheckedDenom, Addr, Config, CheckedDepositInfo, DepositInfoResponse, HooksResponse } from "./CwdPreProposeApprovalSingle.types";
 export interface CwdPreProposeApprovalSingleReadOnlyInterface {
   contractAddress: string;
   proposalModule: () => Promise<Addr>;
@@ -21,7 +21,7 @@ export interface CwdPreProposeApprovalSingleReadOnlyInterface {
   queryExtension: ({
     msg
   }: {
-    msg: Empty;
+    msg: QueryExt;
   }) => Promise<Binary>;
 }
 export class CwdPreProposeApprovalSingleQueryClient implements CwdPreProposeApprovalSingleReadOnlyInterface {
@@ -73,7 +73,7 @@ export class CwdPreProposeApprovalSingleQueryClient implements CwdPreProposeAppr
   queryExtension = async ({
     msg
   }: {
-    msg: Empty;
+    msg: QueryExt;
   }): Promise<Binary> => {
     return this.client.queryContractSmart(this.contractAddress, {
       query_extension: {
@@ -105,7 +105,7 @@ export interface CwdPreProposeApprovalSingleInterface extends CwdPreProposeAppro
   extension: ({
     msg
   }: {
-    msg: Empty;
+    msg: ExecuteExt;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   addProposalSubmittedHook: ({
     address
@@ -191,7 +191,7 @@ export class CwdPreProposeApprovalSingleClient extends CwdPreProposeApprovalSing
   extension = async ({
     msg
   }: {
-    msg: Empty;
+    msg: ExecuteExt;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       extension: {
