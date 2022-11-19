@@ -22,21 +22,21 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw-paginate = { workspace = true }
 cwd-pre-propose-base = { workspace = true }
-cwd-proposal-single = { workspace = true, features = ["library"] }
 cwd-voting = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+cw-denom = { workspace = true }
 cw-multi-test = { workspace = true }
 cw-utils = { workspace = true }
 cw4-group = { workspace = true }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
-cwd-voting-cw20-staked = { workspace = true }
 cwd-core = { workspace = true }
-cwd-voting-cw4 = { workspace = true }
-cwd-voting = { workspace = true }
-cw-denom = { workspace = true }
+cwd-proposal-hooks = { workspace = true }
+cwd-proposal-single = { workspace = true, features = ["library"] }
 cwd-interface = { workspace = true }
 cwd-testing = { workspace = true }
-cwd-proposal-hooks = { workspace = true }
+cwd-voting = { workspace = true }
+cwd-voting-cw4 = { workspace = true }
+cwd-voting-cw20-staked = { workspace = true }

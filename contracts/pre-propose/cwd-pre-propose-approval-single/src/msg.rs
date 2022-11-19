@@ -68,9 +68,11 @@ pub type QueryMsg = QueryBase<QueryExt>;
 /// `proposer` field. The module will fill this in based on the sender
 /// of the external message.
 #[cw_serde]
-pub struct ProposeMessageInternal {
-    pub title: String,
-    pub description: String,
-    pub msgs: Vec<CosmosMsg<Empty>>,
-    pub proposer: Option<String>,
+pub enum ProposeMessageInternal {
+    Propose {
+        title: String,
+        description: String,
+        msgs: Vec<CosmosMsg<Empty>>,
+        proposer: Option<String>,
+    },
 }

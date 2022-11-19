@@ -1,5 +1,4 @@
 use cosmwasm_std::{coins, from_slice, to_binary, Addr, Coin, Empty, Uint128};
-use cps::query::ProposalResponse;
 use cw2::ContractVersion;
 use cw20::Cw20Coin;
 use cw_denom::UncheckedDenom;
@@ -8,7 +7,7 @@ use cw_utils::Duration;
 use cwd_core::state::ProposalModule;
 use cwd_interface::{Admin, ModuleInstantiateInfo};
 use cwd_pre_propose_base::{error::PreProposeError, msg::DepositInfoResponse, state::Config};
-use cwd_proposal_single as cps;
+use cwd_proposal_single::query::ProposalResponse;
 use cwd_testing::helpers::instantiate_with_cw4_groups_governance;
 use cwd_voting::{
     deposit::{CheckedDepositInfo, DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
@@ -22,12 +21,12 @@ use crate::{contract::*, msg::*, state::PendingProposal};
 
 fn cw_dao_proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cps::contract::execute,
-        cps::contract::instantiate,
-        cps::contract::query,
+        cwd_proposal_single::contract::execute,
+        cwd_proposal_single::contract::instantiate,
+        cwd_proposal_single::contract::query,
     )
-    .with_migrate(cps::contract::migrate)
-    .with_reply(cps::contract::reply);
+    .with_migrate(cwd_proposal_single::contract::migrate)
+    .with_reply(cwd_proposal_single::contract::reply);
     Box::new(contract)
 }
 
@@ -49,10 +48,10 @@ fn get_default_proposal_module_instantiate(
     app: &mut App,
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
-) -> cps::msg::InstantiateMsg {
+) -> cwd_proposal_single::msg::InstantiateMsg {
     let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
-    cps::msg::InstantiateMsg {
+    cwd_proposal_single::msg::InstantiateMsg {
         threshold: Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Majority {},
         },
@@ -114,14 +113,14 @@ fn setup_default_test(
     deposit_info: Option<UncheckedDepositInfo>,
     open_proposal_submission: bool,
 ) -> DefaultTestSetup {
-    let cps_id = app.store_code(cw_dao_proposal_single_contract());
+    let cwd_proposal_single_id = app.store_code(cw_dao_proposal_single_contract());
 
     let proposal_module_instantiate =
         get_default_proposal_module_instantiate(app, deposit_info, open_proposal_submission);
 
     let core_addr = instantiate_with_cw4_groups_governance(
         app,
-        cps_id,
+        cwd_proposal_single_id,
         to_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
@@ -151,7 +150,7 @@ fn setup_default_test(
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &cwd_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
 
@@ -251,7 +250,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
     app.execute_contract(
         Addr::unchecked(sender),
         module.clone(),
-        &cps::msg::ExecuteMsg::Vote {
+        &cwd_proposal_single::msg::ExecuteMsg::Vote {
             proposal_id: id,
             vote: position,
         },
@@ -261,7 +260,10 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
 
     let proposal: ProposalResponse = app
         .wrap()
-        .query_wasm_smart(module, &cps::msg::QueryMsg::Proposal { proposal_id: id })
+        .query_wasm_smart(
+            module,
+            &cwd_proposal_single::msg::QueryMsg::Proposal { proposal_id: id },
+        )
         .unwrap();
 
     proposal.proposal.status
@@ -364,7 +366,7 @@ fn close_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &cps::msg::ExecuteMsg::Close { proposal_id },
+        &cwd_proposal_single::msg::ExecuteMsg::Close { proposal_id },
         &[],
     )
     .unwrap();
@@ -374,7 +376,7 @@ fn execute_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     app.execute_contract(
         Addr::unchecked(sender),
         module,
-        &cps::msg::ExecuteMsg::Execute { proposal_id },
+        &cwd_proposal_single::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
     .unwrap();
@@ -1181,12 +1183,12 @@ fn test_no_deposit_required_members_submission() {
 fn test_instantiate_with_zero_native_deposit() {
     let mut app = App::default();
 
-    let cps_id = app.store_code(cw_dao_proposal_single_contract());
+    let cwd_proposal_single_id = app.store_code(cw_dao_proposal_single_contract());
 
     let proposal_module_instantiate = {
         let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
-        cps::msg::InstantiateMsg {
+        cwd_proposal_single::msg::InstantiateMsg {
             threshold: Threshold::AbsolutePercentage {
                 percentage: PercentageThreshold::Majority {},
             },
@@ -1222,7 +1224,7 @@ fn test_instantiate_with_zero_native_deposit() {
     // Should panic.
     instantiate_with_cw4_groups_governance(
         &mut app,
-        cps_id,
+        cwd_proposal_single_id,
         to_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
@@ -1244,12 +1246,12 @@ fn test_instantiate_with_zero_cw20_deposit() {
 
     let cw20_addr = instantiate_cw20_base_default(&mut app);
 
-    let cps_id = app.store_code(cw_dao_proposal_single_contract());
+    let cwd_proposal_single_id = app.store_code(cw_dao_proposal_single_contract());
 
     let proposal_module_instantiate = {
         let pre_propose_id = app.store_code(cw_pre_propose_base_proposal_single());
 
-        cps::msg::InstantiateMsg {
+        cwd_proposal_single::msg::InstantiateMsg {
             threshold: Threshold::AbsolutePercentage {
                 percentage: PercentageThreshold::Majority {},
             },
@@ -1285,7 +1287,7 @@ fn test_instantiate_with_zero_cw20_deposit() {
     // Should panic.
     instantiate_with_cw4_groups_governance(
         &mut app,
-        cps_id,
+        cwd_proposal_single_id,
         to_binary(&proposal_module_instantiate).unwrap(),
         Some(vec![
             cw20::Cw20Coin {
@@ -1536,7 +1538,7 @@ fn test_withdraw() {
         .wrap()
         .query_wasm_smart(
             proposal_single.clone(),
-            &cps::msg::QueryMsg::ProposalCreationPolicy {},
+            &cwd_proposal_single::msg::QueryMsg::ProposalCreationPolicy {},
         )
         .unwrap();
 
