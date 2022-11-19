@@ -6,7 +6,7 @@ This contract works in conjuction with `cwd-pre-propose-approval-single` and all
 
 On instantiation, this contract registers a hook with the approval contract to automatically create proposals in the approver DAO.
 
-When this contract recieves a prop as hook from `cwd-pre-propose-approval-single`, it makes an approval prop. If approved, the approval prop calls the approve message on this contract when executed. When prop is rejected and closed it fires off reject call.
+When this contract recieves a proposal as hook from `cwd-pre-propose-approval-single`, it makes an approval propose in the approval DAO. If approved, the approval proposal calls the approve message on this contract when executed. If the proposal is rejected and closed it fires off reject call.
 
 ``` 
 ┌──────────┐         Approver DAO Registers Prop Submission Hook
@@ -44,4 +44,4 @@ When this contract recieves a prop as hook from `cwd-pre-propose-approval-single
 
 ## Deposits
 
-This contract does not handle deposit logic, as it works in conjunction with the `cwd-pre-propose-approval-single` contract which handles to the deposits.
+This contract does not handle deposits. It works in conjunction with the `cwd-pre-propose-approval-single` contract, which handles the proposal deposits.
