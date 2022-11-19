@@ -30,7 +30,7 @@ This contract is instantatied with an `approver` address. This address is allowe
 │                        │
 └───────────┬────────────┘
             │
-            │ Normal votin
+            │ Normal voting
             │
             ▼
 ┌────────────────────────┐
@@ -53,10 +53,10 @@ the following refund strategies are avaliable:
 1. Never refund deposits. All deposits are sent to the DAO on proposal
    completion.
 2. Always refund deposits. Deposits are returned to the proposer on
-   proposal completion.
+   proposal completion and even rejection by the `approver`.
 3. Only refund passed proposals. Deposits are only returned to the
-   proposer if the proposal passes. Otherwise, they are sent to the
-   DAO.
+   proposer if the proposal is approved and passes. Otherwise, they
+   are sent to the DAO.
 
 This module may also be configured to only accept proposals from
 members (addresses with voting power) of the DAO.
