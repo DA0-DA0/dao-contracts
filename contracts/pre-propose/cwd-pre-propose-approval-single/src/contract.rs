@@ -9,14 +9,13 @@ use cw_paginate::paginate_map_values;
 use cwd_pre_propose_base::{
     error::PreProposeError, msg::ExecuteMsg as ExecuteBase, state::PreProposeContract,
 };
-use cwd_proposal_single::msg::ExecuteMsg as ProposalSingleExecuteMsg;
 use cwd_voting::deposit::DepositRefundPolicy;
 
 use crate::msg::{
     ApproverProposeMessage, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
     ProposeMessageInternal, QueryExt, QueryMsg,
 };
-use crate::state::{PendingProposal, APPROVER, CURRENT_ID, PENDING_PROPOSALS};
+use crate::state::{PendingProposal, ProposeMsgSingle, APPROVER, CURRENT_ID, PENDING_PROPOSALS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approval-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -91,7 +90,7 @@ pub fn execute_propose(
             title,
             description,
             msgs,
-        } => ProposeMessageInternal {
+        } => ProposeMsgSingle {
             title,
             description,
             msgs,
@@ -169,7 +168,7 @@ pub fn execute_approve(
             let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
             let propose_messsage = WasmMsg::Execute {
                 contract_addr: proposal_module.into_string(),
-                msg: to_binary(&ProposalSingleExecuteMsg::Propose {
+                msg: to_binary(&ProposeMessageInternal::Propose {
                     title: proposal.msg.title,
                     description: proposal.msg.description,
                     msgs: proposal.msg.msgs,
