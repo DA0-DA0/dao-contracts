@@ -11,10 +11,11 @@ use cwd_pre_propose_approval_single::msg::{
     ApproverProposeMessage, ExecuteExt as ApprovalExt, ExecuteMsg as PreProposeApprovalExecuteMsg,
 };
 use cwd_pre_propose_base::{error::PreProposeError, state::PreProposeContract};
-use cwd_proposal_single::msg::ExecuteMsg as ProposalSingleExecuteMsg;
 use cwd_voting::status::Status;
 
-use crate::msg::{BaseInstantiateMsg, ExecuteMsg, InstantiateMsg, QueryExt, QueryMsg};
+use crate::msg::{
+    BaseInstantiateMsg, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt, QueryMsg,
+};
 use crate::state::{CURRENT_PRE_PROPOSE_ID, PRE_PROPOSE_APPROVAL_CONTRACT, PROPOSAL_IDS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approver";
@@ -111,7 +112,7 @@ pub fn execute_propose(
             pre_propose_id,
         } => (
             pre_propose_id,
-            ProposalSingleExecuteMsg::Propose {
+            ProposeMessageInternal::Propose {
                 title,
                 description,
                 msgs: vec![],
