@@ -29,13 +29,35 @@ wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 | [cwd-pre-propose-approval-single](contracts/pre-propose/cwd-pre-propose-approval-single) | A pre-propose module for implementing an approval flow.                                |
 | [cwd-pre-propose-approver](contracts/pre-propose/cwd-pre-propose-approver)               | A pre-propose module for automatically creating proposals that need to be approved.    |
 | [cw-token-swap](contracts/external/cw-token-swap)                                        | An escrow contract for swapping tokens between DAOs.                                   |
-|                                                                                          |                                                                                        |
 
 Audited contracts have completed audits by
 [securityDAO](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
 and [Oak
 Security](https://github.com/oak-security/audit-reports/blob/2377ba8cfcfd505283c789d706311b06771d6db4/DAO%20DAO/2022-06-22%20Audit%20Report%20-%20DAO%20DAO%20v1.0.pdf)
 on the `v1.0.0` tag. An audit for the v2 contracts is forthcoming.
+
+## Packages
+
+| Package                                               | Description                                                                               |
+|:------------------------------------------------------|:------------------------------------------------------------------------------------------|
+| [cw721-controllers](packages/cw721-controllers)       | Manages claims for the [cw721 staking contract](contracts/voting/cwd-voting-cw721-staked) |
+| [cwd-hooks](packages/cwd-hooks)                       | Shared hooks functionality.                                                               |
+| [cwd-interface](packages/cwd-interface)               | Provides types and interfaces for interacting with DAO modules.                           |
+| [cwd-macros](packages/cwd-macros)                     | A collection of macros to derive DAO module interfaces on message enums.                  |
+| [cwd-pre-propose-base](packages/cwd-pre-propose-base) | Base package used to implement pre-propose modules.                                       |
+| [cwd-proposal-hooks](packages/cwd-proposal-hooks)     | Interface for managing and dispatching hooks from a proposal module.                      |
+| [cwd-testing](packages/cwd-testing)                   | Common testing functions and types for DAO modules.                                       |
+| [cwd-vote-hooks](packages/cwd-vote-hooks)             | Interface for managing and dispatching vote hooks.                                        |
+| [cwd-voting](packages/cwd-voting)                     | Types and associated methods for handling voting in a CosmWasm DAO.                       |
+| [cw-denom](packages/cw-denom)                         | Uitilities for working with cw20 and native denoms.                                       |
+| [cw-paginate](packages/cw-paginate)                   | Convienence methods for paginating keys and values in a CosmWasm `Map` or `SnapshotMap`.  |
+
+Packages have completed audits by
+[securityDAO](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
+and [Oak
+Security](https://github.com/oak-security/audit-reports/blob/2377ba8cfcfd505283c789d706311b06771d6db4/DAO%20DAO/2022-06-22%20Audit%20Report%20-%20DAO%20DAO%20v1.0.pdf)
+on the `v1.0.0` tag. An audit for the v2 packages is forthcoming.
+
 
 ## Developers
 
