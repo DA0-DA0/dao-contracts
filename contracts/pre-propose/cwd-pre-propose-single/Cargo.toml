@@ -28,7 +28,7 @@ cw4-group = { workspace = true }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
 cwd-voting-cw20-staked = { workspace = true }
-cwd-proposal-single = { workspace = true }
+cwd-proposal-single = { workspace = true, features = ["library"] }
 cwd-core = { workspace = true }
 cwd-voting-cw4 = { workspace = true }
 cwd-voting = { workspace = true }
