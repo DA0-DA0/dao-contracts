@@ -1102,7 +1102,7 @@ fn test_revoting_playthrough() {
         proposal_id,
         Vote::Yes,
     );
-    assert!(matches!(err, ContractError::NotOpen { .. }));
+    assert!(matches!(err, ContractError::Expired { .. }));
 }
 
 /// Tests that revoting is stored at a per-proposal level. Proposals
@@ -1168,16 +1168,6 @@ fn test_allow_revoting_config_changes() {
     // Proposal with revoting should not have passed.
     let proposal_resp = query_proposal(&app, &proposal_module, revoting_proposal);
     assert_eq!(proposal_resp.proposal.status, Status::Open);
-
-    // Can not vote again on the no revoting proposal.
-    let err = vote_on_proposal_should_fail(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        no_revoting_proposal,
-        Vote::No,
-    );
-    assert!(matches!(err, ContractError::NotOpen { .. }));
 
     // Can change vote on the revoting proposal.
     vote_on_proposal(
@@ -2556,3 +2546,8 @@ fn test_rational_clobbered_on_revote() {
     let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
     assert_eq!(vote.vote.unwrap().rationale, rationale);
 }
+
+// TODO: test pre-propose module that fails on new proposal hook (ugh).
+
+// - What happens if you have proposals that can not be executed but
+//   took deposits and want to migrate?
