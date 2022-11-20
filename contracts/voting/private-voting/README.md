@@ -9,8 +9,8 @@ Theres two high level approaches to private voting:
 
 1) Obfuscator approach: Anonymize all voters, but have the individual votes fully public.
 2) Homomorphically encrypt all votes, publicly sum them all, and have a trusted party decrypt the sum.
-    * Use (1) to publicly verify that no double voting occured
-    * Trusted third party could be a threshold set
+    * Can combine with (1) to publicly verify that no double voting occured
+    * Trusted party could be a threshold set
 
 This module implements (1), and leaves it to the future to progress on (2), as they generically compose.
 Ferveo ([paper](https://eprint.iacr.org/2022/898), [github](https://github.com/anoma/ferveo)) could likely be adapted to work to make (2) work in the threshold setting. (Would need to mildly adapt the encryption scheme to be homomorphic).
@@ -54,25 +54,53 @@ pub trait VotingPowerUpdateSubscriber {
 }
 ```
 
-### Making delegation by default work
+## Vote tallying module expectations
 
-If you want delegation to work, your vote can only gain anonymity within the set of people who are delegated to the same person.
+For MVP'ing, we start by assuming votes have a binary predicate. (Yes/No)
+
+But we want to generalize, to allow proposals to have:
+
+1) Allow delegation of votes
+2) Have more complex decision rules (Approval voting, Cosmos-gov style voting, Instant run-off, etc)
+
+To enable (1), we introduce a concept of "voter_sets". Some examples of voting sets: (Perhaps consider the name voter anonymity set?)
+
+* If I vote directly, count my vote. Otherwise don't delegate my vote.
+* If I vote directly, count my vote directly. Otherwise delegate my vote to FOOBAR.
+
+We consider every distinct address you delegte to as a new voter set. Your vote can only gain anonymity within the voter set they are in.
+
+To enable (2), we add a template parameter describing the vote type. Each vote type must have an ID. (E.g. Yes = 1, No = 2, etc.). TODO: Explain this in more detail.
+
+The private voting module provides the following subscriptions for the vote tallying module to listen onto:
+
+```rust
+// TODO
+```
+
+The vote tallying module here is restricted relative to public voting. In the current privacy model, where we hide the voter from everyone, we actually can't fairly handle voting power changes during the voting period. So the voting power a shielded voter has, must either:
+
+* Be frozen at proposal start time
+* Allow for people who shielded vote before their voting power decreases, to unfairly 'get away' with their already cast votes.
+
+For simplicity in MVP, we assume the latter, but this should be simple to change to *frozen at proposal start time*.
 
 ### Metadata leakage
 
-So now we have voting that is anonymized! But there is still some significant metadata leakage that must be thought about.
+So now we have voting that is anonymized within a voter set! But there is still some significant metadata leakage that must be thought about.
 
 The units of information that can be used to try to infer who the voter is:
 
 * How far apart were a user's votes in time?
 * How many ballots does a user have & how many votes in agreement were submitted?
 * Who was the transaction sender?
+* Did the ballots vote on multiple proposals around the same time
 
 We discuss some ideas for hiding these below. (TODO)
 
-#### Hiding the sender
+#### Hiding the Tx sender
 
-One key point is "who submits the vote proposal".
+One key point is "who submits the vote transaction".
 
 As an MVP, we can have the sender of the tx executing the vote be a centralized server you communicate with.
 But once Namada launches, we can bootstrap this off of their anonymity set. What we'd do is have the user have some tokens on Namada for paying fees.
