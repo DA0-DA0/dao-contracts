@@ -20,7 +20,7 @@ pub struct Config {
     /// tokens to its treasury.
     pub automatically_add_cw721s: bool,
     /// The URI for the DAO as defined by the DAOstar standard
-    /// https://daostar.one/EIP
+    /// <https://daostar.one/EIP>
     pub dao_uri: Option<String>,
 }
 

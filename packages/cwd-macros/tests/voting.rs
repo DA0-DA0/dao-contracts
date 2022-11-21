@@ -1,12 +1,11 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cwd_macros::{info_query, voting_query};
+use cwd_macros::voting_query;
 
 /// enum for testing. Important that this derives things / has other
 /// attributes so we can be sure we aren't messing with other macros
 /// with ours.
 #[voting_query]
-#[info_query]
 #[allow(dead_code)]
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -39,5 +38,6 @@ fn voting_query_derive() {
             address: _,
         }
         | Test::Info {} => "yay",
+        Test::Dao {} => "yay",
     };
 }

@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
-use cwd_macros::{info_query, proposal_module_query};
+use cwd_macros::proposal_module_query;
 use cwd_voting::{
     multiple_choice::{MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy},
     pre_propose::PreProposeInfo,
@@ -133,7 +133,6 @@ pub enum ExecuteMsg {
 }
 
 #[proposal_module_query]
-#[info_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -143,8 +142,7 @@ pub enum QueryMsg {
     /// Gets information about a proposal.
     #[returns(crate::query::ProposalResponse)]
     Proposal { proposal_id: u64 },
-    /// Lists all the proposals that have been cast in this
-    /// module.
+    /// Lists all the proposals that have been cast in this module.
     #[returns(crate::query::ProposalListResponse)]
     ListProposals {
         start_after: Option<u64>,
@@ -157,32 +155,16 @@ pub enum QueryMsg {
         start_before: Option<u64>,
         limit: Option<u64>,
     },
-    /// Returns the number of proposals that have been created in this
-    /// module.
-    #[returns(u64)]
-    ProposalCount {},
     /// Returns a voters position on a proposal.
     #[returns(crate::query::VoteResponse)]
     GetVote { proposal_id: u64, voter: String },
-    /// Lists all of the votes that have been cast on a
-    /// proposal.
+    /// Lists all of the votes that have been cast on a proposal.
     #[returns(crate::query::VoteListResponse)]
     ListVotes {
         proposal_id: u64,
         start_after: Option<String>,
         limit: Option<u64>,
     },
-    /// Gets the current proposal creation policy for this
-    /// module.
-    #[returns(cwd_voting::pre_propose::ProposalCreationPolicy)]
-    ProposalCreationPolicy {},
-    /// Lists all of the consumers of proposal hooks for this module.
-    #[returns(cwd_hooks::HooksResponse)]
-    ProposalHooks {},
-    /// Lists all of the consumers of vote hooks for this
-    /// module.
-    #[returns(cwd_hooks::HooksResponse)]
-    VoteHooks {},
 }
 
 #[cw_serde]

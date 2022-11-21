@@ -96,6 +96,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalPowerAtHeight { height: _ } => query_total_power_at_height(deps, env),
         QueryMsg::Info {} => query_info(deps),
+        QueryMsg::Dao {} => unimplemented!(),
     }
 }
 

@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
-use cwd_macros::{info_query, proposal_module_query};
+use cwd_macros::proposal_module_query;
 use cwd_voting::{pre_propose::PreProposeInfo, threshold::Threshold, voting::Vote};
 
 #[cw_serde]
@@ -144,7 +144,6 @@ pub enum ExecuteMsg {
 }
 
 #[proposal_module_query]
-#[info_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -180,10 +179,6 @@ pub enum QueryMsg {
         /// returned.
         limit: Option<u64>,
     },
-    /// Returns the number of proposals that have been created in this
-    /// module.
-    #[returns(u64)]
-    ProposalCount {},
     /// Returns a voters position on a propsal.
     #[returns(crate::query::VoteResponse)]
     GetVote { proposal_id: u64, voter: String },
@@ -200,17 +195,6 @@ pub enum QueryMsg {
         /// query. If no limit is specified a max of 30 are returned.
         limit: Option<u64>,
     },
-    /// Gets the current proposal creation policy for this
-    /// module.
-    #[returns(cwd_voting::pre_propose::ProposalCreationPolicy)]
-    ProposalCreationPolicy {},
-    /// Lists all of the consumers of proposal hooks for this module.
-    #[returns(cwd_hooks::HooksResponse)]
-    ProposalHooks {},
-    /// Lists all of the consumers of vote hooks for this
-    /// module.
-    #[returns(cwd_hooks::HooksResponse)]
-    VoteHooks {},
 }
 
 #[cw_serde]

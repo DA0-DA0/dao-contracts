@@ -267,6 +267,7 @@ pub fn execute_remove_hook(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
+        QueryMsg::Dao {} => unimplemented!(),
         QueryMsg::NftClaims { address } => query_nft_claims(deps, address),
         QueryMsg::Hooks {} => query_hooks(deps),
         QueryMsg::VotingPowerAtHeight { address, height } => {
