@@ -1,6 +1,5 @@
-use cosm_orc::config::key::Key;
-use cosm_orc::orchestrator::cosm_orc::CosmOrc;
-use cosm_orc::{config::cfg::Config, config::key::SigningKey};
+use cosm_orc::orchestrator::{CosmosgRPC, Key, SigningKey};
+use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
 use once_cell::sync::OnceCell;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -22,7 +21,7 @@ pub struct Cfg {
 
 pub struct Chain {
     pub cfg: Config,
-    pub orc: CosmOrc,
+    pub orc: CosmOrc<CosmosgRPC>,
     pub users: HashMap<String, SigningAccount>,
 }
 
@@ -108,7 +107,7 @@ fn global_setup() -> Cfg {
     }
 }
 
-fn save_gas_report(orc: &CosmOrc, gas_report_dir: &str) {
+fn save_gas_report(orc: &CosmOrc<CosmosgRPC>, gas_report_dir: &str) {
     let report = orc
         .gas_profiler_report()
         .expect("error fetching profile reports");

@@ -5,7 +5,7 @@ edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-cosm-orc = { version = "2.3.1" }
+cosm-orc = { version = "3.0" }
 cw20 = { workspace = true }
 cw-utils = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["ibc3"] }
