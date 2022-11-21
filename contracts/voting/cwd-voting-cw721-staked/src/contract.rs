@@ -2,8 +2,8 @@ use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    register_staked_nft, register_unstaked_nft, Config, CONFIG, HOOKS, MAX_CLAIMS, NFT_BALANCES,
-    NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
+    register_staked_nft, register_unstaked_nft, Config, CONFIG, DAO_ADDRESS, HOOKS, MAX_CLAIMS,
+    NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
 use cosmwasm_std::{
@@ -32,7 +32,7 @@ pub fn instantiate(
         .as_ref()
         .map(|owner| match owner {
             Admin::Address { addr } => deps.api.addr_validate(addr),
-            Admin::CoreModule {} => Ok(info.sender),
+            Admin::CoreModule {} => Ok(info.sender.clone()),
         })
         .transpose()?;
 
@@ -44,6 +44,8 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     TOTAL_STAKED_NFTS.save(deps.storage, &Uint128::zero(), env.block.height)?;
+
+    DAO_ADDRESS.save(deps.storage, &info.sender)?;
 
     Ok(Response::default()
         .add_attribute("method", "instantiate")
@@ -267,7 +269,7 @@ pub fn execute_remove_hook(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
-        QueryMsg::Dao {} => unimplemented!(),
+        QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::NftClaims { address } => query_nft_claims(deps, address),
         QueryMsg::Hooks {} => query_hooks(deps),
         QueryMsg::VotingPowerAtHeight { address, height } => {
@@ -308,6 +310,11 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     to_binary(&config)
+}
+
+pub fn query_dao(deps: Deps) -> StdResult<Binary> {
+    let dao = DAO_ADDRESS.load(deps.storage)?;
+    to_binary(&dao)
 }
 
 pub fn query_nft_claims(deps: Deps, address: String) -> StdResult<Binary> {

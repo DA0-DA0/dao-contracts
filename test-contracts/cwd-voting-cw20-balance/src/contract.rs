@@ -9,7 +9,7 @@ use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TokenInfo};
-use crate::state::TOKEN;
+use crate::state::{DAO_ADDRESS, TOKEN};
 
 const CONTRACT_NAME: &str = "crates.io:cw20-balance-voting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -24,6 +24,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    DAO_ADDRESS.save(deps.storage, &info.sender)?;
 
     match msg.token_info {
         TokenInfo::Existing { address } => {
@@ -96,8 +98,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::TotalPowerAtHeight { height: _ } => query_total_power_at_height(deps, env),
         QueryMsg::Info {} => query_info(deps),
-        QueryMsg::Dao {} => unimplemented!(),
+        QueryMsg::Dao {} => query_dao(deps),
     }
+}
+
+pub fn query_dao(deps: Deps) -> StdResult<Binary> {
+    let dao = DAO_ADDRESS.load(deps.storage)?;
+    to_binary(&dao)
 }
 
 pub fn query_token_contract(deps: Deps) -> StdResult<Binary> {

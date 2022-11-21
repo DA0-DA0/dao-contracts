@@ -15,6 +15,7 @@ pub struct Config {
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
+pub const DAO_ADDRESS: Item<Addr> = Item::new("dao_address");
 
 /// The set of NFTs currently staked by each address. The existence of
 /// an `(address, token_id)` pair implies that `address` has staked
