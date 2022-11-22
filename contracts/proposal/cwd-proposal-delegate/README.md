@@ -6,7 +6,7 @@ Delegation is basically: “we trust you have the judgment, we give you the powe
 - You have the power to kick this specific member after review. Perhaps you make an investigative committee after a member is accused of something, and delegate the power to a multisig to execute the message: “Kick this member”
 - You can pause one of our SubDAOs for 1 week if necessary
 - You have the power to add a specific item to our DAO config at any time
-- You have the power Bob’s salary by 800 JUNO through DAO treasury
+- You have the power to increase Bob’s salary by 800 JUNO through DAO treasury
 - Liquidate 8000 JUNO through JunoSwap at any time. Perhaps you want to delegate this to a hedge fund who promises to “time the market”
 
 ## When would it not be useful?

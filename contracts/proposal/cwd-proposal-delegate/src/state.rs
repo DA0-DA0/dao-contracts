@@ -1,20 +1,24 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, CosmosMsg, Empty};
-use cw_storage_plus::{Map, Item};
+use cw_storage_plus::{Item, Map};
 use cw_utils::Expiration;
 
-struct Config {
-    admin: Addr,
+#[cw_serde]
+pub struct Config {
+    pub admin: Addr,
 }
 
-struct Delegation {
-    delegate: Addr,
-    msgs: Vec<CosmosMsg<Empty>>,
-    expiration: Option<Expiration>, 
-    
-    policy_revocable: bool,
-    policy_allow_retry_on_failure: bool 
+#[cw_serde]
+pub struct Delegation {
+    pub delegate: Addr,
+    pub msgs: Vec<CosmosMsg<Empty>>,
+    pub expiration: Option<Expiration>,
+
+    pub policy_revocable: bool,
+    pub policy_allow_retry_on_failure: bool,
 }
 
-const DELEGATIONS: Map<u64, Delegation> = Map::new("delegations");
+pub const DELEGATIONS: Map<u64, Delegation> = Map::new("delegations");
+pub const DELEGATION_COUNT: Item<u64> = Item::new("delegation_count");
 
-const CONFIG: Item<Config> = Item::new("config");
+pub const CONFIG: Item<Config> = Item::new("config");
