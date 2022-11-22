@@ -11,7 +11,7 @@ pub enum ApproverProposeMessage {
     Propose {
         title: String,
         description: String,
-        pre_propose_id: u64,
+        approval_id: u64,
     },
 }
 
