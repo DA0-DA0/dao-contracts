@@ -3,7 +3,7 @@ use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
     StreamParams, StreamResponse,
 };
-use crate::state::{save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ};
+use crate::state::{save_stream, Config, GenericBalance, Stream, CONFIG, STREAMS, STREAM_SEQ};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -16,6 +16,8 @@ use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = "crates.io:cw20-streams";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+type StreamId = u64;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -53,9 +55,19 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, info, id),
+        ExecuteMsg::PauseStream { id } => todo!(),
+        ExecuteMsg::ResumeStream {
+            id,
+            start_time,
+            end_time,
+        } => todo!(),
+        ExecuteMsg::RemoveStream { id } => todo!(),
     }
 }
 
+pub fn execute_pause_stream(env: Env, deps: DepsMut, config: Config, id: StreamId) {
+    todo!();
+}
 pub fn execute_create_stream(
     env: Env,
     deps: DepsMut,
@@ -70,7 +82,10 @@ pub fn execute_create_stream(
         end_time,
         title,
         description,
+        paused_time,
+        paused,
     } = params;
+
     let owner = deps.api.addr_validate(&admin)?;
     let recipient = deps.api.addr_validate(&recipient)?;
 
@@ -80,11 +95,15 @@ pub fn execute_create_stream(
 
     let block_time = env.block.time.seconds();
     // TODO: Change to support previous dates, within given reason?
-    //       The problem with this is it restricts backdating, 
+    //       The problem with this is it restricts backdating,
     //       so all funds must vest before distribute (for good or bad)
     // TODO: start_time Could default to now?
-    if start_time <= block_time {
+    if start_time <= block_time && end_time <= block_time {
         return Err(ContractError::InvalidStartTime {});
+    }
+
+    if end_time < block_time {
+        return Err(ContractError::InvalidEndTime {});
     }
 
     let duration: Uint128 = (end_time - start_time).into();
@@ -94,8 +113,9 @@ pub fn execute_create_stream(
     }
 
     // Duration must divide evenly into amount, so refund remainder
-    // TODO: Change logic to work for cw20 & native 
+    // TODO: Change logic to work for cw20 & native
     let refund: u128 = balance
+        .native
         .u128()
         .checked_rem(duration.u128())
         .ok_or(ContractError::Overflow {})?;
@@ -105,13 +125,17 @@ pub fn execute_create_stream(
     let rate_per_second = balance / duration;
 
     let stream = Stream {
-        admin: admin.clone(),
+        admin: owner.clone(),
         recipient: recipient.clone(),
         balance,
-        claimed_balance: Uint128::zero(),
+        claimed_balance: GenericBalance::default(),
         start_time,
         end_time,
         rate_per_second,
+        paused_time,
+        paused,
+        title,
+        description,
     };
     let id = save_stream(deps, &stream)?;
 
@@ -170,7 +194,7 @@ pub fn execute_receive(
                 start_time,
                 end_time,
                 title: None,
-                description: None
+                description: None,
             },
         ),
     }
@@ -260,6 +284,8 @@ fn query_stream(deps: Deps, id: u64) -> StdResult<StreamResponse> {
         end_time: stream.end_time,
         title: stream.title,
         description: stream.description,
+        paused_time: stream.paused_time,
+        paused: stream.paused,
     })
 }
 
@@ -291,6 +317,8 @@ fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
         rate_per_second: stream.rate_per_second,
         title: stream.title,
         description: stream.description,
+        paused_time: stream.paused_time,
+        paused: stream.paused,
     })
 }
 
@@ -309,9 +337,7 @@ mod tests {
     #[test]
     fn initialization() {
         let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            admin: None,
-        };
+        let msg = InstantiateMsg { admin: None };
 
         let info = mock_info("creator", &[]);
         instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -331,9 +357,7 @@ mod tests {
     #[test]
     fn execute_withdraw() {
         let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            admin: None,
-        };
+        let msg = InstantiateMsg { admin: None };
         let info = mock_info("cw20", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -443,9 +467,7 @@ mod tests {
     #[test]
     fn create_stream_with_refund() {
         let mut deps = mock_dependencies();
-        let msg = InstantiateMsg {
-            admin: None,
-        };
+        let msg = InstantiateMsg { admin: None };
         let info = mock_info("cw20", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -504,9 +526,7 @@ mod tests {
     fn invalid_start_time() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg {
-            admin: None,
-        };
+        let msg = InstantiateMsg { admin: None };
         let mut info = mock_info("alice", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -536,9 +556,7 @@ mod tests {
     fn invalid_cw20_addr() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg {
-            admin: None,
-        };
+        let msg = InstantiateMsg { admin: None };
         let mut info = mock_info("alice", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -568,9 +586,7 @@ mod tests {
     fn invalid_deposit_amount() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg {
-            admin: None,
-        };
+        let msg = InstantiateMsg { admin: None };
         let mut info = mock_info("alice", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 

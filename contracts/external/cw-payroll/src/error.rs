@@ -1,7 +1,26 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use thiserror::Error;
 
 use cosmwasm_std::Addr;
+
+#[derive(Error, Debug, PartialEq)]
+pub enum GenericError {
+    #[error("{0}")]
+    Std(#[from] StdError),
+
+    #[error("No coin balance found")]
+    EmptyBalance {},
+
+    #[error("Not enough cw20 balance of {addr}, need {lack} more")]
+    NotEnoughCw20 { addr: String, lack: Uint128 },
+
+    #[error("Not enough native balance of {denom}, need {lack} more")]
+    NotEnoughNative { denom: String, lack: Uint128 },
+
+    #[error("invalid cosmwasm message")]
+    InvalidWasmMsg {},
+}
+
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
@@ -13,6 +32,9 @@ pub enum ContractError {
 
     #[error("The start time is invalid. Start time must be before the end time and after the current block time")]
     InvalidStartTime {},
+
+    #[error("The end time is invalid. End time must be before current block time")]
+    InvalidEndTime {},
 
     #[error("The stream has been fully claimed")]
     StreamFullyClaimed {},
