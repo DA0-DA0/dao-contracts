@@ -10,6 +10,7 @@ use cosmwasm_std::{
 use cw20::Cw20ReceiveMsg;
 
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
+use crate::math;
 use crate::msg::{
     ExecuteMsg, GetHooksResponse, InstantiateMsg, ListStakersResponse, MigrateMsg, QueryMsg,
     ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
@@ -189,15 +190,7 @@ pub fn execute_stake(
 ) -> Result<Response, ContractError> {
     let balance = BALANCE.load(deps.storage)?;
     let staked_total = STAKED_TOTAL.load(deps.storage)?;
-    let amount_to_stake = if staked_total == Uint128::zero() || balance == Uint128::zero() {
-        amount
-    } else {
-        staked_total
-            .checked_mul(amount)
-            .map_err(StdError::overflow)?
-            .checked_div(balance)
-            .map_err(StdError::divide_by_zero)?
-    };
+    let amount_to_stake = math::amount_to_stake(staked_total, balance, amount);
     STAKED_BALANCES.update(
         deps.storage,
         &sender,
@@ -233,11 +226,17 @@ pub fn execute_unstake(
     let config = CONFIG.load(deps.storage)?;
     let balance = BALANCE.load(deps.storage)?;
     let staked_total = STAKED_TOTAL.load(deps.storage)?;
-    let amount_to_claim = amount
-        .checked_mul(balance)
-        .map_err(StdError::overflow)?
-        .checked_div(staked_total)
-        .map_err(StdError::divide_by_zero)?;
+    // invariant checks for amount_to_claim
+    if staked_total.is_zero() {
+        return Err(ContractError::NothingStaked {});
+    }
+    if amount.saturating_add(balance) == Uint128::MAX {
+        return Err(ContractError::Cw20InvaraintViolation {});
+    }
+    if amount > staked_total {
+        return Err(ContractError::ImpossibleUnstake {});
+    }
+    let amount_to_claim = math::amount_to_claim(staked_total, balance, amount);
     STAKED_BALANCES.update(
         deps.storage,
         &info.sender,
