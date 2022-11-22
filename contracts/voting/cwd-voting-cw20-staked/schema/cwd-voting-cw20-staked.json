@@ -27,8 +27,10 @@
     "additionalProperties": false,
     "definitions": {
       "ActiveThreshold": {
+        "description": "The threshold of tokens that must be staked in order for this voting module to be active. If this is not reached, this module will response to `is_active` queries with false and proposal modules which respect active thresholds will not allow the creation of proposals.",
         "oneOf": [
           {
+            "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
             "required": [
               "absolute_count"
@@ -50,6 +52,7 @@
             "additionalProperties": false
           },
           {
+            "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
             "required": [
               "percentage"
@@ -227,6 +230,7 @@
         ]
       },
       "StakingInfo": {
+        "description": "Information about the staking contract to be used with this voting module.",
         "oneOf": [
           {
             "type": "object",
@@ -241,6 +245,7 @@
                 ],
                 "properties": {
                   "staking_contract_address": {
+                    "description": "Address of an already instantiated staking contract.",
                     "type": "string"
                   }
                 },
@@ -262,11 +267,13 @@
                 ],
                 "properties": {
                   "staking_code_id": {
+                    "description": "Code ID for staking contract to instantiate.",
                     "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0
                   },
                   "unstaking_duration": {
+                    "description": "See corresponding field in cw20-stake's instantiation. This will be used when instantiating the new staking contract.",
                     "anyOf": [
                       {
                         "$ref": "#/definitions/Duration"
@@ -300,10 +307,16 @@
                 ],
                 "properties": {
                   "address": {
+                    "description": "Address of an already instantiated cw20 token contract.",
                     "type": "string"
                   },
                   "staking_contract": {
-                    "$ref": "#/definitions/StakingInfo"
+                    "description": "Information about the staking contract to use.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/StakingInfo"
+                      }
+                    ]
                   }
                 },
                 "additionalProperties": false
@@ -330,6 +343,7 @@
                 ],
                 "properties": {
                   "code_id": {
+                    "description": "Code ID for cw20 token contract.",
                     "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0
@@ -356,6 +370,7 @@
                     ]
                   },
                   "label": {
+                    "description": "Label to use for instantiated cw20 contract.",
                     "type": "string"
                   },
                   "marketing": {
@@ -408,6 +423,7 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
+        "description": "Sets the active threshold to a new value. Only the instantiator this contract (a DAO most likely) may call this method.",
         "type": "object",
         "required": [
           "update_active_threshold"
@@ -435,8 +451,10 @@
     ],
     "definitions": {
       "ActiveThreshold": {
+        "description": "The threshold of tokens that must be staked in order for this voting module to be active. If this is not reached, this module will response to `is_active` queries with false and proposal modules which respect active thresholds will not allow the creation of proposals.",
         "oneOf": [
           {
+            "description": "The absolute number of tokens that must be staked for the module to be active.",
             "type": "object",
             "required": [
               "absolute_count"
@@ -458,6 +476,7 @@
             "additionalProperties": false
           },
           {
+            "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
             "type": "object",
             "required": [
               "percentage"
@@ -495,6 +514,7 @@
     "title": "QueryMsg",
     "oneOf": [
       {
+        "description": "Gets the address of the cw20-stake contract this voting module is wrapping.",
         "type": "object",
         "required": [
           "staking_contract"
@@ -508,6 +528,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Gets the address that instantiated this module.",
         "type": "object",
         "required": [
           "dao"
@@ -521,6 +542,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Gets the active threshold for this module.",
         "type": "object",
         "required": [
           "active_threshold"
@@ -653,8 +675,10 @@
       "additionalProperties": false,
       "definitions": {
         "ActiveThreshold": {
+          "description": "The threshold of tokens that must be staked in order for this voting module to be active. If this is not reached, this module will response to `is_active` queries with false and proposal modules which respect active thresholds will not allow the creation of proposals.",
           "oneOf": [
             {
+              "description": "The absolute number of tokens that must be staked for the module to be active.",
               "type": "object",
               "required": [
                 "absolute_count"
@@ -676,6 +700,7 @@
               "additionalProperties": false
             },
             {
+              "description": "The percentage of tokens that must be staked for the module to be active. Computed as `staked / total_supply`.",
               "type": "object",
               "required": [
                 "percentage"
