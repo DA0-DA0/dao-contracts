@@ -240,7 +240,7 @@ fn cw721_stake_max_claims_works(chain: &mut Chain) {
         });
     }
 
-    let res = chain
+    chain
         .orc
         .execute_batch("batch_cw721_stake_max_claims", reqs, &user_key)
         .unwrap();
