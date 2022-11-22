@@ -1,4 +1,4 @@
-use cosm_orc::config::key::SigningKey;
+use cosm_orc::orchestrator::{ExecReq, SigningKey};
 use cosmwasm_std::{Binary, Empty, Uint128};
 use cw_utils::Duration;
 use cwd_interface::Admin;
@@ -33,6 +33,7 @@ fn instantiate_cw721_base(chain: &mut Chain, key: &SigningKey, minter: &str) -> 
         )
         .unwrap()
         .address
+        .into()
 }
 
 fn setup_test(
@@ -58,7 +59,8 @@ fn setup_test(
             vec![],
         )
         .unwrap()
-        .address;
+        .address
+        .into();
     CommonTest { module, cw721 }
 }
 
@@ -182,9 +184,6 @@ fn cw721_stake_tokens(chain: &mut Chain) {
     assert_eq!(voting_power, Uint128::zero());
 }
 
-// Running this test takes about 28 minutes in CI as MAX_CLAIMS is
-// 100. We only run slow tests on merge to main.
-#[cfg(feature = "slow-tests")]
 #[test_context(Chain)]
 #[test]
 #[ignore]
@@ -203,10 +202,53 @@ fn cw721_stake_max_claims_works(chain: &mut Chain) {
     );
 
     // Create `MAX_CLAIMS` claims.
+
+    let mut reqs = vec![];
+
     for i in 0..MAX_CLAIMS {
-        mint_and_stake_nft(chain, &user_key, &user_addr, &module, &i.to_string());
-        unstake_nfts(chain, &user_key, &[&i.to_string()]);
+        let token_id = i.to_string();
+
+        reqs.push(ExecReq {
+            contract_name: CW721_NAME.to_string(),
+            msg: Box::new(cw721_base::ExecuteMsg::Mint::<Empty, Empty>(
+                cw721_base::MintMsg {
+                    token_id: token_id.clone(),
+                    owner: user_addr.to_string(),
+                    token_uri: None,
+                    extension: Empty::default(),
+                },
+            )),
+            funds: vec![],
+        });
+
+        reqs.push(ExecReq {
+            contract_name: CW721_NAME.to_string(),
+            msg: Box::new(cw721::Cw721ExecuteMsg::SendNft {
+                contract: module.to_string(),
+                token_id: token_id.clone(),
+                msg: Binary::default(),
+            }),
+            funds: vec![],
+        });
+
+        reqs.push(ExecReq {
+            contract_name: CONTRACT_NAME.to_string(),
+            msg: Box::new(module::msg::ExecuteMsg::Unstake {
+                token_ids: vec![token_id],
+            }),
+            funds: vec![],
+        });
     }
+
+    chain
+        .orc
+        .execute_batch("batch_cw721_stake_max_claims", reqs, &user_key)
+        .unwrap();
+
+    chain
+        .orc
+        .poll_for_n_blocks(1, core::time::Duration::from_millis(20_000), false)
+        .unwrap();
 
     // If this works, we're golden. Other tests make sure that the
     // NFTs get returned as a result of this.

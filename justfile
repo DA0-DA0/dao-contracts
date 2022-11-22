@@ -27,10 +27,6 @@ integration-test: deploy-local workspace-optimize
 integration-test-dev test_name="":
 	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}
 
-# run all integration tests including slow ones.
-integration-test-slow: deploy-local workspace-optimize
-	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test-slow
-
 bootstrap-dev: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
 

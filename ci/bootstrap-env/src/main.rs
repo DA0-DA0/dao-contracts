@@ -1,12 +1,6 @@
 use anyhow::Result;
-use cosm_orc::{
-    config::{
-        cfg::Coin,
-        cfg::Config,
-        key::{Key, SigningKey},
-    },
-    orchestrator::cosm_orc::CosmOrc,
-};
+use cosm_orc::orchestrator::{Coin, Key, SigningKey};
+use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
 use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cwd_interface::{Admin, ModuleInstantiateInfo};
@@ -123,9 +117,9 @@ fn main() -> Result<()> {
         "dao_init",
         &msg,
         &key,
-        Some(addr.clone()),
+        Some(addr.parse()?),
         vec![Coin {
-            denom: cfg.chain_cfg.denom.clone(),
+            denom: cfg.chain_cfg.denom.parse()?,
             amount: 9000000,
         }],
     )?;
