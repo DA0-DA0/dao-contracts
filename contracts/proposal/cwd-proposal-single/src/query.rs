@@ -20,6 +20,8 @@ pub struct VoteInfo {
     pub vote: Vote,
     /// The voting power behind the vote.
     pub power: Uint128,
+    /// Address-specified rationale for the vote.
+    pub rationale: Option<String>,
 }
 
 /// Information about a vote.

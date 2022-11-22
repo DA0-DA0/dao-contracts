@@ -97,7 +97,15 @@ pub fn execute(
             msgs,
             proposer,
         } => execute_propose(deps, env, info.sender, title, description, msgs, proposer),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
+        ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale,
+        } => execute_vote(deps, env, info, proposal_id, vote, rationale),
+        ExecuteMsg::UpdateRationale {
+            proposal_id,
+            rationale,
+        } => execute_update_rationale(deps, info, proposal_id, rationale),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
         ExecuteMsg::UpdateConfig {
@@ -362,6 +370,7 @@ pub fn execute_vote(
     info: MessageInfo,
     proposal_id: u64,
     vote: Vote,
+    rationale: Option<String>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     let mut prop = PROPOSALS
@@ -381,36 +390,37 @@ pub fn execute_vote(
         return Err(ContractError::NotRegistered {});
     }
 
-    BALLOTS.update(
-        deps.storage,
-        (proposal_id, info.sender.clone()),
-        |bal| match bal {
-            Some(current_ballot) => {
-                if prop.allow_revoting {
-                    if current_ballot.vote == vote {
-                        // Don't allow casting the same vote more than
-                        // once. This seems liable to be confusing
-                        // behavior.
-                        Err(ContractError::AlreadyCast {})
-                    } else {
-                        // Remove the old vote if this is a re-vote.
-                        prop.votes
-                            .remove_vote(current_ballot.vote, current_ballot.power);
-                        Ok(Ballot {
-                            power: vote_power,
-                            vote,
-                        })
-                    }
+    BALLOTS.update(deps.storage, (proposal_id, &info.sender), |bal| match bal {
+        Some(current_ballot) => {
+            if prop.allow_revoting {
+                if current_ballot.vote == vote {
+                    // Don't allow casting the same vote more than
+                    // once. This seems liable to be confusing
+                    // behavior.
+                    Err(ContractError::AlreadyCast {})
                 } else {
-                    Err(ContractError::AlreadyVoted {})
+                    // Remove the old vote if this is a re-vote.
+                    prop.votes
+                        .remove_vote(current_ballot.vote, current_ballot.power);
+                    Ok(Ballot {
+                        power: vote_power,
+                        vote,
+                        // Roll over the previous rationale. If
+                        // you're changing your vote, you've also
+                        // likely changed your thinking.
+                        rationale: rationale.clone(),
+                    })
                 }
+            } else {
+                Err(ContractError::AlreadyVoted {})
             }
-            None => Ok(Ballot {
-                power: vote_power,
-                vote,
-            }),
-        },
-    )?;
+        }
+        None => Ok(Ballot {
+            power: vote_power,
+            vote,
+            rationale: rationale.clone(),
+        }),
+    })?;
 
     let old_status = prop.status;
 
@@ -443,7 +453,38 @@ pub fn execute_vote(
         .add_attribute("sender", info.sender)
         .add_attribute("proposal_id", proposal_id.to_string())
         .add_attribute("position", vote.to_string())
+        .add_attribute("rationale", rationale.as_deref().unwrap_or("_none"))
         .add_attribute("status", prop.status.to_string()))
+}
+
+pub fn execute_update_rationale(
+    deps: DepsMut,
+    info: MessageInfo,
+    proposal_id: u64,
+    rationale: Option<String>,
+) -> Result<Response, ContractError> {
+    BALLOTS.update(
+        deps.storage,
+        // info.sender can't be forged so we implicitly access control
+        // with the key.
+        (proposal_id, &info.sender),
+        |ballot| match ballot {
+            Some(ballot) => Ok(Ballot {
+                rationale: rationale.clone(),
+                ..ballot
+            }),
+            None => Err(ContractError::NoSuchVote {
+                id: proposal_id,
+                voter: info.sender.to_string(),
+            }),
+        },
+    )?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_rationale")
+        .add_attribute("sender", info.sender)
+        .add_attribute("proposal_id", proposal_id.to_string())
+        .add_attribute("rationale", rationale.as_deref().unwrap_or("_none")))
 }
 
 pub fn execute_close(
@@ -764,11 +805,12 @@ pub fn query_proposal_count(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<Binary> {
     let voter = deps.api.addr_validate(&voter)?;
-    let ballot = BALLOTS.may_load(deps.storage, (proposal_id, voter.clone()))?;
+    let ballot = BALLOTS.may_load(deps.storage, (proposal_id, &voter))?;
     let vote = ballot.map(|ballot| VoteInfo {
         voter,
         vote: ballot.vote,
         power: ballot.power,
+        rationale: ballot.rationale,
     });
     to_binary(&VoteResponse { vote })
 }
@@ -783,7 +825,7 @@ pub fn query_list_votes(
     let start_after = start_after
         .map(|addr| deps.api.addr_validate(&addr))
         .transpose()?;
-    let min = start_after.map(Bound::<Addr>::exclusive);
+    let min = start_after.as_ref().map(Bound::<&Addr>::exclusive);
 
     let votes = BALLOTS
         .prefix(proposal_id)
@@ -795,6 +837,7 @@ pub fn query_list_votes(
                 voter,
                 vote: ballot.vote,
                 power: ballot.power,
+                rationale: ballot.rationale,
             })
         })
         .collect::<StdResult<Vec<_>>>()?;

@@ -132,7 +132,11 @@ pub(crate) fn vote_on_proposal(
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_single.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
@@ -148,7 +152,11 @@ pub(crate) fn vote_on_proposal_should_fail(
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_single.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap_err()
@@ -171,6 +179,46 @@ pub(crate) fn execute_proposal_should_fail(
     .unwrap_err()
     .downcast()
     .unwrap()
+}
+
+pub(crate) fn vote_on_proposal_with_rationale(
+    app: &mut App,
+    proposal_single: &Addr,
+    sender: &str,
+    proposal_id: u64,
+    vote: Vote,
+    rationale: Option<String>,
+) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale,
+        },
+        &[],
+    )
+    .unwrap();
+}
+
+pub(crate) fn update_rationale(
+    app: &mut App,
+    proposal_single: &Addr,
+    sender: &str,
+    proposal_id: u64,
+    rationale: Option<String>,
+) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        proposal_single.clone(),
+        &ExecuteMsg::UpdateRationale {
+            proposal_id,
+            rationale,
+        },
+        &[],
+    )
+    .unwrap();
 }
 
 pub(crate) fn execute_proposal(
