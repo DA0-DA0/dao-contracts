@@ -42,6 +42,7 @@ pub(crate) fn amount_to_stake(staked_total: Uint128, balance: Uint128, sent: Uin
 ///
 /// 1. staked_total != 0.
 /// 2. ask + balance <= 2^128
+/// 3. ask <= staked_total
 ///
 /// For information on the panic conditions for math, see:
 /// <https://rust-lang.github.io/rfcs/0560-integer-overflow.html>
@@ -119,6 +120,16 @@ mod tests {
     fn test_amount_to_claim_invaraint_two() {
         // Could end up in a situation like this if there are a lot of
         // rewards, but very few staked tokens.
+        let ask = Uint128::new(2);
+        let balance = Uint128::MAX;
+        let staked_total = Uint128::new(1);
+
+        amount_to_claim(staked_total, balance, ask);
+    }
+
+    #[test]
+    #[should_panic(expected = "ConversionOverflowError")]
+    fn test_amount_to_claim_invariant_three() {
         let ask = Uint128::new(2);
         let balance = Uint128::MAX;
         let staked_total = Uint128::new(1);

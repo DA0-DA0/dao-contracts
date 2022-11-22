@@ -11,8 +11,10 @@ pub enum ContractError {
     NothingToClaim {},
     #[error("Nothing to unstake")]
     NothingStaked {},
-    #[error("Unstaking this amount violates the invaraint: (cw20 total_suppy <= 2^128).")]
+    #[error("Unstaking this amount violates the invaraint: (cw20 total_suppy <= 2^128)")]
     Cw20InvaraintViolation {},
+    #[error("Can not unstake more than has been staked")]
+    ImpossibleUnstake {},
     #[error("Invalid token")]
     InvalidToken { received: Addr, expected: Addr },
     #[error("Unauthorized")]

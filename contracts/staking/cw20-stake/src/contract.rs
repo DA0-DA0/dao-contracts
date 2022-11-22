@@ -226,11 +226,15 @@ pub fn execute_unstake(
     let config = CONFIG.load(deps.storage)?;
     let balance = BALANCE.load(deps.storage)?;
     let staked_total = STAKED_TOTAL.load(deps.storage)?;
+    // invariant checks for amount_to_claim
     if staked_total.is_zero() {
         return Err(ContractError::NothingStaked {});
     }
     if amount.saturating_add(balance) == Uint128::MAX {
         return Err(ContractError::Cw20InvaraintViolation {});
+    }
+    if amount > staked_total {
+        return Err(ContractError::ImpossibleUnstake {});
     }
     let amount_to_claim = math::amount_to_claim(staked_total, balance, amount);
     STAKED_BALANCES.update(
