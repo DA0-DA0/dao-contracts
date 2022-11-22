@@ -89,7 +89,6 @@ where
             ExecuteMsg::Withdraw { denom } => {
                 self.execute_withdraw(deps.as_ref(), env, info, denom)
             }
-            ExecuteMsg::Extension { .. } => Ok(Response::default()),
             ExecuteMsg::AddProposalSubmittedHook { address } => {
                 self.execute_add_proposal_submitted_hook(deps, info, address)
             }
@@ -104,6 +103,8 @@ where
                 proposal_id,
                 new_status,
             } => self.execute_proposal_completed_hook(deps.as_ref(), info, proposal_id, new_status),
+
+            ExecuteMsg::Extension { .. } => Ok(Response::default()),
         }
     }
 
@@ -240,10 +241,7 @@ where
             return Err(PreProposeError::NotDao {});
         }
 
-        // Validate address
         let addr = deps.api.addr_validate(&address)?;
-
-        // Save the hook
         self.proposal_submitted_hooks.add_hook(deps.storage, addr)?;
 
         Ok(Response::default())
@@ -355,11 +353,7 @@ where
             .add_attribute("proposal_id", id.to_string()))
     }
 
-    pub fn check_can_submit(
-        &self,
-        deps: Deps,
-        info: MessageInfo,
-    ) -> Result<Response, PreProposeError> {
+    pub fn check_can_submit(&self, deps: Deps, who: Addr) -> Result<(), PreProposeError> {
         let config = self.config.load(deps.storage)?;
 
         if !config.open_proposal_submission {
@@ -367,7 +361,7 @@ where
             let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
                 dao.into_string(),
                 &CwCoreQuery::VotingPowerAtHeight {
-                    address: info.sender.to_string(),
+                    address: who.into_string(),
                     height: None,
                 },
             )?;
@@ -375,7 +369,7 @@ where
                 return Err(PreProposeError::NotMember {});
             }
         }
-        Ok(Response::default())
+        Ok(())
     }
 
     pub fn query(&self, deps: Deps, _env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {

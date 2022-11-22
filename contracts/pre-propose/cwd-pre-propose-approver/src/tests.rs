@@ -323,7 +323,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
         .unwrap();
 
     // Return last item in list, id is first element of tuple
-    pending.pop().unwrap().id
+    pending.pop().unwrap().approval_id
 }
 
 fn mint_natives(app: &mut App, receiver: &str, coins: Vec<Coin>) {

@@ -61,12 +61,7 @@ export interface ModuleInstantiateInfo {
   msg: Binary;
 }
 export type ExecuteMsg = {
-  propose: {
-    description: string;
-    msgs: CosmosMsgForEmpty[];
-    proposer?: string | null;
-    title: string;
-  };
+  propose: ProposeMsg;
 } | {
   vote: {
     proposal_id: number;
@@ -248,6 +243,12 @@ export type GovMsg = {
 };
 export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
 export type Vote = "yes" | "no" | "abstain";
+export interface ProposeMsg {
+  description: string;
+  msgs: CosmosMsgForEmpty[];
+  proposer?: string | null;
+  title: string;
+}
 export interface Coin {
   amount: Uint128;
   denom: string;

@@ -884,6 +884,7 @@
       "ProposeMessage": {
         "oneOf": [
           {
+            "description": "The propose message used to make a proposal to this module. Note that this is identical to the propose message used by cwd-proposal-single, except that it omits the `proposer` field which it fills in for the sender.",
             "type": "object",
             "required": [
               "propose"
