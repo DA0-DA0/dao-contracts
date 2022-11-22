@@ -82,8 +82,6 @@ export type ExecuteMsg = {
 export type QueryMsg = {
   staking_contract: {};
 } | {
-  dao: {};
-} | {
   active_threshold: {};
 } | {
   voting_power_at_height: {
@@ -94,6 +92,8 @@ export type QueryMsg = {
   total_power_at_height: {
     height?: number | null;
   };
+} | {
+  dao: {};
 } | {
   info: {};
 } | {

@@ -31,7 +31,7 @@
         "type": "boolean"
       },
       "dao_uri": {
-        "description": "Implements the DAO Star standard: https://daostar.one/EIP",
+        "description": "Implements the DAO Star standard: <https://daostar.one/EIP>",
         "type": [
           "string",
           "null"
@@ -63,7 +63,7 @@
         "type": "string"
       },
       "proposal_modules_instantiate_info": {
-        "description": "Instantiate information for the core contract's proposal modules.",
+        "description": "Instantiate information for the core contract's proposal modules. NOTE: the pre-propose-base package depends on it being the case that the core module instantiates its proposal module.",
         "type": "array",
         "items": {
           "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -488,6 +488,7 @@
             ],
             "properties": {
               "to_add": {
+                "description": "NOTE: the pre-propose-base package depends on it being the case that the core module instantiates its proposal module.",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/ModuleInstantiateInfo"
@@ -697,7 +698,7 @@
             "type": "boolean"
           },
           "dao_uri": {
-            "description": "The URI for the DAO as defined by the DAOstar standard https://daostar.one/EIP",
+            "description": "The URI for the DAO as defined by the DAOstar standard <https://daostar.one/EIP>",
             "type": [
               "string",
               "null"
@@ -1697,6 +1698,20 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns contract version info",
+        "type": "object",
+        "required": [
+          "info"
+        ],
+        "properties": {
+          "info": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Gets all proposal modules associated with the contract.",
         "type": "object",
         "required": [
@@ -1815,7 +1830,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Implements the DAO Star standard: https://daostar.one/EIP",
+        "description": "Implements the DAO Star standard: <https://daostar.one/EIP>",
         "type": "object",
         "required": [
           "dao_u_r_i"
@@ -1829,6 +1844,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns the voting power for an address at a given height.",
         "type": "object",
         "required": [
           "voting_power_at_height"
@@ -1858,6 +1874,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns the total voting power at a given block height.",
         "type": "object",
         "required": [
           "total_power_at_height"
@@ -1875,19 +1892,6 @@
                 "minimum": 0.0
               }
             },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "info"
-        ],
-        "properties": {
-          "info": {
-            "type": "object",
             "additionalProperties": false
           }
         },
@@ -2044,7 +2048,7 @@
           "type": "boolean"
         },
         "dao_uri": {
-          "description": "The URI for the DAO as defined by the DAOstar standard https://daostar.one/EIP",
+          "description": "The URI for the DAO as defined by the DAOstar standard <https://daostar.one/EIP>",
           "type": [
             "string",
             "null"
@@ -2245,7 +2249,7 @@
               "type": "boolean"
             },
             "dao_uri": {
-              "description": "The URI for the DAO as defined by the DAOstar standard https://daostar.one/EIP",
+              "description": "The URI for the DAO as defined by the DAOstar standard <https://daostar.one/EIP>",
               "type": [
                 "string",
                 "null"

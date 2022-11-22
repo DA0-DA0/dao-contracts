@@ -25,8 +25,6 @@ export interface MemberDiff {
 export type QueryMsg = {
   group_contract: {};
 } | {
-  dao: {};
-} | {
   voting_power_at_height: {
     address: string;
     height?: number | null;
@@ -35,6 +33,8 @@ export type QueryMsg = {
   total_power_at_height: {
     height?: number | null;
   };
+} | {
+  dao: {};
 } | {
   info: {};
 };

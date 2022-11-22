@@ -9,7 +9,6 @@ import { Coin, StdFee } from "@cosmjs/amino";
 import { Admin, Duration, InstantiateMsg, ExecuteMsg, Uint128, QueryMsg, MigrateMsg, Expiration, Timestamp, Uint64, ClaimsResponse, Claim, Addr, Config, InfoResponse, ContractVersion, ListStakersResponse, StakerBalanceResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse } from "./CwdVotingNativeStaked.types";
 export interface CwdVotingNativeStakedReadOnlyInterface {
   contractAddress: string;
-  dao: () => Promise<Addr>;
   getConfig: () => Promise<Config>;
   claims: ({
     address
@@ -35,6 +34,7 @@ export interface CwdVotingNativeStakedReadOnlyInterface {
   }: {
     height?: number;
   }) => Promise<TotalPowerAtHeightResponse>;
+  dao: () => Promise<Addr>;
   info: () => Promise<InfoResponse>;
 }
 export class CwdVotingNativeStakedQueryClient implements CwdVotingNativeStakedReadOnlyInterface {
@@ -44,20 +44,15 @@ export class CwdVotingNativeStakedQueryClient implements CwdVotingNativeStakedRe
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
-    this.dao = this.dao.bind(this);
     this.getConfig = this.getConfig.bind(this);
     this.claims = this.claims.bind(this);
     this.listStakers = this.listStakers.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
+    this.dao = this.dao.bind(this);
     this.info = this.info.bind(this);
   }
 
-  dao = async (): Promise<Addr> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      dao: {}
-    });
-  };
   getConfig = async (): Promise<Config> => {
     return this.client.queryContractSmart(this.contractAddress, {
       get_config: {}
@@ -111,6 +106,11 @@ export class CwdVotingNativeStakedQueryClient implements CwdVotingNativeStakedRe
       total_power_at_height: {
         height
       }
+    });
+  };
+  dao = async (): Promise<Addr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao: {}
     });
   };
   info = async (): Promise<InfoResponse> => {

@@ -37,6 +37,7 @@ export interface CwdVotingCw721StakedReadOnlyInterface {
   }: {
     height?: number;
   }) => Promise<TotalPowerAtHeightResponse>;
+  dao: () => Promise<Addr>;
   info: () => Promise<InfoResponse>;
 }
 export class CwdVotingCw721StakedQueryClient implements CwdVotingCw721StakedReadOnlyInterface {
@@ -52,6 +53,7 @@ export class CwdVotingCw721StakedQueryClient implements CwdVotingCw721StakedRead
     this.stakedNfts = this.stakedNfts.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
+    this.dao = this.dao.bind(this);
     this.info = this.info.bind(this);
   }
 
@@ -116,6 +118,11 @@ export class CwdVotingCw721StakedQueryClient implements CwdVotingCw721StakedRead
       total_power_at_height: {
         height
       }
+    });
+  };
+  dao = async (): Promise<Addr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao: {}
     });
   };
   info = async (): Promise<InfoResponse> => {

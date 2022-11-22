@@ -528,21 +528,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Gets the address that instantiated this module.",
-        "type": "object",
-        "required": [
-          "dao"
-        ],
-        "properties": {
-          "dao": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Gets the active threshold for this module.",
         "type": "object",
         "required": [
           "active_threshold"
@@ -556,6 +541,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns the voting power for an address at a given height.",
         "type": "object",
         "required": [
           "voting_power_at_height"
@@ -585,6 +571,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns the total voting power at a given block heigh.",
         "type": "object",
         "required": [
           "total_power_at_height"
@@ -608,6 +595,21 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns the address of the DAO this module belongs to.",
+        "type": "object",
+        "required": [
+          "dao"
+        ],
+        "properties": {
+          "dao": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns contract version info.",
         "type": "object",
         "required": [
           "info"

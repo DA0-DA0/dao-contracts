@@ -39,8 +39,6 @@ export type ExecuteMsg = {
 };
 export type Uint128 = string;
 export type QueryMsg = {
-  dao: {};
-} | {
   get_config: {};
 } | {
   claims: {
@@ -60,6 +58,8 @@ export type QueryMsg = {
   total_power_at_height: {
     height?: number | null;
   };
+} | {
+  dao: {};
 } | {
   info: {};
 };

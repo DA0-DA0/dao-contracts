@@ -10,7 +10,6 @@ import { InstantiateMsg, Member, ExecuteMsg, MemberDiff, QueryMsg, MigrateMsg, A
 export interface CwdVotingCw4ReadOnlyInterface {
   contractAddress: string;
   groupContract: () => Promise<Addr>;
-  dao: () => Promise<Addr>;
   votingPowerAtHeight: ({
     address,
     height
@@ -23,6 +22,7 @@ export interface CwdVotingCw4ReadOnlyInterface {
   }: {
     height?: number;
   }) => Promise<TotalPowerAtHeightResponse>;
+  dao: () => Promise<Addr>;
   info: () => Promise<InfoResponse>;
 }
 export class CwdVotingCw4QueryClient implements CwdVotingCw4ReadOnlyInterface {
@@ -33,20 +33,15 @@ export class CwdVotingCw4QueryClient implements CwdVotingCw4ReadOnlyInterface {
     this.client = client;
     this.contractAddress = contractAddress;
     this.groupContract = this.groupContract.bind(this);
-    this.dao = this.dao.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
+    this.dao = this.dao.bind(this);
     this.info = this.info.bind(this);
   }
 
   groupContract = async (): Promise<Addr> => {
     return this.client.queryContractSmart(this.contractAddress, {
       group_contract: {}
-    });
-  };
-  dao = async (): Promise<Addr> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      dao: {}
     });
   };
   votingPowerAtHeight = async ({
@@ -72,6 +67,11 @@ export class CwdVotingCw4QueryClient implements CwdVotingCw4ReadOnlyInterface {
       total_power_at_height: {
         height
       }
+    });
+  };
+  dao = async (): Promise<Addr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao: {}
     });
   };
   info = async (): Promise<InfoResponse> => {

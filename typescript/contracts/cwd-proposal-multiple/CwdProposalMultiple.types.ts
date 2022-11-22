@@ -278,8 +278,6 @@ export type QueryMsg = {
     start_before?: number | null;
   };
 } | {
-  proposal_count: {};
-} | {
   get_vote: {
     proposal_id: number;
     voter: string;
@@ -291,15 +289,17 @@ export type QueryMsg = {
     start_after?: string | null;
   };
 } | {
+  dao: {};
+} | {
+  info: {};
+} | {
+  proposal_count: {};
+} | {
   proposal_creation_policy: {};
 } | {
   proposal_hooks: {};
 } | {
   vote_hooks: {};
-} | {
-  dao: {};
-} | {
-  info: {};
 };
 export type MigrateMsg = {
   from_v1: {
