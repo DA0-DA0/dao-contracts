@@ -203,7 +203,7 @@ fn make_pre_proposal(app: &mut App, pre_propose: Addr, proposer: &str, funds: &[
         .unwrap();
 
     // Return last item in list, id is first element of tuple
-    pending.pop().unwrap().id
+    pending.pop().unwrap().approval_id
 }
 
 fn mint_natives(app: &mut App, receiver: &str, coins: Vec<Coin>) {
@@ -879,7 +879,7 @@ fn test_pending_proposal_queries() {
             },
         )
         .unwrap();
-    assert_eq!(prop1.id, 1);
+    assert_eq!(prop1.approval_id, 1);
 
     // Query for the pre-propose proposals
     let pre_propose_props: Vec<PendingProposal> = app
@@ -895,7 +895,7 @@ fn test_pending_proposal_queries() {
         )
         .unwrap();
     assert_eq!(pre_propose_props.len(), 2);
-    assert_eq!(pre_propose_props[0].id, 2);
+    assert_eq!(pre_propose_props[0].approval_id, 2);
 
     // Query props in reverse
     let reverse_pre_propose_props: Vec<PendingProposal> = app
@@ -912,7 +912,7 @@ fn test_pending_proposal_queries() {
         .unwrap();
 
     assert_eq!(reverse_pre_propose_props.len(), 2);
-    assert_eq!(reverse_pre_propose_props[0].id, 1);
+    assert_eq!(reverse_pre_propose_props[0].approval_id, 1);
 }
 
 #[test]

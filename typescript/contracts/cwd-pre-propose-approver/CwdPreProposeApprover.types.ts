@@ -45,8 +45,8 @@ export type ExecuteMsg = {
 };
 export type ApproverProposeMessage = {
   propose: {
+    approval_id: number;
     description: string;
-    pre_propose_id: number;
     title: string;
   };
 };

@@ -109,7 +109,7 @@ pub fn execute_propose(
         ApproverProposeMessage::Propose {
             title,
             description,
-            pre_propose_id,
+            approval_id: pre_propose_id,
         } => (
             pre_propose_id,
             ProposeMessageInternal::Propose {

@@ -236,18 +236,18 @@
               "propose": {
                 "type": "object",
                 "required": [
+                  "approval_id",
                   "description",
-                  "pre_propose_id",
                   "title"
                 ],
                 "properties": {
-                  "description": {
-                    "type": "string"
-                  },
-                  "pre_propose_id": {
+                  "approval_id": {
                     "type": "integer",
                     "format": "uint64",
                     "minimum": 0.0
+                  },
+                  "description": {
+                    "type": "string"
                   },
                   "title": {
                     "type": "string"

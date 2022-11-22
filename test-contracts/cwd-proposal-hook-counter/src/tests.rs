@@ -12,7 +12,7 @@ use cwd_voting::{
 };
 
 use crate::msg::{CountResponse, InstantiateMsg, QueryMsg};
-use cwd_proposal_single::state::Config;
+use cwd_proposal_single::{msg::ProposeMsg, state::Config};
 
 const CREATOR_ADDR: &str = "creator";
 
@@ -247,12 +247,12 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cwd_proposal_single::msg::ExecuteMsg::Propose {
+        &cwd_proposal_single::msg::ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal".to_string(),
             description: "This is a simple text proposal".to_string(),
             msgs: vec![],
             proposer: None,
-        },
+        }),
         &[],
     )
     .unwrap();
@@ -347,12 +347,12 @@ fn test_counters() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
-        &cwd_proposal_single::msg::ExecuteMsg::Propose {
+        &cwd_proposal_single::msg::ExecuteMsg::Propose(ProposeMsg {
             title: "A simple text proposal 2nd".to_string(),
             description: "This is a simple text proposal 2nd".to_string(),
             msgs: vec![],
             proposer: None,
-        },
+        }),
         &[],
     )
     .unwrap();
