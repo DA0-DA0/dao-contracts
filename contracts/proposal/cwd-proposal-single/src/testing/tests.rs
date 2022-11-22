@@ -142,7 +142,7 @@ fn test_simple_propose_staked_balances() {
         Some(CheckedDepositInfo {
             denom: cw_denom::CheckedDenom::Cw20(gov_token),
             amount: Uint128::new(10_000_000),
-            refund_policy: cwd_voting::deposit::DepositRefundPolicy::OnlyPassed
+                refund_policy: cwd_voting::deposit::DepositRefundPolicy::OnlyPassed
         })
     );
 }
@@ -2545,6 +2545,41 @@ fn test_rational_clobbered_on_revote() {
 
     let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
     assert_eq!(vote.vote.unwrap().rationale, rationale);
+
+// Casting votes is only allowed within the proposal expiration timeframe
+#[test]
+pub fn test_not_allow_voting_on_expired_proposal() {
+    let CommonTest {
+        mut app,
+        core_addr: _,
+        proposal_module,
+        gov_token: _,
+        proposal_id,
+    } = setup_test(vec![]);
+
+    // expire the proposal
+    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    let proposal = query_proposal(&mut app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+    assert_eq!(proposal.proposal.votes.yes, Uint128::zero());
+
+    // attempt to vote past the expiration date
+    let err: ContractError = app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        proposal_module.clone(),
+        &ExecuteMsg::Vote { proposal_id, vote: Vote::Yes },
+        &[],
+    )
+    .unwrap_err()
+    .downcast()
+    .unwrap();
+
+    // assert the vote got rejected and did not count
+    // towards the votes
+    let proposal = query_proposal(&mut app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+    assert_eq!(proposal.proposal.votes.yes, Uint128::zero());
+    assert!(matches!(err, ContractError::Expired { id: _proposal_id }));
 }
 
 // TODO: test pre-propose module that fails on new proposal hook (ugh).

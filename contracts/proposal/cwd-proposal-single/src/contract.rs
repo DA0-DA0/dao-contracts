@@ -376,6 +376,14 @@ pub fn execute_vote(
     let mut prop = PROPOSALS
         .may_load(deps.storage, proposal_id)?
         .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
+
+    // Allow voting on proposals until they expire.
+    // Voting on a non-open proposal will never change
+    // their outcome as if an outcome has been determined,
+    // it is because no possible sequence of votes may
+    // cause a different one. This then serves to allow
+    // for better tallies of opinions in the event that a
+    // proposal passes or is rejected early.
     if prop.expiration.is_expired(&env.block) {
         return Err(ContractError::Expired { id: proposal_id });
     }
@@ -562,25 +570,27 @@ pub fn execute_update_config(
     if info.sender != config.dao {
         return Err(ContractError::Unauthorized {});
     }
-
     threshold.validate()?;
     let dao = deps.api.addr_validate(&dao)?;
 
     let (min_voting_period, max_voting_period) =
-        validate_voting_period(min_voting_period, max_voting_period)?;
+    validate_voting_period(min_voting_period, max_voting_period)?;
 
     CONFIG.save(
-        deps.storage,
-        &Config {
-            threshold,
-            max_voting_period,
-            min_voting_period,
-            only_members_execute,
-            allow_revoting,
-            dao,
-            close_proposal_on_execution_failure,
-        },
+    deps.storage,
+    &Config {
+        threshold,
+        max_voting_period,
+        min_voting_period,
+        only_members_execute,
+        allow_revoting,
+        dao,
+        close_proposal_on_execution_failure,
+    },
     )?;
+    let config = CONFIG.load(deps.storage)?;
+
+    println!("still here, {:?}", config.allow_revoting);
 
     Ok(Response::default()
         .add_attribute("action", "update_config")

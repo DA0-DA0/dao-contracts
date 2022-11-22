@@ -5,6 +5,11 @@ A proposal module for a DAO DAO DAO which supports simple "yes", "no",
 executed by the core module upon the proposal being passed and
 executed.
 
+Votes can be cast for as long as the proposal is not expired. In cases
+where the proposal is no longer being evaluated (e.g. met the quorum and
+been rejected), this allows voters to reflect their opinion even though 
+it has no effect on the final proposal's status.
+
 For more information about how these modules fit together see
 [this](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-v1-Contracts-Design)
 wiki page.
