@@ -1,3 +1,5 @@
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
+
 use thiserror::Error;
 
 use cosmwasm_schema::cw_serde;
