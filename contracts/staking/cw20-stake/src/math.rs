@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "ConversionOverflowError")]
-    fn test_amount_to_claim_invaraint_two() {
+    fn test_amount_to_claim_invariant_two() {
         // Could end up in a situation like this if there are a lot of
         // rewards, but very few staked tokens.
         let ask = Uint128::new(2);
