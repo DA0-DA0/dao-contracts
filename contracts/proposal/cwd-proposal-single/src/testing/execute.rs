@@ -6,7 +6,7 @@ use cwd_pre_propose_single as cppbps;
 use cwd_voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy, voting::Vote};
 
 use crate::{
-    msg::{ExecuteMsg, QueryMsg},
+    msg::{ExecuteMsg, ProposeMsg, QueryMsg},
     query::ProposalResponse,
     testing::queries::query_creation_policy,
     ContractError,
@@ -70,12 +70,12 @@ pub(crate) fn make_proposal(
             .execute_contract(
                 Addr::unchecked(proposer),
                 proposal_single.clone(),
-                &ExecuteMsg::Propose {
+                &ExecuteMsg::Propose(ProposeMsg {
                     title: "title".to_string(),
                     description: "description".to_string(),
                     msgs: msgs.clone(),
                     proposer: None,
-                },
+                }),
                 &[],
             )
             .unwrap(),

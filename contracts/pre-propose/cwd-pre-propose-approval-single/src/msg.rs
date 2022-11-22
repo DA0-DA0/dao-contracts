@@ -4,6 +4,7 @@ use cosmwasm_std::{Addr, CosmosMsg, Empty};
 use cwd_pre_propose_base::msg::{
     ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
 };
+use cwd_proposal_single::msg::ProposeMsg;
 
 #[cw_serde]
 pub enum ApproverProposeMessage {
@@ -68,11 +69,6 @@ pub type QueryMsg = QueryBase<QueryExt>;
 /// `proposer` field. The module will fill this in based on the sender
 /// of the external message.
 #[cw_serde]
-pub enum ProposeMessageInternal {
-    Propose {
-        title: String,
-        description: String,
-        msgs: Vec<CosmosMsg<Empty>>,
-        proposer: Option<String>,
-    },
+pub(crate) enum ProposeMessageInternal {
+    Propose(ProposeMsg),
 }

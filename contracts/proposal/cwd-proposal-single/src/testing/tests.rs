@@ -28,7 +28,7 @@ use cwd_voting_cw20_staked::msg::ActiveThreshold;
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, ProposeMsg, QueryMsg},
     proposal::SingleChoiceProposal,
     query::{ProposalResponse, VoteInfo},
     state::Config,
@@ -813,12 +813,12 @@ fn test_active_threshold_absolute() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             proposal_module.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
                 proposer: None,
-            },
+            }),
             &[],
         )
         .unwrap_err()
@@ -851,12 +851,12 @@ fn test_active_threshold_absolute() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             proposal_module.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
                 proposer: None,
-            },
+            }),
             &[],
         )
         .unwrap_err()
@@ -894,12 +894,12 @@ fn test_active_threshold_percent() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             proposal_module.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
                 proposer: None,
-            },
+            }),
             &[],
         )
         .unwrap_err()
@@ -933,12 +933,12 @@ fn test_active_threshold_percent() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             proposal_module.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
                 proposer: None,
-            },
+            }),
             &[],
         )
         .unwrap_err()
@@ -1934,12 +1934,12 @@ fn test_proposal_too_large() {
         .execute_contract(
             Addr::unchecked(CREATOR_ADDR),
             proposal_module,
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "".to_string(),
                 description: "a".repeat(MAX_PROPOSAL_SIZE as usize),
                 msgs: vec![],
                 proposer: None,
-            },
+            }),
             &[],
         )
         .unwrap_err()
@@ -1985,12 +1985,12 @@ fn test_proposal_creation_permissions() {
         .execute_contract(
             Addr::unchecked("notprepropose"),
             proposal_module.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
                 proposer: None,
-            },
+            }),
             &[],
         )
         .unwrap_err()
@@ -2010,12 +2010,12 @@ fn test_proposal_creation_permissions() {
         .execute_contract(
             pre_propose,
             proposal_module.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
                 proposer: None,
-            },
+            }),
             &[],
         )
         .unwrap_err()
@@ -2040,12 +2040,12 @@ fn test_proposal_creation_permissions() {
         .execute_contract(
             Addr::unchecked("ekez"),
             proposal_module.clone(),
-            &ExecuteMsg::Propose {
+            &ExecuteMsg::Propose(ProposeMsg {
                 title: "title".to_string(),
                 description: "description".to_string(),
                 msgs: vec![],
                 proposer: Some("ekez".to_string()),
-            },
+            }),
             &[],
         )
         .unwrap_err()

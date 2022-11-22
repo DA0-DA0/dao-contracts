@@ -22,6 +22,7 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw-paginate = { workspace = true }
 cwd-pre-propose-base = { workspace = true }
+cwd-proposal-single = { workspace = true, features = ["library"] }
 cwd-voting = { workspace = true }
 thiserror = { workspace = true }
 
@@ -34,7 +35,6 @@ cw20 = { workspace = true }
 cw20-base = { workspace = true }
 cwd-core = { workspace = true }
 cwd-proposal-hooks = { workspace = true }
-cwd-proposal-single = { workspace = true, features = ["library"] }
 cwd-interface = { workspace = true }
 cwd-testing = { workspace = true }
 cwd-voting = { workspace = true }

@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { Duration, PreProposeInfo, Admin, Binary, Threshold, PercentageThreshold, Decimal, Uint128, InstantiateMsg, ModuleInstantiateInfo, ExecuteMsg, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Vote, Coin, Empty, IbcTimeout, IbcTimeoutBlock, QueryMsg, MigrateMsg, Addr, Config, VoteResponse, VoteInfo, InfoResponse, ContractVersion, Expiration, Status, ProposalListResponse, ProposalResponse, SingleChoiceProposal, Votes, VoteListResponse, ProposalCreationPolicy, HooksResponse } from "./CwdProposalSingle.types";
+import { Duration, PreProposeInfo, Admin, Binary, Threshold, PercentageThreshold, Decimal, Uint128, InstantiateMsg, ModuleInstantiateInfo, ExecuteMsg, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Vote, ProposeMsg, Coin, Empty, IbcTimeout, IbcTimeoutBlock, QueryMsg, MigrateMsg, Addr, Config, VoteResponse, VoteInfo, InfoResponse, ContractVersion, Expiration, Status, ProposalListResponse, ProposalResponse, SingleChoiceProposal, Votes, VoteListResponse, ProposalCreationPolicy, HooksResponse } from "./CwdProposalSingle.types";
 export interface CwdProposalSingleReadOnlyInterface {
   contractAddress: string;
   config: () => Promise<Config>;
