@@ -4,7 +4,7 @@ use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
 
-use cwd_macros::{active_query, token_query, voting_query};
+use cwd_macros::{active_query, token_query, voting_module_query};
 
 /// Information about the staking contract to be used with this voting
 /// module.
@@ -82,7 +82,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[voting_query]
+#[voting_module_query]
 #[token_query]
 #[active_query]
 #[cw_serde]

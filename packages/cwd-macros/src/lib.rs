@@ -58,12 +58,12 @@ fn cwd_interface_path(inside: &str) -> Path {
 /// For example:
 ///
 /// ```
-/// use cwd_macros::voting_query;
+/// use cwd_macros::voting_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cwd_interface::voting::TotalPowerAtHeightResponse;
 /// use cwd_interface::voting::VotingPowerAtHeightResponse;
 ///
-/// #[voting_query]
+/// #[voting_module_query]
 /// #[cw_serde]
 /// #[derive(QueryResponses)]
 /// enum QueryMsg {}
@@ -92,13 +92,13 @@ fn cwd_interface_path(inside: &str) -> Path {
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use cwd_macros::voting_query;
+/// use cwd_macros::voting_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cwd_interface::voting::TotalPowerAtHeightResponse;
 /// use cwd_interface::voting::VotingPowerAtHeightResponse;
 ///
 /// #[derive(Clone)]
-/// #[voting_query]
+/// #[voting_module_query]
 /// #[allow(dead_code)]
 /// #[cw_serde]
 /// #[derive(QueryResponses)]
@@ -112,7 +112,7 @@ fn cwd_interface_path(inside: &str) -> Path {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn voting_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+pub fn voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
     let i = cwd_interface_path("voting::InfoResponse");
     let vp = cwd_interface_path("voting::VotingPowerAtHeightResponse");
     let tp = cwd_interface_path("voting::TotalPowerAtHeightResponse");

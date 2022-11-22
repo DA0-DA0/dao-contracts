@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cwd_macros::voting_query;
+use cwd_macros::voting_module_query;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -12,7 +12,7 @@ pub enum ExecuteMsg {
     MemberChangedHook { diffs: Vec<cw4::MemberDiff> },
 }
 
-#[voting_query]
+#[voting_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
