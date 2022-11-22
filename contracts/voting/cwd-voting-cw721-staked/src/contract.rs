@@ -2,7 +2,7 @@ use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    register_staked_nft, register_unstaked_nft, Config, CONFIG, DAO_ADDRESS, HOOKS, MAX_CLAIMS,
+    register_staked_nft, register_unstaked_nft, Config, CONFIG, DAO, HOOKS, MAX_CLAIMS,
     NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
@@ -27,12 +27,15 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    DAO.save(deps.storage, &info.sender)?;
+
     let owner = msg
         .owner
         .as_ref()
         .map(|owner| match owner {
             Admin::Address { addr } => deps.api.addr_validate(addr),
-            Admin::CoreModule {} => Ok(info.sender.clone()),
+            Admin::CoreModule {} => Ok(info.sender),
         })
         .transpose()?;
 
@@ -44,8 +47,6 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     TOTAL_STAKED_NFTS.save(deps.storage, &Uint128::zero(), env.block.height)?;
-
-    DAO_ADDRESS.save(deps.storage, &info.sender)?;
 
     Ok(Response::default()
         .add_attribute("method", "instantiate")
@@ -313,7 +314,7 @@ pub fn query_config(deps: Deps) -> StdResult<Binary> {
 }
 
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
-    let dao = DAO_ADDRESS.load(deps.storage)?;
+    let dao = DAO.load(deps.storage)?;
     to_binary(&dao)
 }
 
