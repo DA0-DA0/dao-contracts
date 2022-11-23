@@ -18,7 +18,11 @@ pub struct Delegation {
     pub policy_preserve_on_failure: bool,
 }
 
+// Delegation ID between executions
+pub type ExecuteContext = u64;
+
 pub const DELEGATIONS: Map<u64, Delegation> = Map::new("delegations");
 pub const DELEGATION_COUNT: Item<u64> = Item::new("delegation_count");
 
 pub const CONFIG: Item<Config> = Item::new("config");
+pub const EXECUTE_CTX: Item<ExecuteContext> = Item::new("execute_ctx");

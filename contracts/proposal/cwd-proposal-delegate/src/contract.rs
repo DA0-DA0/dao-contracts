@@ -1,15 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, BlockInfo, Deps, DepsMut, Empty, Env, MessageInfo, OverflowError, Response,
-    StdError, StdResult, Storage, SubMsg, WasmMsg,
+    to_binary, Binary, BlockInfo, Deps, DepsMut, Empty, Env, MessageInfo, OverflowError, Reply,
+    Response, StdError, StdResult, Storage, SubMsg, SubMsgResult, WasmMsg,
 };
 use cw_utils::Expiration;
 // use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, Delegation, CONFIG, DELEGATIONS, DELEGATION_COUNT};
+use crate::state::{Config, Delegation, CONFIG, DELEGATIONS, DELEGATION_COUNT, EXECUTE_CTX};
 
 /*
 // version info for migration info
@@ -76,6 +76,33 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        REPLY_ID_EXECUTE_PROPOSAL_HOOK => {
+            let id = EXECUTE_CTX.load(deps.storage)?;
+            let Delegation {
+                policy_preserve_on_failure,
+                ..
+            } = DELEGATIONS.load(deps.storage, id)?;
+
+            if let SubMsgResult::Err(_) = msg.result {
+                // && with `let` expression above gives unstable Rust error
+                if policy_preserve_on_failure {
+                    return Ok(Response::default()
+                        .add_attribute("execute_failed_but_preserved", id.to_string()));
+                }
+            }
+            // Delete delegation in both success and error case
+            DELEGATIONS.remove(deps.storage, id);
+            Ok(Response::default())
+        }
+        _ => Err(ContractError::Std(StdError::GenericErr {
+            msg: "Reply handler ID not found".into(),
+        })),
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     unimplemented!()
 }
@@ -132,7 +159,6 @@ fn execute_execute(
         delegate,
         msgs,
         expiration,
-        policy_preserve_on_failure,
         ..
     } = DELEGATIONS.load(deps.storage, delegation_id)?;
     if delegate != info.sender {
@@ -147,6 +173,8 @@ fn execute_execute(
         funds: vec![],
     };
     let submsg: SubMsg<Empty> = SubMsg::reply_always(wasm_msg, REPLY_ID_EXECUTE_PROPOSAL_HOOK);
+    // For reply handler
+    EXECUTE_CTX.save(deps.storage, &delegation_id)?;
 
     Ok(Response::default().add_submessage(submsg))
 }
