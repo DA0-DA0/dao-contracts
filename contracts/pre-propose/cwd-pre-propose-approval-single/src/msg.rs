@@ -56,7 +56,7 @@ pub enum QueryExt {
     },
     #[returns(Vec<PendingProposal>)]
     ReversePendingProposals {
-        start_after: Option<u64>,
+        start_before: Option<u64>,
         limit: Option<u32>,
     },
 }

@@ -331,7 +331,7 @@ pub fn execute_remove_approver_hook(
     // Validate address
     let addr = deps.api.addr_validate(&address)?;
 
-    // Add hook
+    // remove hook
     pre_propose_base
         .proposal_submitted_hooks
         .remove_hook(deps.storage, addr)?;
