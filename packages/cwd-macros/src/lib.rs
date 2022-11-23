@@ -324,16 +324,16 @@ pub fn proposal_module_query(metadata: TokenStream, input: TokenStream) -> Token
             #[returns(#i)]
             Info { },
             /// Returns the number of proposals that have been created in this module.
-            #[returns(u64)]
+            #[returns(::std::primitive::u64)]
             ProposalCount {},
             /// Gets the current proposal creation policy for this module.
-            #[returns(cwd_voting::pre_propose::ProposalCreationPolicy)]
+            #[returns(::cwd_voting::pre_propose::ProposalCreationPolicy)]
             ProposalCreationPolicy {},
             /// Lists all of the consumers of proposal hooks for this module.
-            #[returns(cwd_hooks::HooksResponse)]
+            #[returns(::cwd_hooks::HooksResponse)]
             ProposalHooks {},
-            /// Lists all of the consumers of vote hooks for thismodule.
-            #[returns(cwd_hooks::HooksResponse)]
+            /// Lists all of the consumers of vote hooks for this module.
+            #[returns(::cwd_hooks::HooksResponse)]
             VoteHooks {},
         }
         }

@@ -16,4 +16,4 @@ pub const TOTAL_WEIGHT: SnapshotItem<Uint128> = SnapshotItem::new(
 );
 
 pub const GROUP_CONTRACT: Item<Addr> = Item::new("group_contract");
-pub const DAO: Item<Addr> = Item::new("dao");
+pub const DAO: Item<Addr> = Item::new("dao_address");
