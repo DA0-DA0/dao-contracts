@@ -1,6 +1,5 @@
 use cosmwasm_schema::{cw_serde, schemars::JsonSchema, QueryResponses};
 use cw_denom::UncheckedDenom;
-use cwd_hooks::HooksResponse;
 use cwd_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     status::Status,
@@ -117,7 +116,7 @@ where
     #[returns(DepositInfoResponse)]
     DepositInfo { proposal_id: u64 },
     /// Returns list of proposal submitted hooks.
-    #[returns(HooksResponse)]
+    #[returns(cwd_hooks::HooksResponse)]
     ProposalSubmittedHooks {},
     /// Extension for queries. The default implementation will do
     /// nothing if queried for will return `Binary::default()`.

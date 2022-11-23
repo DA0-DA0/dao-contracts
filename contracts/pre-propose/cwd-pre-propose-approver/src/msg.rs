@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty};
 use cwd_pre_propose_approval_single::msg::ApproverProposeMessage;
 use cwd_pre_propose_base::msg::{
     ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
@@ -13,7 +13,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryExt {
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     PreProposeApprovalContract {},
 }
 
