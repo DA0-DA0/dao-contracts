@@ -56,7 +56,7 @@ const DELEGATIONS: Map<u64, Delegation> = Map::new("delegations");
 const CONFIG: Item<Config> = Item::new("config");
 ```
 
-How could a DaoDao core module use this?
+## How could a DaoDao core module use this?
 
 1. Add as a proposal module
 2. Pass a delegation message through another proposal module (single or multiple-choice) as a Wasm message (converted into Cosmos message)
@@ -75,6 +75,21 @@ How could a DaoDao core module use this?
 
 3. The delegate has the power to execute said proposal through the Delegate Proposal Module at any time up until expiration. Said execution would go through the DaoDao core module
 
-# Ideas for Improvement
 
-- Make expiration optional, and add a Veto execution message whereby the parent DAO would be able to veto a delegation
+# Smart Contract Risks
+Proposal modules can route arbitrary messages to
+the core module so we have to take special care.
+I can classify risks into these domains:
+* Un-authorized delegation  
+* Un-authorized execution
+* Un-authorized revocation
+* Multiple execution
+* Expired execution 
+
+Policy risks: 
+* Forbidden revoking when policy enabled
+* Does not preserve on failure when policy enabled
+
+
+Of all the risks, un-authorized delegation will definitely
+compromise the core module.
