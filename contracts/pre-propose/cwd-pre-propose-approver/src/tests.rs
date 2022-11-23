@@ -373,6 +373,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
         &cps::msg::ExecuteMsg::Vote {
             proposal_id: id,
             vote: position,
+            rationale: None,
         },
         &[],
     )

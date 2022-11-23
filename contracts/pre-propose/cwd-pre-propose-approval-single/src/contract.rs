@@ -354,15 +354,16 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 limit,
                 Order::Descending,
             )?),
-            QueryExt::ReversePendingProposals { start_after, limit } => {
-                to_binary(&paginate_map_values(
-                    deps,
-                    &PENDING_PROPOSALS,
-                    start_after,
-                    limit,
-                    Order::Ascending,
-                )?)
-            }
+            QueryExt::ReversePendingProposals {
+                start_before,
+                limit,
+            } => to_binary(&paginate_map_values(
+                deps,
+                &PENDING_PROPOSALS,
+                start_before,
+                limit,
+                Order::Ascending,
+            )?),
         },
         _ => PrePropose::default().query(deps, env, msg),
     }

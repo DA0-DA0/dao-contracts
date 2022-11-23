@@ -253,6 +253,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
         &cwd_proposal_single::msg::ExecuteMsg::Vote {
             proposal_id: id,
             vote: position,
+            rationale: None,
         },
         &[],
     )
@@ -904,7 +905,7 @@ fn test_pending_proposal_queries() {
             pre_propose,
             &QueryMsg::QueryExtension {
                 msg: QueryExt::ReversePendingProposals {
-                    start_after: None,
+                    start_before: None,
                     limit: None,
                 },
             },
