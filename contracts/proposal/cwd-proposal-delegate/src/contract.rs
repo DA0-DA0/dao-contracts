@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, OverflowError, Response, StdError,
-    StdResult, Storage,
+    to_binary, Binary, BlockInfo, Deps, DepsMut, Empty, Env, MessageInfo, OverflowError, Response,
+    StdError, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw_utils::Expiration;
 // use cw2::set_contract_version;
@@ -19,6 +19,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const DEFAULT_POLICY_IRREVOCABLE: bool = false;
 const DEFAULT_POLICY_PRESERVE_ON_FAILURE: bool = false;
+
+const REPLY_ID_EXECUTE_PROPOSAL_HOOK: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -138,9 +140,15 @@ fn execute_execute(
     }
     assert_not_expired(&expiration, &env.block)?;
 
-    // TODO(!): Route message to core DAO module
+    let Config { admin } = CONFIG.load(deps.storage)?;
+    let wasm_msg = WasmMsg::Execute {
+        contract_addr: admin.to_string(),
+        msg: to_binary(&cwd_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+        funds: vec![],
+    };
+    let submsg: SubMsg<Empty> = SubMsg::reply_always(wasm_msg, REPLY_ID_EXECUTE_PROPOSAL_HOOK);
 
-    Ok(Response::default())
+    Ok(Response::default().add_submessage(submsg))
 }
 
 // MARK: Helpers
