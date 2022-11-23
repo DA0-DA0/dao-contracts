@@ -1,10 +1,10 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin, DepsMut, StdResult, Uint128, StdError,OverflowOperation::Sub,OverflowError};
-use cw20::{Balance, Cw20CoinVerified};
+use cosmwasm_std::{Addr, DepsMut, StdResult, Uint128};
+use cw20::Balance;
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
-use crate::error::GenericError;
+use crate::balance::GenericBalance;
 
 #[cw_serde]
 pub struct Config {

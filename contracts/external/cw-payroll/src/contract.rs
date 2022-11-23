@@ -1,23 +1,22 @@
+use crate::balance::GenericBalance;
 use crate::error::ContractError;
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
-    StreamParams, StreamResponse,
+    StreamId, StreamParams, StreamResponse,
 };
-use crate::state::{save_stream, Config, GenericBalance, Stream, CONFIG, STREAMS, STREAM_SEQ};
+use crate::state::{save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
-    Uint128,
+    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Order, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use cw20::{Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Balance, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = "crates.io:cw20-streams";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
-
-type StreamId = u64;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -55,25 +54,49 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, info, id),
-        ExecuteMsg::PauseStream { id } => todo!(),
+        ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream {
             id,
             start_time,
             end_time,
-        } => todo!(),
+        } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::RemoveStream { id } => todo!(),
     }
 }
-
-pub fn execute_pause_stream(env: Env, deps: DepsMut, config: Config, id: StreamId) {
+pub fn execute_pause_stream(
+    env: Env,
+    deps: DepsMut,
+    info: MessageInfo,
+    id: StreamId,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    todo!();
+}
+pub fn execute_remove_stream(
+    env: Env,
+    deps: DepsMut,
+    info: MessageInfo,
+    id: StreamId,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    todo!();
+}
+pub fn execute_resume_stream(
+    env: Env,
+    deps: DepsMut,
+    info: MessageInfo,
+    id: StreamId,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
     todo!();
 }
 pub fn execute_create_stream(
     env: Env,
     deps: DepsMut,
-    config: Config,
+    info: MessageInfo,
     params: StreamParams,
 ) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
     let StreamParams {
         admin,
         recipient,
@@ -98,6 +121,7 @@ pub fn execute_create_stream(
     //       The problem with this is it restricts backdating,
     //       so all funds must vest before distribute (for good or bad)
     // TODO: start_time Could default to now?
+    // UPD: Fixed
     if start_time <= block_time && end_time <= block_time {
         return Err(ContractError::InvalidStartTime {});
     }
@@ -106,23 +130,61 @@ pub fn execute_create_stream(
         return Err(ContractError::InvalidEndTime {});
     }
 
-    let duration: Uint128 = (end_time - start_time).into();
+    let duration: u128 = (end_time - start_time).into();
+    let total_amount = Uint128::default();
+    let msgs: Vec<CosmosMsg> = vec![];
+    if !balance.native.is_empty() {
+        for coin in balance.native {
+            let refund: u128 = coin
+                .amount
+                .u128()
+                .checked_rem(duration)
+                .ok_or(ContractError::Overflow {})?;
 
-    if balance < duration {
-        return Err(ContractError::AmountLessThanDuration {});
+            if coin.amount.u128() < duration {
+                return Err(ContractError::AmountLessThanDuration {});
+            }
+            total_amount.checked_add(coin.amount);
+            if refund > 0 {
+                // TODO: Change to support native and fix cw20
+                let msg = CosmosMsg::Bank(BankMsg::Send {
+                    to_address: owner.into(),
+                    amount: vec![Coin {
+                        denom: coin.denom,
+                        amount: coin.amount,
+                    }],
+                });
+                msgs.push(msg);
+            }
+        }
     }
+    if !balance.cw20.is_empty() {
+        for coin in balance.cw20 {
+            let refund: u128 = coin
+                .amount
+                .u128()
+                .checked_rem(duration)
+                .ok_or(ContractError::Overflow {})?;
 
+            if coin.amount.u128() < duration {
+                return Err(ContractError::AmountLessThanDuration {});
+            }
+            total_amount.checked_add(coin.amount);
+            if refund > 0 {
+                // TODO: Change to support native and fix cw20
+                let cw20 = Cw20Contract(coin.address);
+                let msg = cw20.call(Cw20ExecuteMsg::Transfer {
+                    recipient: owner.into(),
+                    amount: refund.into(),
+                })?;
+                msgs.push(msg);
+            }
+        }
+    }
     // Duration must divide evenly into amount, so refund remainder
     // TODO: Change logic to work for cw20 & native
-    let refund: u128 = balance
-        .native
-        .u128()
-        .checked_rem(duration.u128())
-        .ok_or(ContractError::Overflow {})?;
 
-    let balance = balance - Uint128::new(refund);
-
-    let rate_per_second = balance / duration;
+    let rate_per_second = Uint128::from(total_amount.u128() / duration);
 
     let stream = Stream {
         admin: owner.clone(),
@@ -144,19 +206,12 @@ pub fn execute_create_stream(
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", admin.clone())
         .add_attribute("recipient", recipient)
-        .add_attribute("balance", balance.to_string())
+        .add_attribute("balance", total_amount.to_string())
         .add_attribute("start_time", start_time.to_string())
         .add_attribute("end_time", end_time.to_string());
 
-    if refund > 0 {
-        // TODO: Change to support native and fix cw20
-        let cw20 = Cw20Contract(config.cw20_addr);
-        let msg = cw20.call(Cw20ExecuteMsg::Transfer {
-            recipient: owner.into(),
-            amount: refund.into(),
-        })?;
-
-        response = response.add_message(msg);
+    if !msgs.is_empty() {
+        response = response.add_messages(msgs);
     }
     Ok(response)
 }
@@ -185,7 +240,7 @@ pub fn execute_receive(
         } => execute_create_stream(
             env,
             deps,
-            config,
+            info,
             // TODO: Change this, but still conform to standard
             StreamParams {
                 admin: wrapped.sender,
@@ -195,6 +250,8 @@ pub fn execute_receive(
                 end_time,
                 title: None,
                 description: None,
+                paused_time: None,
+                paused: false,
             },
         ),
     }

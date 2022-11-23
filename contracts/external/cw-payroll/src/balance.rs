@@ -1,6 +1,8 @@
-use cosmwasm_std::{Coin, StdError,OverflowOperation::Sub,OverflowError};
-use cw20::{Balance, Cw20CoinVerified};
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{Coin, OverflowError, OverflowOperation::Sub, StdError};
+use cw20::{Balance, Cw20CoinVerified};
+use cw_storage_plus::Index;
+use cw_utils::NativeBalance;
 
 use crate::error::GenericError;
 
@@ -10,8 +12,50 @@ pub struct GenericBalance {
     pub native: Vec<Coin>,
     pub cw20: Vec<Cw20CoinVerified>,
 }
-
-
+impl GenericBalance {
+    pub fn has_native(&self) -> bool {
+        !self.native.is_empty()
+    }
+    pub fn has_cw20(&self) -> bool {
+        !self.cw20.is_empty()
+    }
+    pub fn first_native(&self) -> Option<Coin> {
+        if self.has_native() {
+            return Some(self.native[0]);
+        }
+        None
+    }
+    pub fn first_cw20(&self) -> Option<Cw20CoinVerified> {
+        if self.has_cw20() {
+            return Some(self.cw20[0]);
+        }
+        None
+    }
+}
+impl From<Balance> for GenericBalance {
+    fn from(balance: Balance) -> GenericBalance {
+        match balance {
+            Balance::Native(balance) => GenericBalance {
+                native: balance.0,
+                cw20: vec![],
+            },
+            Balance::Cw20(token) => GenericBalance {
+                native: vec![],
+                cw20: vec![token],
+            },
+        }
+    }
+}
+impl Into<Balance> for GenericBalance {
+    fn into(self) -> Balance {
+        let res = if self.is_native() {
+            Balance::Native(NativeBalance(self.native))
+        } else {
+            Balance::Cw20(self.cw20[0])
+        };
+        res
+    }
+}
 impl GenericBalance {
     pub fn add_tokens(&mut self, add: Balance) {
         match add {
@@ -41,6 +85,48 @@ impl GenericBalance {
                 match index {
                     Some(idx) => self.cw20[idx].amount += token.amount,
                     None => self.cw20.push(token),
+                }
+            }
+        };
+    }
+    pub fn remove_tokens(&mut self, remove: Balance) {
+        match remove {
+            Balance::Native(balance) => {
+                for token in balance.0 {
+                    let index = self.native.iter().enumerate().find_map(|(i, exist)| {
+                        if exist.denom == token.denom {
+                            Some(i)
+                        } else {
+                            None
+                        }
+                    });
+                    match index {
+                        Some(idx) => self.native[idx].amount -= token.amount,
+                        None => {
+                            if let Some(ind) = index {
+                                self.native.remove(ind);
+                            }
+                            ()
+                        }
+                    }
+                }
+            }
+            Balance::Cw20(token) => {
+                let index = self.cw20.iter().enumerate().find_map(|(i, exist)| {
+                    if exist.address == token.address {
+                        Some(i)
+                    } else {
+                        None
+                    }
+                });
+                match index {
+                    Some(idx) => self.cw20[idx].amount -= token.amount,
+                    None => {
+                        if let Some(ind) = index {
+                            self.cw20.remove(ind);
+                        }
+                        ()
+                    }
                 }
             }
         };
@@ -154,6 +240,7 @@ impl FindAndMutate<'_, Cw20CoinVerified> for Vec<Cw20CoinVerified> {
                     }
                     std::cmp::Ordering::Greater => self[exist].amount -= sub.amount,
                 };
+
                 Ok(())
             }
             None => Err(GenericError::EmptyBalance {}),

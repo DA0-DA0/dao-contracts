@@ -703,6 +703,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "serde",

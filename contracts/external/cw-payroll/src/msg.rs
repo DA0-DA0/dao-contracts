@@ -1,18 +1,20 @@
-use crate::state::GenericBalance;
+use crate::balance::GenericBalance;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw20::Cw20ReceiveMsg;
+use cw20::{Cw20ReceiveMsg, Balance};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: Option<String>,
 }
+pub type StreamId = u64;
+
 
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Distribute {
-        id: u64, // Stream id
+        id: StreamId, // Stream id
     },
     // TODO: Add this! :D
     // TODO: Only called by stream admin
@@ -20,14 +22,14 @@ pub enum ExecuteMsg {
     //       vesting is stopped
     //       distribute of unlocked funds should be allowed (based on paused_time)
     PauseStream {
-        id: u64, // Stream id
+        id: StreamId, // Stream id
     },
     // TODO: Add this! :D
     // TODO: Only called by stream admin
     // NOTE: Removes any pause from a stream, 
     //       optionally can shift the start/end time if needed for vesting flexibility
     ResumeStream {
-        id: u64, // Stream id
+        id: StreamId, // Stream id
         start_time: Option<u64>,
         end_time: Option<u64>
     },
@@ -35,7 +37,7 @@ pub enum ExecuteMsg {
     // TODO: Only called by stream admin
     // NOTE: Remove returns funds to the admin
     RemoveStream {
-        id: u64, // Stream id
+        id: StreamId, // Stream id
     },
 }
 
