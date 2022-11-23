@@ -14,8 +14,8 @@ pub struct Delegation {
     pub msgs: Vec<CosmosMsg<Empty>>,
     pub expiration: Option<Expiration>,
 
-    pub policy_revocable: bool,
-    pub policy_allow_retry_on_failure: bool,
+    pub policy_irrevocable: bool,
+    pub policy_preserve_on_failure: bool,
 }
 
 pub const DELEGATIONS: Map<u64, Delegation> = Map::new("delegations");

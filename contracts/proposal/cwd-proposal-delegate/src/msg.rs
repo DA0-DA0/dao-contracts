@@ -15,12 +15,12 @@ pub enum ExecuteMsg {
         msgs: Vec<CosmosMsg<Empty>>,
         expiration: Option<Expiration>,
 
-        policy_revocable: bool,
-        policy_allow_retry_on_failure: bool,
+        policy_irrevocable: Option<bool>,
+        policy_preserve_on_failure: Option<bool>,
     },
     /// Fails if delegation is non-revocable
     RemoveDelegation { delegation_id: u64 },
-    /// Only delegate
+    /// Only delegate can execute
     Execute { delegation_id: u64 },
 }
 

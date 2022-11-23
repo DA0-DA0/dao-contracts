@@ -15,6 +15,9 @@ const CONTRACT_NAME: &str = "crates.io:cwd-proposal-delegate";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 */
 
+const DEFAULT_POLICY_IRREVOCABLE: bool = false;
+const DEFAULT_POLICY_PRESERVE_ON_FAILURE: bool = false;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -31,12 +34,41 @@ pub fn instantiate(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    _deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
-    _msg: ExecuteMsg,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    match msg {
+        ExecuteMsg::Delegate {
+            delegate,
+            msgs,
+            expiration,
+            policy_irrevocable,
+            policy_preserve_on_failure,
+        } => {
+            let policy_irrevocable = policy_irrevocable.unwrap_or(DEFAULT_POLICY_IRREVOCABLE);
+            let policy_preserve_on_failure =
+                policy_preserve_on_failure.unwrap_or(DEFAULT_POLICY_PRESERVE_ON_FAILURE);
+            let delegate = deps.api.addr_validate(&delegate)?;
+            execute_delegate(
+                deps,
+                env,
+                info,
+                Delegation {
+                    delegate,
+                    msgs,
+                    expiration,
+                    policy_irrevocable,
+                    policy_preserve_on_failure,
+                },
+            )
+        }
+        ExecuteMsg::RemoveDelegation { delegation_id } => {
+            execute_remove_delegation(deps, env, info, delegation_id)
+        }
+        ExecuteMsg::Execute { delegation_id } => execute_execute(deps, env, info, delegation_id),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
