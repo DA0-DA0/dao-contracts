@@ -268,7 +268,7 @@ export type QueryExt = {
 } | {
   reverse_pending_proposals: {
     limit?: number | null;
-    start_after?: number | null;
+    start_before?: number | null;
   };
 };
 export type CheckedDenom = {
