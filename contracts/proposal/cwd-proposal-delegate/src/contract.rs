@@ -1,13 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, OverflowError, Response, StdError, StdResult, Storage,
+    Binary, BlockInfo, Deps, DepsMut, Env, MessageInfo, OverflowError, Response, StdError,
+    StdResult, Storage,
 };
+use cw_utils::Expiration;
 // use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, Delegation, CONFIG, DELEGATION_COUNT};
+use crate::state::{Config, Delegation, CONFIG, DELEGATIONS, DELEGATION_COUNT};
 
 /*
 // version info for migration info
@@ -84,16 +86,38 @@ fn execute_delegate(
     info: MessageInfo,
     delegation: Delegation,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    let Config { admin } = CONFIG.load(deps.storage)?;
+    if info.sender != admin {
+        return Err(ContractError::Unauthorized {});
+    }
+    assert_not_expired(&delegation.expiration, &env.block)?;
+
+    let id = advance_delegation_count(deps.storage)?;
+    DELEGATIONS.save(deps.storage, id, &delegation)?;
+
+    Ok(Response::default().add_attribute("delegate_id", id.to_string()))
 }
 
 fn execute_remove_delegation(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     delegation_id: u64,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    let Config { admin } = CONFIG.load(deps.storage)?;
+    if info.sender != admin {
+        return Err(ContractError::Unauthorized {});
+    }
+    // If delegation is irrevocable, return Error
+    let Delegation {
+        policy_irrevocable, ..
+    } = DELEGATIONS.load(deps.storage, delegation_id)?;
+    if policy_irrevocable {
+        return Err(ContractError::DelegationIrrevocable {});
+    }
+    // Else remove the delegation
+    DELEGATIONS.remove(deps.storage, delegation_id);
+    Ok(Response::default())
 }
 
 fn execute_execute(
@@ -102,12 +126,26 @@ fn execute_execute(
     info: MessageInfo,
     delegation_id: u64,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
+    let Delegation {
+        delegate,
+        msgs,
+        expiration,
+        policy_preserve_on_failure,
+        ..
+    } = DELEGATIONS.load(deps.storage, delegation_id)?;
+    if delegate != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    assert_not_expired(&expiration, &env.block)?;
+
+    // TODO(!): Route message to core DAO module
+
+    Ok(Response::default())
 }
 
 // MARK: Helpers
 
-fn advance_delegate_id(store: &mut dyn Storage) -> StdResult<u64> {
+fn advance_delegation_count(store: &mut dyn Storage) -> StdResult<u64> {
     let lhs = DELEGATION_COUNT.may_load(store)?.unwrap_or_default();
     let res = lhs.checked_add(1);
     match res {
@@ -122,6 +160,22 @@ fn advance_delegate_id(store: &mut dyn Storage) -> StdResult<u64> {
                 operand2: 1.to_string(),
             },
         }),
+    }
+}
+
+fn assert_not_expired(
+    expiration: &Option<Expiration>,
+    block: &BlockInfo,
+) -> Result<(), ContractError> {
+    match expiration {
+        Some(e) => {
+            if e.is_expired(block) {
+                Err(ContractError::DelegationExpired {})
+            } else {
+                Ok(())
+            }
+        }
+        None => Ok(()),
     }
 }
 
