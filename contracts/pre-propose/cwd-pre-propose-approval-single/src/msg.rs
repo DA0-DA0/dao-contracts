@@ -1,6 +1,5 @@
-use crate::state::PendingProposal;
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, CosmosMsg, Empty};
+use cosmwasm_std::{CosmosMsg, Empty};
 use cwd_pre_propose_base::msg::{
     ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
 };
@@ -43,18 +42,18 @@ pub enum ExecuteExt {
 #[derive(QueryResponses)]
 pub enum QueryExt {
     /// List the approver address
-    #[returns(Addr)]
+    #[returns(cosmwasm_std::Addr)]
     Approver {},
     /// A pending proposal
-    #[returns(PendingProposal)]
+    #[returns(crate::state::PendingProposal)]
     PendingProposal { id: u64 },
     /// List of proposals awaiting approval
-    #[returns(Vec<PendingProposal>)]
+    #[returns(Vec<crate::state::PendingProposal>)]
     PendingProposals {
         start_after: Option<u64>,
         limit: Option<u32>,
     },
-    #[returns(Vec<PendingProposal>)]
+    #[returns(Vec<crate::state::PendingProposal>)]
     ReversePendingProposals {
         start_before: Option<u64>,
         limit: Option<u32>,
