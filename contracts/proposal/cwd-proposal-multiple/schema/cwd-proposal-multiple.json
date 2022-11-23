@@ -1824,7 +1824,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Lists all of the consumers of vote hooks for thismodule.",
+        "description": "Lists all of the consumers of vote hooks for this module.",
         "type": "object",
         "required": [
           "vote_hooks"
