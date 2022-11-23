@@ -9,7 +9,7 @@ use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{DAO_ADDRESS, GROUP_CONTRACT, TOTAL_WEIGHT, USER_WEIGHTS};
+use crate::state::{DAO, GROUP_CONTRACT, TOTAL_WEIGHT, USER_WEIGHTS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-voting-cw4";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -68,7 +68,7 @@ pub fn instantiate(
 
     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_GROUP_REPLY_ID);
 
-    DAO_ADDRESS.save(deps.storage, &info.sender)?;
+    DAO.save(deps.storage, &info.sender)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
@@ -153,7 +153,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
         QueryMsg::Info {} => query_info(deps),
         QueryMsg::GroupContract {} => to_binary(&GROUP_CONTRACT.load(deps.storage)?),
-        QueryMsg::Dao {} => to_binary(&DAO_ADDRESS.load(deps.storage)?),
+        QueryMsg::Dao {} => to_binary(&DAO.load(deps.storage)?),
     }
 }
 
@@ -204,7 +204,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                         return Err(ContractError::DuplicateGroupContract {});
                     }
                     let group_contract = deps.api.addr_validate(&res.contract_address)?;
-                    let dao_address = DAO_ADDRESS.load(deps.storage)?;
+                    let dao = DAO.load(deps.storage)?;
                     GROUP_CONTRACT.save(deps.storage, &group_contract)?;
                     let msg1 = WasmMsg::Execute {
                         contract_addr: group_contract.to_string(),
@@ -217,7 +217,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                     let msg2 = WasmMsg::Execute {
                         contract_addr: group_contract.to_string(),
                         msg: to_binary(&cw4_group::msg::ExecuteMsg::UpdateAdmin {
-                            admin: Some(dao_address.to_string()),
+                            admin: Some(dao.to_string()),
                         })?,
                         funds: vec![],
                     };

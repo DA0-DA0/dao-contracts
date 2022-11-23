@@ -17,5 +17,6 @@ proc-macro2 = { workspace = true }
 
 [dev-dependencies]
 cwd-interface = { workspace = true }
+cwd-hooks = { workspace = true }
+cwd-voting = { workspace = true }
 cosmwasm-std = { workspace = true }
-

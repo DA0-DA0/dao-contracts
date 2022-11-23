@@ -1045,7 +1045,9 @@ version = "0.2.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cwd-hooks",
  "cwd-interface",
+ "cwd-voting",
  "proc-macro2",
  "quote",
  "syn",

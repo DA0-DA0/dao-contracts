@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cwd_macros::{info_query, voting_query};
+use cwd_macros::voting_module_query;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -12,13 +12,10 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {}
 
-#[voting_query]
-#[info_query]
+#[voting_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(cosmwasm_std::Addr)]
-    Dao {},
     #[returns(cosmwasm_std::Addr)]
     StakingModule {},
 }

@@ -46,6 +46,7 @@ export interface CwdCoreReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ArrayOfString>;
+  info: () => Promise<InfoResponse>;
   proposalModules: ({
     limit,
     startAfter
@@ -82,7 +83,6 @@ export interface CwdCoreReadOnlyInterface {
   }: {
     height?: number;
   }) => Promise<TotalPowerAtHeightResponse>;
-  info: () => Promise<InfoResponse>;
 }
 export class CwdCoreQueryClient implements CwdCoreReadOnlyInterface {
   client: CosmWasmClient;
@@ -100,6 +100,7 @@ export class CwdCoreQueryClient implements CwdCoreReadOnlyInterface {
     this.dumpState = this.dumpState.bind(this);
     this.getItem = this.getItem.bind(this);
     this.listItems = this.listItems.bind(this);
+    this.info = this.info.bind(this);
     this.proposalModules = this.proposalModules.bind(this);
     this.activeProposalModules = this.activeProposalModules.bind(this);
     this.pauseInfo = this.pauseInfo.bind(this);
@@ -108,7 +109,6 @@ export class CwdCoreQueryClient implements CwdCoreReadOnlyInterface {
     this.daoURI = this.daoURI.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
-    this.info = this.info.bind(this);
   }
 
   admin = async (): Promise<Addr> => {
@@ -198,6 +198,11 @@ export class CwdCoreQueryClient implements CwdCoreReadOnlyInterface {
       }
     });
   };
+  info = async (): Promise<InfoResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      info: {}
+    });
+  };
   proposalModules = async ({
     limit,
     startAfter
@@ -278,11 +283,6 @@ export class CwdCoreQueryClient implements CwdCoreReadOnlyInterface {
       total_power_at_height: {
         height
       }
-    });
-  };
-  info = async (): Promise<InfoResponse> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      info: {}
     });
   };
 }

@@ -29,7 +29,6 @@ export interface CwdProposalSingleReadOnlyInterface {
     limit?: number;
     startBefore?: number;
   }) => Promise<ProposalListResponse>;
-  proposalCount: () => Promise<Uint64>;
   getVote: ({
     proposalId,
     voter
@@ -46,11 +45,12 @@ export interface CwdProposalSingleReadOnlyInterface {
     proposalId: number;
     startAfter?: string;
   }) => Promise<VoteListResponse>;
+  dao: () => Promise<Addr>;
+  info: () => Promise<InfoResponse>;
+  proposalCount: () => Promise<Uint64>;
   proposalCreationPolicy: () => Promise<ProposalCreationPolicy>;
   proposalHooks: () => Promise<HooksResponse>;
   voteHooks: () => Promise<HooksResponse>;
-  dao: () => Promise<Addr>;
-  info: () => Promise<InfoResponse>;
 }
 export class CwdProposalSingleQueryClient implements CwdProposalSingleReadOnlyInterface {
   client: CosmWasmClient;
@@ -63,14 +63,14 @@ export class CwdProposalSingleQueryClient implements CwdProposalSingleReadOnlyIn
     this.proposal = this.proposal.bind(this);
     this.listProposals = this.listProposals.bind(this);
     this.reverseProposals = this.reverseProposals.bind(this);
-    this.proposalCount = this.proposalCount.bind(this);
     this.getVote = this.getVote.bind(this);
     this.listVotes = this.listVotes.bind(this);
+    this.dao = this.dao.bind(this);
+    this.info = this.info.bind(this);
+    this.proposalCount = this.proposalCount.bind(this);
     this.proposalCreationPolicy = this.proposalCreationPolicy.bind(this);
     this.proposalHooks = this.proposalHooks.bind(this);
     this.voteHooks = this.voteHooks.bind(this);
-    this.dao = this.dao.bind(this);
-    this.info = this.info.bind(this);
   }
 
   config = async (): Promise<Config> => {
@@ -117,11 +117,6 @@ export class CwdProposalSingleQueryClient implements CwdProposalSingleReadOnlyIn
       }
     });
   };
-  proposalCount = async (): Promise<Uint64> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      proposal_count: {}
-    });
-  };
   getVote = async ({
     proposalId,
     voter
@@ -153,6 +148,21 @@ export class CwdProposalSingleQueryClient implements CwdProposalSingleReadOnlyIn
       }
     });
   };
+  dao = async (): Promise<Addr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao: {}
+    });
+  };
+  info = async (): Promise<InfoResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      info: {}
+    });
+  };
+  proposalCount = async (): Promise<Uint64> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      proposal_count: {}
+    });
+  };
   proposalCreationPolicy = async (): Promise<ProposalCreationPolicy> => {
     return this.client.queryContractSmart(this.contractAddress, {
       proposal_creation_policy: {}
@@ -166,16 +176,6 @@ export class CwdProposalSingleQueryClient implements CwdProposalSingleReadOnlyIn
   voteHooks = async (): Promise<HooksResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       vote_hooks: {}
-    });
-  };
-  dao = async (): Promise<Addr> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      dao: {}
-    });
-  };
-  info = async (): Promise<InfoResponse> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      info: {}
     });
   };
 }

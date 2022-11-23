@@ -8,7 +8,6 @@ import { CosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import { InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg, Addr, InfoResponse, ContractVersion, Uint128, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse } from "./CwdVotingStakingDenomStaked.types";
 export interface CwdVotingStakingDenomStakedReadOnlyInterface {
   contractAddress: string;
-  dao: () => Promise<Addr>;
   stakingModule: () => Promise<Addr>;
   votingPowerAtHeight: ({
     address,
@@ -22,6 +21,7 @@ export interface CwdVotingStakingDenomStakedReadOnlyInterface {
   }: {
     height?: number;
   }) => Promise<TotalPowerAtHeightResponse>;
+  dao: () => Promise<Addr>;
   info: () => Promise<InfoResponse>;
 }
 export class CwdVotingStakingDenomStakedQueryClient implements CwdVotingStakingDenomStakedReadOnlyInterface {
@@ -31,18 +31,13 @@ export class CwdVotingStakingDenomStakedQueryClient implements CwdVotingStakingD
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
-    this.dao = this.dao.bind(this);
     this.stakingModule = this.stakingModule.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
+    this.dao = this.dao.bind(this);
     this.info = this.info.bind(this);
   }
 
-  dao = async (): Promise<Addr> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      dao: {}
-    });
-  };
   stakingModule = async (): Promise<Addr> => {
     return this.client.queryContractSmart(this.contractAddress, {
       staking_module: {}
@@ -71,6 +66,11 @@ export class CwdVotingStakingDenomStakedQueryClient implements CwdVotingStakingD
       total_power_at_height: {
         height
       }
+    });
+  };
+  dao = async (): Promise<Addr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao: {}
     });
   };
   info = async (): Promise<InfoResponse> => {

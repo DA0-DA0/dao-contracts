@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use cwd_interface::Admin;
-use cwd_macros::{info_query, voting_query};
+use cwd_macros::voting_module_query;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -40,8 +40,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[voting_query]
-#[info_query]
+#[voting_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {

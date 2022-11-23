@@ -73,6 +73,8 @@ export type QueryMsg = {
     height?: number | null;
   };
 } | {
+  dao: {};
+} | {
   info: {};
 };
 export type Addr = string;

@@ -9,8 +9,6 @@ export interface InstantiateMsg {
 }
 export type ExecuteMsg = string;
 export type QueryMsg = {
-  dao: {};
-} | {
   staking_module: {};
 } | {
   voting_power_at_height: {
@@ -21,6 +19,8 @@ export type QueryMsg = {
   total_power_at_height: {
     height?: number | null;
   };
+} | {
+  dao: {};
 } | {
   info: {};
 };

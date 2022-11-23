@@ -1804,20 +1804,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the number of proposals that have been created in this module.",
-        "type": "object",
-        "required": [
-          "proposal_count"
-        ],
-        "properties": {
-          "proposal_count": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "Returns a voters position on a propsal.",
         "type": "object",
         "required": [
@@ -1887,6 +1873,48 @@
         "additionalProperties": false
       },
       {
+        "description": "Returns the address of the DAO this module belongs to",
+        "type": "object",
+        "required": [
+          "dao"
+        ],
+        "properties": {
+          "dao": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns contract version info",
+        "type": "object",
+        "required": [
+          "info"
+        ],
+        "properties": {
+          "info": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the number of proposals that have been created in this module.",
+        "type": "object",
+        "required": [
+          "proposal_count"
+        ],
+        "properties": {
+          "proposal_count": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Gets the current proposal creation policy for this module.",
         "type": "object",
         "required": [
@@ -1922,32 +1950,6 @@
         ],
         "properties": {
           "vote_hooks": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "dao"
-        ],
-        "properties": {
-          "dao": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "info"
-        ],
-        "properties": {
-          "info": {
             "type": "object",
             "additionalProperties": false
           }

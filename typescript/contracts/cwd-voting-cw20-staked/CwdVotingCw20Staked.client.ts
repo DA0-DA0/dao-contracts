@@ -10,7 +10,6 @@ import { ActiveThreshold, Uint128, Decimal, TokenInfo, StakingInfo, Duration, Lo
 export interface CwdVotingCw20StakedReadOnlyInterface {
   contractAddress: string;
   stakingContract: () => Promise<Addr>;
-  dao: () => Promise<Addr>;
   activeThreshold: () => Promise<ActiveThresholdResponse>;
   votingPowerAtHeight: ({
     address,
@@ -24,6 +23,7 @@ export interface CwdVotingCw20StakedReadOnlyInterface {
   }: {
     height?: number;
   }) => Promise<TotalPowerAtHeightResponse>;
+  dao: () => Promise<Addr>;
   info: () => Promise<InfoResponse>;
   tokenContract: () => Promise<Addr>;
   isActive: () => Promise<Boolean>;
@@ -36,10 +36,10 @@ export class CwdVotingCw20StakedQueryClient implements CwdVotingCw20StakedReadOn
     this.client = client;
     this.contractAddress = contractAddress;
     this.stakingContract = this.stakingContract.bind(this);
-    this.dao = this.dao.bind(this);
     this.activeThreshold = this.activeThreshold.bind(this);
     this.votingPowerAtHeight = this.votingPowerAtHeight.bind(this);
     this.totalPowerAtHeight = this.totalPowerAtHeight.bind(this);
+    this.dao = this.dao.bind(this);
     this.info = this.info.bind(this);
     this.tokenContract = this.tokenContract.bind(this);
     this.isActive = this.isActive.bind(this);
@@ -48,11 +48,6 @@ export class CwdVotingCw20StakedQueryClient implements CwdVotingCw20StakedReadOn
   stakingContract = async (): Promise<Addr> => {
     return this.client.queryContractSmart(this.contractAddress, {
       staking_contract: {}
-    });
-  };
-  dao = async (): Promise<Addr> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      dao: {}
     });
   };
   activeThreshold = async (): Promise<ActiveThresholdResponse> => {
@@ -83,6 +78,11 @@ export class CwdVotingCw20StakedQueryClient implements CwdVotingCw20StakedReadOn
       total_power_at_height: {
         height
       }
+    });
+  };
+  dao = async (): Promise<Addr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      dao: {}
     });
   };
   info = async (): Promise<InfoResponse> => {

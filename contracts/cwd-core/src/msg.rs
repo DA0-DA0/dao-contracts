@@ -4,7 +4,6 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
 use cwd_interface::ModuleInstantiateInfo;
-use cwd_macros::{info_query, voting_query};
 
 /// Information about an item to be stored in the items list.
 #[cw_serde]
@@ -39,10 +38,9 @@ pub struct InstantiateMsg {
     /// Instantiate information for the core contract's voting
     /// power module.
     pub voting_module_instantiate_info: ModuleInstantiateInfo,
-    /// Instantiate information for the core contract's
-    /// proposal modules.
-    // NOTE: the pre-propose-base package depends on it being the case
-    // that the core module instantiates its proposal module.
+    /// Instantiate information for the core contract's proposal modules.
+    /// NOTE: the pre-propose-base package depends on it being the case
+    /// that the core module instantiates its proposal module.
     pub proposal_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
 
     /// Initial information for arbitrary contract addresses to be
@@ -50,7 +48,7 @@ pub struct InstantiateMsg {
     /// items map. The value is an enum that either uses an existing
     /// address or instantiates a new contract.
     pub initial_items: Option<Vec<InitialItem>>,
-    /// Implements the DAO Star standard: https://daostar.one/EIP
+    /// Implements the DAO Star standard: <https://daostar.one/EIP>
     pub dao_uri: Option<String>,
 }
 
@@ -117,8 +115,8 @@ pub enum ExecuteMsg {
     /// instantiate info in `to_add` is used to create new modules and
     /// install them.
     UpdateProposalModules {
-        // NOTE: the pre-propose-base package depends on it being the
-        // case that the core module instantiates its proposal module.
+        /// NOTE: the pre-propose-base package depends on it being the
+        /// case that the core module instantiates its proposal module.
         to_add: Vec<ModuleInstantiateInfo>,
         to_disable: Vec<String>,
     },
@@ -133,8 +131,6 @@ pub enum ExecuteMsg {
     },
 }
 
-#[voting_query]
-#[info_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -185,6 +181,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Returns contract version info
+    #[returns(cwd_interface::voting::InfoResponse)]
+    Info {},
     /// Gets all proposal modules associated with the
     /// contract.
     #[returns(Vec<crate::state::ProposalModule>)]
@@ -212,9 +211,18 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    /// Implements the DAO Star standard: https://daostar.one/EIP
+    /// Implements the DAO Star standard: <https://daostar.one/EIP>
     #[returns(crate::query::DaoURIResponse)]
     DaoURI {},
+    /// Returns the voting power for an address at a given height.
+    #[returns(cwd_interface::voting::VotingPowerAtHeightResponse)]
+    VotingPowerAtHeight {
+        address: String,
+        height: Option<u64>,
+    },
+    /// Returns the total voting power at a given block height.
+    #[returns(cwd_interface::voting::TotalPowerAtHeightResponse)]
+    TotalPowerAtHeight { height: Option<u64> },
 }
 
 #[cw_serde]

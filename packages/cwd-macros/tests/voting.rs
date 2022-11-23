@@ -1,12 +1,11 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
-use cwd_macros::{info_query, voting_query};
+use cwd_macros::voting_module_query;
 
 /// enum for testing. Important that this derives things / has other
 /// attributes so we can be sure we aren't messing with other macros
 /// with ours.
-#[voting_query]
-#[info_query]
+#[voting_module_query]
 #[allow(dead_code)]
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -20,7 +19,7 @@ enum Test {
 }
 
 #[test]
-fn voting_query_derive() {
+fn voting_module_query_derive() {
     let _test = Test::VotingPowerAtHeight {
         address: "foo".to_string(),
         height: Some(10),
@@ -39,5 +38,6 @@ fn voting_query_derive() {
             address: _,
         }
         | Test::Info {} => "yay",
+        Test::Dao {} => "yay",
     };
 }

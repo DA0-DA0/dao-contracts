@@ -38,11 +38,11 @@ pub struct ModuleInstantiateInfo {
 }
 
 impl ModuleInstantiateInfo {
-    pub fn into_wasm_msg(self, dao_address: Addr) -> WasmMsg {
+    pub fn into_wasm_msg(self, dao: Addr) -> WasmMsg {
         WasmMsg::Instantiate {
             admin: self.admin.map(|admin| match admin {
                 Admin::Address { addr } => addr,
-                Admin::CoreModule {} => dao_address.into_string(),
+                Admin::CoreModule {} => dao.into_string(),
             }),
             code_id: self.code_id,
             msg: self.msg,

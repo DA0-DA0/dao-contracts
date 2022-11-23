@@ -58,12 +58,12 @@ fn cwd_interface_path(inside: &str) -> Path {
 /// For example:
 ///
 /// ```
-/// use cwd_macros::voting_query;
+/// use cwd_macros::voting_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cwd_interface::voting::TotalPowerAtHeightResponse;
 /// use cwd_interface::voting::VotingPowerAtHeightResponse;
 ///
-/// #[voting_query]
+/// #[voting_module_query]
 /// #[cw_serde]
 /// #[derive(QueryResponses)]
 /// enum QueryMsg {}
@@ -81,6 +81,8 @@ fn cwd_interface_path(inside: &str) -> Path {
 ///     TotalPowerAtHeight {
 ///       height: Option<u64>
 ///     },
+///     Dao {},
+///     Info {},
 /// }
 /// ```
 ///
@@ -90,13 +92,13 @@ fn cwd_interface_path(inside: &str) -> Path {
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use cwd_macros::voting_query;
+/// use cwd_macros::voting_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cwd_interface::voting::TotalPowerAtHeightResponse;
 /// use cwd_interface::voting::VotingPowerAtHeightResponse;
 ///
 /// #[derive(Clone)]
-/// #[voting_query]
+/// #[voting_module_query]
 /// #[allow(dead_code)]
 /// #[cw_serde]
 /// #[derive(QueryResponses)]
@@ -110,7 +112,8 @@ fn cwd_interface_path(inside: &str) -> Path {
 /// }
 /// ```
 #[proc_macro_attribute]
-pub fn voting_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+pub fn voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    let i = cwd_interface_path("voting::InfoResponse");
     let vp = cwd_interface_path("voting::VotingPowerAtHeightResponse");
     let tp = cwd_interface_path("voting::TotalPowerAtHeightResponse");
 
@@ -119,15 +122,23 @@ pub fn voting_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
         input,
         quote! {
         enum Right {
+            /// Returns the voting power for an address at a given height.
             #[returns(#vp)]
             VotingPowerAtHeight {
-            address: ::std::string::String,
-            height: ::std::option::Option<::std::primitive::u64>
+                address: ::std::string::String,
+                height: ::std::option::Option<::std::primitive::u64>
             },
+            /// Returns the total voting power at a given block heigh.
             #[returns(#tp)]
             TotalPowerAtHeight {
-            height: ::std::option::Option<::std::primitive::u64>
+                height: ::std::option::Option<::std::primitive::u64>
             },
+            /// Returns the address of the DAO this module belongs to.
+            #[returns(cosmwasm_std::Addr)]
+            Dao {},
+            /// Returns contract version info.
+            #[returns(#i)]
+            Info {}
         }
         }
         .into(),
@@ -250,65 +261,6 @@ pub fn active_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Adds the necessary fields to an enum such that it implements the
-/// interface needed to be a module that has an
-/// info query.
-///
-/// For example:
-///
-/// ```
-/// use cwd_macros::info_query;
-/// use cosmwasm_schema::{cw_serde, QueryResponses};
-/// use cwd_interface::voting::InfoResponse;
-///
-/// #[info_query]
-/// #[cw_serde]
-/// #[derive(QueryResponses)]
-/// enum QueryMsg {}
-/// ```
-///
-/// Will transform the enum to:
-///
-/// ```
-/// enum QueryMsg {
-///     Info {},
-/// }
-/// ```
-///
-/// Note that other derive macro invocations must occur after this
-/// procedural macro as they may depend on the new fields. For
-/// example, the following will fail becase the `Clone` derivation
-/// occurs before the addition of the field.
-///
-/// ```compile_fail
-/// use cwd_macros::info_query;
-///
-/// #[derive(Clone)]
-/// #[info_query]
-/// #[allow(dead_code)]
-/// enum Test {
-///     Foo,
-///     Bar(u64),
-///     Baz { foo: u64 },
-/// }
-/// ```
-#[proc_macro_attribute]
-pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
-    let i = cwd_interface_path("voting::InfoResponse");
-
-    merge_variants(
-        metadata,
-        input,
-        quote! {
-        enum Right {
-            #[returns(#i)]
-            Info { },
-        }
-        }
-        .into(),
-    )
-}
-
-/// Adds the necessary fields to an enum such that it implements the
 /// interface needed to be a proposal module.
 ///
 /// For example:
@@ -329,6 +281,9 @@ pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 /// enum QueryMsg {
 ///     Dao {},
+///     Info {},
+///     ProposalCreationPolicy {},
+///     ProposalHooks {},
 /// }
 /// ```
 ///
@@ -355,13 +310,31 @@ pub fn info_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// ```
 #[proc_macro_attribute]
 pub fn proposal_module_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
+    let i = cwd_interface_path("voting::InfoResponse");
+
     merge_variants(
         metadata,
         input,
         quote! {
         enum Right {
+            /// Returns the address of the DAO this module belongs to
             #[returns(::cosmwasm_std::Addr)]
-            Dao {}
+            Dao {},
+            /// Returns contract version info
+            #[returns(#i)]
+            Info { },
+            /// Returns the number of proposals that have been created in this module.
+            #[returns(::std::primitive::u64)]
+            ProposalCount {},
+            /// Gets the current proposal creation policy for this module.
+            #[returns(::cwd_voting::pre_propose::ProposalCreationPolicy)]
+            ProposalCreationPolicy {},
+            /// Lists all of the consumers of proposal hooks for this module.
+            #[returns(::cwd_hooks::HooksResponse)]
+            ProposalHooks {},
+            /// Lists all of the consumers of vote hooks for this module.
+            #[returns(::cwd_hooks::HooksResponse)]
+            VoteHooks {},
         }
         }
         .into(),

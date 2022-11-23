@@ -2,8 +2,8 @@ use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    register_staked_nft, register_unstaked_nft, Config, CONFIG, HOOKS, MAX_CLAIMS, NFT_BALANCES,
-    NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
+    register_staked_nft, register_unstaked_nft, Config, CONFIG, DAO, HOOKS, MAX_CLAIMS,
+    NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
 use cosmwasm_std::{
@@ -27,6 +27,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    DAO.save(deps.storage, &info.sender)?;
+
     let owner = msg
         .owner
         .as_ref()
@@ -267,6 +270,7 @@ pub fn execute_remove_hook(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
+        QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::NftClaims { address } => query_nft_claims(deps, address),
         QueryMsg::Hooks {} => query_hooks(deps),
         QueryMsg::VotingPowerAtHeight { address, height } => {
@@ -307,6 +311,11 @@ pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) ->
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let config = CONFIG.load(deps.storage)?;
     to_binary(&config)
+}
+
+pub fn query_dao(deps: Deps) -> StdResult<Binary> {
+    let dao = DAO.load(deps.storage)?;
+    to_binary(&dao)
 }
 
 pub fn query_nft_claims(deps: Deps, address: String) -> StdResult<Binary> {

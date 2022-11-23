@@ -305,6 +305,8 @@ export type QueryMsg = {
     start_after?: string | null;
   };
 } | {
+  info: {};
+} | {
   proposal_modules: {
     limit?: number | null;
     start_after?: string | null;
@@ -334,8 +336,6 @@ export type QueryMsg = {
   total_power_at_height: {
     height?: number | null;
   };
-} | {
-  info: {};
 };
 export type MigrateMsg = {
   from_v1: {
