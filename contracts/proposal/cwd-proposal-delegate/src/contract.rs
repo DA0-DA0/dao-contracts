@@ -8,7 +8,9 @@ use cw_utils::Expiration;
 // use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{
+    DelegationCountResponse, DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+};
 use crate::state::{Config, Delegation, CONFIG, DELEGATIONS, DELEGATION_COUNT, EXECUTE_CTX};
 
 /*
@@ -103,8 +105,25 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::DelegationCount {} => Ok(to_binary(&query_delegation_count(deps)?)?),
+        QueryMsg::Delegation { delegation_id } => {
+            Ok(to_binary(&query_delegation(deps, delegation_id)?)?)
+        }
+    }
+}
+
+// MARK: Query helpers
+
+fn query_delegation_count(deps: Deps) -> StdResult<DelegationCountResponse> {
+    let count = DELEGATION_COUNT.load(deps.storage)?;
+    Ok(DelegationCountResponse { count })
+}
+
+fn query_delegation(deps: Deps, delegation_id: u64) -> StdResult<DelegationResponse> {
+    let delegation = DELEGATIONS.load(deps.storage, delegation_id)?;
+    Ok(delegation)
 }
 
 // MARK: Execute subroutines

@@ -3,6 +3,8 @@ use cosmwasm_std::{CosmosMsg, Empty};
 
 use cw_utils::Expiration;
 
+use crate::state::Delegation;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: String,
@@ -26,4 +28,17 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(DelegationCountResponse)]
+    DelegationCount {},
+
+    #[returns(DelegationResponse)]
+    Delegation { delegation_id: u64 },
+}
+
+#[cw_serde]
+pub struct DelegationCountResponse {
+    pub count: u64,
+}
+
+pub type DelegationResponse = Delegation;
