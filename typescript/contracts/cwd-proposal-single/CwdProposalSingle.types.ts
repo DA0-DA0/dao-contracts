@@ -295,10 +295,6 @@ export type QueryMsg = {
     start_after?: string | null;
   };
 } | {
-  dao: {};
-} | {
-  info: {};
-} | {
   proposal_count: {};
 } | {
   proposal_creation_policy: {};
@@ -306,6 +302,12 @@ export type QueryMsg = {
   proposal_hooks: {};
 } | {
   vote_hooks: {};
+} | {
+  dao: {};
+} | {
+  info: {};
+} | {
+  next_proposal_id: {};
 };
 export type MigrateMsg = {
   from_v1: {

@@ -11,6 +11,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cwd-macros = { workspace = true }
 cw2 = { workspace = true }
+cwd-hooks = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

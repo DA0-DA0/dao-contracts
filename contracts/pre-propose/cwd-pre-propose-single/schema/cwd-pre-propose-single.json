@@ -332,34 +332,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Handles proposal hook fired by the associated proposal module when a proposal is created. By default, the base contract will return deposits proposals, when they are closed, when proposals are executed, or, if it is refunding failed.",
-        "type": "object",
-        "required": [
-          "proposal_created_hook"
-        ],
-        "properties": {
-          "proposal_created_hook": {
-            "type": "object",
-            "required": [
-              "proposal_id",
-              "proposer"
-            ],
-            "properties": {
-              "proposal_id": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "proposer": {
-                "type": "string"
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "Handles proposal hook fired by the associated proposal module when a proposal is completed (ie executed or rejected). By default, the base contract will return deposits proposals, when they are closed, when proposals are executed, or, if it is refunding failed.",
         "type": "object",
         "required": [

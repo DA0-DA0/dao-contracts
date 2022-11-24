@@ -117,13 +117,6 @@ export interface CwdPreProposeApprovalSingleInterface extends CwdPreProposeAppro
   }: {
     address: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  proposalCreatedHook: ({
-    proposalId,
-    proposer
-  }: {
-    proposalId: number;
-    proposer: string;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   proposalCompletedHook: ({
     newStatus,
     proposalId
@@ -148,7 +141,6 @@ export class CwdPreProposeApprovalSingleClient extends CwdPreProposeApprovalSing
     this.extension = this.extension.bind(this);
     this.addProposalSubmittedHook = this.addProposalSubmittedHook.bind(this);
     this.removeProposalSubmittedHook = this.removeProposalSubmittedHook.bind(this);
-    this.proposalCreatedHook = this.proposalCreatedHook.bind(this);
     this.proposalCompletedHook = this.proposalCompletedHook.bind(this);
   }
 
@@ -218,20 +210,6 @@ export class CwdPreProposeApprovalSingleClient extends CwdPreProposeApprovalSing
     return await this.client.execute(this.sender, this.contractAddress, {
       remove_proposal_submitted_hook: {
         address
-      }
-    }, fee, memo, funds);
-  };
-  proposalCreatedHook = async ({
-    proposalId,
-    proposer
-  }: {
-    proposalId: number;
-    proposer: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      proposal_created_hook: {
-        proposal_id: proposalId,
-        proposer
       }
     }, fee, memo, funds);
   };

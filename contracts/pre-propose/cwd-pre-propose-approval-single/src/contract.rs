@@ -16,9 +16,7 @@ use crate::msg::{
     ApproverProposeMessage, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,
     ProposeMessageInternal, QueryExt, QueryMsg,
 };
-use crate::state::{
-    advance_approval_id, PendingProposal, APPROVER, DEPOSIT_SNAPSHOT, PENDING_PROPOSALS,
-};
+use crate::state::{advance_approval_id, PendingProposal, APPROVER, PENDING_PROPOSALS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approval-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -49,10 +47,6 @@ pub fn execute(
 ) -> Result<Response, PreProposeError> {
     match msg {
         ExecuteMsg::Propose { msg } => execute_propose(deps, env, info, msg),
-        ExecuteMsg::ProposalCreatedHook {
-            proposal_id,
-            proposer,
-        } => execute_proposal_created_hook(deps, info, proposal_id, proposer),
 
         // TODO(zeke): why not use behavior of base?
         ExecuteMsg::AddProposalSubmittedHook { address } => {
@@ -165,47 +159,37 @@ pub fn execute_approve(
     match proposal {
         Some(proposal) => {
             let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
+
+            // Snapshot the deposit for the proposal that we're about
+            // to create.
+            let proposal_id = deps.querier.query_wasm_smart(
+                &proposal_module,
+                &cwd_interface::proposal::Query::NextProposalId {},
+            )?;
+            PrePropose::default().deposits.save(
+                deps.storage,
+                proposal_id,
+                &(
+                    proposal.deposit,
+                    Addr::unchecked(proposal.msg.proposer.as_ref().unwrap()),
+                ),
+            )?;
+
             let propose_messsage = WasmMsg::Execute {
                 contract_addr: proposal_module.into_string(),
                 msg: to_binary(&ProposeMessageInternal::Propose(proposal.msg))?,
                 funds: vec![],
             };
-
             PENDING_PROPOSALS.remove(deps.storage, id);
-            DEPOSIT_SNAPSHOT.save(deps.storage, &proposal.deposit)?;
 
             Ok(Response::default()
                 .add_message(propose_messsage)
                 .add_attribute("method", "proposal_approved")
-                .add_attribute("proposal", id.to_string()))
+                .add_attribute("approval_id", id.to_string())
+                .add_attribute("proposal_id", proposal_id.to_string()))
         }
         None => Err(PreProposeError::ProposalNotFound {}),
     }
-}
-
-pub fn execute_proposal_created_hook(
-    deps: DepsMut,
-    info: MessageInfo,
-    id: u64,
-    proposer: String,
-) -> Result<Response, PreProposeError> {
-    let proposer = deps.api.addr_validate(&proposer)?;
-    let pre_propose = PrePropose::default();
-    let proposal_module = pre_propose.proposal_module.load(deps.storage)?;
-    if info.sender != proposal_module {
-        return Err(PreProposeError::NotModule {});
-    }
-
-    let deposit = DEPOSIT_SNAPSHOT.load(deps.storage)?;
-    DEPOSIT_SNAPSHOT.remove(deps.storage);
-
-    pre_propose
-        .deposits
-        .save(deps.storage, id, &(deposit, proposer))?;
-
-    Ok(Response::default()
-        .add_attribute("method", "execute_new_proposal_hook")
-        .add_attribute("proposal_id", id.to_string()))
 }
 
 pub fn execute_reject(
