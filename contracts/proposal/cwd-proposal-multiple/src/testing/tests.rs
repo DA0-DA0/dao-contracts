@@ -3802,3 +3802,75 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     let balance = query_balance_cw20(&app, token_contract.to_string(), CREATOR_ADDR);
     assert_eq!(balance, Uint128::new(1));
 }
+
+// tests the next proposal id query.
+#[test]
+fn test_next_proposal_id() {
+    let mut app = App::default();
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: true,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 1);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal with 2 options
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let next_proposal_id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
+        .unwrap();
+    assert_eq!(next_proposal_id, 2);
+}

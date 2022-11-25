@@ -40,6 +40,12 @@ fn merge_variants(metadata: TokenStream, left: TokenStream, right: TokenStream) 
 /// cwd_interface. If we are currently compiling the cwd-interface
 /// crate, `crate::{internal}` is returned. If we are not,
 /// `::cwd_interface::{internal}` is returned.
+///
+/// The this is needed is that cwd_interface both defines types used
+/// in the interfaces here, and uses the macros exported here. At some
+/// point we'll be in a compilation context where we're inside of a
+/// crate as the macro is being expanded, and we need to use types
+/// local to the crate.
 fn cwd_interface_path(inside: &str) -> Path {
     let pkg = std::env::var("CARGO_PKG_NAME").unwrap();
     let base = if pkg == "cwd-interface" {
@@ -323,18 +329,10 @@ pub fn proposal_module_query(metadata: TokenStream, input: TokenStream) -> Token
             /// Returns contract version info
             #[returns(#i)]
             Info { },
-            /// Returns the number of proposals that have been created in this module.
+            /// Returns the proposal ID that will be assigned to the
+            /// next proposal created.
             #[returns(::std::primitive::u64)]
-            ProposalCount {},
-            /// Gets the current proposal creation policy for this module.
-            #[returns(::cwd_voting::pre_propose::ProposalCreationPolicy)]
-            ProposalCreationPolicy {},
-            /// Lists all of the consumers of proposal hooks for this module.
-            #[returns(::cwd_hooks::HooksResponse)]
-            ProposalHooks {},
-            /// Lists all of the consumers of vote hooks for this module.
-            #[returns(::cwd_hooks::HooksResponse)]
-            VoteHooks {},
+            NextProposalId {},
         }
         }
         .into(),

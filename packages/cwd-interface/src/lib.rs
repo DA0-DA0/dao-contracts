@@ -3,6 +3,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Binary, CosmosMsg, Empty, WasmMsg};
 
+pub mod proposal;
 pub mod voting;
 
 /// The cw-core interface.

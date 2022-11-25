@@ -200,3 +200,9 @@ pub(crate) fn query_proposal(app: &App, proposal_single: &Addr, id: u64) -> Prop
         .query_wasm_smart(proposal_single, &QueryMsg::Proposal { proposal_id: id })
         .unwrap()
 }
+
+pub(crate) fn query_next_proposal_id(app: &App, proposal_single: &Addr) -> u64 {
+    app.wrap()
+        .query_wasm_smart(proposal_single, &QueryMsg::NextProposalId {})
+        .unwrap()
+}

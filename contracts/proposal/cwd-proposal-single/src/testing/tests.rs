@@ -65,8 +65,10 @@ use crate::{
 };
 
 use super::{
-    do_votes::do_votes_staked_balances, execute::vote_on_proposal_with_rationale,
-    queries::query_vote, CREATOR_ADDR,
+    do_votes::do_votes_staked_balances,
+    execute::vote_on_proposal_with_rationale,
+    queries::{query_next_proposal_id, query_vote},
+    CREATOR_ADDR,
 };
 
 struct CommonTest {
@@ -2555,4 +2557,24 @@ fn test_rational_clobbered_on_revote() {
 
     let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
     assert_eq!(vote.vote.unwrap().rationale, rationale);
+}
+
+#[test]
+fn test_proposal_count_goes_up() {
+    let CommonTest {
+        mut app,
+        proposal_module,
+        gov_token,
+        core_addr,
+        ..
+    } = setup_test(vec![]);
+
+    let next = query_next_proposal_id(&app, &proposal_module);
+    assert_eq!(next, 2);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
+
+    let next = query_next_proposal_id(&app, &proposal_module);
+    assert_eq!(next, 3);
 }

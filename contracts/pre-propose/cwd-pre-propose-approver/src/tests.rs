@@ -64,8 +64,7 @@ fn pre_propose_approver_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
-    )
-    .with_reply(crate::contract::reply);
+    );
     Box::new(contract)
 }
 
@@ -1117,21 +1116,6 @@ fn test_permissions() {
         }),
         false, // no open proposal submission.
     );
-
-    let err: PreProposeError = app
-        .execute_contract(
-            Addr::unchecked("notmodule"),
-            pre_propose.clone(),
-            &ExecuteMsg::ProposalCreatedHook {
-                proposal_id: 1,
-                proposer: "ekez".to_string(),
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, PreProposeError::NotModule {});
 
     let err: PreProposeError = app
         .execute_contract(

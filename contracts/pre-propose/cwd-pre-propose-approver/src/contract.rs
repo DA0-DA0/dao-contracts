@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response,
-    StdError, StdResult, SubMsg, SubMsgResult, WasmMsg,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    WasmMsg,
 };
 use cw2::set_contract_version;
 
@@ -16,14 +16,12 @@ use cwd_voting::status::Status;
 use crate::msg::{
     BaseInstantiateMsg, ExecuteMsg, InstantiateMsg, ProposeMessageInternal, QueryExt, QueryMsg,
 };
-use crate::state::{CURRENT_PRE_PROPOSE_ID, PRE_PROPOSE_APPROVAL_CONTRACT, PROPOSAL_IDS};
+use crate::state::{PRE_PROPOSE_APPROVAL_CONTRACT, PROPOSAL_IDS};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cwd-pre-propose-approver";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 type PrePropose = PreProposeContract<Empty, Empty, QueryExt, ApproverProposeMessage>;
-
-const APPROVER_PROPOSE_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -121,21 +119,19 @@ pub fn execute_propose(
         ),
     };
 
-    // Get proposal id from submessage
     let proposal_module = PrePropose::default().proposal_module.load(deps.storage)?;
-    let propose_messsage = SubMsg::reply_on_success(
-        WasmMsg::Execute {
-            contract_addr: proposal_module.into_string(),
-            msg: to_binary(&sanitized_msg)?,
-            funds: vec![],
-        },
-        APPROVER_PROPOSE_REPLY_ID,
-    );
+    let proposal_id = deps.querier.query_wasm_smart(
+        &proposal_module,
+        &cwd_interface::proposal::Query::NextProposalId {},
+    )?;
+    PROPOSAL_IDS.save(deps.storage, proposal_id, &pre_propose_id)?;
 
-    // Save current pre-propose-id for use in submessage reply
-    CURRENT_PRE_PROPOSE_ID.save(deps.storage, &pre_propose_id)?;
-
-    Ok(Response::default().add_submessage(propose_messsage))
+    let propose_messsage = WasmMsg::Execute {
+        contract_addr: proposal_module.into_string(),
+        msg: to_binary(&sanitized_msg)?,
+        funds: vec![],
+    };
+    Ok(Response::default().add_message(propose_messsage))
 }
 
 pub fn execute_proposal_completed(
@@ -194,32 +190,5 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             }
         },
         _ => PrePropose::default().query(deps, env, msg),
-    }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, PreProposeError> {
-    match msg.id {
-        APPROVER_PROPOSE_REPLY_ID => {
-            match msg.result {
-                SubMsgResult::Ok(result) => {
-                    let pre_propose_id = CURRENT_PRE_PROPOSE_ID.load(deps.storage)?;
-
-                    // Parse SubMessageResponse to get proposal id
-                    let event = &result.events[result.events.len() - 1];
-                    let proposal_id = event.attributes[event.attributes.len() - 1]
-                        .value
-                        .trim()
-                        .parse::<u64>()?;
-
-                    // Save mapping of proposal id to pre propose id
-                    PROPOSAL_IDS.save(deps.storage, proposal_id, &pre_propose_id)?;
-
-                    Ok(Response::default())
-                }
-                SubMsgResult::Err(e) => Err(PreProposeError::Std(StdError::GenericErr { msg: e })),
-            }
-        }
-        _ => Err(PreProposeError::UnknownReplyID {}),
     }
 }
