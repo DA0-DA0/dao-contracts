@@ -77,12 +77,6 @@ pub enum ExecuteMsg<ProposalMessage, ExecuteExt> {
     /// Removes a proposal submitted hook. Only the DAO may call this method.
     RemoveProposalSubmittedHook { address: String },
 
-    /// Handles proposal hook fired by the associated proposal module when a
-    /// proposal is created. By default, the base contract will return deposits
-    /// proposals, when they are closed, when proposals are executed, or,
-    /// if it is refunding failed.
-    ProposalCreatedHook { proposal_id: u64, proposer: String },
-
     /// Handles proposal hook fired by the associated proposal
     /// module when a proposal is completed (ie executed or rejected).
     /// By default, the base contract will return deposits

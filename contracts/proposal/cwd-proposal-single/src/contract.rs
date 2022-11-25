@@ -22,7 +22,7 @@ use cwd_voting::threshold::Threshold;
 use cwd_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
 use crate::msg::{MigrateMsg, ProposeMsg};
-use crate::proposal::SingleChoiceProposal;
+use crate::proposal::{next_proposal_id, SingleChoiceProposal};
 use crate::state::{Config, CREATION_POLICY};
 
 use crate::v1_state::{
@@ -244,29 +244,6 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer.as_str())?;
-
-    // Add prepropose / deposit module hook which will save deposit info. This
-    // needs to be called after execute_propose because we don't know the
-    // proposal ID beforehand.
-    let hooks = match proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => hooks,
-        ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeHookMsg::ProposalCreatedHook {
-                proposal_id: id,
-                proposer: proposer.into_string(),
-            })?;
-            let mut hooks = hooks;
-            hooks.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                failed_pre_propose_module_hook_id(),
-            ));
-            hooks
-        }
-    };
 
     Ok(Response::default()
         .add_submessages(hooks)
@@ -732,6 +709,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListProposals { start_after, limit } => {
             query_list_proposals(deps, env, start_after, limit)
         }
+        QueryMsg::NextProposalId {} => query_next_proposal_id(deps),
         QueryMsg::ProposalCount {} => query_proposal_count(deps),
         QueryMsg::GetVote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
         QueryMsg::ListVotes {
@@ -811,6 +789,10 @@ pub fn query_reverse_proposals(
 pub fn query_proposal_count(deps: Deps) -> StdResult<Binary> {
     let proposal_count = PROPOSAL_COUNT.load(deps.storage)?;
     to_binary(&proposal_count)
+}
+
+pub fn query_next_proposal_id(deps: Deps) -> StdResult<Binary> {
+    to_binary(&next_proposal_id(deps.storage)?)
 }
 
 pub fn query_vote(deps: Deps, proposal_id: u64, voter: String) -> StdResult<Binary> {

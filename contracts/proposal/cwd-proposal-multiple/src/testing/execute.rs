@@ -63,7 +63,7 @@ pub fn make_proposal(
     };
 
     // Make the proposal.
-    let res = match proposal_creation_policy {
+    match proposal_creation_policy {
         ProposalCreationPolicy::Anyone {} => app
             .execute_contract(
                 Addr::unchecked(proposer),
@@ -93,18 +93,11 @@ pub fn make_proposal(
             .unwrap(),
     };
 
-    // The new proposal hook is the last message that fires in
-    // this process so we get the proposal ID from it's
-    // attributes. We could do this by looking at the proposal
-    // creation attributes but this changes relative position
-    // depending on if a cw20 or native deposit is being used.
-    let attrs = res.custom_attrs(res.events.len() - 1);
-    let id = attrs[attrs.len() - 1]
-        .value
-        .parse()
-        // If the proposal creation policy doesn't involve a
-        // pre-propose module, no hook so we do it manaually.
-        .unwrap_or_else(|_| res.custom_attrs(1)[2].value.parse().unwrap());
+    let id: u64 = app
+        .wrap()
+        .query_wasm_smart(proposal_multiple, &QueryMsg::NextProposalId {})
+        .unwrap();
+    let id = id - 1;
 
     // Check that the proposal was created as expected.
     let proposal: ProposalResponse = app

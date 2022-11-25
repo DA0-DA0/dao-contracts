@@ -398,7 +398,7 @@ fn approve_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64)
     // Parse attrs from approve_proposal response
     let attrs = res.custom_attrs(res.events.len() - 1);
     // Return ID
-    attrs[attrs.len() - 1].value.parse().unwrap()
+    attrs[attrs.len() - 2].value.parse().unwrap()
 }
 
 fn reject_proposal(app: &mut App, module: Addr, sender: &str, proposal_id: u64) {
@@ -971,21 +971,6 @@ fn test_permissions() {
         }),
         false, // no open proposal submission.
     );
-
-    let err: PreProposeError = app
-        .execute_contract(
-            Addr::unchecked("notmodule"),
-            pre_propose.clone(),
-            &ExecuteMsg::ProposalCreatedHook {
-                proposal_id: 1,
-                proposer: "ekez".to_string(),
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, PreProposeError::NotModule {});
 
     let err: PreProposeError = app
         .execute_contract(

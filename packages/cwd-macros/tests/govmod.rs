@@ -23,9 +23,6 @@ fn proposal_module_query_derive() {
     match test {
         Test::Foo | Test::Bar(_) | Test::Baz { .. } | Test::Dao {} => "yay",
         Test::Info {} => "yay",
-        Test::ProposalCount {} => "yay",
-        Test::ProposalCreationPolicy {} => "yay",
-        Test::ProposalHooks {} => "yay",
-        Test::VoteHooks {} => "yay",
+        Test::NextProposalId {} => "yay",
     };
 }

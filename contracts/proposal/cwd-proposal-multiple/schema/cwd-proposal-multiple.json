@@ -1754,34 +1754,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Returns the address of the DAO this module belongs to",
-        "type": "object",
-        "required": [
-          "dao"
-        ],
-        "properties": {
-          "dao": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "description": "Returns contract version info",
-        "type": "object",
-        "required": [
-          "info"
-        ],
-        "properties": {
-          "info": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "Returns the number of proposals that have been created in this module.",
         "type": "object",
         "required": [
@@ -1831,6 +1803,48 @@
         ],
         "properties": {
           "vote_hooks": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the address of the DAO this module belongs to",
+        "type": "object",
+        "required": [
+          "dao"
+        ],
+        "properties": {
+          "dao": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns contract version info",
+        "type": "object",
+        "required": [
+          "info"
+        ],
+        "properties": {
+          "info": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Returns the proposal ID that will be assigned to the next proposal created.",
+        "type": "object",
+        "required": [
+          "next_proposal_id"
+        ],
+        "properties": {
+          "next_proposal_id": {
             "type": "object",
             "additionalProperties": false
           }
@@ -3460,6 +3474,13 @@
           "additionalProperties": false
         }
       }
+    },
+    "next_proposal_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "uint64",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "proposal": {
       "$schema": "http://json-schema.org/draft-07/schema#",

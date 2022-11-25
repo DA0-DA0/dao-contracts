@@ -19,10 +19,6 @@ pub struct PendingProposal {
 pub const APPROVER: Item<Addr> = Item::new("approver");
 pub const PENDING_PROPOSALS: Map<u64, PendingProposal> = Map::new("pending_proposals");
 
-/// Used internally to transition an approval deposit to a proposal
-/// deposit when new proposals are created.
-pub(crate) const DEPOSIT_SNAPSHOT: Item<Option<CheckedDepositInfo>> = Item::new("ds");
-
 /// Used internally to track the current approval_id.
 const CURRENT_ID: Item<u64> = Item::new("current_id");
 
