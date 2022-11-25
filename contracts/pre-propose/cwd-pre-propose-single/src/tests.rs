@@ -178,28 +178,26 @@ fn make_proposal(
     proposer: &str,
     funds: &[Coin],
 ) -> u64 {
-    let res = app
-        .execute_contract(
-            Addr::unchecked(proposer),
-            pre_propose,
-            &ExecuteMsg::Propose {
-                msg: ProposeMessage::Propose {
-                    title: "title".to_string(),
-                    description: "description".to_string(),
-                    msgs: vec![],
-                },
+    app.execute_contract(
+        Addr::unchecked(proposer),
+        pre_propose,
+        &ExecuteMsg::Propose {
+            msg: ProposeMessage::Propose {
+                title: "title".to_string(),
+                description: "description".to_string(),
+                msgs: vec![],
             },
-            funds,
-        )
-        .unwrap();
+        },
+        funds,
+    )
+    .unwrap();
 
-    // The new proposal hook is the last message that fires in
-    // this process so we get the proposal ID from it's
-    // attributes. We could do this by looking at the proposal
-    // creation attributes but this changes relative position
-    // depending on if a cw20 or native deposit is being used.
-    let attrs = res.custom_attrs(res.events.len() - 1);
-    let id = attrs[attrs.len() - 1].value.parse().unwrap();
+    let id: u64 = app
+        .wrap()
+        .query_wasm_smart(&proposal_module, &cps::msg::QueryMsg::NextProposalId {})
+        .unwrap();
+    let id = id - 1;
+
     let proposal: ProposalResponse = app
         .wrap()
         .query_wasm_smart(
@@ -772,21 +770,6 @@ fn test_permissions() {
         }),
         false, // no open proposal submission.
     );
-
-    let err: PreProposeError = app
-        .execute_contract(
-            Addr::unchecked("notmodule"),
-            pre_propose.clone(),
-            &ExecuteMsg::ProposalCreatedHook {
-                proposal_id: 1,
-                proposer: "ekez".to_string(),
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, PreProposeError::NotModule {});
 
     let err: PreProposeError = app
         .execute_contract(

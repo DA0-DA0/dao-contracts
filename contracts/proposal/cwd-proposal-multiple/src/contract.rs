@@ -242,28 +242,6 @@ pub fn execute_propose(
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
     let hooks = new_proposal_hooks(PROPOSAL_HOOKS, deps.storage, id, proposer.as_str())?;
-    // Add prepropose / deposit module hook which will save deposit info. This
-    // needs to be called after execute_propose because we don't know the
-    // proposal ID beforehand.
-    let hooks = match proposal_creation_policy {
-        ProposalCreationPolicy::Anyone {} => hooks,
-        ProposalCreationPolicy::Module { addr } => {
-            let msg = to_binary(&PreProposeMsg::ProposalCreatedHook {
-                proposal_id: id,
-                proposer: proposer.into_string(),
-            })?;
-            let mut hooks = hooks;
-            hooks.push(SubMsg::reply_on_error(
-                WasmMsg::Execute {
-                    contract_addr: addr.into_string(),
-                    msg,
-                    funds: vec![],
-                },
-                failed_pre_propose_module_hook_id(),
-            ));
-            hooks
-        }
-    };
 
     Ok(Response::default()
         .add_submessages(hooks)
@@ -699,8 +677,12 @@ pub fn remove_hook(
     Ok(())
 }
 
+pub fn next_proposal_id(store: &dyn Storage) -> StdResult<u64> {
+    Ok(PROPOSAL_COUNT.may_load(store)?.unwrap_or_default() + 1)
+}
+
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
-    let id: u64 = PROPOSAL_COUNT.load(store)? + 1;
+    let id: u64 = next_proposal_id(store)?;
     PROPOSAL_COUNT.save(store, &id)?;
     Ok(id)
 }
@@ -713,6 +695,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListProposals { start_after, limit } => {
             query_list_proposals(deps, env, start_after, limit)
         }
+        QueryMsg::NextProposalId {} => query_next_proposal_id(deps),
         QueryMsg::ProposalCount {} => query_proposal_count(deps),
         QueryMsg::GetVote { proposal_id, voter } => query_vote(deps, proposal_id, voter),
         QueryMsg::ListVotes {
@@ -788,6 +771,10 @@ pub fn query_reverse_proposals(
         .collect::<StdResult<Vec<ProposalResponse>>>()?;
 
     to_binary(&ProposalListResponse { proposals: props })
+}
+
+pub fn query_next_proposal_id(deps: Deps) -> StdResult<Binary> {
+    to_binary(&next_proposal_id(deps.storage)?)
 }
 
 pub fn query_proposal_count(deps: Deps) -> StdResult<Binary> {

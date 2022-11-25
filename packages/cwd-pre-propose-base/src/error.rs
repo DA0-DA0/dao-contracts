@@ -1,5 +1,3 @@
-use std::num::ParseIntError;
-
 use cosmwasm_std::StdError;
 use cw_denom::DenomError;
 use cw_utils::ParseReplyError;
@@ -24,9 +22,6 @@ pub enum PreProposeError {
 
     #[error(transparent)]
     ParseReplyError(#[from] ParseReplyError),
-
-    #[error(transparent)]
-    ParseIntError(#[from] ParseIntError),
 
     #[error("Message sender is not proposal module")]
     NotModule {},

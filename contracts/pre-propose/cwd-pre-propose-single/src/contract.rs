@@ -99,13 +99,6 @@ pub fn execute(
         ExecuteMsg::RemoveProposalSubmittedHook { address } => {
             ExecuteInternal::RemoveProposalSubmittedHook { address }
         }
-        ExecuteMsg::ProposalCreatedHook {
-            proposal_id,
-            proposer,
-        } => ExecuteInternal::ProposalCreatedHook {
-            proposal_id,
-            proposer,
-        },
         ExecuteMsg::ProposalCompletedHook {
             proposal_id,
             new_status,

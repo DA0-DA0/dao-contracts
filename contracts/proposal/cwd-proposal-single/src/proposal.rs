@@ -36,8 +36,12 @@ pub struct SingleChoiceProposal {
     pub allow_revoting: bool,
 }
 
+pub fn next_proposal_id(store: &dyn Storage) -> StdResult<u64> {
+    Ok(PROPOSAL_COUNT.may_load(store)?.unwrap_or_default() + 1)
+}
+
 pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
-    let id: u64 = PROPOSAL_COUNT.may_load(store)?.unwrap_or_default() + 1;
+    let id: u64 = next_proposal_id(store)?;
     PROPOSAL_COUNT.save(store, &id)?;
     Ok(id)
 }
@@ -237,7 +241,10 @@ impl SingleChoiceProposal {
 #[cfg(test)]
 mod test {
     use super::*;
-    use cosmwasm_std::{testing::mock_env, Decimal};
+    use cosmwasm_std::{
+        testing::{mock_dependencies, mock_env},
+        Decimal,
+    };
 
     fn setup_prop(
         threshold: Threshold,
@@ -1082,5 +1089,22 @@ mod test {
             true,
             false
         ));
+    }
+
+    #[test]
+    fn test_proposal_ids_advance() {
+        // do they advance, lets find out!
+        let storage = &mut mock_dependencies().storage;
+        let next = next_proposal_id(storage).unwrap();
+        assert_eq!(next, 1);
+
+        let now = advance_proposal_id(storage).unwrap();
+        assert_eq!(now, next);
+
+        let next = next_proposal_id(storage).unwrap();
+        assert_eq!(next, 2);
+
+        let now = advance_proposal_id(storage).unwrap();
+        assert_eq!(now, next);
     }
 }
