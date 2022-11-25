@@ -33,11 +33,6 @@ export type ExecuteMsg = {
     address: string;
   };
 } | {
-  proposal_created_hook: {
-    proposal_id: number;
-    proposer: string;
-  };
-} | {
   proposal_completed_hook: {
     new_status: Status;
     proposal_id: number;

@@ -81,7 +81,7 @@ where
         msg: ExecuteMsg<ProposalMessage, ExecuteExt>,
     ) -> Result<Response, PreProposeError> {
         match msg {
-            ExecuteMsg::Propose { msg } => self.execute_propose(deps.as_ref(), env, info, msg),
+            ExecuteMsg::Propose { msg } => self.execute_propose(deps, env, info, msg),
             ExecuteMsg::UpdateConfig {
                 deposit_info,
                 open_proposal_submission,
@@ -95,10 +95,6 @@ where
             ExecuteMsg::RemoveProposalSubmittedHook { address } => {
                 self.execute_remove_proposal_submitted_hook(deps, info, address)
             }
-            ExecuteMsg::ProposalCreatedHook {
-                proposal_id,
-                proposer,
-            } => self.execute_proposal_created_hook(deps, info, proposal_id, proposer),
             ExecuteMsg::ProposalCompletedHook {
                 proposal_id,
                 new_status,
@@ -110,7 +106,7 @@ where
 
     pub fn execute_propose(
         &self,
-        deps: Deps,
+        deps: DepsMut,
         env: Env,
         info: MessageInfo,
         msg: ProposalMessage,
@@ -139,6 +135,19 @@ where
         };
 
         let proposal_module = self.proposal_module.load(deps.storage)?;
+
+        // Snapshot the deposit using the ID of the proposal that we
+        // will create.
+        let next_id = deps.querier.query_wasm_smart(
+            &proposal_module,
+            &cwd_interface::proposal::Query::NextProposalId {},
+        )?;
+        self.deposits.save(
+            deps.storage,
+            next_id,
+            &(config.deposit_info, info.sender.clone()),
+        )?;
+
         let propose_messsage = WasmMsg::Execute {
             contract_addr: proposal_module.into_string(),
             msg: to_binary(&msg)?,
@@ -159,10 +168,13 @@ where
         Ok(Response::default()
             .add_attribute("method", "execute_propose")
             .add_attribute("sender", info.sender)
-            .add_attribute("deposit_info", to_binary(&config.deposit_info)?.to_string())
+            // It's important that the propose message is
+            // first. Otherwise, a hook receiver could create a
+            // proposal before us and invalidate our `NextProposalId
+            // {}` query.
+            .add_message(propose_messsage)
             .add_submessages(hooks_msgs)
-            .add_messages(deposit_messages)
-            .add_message(propose_messsage))
+            .add_messages(deposit_messages))
     }
 
     pub fn execute_update_config(
@@ -280,7 +292,11 @@ where
             return Err(PreProposeError::NotModule {});
         }
 
-        // These are the only proposal statuses we handle deposits for.
+        // If we receive a proposal completed hook from a proposal
+        // module, and it is not in one of these states, something
+        // bizare has happened. In that event, this message errors
+        // which ought to cause the proposal module to remove this
+        // module and open proposal submission to anyone.
         if new_status != Status::Closed && new_status != Status::Executed {
             return Err(PreProposeError::NotClosedOrExecuted { status: new_status });
         }
@@ -322,35 +338,6 @@ where
                 .add_attribute("method", "execute_proposal_completed_hook")
                 .add_attribute("proposal", id.to_string())),
         }
-    }
-
-    pub fn execute_proposal_created_hook(
-        &self,
-        deps: DepsMut,
-        info: MessageInfo,
-        id: u64,
-        proposer: String,
-    ) -> Result<Response, PreProposeError> {
-        let proposer = deps.api.addr_validate(&proposer)?;
-        let proposal_module = self.proposal_module.load(deps.storage)?;
-        if info.sender != proposal_module {
-            return Err(PreProposeError::NotModule {});
-        }
-
-        // Save the deposit.
-        //
-        // It is possibe that a malicious proposal hook could run
-        // before us and update our config! We don't have to worry
-        // about this though as the only way to be able to update our
-        // config is to have root on the code module and if someone
-        // has that we're totally screwed anyhow.
-        let config = self.config.load(deps.storage)?;
-        self.deposits
-            .save(deps.storage, id, &(config.deposit_info, proposer))?;
-
-        Ok(Response::default()
-            .add_attribute("method", "execute_new_proposal_hook")
-            .add_attribute("proposal_id", id.to_string()))
     }
 
     pub fn check_can_submit(&self, deps: Deps, who: Addr) -> Result<(), PreProposeError> {

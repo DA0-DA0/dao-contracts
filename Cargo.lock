@@ -1036,6 +1036,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw2 0.16.0",
+ "cwd-hooks",
  "cwd-macros",
 ]
 

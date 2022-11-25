@@ -202,6 +202,18 @@ pub enum QueryMsg {
         /// query. If no limit is specified a max of 30 are returned.
         limit: Option<u64>,
     },
+    /// Returns the number of proposals that have been created in this module.
+    #[returns(::std::primitive::u64)]
+    ProposalCount {},
+    /// Gets the current proposal creation policy for this module.
+    #[returns(::cwd_voting::pre_propose::ProposalCreationPolicy)]
+    ProposalCreationPolicy {},
+    /// Lists all of the consumers of proposal hooks for this module.
+    #[returns(::cwd_hooks::HooksResponse)]
+    ProposalHooks {},
+    /// Lists all of the consumers of vote hooks for this module.
+    #[returns(::cwd_hooks::HooksResponse)]
+    VoteHooks {},
 }
 
 #[cw_serde]
