@@ -39,9 +39,9 @@ pub struct InstantiateMsg {
 }
 
 /// The contents of a message to create a proposal.
-// We break this type out of `ExecuteMsg` because we want pre-propose
-// modules that interact with this contract to be able to get type
-// checking on their propose messages.
+/// We break this type out of `ExecuteMsg` because we want pre-propose
+/// modules that interact with this contract to be able to get type
+/// checking on their propose messages.
 #[cw_serde]
 pub struct ProposeMsg {
     /// The title of the proposal.

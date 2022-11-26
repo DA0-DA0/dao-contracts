@@ -8,6 +8,8 @@ use dao_voting::deposit::CheckedDepositInfo;
 pub struct PendingProposal {
     /// The approval ID used to identify this pending proposal.
     pub approval_id: u64,
+    /// The address that created the proposal.
+    pub proposer: Addr,
     /// The propose message that ought to be executed on the proposal
     /// message if this proposal is approved.
     pub msg: ProposeMsg,

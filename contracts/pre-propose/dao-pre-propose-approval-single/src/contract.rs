@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult,
-    SubMsg, WasmMsg,
+    to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response, StdResult, SubMsg,
+    WasmMsg,
 };
 use cw2::set_contract_version;
 use cw_paginate::paginate_map_values;
@@ -97,7 +97,7 @@ pub fn execute_propose(
             title,
             description,
             msgs,
-            proposer: Some(info.sender.into_string()),
+            proposer: Some(info.sender.to_string()),
         },
     };
 
@@ -131,6 +131,7 @@ pub fn execute_propose(
         approval_id,
         &PendingProposal {
             approval_id,
+            proposer: info.sender,
             msg: propose_msg_internal,
             deposit: config.deposit_info,
         },
@@ -169,10 +170,7 @@ pub fn execute_approve(
             PrePropose::default().deposits.save(
                 deps.storage,
                 proposal_id,
-                &(
-                    proposal.deposit,
-                    Addr::unchecked(proposal.msg.proposer.as_ref().unwrap()),
-                ),
+                &(proposal.deposit, proposal.proposer),
             )?;
 
             let propose_messsage = WasmMsg::Execute {
@@ -204,9 +202,7 @@ pub fn execute_reject(
     }
 
     let PendingProposal {
-        deposit,
-        msg: ProposeMsg { proposer, .. },
-        ..
+        deposit, proposer, ..
     } = PENDING_PROPOSALS
         .may_load(deps.storage, id)?
         .ok_or(PreProposeError::ProposalNotFound {})?;
@@ -218,27 +214,6 @@ pub fn execute_reject(
         // refunded. `OnlyPassed` and `Never` refund deposit policies
         // do not apply here.
         if deposit_info.refund_policy == DepositRefundPolicy::Always {
-            // We'll never put a proposal in the pending map unless we
-            // have set its proposer. Failing to do so would mean the
-            // proposal could never be submitted to the proposal
-            // module as no sender would be specified. Thus, we can
-            // safely unwrap.
-            //
-            // If we're wrong here, worst case is that proposals can't
-            // be rejected and sit in the pending phase forever. This
-            // is effectively rejection, minus you getting your
-            // proposal back, and the DAO could still make a proposal
-            // to do an upgrade.
-            //
-            // We could encode this in the type sytem, but rust being
-            // not able to extend / modify structs from other modules
-            // (the macros just can't access the fields) means that
-            // we'd stop getting the type safety provided by using the
-            // `ProposeMsg` directly from proposal single. IMO, that
-            // type safety is better than rolling our own proposal
-            // type that is a duplicate of the single choice one so
-            // that we can remove this unwrap.
-            let proposer = Addr::unchecked(proposer.unwrap());
             deposit_info.get_return_deposit_message(&proposer)?
         } else {
             // If the proposer doesn't get the deposit, the DAO does.
