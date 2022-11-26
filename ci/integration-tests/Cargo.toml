@@ -18,14 +18,14 @@ cw721 = { workspace = true }
 cw-utils = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["ibc3"] }
 
-cwd-core = { workspace = true }
+dao-core = { workspace = true }
 cw20-stake = { workspace = true }
-cwd-voting-cw20-staked = { workspace = true }
-cwd-voting-cw721-staked = { workspace = true }
-cwd-proposal-single = { workspace = true }
-cwd-pre-propose-single = { workspace = true }
-cwd-interface = { workspace = true }
-cwd-voting = { workspace = true }
+dao-voting-cw20-staked = { workspace = true }
+dao-voting-cw721-staked = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-pre-propose-single = { workspace = true }
+dao-interface = { workspace = true }
+dao-voting = { workspace = true }
 
 assert_matches = "1.5"
 anyhow = { version = "1.0.51"}

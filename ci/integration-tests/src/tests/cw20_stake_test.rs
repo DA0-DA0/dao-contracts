@@ -1,7 +1,7 @@
 use crate::helpers::{chain::Chain, helper::create_dao};
 use cosmwasm_std::{to_binary, Uint128};
 use cw20_stake::{msg::StakedValueResponse, state::Config};
-use cwd_interface::voting::VotingPowerAtHeightResponse;
+use dao_interface::voting::VotingPowerAtHeightResponse;
 use std::time::Duration;
 use test_context::test_context;
 
@@ -13,7 +13,7 @@ use test_context::test_context;
 fn execute_stake_tokens(chain: &mut Chain) {
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
-    let voting_contract = "cwd_voting_cw20_staked";
+    let voting_contract = "dao_voting_cw20_staked";
 
     let res = create_dao(
         chain,
@@ -36,7 +36,7 @@ fn execute_stake_tokens(chain: &mut Chain) {
         .orc
         .query(
             voting_contract,
-            &cwd_voting_cw20_staked::msg::QueryMsg::StakingContract {},
+            &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
         )
         .unwrap()
         .data()
@@ -107,8 +107,8 @@ fn execute_stake_tokens(chain: &mut Chain) {
     let res = chain
         .orc
         .query(
-            "cwd_core",
-            &cwd_core::msg::QueryMsg::VotingPowerAtHeight {
+            "dao_core",
+            &dao_core::msg::QueryMsg::VotingPowerAtHeight {
                 address: user_addr,
                 height: None,
             },
