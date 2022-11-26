@@ -1,8 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
 use dao_macros::proposal_module_query;
-use dao_voting::{pre_propose::PreProposeInfo, threshold::Threshold, voting::Vote};
+use dao_voting::{
+    pre_propose::PreProposeInfo, proposal::SingleChoiceProposeMsg, threshold::Threshold,
+    voting::Vote,
+};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -38,31 +40,10 @@ pub struct InstantiateMsg {
     pub close_proposal_on_execution_failure: bool,
 }
 
-/// The contents of a message to create a proposal.
-/// We break this type out of `ExecuteMsg` because we want pre-propose
-/// modules that interact with this contract to be able to get type
-/// checking on their propose messages.
-#[cw_serde]
-pub struct ProposeMsg {
-    /// The title of the proposal.
-    pub title: String,
-    /// A description of the proposal.
-    pub description: String,
-    /// The messages that should be executed in response to this
-    /// proposal passing.
-    pub msgs: Vec<CosmosMsg<Empty>>,
-    /// The address creating the proposal. If no pre-propose
-    /// module is attached to this module this must always be None
-    /// as the proposer is the sender of the propose message. If a
-    /// pre-propose module is attached, this must be Some and will
-    /// set the proposer of the proposal it creates.
-    pub proposer: Option<String>,
-}
-
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Creates a proposal in the module.
-    Propose(ProposeMsg),
+    Propose(SingleChoiceProposeMsg),
     /// Votes on a proposal. Voting power is determined by the DAO's
     /// voting power module.
     Vote {

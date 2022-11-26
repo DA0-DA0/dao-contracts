@@ -15,7 +15,7 @@ use dao_testing::{ShouldExecute, TestSingleChoiceVote};
 use dao_voting::{
     deposit::{CheckedDepositInfo, UncheckedDepositInfo},
     pre_propose::{PreProposeInfo, ProposalCreationPolicy},
-    proposal::MAX_PROPOSAL_SIZE,
+    proposal::{SingleChoiceProposeMsg as ProposeMsg, MAX_PROPOSAL_SIZE},
     reply::{
         failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id,
         mask_proposal_hook_index, mask_vote_hook_index,
@@ -28,7 +28,7 @@ use dao_voting_cw20_staked::msg::ActiveThreshold;
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, ProposeMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
     proposal::SingleChoiceProposal,
     query::{ProposalResponse, VoteInfo},
     state::Config,

@@ -22,7 +22,6 @@ cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 cw-paginate = { workspace = true }
 dao-pre-propose-base = { workspace = true }
-dao-proposal-single = { workspace = true, features = ["library"] }
 dao-voting = { workspace = true }
 thiserror = { workspace = true }
 dao-interface = { workspace = true }
@@ -40,3 +39,4 @@ dao-testing = { workspace = true }
 dao-voting = { workspace = true }
 dao-voting-cw4 = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }
+dao-proposal-single = { workspace = true }

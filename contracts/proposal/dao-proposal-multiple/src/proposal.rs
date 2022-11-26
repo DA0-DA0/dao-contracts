@@ -5,7 +5,6 @@ use dao_voting::{
     multiple_choice::{
         CheckedMultipleChoiceOption, MultipleChoiceOptionType, MultipleChoiceVotes, VotingStrategy,
     },
-    proposal::Proposal,
     status::Status,
     voting::does_vote_count_pass,
 };
@@ -49,15 +48,6 @@ pub struct MultipleChoiceProposal {
 pub enum VoteResult {
     SingleWinner(CheckedMultipleChoiceOption),
     Tie,
-}
-
-impl Proposal for MultipleChoiceProposal {
-    fn proposer(&self) -> Addr {
-        self.proposer.clone()
-    }
-    fn status(&self) -> Status {
-        self.status
-    }
 }
 
 impl MultipleChoiceProposal {

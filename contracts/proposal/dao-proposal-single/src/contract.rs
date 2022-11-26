@@ -13,7 +13,9 @@ use dao_interface::voting::IsActiveResponse;
 use dao_proposal_hooks::{new_proposal_hooks, proposal_status_changed_hooks};
 use dao_vote_hooks::new_vote_hooks;
 use dao_voting::pre_propose::{PreProposeInfo, ProposalCreationPolicy};
-use dao_voting::proposal::{DEFAULT_LIMIT, MAX_PROPOSAL_SIZE};
+use dao_voting::proposal::{
+    SingleChoiceProposeMsg as ProposeMsg, DEFAULT_LIMIT, MAX_PROPOSAL_SIZE,
+};
 use dao_voting::reply::{
     failed_pre_propose_module_hook_id, mask_proposal_execution_proposal_id, TaggedReplyId,
 };
@@ -21,7 +23,7 @@ use dao_voting::status::Status;
 use dao_voting::threshold::Threshold;
 use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period, Vote, Votes};
 
-use crate::msg::{MigrateMsg, ProposeMsg};
+use crate::msg::MigrateMsg;
 use crate::proposal::{next_proposal_id, SingleChoiceProposal};
 use crate::state::{Config, CREATION_POLICY};
 
