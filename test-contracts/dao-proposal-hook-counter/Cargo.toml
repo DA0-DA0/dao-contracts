@@ -1,6 +1,6 @@
 [package]
 name = "dao-proposal-hook-counter"
-version = "0.2.0"
+version = "2.0.0-beta"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2021"
 
@@ -18,7 +18,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
-thiserror = { version = "1.0" }
+thiserror = { workspace = true }
 dao-proposal-hooks = { workspace = true }
 dao-vote-hooks = { workspace = true }
 

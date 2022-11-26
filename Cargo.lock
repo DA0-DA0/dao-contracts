@@ -48,9 +48,9 @@ checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 
 [[package]]
 name = "async-io"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8121296a9f05be7f34aa4196b1747243b3b62e048bb7906f644f3fbfc490cf7"
+checksum = "6fe557ebe0829511ddff4ad3011d159c0e6f144e05e3e8c3ab5095a131900a7b"
 dependencies = [
  "async-lock",
  "autocfg",
@@ -300,12 +300,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cache-padded"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1db59621ec70f09c5e9b597b220c7a2b43611f4710dc03ceb8748637775692c"
-
-[[package]]
 name = "cc"
 version = "1.0.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -328,11 +322,11 @@ dependencies = [
 
 [[package]]
 name = "concurrent-queue"
-version = "1.2.4"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af4780a44ab5696ea9e28294517f1fffb421a83a25af521333c838635509db9c"
+checksum = "bd7bef69dc86e3c610e4e7aed41035e2a7ed12e72dd7530f61327a6579a4390b"
 dependencies = [
- "cache-padded",
+ "crossbeam-utils",
 ]
 
 [[package]]
@@ -526,6 +520,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossbeam-utils"
+version = "0.8.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb766fa798726286dbbb842f174001dab8abc7b627a1dd86e0b7222a95d929f"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "crunchy"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -587,7 +590,7 @@ dependencies = [
 
 [[package]]
 name = "cw-admin-factory"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -661,7 +664,7 @@ dependencies = [
 
 [[package]]
 name = "cw-denom"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -673,7 +676,7 @@ dependencies = [
 
 [[package]]
 name = "cw-hooks"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -713,7 +716,7 @@ dependencies = [
 
 [[package]]
 name = "cw-paginate"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
@@ -770,7 +773,7 @@ dependencies = [
 
 [[package]]
 name = "cw-token-swap"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -880,7 +883,7 @@ dependencies = [
 
 [[package]]
 name = "cw20-stake"
-version = "0.2.6"
+version = "2.0.0-beta"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -888,7 +891,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers",
  "cw-multi-test",
- "cw-paginate 0.2.0",
+ "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -997,7 +1000,7 @@ dependencies = [
 
 [[package]]
 name = "cw721-controllers"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1008,14 +1011,14 @@ dependencies = [
 
 [[package]]
 name = "dao-core"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-core",
  "cw-multi-test",
- "cw-paginate 0.2.0",
+ "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1032,7 +1035,7 @@ dependencies = [
 
 [[package]]
 name = "dao-interface"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1043,7 +1046,7 @@ dependencies = [
 
 [[package]]
 name = "dao-macros"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1057,13 +1060,13 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-approval-single"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test",
- "cw-paginate 0.2.0",
+ "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1084,7 +1087,7 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-approver"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1110,7 +1113,7 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-base"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1129,7 +1132,7 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-multiple"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1153,7 +1156,7 @@ dependencies = [
 
 [[package]]
 name = "dao-pre-propose-single"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1177,7 +1180,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-hook-counter"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1200,7 +1203,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-hooks"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1210,7 +1213,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-multiple"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1249,7 +1252,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-single"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1289,7 +1292,7 @@ dependencies = [
 
 [[package]]
 name = "dao-proposal-sudo"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1304,7 +1307,7 @@ dependencies = [
 
 [[package]]
 name = "dao-testing"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1336,7 +1339,7 @@ dependencies = [
 
 [[package]]
 name = "dao-vote-hooks"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1346,7 +1349,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1362,7 +1365,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw20-balance"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1379,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw20-staked"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1398,7 +1401,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw4"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1416,14 +1419,14 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-cw721-staked"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-controllers",
  "cw-multi-test",
- "cw-paginate 0.2.0",
+ "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1438,7 +1441,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-native-staked"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1446,7 +1449,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers",
  "cw-multi-test",
- "cw-paginate 0.2.0",
+ "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1457,7 +1460,7 @@ dependencies = [
 
 [[package]]
 name = "dao-voting-staking-denom-staked"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -3155,7 +3158,7 @@ dependencies = [
 
 [[package]]
 name = "stake-cw20-external-rewards"
-version = "0.2.6"
+version = "2.0.0-beta"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -3174,7 +3177,7 @@ dependencies = [
 
 [[package]]
 name = "stake-cw20-reward-distributor"
-version = "0.2.0"
+version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
