@@ -5,7 +5,7 @@ the weight of a user in a cw4-group contract. This allocates voting
 power in the same way that one would expect a multisig to.
 
 For more information about how these modules fit together see
-[this](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-v1-Contracts-Design)
+[this](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design)
 wiki page.
 
 ## Receiving updates
