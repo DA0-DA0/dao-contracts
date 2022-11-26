@@ -902,7 +902,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             // Check for module instantiation callbacks
             let callback_msgs = match res.data {
-                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)?.msgs,
+                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)
+                    .map(|m| m.msgs)
+                    .unwrap_or_else(|_| vec![]),
                 None => vec![],
             };
 
@@ -926,7 +928,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 
             // Check for module instantiation callbacks
             let callback_msgs = match res.data {
-                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)?.msgs,
+                Some(data) => from_binary::<ModuleInstantiateCallback>(&data)
+                    .map(|m| m.msgs)
+                    .unwrap_or_else(|_| vec![]),
                 None => vec![],
             };
 
