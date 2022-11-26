@@ -111,21 +111,9 @@ where
         info: MessageInfo,
         msg: ProposalMessage,
     ) -> Result<Response, PreProposeError> {
-        let config = self.config.load(deps.storage)?;
+        self.check_can_submit(deps.as_ref(), info.sender.clone())?;
 
-        if !config.open_proposal_submission {
-            let dao = self.dao.load(deps.storage)?;
-            let voting_power: VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-                dao.into_string(),
-                &CwCoreQuery::VotingPowerAtHeight {
-                    address: info.sender.to_string(),
-                    height: None,
-                },
-            )?;
-            if voting_power.power.is_zero() {
-                return Err(PreProposeError::NotMember {});
-            }
-        }
+        let config = self.config.load(deps.storage)?;
 
         let deposit_messages = if let Some(ref deposit_info) = config.deposit_info {
             deposit_info.check_native_deposit_paid(&info)?;
