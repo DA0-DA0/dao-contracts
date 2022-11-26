@@ -4,9 +4,9 @@ use cosm_orc::orchestrator::SigningKey;
 use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
-use cwd_core::query::DumpStateResponse;
-use cwd_interface::{Admin, ModuleInstantiateInfo};
-use cwd_voting::{
+use dao_core::query::DumpStateResponse;
+use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_voting::{
     deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     pre_propose::PreProposeInfo,
     threshold::PercentageThreshold,
@@ -26,7 +26,7 @@ pub fn create_dao(
     user_addr: String,
     key: &SigningKey,
 ) -> Result<DaoState> {
-    let msg = cwd_core::msg::InstantiateMsg {
+    let msg = dao_core::msg::InstantiateMsg {
         dao_uri: None,
         admin,
         name: "DAO DAO".to_string(),
@@ -35,9 +35,9 @@ pub fn create_dao(
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: chain.orc.contract_map.code_id("cwd_voting_cw20_staked")?,
-            msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
-                token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
+            code_id: chain.orc.contract_map.code_id("dao_voting_cw20_staked")?,
+            msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+                token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: chain.orc.contract_map.code_id("cw20_base")?,
                     label: "DAO DAO Gov token".to_string(),
                     name: "DAO".to_string(),
@@ -58,8 +58,8 @@ pub fn create_dao(
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: chain.orc.contract_map.code_id("cwd_proposal_single")?,
-            msg: to_binary(&cwd_proposal_single::msg::InstantiateMsg {
+            code_id: chain.orc.contract_map.code_id("dao_proposal_single")?,
+            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -71,8 +71,8 @@ pub fn create_dao(
                 close_proposal_on_execution_failure: false,
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
-                        code_id: chain.orc.contract_map.code_id("cwd_pre_propose_single")?,
-                        msg: to_binary(&cwd_pre_propose_single::InstantiateMsg {
+                        code_id: chain.orc.contract_map.code_id("dao_pre_propose_single")?,
+                        msg: to_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},
                                 amount: Uint128::new(1000000000),
@@ -95,14 +95,14 @@ pub fn create_dao(
 
     chain
         .orc
-        .instantiate("cwd_core", op_name, &msg, key, None, vec![])?;
+        .instantiate("dao_core", op_name, &msg, key, None, vec![])?;
 
     let res = chain
         .orc
-        .query("cwd_core", &cwd_core::msg::QueryMsg::DumpState {})?;
+        .query("dao_core", &dao_core::msg::QueryMsg::DumpState {})?;
 
     Ok(DaoState {
-        addr: chain.orc.contract_map.address("cwd_core")?,
+        addr: chain.orc.contract_map.address("dao_core")?,
         state: res.data()?,
     })
 }

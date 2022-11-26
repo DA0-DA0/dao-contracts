@@ -1,6 +1,6 @@
 {
   "contract_name": "stake-cw20-reward-distributor",
-  "contract_version": "0.2.0",
+  "contract_version": "2.0.0-beta",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
