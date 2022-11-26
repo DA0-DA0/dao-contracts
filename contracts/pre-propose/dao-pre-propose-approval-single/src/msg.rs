@@ -3,7 +3,27 @@ use cosmwasm_std::{CosmosMsg, Empty};
 use dao_pre_propose_base::msg::{
     ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
 };
-use dao_proposal_single::msg::ProposeMsg;
+
+/// The contents of a message to create a proposal.
+// We break this type out of `ExecuteMsg` because we want pre-propose
+// modules that interact with this contract to be able to get type
+// checking on their propose messages.
+#[cw_serde]
+pub struct ProposeMsg {
+    /// The title of the proposal.
+    pub title: String,
+    /// A description of the proposal.
+    pub description: String,
+    /// The messages that should be executed in response to this
+    /// proposal passing.
+    pub msgs: Vec<CosmosMsg<Empty>>,
+    /// The address creating the proposal. If no pre-propose
+    /// module is attached to this module this must always be None
+    /// as the proposer is the sender of the propose message. If a
+    /// pre-propose module is attached, this must be Some and will
+    /// set the proposer of the proposal it creates.
+    pub proposer: Option<String>,
+}
 
 #[cw_serde]
 pub enum ApproverProposeMessage {

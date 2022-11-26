@@ -20,7 +20,6 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw2 = { workspace = true }
 dao-pre-propose-base = { workspace = true }
-dao-proposal-single = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
@@ -28,6 +27,7 @@ cw-utils = { workspace = true }
 cw4-group = { workspace = true }
 cw20 = { workspace = true }
 cw20-base = { workspace = true }
+dao-proposal-single = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }
 dao-core = { workspace = true }
 dao-voting-cw4 = { workspace = true }
