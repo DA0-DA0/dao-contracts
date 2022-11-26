@@ -1,8 +1,9 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, StdResult, Storage};
 use cw_storage_plus::{Item, Map};
-use dao_proposal_single::msg::ProposeMsg;
+
 use dao_voting::deposit::CheckedDepositInfo;
+use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 #[cw_serde]
 pub struct PendingProposal {
