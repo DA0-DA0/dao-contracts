@@ -588,9 +588,6 @@ pub fn execute_update_config(
             close_proposal_on_execution_failure,
         },
     )?;
-    let config = CONFIG.load(deps.storage)?;
-
-    println!("still here, {:?}", config.allow_revoting);
 
     Ok(Response::default()
         .add_attribute("action", "update_config")

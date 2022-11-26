@@ -633,37 +633,3 @@ where
         );
     }
 }
-
-pub fn test_vote_after_expiration<F>(do_votes: F)
-where
-    F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
-{
-    do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
-            position: Vote::Abstain,
-            weight: Uint128::new(30),
-            should_execute: ShouldExecute::No,
-        }],
-        Threshold::AbsolutePercentage {
-            percentage: PercentageThreshold::Percent(Decimal::percent(20)),
-        },
-        Status::Rejected,
-        None,
-    );
-
-    do_votes(
-        vec![TestSingleChoiceVote {
-            voter: "ekez".to_string(),
-            position: Vote::Abstain,
-            weight: Uint128::new(30),
-            should_execute: ShouldExecute::No,
-        }],
-        Threshold::ThresholdQuorum {
-            threshold: PercentageThreshold::Majority {},
-            quorum: PercentageThreshold::Percent(Decimal::percent(20)),
-        },
-        Status::Rejected,
-        None,
-    );
-}

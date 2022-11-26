@@ -2545,6 +2545,7 @@ fn test_rational_clobbered_on_revote() {
 
     let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
     assert_eq!(vote.vote.unwrap().rationale, rationale);
+}
 
 // Casting votes is only allowed within the proposal expiration timeframe
 #[test]
@@ -2571,6 +2572,7 @@ pub fn test_not_allow_voting_on_expired_proposal() {
             &ExecuteMsg::Vote {
                 proposal_id,
                 vote: Vote::Yes,
+                rationale: None,
             },
             &[],
         )
@@ -2585,8 +2587,3 @@ pub fn test_not_allow_voting_on_expired_proposal() {
     assert_eq!(proposal.proposal.votes.yes, Uint128::zero());
     assert!(matches!(err, ContractError::Expired { id: _proposal_id }));
 }
-
-// TODO: test pre-propose module that fails on new proposal hook (ugh).
-
-// - What happens if you have proposals that can not be executed but
-//   took deposits and want to migrate?
