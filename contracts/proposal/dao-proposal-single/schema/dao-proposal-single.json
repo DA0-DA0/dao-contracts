@@ -1278,7 +1278,7 @@
         ]
       },
       "ProposeMsg": {
-        "description": "The contents of a message to create a proposal.",
+        "description": "The contents of a message to create a proposal. We break this type out of `ExecuteMsg` because we want pre-propose modules that interact with this contract to be able to get type checking on their propose messages.",
         "type": "object",
         "required": [
           "description",
