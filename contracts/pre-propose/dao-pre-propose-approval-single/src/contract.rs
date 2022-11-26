@@ -9,8 +9,8 @@ use cw_paginate::paginate_map_values;
 use dao_pre_propose_base::{
     error::PreProposeError, msg::ExecuteMsg as ExecuteBase, state::PreProposeContract,
 };
-use dao_proposal_single::msg::ProposeMsg;
 use dao_voting::deposit::DepositRefundPolicy;
+use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 use crate::msg::{
     ApproverProposeMessage, ExecuteExt, ExecuteMsg, InstantiateExt, InstantiateMsg, ProposeMessage,

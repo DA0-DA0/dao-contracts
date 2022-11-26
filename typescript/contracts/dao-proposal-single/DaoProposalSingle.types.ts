@@ -61,7 +61,7 @@ export interface ModuleInstantiateInfo {
   msg: Binary;
 }
 export type ExecuteMsg = {
-  propose: ProposeMsg;
+  propose: SingleChoiceProposeMsg;
 } | {
   vote: {
     proposal_id: number;
@@ -243,7 +243,7 @@ export type GovMsg = {
 };
 export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
 export type Vote = "yes" | "no" | "abstain";
-export interface ProposeMsg {
+export interface SingleChoiceProposeMsg {
   description: string;
   msgs: CosmosMsgForEmpty[];
   proposer?: string | null;

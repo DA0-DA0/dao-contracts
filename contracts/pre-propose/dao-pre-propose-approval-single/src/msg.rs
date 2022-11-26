@@ -3,7 +3,7 @@ use cosmwasm_std::{CosmosMsg, Empty};
 use dao_pre_propose_base::msg::{
     ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase,
 };
-use dao_proposal_single::msg::ProposeMsg;
+use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 #[cw_serde]
 pub enum ApproverProposeMessage {
