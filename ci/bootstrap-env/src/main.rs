@@ -3,8 +3,8 @@ use cosm_orc::orchestrator::{Coin, Key, SigningKey};
 use cosm_orc::{config::cfg::Config, orchestrator::cosm_orc::CosmOrc};
 use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
-use cwd_interface::{Admin, ModuleInstantiateInfo};
-use cwd_voting::{
+use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_voting::{
     deposit::{DepositRefundPolicy, DepositToken, UncheckedDepositInfo},
     pre_propose::PreProposeInfo,
     threshold::PercentageThreshold,
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
 
     orc.store_contracts("artifacts", &key, None)?;
 
-    let msg = cwd_core::msg::InstantiateMsg {
+    let msg = dao_core::msg::InstantiateMsg {
         admin: Some(addr.clone()),
         name: "DAO DAO".to_string(),
         description: "A DAO that makes DAO tooling".to_string(),
@@ -53,9 +53,9 @@ fn main() -> Result<()> {
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
-            code_id: orc.contract_map.code_id("cwd_voting_cw20_staked")?,
-            msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
-                token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
+            code_id: orc.contract_map.code_id("dao_voting_cw20_staked")?,
+            msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
+                token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: orc.contract_map.code_id("cw20_base")?,
                     label: "DAO DAO Gov token".to_string(),
                     name: "DAO".to_string(),
@@ -76,8 +76,8 @@ fn main() -> Result<()> {
             label: "DAO DAO Voting Module".to_string(),
         },
         proposal_modules_instantiate_info: vec![ModuleInstantiateInfo {
-            code_id: orc.contract_map.code_id("cwd_proposal_single")?,
-            msg: to_binary(&cwd_proposal_single::msg::InstantiateMsg {
+            code_id: orc.contract_map.code_id("dao_proposal_single")?,
+            msg: to_binary(&dao_proposal_single::msg::InstantiateMsg {
                 min_voting_period: None,
                 threshold: Threshold::ThresholdQuorum {
                     threshold: PercentageThreshold::Majority {},
@@ -88,8 +88,8 @@ fn main() -> Result<()> {
                 only_members_execute: true,
                 pre_propose_info: PreProposeInfo::ModuleMayPropose {
                     info: ModuleInstantiateInfo {
-                        code_id: orc.contract_map.code_id("cwd_pre_propose_single")?,
-                        msg: to_binary(&cwd_pre_propose_single::InstantiateMsg {
+                        code_id: orc.contract_map.code_id("dao_pre_propose_single")?,
+                        msg: to_binary(&dao_pre_propose_single::InstantiateMsg {
                             deposit_info: Some(UncheckedDepositInfo {
                                 denom: DepositToken::VotingModuleToken {},
                                 amount: Uint128::new(1000000000),
@@ -113,7 +113,7 @@ fn main() -> Result<()> {
 
     // Init dao dao dao with an initial treasury of 9000000 tokens
     orc.instantiate(
-        "cwd_core",
+        "dao_core",
         "dao_init",
         &msg,
         &key,
@@ -148,19 +148,19 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_CWCORE_CODE_ID={}",
-        orc.contract_map.code_id("cwd_core")?
+        orc.contract_map.code_id("dao_core")?
     );
     println!(
         "NEXT_PUBLIC_CWPROPOSALSINGLE_CODE_ID={}",
-        orc.contract_map.code_id("cwd_proposal_single")?
+        orc.contract_map.code_id("dao_proposal_single")?
     );
     println!(
         "NEXT_PUBLIC_CW4VOTING_CODE_ID={}",
-        orc.contract_map.code_id("cwd_voting_cw4")?
+        orc.contract_map.code_id("dao_voting_cw4")?
     );
     println!(
         "NEXT_PUBLIC_CW20STAKEDBALANCEVOTING_CODE_ID={}",
-        orc.contract_map.code_id("cwd_voting_cw20_staked")?
+        orc.contract_map.code_id("dao_voting_cw20_staked")?
     );
     println!(
         "NEXT_PUBLIC_STAKECW20_CODE_ID={}",
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
     );
     println!(
         "NEXT_PUBLIC_DAO_CONTRACT_ADDRESS={}",
-        orc.contract_map.address("cwd_core")?
+        orc.contract_map.address("dao_core")?
     );
     println!(
         "NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS={}",

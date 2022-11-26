@@ -10,24 +10,24 @@ wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 
 | Audited contracts (tag: v1.0.0)                                                | Description                                            |
 |:-------------------------------------------------------------------------------|:-------------------------------------------------------|
-| [cwd-core](contracts/cwd-core)                                                 | The core module for a DAO DAO DAO.                     |
-| [cwd-proposal-single](contracts/proposal/cwd-proposal-single)                  | A proposal module for single choice (yes / no) voting. |
-| [cwd-voting-cw20-staked](contracts/voting/cwd-voting-cw20-staked)              | A voting power module for staked governance tokens.    |
-| [cwd-voting-cw4](contracts/voting/cwd-voting-cw4)                              | A voting power module for multisig-style voting.       |
+| [dao-core](contracts/dao-core)                                                 | The core module for a DAO DAO DAO.                     |
+| [dao-proposal-single](contracts/proposal/dao-proposal-single)                  | A proposal module for single choice (yes / no) voting. |
+| [dao-voting-cw20-staked](contracts/voting/dao-voting-cw20-staked)              | A voting power module for staked governance tokens.    |
+| [dao-voting-cw4](contracts/voting/dao-voting-cw4)                              | A voting power module for multisig-style voting.       |
 | [cw20-stake](contracts/staking/cw20-stake)                                     | A contract for staking cw20 tokens.                    |
 | [cw20-stake-external-rewards](contracts/staking/cw20-stake-external-rewards)   | A contract for providing external stakinig rewards.    |
 | [cw20-stake-reward-distributor](contracts/staking/cw20-stake-external-rewards) | A contract for distributing rewards via stake-cw20.    |
 
 | Unaudited contracts                                                                      | Description                                                                            |
 |:-----------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------|
-| [cwd-proposal-multiple](contracts/proposal/cwd-proposal-multiple)                        | A proposal module for multiple choice proposals.                                       |
-| [cwd-voting-cw721-staked](contracts/voting/cwd-voting-cw721-staked)                      | A voting module based on staked NFTs                                                   |
-| [cwd-pre-propose-single](contracts/pre-propose/cwd-pre-propose-single)                   | A pre-propose module for single choice proposals.                                      |
-| [cwd-voting-native-staked](contracts/proposal/cwd-voting-native-staked)                  | A voting power based on staked native tokens not used to secure the chain e.g. ION.    |
-| [cwd-voting-staking-denom-staked](contracts/proposal/cwd-voting-staking-denom-staked)    | A voting power module based on staked native tokens used to secure the chain e.g. JUNO |
-| [cwd-pre-propose-multiple](contracts/pre-propose/cwd-pre-propose-multiple)               | A pre-propose module for multiple choice proposals.                                    |
-| [cwd-pre-propose-approval-single](contracts/pre-propose/cwd-pre-propose-approval-single) | A pre-propose module for implementing an approval flow.                                |
-| [cwd-pre-propose-approver](contracts/pre-propose/cwd-pre-propose-approver)               | A pre-propose module for automatically creating proposals that need to be approved.    |
+| [dao-proposal-multiple](contracts/proposal/dao-proposal-multiple)                        | A proposal module for multiple choice proposals.                                       |
+| [dao-voting-cw721-staked](contracts/voting/dao-voting-cw721-staked)                      | A voting module based on staked NFTs                                                   |
+| [dao-pre-propose-single](contracts/pre-propose/dao-pre-propose-single)                   | A pre-propose module for single choice proposals.                                      |
+| [dao-voting-native-staked](contracts/proposal/dao-voting-native-staked)                  | A voting power based on staked native tokens not used to secure the chain e.g. ION.    |
+| [dao-voting-staking-denom-staked](contracts/proposal/dao-voting-staking-denom-staked)    | A voting power module based on staked native tokens used to secure the chain e.g. JUNO |
+| [dao-pre-propose-multiple](contracts/pre-propose/dao-pre-propose-multiple)               | A pre-propose module for multiple choice proposals.                                    |
+| [dao-pre-propose-approval-single](contracts/pre-propose/dao-pre-propose-approval-single) | A pre-propose module for implementing an approval flow.                                |
+| [dao-pre-propose-approver](contracts/pre-propose/dao-pre-propose-approver)               | A pre-propose module for automatically creating proposals that need to be approved.    |
 | [cw-token-swap](contracts/external/cw-token-swap)                                        | An escrow contract for swapping tokens between DAOs.                                   |
 
 Audited contracts have completed audits by
@@ -40,15 +40,15 @@ on the `v1.0.0` tag. An audit for the v2 contracts is forthcoming.
 
 | Package                                               | Description                                                                               |
 |:------------------------------------------------------|:------------------------------------------------------------------------------------------|
-| [cw721-controllers](packages/cw721-controllers)       | Manages claims for the [cw721 staking contract](contracts/voting/cwd-voting-cw721-staked) |
-| [cwd-hooks](packages/cwd-hooks)                       | Shared hooks functionality.                                                               |
-| [cwd-interface](packages/cwd-interface)               | Provides types and interfaces for interacting with DAO modules.                           |
-| [cwd-macros](packages/cwd-macros)                     | A collection of macros to derive DAO module interfaces on message enums.                  |
-| [cwd-pre-propose-base](packages/cwd-pre-propose-base) | Base package used to implement pre-propose modules.                                       |
-| [cwd-proposal-hooks](packages/cwd-proposal-hooks)     | Interface for managing and dispatching hooks from a proposal module.                      |
-| [cwd-testing](packages/cwd-testing)                   | Common testing functions and types for DAO modules.                                       |
-| [cwd-vote-hooks](packages/cwd-vote-hooks)             | Interface for managing and dispatching vote hooks.                                        |
-| [cwd-voting](packages/cwd-voting)                     | Types and associated methods for handling voting in a CosmWasm DAO.                       |
+| [cw721-controllers](packages/cw721-controllers)       | Manages claims for the [cw721 staking contract](contracts/voting/dao-voting-cw721-staked) |
+| [cw-hooks](packages/cw-hooks)                       | Shared hooks functionality.                                                               |
+| [dao-interface](packages/dao-interface)               | Provides types and interfaces for interacting with DAO modules.                           |
+| [dao-macros](packages/dao-macros)                     | A collection of macros to derive DAO module interfaces on message enums.                  |
+| [dao-pre-propose-base](packages/dao-pre-propose-base) | Base package used to implement pre-propose modules.                                       |
+| [dao-proposal-hooks](packages/dao-proposal-hooks)     | Interface for managing and dispatching hooks from a proposal module.                      |
+| [dao-testing](packages/dao-testing)                   | Common testing functions and types for DAO modules.                                       |
+| [dao-vote-hooks](packages/dao-vote-hooks)             | Interface for managing and dispatching vote hooks.                                        |
+| [dao-voting](packages/dao-voting)                     | Types and associated methods for handling voting in a CosmWasm DAO.                       |
 | [cw-denom](packages/cw-denom)                         | Uitilities for working with cw20 and native denoms.                                       |
 | [cw-paginate](packages/cw-paginate)                   | Convienence methods for paginating keys and values in a CosmWasm `Map` or `SnapshotMap`.  |
 
