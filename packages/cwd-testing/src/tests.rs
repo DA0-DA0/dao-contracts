@@ -124,20 +124,12 @@ where
     F: Fn(Vec<TestSingleChoiceVote>, Threshold, Status, Option<Uint128>),
 {
     do_votes(
-        vec![
-            TestSingleChoiceVote {
-                voter: "zeke".to_string(),
-                position: Vote::No,
-                weight: Uint128::new(1),
-                should_execute: ShouldExecute::Yes,
-            },
-            TestSingleChoiceVote {
-                voter: "ekez".to_string(),
-                position: Vote::Yes,
-                weight: Uint128::new(u128::max_value() - 1),
-                should_execute: ShouldExecute::No,
-            },
-        ],
+        vec![TestSingleChoiceVote {
+            voter: "zeke".to_string(),
+            position: Vote::No,
+            weight: Uint128::new(1),
+            should_execute: ShouldExecute::Yes,
+        }],
         Threshold::AbsolutePercentage {
             percentage: PercentageThreshold::Percent(Decimal::percent(100)),
         },
@@ -344,11 +336,34 @@ where
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
+        ],
+        Threshold::AbsolutePercentage {
+            percentage: PercentageThreshold::Percent(Decimal::percent(50)),
+        },
+        Status::Passed,
+        None,
+    );
+
+    do_votes(
+        vec![
+            TestSingleChoiceVote {
+                voter: "ekez".to_string(),
+                position: Vote::Abstain,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "keze".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(5),
+                should_execute: ShouldExecute::Yes,
+            },
+            // Can vote up to expiration time.
             TestSingleChoiceVote {
                 voter: "ezek".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(5),
-                should_execute: ShouldExecute::No,
+                should_execute: ShouldExecute::Yes,
             },
         ],
         Threshold::AbsolutePercentage {
@@ -377,11 +392,35 @@ where
                 weight: Uint128::new(5),
                 should_execute: ShouldExecute::Yes,
             },
+        ],
+        Threshold::ThresholdQuorum {
+            threshold: PercentageThreshold::Percent(Decimal::percent(10)),
+            quorum: PercentageThreshold::Majority {},
+        },
+        Status::Passed,
+        None,
+    );
+
+    do_votes(
+        vec![
+            TestSingleChoiceVote {
+                voter: "ekez".to_string(),
+                position: Vote::No,
+                weight: Uint128::new(10),
+                should_execute: ShouldExecute::Yes,
+            },
+            TestSingleChoiceVote {
+                voter: "keze".to_string(),
+                position: Vote::Yes,
+                weight: Uint128::new(5),
+                should_execute: ShouldExecute::Yes,
+            },
+            // Can vote up to expiration time.
             TestSingleChoiceVote {
                 voter: "ezek".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(10),
-                should_execute: ShouldExecute::No,
+                should_execute: ShouldExecute::Yes,
             },
         ],
         Threshold::ThresholdQuorum {
@@ -428,11 +467,12 @@ where
                 weight: Uint128::new(10),
                 should_execute: ShouldExecute::Yes,
             },
+            // Can vote up to expiration time, even if it already rejected.
             TestSingleChoiceVote {
                 voter: "keze".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(10),
-                should_execute: ShouldExecute::No,
+                should_execute: ShouldExecute::Yes,
             },
         ],
         Threshold::ThresholdQuorum {

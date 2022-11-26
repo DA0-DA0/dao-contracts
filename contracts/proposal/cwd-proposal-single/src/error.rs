@@ -35,10 +35,7 @@ pub enum ContractError {
     #[error("proposal is ({size}) bytes, must be <= ({max}) bytes")]
     ProposalTooLarge { size: u64, max: u64 },
 
-    #[error("proposal is not open ({id})")]
-    NotOpen { id: u64 },
-
-    #[error("proposal is expired ({id})")]
+    #[error("Proposal ({id}) is expired")]
     Expired { id: u64 },
 
     #[error("not registered to vote (no voting power) at time of proposal creation")]

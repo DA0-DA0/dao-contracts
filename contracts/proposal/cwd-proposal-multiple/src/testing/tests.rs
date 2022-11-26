@@ -107,7 +107,7 @@ fn test_propose() {
     let mut app = App::default();
     let _govmod_id = app.store_code(proposal_multiple_contract());
 
-    let max_voting_period = cw_utils::Duration::Height(6);
+    let max_voting_period = Duration::Height(6);
     let quorum = PercentageThreshold::Majority {};
 
     let voting_strategy = VotingStrategy::SingleChoice { quorum };
@@ -3801,4 +3801,93 @@ fn test_no_double_refund_on_execute_fail_and_close() {
     // Check that our deposit was not refunded a second time on close.
     let balance = query_balance_cw20(&app, token_contract.to_string(), CREATOR_ADDR);
     assert_eq!(balance, Uint128::new(1));
+}
+
+// Casting votes is only allowed within the proposal expiration timeframe
+#[test]
+pub fn test_not_allow_voting_on_expired_proposal() {
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+    let instantiate = InstantiateMsg {
+        max_voting_period: Duration::Height(6),
+        only_members_execute: false,
+        allow_revoting: false,
+        voting_strategy: VotingStrategy::SingleChoice {
+            quorum: PercentageThreshold::Majority {},
+        },
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+    };
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![
+            Cw20Coin {
+                address: "a-1".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "a-2".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+    let proposal_module = query_multiple_proposal_module(&app, &core_addr);
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+    let mc_options = MultipleChoiceOptions { options };
+
+    // Create a basic proposal
+    app.execute_contract(
+        Addr::unchecked("a-1"),
+        proposal_module.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // assert proposal is open
+    let proposal = query_proposal(&app, &proposal_module, 1);
+    assert_eq!(proposal.proposal.status, Status::Open);
+
+    // expire the proposal and attempt to vote
+    app.update_block(|block| block.height += 6);
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod,
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: MultipleChoiceVote { option_id: 0 },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // assert the vote got rejected and did not count towards the votes
+    let proposal = query_proposal(&app, &proposal_module, 1);
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+    assert_eq!(proposal.proposal.votes.vote_weights[0], Uint128::zero());
+    assert!(matches!(err, ContractError::Expired { id: _proposal_id }));
 }

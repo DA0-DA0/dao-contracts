@@ -1102,7 +1102,7 @@ fn test_revoting_playthrough() {
         proposal_id,
         Vote::Yes,
     );
-    assert!(matches!(err, ContractError::NotOpen { .. }));
+    assert!(matches!(err, ContractError::Expired { .. }));
 }
 
 /// Tests that revoting is stored at a per-proposal level. Proposals
@@ -1168,16 +1168,6 @@ fn test_allow_revoting_config_changes() {
     // Proposal with revoting should not have passed.
     let proposal_resp = query_proposal(&app, &proposal_module, revoting_proposal);
     assert_eq!(proposal_resp.proposal.status, Status::Open);
-
-    // Can not vote again on the no revoting proposal.
-    let err = vote_on_proposal_should_fail(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        no_revoting_proposal,
-        Vote::No,
-    );
-    assert!(matches!(err, ContractError::NotOpen { .. }));
 
     // Can change vote on the revoting proposal.
     vote_on_proposal(
@@ -1389,18 +1379,18 @@ fn test_absolute_count_threshold_non_multisig() {
 fn test_large_absolute_count_threshold() {
     do_votes_staked_balances(
         vec![
-            // Instant rejection after this.
             TestSingleChoiceVote {
                 voter: "two".to_string(),
                 position: Vote::No,
                 weight: Uint128::new(1),
                 should_execute: ShouldExecute::Yes,
             },
+            // Can vote up to expiration time.
             TestSingleChoiceVote {
                 voter: "one".to_string(),
                 position: Vote::Yes,
                 weight: Uint128::new(u128::MAX - 1),
-                should_execute: ShouldExecute::No,
+                should_execute: ShouldExecute::Yes,
             },
         ],
         Threshold::AbsoluteCount {
@@ -2555,4 +2545,45 @@ fn test_rational_clobbered_on_revote() {
 
     let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
     assert_eq!(vote.vote.unwrap().rationale, rationale);
+}
+
+// Casting votes is only allowed within the proposal expiration timeframe
+#[test]
+pub fn test_not_allow_voting_on_expired_proposal() {
+    let CommonTest {
+        mut app,
+        core_addr: _,
+        proposal_module,
+        gov_token: _,
+        proposal_id,
+    } = setup_test(vec![]);
+
+    // expire the proposal
+    app.update_block(|mut b| b.time = b.time.plus_seconds(604800));
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+    assert_eq!(proposal.proposal.votes.yes, Uint128::zero());
+
+    // attempt to vote past the expiration date
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            proposal_module.clone(),
+            &ExecuteMsg::Vote {
+                proposal_id,
+                vote: Vote::Yes,
+                rationale: None,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // assert the vote got rejected and did not count
+    // towards the votes
+    let proposal = query_proposal(&app, &proposal_module, proposal_id);
+    assert_eq!(proposal.proposal.status, Status::Rejected);
+    assert_eq!(proposal.proposal.votes.yes, Uint128::zero());
+    assert!(matches!(err, ContractError::Expired { id: _proposal_id }));
 }

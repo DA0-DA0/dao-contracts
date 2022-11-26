@@ -290,8 +290,15 @@ pub fn execute_vote(
         return Err(ContractError::InvalidVote {});
     }
 
-    if prop.current_status(&env.block)? != Status::Open {
-        return Err(ContractError::NotOpen { id: proposal_id });
+    // Allow voting on proposals until they expire.
+    // Voting on a non-open proposal will never change
+    // their outcome as if an outcome has been determined,
+    // it is because no possible sequence of votes may
+    // cause a different one. This then serves to allow
+    // for better tallies of opinions in the event that a
+    // proposal passes or is rejected early.
+    if prop.expiration.is_expired(&env.block) {
+        return Err(ContractError::Expired { id: proposal_id });
     }
 
     let vote_power = get_voting_power(

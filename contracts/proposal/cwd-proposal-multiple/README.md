@@ -5,6 +5,11 @@ their voting choice(s) from an array of `MultipleChoiceOption`.
 Each of the options may have associated messages which are to be
 executed by the core module upon the proposal being passed and executed.
 
+Votes can be cast for as long as the proposal is not expired. In cases
+where the proposal is no longer being evaluated (e.g. met the quorum and
+been rejected), this allows voters to reflect their opinion even though
+it has no effect on the final proposal's status.
+
 ## Undesired behavior
 
 The undesired behavior of this contract is tested under `testing/adversarial_tests.rs`.
