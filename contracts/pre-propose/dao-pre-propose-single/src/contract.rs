@@ -11,7 +11,7 @@ use dao_pre_propose_base::{
     msg::{ExecuteMsg as ExecuteBase, InstantiateMsg as InstantiateBase, QueryMsg as QueryBase},
     state::PreProposeContract,
 };
-use dao_proposal_single::msg::ProposeMsg;
+use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-pre-propose-single";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");

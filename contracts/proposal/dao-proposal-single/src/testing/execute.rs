@@ -3,10 +3,13 @@ use cw_multi_test::{App, BankSudo, Executor};
 
 use cw_denom::CheckedDenom;
 use dao_pre_propose_single as cppbps;
-use dao_voting::{deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy, voting::Vote};
+use dao_voting::{
+    deposit::CheckedDepositInfo, pre_propose::ProposalCreationPolicy,
+    proposal::SingleChoiceProposeMsg as ProposeMsg, voting::Vote,
+};
 
 use crate::{
-    msg::{ExecuteMsg, ProposeMsg, QueryMsg},
+    msg::{ExecuteMsg, QueryMsg},
     query::ProposalResponse,
     testing::queries::{query_creation_policy, query_next_proposal_id},
     ContractError,

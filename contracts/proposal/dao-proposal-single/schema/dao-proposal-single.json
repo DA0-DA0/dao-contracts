@@ -354,7 +354,7 @@
         ],
         "properties": {
           "propose": {
-            "$ref": "#/definitions/ProposeMsg"
+            "$ref": "#/definitions/SingleChoiceProposeMsg"
           }
         },
         "additionalProperties": false
@@ -1277,8 +1277,8 @@
           }
         ]
       },
-      "ProposeMsg": {
-        "description": "The contents of a message to create a proposal. We break this type out of `ExecuteMsg` because we want pre-propose modules that interact with this contract to be able to get type checking on their propose messages.",
+      "SingleChoiceProposeMsg": {
+        "description": "The contents of a message to create a proposal in the single choice proposal module.\n\nWe break this type out of `ExecuteMsg` because we want pre-propose modules that interact with this contract to be able to get type checking on their propose messages.\n\nWe move this type to this package so that pre-propose modules can import it without importing dao-proposal-single with the library feature which (as it is not additive) cause the execute exports to not be included in wasm builds.",
         "type": "object",
         "required": [
           "description",

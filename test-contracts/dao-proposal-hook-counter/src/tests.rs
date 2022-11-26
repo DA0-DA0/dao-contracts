@@ -12,7 +12,8 @@ use dao_voting::{
 };
 
 use crate::msg::{CountResponse, InstantiateMsg, QueryMsg};
-use dao_proposal_single::{msg::ProposeMsg, state::Config};
+use dao_proposal_single::state::Config;
+use dao_voting::proposal::SingleChoiceProposeMsg as ProposeMsg;
 
 const CREATOR_ADDR: &str = "creator";
 
