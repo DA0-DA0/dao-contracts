@@ -1,12 +1,5 @@
-use cosmwasm_std::{Addr, CosmosMsg, Uint128, Decimal, WasmMsg, to_binary};
-use cw_multi_test::{next_block, App};
-use cw_utils::Duration;
-use cw20::Cw20Coin;
+use crate::msg::InstantiateMsg;
 use crate::testing::instantiate::get_pre_propose_info;
-use crate::{
-    msg::{InstantiateMsg, ExecuteMsg},
-};
-use cw_multi_test::Executor;
 use crate::testing::{
     execute::{
         close_proposal, execute_proposal, execute_proposal_should_fail, make_proposal, mint_cw20s,
@@ -16,13 +9,17 @@ use crate::testing::{
         get_default_token_dao_proposal_module_instantiate,
         instantiate_with_staked_balances_governance,
     },
-    queries::{query_dao_token, query_proposal, query_single_proposal_module, query_balance_cw20},
+    queries::{query_balance_cw20, query_dao_token, query_proposal, query_single_proposal_module},
 };
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
+use cw20::Cw20Coin;
+use cw_multi_test::{next_block, App};
+use cw_utils::Duration;
 use cwd_voting::{
+    deposit::{DepositRefundPolicy, UncheckedDepositInfo},
     status::Status,
+    threshold::{PercentageThreshold, Threshold::AbsolutePercentage},
     voting::Vote,
-    threshold::{PercentageThreshold, Threshold, Threshold::AbsolutePercentage},
-    deposit::{UncheckedDepositInfo, DepositRefundPolicy},
 };
 
 use super::CREATOR_ADDR;
@@ -197,22 +194,23 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
             Cw20Coin {
                 address: "overslept_vote".to_string(),
                 amount: Uint128::new(30),
-            }
+            },
         ]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);
 
     mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
-    let proposal_id = make_proposal(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        vec![],
-    );
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
 
     // someone quickly votes, proposal gets executed
-    vote_on_proposal(&mut app, &proposal_module, "threshold", proposal_id, Vote::Yes);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "threshold",
+        proposal_id,
+        Vote::Yes,
+    );
     execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 
     app.update_block(next_block);
@@ -225,8 +223,20 @@ pub fn test_executed_prop_state_remains_after_vote_swing() {
 
     // someone wakes up and casts their vote to express their
     // opinion (not affecting the result of proposal)
-    vote_on_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "overslept_vote", proposal_id, Vote::No);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "overslept_vote",
+        proposal_id,
+        Vote::No,
+    );
 
     app.update_block(next_block);
 
@@ -280,7 +290,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
             Cw20Coin {
                 address: "overslept_vote".to_string(),
                 amount: Uint128::new(30),
-            }
+            },
         ]),
     );
     let proposal_module = query_single_proposal_module(&app, &core_addr);
@@ -311,7 +321,13 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     assert_eq!(balance, Uint128::zero());
 
     // vote enough to pass the proposal
-    vote_on_proposal(&mut app, &proposal_module, "threshold", proposal_id, Vote::Yes);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "threshold",
+        proposal_id,
+        Vote::Yes,
+    );
 
     // assert proposal is passed with 20 votes in favor and none opposed
     let proposal = query_proposal(&app, &proposal_module, proposal_id);
@@ -322,8 +338,20 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     app.update_block(next_block);
 
     // the other voters wake up, vote against the proposal
-    vote_on_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id, Vote::No);
-    vote_on_proposal(&mut app, &proposal_module, "overslept_vote", proposal_id, Vote::No);
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::No,
+    );
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        "overslept_vote",
+        proposal_id,
+        Vote::No,
+    );
 
     app.update_block(next_block);
 
@@ -334,12 +362,7 @@ pub fn test_passed_prop_state_remains_after_vote_swing() {
     assert_eq!(proposal.proposal.votes.yes, Uint128::new(20));
     assert_eq!(proposal.proposal.votes.no, Uint128::new(80));
 
-    execute_proposal(
-        &mut app,
-        &proposal_module,
-        CREATOR_ADDR,
-        proposal_id
-    );
+    execute_proposal(&mut app, &proposal_module, CREATOR_ADDR, proposal_id);
 
     app.update_block(next_block);
 

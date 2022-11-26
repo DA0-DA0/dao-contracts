@@ -3812,7 +3812,9 @@ pub fn test_not_allow_voting_on_expired_proposal() {
         max_voting_period: Duration::Height(6),
         only_members_execute: false,
         allow_revoting: false,
-        voting_strategy: VotingStrategy::SingleChoice { quorum: PercentageThreshold::Majority {} },
+        voting_strategy: VotingStrategy::SingleChoice {
+            quorum: PercentageThreshold::Majority {},
+        },
         min_voting_period: None,
         close_proposal_on_execution_failure: true,
         pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
@@ -3855,7 +3857,7 @@ pub fn test_not_allow_voting_on_expired_proposal() {
         &ExecuteMsg::Propose {
             title: "A simple text proposal".to_string(),
             description: "A simple text proposal".to_string(),
-            choices: mc_options.clone(),
+            choices: mc_options,
             proposer: None,
         },
         &[],
@@ -3863,27 +3865,28 @@ pub fn test_not_allow_voting_on_expired_proposal() {
     .unwrap();
 
     // assert proposal is open
-    let proposal = query_proposal(&mut app, &proposal_module, 1);
+    let proposal = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Open);
 
     // expire the proposal and attempt to vote
     app.update_block(|block| block.height += 6);
 
-    let err: ContractError = app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
-        govmod,
-        &ExecuteMsg::Vote {
-            proposal_id: 1,
-            vote: MultipleChoiceVote { option_id: 0 },
-        },
-        &[],
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap();
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(CREATOR_ADDR),
+            govmod,
+            &ExecuteMsg::Vote {
+                proposal_id: 1,
+                vote: MultipleChoiceVote { option_id: 0 },
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
 
     // assert the vote got rejected and did not count towards the votes
-    let proposal = query_proposal(&mut app, &proposal_module, 1);
+    let proposal = query_proposal(&app, &proposal_module, 1);
     assert_eq!(proposal.proposal.status, Status::Rejected);
     assert_eq!(proposal.proposal.votes.vote_weights[0], Uint128::zero());
     assert!(matches!(err, ContractError::Expired { id: _proposal_id }));

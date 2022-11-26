@@ -4,15 +4,19 @@ use crate::testing::instantiate::{
     _get_default_token_dao_proposal_module_instantiate,
     instantiate_with_multiple_staked_balances_governance,
 };
-use crate::testing::queries::{query_balance_cw20, query_dao_token, query_multiple_proposal_module, query_proposal, query_proposal_config};
-use crate::testing::tests::{ALTERNATIVE_ADDR, CREATOR_ADDR, get_pre_propose_info};
+use crate::testing::queries::{
+    query_balance_cw20, query_dao_token, query_multiple_proposal_module, query_proposal,
+};
+use crate::testing::tests::{get_pre_propose_info, ALTERNATIVE_ADDR, CREATOR_ADDR};
 use crate::ContractError;
-use cosmwasm_std::{Addr, CosmosMsg, Decimal, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use cwd_voting::deposit::{DepositRefundPolicy, UncheckedDepositInfo};
-use cwd_voting::multiple_choice::{MultipleChoiceOption, MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy};
+use cwd_voting::multiple_choice::{
+    MultipleChoiceOption, MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy,
+};
 use cwd_voting::status::Status;
 use cwd_voting::threshold::PercentageThreshold;
 
@@ -259,7 +263,7 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
         ),
         close_proposal_on_execution_failure: true,
     };
-        
+
     let core_addr = instantiate_with_multiple_staked_balances_governance(
         &mut app,
         instantiate,
@@ -272,7 +276,7 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
                 address: ALTERNATIVE_ADDR.to_string(),
                 amount: Uint128::new(50_000_000),
             },
-        ])
+        ]),
     );
     let proposal_module = query_multiple_proposal_module(&app, &core_addr);
     let gov_token = query_dao_token(&app, &core_addr);

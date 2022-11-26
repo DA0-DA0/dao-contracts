@@ -583,7 +583,9 @@ pub fn instantiate_with_multiple_staked_balances_governance(
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: staked_balances_voting_id,
             msg: to_binary(&cwd_voting_cw20_staked::msg::InstantiateMsg {
-                active_threshold: Some(AbsoluteCount { count: Uint128::one() }),
+                active_threshold: Some(AbsoluteCount {
+                    count: Uint128::one(),
+                }),
                 token_info: cwd_voting_cw20_staked::msg::TokenInfo::New {
                     code_id: cw20_id,
                     label: "DAO DAO governance token.".to_string(),

@@ -574,19 +574,19 @@ pub fn execute_update_config(
     let dao = deps.api.addr_validate(&dao)?;
 
     let (min_voting_period, max_voting_period) =
-    validate_voting_period(min_voting_period, max_voting_period)?;
+        validate_voting_period(min_voting_period, max_voting_period)?;
 
     CONFIG.save(
-    deps.storage,
-    &Config {
-        threshold,
-        max_voting_period,
-        min_voting_period,
-        only_members_execute,
-        allow_revoting,
-        dao,
-        close_proposal_on_execution_failure,
-    },
+        deps.storage,
+        &Config {
+            threshold,
+            max_voting_period,
+            min_voting_period,
+            only_members_execute,
+            allow_revoting,
+            dao,
+            close_proposal_on_execution_failure,
+        },
     )?;
     let config = CONFIG.load(deps.storage)?;
 
