@@ -321,14 +321,14 @@
           "set_item": {
             "type": "object",
             "required": [
-              "addr",
-              "key"
+              "key",
+              "value"
             ],
             "properties": {
-              "addr": {
+              "key": {
                 "type": "string"
               },
-              "key": {
+              "value": {
                 "type": "string"
               }
             },

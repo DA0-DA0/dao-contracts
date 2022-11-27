@@ -112,7 +112,7 @@ pub fn execute(
         ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
         ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
-        ExecuteMsg::SetItem { key, addr } => execute_set_item(deps, env, info.sender, key, addr),
+        ExecuteMsg::SetItem { key, value } => execute_set_item(deps, env, info.sender, key, value),
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info.sender, config)
         }
