@@ -1423,11 +1423,11 @@ fn test_passthrough_voting_queries() {
     );
 }
 
-fn set_item(app: &mut App, gov_addr: Addr, key: String, addr: String) {
+fn set_item(app: &mut App, gov_addr: Addr, key: String, value: String) {
     app.execute_contract(
         gov_addr.clone(),
         gov_addr,
-        &ExecuteMsg::SetItem { key, addr },
+        &ExecuteMsg::SetItem { key, value },
         &[],
     )
     .unwrap();
@@ -1464,6 +1464,40 @@ fn list_items(
             },
         )
         .unwrap()
+}
+
+#[test]
+fn test_item_permissions() {
+    let (gov_addr, mut app) = do_standard_instantiate(true, None);
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr.clone(),
+            &ExecuteMsg::SetItem {
+                key: "k".to_string(),
+                value: "v".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr,
+            &ExecuteMsg::RemoveItem {
+                key: "k".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
 }
 
 #[test]
@@ -1815,6 +1849,22 @@ fn test_cw20_receive_auto_add() {
         .unwrap();
     assert!(matches!(err, ContractError::Std(_)));
 
+    // Test that non-DAO can not update the list.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw20List {
+                to_add: vec![],
+                to_remove: vec![gov_token.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
     app.execute_contract(
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
@@ -2014,6 +2064,22 @@ fn test_cw721_receive() {
         .downcast()
         .unwrap();
     assert!(matches!(err, ContractError::Std(_)));
+
+    // Test that non-DAO can not update the list.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw721List {
+                to_add: vec![],
+                to_remove: vec![cw721_addr.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
 
     // Add a real cw721.
     app.execute_contract(
