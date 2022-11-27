@@ -11,7 +11,7 @@ been rejected), this allows voters to reflect their opinion even though
 it has no effect on the final proposal's status.
 
 For more information about how these modules fit together see
-[this](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-v1-Contracts-Design)
+[this](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design)
 wiki page.
 
 For information about how this module counts votes and handles passing

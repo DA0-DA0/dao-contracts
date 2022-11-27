@@ -3,7 +3,9 @@
 This voting module determines voting power based on staked native
 tokens in the bank module. You could, for example, use this to allow
 Juno stakers to vote on proposals using the same voting power they use
-when doing native SDK governance votes.
+when doing native SDK governance votes. This contract implements the 
+interface needed to be a DAO DAO [voting
+module](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design#the-voting-module).
 
 ~WARNING~ This module behaves differently than other DAO DAO voting
 modules. Specifically:

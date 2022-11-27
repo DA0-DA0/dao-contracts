@@ -8,7 +8,7 @@ On instantiation, this contract registers a hook with the approval contract to a
 
 When this contract recieves a proposal as hook from `cwd-pre-propose-approval-single`, it makes an approval propose in the approval DAO. If approved, the approval proposal calls the approve message on this contract when executed. If the proposal is rejected and closed it fires off reject call.
 
-``` 
+```text
 ┌──────────┐         Approver DAO Registers Prop Submission Hook
 │          │       ┌──────────────────────────────────────────────┐
 │  Account │       │                                              │

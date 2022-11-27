@@ -58,6 +58,14 @@ and [Oak
 Security](https://github.com/oak-security/audit-reports/blob/2377ba8cfcfd505283c789d706311b06771d6db4/DAO%20DAO/2022-06-22%20Audit%20Report%20-%20DAO%20DAO%20v1.0.pdf)
 on the `v1.0.0` tag. An audit for the v2 packages is forthcoming.
 
+## Links and Resources
+
+- [DAO DAO DAO](https://daodao.zone/dao/juno10h0hc64jv006rr8qy0zhlu4jsxct8qwa0vtaleayh0ujz0zynf2s2r7v8q)
+- [Discord](https://discord.gg/sAaGuyW3D2)
+- [Docs](https://docs.daodao.zone)
+- [Manually Instantiating a DAO](https://github.com/DA0-DA0/dao-contracts/wiki/Instantiating-a-DAO)
+- [Twitter](https://github.com/DA0-DA0)
+- [What is a DAO?](https://docs.daodao.zone/docs/introduction/what-is-dao)
 
 ## Developers
 
