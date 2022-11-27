@@ -10,6 +10,8 @@ where the proposal is no longer being evaluated (e.g. met the quorum and
 been rejected), this allows voters to reflect their opinion even though
 it has no effect on the final proposal's status.
 
+You can read more about this module in [our wiki](https://github.com/DA0-DA0/dao-contracts/wiki/Multiple-Choice-Proposal-Module).
+
 ## Undesired behavior
 
 The undesired behavior of this contract is tested under `testing/adversarial_tests.rs`.

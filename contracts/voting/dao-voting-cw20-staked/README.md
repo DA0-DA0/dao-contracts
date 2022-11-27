@@ -3,8 +3,11 @@
 A voting power module which determines voting power based on the
 staked token balance of specific addresses at given heights.
 
-Also features the functionality to set an active threshold, this
-threshold allows DAOs to be marked as inactive if it is not met.  This
+This contract implements the interface needed to be a DAO
+DAO [voting
+module](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design#the-voting-module).
+It also features the functionality to set an active threshold, this
+threshold allows DAOs to be marked as inactive if it is not met. This
 threshold can either be an absolute count of tokens staked or a
 percentage of the token's total supply.
 
