@@ -328,11 +328,11 @@ export interface DaoCoreInterface extends DaoCoreReadOnlyInterface {
     key: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   setItem: ({
-    addr,
-    key
+    key,
+    value
   }: {
-    addr: string;
     key: string;
+    value: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   nominateAdmin: ({
     admin
@@ -487,16 +487,16 @@ export class DaoCoreClient extends DaoCoreQueryClient implements DaoCoreInterfac
     }, fee, memo, funds);
   };
   setItem = async ({
-    addr,
-    key
+    key,
+    value
   }: {
-    addr: string;
     key: string;
+    value: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       set_item: {
-        addr,
-        key
+        key,
+        value
       }
     }, fee, memo, funds);
   };

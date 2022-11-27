@@ -56,8 +56,8 @@ export type ExecuteMsg = {
   };
 } | {
   set_item: {
-    addr: string;
     key: string;
+    value: string;
   };
 } | {
   nominate_admin: {

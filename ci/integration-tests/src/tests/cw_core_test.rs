@@ -141,7 +141,7 @@ fn execute_items(chain: &mut Chain) {
                     contract_addr: dao.addr.clone(),
                     msg: to_binary(&dao_core::msg::ExecuteMsg::SetItem {
                         key: "meme".to_string(),
-                        addr: "foobar".to_string(),
+                        value: "foobar".to_string(),
                     })
                     .unwrap(),
                     funds: vec![],
