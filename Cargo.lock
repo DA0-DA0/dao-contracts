@@ -48,9 +48,9 @@ checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 
 [[package]]
 name = "async-io"
-version = "1.11.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fe557ebe0829511ddff4ad3011d159c0e6f144e05e3e8c3ab5095a131900a7b"
+checksum = "8c374dda1ed3e7d8f0d9ba58715f924862c63eae6849c92d3a18e7fbde9e2794"
 dependencies = [
  "async-lock",
  "autocfg",
@@ -63,7 +63,7 @@ dependencies = [
  "slab",
  "socket2",
  "waker-fn",
- "winapi",
+ "windows-sys 0.42.0",
 ]
 
 [[package]]
@@ -2587,16 +2587,16 @@ dependencies = [
 
 [[package]]
 name = "polling"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab4609a838d88b73d8238967b60dd115cc08d38e2bbaf51ee1e4b695f89122e2"
+checksum = "9f7d73f1eaed1ca1fb37b54dcc9b38e3b17d6c7b8ecb7abfffcac8d0351f17d4"
 dependencies = [
  "autocfg",
  "cfg-if",
  "libc",
  "log",
  "wepoll-ffi",
- "winapi",
+ "windows-sys 0.42.0",
 ]
 
 [[package]]
