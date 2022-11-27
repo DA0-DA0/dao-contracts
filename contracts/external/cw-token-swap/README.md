@@ -9,3 +9,4 @@ transaction is completed and both sides receive their tokens.
 At any time before the other counterparty has provided funds a
 counterparty may withdraw their funds.
 
+If `counterparty_one` is instantiating the contract and promising native tokens, they have the option to instantatiate and fund the contract in one transaction. Simply instantatiate the contract with the promised funds.

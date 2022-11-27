@@ -1,4 +1,5 @@
 use cosmwasm_std::{StdError, Uint128};
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -6,6 +7,9 @@ use thiserror::Error;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    PaymentError(#[from] PaymentError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -18,6 +22,9 @@ pub enum ContractError {
 
     #[error("Escrow funds have already been sent")]
     Complete {},
+
+    #[error("To instantiate this contract with funds, the counterparty_one address much match the sender")]
+    FunderMustBeCounterParty {},
 
     #[error("Must provide funds before withdrawing")]
     NoProvision {},

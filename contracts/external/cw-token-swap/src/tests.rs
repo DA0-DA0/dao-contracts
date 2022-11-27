@@ -1,9 +1,11 @@
 use cosmwasm_std::{
+    coin,
     testing::{mock_dependencies, mock_env},
     to_binary, Addr, Coin, Empty, Uint128,
 };
 use cw20::Cw20Coin;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_utils::PaymentError;
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -772,6 +774,186 @@ fn test_fund_twice() {
         .unwrap();
 
     assert!(matches!(err, ContractError::AlreadyProvided {}));
+}
+
+#[test]
+fn test_fund_on_instantiate() {
+    let mut app = App::default();
+    let escrow_code = app.store_code(escrow_contract());
+
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: DAO1.to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(200),
+            denom: "ujuno".to_string(),
+        }],
+    }))
+    .unwrap();
+
+    // Instantatiate and fund contract with the promised amount
+    let escrow = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "uosmo".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[coin(100, "ujuno")],
+            "escrow",
+            None,
+        )
+        .unwrap();
+
+    // Check the status for counterparty one is provided
+    let status: StatusResponse = app
+        .wrap()
+        .query_wasm_smart(escrow, &QueryMsg::Status {})
+        .unwrap();
+    assert!(status.counterparty_one.provided);
+}
+
+#[test]
+fn test_fund_on_instantiate_wrong_amount_fails() {
+    let mut app = App::default();
+    let escrow_code = app.store_code(escrow_contract());
+
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: DAO1.to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(200),
+            denom: "ujuno".to_string(),
+        }],
+    }))
+    .unwrap();
+
+    // Instantiate with too many funds fails
+    let err: ContractError = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "uosmo".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[coin(111, "ujuno")],
+            "escrow",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    let expected = ContractError::InvalidAmount {
+        expected: Uint128::new(100),
+        actual: Uint128::new(111),
+    };
+    assert_eq!(err, expected);
+
+    // Instatiate with too few funds fails
+    let err: ContractError = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "uosmo".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[coin(99, "ujuno")],
+            "escrow",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    let expected = ContractError::InvalidAmount {
+        expected: Uint128::new(100),
+        actual: Uint128::new(99),
+    };
+    assert_eq!(err, expected);
+}
+
+#[test]
+fn test_fund_on_instantiate_wrong_denom_fails() {
+    let mut app = App::default();
+    let escrow_code = app.store_code(escrow_contract());
+
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: DAO1.to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(200),
+            denom: "ujunox".to_string(),
+        }],
+    }))
+    .unwrap();
+
+    // Instatiate with too few funds fails
+    let err: ContractError = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "uosmo".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[coin(100, "ujunox")],
+            "escrow",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::PaymentError(PaymentError::MissingDenom("ujuno".to_string()))
+    );
 }
 
 #[test]

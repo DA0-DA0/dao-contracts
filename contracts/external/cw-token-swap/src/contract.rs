@@ -20,16 +20,45 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let counterparty_one = msg.counterparty_one.into_checked(deps.as_ref())?;
+    let mut counterparty_one = msg.counterparty_one.into_checked(deps.as_ref())?;
     let counterparty_two = msg.counterparty_two.into_checked(deps.as_ref())?;
 
     if counterparty_one.address == counterparty_two.address {
         return Err(ContractError::NonDistinctCounterparties {});
+    }
+
+    // Counter party_one can optionally provide their promise on instantiation
+    //
+    // NOTE: this only works for native tokens
+    if !info.funds.is_empty() {
+        match counterparty_one.clone().promise {
+            CheckedTokenInfo::Native { denom, amount } => {
+                // Check that the sender is counterparty one
+                if info.sender != counterparty_one.address {
+                    return Err(ContractError::FunderMustBeCounterParty {});
+                }
+
+                // Check that the exact amount was sent
+                let sent_amount = must_pay(&info, &denom)?;
+                if sent_amount != amount {
+                    return Err(ContractError::InvalidAmount {
+                        expected: amount,
+                        actual: sent_amount,
+                    });
+                }
+
+                // Mark counterpary one promise as provided
+                counterparty_one.provided = true;
+            }
+            CheckedTokenInfo::Cw20 { .. } => {
+                return Err(ContractError::InvalidFunds {});
+            }
+        }
     }
 
     COUNTERPARTY_ONE.save(deps.storage, &counterparty_one)?;
