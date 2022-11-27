@@ -4,10 +4,14 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
     to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
+use cw2::ContractVersion;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
-use dao_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiateInfo};
+use dao_interface::{
+    voting::{InfoResponse, VotingPowerAtHeightResponse},
+    Admin, ModuleInstantiateInfo,
+};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -600,6 +604,20 @@ fn test_removed_modules_can_not_execute() {
             address: _gov_address
         }
     ));
+
+    // Check that the enabled query works.
+    let enabled_modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            &gov_addr,
+            &QueryMsg::ActiveProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(enabled_modules, vec![new_proposal_module.clone()]);
 
     // The new proposal module should be able to perform actions.
     app.execute_contract(
@@ -2966,4 +2984,22 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+fn test_query_info() {
+    let (core_addr, app) = do_standard_instantiate(true, None);
+    let res: InfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::Info {})
+        .unwrap();
+    assert_eq!(
+        res,
+        InfoResponse {
+            info: ContractVersion {
+                contract: CONTRACT_NAME.to_string(),
+                version: CONTRACT_VERSION.to_string()
+            }
+        }
+    )
 }
