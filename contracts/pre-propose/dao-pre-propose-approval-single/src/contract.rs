@@ -48,11 +48,9 @@ pub fn execute(
     match msg {
         ExecuteMsg::Propose { msg } => execute_propose(deps, env, info, msg),
 
-        // TODO(zeke): why not use behavior of base?
         ExecuteMsg::AddProposalSubmittedHook { address } => {
             execute_add_approver_hook(deps, info, address)
         }
-        // TODO(zeke): why not use behavior of base?
         ExecuteMsg::RemoveProposalSubmittedHook { address } => {
             execute_remove_approver_hook(deps, info, address)
         }

@@ -237,6 +237,30 @@ fn increase_allowance(app: &mut App, sender: &str, receiver: &Addr, cw20: Addr, 
     .unwrap();
 }
 
+fn add_hook(app: &mut App, sender: &str, module: &Addr, hook: &str) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        module.clone(),
+        &ExecuteMsg::AddProposalSubmittedHook {
+            address: hook.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+}
+
+fn remove_hook(app: &mut App, sender: &str, module: &Addr, hook: &str) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        module.clone(),
+        &ExecuteMsg::RemoveProposalSubmittedHook {
+            address: hook.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+}
+
 fn get_balance_cw20<T: Into<String>, U: Into<String>>(
     app: &App,
     contract_addr: T,
@@ -284,6 +308,12 @@ fn get_config(app: &App, module: Addr) -> Config {
 fn get_dao(app: &App, module: Addr) -> Addr {
     app.wrap()
         .query_wasm_smart(module, &QueryMsg::Dao {})
+        .unwrap()
+}
+
+fn query_hooks(app: &App, module: Addr) -> cw_hooks::HooksResponse {
+    app.wrap()
+        .query_wasm_smart(module, &QueryMsg::ProposalSubmittedHooks {})
         .unwrap()
 }
 
@@ -1304,4 +1334,22 @@ fn test_withdraw() {
     );
     let balance = get_balance_native(&app, core_addr.as_str(), "ujuno");
     assert_eq!(balance, Uint128::new(30));
+}
+
+#[test]
+fn test_hook_management() {
+    let app = &mut App::default();
+    let DefaultTestSetup {
+        core_addr,
+        proposal_single: _,
+        pre_propose,
+    } = setup_default_test(app, None, true);
+
+    add_hook(app, core_addr.as_str(), &pre_propose, "one");
+    add_hook(app, core_addr.as_str(), &pre_propose, "two");
+
+    remove_hook(app, core_addr.as_str(), &pre_propose, "one");
+
+    let hooks = query_hooks(app, pre_propose).hooks;
+    assert_eq!(hooks, vec!["two".to_string()])
 }

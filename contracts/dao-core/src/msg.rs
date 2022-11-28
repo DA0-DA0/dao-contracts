@@ -76,7 +76,7 @@ pub enum ExecuteMsg {
     /// Adds an item to the governance contract's item map. If the
     /// item already exists the existing value is overriden. If the
     /// item does not exist a new item is added.
-    SetItem { key: String, addr: String },
+    SetItem { key: String, value: String },
     /// Callable by the admin of the contract. If ADMIN is None the
     /// admin is set as the contract itself so that it may be updated
     /// later by vote. If ADMIN is Some a new admin is proposed and

@@ -4,10 +4,14 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
     to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
+use cw2::ContractVersion;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
-use dao_interface::{voting::VotingPowerAtHeightResponse, Admin, ModuleInstantiateInfo};
+use dao_interface::{
+    voting::{InfoResponse, VotingPowerAtHeightResponse},
+    Admin, ModuleInstantiateInfo,
+};
 
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
@@ -600,6 +604,20 @@ fn test_removed_modules_can_not_execute() {
             address: _gov_address
         }
     ));
+
+    // Check that the enabled query works.
+    let enabled_modules: Vec<ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            &gov_addr,
+            &QueryMsg::ActiveProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(enabled_modules, vec![new_proposal_module.clone()]);
 
     // The new proposal module should be able to perform actions.
     app.execute_contract(
@@ -1423,11 +1441,11 @@ fn test_passthrough_voting_queries() {
     );
 }
 
-fn set_item(app: &mut App, gov_addr: Addr, key: String, addr: String) {
+fn set_item(app: &mut App, gov_addr: Addr, key: String, value: String) {
     app.execute_contract(
         gov_addr.clone(),
         gov_addr,
-        &ExecuteMsg::SetItem { key, addr },
+        &ExecuteMsg::SetItem { key, value },
         &[],
     )
     .unwrap();
@@ -1464,6 +1482,40 @@ fn list_items(
             },
         )
         .unwrap()
+}
+
+#[test]
+fn test_item_permissions() {
+    let (gov_addr, mut app) = do_standard_instantiate(true, None);
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr.clone(),
+            &ExecuteMsg::SetItem {
+                key: "k".to_string(),
+                value: "v".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr,
+            &ExecuteMsg::RemoveItem {
+                key: "k".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Unauthorized {});
 }
 
 #[test]
@@ -1815,6 +1867,22 @@ fn test_cw20_receive_auto_add() {
         .unwrap();
     assert!(matches!(err, ContractError::Std(_)));
 
+    // Test that non-DAO can not update the list.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw20List {
+                to_add: vec![],
+                to_remove: vec![gov_token.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
     app.execute_contract(
         Addr::unchecked(gov_addr.clone()),
         gov_addr.clone(),
@@ -2014,6 +2082,22 @@ fn test_cw721_receive() {
         .downcast()
         .unwrap();
     assert!(matches!(err, ContractError::Std(_)));
+
+    // Test that non-DAO can not update the list.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            gov_addr.clone(),
+            &ExecuteMsg::UpdateCw721List {
+                to_add: vec![],
+                to_remove: vec![cw721_addr.to_string()],
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::Unauthorized {}));
 
     // Add a real cw721.
     app.execute_contract(
@@ -2900,4 +2984,22 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+fn test_query_info() {
+    let (core_addr, app) = do_standard_instantiate(true, None);
+    let res: InfoResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::Info {})
+        .unwrap();
+    assert_eq!(
+        res,
+        InfoResponse {
+            info: ContractVersion {
+                contract: CONTRACT_NAME.to_string(),
+                version: CONTRACT_VERSION.to_string()
+            }
+        }
+    )
 }
