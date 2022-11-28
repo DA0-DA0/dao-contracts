@@ -6,7 +6,7 @@ This contract implements an approval flow for proposals, it also handles deposit
 
 This contract is instantatied with an `approver` address. This address is allowed to approve or reject the proposal.
 
-```
+```text
       ┌──────────┐
       │          │
       │  Account │

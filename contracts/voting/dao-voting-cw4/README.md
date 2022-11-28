@@ -4,9 +4,12 @@ A simple voting power module which determines voting power based on
 the weight of a user in a cw4-group contract. This allocates voting
 power in the same way that one would expect a multisig to.
 
+This contract implements the interface needed to be a DAO
+DAO [voting
+module](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design#the-voting-module).
 For more information about how these modules fit together see
-[this](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-v1-Contracts-Design)
-wiki page.
+[this](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design)
+wiki page. 
 
 ## Receiving updates
 
