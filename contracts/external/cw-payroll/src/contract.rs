@@ -8,7 +8,7 @@ use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
     StreamId, StreamParams, StreamResponse,
 };
-use crate::state::{save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ};
+use crate::state::{save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ, remove_stream};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -100,8 +100,22 @@ pub fn execute_remove_stream(
     info: MessageInfo,
     id: StreamId,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    todo!();
+    let stream = STREAMS
+        .may_load(deps.storage, id)?
+        .ok_or(ContractError::StreamNotFound {})?;
+
+    if stream.admin != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    
+    remove_stream(deps, id).unwrap();
+    let response = Response::new()
+        .add_attribute("method", "create_stream")
+        .add_attribute("stream_id", id.to_string())
+        .add_attribute("admin", info.sender)
+        .add_attribute("paused_time", env.block.time.to_string());
+
+    Ok(response)
 }
 pub fn execute_resume_stream(
     env: Env,
@@ -202,9 +216,6 @@ pub fn execute_create_stream(
             }
         }
     }
-    // Duration must divide evenly into amount, so refund remainder
-    // TODO: Change logic to work for cw20 & native
-
     let rate_per_second = Uint128::from(total_amount.u128() / duration);
 
     let stream = Stream {
@@ -312,7 +323,7 @@ pub fn execute_distribute(
             address: coin.address.clone(),
             amount: Uint128::from(time_passed) * stream.rate_per_second,
         };
-        let claimed = stream.find_claimed(&coin);
+        let claimed = stream.find_claimed_cw20(&coin);
         let claimed_amount = if let Some(cl) = claimed {
             cl.amount
         } else {

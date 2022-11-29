@@ -1,7 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Coin, OverflowError, OverflowOperation::Sub, StdError};
 use cw20::{Balance, Cw20CoinVerified};
-use cw_storage_plus::Index;
 use cw_utils::NativeBalance;
 
 use crate::error::GenericError;

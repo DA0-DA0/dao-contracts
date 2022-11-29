@@ -4,7 +4,7 @@ use cw20::{Balance, Cw20CoinVerified};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
-use crate::balance::GenericBalance;
+use crate::{balance::GenericBalance, msg::StreamId};
 
 #[cw_serde]
 pub struct Config {
@@ -41,14 +41,14 @@ impl Stream {
             return false;
         }
         for bc in self.balance.cw20.iter() {
-            let claimed = self.find_claimed(bc);
+            let claimed = self.find_claimed_cw20(bc);
             if claimed.is_some() && claimed.unwrap().amount >= bc.amount {
                 return false;
             }
         }
         true
     }
-    pub(crate) fn find_claimed(&self, cw20: &Cw20CoinVerified) -> Option<&Cw20CoinVerified> {
+    pub(crate) fn find_claimed_cw20(&self, cw20: &Cw20CoinVerified) -> Option<&Cw20CoinVerified> {
         let token = self
             .claimed_balance
             .cw20
@@ -66,4 +66,9 @@ pub fn save_stream(deps: DepsMut, stream: &Stream) -> StdResult<u64> {
     STREAM_SEQ.save(deps.storage, &id)?;
     STREAMS.save(deps.storage, id, stream)?;
     Ok(id)
+}
+
+pub fn remove_stream(deps: DepsMut, stream_id: StreamId) -> StdResult<StreamId> {
+    STREAMS.remove(deps.storage, stream_id);
+    Ok(stream_id)
 }
