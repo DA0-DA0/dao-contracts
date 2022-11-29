@@ -56,4 +56,7 @@ pub enum ContractError {
 
     #[error("Numerical overflow")]
     Overflow {},
+
+    #[error("Can not pause paused stream.")]
+    StreamAlreadyPaused {},
 }

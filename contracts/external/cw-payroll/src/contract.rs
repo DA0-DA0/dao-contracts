@@ -1,4 +1,6 @@
+use std::borrow::BorrowMut;
 use std::default;
+use std::sync::mpsc::SendError;
 
 use crate::balance::GenericBalance;
 use crate::error::ContractError;
@@ -71,8 +73,26 @@ pub fn execute_pause_stream(
     info: MessageInfo,
     id: StreamId,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    todo!();
+    let mut stream = STREAMS
+        .may_load(deps.storage, id)?
+        .ok_or(ContractError::StreamNotFound {})?;
+
+    if stream.admin != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    if stream.paused {
+        return Err(ContractError::StreamAlreadyPaused {});
+    }
+    stream.paused_time = Some(env.block.time.seconds());
+    stream.paused = true;
+    save_stream(deps, &stream).unwrap();
+    let response = Response::new()
+        .add_attribute("method", "create_stream")
+        .add_attribute("stream_id", id.to_string())
+        .add_attribute("admin", info.sender)
+        .add_attribute("paused_time", env.block.time.to_string());
+
+    Ok(response)
 }
 pub fn execute_remove_stream(
     env: Env,
@@ -223,7 +243,6 @@ pub fn execute_receive(
     info: MessageInfo,
     wrapped: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-
     // TODO: Change based on asset type found
     //Fixed
     let cw_balance = Balance::Cw20(Cw20CoinVerified {
@@ -270,7 +289,6 @@ pub fn execute_distribute(
 
     // TODO: Why is this required? is there a security issue here if someone pays to send you tokens all the time?
     // NOTE: commenting out for simple testing with croncat, if required will add approved list.
-    
 
     // TODO: Def change to better comparitor
     //Fixed
@@ -305,7 +323,10 @@ pub fn execute_distribute(
         if released.u128() == 0 {
             return Err(ContractError::NoFundsToClaim {});
         }
-        stream.claimed_balance.checked_add_cw20(&[vested.clone()]).unwrap();
+        stream
+            .claimed_balance
+            .checked_add_cw20(&[vested.clone()])
+            .unwrap();
         vested_list.push(vested);
 
         let cw20 = Cw20Contract(coin.address.clone());
@@ -316,7 +337,6 @@ pub fn execute_distribute(
         msgs.push(msg);
     }
     stream.balance.checked_sub_cw20(&vested_list).unwrap();
-
 
     STREAMS.save(deps.storage, id, &stream)?;
 
@@ -440,13 +460,19 @@ mod tests {
         let sender = Addr::unchecked("alice").to_string();
         let recipient = Addr::unchecked("bob").to_string();
         let amount = Uint128::new(200);
-        let balance=GenericBalance{
-            native:vec![Coin{denom:String::from("ujunox"),amount:amount}],
-            cw20:vec![]
+        let balance = GenericBalance {
+            native: vec![Coin {
+                denom: String::from("ujunox"),
+                amount: amount,
+            }],
+            cw20: vec![],
         };
-        let claimed=GenericBalance{
-            native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(0)}],
-            cw20:vec![]
+        let claimed = GenericBalance {
+            native: vec![Coin {
+                denom: String::from("ujunox"),
+                amount: Uint128::new(0),
+            }],
+            cw20: vec![],
         };
         let env = mock_env();
         let start_time = env.block.time.plus_seconds(100).seconds();
@@ -477,8 +503,8 @@ mod tests {
                 end_time,
                 title: None,
                 description: None,
-                paused:false,
-                paused_time:None,
+                paused: false,
+                paused_time: None,
             }
         );
 
@@ -517,17 +543,20 @@ mod tests {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
                 balance: balance,
-                claimed_balance: GenericBalance{
-                    native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(50)}],
-                    cw20:vec![]
+                claimed_balance: GenericBalance {
+                    native: vec![Coin {
+                        denom: String::from("ujunox"),
+                        amount: Uint128::new(50)
+                    }],
+                    cw20: vec![]
                 },
                 start_time,
                 rate_per_second: Uint128::new(1),
                 end_time,
                 title: None,
                 description: None,
-                paused:false,
-                paused_time:None,
+                paused: false,
+                paused_time: None,
             }
         );
 
@@ -602,21 +631,27 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance:  GenericBalance{
-                    native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(300)}],
-                    cw20:vec![]
+                balance: GenericBalance {
+                    native: vec![Coin {
+                        denom: String::from("ujunox"),
+                        amount: Uint128::new(300)
+                    }],
+                    cw20: vec![]
                 }, // original amount - refund
-                claimed_balance: GenericBalance{
-                    native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(0)}],
-                    cw20:vec![]
+                claimed_balance: GenericBalance {
+                    native: vec![Coin {
+                        denom: String::from("ujunox"),
+                        amount: Uint128::new(0)
+                    }],
+                    cw20: vec![]
                 },
                 start_time,
                 rate_per_second: Uint128::new(1),
                 end_time,
                 title: None,
                 description: None,
-                paused:false,
-                paused_time:None,
+                paused: false,
+                paused_time: None,
             }
         );
     }
