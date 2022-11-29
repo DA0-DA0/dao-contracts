@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, DepsMut, StdResult, Uint128};
-use cw20::Balance;
+use cw20::{Balance, Cw20CoinVerified};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
@@ -10,8 +10,6 @@ use crate::balance::GenericBalance;
 pub struct Config {
     pub admin: Addr,
 }
-
-
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
@@ -37,6 +35,28 @@ pub struct Stream {
     pub description: Option<String>,
 }
 
+impl Stream {
+    pub(crate) fn verify_can_ditribute_more(&self) -> bool {
+        if self.balance.cw20.is_empty() {
+            return false;
+        }
+        for bc in self.balance.cw20.iter() {
+            let claimed = self.find_claimed(bc);
+            if claimed.is_some() && claimed.unwrap().amount >= bc.amount {
+                return false;
+            }
+        }
+        true
+    }
+    pub(crate) fn find_claimed(&self, cw20: &Cw20CoinVerified) -> Option<&Cw20CoinVerified> {
+        let token = self
+            .claimed_balance
+            .cw20
+            .iter()
+            .find(|exist| exist.address == cw20.address);
+        token
+    }
+}
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
 pub const STREAMS: Map<u64, Stream> = Map::new("stream");
 

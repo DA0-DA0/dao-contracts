@@ -19,18 +19,6 @@ impl GenericBalance {
     pub fn has_cw20(&self) -> bool {
         !self.cw20.is_empty()
     }
-    pub fn first_native(&self) -> Option<Coin> {
-        if self.has_native() {
-            return Some(self.native[0]);
-        }
-        None
-    }
-    pub fn first_cw20(&self) -> Option<Cw20CoinVerified> {
-        if self.has_cw20() {
-            return Some(self.cw20[0]);
-        }
-        None
-    }
 }
 impl From<Balance> for GenericBalance {
     fn from(balance: Balance) -> GenericBalance {
@@ -46,16 +34,19 @@ impl From<Balance> for GenericBalance {
         }
     }
 }
-impl Into<Balance> for GenericBalance {
-    fn into(self) -> Balance {
-        let res = if self.is_native() {
-            Balance::Native(NativeBalance(self.native))
+impl Into<Option<Balance>> for GenericBalance {
+    fn into(self) -> Option<Balance> {
+        let res = if self.has_native() {
+            Some(Balance::Native(NativeBalance(self.native)))
+        } else if !self.cw20.is_empty() {
+            Some(Balance::Cw20(self.cw20[0].clone()))
         } else {
-            Balance::Cw20(self.cw20[0])
+            None
         };
         res
     }
 }
+
 impl GenericBalance {
     pub fn add_tokens(&mut self, add: Balance) {
         match add {

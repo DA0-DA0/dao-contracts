@@ -1,3 +1,5 @@
+use std::default;
+
 use crate::balance::GenericBalance;
 use crate::error::ContractError;
 use crate::msg::{
@@ -12,7 +14,7 @@ use cosmwasm_std::{
     Order, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use cw20::{Balance, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Balance, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = "crates.io:cw20-streams";
@@ -60,7 +62,7 @@ pub fn execute(
             start_time,
             end_time,
         } => execute_pause_stream(env, deps, info, id),
-        ExecuteMsg::RemoveStream { id } => todo!(),
+        ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
     }
 }
 pub fn execute_pause_stream(
@@ -93,10 +95,9 @@ pub fn execute_resume_stream(
 pub fn execute_create_stream(
     env: Env,
     deps: DepsMut,
-    info: MessageInfo,
+    _info: MessageInfo,
     params: StreamParams,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
     let StreamParams {
         admin,
         recipient,
@@ -132,9 +133,9 @@ pub fn execute_create_stream(
 
     let duration: u128 = (end_time - start_time).into();
     let total_amount = Uint128::default();
-    let msgs: Vec<CosmosMsg> = vec![];
+    let mut msgs: Vec<CosmosMsg> = vec![];
     if !balance.native.is_empty() {
-        for coin in balance.native {
+        for coin in balance.native.iter() {
             let refund: u128 = coin
                 .amount
                 .u128()
@@ -148,9 +149,9 @@ pub fn execute_create_stream(
             if refund > 0 {
                 // TODO: Change to support native and fix cw20
                 let msg = CosmosMsg::Bank(BankMsg::Send {
-                    to_address: owner.into(),
+                    to_address: owner.clone().into(),
                     amount: vec![Coin {
-                        denom: coin.denom,
+                        denom: coin.denom.clone(),
                         amount: coin.amount,
                     }],
                 });
@@ -159,7 +160,7 @@ pub fn execute_create_stream(
         }
     }
     if !balance.cw20.is_empty() {
-        for coin in balance.cw20 {
+        for coin in balance.cw20.iter() {
             let refund: u128 = coin
                 .amount
                 .u128()
@@ -169,12 +170,12 @@ pub fn execute_create_stream(
             if coin.amount.u128() < duration {
                 return Err(ContractError::AmountLessThanDuration {});
             }
-            total_amount.checked_add(coin.amount);
+            total_amount.checked_add(coin.amount).unwrap();
             if refund > 0 {
                 // TODO: Change to support native and fix cw20
-                let cw20 = Cw20Contract(coin.address);
+                let cw20 = Cw20Contract(coin.address.clone());
                 let msg = cw20.call(Cw20ExecuteMsg::Transfer {
-                    recipient: owner.into(),
+                    recipient: owner.clone().into(),
                     amount: refund.into(),
                 })?;
                 msgs.push(msg);
@@ -206,7 +207,6 @@ pub fn execute_create_stream(
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", admin.clone())
         .add_attribute("recipient", recipient)
-        .add_attribute("balance", total_amount.to_string())
         .add_attribute("start_time", start_time.to_string())
         .add_attribute("end_time", end_time.to_string());
 
@@ -223,12 +223,16 @@ pub fn execute_receive(
     info: MessageInfo,
     wrapped: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
 
     // TODO: Change based on asset type found
-    if config.cw20_addr != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
+    let cw_balance = Balance::Cw20(Cw20CoinVerified {
+        address: Clone::clone(&info.sender),
+        amount: wrapped.amount,
+    });
+
+    // if config.cw20_addr != info.sender {
+    //     return Err(ContractError::Unauthorized {});
+    // }
 
     let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
     match msg {
@@ -243,9 +247,9 @@ pub fn execute_receive(
             info,
             // TODO: Change this, but still conform to standard
             StreamParams {
-                admin: wrapped.sender,
+                admin: admin.unwrap_or(wrapped.sender),
                 recipient,
-                balance: wrapped.amount,
+                balance: cw_balance.into(),
                 start_time,
                 end_time,
                 title: None,
@@ -276,37 +280,53 @@ pub fn execute_distribute(
     // }
 
     // TODO: Def change to better comparitor
-    if stream.claimed_balance >= stream.balance {
+    //Fixed
+    if stream.verify_can_ditribute_more() {
         return Err(ContractError::StreamFullyClaimed {});
     }
 
     let block_time = env.block.time.seconds();
     let time_passed = std::cmp::min(block_time, stream.end_time).saturating_sub(stream.start_time);
-    let vested = Uint128::from(time_passed) * stream.rate_per_second;
-    let released = vested - stream.claimed_balance;
+    let mut msgs: Vec<CosmosMsg> = vec![];
+    let mut vested_list: Vec<Cw20CoinVerified> = vec![];
 
-    if released.u128() == 0 {
-        return Err(ContractError::NoFundsToClaim {});
+    for coin in stream.balance.cw20.iter() {
+        let vested = Cw20CoinVerified {
+            address: coin.address.clone(),
+            amount: Uint128::from(time_passed) * stream.rate_per_second,
+        };
+        let claimed = stream.find_claimed(&coin);
+        let claimed_amount = if let Some(cl) = claimed {
+            cl.amount
+        } else {
+            Uint128::MIN
+        };
+        let released = vested.amount - claimed_amount;
+
+        if released.u128() == 0 {
+            return Err(ContractError::NoFundsToClaim {});
+        }
+        stream.claimed_balance.checked_add_cw20(&[vested.clone()]).unwrap();
+        vested_list.push(vested);
+
+        let cw20 = Cw20Contract(coin.address.clone());
+        let msg = cw20.call(Cw20ExecuteMsg::Transfer {
+            recipient: stream.recipient.clone().into(),
+            amount: released,
+        })?;
+        msgs.push(msg);
     }
+    stream.balance.checked_sub_cw20(&vested_list).unwrap();
 
-    stream.claimed_amount = vested;
 
     STREAMS.save(deps.storage, id, &stream)?;
 
-    // TODO: Change based on netive/cw20
-    let config = CONFIG.load(deps.storage)?;
-    let cw20 = Cw20Contract(config.cw20_addr);
-    let msg = cw20.call(Cw20ExecuteMsg::Transfer {
-        recipient: stream.recipient.clone().into(),
-        amount: released,
-    })?;
-
-    let res = Response::new()
+    let mut res = Response::new()
         .add_attribute("method", "withdraw")
-        .add_attribute("stream_id", id.to_string())
-        .add_attribute("balance", released)
-        .add_attribute("recipient", stream.recipient)
-        .add_message(msg);
+        .add_attribute("stream_id", id.to_string());
+    if !msgs.is_empty() {
+        res = res.add_messages(msgs);
+    }
     Ok(res)
 }
 
