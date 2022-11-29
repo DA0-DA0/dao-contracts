@@ -145,7 +145,7 @@ pub fn execute_create_stream(
             if coin.amount.u128() < duration {
                 return Err(ContractError::AmountLessThanDuration {});
             }
-            total_amount.checked_add(coin.amount);
+            total_amount.checked_add(coin.amount).unwrap();
             if refund > 0 {
                 // TODO: Change to support native and fix cw20
                 let msg = CosmosMsg::Bank(BankMsg::Send {
@@ -225,14 +225,11 @@ pub fn execute_receive(
 ) -> Result<Response, ContractError> {
 
     // TODO: Change based on asset type found
+    //Fixed
     let cw_balance = Balance::Cw20(Cw20CoinVerified {
         address: Clone::clone(&info.sender),
         amount: wrapped.amount,
     });
-
-    // if config.cw20_addr != info.sender {
-    //     return Err(ContractError::Unauthorized {});
-    // }
 
     let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
     match msg {
@@ -273,14 +270,16 @@ pub fn execute_distribute(
 
     // TODO: Why is this required? is there a security issue here if someone pays to send you tokens all the time?
     // NOTE: commenting out for simple testing with croncat, if required will add approved list.
-    // if stream.recipient != info.sender {
-    //     return Err(ContractError::NotStreamRecipient {
-    //         recipient: stream.recipient,
-    //     });
-    // }
+    
 
     // TODO: Def change to better comparitor
     //Fixed
+
+    if stream.recipient != info.sender {
+        return Err(ContractError::NotStreamRecipient {
+            recipient: stream.recipient,
+        });
+    }
     if stream.verify_can_ditribute_more() {
         return Err(ContractError::StreamFullyClaimed {});
     }
@@ -441,6 +440,14 @@ mod tests {
         let sender = Addr::unchecked("alice").to_string();
         let recipient = Addr::unchecked("bob").to_string();
         let amount = Uint128::new(200);
+        let balance=GenericBalance{
+            native:vec![Coin{denom:String::from("ujunox"),amount:amount}],
+            cw20:vec![]
+        };
+        let claimed=GenericBalance{
+            native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(0)}],
+            cw20:vec![]
+        };
         let env = mock_env();
         let start_time = env.block.time.plus_seconds(100).seconds();
         let end_time = env.block.time.plus_seconds(300).seconds();
@@ -463,13 +470,15 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: amount,
-                claimed_balance: Uint128::new(0),
+                balance: balance.clone(),
+                claimed_balance: claimed,
                 start_time,
                 rate_per_second: Uint128::new(1),
                 end_time,
                 title: None,
-                description: None
+                description: None,
+                paused:false,
+                paused_time:None,
             }
         );
 
@@ -507,13 +516,18 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: amount,
-                claimed_balance: Uint128::new(50),
+                balance: balance,
+                claimed_balance: GenericBalance{
+                    native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(50)}],
+                    cw20:vec![]
+                },
                 start_time,
                 rate_per_second: Uint128::new(1),
                 end_time,
                 title: None,
-                description: None
+                description: None,
+                paused:false,
+                paused_time:None,
             }
         );
 
@@ -588,13 +602,21 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: amount: Uint128::new(300), // original amount - refund
-                claimed_balance: Uint128::new(0),
+                balance:  GenericBalance{
+                    native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(300)}],
+                    cw20:vec![]
+                }, // original amount - refund
+                claimed_balance: GenericBalance{
+                    native:vec![Coin{denom:String::from("ujunox"),amount:Uint128::new(0)}],
+                    cw20:vec![]
+                },
                 start_time,
                 rate_per_second: Uint128::new(1),
                 end_time,
                 title: None,
-                description: None
+                description: None,
+                paused:false,
+                paused_time:None,
             }
         );
     }
