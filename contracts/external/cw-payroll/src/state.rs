@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, DepsMut, StdResult, Uint128};
+use cosmwasm_std::{Addr, DepsMut, StdResult, Uint128, Coin};
 use cw20::{Balance, Cw20CoinVerified};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
@@ -54,6 +54,14 @@ impl Stream {
             .cw20
             .iter()
             .find(|exist| exist.address == cw20.address);
+        token
+    }
+    pub(crate) fn find_native_claimed(&self, native: &Coin) -> Option<&Coin> {
+        let token = self
+            .claimed_balance
+            .native
+            .iter()
+            .find(|exist| exist.denom == native.denom);
         token
     }
 }

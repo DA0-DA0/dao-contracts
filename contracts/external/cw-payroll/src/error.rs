@@ -59,4 +59,7 @@ pub enum ContractError {
 
     #[error("Can not pause paused stream.")]
     StreamAlreadyPaused {},
+
+    #[error("Stream is not pause for resume!")]
+    StreamNotPaused {},
 }

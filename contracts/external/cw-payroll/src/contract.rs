@@ -8,7 +8,7 @@ use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
     StreamId, StreamParams, StreamResponse,
 };
-use crate::state::{save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ, remove_stream};
+use crate::state::{remove_stream, save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -63,7 +63,7 @@ pub fn execute(
             id,
             start_time,
             end_time,
-        } => execute_pause_stream(env, deps, info, id),
+        } => execute_resume_stream(env, deps, info, id, start_time, end_time),
         ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
     }
 }
@@ -87,7 +87,7 @@ pub fn execute_pause_stream(
     stream.paused = true;
     save_stream(deps, &stream).unwrap();
     let response = Response::new()
-        .add_attribute("method", "create_stream")
+        .add_attribute("method", "pause_stream")
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
         .add_attribute("paused_time", env.block.time.to_string());
@@ -107,10 +107,10 @@ pub fn execute_remove_stream(
     if stream.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    
+
     remove_stream(deps, id).unwrap();
     let response = Response::new()
-        .add_attribute("method", "create_stream")
+        .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
         .add_attribute("paused_time", env.block.time.to_string());
@@ -122,9 +122,34 @@ pub fn execute_resume_stream(
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
+    _start_time: Option<u64>,
+    _end_time: Option<u64>,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    todo!();
+    let mut stream = STREAMS
+        .may_load(deps.storage, id)?
+        .ok_or(ContractError::StreamNotFound {})?;
+
+    if stream.admin != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+    if !stream.paused {
+        return Err(ContractError::StreamNotPaused {});
+    }
+    let duration: u128 = (stream.end_time - stream.start_time).into();
+    let paused_duration: u128 = (env.block.time.seconds() - stream.paused_time.unwrap()).into();
+    let rate_per_second = Uint128::from(stream.balance.total_amount() / duration - paused_duration);
+    stream.paused = false;
+    stream.rate_per_second = rate_per_second;
+
+    save_stream(deps, &stream).unwrap();
+    let response = Response::new()
+        .add_attribute("method", "resume_stream")
+        .add_attribute("stream_id", id.to_string())
+        .add_attribute("admin", info.sender)
+        .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
+        .add_attribute("resume_time", env.block.time.to_string());
+
+    Ok(response)
 }
 pub fn execute_create_stream(
     env: Env,
@@ -316,38 +341,76 @@ pub fn execute_distribute(
     let block_time = env.block.time.seconds();
     let time_passed = std::cmp::min(block_time, stream.end_time).saturating_sub(stream.start_time);
     let mut msgs: Vec<CosmosMsg> = vec![];
-    let mut vested_list: Vec<Cw20CoinVerified> = vec![];
 
-    for coin in stream.balance.cw20.iter() {
-        let vested = Cw20CoinVerified {
-            address: coin.address.clone(),
-            amount: Uint128::from(time_passed) * stream.rate_per_second,
-        };
-        let claimed = stream.find_claimed_cw20(&coin);
-        let claimed_amount = if let Some(cl) = claimed {
-            cl.amount
-        } else {
-            Uint128::MIN
-        };
-        let released = vested.amount - claimed_amount;
+    if !stream.balance.native.is_empty() {
+        let mut vested_list: Vec<Coin> = vec![];
 
-        if released.u128() == 0 {
-            return Err(ContractError::NoFundsToClaim {});
+        for coin in stream.balance.native.iter() {
+            let vested = Coin {
+                denom: coin.denom.clone(),
+                amount: Uint128::from(time_passed) * stream.rate_per_second,
+            };
+            let claimed = stream.find_native_claimed(&coin);
+            let claimed_amount = if let Some(cl) = claimed {
+                cl.amount
+            } else {
+                Uint128::MIN
+            };
+            let released = vested.amount - claimed_amount;
+
+            if released.u128() == 0 {
+                return Err(ContractError::NoFundsToClaim {});
+            }
+            stream
+                .claimed_balance
+                .checked_add_native(&[vested.clone()])
+                .unwrap();
+            vested_list.push(vested);
+            let msg = CosmosMsg::Bank(BankMsg::Send {
+                to_address: stream.recipient.clone().into(),
+                amount: vec![Coin {
+                    denom: coin.denom.clone(),
+                    amount: coin.amount,
+                }],
+            });
+            msgs.push(msg);
         }
-        stream
-            .claimed_balance
-            .checked_add_cw20(&[vested.clone()])
-            .unwrap();
-        vested_list.push(vested);
-
-        let cw20 = Cw20Contract(coin.address.clone());
-        let msg = cw20.call(Cw20ExecuteMsg::Transfer {
-            recipient: stream.recipient.clone().into(),
-            amount: released,
-        })?;
-        msgs.push(msg);
+        stream.balance.checked_add_native(&vested_list).unwrap();
     }
-    stream.balance.checked_sub_cw20(&vested_list).unwrap();
+    if !stream.balance.cw20.is_empty() {
+        let mut vested_list: Vec<Cw20CoinVerified> = vec![];
+
+        for coin in stream.balance.cw20.iter() {
+            let vested = Cw20CoinVerified {
+                address: coin.address.clone(),
+                amount: Uint128::from(time_passed) * stream.rate_per_second,
+            };
+            let claimed = stream.find_claimed_cw20(&coin);
+            let claimed_amount = if let Some(cl) = claimed {
+                cl.amount
+            } else {
+                Uint128::MIN
+            };
+            let released = vested.amount - claimed_amount;
+
+            if released.u128() == 0 {
+                return Err(ContractError::NoFundsToClaim {});
+            }
+            stream
+                .claimed_balance
+                .checked_add_cw20(&[vested.clone()])
+                .unwrap();
+            vested_list.push(vested);
+
+            let cw20 = Cw20Contract(coin.address.clone());
+            let msg = cw20.call(Cw20ExecuteMsg::Transfer {
+                recipient: stream.recipient.clone().into(),
+                amount: released,
+            })?;
+            msgs.push(msg);
+        }
+        stream.balance.checked_sub_cw20(&vested_list).unwrap();
+    }
 
     STREAMS.save(deps.storage, id, &stream)?;
 

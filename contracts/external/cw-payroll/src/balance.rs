@@ -1,7 +1,8 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Coin, OverflowError, OverflowOperation::Sub, StdError};
+use cosmwasm_std::{Coin, OverflowError, OverflowOperation::Sub, StdError, Uint128};
 use cw20::{Balance, Cw20CoinVerified};
 use cw_utils::NativeBalance;
+use std::convert::{TryFrom,TryInto};
 
 use crate::error::GenericError;
 
@@ -17,6 +18,16 @@ impl GenericBalance {
     }
     pub fn has_cw20(&self) -> bool {
         !self.cw20.is_empty()
+    }
+    pub fn total_amount(&self) -> u128 {
+        let native:Uint128=self.native.iter().map(|el|{
+            el.amount
+        }).sum();
+        let cw20:Uint128=self.cw20.iter().map(|el|{
+            el.amount
+        }).sum();
+
+        cw20.u128()+native.u128()
     }
 }
 impl From<Balance> for GenericBalance {
