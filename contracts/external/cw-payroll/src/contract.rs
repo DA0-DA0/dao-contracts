@@ -729,7 +729,73 @@ mod tests {
             }
         );
     }
+    #[test]
+    fn test_execute_pause_stream() {
+        let mut deps = mock_dependencies();
+        let msg = InstantiateMsg { admin: None };
+        let info = mock_info("cw20", &[]);
+        instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
+        let sender = Addr::unchecked("alice").to_string();
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender,
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: None,
+                recipient,
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let stream_id: StreamId = 1;
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::PauseStream { id: stream_id },
+        )
+        .unwrap();
+        //let msg = res.messages[0].clone().msg;
+
+        assert_eq!(
+            get_stream(deps.as_ref(), stream_id),
+            Stream {
+                admin: Addr::unchecked("alice"),
+                recipient: Addr::unchecked("bob"),
+                balance: GenericBalance {
+                    native: vec![Coin {
+                        denom: String::from("ujunox"),
+                        amount: Uint128::new(1)
+                    }],
+                    cw20: vec![]
+                }, // original amount - refund
+                claimed_balance: GenericBalance {
+                    native: vec![Coin {
+                        denom: String::from("ujunox"),
+                        amount: Uint128::new(0)
+                    }],
+                    cw20: vec![]
+                },
+                start_time,
+                rate_per_second: Uint128::new(1),
+                end_time,
+                title: None,
+                description: None,
+                paused: true,
+                paused_time: Some(env.block.time.seconds()),
+            }
+        );
+    }
     #[test]
     fn invalid_start_time() {
         let mut deps = mock_dependencies();
