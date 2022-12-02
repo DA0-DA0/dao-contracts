@@ -1,10 +1,9 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Coin, DepsMut, StdResult, Uint128};
-use cw20::{Balance, Cw20CoinVerified};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
-use crate::{balance::GenericBalance, msg::StreamId};
+use crate::{balance::WrapedBalance, msg::StreamId};
 
 #[cw_serde]
 pub struct Config {
@@ -18,8 +17,8 @@ pub struct Stream {
     pub admin: Addr,
     pub recipient: Addr,
     /// Balance in Native and Cw20 tokens
-    pub balance: GenericBalance,
-    pub claimed_balance: GenericBalance,
+    pub balance: WrapedBalance,
+    pub claimed_balance: WrapedBalance,
     pub start_time: u64,
     pub end_time: u64,
     pub paused_time: Option<u64>,
@@ -36,36 +35,11 @@ pub struct Stream {
 }
 
 impl Stream {
-    pub(crate) fn verify_can_ditribute_more(&self) -> bool {
-        if self.balance.cw20.is_empty() && self.balance.native.is_empty() {
+    pub(crate) fn can_ditribute_more(&self) -> bool {
+        if self.balance.amount() == 0 {
             return false;
         }
-        self.balance.cw20.iter().all(|el|{
-            let claimed=self.find_claimed_cw20(el);
-            !(claimed.is_some() && claimed.unwrap().amount >= el.amount)
-        });
-        self.balance.native.iter().all(|el|{
-            let claimed=self.find_native_claimed(el);
-            !(claimed.is_some() && claimed.unwrap().amount >= el.amount)
-        });
-       
-        true
-    }
-    pub(crate) fn find_claimed_cw20(&self, cw20: &Cw20CoinVerified) -> Option<&Cw20CoinVerified> {
-        let token = self
-            .claimed_balance
-            .cw20
-            .iter()
-            .find(|exist| exist.address == cw20.address);
-        token
-    }
-    pub(crate) fn find_native_claimed(&self, native: &Coin) -> Option<&Coin> {
-        let token = self
-            .claimed_balance
-            .native
-            .iter()
-            .find(|exist| exist.denom == native.denom);
-        token
+        self.claimed_balance.amount() < self.balance.amount()
     }
 }
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");

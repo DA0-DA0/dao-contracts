@@ -1,136 +1,72 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Coin, OverflowError, OverflowOperation::Sub, StdError, Uint128};
-use cw20::{Balance, Cw20CoinVerified};
+use cosmwasm_std::{Addr, Coin, OverflowError, OverflowOperation::Sub, StdError};
+use cw20::{Balance, Cw20CoinVerified, Cw20ReceiveMsg};
 use cw_utils::NativeBalance;
-use std::convert::{TryFrom,TryInto};
 
 use crate::error::GenericError;
-
 #[cw_serde]
 #[derive(Default)]
-pub struct GenericBalance {
-    pub native: Vec<Coin>,
-    pub cw20: Vec<Cw20CoinVerified>,
-}
-impl GenericBalance {
-    pub fn has_native(&self) -> bool {
-        !self.native.is_empty()
-    }
-    pub fn has_cw20(&self) -> bool {
-        !self.cw20.is_empty()
-    }
-    pub fn total_amount(&self) -> u128 {
-        let native:Uint128=self.native.iter().map(|el|{
-            el.amount
-        }).sum();
-        let cw20:Uint128=self.cw20.iter().map(|el|{
-            el.amount
-        }).sum();
+pub struct WrapedBalance(Balance);
 
-        cw20.u128()+native.u128()
+impl WrapedBalance {
+    pub fn is_native(&self) -> bool {
+        matches!(self.0, Balance::Native(_))
     }
-}
-impl From<Balance> for GenericBalance {
-    fn from(balance: Balance) -> GenericBalance {
-        match balance {
-            Balance::Native(balance) => GenericBalance {
-                native: balance.0,
-                cw20: vec![],
-            },
-            Balance::Cw20(token) => GenericBalance {
-                native: vec![],
-                cw20: vec![token],
-            },
+    pub fn is_cw20(&self) -> bool {
+        matches!(self.0, Balance::Cw20(_))
+    }
+    pub fn native(&self) -> Option<&Coin> {
+        match &self.0 {
+            Balance::Native(nb) => nb.0.get(0),
+            Balance::Cw20(_) => None,
+        }
+    }
+    pub fn cw20(&self) -> Option<&Cw20CoinVerified> {
+        match &self.0 {
+            Balance::Native(_) => None,
+            Balance::Cw20(cw20) => Some(&cw20),
+        }
+    }
+    pub fn new_native(native: Coin) -> Self {
+        WrapedBalance(Balance::Native(NativeBalance(vec![native])))
+    }
+    pub fn new_cw20(cw20: Cw20CoinVerified) -> Self {
+        WrapedBalance(Balance::Cw20(cw20))
+    }
+    pub fn amount(&self) -> u128 {
+        match &self.0 {
+            Balance::Native(nb) => {
+                if let Some(it) = nb.0.get(0) {
+                    it.amount.u128()
+                } else {
+                    0
+                }
+            }
+            Balance::Cw20(cw20) => cw20.amount.u128(),
         }
     }
 }
-impl Into<Option<Balance>> for GenericBalance {
-    fn into(self) -> Option<Balance> {
-        let res = if self.has_native() {
-            Some(Balance::Native(NativeBalance(self.native)))
-        } else if !self.cw20.is_empty() {
-            Some(Balance::Cw20(self.cw20[0].clone()))
-        } else {
-            None
-        };
-        res
+impl From<Balance> for WrapedBalance {
+    fn from(balance: Balance) -> WrapedBalance {
+        WrapedBalance(balance)
     }
 }
-
-impl GenericBalance {
-    pub fn add_tokens(&mut self, add: Balance) {
-        match add {
-            Balance::Native(balance) => {
-                for token in balance.0 {
-                    let index = self.native.iter().enumerate().find_map(|(i, exist)| {
-                        if exist.denom == token.denom {
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    });
-                    match index {
-                        Some(idx) => self.native[idx].amount += token.amount,
-                        None => self.native.push(token),
-                    }
-                }
-            }
-            Balance::Cw20(token) => {
-                let index = self.cw20.iter().enumerate().find_map(|(i, exist)| {
-                    if exist.address == token.address {
-                        Some(i)
-                    } else {
-                        None
-                    }
-                });
-                match index {
-                    Some(idx) => self.cw20[idx].amount += token.amount,
-                    None => self.cw20.push(token),
-                }
-            }
-        };
+impl From<Cw20ReceiveMsg> for WrapedBalance {
+    fn from(msg: Cw20ReceiveMsg) -> WrapedBalance {
+        WrapedBalance::new_cw20(Cw20CoinVerified {
+            address: Addr::unchecked(msg.sender),
+            amount: msg.amount,
+        })
     }
-    pub fn remove_tokens(&mut self, remove: Balance) {
-        match remove {
-            Balance::Native(balance) => {
-                for token in balance.0 {
-                    let index = self.native.iter().enumerate().find_map(|(i, exist)| {
-                        if exist.denom == token.denom {
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    });
-                    match index {
-                        Some(idx) => self.native[idx].amount -= token.amount,
-                        None => {
-                            if let Some(ind) = index {
-                                self.native.remove(ind);
-                            }
-                            ()
-                        }
-                    }
-                }
-            }
-            Balance::Cw20(token) => {
-                let index = self.cw20.iter().enumerate().find_map(|(i, exist)| {
-                    if exist.address == token.address {
-                        Some(i)
-                    } else {
-                        None
-                    }
-                });
-                match index {
-                    Some(idx) => self.cw20[idx].amount -= token.amount,
-                    None => {
-                        if let Some(ind) = index {
-                            self.cw20.remove(ind);
-                        }
-                        ()
-                    }
-                }
-            }
-        };
+}
+impl Into<Balance> for WrapedBalance {
+    fn into(self) -> Balance {
+        self.0
+    }
+}
+impl Into<Option<Balance>> for WrapedBalance {
+    fn into(self) -> Option<Balance> {
+        Some(self.0)
     }
 }
 pub trait FindAndMutate<'a, T, Rhs = &'a T>
@@ -145,10 +81,6 @@ where
 pub trait BalancesOperations<'a, T, Rhs> {
     fn checked_add_coins(&mut self, add: Rhs) -> Result<(), GenericError>;
     fn checked_sub_coins(&mut self, sub: Rhs) -> Result<(), GenericError>;
-}
-pub trait GenericBalances {
-    fn add_tokens(&mut self, add: Balance);
-    fn minus_tokens(&mut self, minus: Balance);
 }
 impl<'a, T, Rhs> BalancesOperations<'a, T, Rhs> for Vec<T>
 where
@@ -248,26 +180,32 @@ impl FindAndMutate<'_, Cw20CoinVerified> for Vec<Cw20CoinVerified> {
         }
     }
 }
-
-impl GenericBalance {
+impl WrapedBalance {
     pub fn checked_add_native(&mut self, add: &[Coin]) -> Result<(), GenericError> {
-        self.native.checked_add_coins(add)
+        if let Balance::Native(mut nb) = self.0.clone() {
+            return nb.0.checked_add_coins(add);
+        }
+        return Err(GenericError::EmptyBalance {  });
     }
 
     pub fn checked_add_cw20(&mut self, add: &[Cw20CoinVerified]) -> Result<(), GenericError> {
-        self.cw20.checked_add_coins(add)
+        if let Balance::Cw20(cw20) = self.0.clone() {
+            return vec![cw20].checked_add_coins(add);
+        }
+        return Err(GenericError::EmptyBalance {  });
     }
 
     pub fn checked_sub_native(&mut self, sub: &[Coin]) -> Result<(), GenericError> {
-        self.native.checked_sub_coins(sub)
+        if let Balance::Native(mut nb) = self.0.clone() {
+            return nb.0.checked_sub_coins(sub);
+        }
+        return Err(GenericError::EmptyBalance {  });
     }
 
     pub fn checked_sub_cw20(&mut self, sub: &[Cw20CoinVerified]) -> Result<(), GenericError> {
-        self.cw20.checked_sub_coins(sub)
-    }
-
-    pub fn checked_sub_generic(&mut self, sub: &GenericBalance) -> Result<(), GenericError> {
-        self.checked_sub_native(&sub.native)?;
-        self.checked_sub_cw20(&sub.cw20)
+        if let Balance::Cw20(cw20) = self.0.clone() {
+            return vec![cw20].checked_sub_coins(sub);
+        }
+        return Err(GenericError::EmptyBalance {  });
     }
 }

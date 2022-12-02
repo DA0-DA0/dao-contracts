@@ -1,4 +1,4 @@
-use crate::balance::GenericBalance;
+use crate::balance::WrapedBalance;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::{Cw20ReceiveMsg, Balance};
@@ -56,7 +56,7 @@ pub enum ReceiveMsg {
 pub struct StreamParams {
     pub admin: String,
     pub recipient: String,
-    pub balance: GenericBalance,
+    pub balance: WrapedBalance,
     pub start_time: u64,
     pub end_time: u64,
     pub paused_time: Option<u64>,
@@ -89,8 +89,8 @@ pub struct StreamResponse {
     pub id: u64,
     pub admin: String,
     pub recipient: String,
-    pub balance: GenericBalance,
-    pub claimed_balance: GenericBalance,
+    pub balance: WrapedBalance,
+    pub claimed_balance: WrapedBalance,
     pub start_time: u64,
     pub end_time: u64,
     pub paused_time: Option<u64>,
