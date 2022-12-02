@@ -330,8 +330,7 @@ pub fn execute_distribute(
         });
         msgs.push(msg);
         stream.balance.checked_sub_native(&vec![vested]).unwrap();
-    }
-    else if let Some(cw20) = stream.balance.cw20() {
+    } else if let Some(cw20) = stream.balance.cw20() {
         let vested = Cw20CoinVerified {
             address: cw20.address.clone(),
             amount: Uint128::from(time_passed) * stream.rate_per_second,
@@ -478,17 +477,16 @@ mod tests {
         let sender = Addr::unchecked("alice").to_string();
         let recipient = Addr::unchecked("bob").to_string();
         let amount = Uint128::new(200);
-        let balance = WrapedBalance {
-            native: vec![],
-            cw20: vec![Cw20CoinVerified {
-                address: Addr::unchecked("cw20"),
-                amount: amount,
-            }],
-        };
-        let claimed = WrapedBalance {
-            native: vec![],
-            cw20: vec![],
-        };
+
+        let balance = WrapedBalance::new_cw20(Cw20CoinVerified {
+            address: Addr::unchecked("cw20"),
+            amount: amount,
+        });
+
+        let claimed = WrapedBalance::new_cw20(Cw20CoinVerified {
+            address: Addr::unchecked("cw20"),
+            amount: Uint128::new(0),
+        });
         let env = mock_env();
         let start_time = env.block.time.plus_seconds(100).seconds();
         let end_time = env.block.time.plus_seconds(300).seconds();
@@ -534,7 +532,8 @@ mod tests {
         let msg = ExecuteMsg::Distribute { id: 1 };
         let mut info = mock_info("owner", &[]);
         let mut env = mock_env();
-        info.sender = Addr::unchecked("bob");
+        let sender = Addr::unchecked("bob");
+        info.sender=sender.clone();
         env.block.time = env.block.time.plus_seconds(150);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         let msg = res.messages[0].clone().msg;
@@ -558,13 +557,10 @@ mod tests {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
                 balance: balance,
-                claimed_balance: WrapedBalance {
-                    native: vec![Coin {
-                        denom: String::from("ujunox"),
-                        amount: Uint128::new(50)
-                    }],
-                    cw20: vec![]
-                },
+                claimed_balance: WrapedBalance::new_cw20(Cw20CoinVerified {
+                    address: sender,
+                    amount: Uint128::new(50)
+                }),
                 start_time,
                 rate_per_second: Uint128::new(1),
                 end_time,
@@ -646,17 +642,14 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: WrapedBalance {
-                    native: vec![],
-                    cw20: vec![Cw20CoinVerified {
-                        address: Addr::unchecked("cw20"),
-                        amount: Uint128::new(350)
-                    }]
-                }, // original amount - refund
-                claimed_balance: WrapedBalance {
-                    native: vec![],
-                    cw20: vec![]
-                },
+                balance: WrapedBalance::new_cw20(Cw20CoinVerified {
+                    address: Addr::unchecked("cw20"),
+                    amount: Uint128::new(350)
+                }), // original amount - refund
+                claimed_balance: WrapedBalance::new_cw20(Cw20CoinVerified {
+                    address: Addr::unchecked("cw20"),
+                    amount: Uint128::new(0)
+                }),
                 start_time,
                 rate_per_second: Uint128::new(0),
                 end_time,
@@ -710,17 +703,14 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: WrapedBalance {
-                    native: vec![],
-                    cw20: vec![Cw20CoinVerified {
-                        address: Addr::unchecked("alice"),
-                        amount: amount
-                    }]
-                }, // original amount - refund
-                claimed_balance: WrapedBalance {
-                    native: vec![],
-                    cw20: vec![]
-                },
+                balance: WrapedBalance::new_cw20(Cw20CoinVerified {
+                    address: Addr::unchecked("alice"),
+                    amount: amount
+                }), // original amount - refund
+                claimed_balance: WrapedBalance::new_cw20(Cw20CoinVerified {
+                    address: Addr::unchecked("cw20"),
+                    amount: Uint128::new(0)
+                }),
                 start_time,
                 rate_per_second: Uint128::new(0),
                 end_time,

@@ -30,6 +30,7 @@ impl WrapedBalance {
     pub fn new_native(native: Coin) -> Self {
         WrapedBalance(Balance::Native(NativeBalance(vec![native])))
     }
+    
     pub fn new_cw20(cw20: Cw20CoinVerified) -> Self {
         WrapedBalance(Balance::Cw20(cw20))
     }
