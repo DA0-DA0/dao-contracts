@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, DepsMut, StdResult, Uint128, Coin};
+use cosmwasm_std::{Addr, Coin, DepsMut, StdResult, Uint128};
 use cw20::{Balance, Cw20CoinVerified};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
@@ -37,15 +37,18 @@ pub struct Stream {
 
 impl Stream {
     pub(crate) fn verify_can_ditribute_more(&self) -> bool {
-        if self.balance.cw20.is_empty() {
+        if self.balance.cw20.is_empty() && self.balance.native.is_empty() {
             return false;
         }
-        for bc in self.balance.cw20.iter() {
-            let claimed = self.find_claimed_cw20(bc);
-            if claimed.is_some() && claimed.unwrap().amount >= bc.amount {
-                return false;
-            }
-        }
+        self.balance.cw20.iter().all(|el|{
+            let claimed=self.find_claimed_cw20(el);
+            !(claimed.is_some() && claimed.unwrap().amount >= el.amount)
+        });
+        self.balance.native.iter().all(|el|{
+            let claimed=self.find_native_claimed(el);
+            !(claimed.is_some() && claimed.unwrap().amount >= el.amount)
+        });
+       
         true
     }
     pub(crate) fn find_claimed_cw20(&self, cw20: &Cw20CoinVerified) -> Option<&Cw20CoinVerified> {
@@ -66,12 +69,16 @@ impl Stream {
     }
 }
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
-pub const STREAMS: Map<u64, Stream> = Map::new("stream");
+pub const STREAMS: Map<StreamId, Stream> = Map::new("stream");
 
-pub fn save_stream(deps: DepsMut, stream: &Stream) -> StdResult<u64> {
+pub fn add_stream(deps: DepsMut, stream: &Stream) -> StdResult<StreamId> {
     let id = STREAM_SEQ.load(deps.storage)?;
     let id = id.checked_add(1).unwrap();
     STREAM_SEQ.save(deps.storage, &id)?;
+    STREAMS.save(deps.storage, id, stream)?;
+    Ok(id)
+}
+pub fn save_stream(deps: DepsMut, id: StreamId, stream: &Stream) -> StdResult<StreamId> {
     STREAMS.save(deps.storage, id, stream)?;
     Ok(id)
 }

@@ -8,12 +8,14 @@ use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
     StreamId, StreamParams, StreamResponse,
 };
-use crate::state::{remove_stream, save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ};
+use crate::state::{
+    add_stream, remove_stream, save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ,
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, StdResult, Uint128,
+    from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Order, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::{Balance, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -85,9 +87,10 @@ pub fn execute_pause_stream(
     }
     stream.paused_time = Some(env.block.time.seconds());
     stream.paused = true;
-    save_stream(deps, &stream).unwrap();
+    save_stream(deps, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "pause_stream")
+        .add_attribute("paused", stream.paused.to_string())
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
         .add_attribute("paused_time", env.block.time.to_string());
@@ -141,11 +144,12 @@ pub fn execute_resume_stream(
     stream.paused = false;
     stream.rate_per_second = rate_per_second;
 
-    save_stream(deps, &stream).unwrap();
+    save_stream(deps, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "resume_stream")
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
+        .add_attribute("rate_per_second", rate_per_second)
         .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
         .add_attribute("resume_time", env.block.time.to_string());
 
@@ -256,7 +260,7 @@ pub fn execute_create_stream(
         title,
         description,
     };
-    let id = save_stream(deps, &stream)?;
+    let id = add_stream(deps, &stream)?;
 
     let mut response = Response::new()
         .add_attribute("method", "create_stream")
@@ -279,10 +283,12 @@ pub fn execute_receive(
     info: MessageInfo,
     wrapped: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
+    let sender = deps.api.addr_validate(&info.sender.clone().into_string())?;
+
     // TODO: Change based on asset type found
     //Fixed
     let cw_balance = Balance::Cw20(Cw20CoinVerified {
-        address: Clone::clone(&info.sender),
+        address: sender,
         amount: wrapped.amount,
     });
 
@@ -334,8 +340,8 @@ pub fn execute_distribute(
             recipient: stream.recipient,
         });
     }
-    if stream.verify_can_ditribute_more() {
-        return Err(ContractError::StreamFullyClaimed {});
+    if !stream.verify_can_ditribute_more() {
+        return Err(ContractError::NoFundsToClaim {});
     }
 
     let block_time = env.block.time.seconds();
@@ -494,6 +500,7 @@ fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{Addr, CosmosMsg, WasmMsg};
@@ -535,17 +542,11 @@ mod tests {
         let recipient = Addr::unchecked("bob").to_string();
         let amount = Uint128::new(200);
         let balance = GenericBalance {
-            native: vec![Coin {
-                denom: String::from("ujunox"),
-                amount: amount,
-            }],
-            cw20: vec![],
+            native: vec![],
+            cw20: vec![Cw20CoinVerified { address: Addr::unchecked("cw20"), amount: amount }],
         };
         let claimed = GenericBalance {
-            native: vec![Coin {
-                denom: String::from("ujunox"),
-                amount: Uint128::new(0),
-            }],
+            native: vec![],
             cw20: vec![],
         };
         let env = mock_env();
@@ -553,10 +554,10 @@ mod tests {
         let end_time = env.block.time.plus_seconds(300).seconds();
 
         let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-            sender,
+            sender:sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
-                admin: None,
+                admin: Some(sender.clone()),
                 recipient,
                 start_time,
                 end_time,
@@ -573,7 +574,7 @@ mod tests {
                 balance: balance.clone(),
                 claimed_balance: claimed,
                 start_time,
-                rate_per_second: Uint128::new(1),
+                rate_per_second: Uint128::new(0),
                 end_time,
                 title: None,
                 description: None,
@@ -706,21 +707,15 @@ mod tests {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
                 balance: GenericBalance {
-                    native: vec![Coin {
-                        denom: String::from("ujunox"),
-                        amount: Uint128::new(300)
-                    }],
-                    cw20: vec![]
+                    native: vec![],
+                    cw20: vec![Cw20CoinVerified { address: Addr::unchecked("cw20"), amount: Uint128::new(350) }]
                 }, // original amount - refund
                 claimed_balance: GenericBalance {
-                    native: vec![Coin {
-                        denom: String::from("ujunox"),
-                        amount: Uint128::new(0)
-                    }],
+                    native: vec![],
                     cw20: vec![]
                 },
                 start_time,
-                rate_per_second: Uint128::new(1),
+                rate_per_second: Uint128::new(0),
                 end_time,
                 title: None,
                 description: None,
@@ -733,10 +728,11 @@ mod tests {
     fn test_execute_pause_stream() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg { admin: None };
-        let info = mock_info("cw20", &[]);
-        instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
         let sender = Addr::unchecked("alice").to_string();
+        let info = mock_info(&sender, &[]);
+        instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
         let recipient = Addr::unchecked("bob").to_string();
         let amount = Uint128::new(350);
         let env = mock_env();
@@ -744,10 +740,10 @@ mod tests {
         let end_time = env.block.time.plus_seconds(400).seconds();
 
         let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-            sender,
+            sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
-                admin: None,
+                admin: Some(sender),
                 recipient,
                 start_time,
                 end_time,
@@ -758,36 +754,32 @@ mod tests {
 
         let stream_id: StreamId = 1;
 
-        execute(
+        let _ = execute(
             deps.as_mut(),
             mock_env(),
             info,
             ExecuteMsg::PauseStream { id: stream_id },
         )
         .unwrap();
-        //let msg = res.messages[0].clone().msg;
-
+        let saved_stream = get_stream(deps.as_ref(), stream_id);
         assert_eq!(
-            get_stream(deps.as_ref(), stream_id),
+            saved_stream,
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
                 balance: GenericBalance {
-                    native: vec![Coin {
-                        denom: String::from("ujunox"),
-                        amount: Uint128::new(1)
-                    }],
-                    cw20: vec![]
+                    native: vec![],
+                    cw20: vec![Cw20CoinVerified {
+                        address: Addr::unchecked("alice"),
+                        amount: amount
+                    }]
                 }, // original amount - refund
                 claimed_balance: GenericBalance {
-                    native: vec![Coin {
-                        denom: String::from("ujunox"),
-                        amount: Uint128::new(0)
-                    }],
+                    native: vec![],
                     cw20: vec![]
                 },
                 start_time,
-                rate_per_second: Uint128::new(1),
+                rate_per_second: Uint128::new(0),
                 end_time,
                 title: None,
                 description: None,
@@ -853,7 +845,12 @@ mod tests {
         });
         info.sender = Addr::unchecked("wrongCw20");
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
-        assert_eq!(err, ContractError::Unauthorized {});
+        assert_eq!(
+            err,
+            ContractError::Std(cosmwasm_std::StdError::GenericErr {
+                msg: "Invalid input: address not normalized".to_string()
+            })
+        );
     }
 
     #[test]
