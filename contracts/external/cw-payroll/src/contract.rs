@@ -115,13 +115,15 @@ pub fn execute_remove_stream(
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
         .add_attribute("removed_time", env.block.time.to_string())
-        .add_message(create_balance_transfer_msg(&stream.balance, None,stream.admin.into()).unwrap());
+        .add_message(
+            create_balance_transfer_msg(&stream.balance, None, stream.admin.into()).unwrap(),
+        );
 
     Ok(response)
 }
 fn create_balance_transfer_msg(
     balance: &WrappedBalance,
-    amount:Option<Uint128>,
+    amount: Option<Uint128>,
     recepient: String,
 ) -> Result<CosmosMsg, ContractError> {
     if let Some(native_balance) = balance.native() {
@@ -129,7 +131,7 @@ fn create_balance_transfer_msg(
             to_address: recepient,
             amount: vec![Coin {
                 denom: native_balance.denom.clone(),
-                amount:amount.unwrap_or(native_balance.amount),
+                amount: amount.unwrap_or(native_balance.amount),
             }],
         });
         return Ok(msg);
@@ -137,7 +139,7 @@ fn create_balance_transfer_msg(
         let cw20 = Cw20Contract(cw20_balance.address.clone());
         let msg = cw20.call(Cw20ExecuteMsg::Transfer {
             recipient: recepient,
-            amount:amount.unwrap_or(cw20_balance.amount),
+            amount: amount.unwrap_or(cw20_balance.amount),
         })?;
         return Ok(msg);
     }
@@ -219,7 +221,7 @@ pub fn execute_create_stream(
     if balance_amount < duration {
         return Err(ContractError::AmountLessThanDuration {});
     }
-    
+
     let claimed = if balance.is_native() {
         WrappedBalance::default()
     } else {
@@ -228,7 +230,7 @@ pub fn execute_create_stream(
     let stream = Stream {
         admin: admin.clone(),
         recipient: recipient.clone(),
-        balance:balance.clone(),
+        balance: balance.clone(),
         claimed_balance: claimed,
         start_time,
         end_time,
@@ -248,8 +250,12 @@ pub fn execute_create_stream(
         .add_attribute("start_time", start_time.to_string())
         .add_attribute("end_time", end_time.to_string());
 
-    if refund>0 {
-        response = response.add_messages(create_balance_transfer_msg(&balance,Some(Uint128::new(refund)), admin.clone().into()));
+    if refund > 0 {
+        response = response.add_messages(create_balance_transfer_msg(
+            &balance,
+            Some(Uint128::new(refund)),
+            admin.clone().into(),
+        ));
     }
     Ok(response)
 }
@@ -421,12 +427,12 @@ mod tests {
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{Addr, CosmosMsg, WasmMsg};
+    use cosmwasm_std::{Addr, CosmosMsg, StdError, WasmMsg};
 
-    fn get_stream(deps: Deps, id: u64) -> Stream {
+    fn get_stream(deps: Deps, id: u64) -> StdResult<Stream> {
         let msg = QueryMsg::GetStream { id };
-        let res = query(deps, mock_env(), msg).unwrap();
-        from_binary(&res).unwrap()
+        let res = query(deps, mock_env(), msg)?;
+        from_binary::<Stream>(&res)
     }
 
     #[test]
@@ -481,7 +487,7 @@ mod tests {
         execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
         assert_eq!(
-            get_stream(deps.as_ref(), 1),
+            get_stream(deps.as_ref(), 1).unwrap(),
             Stream {
                 admin: admin_addr.clone(),
                 recipient: Addr::unchecked("bob"),
@@ -527,7 +533,7 @@ mod tests {
             })
         );
         assert_eq!(
-            get_stream(deps.as_ref(), 1),
+            get_stream(deps.as_ref(), 1).unwrap(),
             Stream {
                 admin: admin_addr.clone(),
                 recipient: Addr::unchecked("bob"),
@@ -597,7 +603,7 @@ mod tests {
         let balance = WrappedBalance::new_cw20(Addr::unchecked("cw20"), balance_amount);
 
         assert_eq!(
-            get_stream(deps.as_ref(), 1),
+            get_stream(deps.as_ref(), 1).unwrap(),
             Stream {
                 admin: sender_addr.clone(),
                 recipient: Addr::unchecked("bob"),
@@ -652,7 +658,7 @@ mod tests {
         )
         .unwrap();
         let balance = WrappedBalance::new_cw20(Addr::unchecked("alice"), amount);
-        let saved_stream = get_stream(deps.as_ref(), stream_id);
+        let saved_stream = get_stream(deps.as_ref(), stream_id).unwrap();
         assert_eq!(
             saved_stream,
             Stream {
@@ -763,5 +769,69 @@ mod tests {
         info.sender = Addr::unchecked("cw20");
         let err = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
         assert_eq!(err, ContractError::AmountLessThanDuration {});
+    }
+    #[test]
+    fn test_execute_remove_stream() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+        let info = mock_info(&sender, &[]);
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient:recipient.clone(),
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let stream_id: StreamId = 1;
+
+        //Remove stream and verify not found error returned
+        let remove_response = execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::RemoveStream { id: stream_id },
+        )
+        .unwrap();
+        let error = get_stream(deps.as_ref(), stream_id).unwrap_err();
+        assert_eq!(
+            error,
+            StdError::NotFound { kind: "cw_payroll::state::Stream".to_string() }
+        );
+
+        let refund_msg = remove_response.messages[0].clone().msg;
+        assert_eq!(
+            refund_msg,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: sender.clone(),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: sender.clone(),
+                    amount: amount
+                })
+                .unwrap(),
+                funds: vec![]
+            })
+        );
+        //Check balance of stream refunded to admin
+        println!("{:?}",remove_response);
     }
 }
