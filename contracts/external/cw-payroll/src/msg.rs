@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
-use cw20::{Cw20ReceiveMsg, Balance};
+use cw20::{Cw20ReceiveMsg};
 
 use crate::balance::WrappedBalance;
 

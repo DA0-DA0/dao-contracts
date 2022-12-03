@@ -1,9 +1,5 @@
-use std::borrow::BorrowMut;
-use std::default;
-use std::sync::mpsc::SendError;
-
 use crate::balance::*;
-use crate::error::ContractError;
+use crate::error::{ContractError, GenericError};
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
     StreamId, StreamParams, StreamResponse,
@@ -14,11 +10,11 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
-    MessageInfo, Order, Response, StdResult, Uint128,
+    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Order, Response, StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use cw20::{Balance, Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_storage_plus::Bound;
 
 const CONTRACT_NAME: &str = "crates.io:cw-escrow-streams";
@@ -47,7 +43,7 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", admin))
+        .add_attribute("admin", admin))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -59,7 +55,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
-        ExecuteMsg::Distribute { id } => execute_distribute(env, deps, info, id),
+        ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream {
             id,
@@ -138,11 +134,15 @@ pub fn execute_resume_stream(
     if !stream.paused {
         return Err(ContractError::StreamNotPaused {});
     }
-    let duration: u128 = (stream.end_time - stream.start_time).into();
-    let paused_duration: u128 = (env.block.time.seconds() - stream.paused_time.unwrap()).into();
-    let rate_per_second = Uint128::from(stream.balance.amount() / duration - paused_duration);
+    let duration: u128 = (stream.end_time.checked_sub(stream.start_time).unwrap_or(0)).into();
+    let mut rate_per_second=Uint128::new(0);
+    if duration > 0 {
+        let paused_duration: u128 = (env.block.time.seconds().checked_sub(stream.paused_time.unwrap()).unwrap_or(0)).into();
+        let duration_diff=duration.checked_sub(paused_duration).unwrap_or(0);
+        rate_per_second = Uint128::from(stream.balance.amount().checked_div(duration_diff).unwrap_or(0));
+        stream.rate_per_second = rate_per_second;
+    }
     stream.paused = false;
-    stream.rate_per_second = rate_per_second;
 
     save_stream(deps, id, &stream).unwrap();
     let response = Response::new()
@@ -158,7 +158,6 @@ pub fn execute_resume_stream(
 pub fn execute_create_stream(
     env: Env,
     deps: DepsMut,
-    _info: MessageInfo,
     params: StreamParams,
 ) -> Result<Response, ContractError> {
     let StreamParams {
@@ -173,7 +172,7 @@ pub fn execute_create_stream(
         paused,
     } = params;
 
-    let owner = deps.api.addr_validate(&admin)?;
+    let admin = deps.api.addr_validate(&admin)?;
     let recipient = deps.api.addr_validate(&recipient)?;
 
     if start_time > end_time {
@@ -181,11 +180,8 @@ pub fn execute_create_stream(
     }
 
     let block_time = env.block.time.seconds();
-    if start_time <= block_time && end_time <= block_time {
-        return Err(ContractError::InvalidStartTime {});
-    }
 
-    if end_time < block_time {
+    if end_time <= block_time {
         return Err(ContractError::InvalidEndTime {});
     }
 
@@ -194,7 +190,8 @@ pub fn execute_create_stream(
     let balance_amount = balance.amount();
     let refund: u128 = balance_amount
         .checked_rem(duration)
-        .ok_or(ContractError::Overflow {})?;
+        .ok_or(GenericError::IntegerOverflow {})
+        .unwrap();
 
     if balance_amount < duration {
         return Err(ContractError::AmountLessThanDuration {});
@@ -202,7 +199,7 @@ pub fn execute_create_stream(
     if let Some(native_balance) = balance.native() {
         if refund > 0 {
             let msg = CosmosMsg::Bank(BankMsg::Send {
-                to_address: owner.clone().into(),
+                to_address: admin.clone().into(),
                 amount: vec![Coin {
                     denom: native_balance.denom.clone(),
                     amount: native_balance.amount,
@@ -214,7 +211,7 @@ pub fn execute_create_stream(
         if refund > 0 {
             let cw20 = Cw20Contract(cw20_balance.address.clone());
             let msg = cw20.call(Cw20ExecuteMsg::Transfer {
-                recipient: owner.clone().into(),
+                recipient: admin.clone().into(),
                 amount: refund.into(),
             })?;
             msgs.push(msg);
@@ -222,16 +219,16 @@ pub fn execute_create_stream(
     }
 
     let rate_per_second = Uint128::from(balance_amount.checked_sub(duration).unwrap_or_default());
-    let claimed= if balance.is_native() {
+    let claimed = if balance.is_native() {
         WrappedBalance::default()
     } else {
-        WrappedBalance::new_cw20(balance.cw20().unwrap().address.clone(),Uint128::new(0))
+        WrappedBalance::new_cw20(balance.cw20().unwrap().address.clone(), Uint128::new(0))
     };
     let stream = Stream {
-        admin: owner.clone(),
+        admin: admin.clone(),
         recipient: recipient.clone(),
         balance,
-        claimed_balance:claimed,
+        claimed_balance: claimed,
         start_time,
         end_time,
         rate_per_second,
@@ -273,7 +270,6 @@ pub fn execute_receive(
         } => execute_create_stream(
             env,
             deps,
-            info,
             StreamParams {
                 admin: admin.unwrap_or(wrapped.sender.clone()),
                 recipient,
@@ -289,21 +285,11 @@ pub fn execute_receive(
     }
 }
 
-pub fn execute_distribute(
-    env: Env,
-    deps: DepsMut,
-    info: MessageInfo,
-    id: u64,
-) -> Result<Response, ContractError> {
+pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, ContractError> {
     let mut stream = STREAMS
         .may_load(deps.storage, id)?
         .ok_or(ContractError::StreamNotFound {})?;
 
-    if stream.recipient != info.sender {
-        return Err(ContractError::NotStreamRecipient {
-            recipient: stream.recipient,
-        });
-    }
     if !stream.can_ditribute_more() {
         return Err(ContractError::NoFundsToClaim {});
     }
@@ -363,7 +349,7 @@ pub fn execute_distribute(
     STREAMS.save(deps.storage, id, &stream)?;
 
     let mut res = Response::new()
-        .add_attribute("method", "withdraw")
+        .add_attribute("method", "distribute")
         .add_attribute("stream_id", id.to_string());
     if !msgs.is_empty() {
         res = res.add_messages(msgs);
@@ -474,7 +460,7 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_withdraw() {
+    fn test_execute_distribute() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg { admin: None };
         let info = mock_info("cw20", &[]);
@@ -634,9 +620,14 @@ mod tests {
                 funds: vec![]
             })
         );
-        let balance_amount=Uint128::new(350);
+        let balance_amount = Uint128::new(350);
         let duration: u128 = (end_time - start_time).into();
-        let rate_per_second = Uint128::from(balance_amount.u128().checked_sub(duration).unwrap_or_default());
+        let rate_per_second = Uint128::from(
+            balance_amount
+                .u128()
+                .checked_sub(duration)
+                .unwrap_or_default(),
+        );
 
         assert_eq!(
             get_stream(deps.as_ref(), 1),
@@ -694,7 +685,8 @@ mod tests {
         )
         .unwrap();
         let duration: u128 = (end_time - start_time).into();
-        let rate_per_second = Uint128::from(amount.u128().checked_sub(duration).unwrap_or_default());
+        let rate_per_second =
+            Uint128::from(amount.u128().checked_sub(duration).unwrap_or_default());
         let saved_stream = get_stream(deps.as_ref(), stream_id);
         assert_eq!(
             saved_stream,

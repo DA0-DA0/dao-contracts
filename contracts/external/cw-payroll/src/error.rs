@@ -19,6 +19,9 @@ pub enum GenericError {
 
     #[error("invalid cosmwasm message")]
     InvalidWasmMsg {},
+
+    #[error("Numerical overflow")]
+    IntegerOverflow {},
 }
 
 
@@ -53,9 +56,6 @@ pub enum ContractError {
 
     #[error("Stream recipient cannot be the stream owner")]
     InvalidRecipient {},
-
-    #[error("Numerical overflow")]
-    Overflow {},
 
     #[error("Can not pause paused stream.")]
     StreamAlreadyPaused {},
