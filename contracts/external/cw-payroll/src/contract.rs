@@ -134,16 +134,9 @@ pub fn execute_resume_stream(
     if !stream.paused {
         return Err(ContractError::StreamNotPaused {});
     }
-    let duration: u128 = (stream.end_time.checked_sub(stream.start_time).unwrap_or(0)).into();
-    let mut rate_per_second=Uint128::new(0);
-    if duration > 0 {
-        let paused_duration: u128 = (env.block.time.seconds().checked_sub(stream.paused_time.unwrap()).unwrap_or(0)).into();
-        let duration_diff=duration.checked_sub(paused_duration).unwrap_or(0);
-        rate_per_second = Uint128::from(stream.balance.amount().checked_div(duration_diff).unwrap_or(0));
-        stream.rate_per_second = rate_per_second;
-    }
+    let rate_per_second=stream.calc_distribution_rate(env.block.time);
+    stream.rate_per_second=rate_per_second;
     stream.paused = false;
-
     save_stream(deps, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "resume_stream")
@@ -218,7 +211,7 @@ pub fn execute_create_stream(
         }
     }
 
-    let rate_per_second = Uint128::from(balance_amount.checked_sub(duration).unwrap_or_default());
+    let rate_per_second =Stream::calc_distribution_rate_core(start_time, end_time, None, &balance, env.block.time);
     let claimed = if balance.is_native() {
         WrappedBalance::default()
     } else {
@@ -605,6 +598,7 @@ mod tests {
             .unwrap(),
         });
 
+        let block_time=env.block.time;
         // Make sure remaining funds were refunded if duration didn't divide evenly into amount
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         let refund_msg = res.messages[0].clone().msg;
@@ -620,21 +614,17 @@ mod tests {
                 funds: vec![]
             })
         );
+        
         let balance_amount = Uint128::new(350);
-        let duration: u128 = (end_time - start_time).into();
-        let rate_per_second = Uint128::from(
-            balance_amount
-                .u128()
-                .checked_sub(duration)
-                .unwrap_or_default(),
-        );
+        let balance=WrappedBalance::new_cw20(Addr::unchecked("cw20"), balance_amount);
+        let rate_per_second =Stream::calc_distribution_rate_core(start_time, end_time, None, &balance,block_time);
 
         assert_eq!(
             get_stream(deps.as_ref(), 1),
             Stream {
                 admin: sender_addr.clone(),
                 recipient: Addr::unchecked("bob"),
-                balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), balance_amount), // original amount - refund
+                balance: balance, // original amount - refund
                 claimed_balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0)),
                 start_time,
                 rate_per_second,

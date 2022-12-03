@@ -1,5 +1,6 @@
+
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, DepsMut, StdResult, Uint128};
+use cosmwasm_std::{Addr, DepsMut, StdResult, Uint128, Timestamp};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +41,28 @@ impl Stream {
             return false;
         }
         self.claimed_balance.amount() < self.balance.amount()
+    }
+    pub (crate) fn calc_distribution_rate_core(
+        start_time:u64,
+        end_time:u64,
+        paused_time:Option<u64>,
+        balance:&WrappedBalance,
+        block_time:Timestamp
+        )->Uint128{
+        let duration: u128 = (end_time.checked_sub(start_time).unwrap_or_default()).into();
+        if duration > 0 {
+            let paused_duration: u128 = (block_time.seconds().checked_sub(paused_time.unwrap_or_default()).unwrap_or_default()).into();
+            let duration_diff=duration.checked_sub(paused_duration).unwrap_or_default();
+            let rate_per_second = Uint128::from(balance.amount().checked_div(duration_diff).unwrap_or_default());
+            return rate_per_second
+        }
+        Uint128::new(0)
+    }
+    pub (crate) fn calc_distribution_rate(
+        &self,
+        block_time:Timestamp
+        )->Uint128{
+        Stream::calc_distribution_rate_core(self.start_time,self.end_time,self.paused_time,&self.balance,block_time)
     }
 }
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
