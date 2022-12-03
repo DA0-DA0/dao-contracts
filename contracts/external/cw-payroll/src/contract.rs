@@ -659,8 +659,9 @@ mod tests {
     fn test_execute_pause_stream() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg { admin: None };
-
         let sender = Addr::unchecked("alice").to_string();
+
+        let sender_addr = Addr::unchecked("alice");
         let info = mock_info(&sender, &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
@@ -692,6 +693,8 @@ mod tests {
             ExecuteMsg::PauseStream { id: stream_id },
         )
         .unwrap();
+        let duration: u128 = (end_time - start_time).into();
+        let rate_per_second = Uint128::from(amount.u128().checked_sub(duration).unwrap_or_default());
         let saved_stream = get_stream(deps.as_ref(), stream_id);
         assert_eq!(
             saved_stream,
@@ -699,9 +702,9 @@ mod tests {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
                 balance: WrappedBalance::new_cw20(Addr::unchecked("alice"), amount), // original amount - refund
-                claimed_balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0)),
+                claimed_balance: WrappedBalance::new_cw20(sender_addr, Uint128::new(0)),
                 start_time,
-                rate_per_second: Uint128::new(0),
+                rate_per_second,
                 end_time,
                 title: None,
                 description: None,
