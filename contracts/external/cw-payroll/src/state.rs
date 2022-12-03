@@ -3,7 +3,7 @@ use cosmwasm_std::{Addr, Coin, DepsMut, StdResult, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
-use crate::{balance::WrapedBalance, msg::StreamId};
+use crate::{balance::WrappedBalance, msg::StreamId};
 
 #[cw_serde]
 pub struct Config {
@@ -17,8 +17,8 @@ pub struct Stream {
     pub admin: Addr,
     pub recipient: Addr,
     /// Balance in Native and Cw20 tokens
-    pub balance: WrapedBalance,
-    pub claimed_balance: WrapedBalance,
+    pub balance: WrappedBalance,
+    pub claimed_balance: WrappedBalance,
     pub start_time: u64,
     pub end_time: u64,
     pub paused_time: Option<u64>,

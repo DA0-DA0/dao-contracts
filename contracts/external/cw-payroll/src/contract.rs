@@ -2,7 +2,7 @@ use std::borrow::BorrowMut;
 use std::default;
 use std::sync::mpsc::SendError;
 
-use crate::balance::{self, WrapedBalance};
+use crate::balance::*;
 use crate::error::ContractError;
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
@@ -211,21 +211,27 @@ pub fn execute_create_stream(
             msgs.push(msg);
         }
     } else if let Some(cw20_balance) = balance.cw20() {
-        let cw20 = Cw20Contract(cw20_balance.address.clone());
-        let msg = cw20.call(Cw20ExecuteMsg::Transfer {
-            recipient: owner.clone().into(),
-            amount: refund.into(),
-        })?;
-        msgs.push(msg);
+        if refund > 0 {
+            let cw20 = Cw20Contract(cw20_balance.address.clone());
+            let msg = cw20.call(Cw20ExecuteMsg::Transfer {
+                recipient: owner.clone().into(),
+                amount: refund.into(),
+            })?;
+            msgs.push(msg);
+        }
     }
 
     let rate_per_second = Uint128::from(balance_amount.checked_sub(duration).unwrap_or_default());
-
+    let claimed= if balance.is_native() {
+        WrappedBalance::default()
+    } else {
+        WrappedBalance::new_cw20(balance.cw20().unwrap().address.clone(),Uint128::new(0))
+    };
     let stream = Stream {
         admin: owner.clone(),
         recipient: recipient.clone(),
         balance,
-        claimed_balance: WrapedBalance::default(),
+        claimed_balance:claimed,
         start_time,
         end_time,
         rate_per_second,
@@ -271,7 +277,7 @@ pub fn execute_receive(
             StreamParams {
                 admin: admin.unwrap_or(wrapped.sender.clone()),
                 recipient,
-                balance: wrapped.into(),
+                balance: WrappedBalance::from(wrapped),
                 start_time,
                 end_time,
                 title: None,
@@ -448,7 +454,7 @@ mod tests {
     }
 
     #[test]
-    fn initialization() {
+    fn test_initialization() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg { admin: None };
 
@@ -468,7 +474,7 @@ mod tests {
     }
 
     #[test]
-    fn execute_withdraw() {
+    fn test_execute_withdraw() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg { admin: None };
         let info = mock_info("cw20", &[]);
@@ -478,15 +484,8 @@ mod tests {
         let recipient = Addr::unchecked("bob").to_string();
         let amount = Uint128::new(200);
 
-        let balance = WrapedBalance::new_cw20(Cw20CoinVerified {
-            address: Addr::unchecked("cw20"),
-            amount: amount,
-        });
-
-        let claimed = WrapedBalance::new_cw20(Cw20CoinVerified {
-            address: Addr::unchecked("cw20"),
-            amount: Uint128::new(0),
-        });
+        let balance = WrappedBalance::new_cw20(Addr::unchecked("cw20"), amount);
+        let claimed = WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0));
         let env = mock_env();
         let start_time = env.block.time.plus_seconds(100).seconds();
         let end_time = env.block.time.plus_seconds(300).seconds();
@@ -533,7 +532,7 @@ mod tests {
         let mut info = mock_info("owner", &[]);
         let mut env = mock_env();
         let sender = Addr::unchecked("bob");
-        info.sender=sender.clone();
+        info.sender = sender.clone();
         env.block.time = env.block.time.plus_seconds(150);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         let msg = res.messages[0].clone().msg;
@@ -557,10 +556,7 @@ mod tests {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
                 balance: balance,
-                claimed_balance: WrapedBalance::new_cw20(Cw20CoinVerified {
-                    address: sender,
-                    amount: Uint128::new(50)
-                }),
+                claimed_balance: WrappedBalance::new_cw20(sender, Uint128::new(50)),
                 start_time,
                 rate_per_second: Uint128::new(1),
                 end_time,
@@ -596,25 +592,27 @@ mod tests {
     }
 
     #[test]
-    fn create_stream_with_refund() {
+    fn test_create_stream_with_refund() {
         let mut deps = mock_dependencies();
         let msg = InstantiateMsg { admin: None };
         let info = mock_info("cw20", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let sender = Addr::unchecked("alice").to_string();
-        let recipient = Addr::unchecked("bob").to_string();
+        let recipient = Addr::unchecked("bob");
+        let sender = info.sender.clone().into_string();
+        let sender_addr = info.sender.clone();
+
         let amount = Uint128::new(350);
         let env = mock_env();
         let start_time = env.block.time.plus_seconds(100).seconds();
         let end_time = env.block.time.plus_seconds(400).seconds();
 
         let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
-            sender,
+            sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
                 admin: None,
-                recipient,
+                recipient: recipient.into_string(),
                 start_time,
                 end_time,
             })
@@ -629,29 +627,26 @@ mod tests {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: String::from("cw20"),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: String::from("alice"),
+                    recipient: sender.clone(),
                     amount: Uint128::new(50)
                 })
                 .unwrap(),
                 funds: vec![]
             })
         );
+        let balance_amount=Uint128::new(350);
+        let duration: u128 = (end_time - start_time).into();
+        let rate_per_second = Uint128::from(balance_amount.u128().checked_sub(duration).unwrap_or_default());
 
         assert_eq!(
             get_stream(deps.as_ref(), 1),
             Stream {
-                admin: Addr::unchecked("alice"),
+                admin: sender_addr.clone(),
                 recipient: Addr::unchecked("bob"),
-                balance: WrapedBalance::new_cw20(Cw20CoinVerified {
-                    address: Addr::unchecked("cw20"),
-                    amount: Uint128::new(350)
-                }), // original amount - refund
-                claimed_balance: WrapedBalance::new_cw20(Cw20CoinVerified {
-                    address: Addr::unchecked("cw20"),
-                    amount: Uint128::new(0)
-                }),
+                balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), balance_amount), // original amount - refund
+                claimed_balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0)),
                 start_time,
-                rate_per_second: Uint128::new(0),
+                rate_per_second,
                 end_time,
                 title: None,
                 description: None,
@@ -703,14 +698,8 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: WrapedBalance::new_cw20(Cw20CoinVerified {
-                    address: Addr::unchecked("alice"),
-                    amount: amount
-                }), // original amount - refund
-                claimed_balance: WrapedBalance::new_cw20(Cw20CoinVerified {
-                    address: Addr::unchecked("cw20"),
-                    amount: Uint128::new(0)
-                }),
+                balance: WrappedBalance::new_cw20(Addr::unchecked("alice"), amount), // original amount - refund
+                claimed_balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0)),
                 start_time,
                 rate_per_second: Uint128::new(0),
                 end_time,
@@ -722,7 +711,7 @@ mod tests {
         );
     }
     #[test]
-    fn invalid_start_time() {
+    fn test_invalid_start_time() {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { admin: None };
@@ -787,7 +776,7 @@ mod tests {
     }
 
     #[test]
-    fn invalid_deposit_amount() {
+    fn test_invalid_deposit_amount() {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg { admin: None };
