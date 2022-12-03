@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::balance::*;
 use crate::error::{ContractError, GenericError};
 use crate::msg::{
@@ -134,9 +136,11 @@ pub fn execute_resume_stream(
     if !stream.paused {
         return Err(ContractError::StreamNotPaused {});
     }
-    let rate_per_second=stream.calc_distribution_rate(env.block.time);
-    stream.rate_per_second=rate_per_second;
+
+    stream.paused_duration = stream.calc_pause_duration(env.block.time);
+    let (_, rate_per_second) = stream.calc_distribution_rate(env.block.time);
     stream.paused = false;
+
     save_stream(deps, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "resume_stream")
@@ -144,6 +148,10 @@ pub fn execute_resume_stream(
         .add_attribute("admin", info.sender)
         .add_attribute("rate_per_second", rate_per_second)
         .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
+        .add_attribute(
+            "paused_duration",
+            stream.paused_duration.unwrap().to_string(),
+        )
         .add_attribute("resume_time", env.block.time.to_string());
 
     Ok(response)
@@ -161,8 +169,6 @@ pub fn execute_create_stream(
         end_time,
         title,
         description,
-        paused_time,
-        paused,
     } = params;
 
     let admin = deps.api.addr_validate(&admin)?;
@@ -211,7 +217,6 @@ pub fn execute_create_stream(
         }
     }
 
-    let rate_per_second =Stream::calc_distribution_rate_core(start_time, end_time, None, &balance, env.block.time);
     let claimed = if balance.is_native() {
         WrappedBalance::default()
     } else {
@@ -224,9 +229,9 @@ pub fn execute_create_stream(
         claimed_balance: claimed,
         start_time,
         end_time,
-        rate_per_second,
-        paused_time,
-        paused,
+        paused_time: None,
+        paused_duration: None,
+        paused: false,
         title,
         description,
     };
@@ -271,8 +276,6 @@ pub fn execute_receive(
                 end_time,
                 title: None,
                 description: None,
-                paused_time: None,
-                paused: false,
             },
         ),
     }
@@ -283,66 +286,58 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
         .may_load(deps.storage, id)?
         .ok_or(ContractError::StreamNotFound {})?;
 
-    if !stream.can_ditribute_more() {
-        return Err(ContractError::NoFundsToClaim {});
-    }
-
-    let block_time = env.block.time.seconds();
-    let time_passed = std::cmp::min(block_time, stream.end_time).saturating_sub(stream.start_time);
     let mut msgs: Vec<CosmosMsg> = vec![];
+    let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
 
+    if !stream.can_ditribute_more() || available_claims.u128() <=0 {
+        return Err(ContractError::NoFundsToClaim {
+            claimed: stream.claimed_balance,
+        });
+    }
     if let Some(native_balance) = stream.balance.native() {
-        let vested = Coin {
+        let to_claim = Coin {
             denom: native_balance.denom.clone(),
-            amount: Uint128::from(time_passed) * stream.rate_per_second,
+            amount: available_claims,
         };
-        let claimed = stream.claimed_balance.amount();
-        let released = vested.amount.u128() - claimed;
 
-        if released == 0 {
-            return Err(ContractError::NoFundsToClaim {});
-        }
         stream
             .claimed_balance
-            .checked_add_native(&[vested.clone()])
+            .checked_add_native(&[to_claim.clone()])
             .unwrap();
         let msg = CosmosMsg::Bank(BankMsg::Send {
             to_address: stream.recipient.clone().into(),
             amount: vec![Coin {
                 denom: native_balance.denom.clone(),
-                amount: native_balance.amount,
+                amount: to_claim.amount,
             }],
         });
         msgs.push(msg);
-        stream.balance.checked_sub_native(&vec![vested]).unwrap();
+        stream.balance.checked_sub_native(&vec![to_claim]).unwrap();
     } else if let Some(cw20) = stream.balance.cw20() {
-        let vested = Cw20CoinVerified {
+        let to_claim = Cw20CoinVerified {
             address: cw20.address.clone(),
-            amount: Uint128::from(time_passed) * stream.rate_per_second,
+            amount: available_claims,
         };
-        let claimed = stream.claimed_balance.amount();
-        let released = vested.amount.u128() - claimed;
-        if released == 0 {
-            return Err(ContractError::NoFundsToClaim {});
-        }
         stream
             .claimed_balance
-            .checked_add_cw20(&[vested.clone()])
+            .checked_add_cw20(&[to_claim.clone()])
             .unwrap();
 
         let cw20 = Cw20Contract(cw20.address.clone());
         let msg = cw20.call(Cw20ExecuteMsg::Transfer {
             recipient: stream.recipient.clone().into(),
-            amount: released.into(),
+            amount: to_claim.amount,
         })?;
         msgs.push(msg);
-        stream.balance.checked_sub_cw20(&[vested]).unwrap();
+        stream.balance.checked_sub_cw20(&[to_claim]).unwrap();
     }
 
-    STREAMS.save(deps.storage, id, &stream)?;
+    save_stream(deps, id, &stream).unwrap();
 
     let mut res = Response::new()
         .add_attribute("method", "distribute")
+        .add_attribute("vested", available_claims)
+
         .add_attribute("stream_id", id.to_string());
     if !msgs.is_empty() {
         res = res.add_messages(msgs);
@@ -376,12 +371,12 @@ fn query_stream(deps: Deps, id: u64) -> StdResult<StreamResponse> {
         recipient: stream.recipient.into(),
         balance: stream.balance,
         claimed_balance: stream.claimed_balance,
-        rate_per_second: stream.rate_per_second,
         start_time: stream.start_time,
         end_time: stream.end_time,
         title: stream.title,
         description: stream.description,
         paused_time: stream.paused_time,
+        paused_duration: stream.paused_duration,
         paused: stream.paused,
     })
 }
@@ -411,10 +406,10 @@ fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
         claimed_balance: stream.claimed_balance,
         start_time: stream.start_time,
         end_time: stream.end_time,
-        rate_per_second: stream.rate_per_second,
         title: stream.title,
         description: stream.description,
         paused_time: stream.paused_time,
+        paused_duration: stream.paused_duration,
         paused: stream.paused,
     })
 }
@@ -459,16 +454,17 @@ mod tests {
         let info = mock_info("cw20", &[]);
         instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let sender = Addr::unchecked("alice").to_string();
+        let admin_addr = Addr::unchecked("cw20");
+        let sender = admin_addr.to_string();
+
         let recipient = Addr::unchecked("bob").to_string();
-        let amount = Uint128::new(200);
+        let amount = Uint128::new(1000);
 
         let balance = WrappedBalance::new_cw20(Addr::unchecked("cw20"), amount);
         let claimed = WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0));
         let env = mock_env();
         let start_time = env.block.time.plus_seconds(100).seconds();
         let end_time = env.block.time.plus_seconds(300).seconds();
-
         let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
             sender: sender.clone(),
             amount,
@@ -485,17 +481,17 @@ mod tests {
         assert_eq!(
             get_stream(deps.as_ref(), 1),
             Stream {
-                admin: Addr::unchecked("alice"),
+                admin: admin_addr.clone(),
                 recipient: Addr::unchecked("bob"),
                 balance: balance.clone(),
-                claimed_balance: claimed,
+                claimed_balance: claimed.clone(),
                 start_time,
-                rate_per_second: Uint128::new(0),
                 end_time,
                 title: None,
                 description: None,
                 paused: false,
                 paused_time: None,
+                paused_duration: None,
             }
         );
 
@@ -504,7 +500,7 @@ mod tests {
         info.sender = Addr::unchecked("bob");
         let msg = ExecuteMsg::Distribute { id: 1 };
         let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(err, ContractError::NoFundsToClaim {});
+        assert_eq!(err, ContractError::NoFundsToClaim { claimed: claimed });
 
         // Stream has started so tokens have vested
         let msg = ExecuteMsg::Distribute { id: 1 };
@@ -522,52 +518,33 @@ mod tests {
                 contract_addr: String::from("cw20"),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: String::from("bob"),
-                    amount: Uint128::new(50)
+                    amount: Uint128::new(250)
                 })
                 .unwrap(),
                 funds: vec![]
             })
         );
-
         assert_eq!(
             get_stream(deps.as_ref(), 1),
             Stream {
-                admin: Addr::unchecked("alice"),
+                admin: admin_addr.clone(),
                 recipient: Addr::unchecked("bob"),
-                balance: balance,
-                claimed_balance: WrappedBalance::new_cw20(sender, Uint128::new(50)),
+                balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(750)),
+                claimed_balance: WrappedBalance::new_cw20(
+                    Addr::unchecked("cw20"),
+                    Uint128::new(250)
+                ),
                 start_time,
-                rate_per_second: Uint128::new(1),
                 end_time,
                 title: None,
                 description: None,
                 paused: false,
                 paused_time: None,
+                paused_duration: None,
             }
         );
 
-        // Stream has ended so claim remaining tokens
-
-        let mut env = mock_env();
-        env.block.time = env.block.time.plus_seconds(500);
-        let mut info = mock_info("owner", &[]);
-        info.sender = Addr::unchecked("bob");
-        let msg = ExecuteMsg::Distribute { id: 1 };
-        let res = execute(deps.as_mut(), env, info, msg).unwrap();
-        let msg = res.messages[0].clone().msg;
-
-        assert_eq!(
-            msg,
-            CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: String::from("cw20"),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: String::from("bob"),
-                    amount: Uint128::new(150)
-                })
-                .unwrap(),
-                funds: vec![]
-            })
-        );
+        //Check final balances after distribution
     }
 
     #[test]
@@ -598,7 +575,6 @@ mod tests {
             .unwrap(),
         });
 
-        let block_time=env.block.time;
         // Make sure remaining funds were refunded if duration didn't divide evenly into amount
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         let refund_msg = res.messages[0].clone().msg;
@@ -614,10 +590,9 @@ mod tests {
                 funds: vec![]
             })
         );
-        
+
         let balance_amount = Uint128::new(350);
-        let balance=WrappedBalance::new_cw20(Addr::unchecked("cw20"), balance_amount);
-        let rate_per_second =Stream::calc_distribution_rate_core(start_time, end_time, None, &balance,block_time);
+        let balance = WrappedBalance::new_cw20(Addr::unchecked("cw20"), balance_amount);
 
         assert_eq!(
             get_stream(deps.as_ref(), 1),
@@ -627,12 +602,12 @@ mod tests {
                 balance: balance, // original amount - refund
                 claimed_balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0)),
                 start_time,
-                rate_per_second,
                 end_time,
                 title: None,
                 description: None,
                 paused: false,
                 paused_time: None,
+                paused_duration: None,
             }
         );
     }
@@ -674,24 +649,22 @@ mod tests {
             ExecuteMsg::PauseStream { id: stream_id },
         )
         .unwrap();
-        let duration: u128 = (end_time - start_time).into();
-        let rate_per_second =
-            Uint128::from(amount.u128().checked_sub(duration).unwrap_or_default());
+        let balance = WrappedBalance::new_cw20(Addr::unchecked("alice"), amount);
         let saved_stream = get_stream(deps.as_ref(), stream_id);
         assert_eq!(
             saved_stream,
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: WrappedBalance::new_cw20(Addr::unchecked("alice"), amount), // original amount - refund
+                balance: balance, // original amount - refund
                 claimed_balance: WrappedBalance::new_cw20(sender_addr, Uint128::new(0)),
                 start_time,
-                rate_per_second,
                 end_time,
                 title: None,
                 description: None,
                 paused: true,
-                paused_time: Some(env.block.time.seconds()),
+                paused_time: saved_stream.paused_time,
+                paused_duration: saved_stream.paused_duration,
             }
         );
     }

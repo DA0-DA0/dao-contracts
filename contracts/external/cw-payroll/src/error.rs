@@ -1,7 +1,10 @@
 use cosmwasm_std::{StdError, Uint128};
+use cw20::Balance;
 use thiserror::Error;
 
 use cosmwasm_std::Addr;
+
+use crate::balance::WrappedBalance;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum GenericError {
@@ -46,7 +49,7 @@ pub enum ContractError {
     NotStreamRecipient { recipient: Addr },
 
     #[error("No tokens have vested for this stream.")]
-    NoFundsToClaim {},
+    NoFundsToClaim{claimed:WrappedBalance},
 
     #[error("Stream does not exist.")]
     StreamNotFound {},

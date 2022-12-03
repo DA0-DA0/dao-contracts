@@ -21,6 +21,7 @@ impl WrappedBalance {
             Balance::Cw20(_) => None,
         }
     }
+    
     pub fn cw20(&self) -> Option<&Cw20CoinVerified> {
         match &self.0 {
             Balance::Native(_) => None,
@@ -33,12 +34,12 @@ impl WrappedBalance {
     pub fn new_native(denom: String, amount: Uint128) -> Self {
         Self::new_native_from_coin(Coin { denom, amount })
     }
-    
+
     pub fn new_cw20_from_coin(cw20: Cw20CoinVerified) -> Self {
         WrappedBalance(Balance::Cw20(cw20))
     }
-    pub fn new_cw20(address: Addr,amount: Uint128) -> Self {
-       Self::new_cw20_from_coin(Cw20CoinVerified { address, amount })
+    pub fn new_cw20(address: Addr, amount: Uint128) -> Self {
+        Self::new_cw20_from_coin(Cw20CoinVerified { address, amount })
     }
     pub fn amount(&self) -> u128 {
         match &self.0 {
@@ -186,29 +187,41 @@ impl FindAndMutate<'_, Cw20CoinVerified> for Vec<Cw20CoinVerified> {
 }
 impl WrappedBalance {
     pub fn checked_add_native(&mut self, add: &[Coin]) -> Result<(), GenericError> {
-        if let Balance::Native(mut nb) = self.0.clone() {
-            return nb.0.checked_add_coins(add);
+        if let Balance::Native(nb) = self.0.clone() {
+            let mut coins = nb.0;
+            coins.checked_add_coins(add).unwrap();
+            self.0 = Balance::Native(NativeBalance(coins));
+            return Ok(());
         }
         return Err(GenericError::EmptyBalance {});
     }
 
     pub fn checked_add_cw20(&mut self, add: &[Cw20CoinVerified]) -> Result<(), GenericError> {
         if let Balance::Cw20(cw20) = self.0.clone() {
-            return vec![cw20].checked_add_coins(add);
+            let mut coins = vec![cw20];
+            coins.checked_add_coins(add).unwrap();
+            self.0 = Balance::Cw20(coins.get(0).unwrap().clone());
+            return Ok(());
         }
         return Err(GenericError::EmptyBalance {});
     }
 
     pub fn checked_sub_native(&mut self, sub: &[Coin]) -> Result<(), GenericError> {
-        if let Balance::Native(mut nb) = self.0.clone() {
-            return nb.0.checked_sub_coins(sub);
+        if let Balance::Native(nb) = self.0.clone() {
+            let mut coins = nb.0;
+            coins.checked_sub_coins(sub).unwrap();
+            self.0 = Balance::Native(NativeBalance(coins));
+            return Ok(());
         }
         return Err(GenericError::EmptyBalance {});
     }
 
     pub fn checked_sub_cw20(&mut self, sub: &[Cw20CoinVerified]) -> Result<(), GenericError> {
         if let Balance::Cw20(cw20) = self.0.clone() {
-            return vec![cw20].checked_sub_coins(sub);
+            let mut coins = vec![cw20];
+            coins.checked_sub_coins(sub).unwrap();
+            self.0 = Balance::Cw20(coins.get(0).unwrap().clone());
+            return Ok(());
         }
         return Err(GenericError::EmptyBalance {});
     }

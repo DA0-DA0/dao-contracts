@@ -17,26 +17,15 @@ pub enum ExecuteMsg {
     Distribute {
         id: StreamId, // Stream id
     },
-    // TODO: Add this! :D
-    // TODO: Only called by stream admin
-    // NOTE: Pauses a stream (paused: true), 
-    //       vesting is stopped
-    //       distribute of unlocked funds should be allowed (based on paused_time)
     PauseStream {
         id: StreamId, // Stream id
     },
-    // TODO: Add this! :D
-    // TODO: Only called by stream admin
-    // NOTE: Removes any pause from a stream, 
-    //       optionally can shift the start/end time if needed for vesting flexibility
     ResumeStream {
         id: StreamId, // Stream id
         start_time: Option<u64>,
         end_time: Option<u64>
     },
-    // TODO: Add this! :D
-    // TODO: Only called by stream admin
-    // NOTE: Remove returns funds to the admin
+
     RemoveStream {
         id: StreamId, // Stream id
     },
@@ -60,8 +49,6 @@ pub struct StreamParams {
     pub balance: WrappedBalance,
     pub start_time: u64,
     pub end_time: u64,
-    pub paused_time: Option<u64>,
-    pub paused: bool,
     pub title: Option<String>,
     pub description: Option<String>,
 }
@@ -95,8 +82,8 @@ pub struct StreamResponse {
     pub start_time: u64,
     pub end_time: u64,
     pub paused_time: Option<u64>,
+    pub paused_duration: Option<u64>,
     pub paused: bool,
-    pub rate_per_second: Uint128,
     pub title: Option<String>,
     pub description: Option<String>,
 }
