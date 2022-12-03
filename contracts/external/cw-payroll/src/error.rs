@@ -1,5 +1,4 @@
 use cosmwasm_std::{StdError, Uint128};
-use cw20::Balance;
 use thiserror::Error;
 
 use cosmwasm_std::Addr;
@@ -65,4 +64,7 @@ pub enum ContractError {
 
     #[error("Stream is not pause for resume!")]
     StreamNotPaused {},
+
+    #[error("Could not create bank transfer message!")]
+    CouldNotCreateBankMessage {},
 }

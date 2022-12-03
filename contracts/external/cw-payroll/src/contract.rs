@@ -114,9 +114,34 @@ pub fn execute_remove_stream(
         .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
-        .add_attribute("removed_time", env.block.time.to_string());
+        .add_attribute("removed_time", env.block.time.to_string())
+        .add_message(create_balance_transfer_msg(&stream.balance, None,stream.admin.into()).unwrap());
 
     Ok(response)
+}
+fn create_balance_transfer_msg(
+    balance: &WrappedBalance,
+    amount:Option<Uint128>,
+    recepient: String,
+) -> Result<CosmosMsg, ContractError> {
+    if let Some(native_balance) = balance.native() {
+        let msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: recepient,
+            amount: vec![Coin {
+                denom: native_balance.denom.clone(),
+                amount:amount.unwrap_or(native_balance.amount),
+            }],
+        });
+        return Ok(msg);
+    } else if let Some(cw20_balance) = balance.cw20() {
+        let cw20 = Cw20Contract(cw20_balance.address.clone());
+        let msg = cw20.call(Cw20ExecuteMsg::Transfer {
+            recipient: recepient,
+            amount:amount.unwrap_or(cw20_balance.amount),
+        })?;
+        return Ok(msg);
+    }
+    Err(ContractError::CouldNotCreateBankMessage {})
 }
 pub fn execute_resume_stream(
     env: Env,
@@ -185,7 +210,6 @@ pub fn execute_create_stream(
     }
 
     let duration: u128 = (end_time - start_time).into();
-    let mut msgs: Vec<CosmosMsg> = vec![];
     let balance_amount = balance.amount();
     let refund: u128 = balance_amount
         .checked_rem(duration)
@@ -195,28 +219,7 @@ pub fn execute_create_stream(
     if balance_amount < duration {
         return Err(ContractError::AmountLessThanDuration {});
     }
-    if let Some(native_balance) = balance.native() {
-        if refund > 0 {
-            let msg = CosmosMsg::Bank(BankMsg::Send {
-                to_address: admin.clone().into(),
-                amount: vec![Coin {
-                    denom: native_balance.denom.clone(),
-                    amount: native_balance.amount,
-                }],
-            });
-            msgs.push(msg);
-        }
-    } else if let Some(cw20_balance) = balance.cw20() {
-        if refund > 0 {
-            let cw20 = Cw20Contract(cw20_balance.address.clone());
-            let msg = cw20.call(Cw20ExecuteMsg::Transfer {
-                recipient: admin.clone().into(),
-                amount: refund.into(),
-            })?;
-            msgs.push(msg);
-        }
-    }
-
+    
     let claimed = if balance.is_native() {
         WrappedBalance::default()
     } else {
@@ -225,7 +228,7 @@ pub fn execute_create_stream(
     let stream = Stream {
         admin: admin.clone(),
         recipient: recipient.clone(),
-        balance,
+        balance:balance.clone(),
         claimed_balance: claimed,
         start_time,
         end_time,
@@ -245,8 +248,8 @@ pub fn execute_create_stream(
         .add_attribute("start_time", start_time.to_string())
         .add_attribute("end_time", end_time.to_string());
 
-    if !msgs.is_empty() {
-        response = response.add_messages(msgs);
+    if refund>0 {
+        response = response.add_messages(create_balance_transfer_msg(&balance,Some(Uint128::new(refund)), admin.clone().into()));
     }
     Ok(response)
 }
@@ -289,7 +292,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     let mut msgs: Vec<CosmosMsg> = vec![];
     let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
 
-    if !stream.can_ditribute_more() || available_claims.u128() <=0 {
+    if !stream.can_ditribute_more() || available_claims.u128() <= 0 {
         return Err(ContractError::NoFundsToClaim {
             claimed: stream.claimed_balance,
         });
@@ -337,7 +340,6 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     let mut res = Response::new()
         .add_attribute("method", "distribute")
         .add_attribute("vested", available_claims)
-
         .add_attribute("stream_id", id.to_string());
     if !msgs.is_empty() {
         res = res.add_messages(msgs);
