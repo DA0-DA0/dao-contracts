@@ -93,6 +93,10 @@ impl SupportsLinking for Stream {
             },
         )?;
 
+        if !initiator.is_detachable {
+            return Err(ContractError::StreamNotDetachable {});
+        }
+        
         let mut link = STREAMS
             .may_load(deps.storage, initiator_id)?
             .ok_or(ContractError::StreamNotFound {})?;
@@ -100,6 +104,7 @@ impl SupportsLinking for Stream {
         if initiator.admin != info.sender {
             return Err(ContractError::Unauthorized {});
         }
+        
         initiator.link_id = None;
         initiator.is_link_initiator = false;
         link.link_id = None;

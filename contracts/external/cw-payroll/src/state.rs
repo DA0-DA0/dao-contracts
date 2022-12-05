@@ -30,10 +30,12 @@ pub struct Stream {
     pub title: Option<String>,
     /// Description of the payroll item, a more in depth description of how to meet the payroll conditions
     pub description: Option<String>,
-    ///Link to stream attached for sync
+    /// Link to stream attached for sync
     pub link_id:Option<StreamId>,
-    ///If this stream initiated linking
+    /// If this stream initiated linking
     pub is_link_initiator:bool,
+    /// If Stream is detachable
+    pub is_detachable:bool,
 }
 
 impl Stream {

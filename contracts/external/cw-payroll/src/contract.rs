@@ -245,6 +245,7 @@ pub fn execute_create_stream(
         description,
         link_id: None,
         is_link_initiator: false,
+        is_detachable:false,
     };
     let id = add_stream(deps, &stream)?;
 
@@ -508,6 +509,7 @@ mod tests {
                 paused_duration: None,
                 link_id: None,
                 is_link_initiator: false,
+                is_detachable:false,
             }
         );
 
@@ -559,6 +561,7 @@ mod tests {
                 paused_duration: None,
                 link_id: None,
                 is_link_initiator: false,
+                is_detachable:false,
             }
         );
 
@@ -628,6 +631,7 @@ mod tests {
                 paused_duration: None,
                 link_id: None,
                 is_link_initiator: false,
+                is_detachable:false,
             }
         );
     }
@@ -687,6 +691,7 @@ mod tests {
                 paused_duration: saved_stream.paused_duration,
                 link_id: None,
                 is_link_initiator: false,
+                is_detachable:false,
             }
         );
     }
