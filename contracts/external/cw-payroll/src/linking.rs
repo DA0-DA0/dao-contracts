@@ -15,7 +15,6 @@ pub(crate) trait SupportsLinking {
         &self,
         initiator_id: StreamId,
         link_id: StreamId,
-        env:&Env,
         deps: DepsMut,
         info: &MessageInfo,
     ) -> Result<Response, ContractError>;
@@ -23,21 +22,20 @@ pub(crate) trait SupportsLinking {
         &self,
         initiator_id: StreamId,
         link_id: StreamId,
-        env:&Env,
         deps: DepsMut,
         info: &MessageInfo,
     ) -> Result<Response, ContractError>;
     fn create_link_delete_msg(
         &self,
         stream_id: StreamId,
-        env:&Env,
+        env: &Env,
         deps: DepsMut,
         info: &MessageInfo,
     ) -> Result<CosmosMsg, ContractError>;
     fn create_sync_msg(
         &self,
         stream_id: StreamId,
-        env:&Env,
+        env: &Env,
         deps: DepsMut,
         info: &MessageInfo,
         sync_type: LinkSyncType,
@@ -49,7 +47,6 @@ impl SupportsLinking for Stream {
         &self,
         initiator_id: StreamId,
         link_id: StreamId,
-        env:&Env,
         deps: DepsMut,
         info: &MessageInfo,
     ) -> Result<Response, ContractError> {
@@ -87,7 +84,6 @@ impl SupportsLinking for Stream {
         &self,
         initiator_id: StreamId,
         link_id: StreamId,
-        _env:&Env,
         deps: DepsMut,
         info: &MessageInfo,
     ) -> Result<Response, ContractError> {
@@ -123,7 +119,7 @@ impl SupportsLinking for Stream {
     fn create_link_delete_msg(
         &self,
         stream_id: StreamId,
-        env:&Env,
+        env: &Env,
         deps: DepsMut,
         info: &MessageInfo,
     ) -> Result<CosmosMsg, ContractError> {
@@ -132,6 +128,9 @@ impl SupportsLinking for Stream {
             .ok_or(ContractError::StreamNotFound {})?;
         if stream.link_id.is_none() {
             return Err(ContractError::StreamNotLinked {});
+        }
+        if stream.admin != info.sender {
+            return Err(ContractError::Unauthorized {});
         }
         if !stream.is_link_initiator {
             return Err(ContractError::StreamNotInitiator {});
@@ -149,7 +148,7 @@ impl SupportsLinking for Stream {
     fn create_sync_msg(
         &self,
         stream_id: StreamId,
-        env:&Env,
+        env: &Env,
         deps: DepsMut,
         info: &MessageInfo,
         sync_type: LinkSyncType,
@@ -157,6 +156,9 @@ impl SupportsLinking for Stream {
         let stream = STREAMS
             .may_load(deps.storage, stream_id)?
             .ok_or(ContractError::StreamNotFound {})?;
+        if stream.admin != info.sender {
+            return Err(ContractError::Unauthorized {});
+        }
         match sync_type {
             LinkSyncType::Paused => {
                 let msg = CosmosMsg::Wasm(WasmMsg::Execute {
