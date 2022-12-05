@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, DepsMut, StdResult, Timestamp, Uint128};
+use cosmwasm_std::{Addr, DepsMut, StdResult, Timestamp, Uint128, Storage};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
@@ -30,6 +30,10 @@ pub struct Stream {
     pub title: Option<String>,
     /// Description of the payroll item, a more in depth description of how to meet the payroll conditions
     pub description: Option<String>,
+    ///Link to stream attached for sync
+    pub link_id:Option<StreamId>,
+    ///If this stream initiated linking
+    pub is_link_initiator:bool,
 }
 
 impl Stream {
@@ -98,12 +102,12 @@ pub fn add_stream(deps: DepsMut, stream: &Stream) -> StdResult<StreamId> {
     STREAMS.save(deps.storage, id, stream)?;
     Ok(id)
 }
-pub fn save_stream(deps: DepsMut, id: StreamId, stream: &Stream) -> StdResult<StreamId> {
-    STREAMS.save(deps.storage, id, stream)?;
+pub fn save_stream(storage: &mut dyn Storage, id: StreamId, stream: &Stream) -> StdResult<StreamId> {
+    STREAMS.save(storage, id, stream)?;
     Ok(id)
 }
 
-pub fn remove_stream(deps: DepsMut, stream_id: StreamId) -> StdResult<StreamId> {
-    STREAMS.remove(deps.storage, stream_id);
+pub fn remove_stream(storage: &mut dyn Storage, stream_id: StreamId) -> StdResult<StreamId> {
+    STREAMS.remove(storage, stream_id);
     Ok(stream_id)
 }

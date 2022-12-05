@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use cosmwasm_std::Addr;
 
-use crate::balance::WrappedBalance;
+use crate::{balance::WrappedBalance, msg::StreamId};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum GenericError {
@@ -62,9 +62,20 @@ pub enum ContractError {
     #[error("Can not pause paused stream.")]
     StreamAlreadyPaused {},
 
-    #[error("Stream is not pause for resume!")]
+    #[error("Stream is not pause for resume.")]
     StreamNotPaused {},
 
-    #[error("Could not create bank transfer message!")]
+    #[error("Could not create bank transfer message")]
     CouldNotCreateBankMessage {},
+
+    #[error("Initiator stream does not exist.")]
+    InitiatorStreamNotFound {stream_id:StreamId},
+
+    #[error("Linked stream does not exist.")]
+    LinkedStreamNotFound {stream_id:StreamId},
+
+    #[error("Stream is not linked.")]
+    StreamNotLinked {},
+    #[error("Stream is not an initiator.")]
+    StreamNotInitiator {},
 }

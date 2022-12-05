@@ -3,4 +3,5 @@ mod error;
 pub mod msg;
 pub mod state;
 pub mod balance;
+pub mod linking;
 pub use crate::error::ContractError;

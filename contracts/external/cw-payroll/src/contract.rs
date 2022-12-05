@@ -2,6 +2,7 @@ use std::vec;
 
 use crate::balance::*;
 use crate::error::{ContractError, GenericError};
+use crate::linking::SupportsLinking;
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
     StreamId, StreamParams, StreamResponse,
@@ -85,7 +86,7 @@ pub fn execute_pause_stream(
     }
     stream.paused_time = Some(env.block.time.seconds());
     stream.paused = true;
-    save_stream(deps, id, &stream).unwrap();
+    save_stream(deps.storage, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "pause_stream")
         .add_attribute("paused", stream.paused.to_string())
@@ -109,16 +110,19 @@ pub fn execute_remove_stream(
         return Err(ContractError::Unauthorized {});
     }
 
-    remove_stream(deps, id).unwrap();
-    let response = Response::new()
+    remove_stream(deps.storage, id).unwrap();
+    let mut response = Response::new()
         .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender)
+        .add_attribute("admin", info.sender.clone())
         .add_attribute("removed_time", env.block.time.to_string())
         .add_message(
-            create_balance_transfer_msg(&stream.balance, None, stream.admin.into()).unwrap(),
+            create_balance_transfer_msg(&stream.balance, None, stream.admin.clone().into()).unwrap(),
         );
 
+    if stream.is_link_initiator {
+        response =response.add_message(stream.create_link_delete_msg(id,&env,deps,&info).unwrap());
+    }
     Ok(response)
 }
 fn create_balance_transfer_msg(
@@ -168,7 +172,7 @@ pub fn execute_resume_stream(
     let (_, rate_per_second) = stream.calc_distribution_rate(env.block.time);
     stream.paused = false;
 
-    save_stream(deps, id, &stream).unwrap();
+    save_stream(deps.storage, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "resume_stream")
         .add_attribute("stream_id", id.to_string())
@@ -239,6 +243,8 @@ pub fn execute_create_stream(
         paused: false,
         title,
         description,
+        link_id: None,
+        is_link_initiator: false,
     };
     let id = add_stream(deps, &stream)?;
 
@@ -341,7 +347,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
         stream.balance.checked_sub_cw20(&[to_claim]).unwrap();
     }
 
-    save_stream(deps, id, &stream).unwrap();
+    save_stream(deps.storage, id, &stream).unwrap();
 
     let mut res = Response::new()
         .add_attribute("method", "distribute")
@@ -500,6 +506,8 @@ mod tests {
                 paused: false,
                 paused_time: None,
                 paused_duration: None,
+                link_id: None,
+                is_link_initiator: false,
             }
         );
 
@@ -549,6 +557,8 @@ mod tests {
                 paused: false,
                 paused_time: None,
                 paused_duration: None,
+                link_id: None,
+                is_link_initiator: false,
             }
         );
 
@@ -616,6 +626,8 @@ mod tests {
                 paused: false,
                 paused_time: None,
                 paused_duration: None,
+                link_id: None,
+                is_link_initiator: false,
             }
         );
     }
@@ -673,6 +685,8 @@ mod tests {
                 paused: true,
                 paused_time: saved_stream.paused_time,
                 paused_duration: saved_stream.paused_duration,
+                link_id: None,
+                is_link_initiator: false,
             }
         );
     }
@@ -794,7 +808,7 @@ mod tests {
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
                 admin: Some(sender.clone()),
-                recipient:recipient.clone(),
+                recipient: recipient.clone(),
                 start_time,
                 end_time,
             })
@@ -815,7 +829,9 @@ mod tests {
         let error = get_stream(deps.as_ref(), stream_id).unwrap_err();
         assert_eq!(
             error,
-            StdError::NotFound { kind: "cw_payroll::state::Stream".to_string() }
+            StdError::NotFound {
+                kind: "cw_payroll::state::Stream".to_string()
+            }
         );
 
         let refund_msg = remove_response.messages[0].clone().msg;
@@ -832,6 +848,6 @@ mod tests {
             })
         );
         //Check balance of stream refunded to admin
-        println!("{:?}",remove_response);
+        println!("{:?}", remove_response);
     }
 }
