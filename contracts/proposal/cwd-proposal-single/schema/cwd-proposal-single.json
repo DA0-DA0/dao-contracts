@@ -409,12 +409,49 @@
                 "format": "uint64",
                 "minimum": 0.0
               },
+              "rationale": {
+                "description": "An optional rationale for why this vote was cast. This can be updated, set, or removed later by the address casting the vote.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "vote": {
                 "description": "The senders position on the proposal.",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Vote"
                   }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Updates the sender's rationale for their vote on the specified proposal. Errors if no vote vote has been cast.",
+        "type": "object",
+        "required": [
+          "update_rationale"
+        ],
+        "properties": {
+          "update_rationale": {
+            "type": "object",
+            "required": [
+              "proposal_id"
+            ],
+            "properties": {
+              "proposal_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "rationale": {
+                "type": [
+                  "string",
+                  "null"
                 ]
               }
             },
@@ -2394,6 +2431,13 @@
                 }
               ]
             },
+            "rationale": {
+              "description": "Address-specified rationale for the vote.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "vote": {
               "description": "Position on the vote.",
               "allOf": [
@@ -3583,6 +3627,13 @@
                 {
                   "$ref": "#/definitions/Uint128"
                 }
+              ]
+            },
+            "rationale": {
+              "description": "Address-specified rationale for the vote.",
+              "type": [
+                "string",
+                "null"
               ]
             },
             "vote": {

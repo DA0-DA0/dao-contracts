@@ -63,6 +63,16 @@ pub enum ExecuteMsg {
         proposal_id: u64,
         /// The senders position on the proposal.
         vote: Vote,
+        /// An optional rationale for why this vote was cast. This can
+        /// be updated, set, or removed later by the address casting
+        /// the vote.
+        rationale: Option<String>,
+    },
+    /// Updates the sender's rationale for their vote on the specified
+    /// proposal. Errors if no vote vote has been cast.
+    UpdateRationale {
+        proposal_id: u64,
+        rationale: Option<String>,
     },
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.

@@ -1,4 +1,4 @@
-## cw-proposal-multiple
+## cwd-proposal-multiple
 
 A proposal module for a DAO DAO DAO which allows the users to select
 their voting choice(s) from an array of `MultipleChoiceOption`.

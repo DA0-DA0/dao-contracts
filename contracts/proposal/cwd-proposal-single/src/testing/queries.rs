@@ -8,7 +8,7 @@ use cwd_voting::pre_propose::ProposalCreationPolicy;
 
 use crate::{
     msg::QueryMsg,
-    query::{ProposalListResponse, ProposalResponse, VoteListResponse},
+    query::{ProposalListResponse, ProposalResponse, VoteListResponse, VoteResponse},
     state::Config,
 };
 
@@ -67,6 +67,23 @@ pub(crate) fn query_list_votes(
                 proposal_id,
                 start_after,
                 limit,
+            },
+        )
+        .unwrap()
+}
+
+pub(crate) fn query_vote(
+    app: &App,
+    proposal_module: &Addr,
+    who: &str,
+    proposal_id: u64,
+) -> VoteResponse {
+    app.wrap()
+        .query_wasm_smart(
+            proposal_module,
+            &QueryMsg::GetVote {
+                proposal_id,
+                voter: who.to_string(),
             },
         )
         .unwrap()

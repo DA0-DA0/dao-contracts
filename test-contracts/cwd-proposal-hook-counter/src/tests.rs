@@ -285,6 +285,7 @@ fn test_counters() {
         &cwd_proposal_single::msg::ExecuteMsg::Vote {
             proposal_id: 1,
             vote: Vote::Yes,
+            rationale: None,
         },
         &[],
     )
@@ -402,6 +403,7 @@ fn test_counters() {
         Addr::unchecked(CREATOR_ADDR),
         govmod_single.clone(),
         &cwd_proposal_single::msg::ExecuteMsg::Vote {
+            rationale: None,
             proposal_id: 2,
             vote: Vote::Yes,
         },

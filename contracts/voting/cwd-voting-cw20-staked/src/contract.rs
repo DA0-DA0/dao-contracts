@@ -39,13 +39,14 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     DAO.save(deps.storage, &info.sender)?;
-    if let Some(active_threshold) = msg.active_threshold.clone() {
+
+    if let Some(active_threshold) = msg.active_threshold.as_ref() {
         if let ActiveThreshold::Percentage { percent } = active_threshold {
-            if percent > Decimal::percent(100) || percent <= Decimal::percent(0) {
+            if *percent > Decimal::percent(100) || *percent <= Decimal::percent(0) {
                 return Err(ContractError::InvalidActivePercentage {});
             }
         }
-        ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+        ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
     }
 
     match msg.token_info {
@@ -56,7 +57,7 @@ pub fn instantiate(
             let address = deps.api.addr_validate(&address)?;
             TOKEN.save(deps.storage, &address)?;
             if let Some(ActiveThreshold::AbsoluteCount { count }) = msg.active_threshold {
-                assert_valid_absolute_count_threshold(deps.as_ref(), address.clone(), count)?;
+                assert_valid_absolute_count_threshold(deps.as_ref(), &address, count)?;
             }
 
             match staking_contract {
@@ -169,7 +170,7 @@ pub fn instantiate(
 
 pub fn assert_valid_absolute_count_threshold(
     deps: Deps,
-    token_addr: Addr,
+    token_addr: &Addr,
     count: Uint128,
 ) -> Result<(), ContractError> {
     let token_info: cw20::TokenInfoResponse = deps
@@ -215,7 +216,7 @@ pub fn execute_update_active_threshold(
             }
             ActiveThreshold::AbsoluteCount { count } => {
                 let token = TOKEN.load(deps.storage)?;
-                assert_valid_absolute_count_threshold(deps.as_ref(), token, count)?;
+                assert_valid_absolute_count_threshold(deps.as_ref(), &token, count)?;
             }
         }
         ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
@@ -313,12 +314,38 @@ pub fn query_is_active(deps: Deps) -> StdResult<Binary> {
                 active: actual_power.total >= count,
             }),
             ActiveThreshold::Percentage { percent } => {
+                // percent is bounded between [0, 100]. decimal
+                // represents percents in u128 terms as p *
+                // 10^15. this bounds percent between [0, 10^17].
+                //
+                // total_potential_power is bounded between [0, 2^128]
+                // as it tracks the balances of a cw20 token which has
+                // a max supply of 2^128.
+                //
+                // with our precision factor being 10^9:
+                //
+                // total_power <= 2^128 * 10^9 <= 2^256
+                //
+                // so we're good to put that in a u256.
+                //
+                // multiply_ratio promotes to a u512 under the hood,
+                // so it won't overflow, multiplying by a percent less
+                // than 100 is gonna make something the same size or
+                // smaller, applied + 10^9 <= 2^128 * 10^9 + 10^9 <=
+                // 2^256, so the top of the round won't overflow, and
+                // rounding is rounding down, so the whole thing can
+                // be safely unwrapped at the end of the day thank you
+                // for coming to my ted talk.
                 let total_potential_power: TokenInfoResponse = deps
                     .querier
                     .query_wasm_smart(token_contract, &cw20_base::msg::QueryMsg::TokenInfo {})?;
                 let total_power = total_potential_power
                     .total_supply
                     .full_mul(PRECISION_FACTOR);
+                // under the hood decimals are `atomics / 10^decimal_places`.
+                // cosmwasm doesn't give us a Decimal * Uint256
+                // implementation so we take the decimal apart and
+                // multiply by the fraction.
                 let applied = total_power.multiply_ratio(
                     percent.atomics(),
                     Uint256::from(10u64).pow(percent.decimal_places()),
@@ -358,6 +385,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 Ok(res) => {
                     let token = TOKEN.may_load(deps.storage)?;
                     if token.is_some() {
+                        // There is no known way this error could ever
+                        // be triggered, we're just paranoid.
                         return Err(ContractError::DuplicateToken {});
                     }
                     let token = deps.api.addr_validate(&res.contract_address)?;
@@ -365,7 +394,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
 
                     let active_threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
                     if let Some(ActiveThreshold::AbsoluteCount { count }) = active_threshold {
-                        assert_valid_absolute_count_threshold(deps.as_ref(), token.clone(), count)?;
+                        assert_valid_absolute_count_threshold(deps.as_ref(), &token, count)?;
                     }
 
                     let staking_contract_code_id = STAKING_CONTRACT_CODE_ID.load(deps.storage)?;
@@ -396,21 +425,18 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
             let res = parse_reply_instantiate_data(msg);
             match res {
                 Ok(res) => {
-                    // Validate contract address
                     let staking_contract_addr = deps.api.addr_validate(&res.contract_address)?;
 
-                    // Check if we have a duplicate
                     let staking = STAKING_CONTRACT.may_load(deps.storage)?;
                     if staking.is_some() {
                         return Err(ContractError::DuplicateStakingContract {});
                     }
 
-                    // Save staking contract addr
                     STAKING_CONTRACT.save(deps.storage, &staking_contract_addr)?;
 
                     Ok(Response::new().add_attribute("staking_contract", staking_contract_addr))
                 }
-                Err(_) => Err(ContractError::TokenInstantiateError {}),
+                Err(_) => Err(ContractError::StakingInstantiateError {}),
             }
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
