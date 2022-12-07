@@ -508,7 +508,7 @@ mod tests {
             sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
-                admin: Some(sender.clone()),
+                admin: Some(sender),
                 recipient,
                 start_time,
                 end_time,
@@ -522,7 +522,7 @@ mod tests {
             Stream {
                 admin: admin_addr.clone(),
                 recipient: Addr::unchecked("bob"),
-                balance: balance.clone(),
+                balance,
                 claimed_balance: claimed.clone(),
                 start_time,
                 end_time,
@@ -542,14 +542,14 @@ mod tests {
         info.sender = Addr::unchecked("bob");
         let msg = ExecuteMsg::Distribute { id: 1 };
         let err = execute(deps.as_mut(), env, info, msg).unwrap_err();
-        assert_eq!(err, ContractError::NoFundsToClaim { claimed: claimed });
+        assert_eq!(err, ContractError::NoFundsToClaim { claimed });
 
         // Stream has started so tokens have vested
         let msg = ExecuteMsg::Distribute { id: 1 };
         let mut info = mock_info("owner", &[]);
         let mut env = mock_env();
         let sender = Addr::unchecked("bob");
-        info.sender = sender.clone();
+        info.sender = sender;
         env.block.time = env.block.time.plus_seconds(150);
         let res = execute(deps.as_mut(), env, info, msg).unwrap();
         let msg = res.messages[0].clone().msg;
@@ -569,7 +569,7 @@ mod tests {
         assert_eq!(
             get_stream(deps.as_ref(), 1).unwrap(),
             Stream {
-                admin: admin_addr.clone(),
+                admin: admin_addr,
                 recipient: Addr::unchecked("bob"),
                 balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(750)),
                 claimed_balance: WrappedBalance::new_cw20(
@@ -628,7 +628,7 @@ mod tests {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: String::from("cw20"),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: sender.clone(),
+                    recipient: sender,
                     amount: Uint128::new(50)
                 })
                 .unwrap(),
@@ -642,9 +642,9 @@ mod tests {
         assert_eq!(
             get_stream(deps.as_ref(), 1).unwrap(),
             Stream {
-                admin: sender_addr.clone(),
+                admin: sender_addr,
                 recipient: Addr::unchecked("bob"),
-                balance: balance, // original amount - refund
+                balance, // original amount - refund
                 claimed_balance: WrappedBalance::new_cw20(Addr::unchecked("cw20"), Uint128::new(0)),
                 start_time,
                 end_time,
@@ -704,7 +704,7 @@ mod tests {
             Stream {
                 admin: Addr::unchecked("alice"),
                 recipient: Addr::unchecked("bob"),
-                balance: balance, // original amount - refund
+                balance, // original amount - refund
                 claimed_balance: WrappedBalance::new_cw20(sender_addr, Uint128::new(0)),
                 start_time,
                 end_time,
@@ -837,7 +837,7 @@ mod tests {
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
                 admin: Some(sender.clone()),
-                recipient: recipient.clone(),
+                recipient,
                 start_time,
                 end_time,
             })
@@ -869,8 +869,8 @@ mod tests {
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: sender.clone(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: sender.clone(),
-                    amount: amount
+                    recipient: sender,
+                    amount
                 })
                 .unwrap(),
                 funds: vec![]
