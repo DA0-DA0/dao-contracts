@@ -12,7 +12,7 @@ pub enum LinkSyncType {
 }
 pub(crate) trait SupportsLinking {
     fn link(
-        &self,
+        &mut self,
         initiator_id: StreamId,
         link_id: StreamId,
         deps: DepsMut,
@@ -44,31 +44,31 @@ pub(crate) trait SupportsLinking {
 
 impl SupportsLinking for Stream {
     fn link(
-        &self,
+        &mut self,
         initiator_id: StreamId,
         link_id: StreamId,
         deps: DepsMut,
         info: &MessageInfo,
     ) -> Result<Response, ContractError> {
-        let mut initiator = STREAMS.may_load(deps.storage, initiator_id)?.ok_or(
-            ContractError::InitiatorStreamNotFound {
-                stream_id: initiator_id,
-            },
-        )?;
+        // let mut initiator = STREAMS.may_load(deps.storage, initiator_id)?.ok_or(
+        //     ContractError::InitiatorStreamNotFound {
+        //         stream_id: initiator_id,
+        //     },
+        // )?;
 
         let mut link = STREAMS
             .may_load(deps.storage, initiator_id)?
             .ok_or(ContractError::StreamNotFound {})?;
 
-        if initiator.admin != info.sender {
+        if self.admin != info.sender {
             return Err(ContractError::Unauthorized {});
         }
-        initiator.link_id = Some(link_id);
-        initiator.is_link_initiator = true;
+        self.link_id = Some(link_id);
+        self.is_link_initiator = true;
         link.link_id = Some(initiator_id);
         link.is_link_initiator = false;
 
-        save_stream(deps.storage, initiator_id, &initiator).unwrap();
+        save_stream(deps.storage, initiator_id, self).unwrap();
         save_stream(deps.storage, link_id, &link).unwrap();
 
         let response = Response::new()

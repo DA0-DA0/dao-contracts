@@ -60,6 +60,10 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
+        ExecuteMsg::LinkStream {
+            initiator_id,
+            link_id,
+        } => execute_link_stream(deps, info, initiator_id, link_id),
         ExecuteMsg::ResumeStream {
             id,
             start_time,
@@ -68,6 +72,7 @@ pub fn execute(
         ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
     }
 }
+
 pub fn execute_pause_stream(
     env: Env,
     deps: DepsMut,
@@ -117,11 +122,16 @@ pub fn execute_remove_stream(
         .add_attribute("admin", info.sender.clone())
         .add_attribute("removed_time", env.block.time.to_string())
         .add_message(
-            create_balance_transfer_msg(&stream.balance, None, stream.admin.clone().into()).unwrap(),
+            create_balance_transfer_msg(&stream.balance, None, stream.admin.clone().into())
+                .unwrap(),
         );
 
     if stream.is_link_initiator {
-        response =response.add_message(stream.create_link_delete_msg(id,&env,deps,&info).unwrap());
+        response = response.add_message(
+            stream
+                .create_link_delete_msg(id, &env, deps, &info)
+                .unwrap(),
+        );
     }
     Ok(response)
 }
@@ -245,7 +255,7 @@ pub fn execute_create_stream(
         description,
         link_id: None,
         is_link_initiator: false,
-        is_detachable:false,
+        is_detachable: false,
     };
     let id = add_stream(deps, &stream)?;
 
@@ -360,6 +370,20 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     Ok(res)
 }
 
+fn execute_link_stream(
+    deps: DepsMut,
+    info: MessageInfo,
+    initiator_id: StreamId,
+    link_id: StreamId,
+) -> Result<Response, ContractError> {
+    let mut initiator = STREAMS.may_load(deps.storage, initiator_id)?.ok_or(
+        ContractError::InitiatorStreamNotFound {
+            stream_id: initiator_id,
+        },
+    )?;
+    return initiator.link(initiator_id, link_id, deps, &info);
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -393,6 +417,9 @@ fn query_stream(deps: Deps, id: u64) -> StdResult<StreamResponse> {
         paused_time: stream.paused_time,
         paused_duration: stream.paused_duration,
         paused: stream.paused,
+        is_link_initiator:stream.is_link_initiator,
+        is_detachable:stream.is_detachable,
+        link_id:stream.link_id
     })
 }
 
@@ -426,6 +453,9 @@ fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
         paused_time: stream.paused_time,
         paused_duration: stream.paused_duration,
         paused: stream.paused,
+        is_link_initiator:stream.is_link_initiator,
+        is_detachable:stream.is_detachable,
+        link_id:stream.link_id
     })
 }
 
@@ -509,7 +539,7 @@ mod tests {
                 paused_duration: None,
                 link_id: None,
                 is_link_initiator: false,
-                is_detachable:false,
+                is_detachable: false,
             }
         );
 
@@ -561,7 +591,7 @@ mod tests {
                 paused_duration: None,
                 link_id: None,
                 is_link_initiator: false,
-                is_detachable:false,
+                is_detachable: false,
             }
         );
 
@@ -631,7 +661,7 @@ mod tests {
                 paused_duration: None,
                 link_id: None,
                 is_link_initiator: false,
-                is_detachable:false,
+                is_detachable: false,
             }
         );
     }
@@ -691,7 +721,7 @@ mod tests {
                 paused_duration: saved_stream.paused_duration,
                 link_id: None,
                 is_link_initiator: false,
-                is_detachable:false,
+                is_detachable: false,
             }
         );
     }
