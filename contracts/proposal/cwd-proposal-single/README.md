@@ -1,4 +1,4 @@
-# cw-proposal-single
+# cwd-proposal-single
 
 A proposal module for a DAO DAO DAO which supports simple "yes", "no",
 "abstain" voting. Proposals may have associated messages which will be

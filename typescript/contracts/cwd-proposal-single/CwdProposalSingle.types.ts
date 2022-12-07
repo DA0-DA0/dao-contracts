@@ -70,7 +70,13 @@ export type ExecuteMsg = {
 } | {
   vote: {
     proposal_id: number;
+    rationale?: string | null;
     vote: Vote;
+  };
+} | {
+  update_rationale: {
+    proposal_id: number;
+    rationale?: string | null;
   };
 } | {
   execute: {
@@ -323,6 +329,7 @@ export interface VoteResponse {
 }
 export interface VoteInfo {
   power: Uint128;
+  rationale?: string | null;
   vote: Vote;
   voter: Addr;
 }

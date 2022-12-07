@@ -10,12 +10,20 @@ happy](https://twitter.com/larry0x/status/1530537243709939719).
 Given a map like:
 
 ```rust
+use cw_storage_plus::Map;
+
 pub const ITEMS: Map<String, String> = Map::new("items");
 ```
 
 You can use this package to write a query to list it's contents like:
 
 ```rust
+use cosmwasm_std::{Deps, Binary, to_binary, StdResult};
+use cw_storage_plus::Map;
+use cw_paginate::paginate_map;                         
+
+pub const ITEMS: Map<String, String> = Map::new("items");
+
 pub fn query_list_items(
     deps: Deps,
     start_after: Option<String>,

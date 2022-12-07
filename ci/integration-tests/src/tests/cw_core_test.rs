@@ -1,7 +1,7 @@
 use crate::helpers::chain::Chain;
 use crate::helpers::helper::create_dao;
 use assert_matches::assert_matches;
-use cosm_orc::client::error::ClientError;
+use cosm_orc::orchestrator::error::CosmwasmError::TxError;
 use cosm_orc::orchestrator::error::ProcessError;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128};
 use cw20_stake::msg::{StakedValueResponse, TotalValueResponse};
@@ -51,10 +51,7 @@ fn execute_execute_admin_msgs(chain: &mut Chain) {
         vec![],
     );
 
-    assert_matches!(
-        res.unwrap_err(),
-        ProcessError::ClientError(ClientError::CosmosSdk { .. })
-    );
+    assert_matches!(res.unwrap_err(), ProcessError::CosmwasmError(TxError(..)));
 
     let res = chain
         .orc

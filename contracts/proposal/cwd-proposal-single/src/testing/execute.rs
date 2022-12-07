@@ -12,7 +12,9 @@ use crate::{
     ContractError,
 };
 
-use super::{contracts::cw20_contract, queries::query_pre_proposal_single_config, CREATOR_ADDR};
+use super::{
+    contracts::cw20_base_contract, queries::query_pre_proposal_single_config, CREATOR_ADDR,
+};
 
 // Creates a proposal then checks that the proposal was created with
 // the specified messages and returns the ID of the proposal.
@@ -130,7 +132,11 @@ pub(crate) fn vote_on_proposal(
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_single.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
@@ -146,7 +152,11 @@ pub(crate) fn vote_on_proposal_should_fail(
     app.execute_contract(
         Addr::unchecked(sender),
         proposal_single.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap_err()
@@ -169,6 +179,46 @@ pub(crate) fn execute_proposal_should_fail(
     .unwrap_err()
     .downcast()
     .unwrap()
+}
+
+pub(crate) fn vote_on_proposal_with_rationale(
+    app: &mut App,
+    proposal_single: &Addr,
+    sender: &str,
+    proposal_id: u64,
+    vote: Vote,
+    rationale: Option<String>,
+) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        proposal_single.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale,
+        },
+        &[],
+    )
+    .unwrap();
+}
+
+pub(crate) fn update_rationale(
+    app: &mut App,
+    proposal_single: &Addr,
+    sender: &str,
+    proposal_id: u64,
+    rationale: Option<String>,
+) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        proposal_single.clone(),
+        &ExecuteMsg::UpdateRationale {
+            proposal_id,
+            rationale,
+        },
+        &[],
+    )
+    .unwrap();
 }
 
 pub(crate) fn execute_proposal(
@@ -246,7 +296,7 @@ pub(crate) fn mint_cw20s(
 }
 
 pub(crate) fn instantiate_cw20_base_default(app: &mut App) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_instantiate = cw20_base::msg::InstantiateMsg {
         name: "cw20 token".to_string(),
         symbol: "cwtwenty".to_string(),

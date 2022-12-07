@@ -1,54 +1,13 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin, DepsMut, StdResult, Uint128};
-use cw20::{Balance, Cw20CoinVerified};
+use cosmwasm_std::{Addr, DepsMut, StdResult, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
+
+use crate::{balance::WrappedBalance, msg::StreamId};
 
 #[cw_serde]
 pub struct Config {
     pub admin: Addr,
-}
-
-#[cw_serde]
-#[derive(Default)]
-pub struct GenericBalance {
-    pub native: Vec<Coin>,
-    pub cw20: Vec<Cw20CoinVerified>,
-}
-
-impl GenericBalance {
-    pub fn add_tokens(&mut self, add: Balance) {
-        match add {
-            Balance::Native(balance) => {
-                for token in balance.0 {
-                    let index = self.native.iter().enumerate().find_map(|(i, exist)| {
-                        if exist.denom == token.denom {
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    });
-                    match index {
-                        Some(idx) => self.native[idx].amount += token.amount,
-                        None => self.native.push(token),
-                    }
-                }
-            }
-            Balance::Cw20(token) => {
-                let index = self.cw20.iter().enumerate().find_map(|(i, exist)| {
-                    if exist.address == token.address {
-                        Some(i)
-                    } else {
-                        None
-                    }
-                });
-                match index {
-                    Some(idx) => self.cw20[idx].amount += token.amount,
-                    None => self.cw20.push(token),
-                }
-            }
-        };
-    }
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
@@ -58,15 +17,13 @@ pub struct Stream {
     pub admin: Addr,
     pub recipient: Addr,
     /// Balance in Native and Cw20 tokens
-    pub balance: GenericBalance,
-    pub claimed_balance: GenericBalance,
+    pub balance: WrappedBalance,
+    pub claimed_balance: WrappedBalance,
     pub start_time: u64,
     pub end_time: u64,
     pub paused_time: Option<u64>,
+    pub paused_duration: Option<u64>,
     pub paused: bool,
-
-    // TODO: Does this need to be stored? seems read only fine
-    pub rate_per_second: Uint128,
 
     // METADATA
     /// Title of the payroll item, for example for a bug bounty "Fix issue in contract.rs"
@@ -75,13 +32,81 @@ pub struct Stream {
     pub description: Option<String>,
 }
 
-pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
-pub const STREAMS: Map<u64, Stream> = Map::new("stream");
+impl Stream {
+    pub(crate) fn can_distribute_more(&self) -> bool {
+        if self.balance.amount() == 0 {
+            return false;
+        }
+        self.claimed_balance.amount() < self.balance.amount()
+    }
+    pub(crate) fn calc_distribution_rate_core(
+        start_time: u64,
+        end_time: u64,
+        block_time: Timestamp,
+        paused_duration: Option<u64>,
+        balance: &WrappedBalance,
+        claimed: &WrappedBalance,
+    ) -> (Uint128, Uint128) {
+        let block_time = std::cmp::min(block_time.seconds(), end_time);
+        let duration: u64 = end_time.checked_sub(start_time).unwrap_or_default();
+        if duration > 0 {
+            let diff = block_time.checked_sub(start_time).unwrap_or_default();
 
-pub fn save_stream(deps: DepsMut, stream: &Stream) -> StdResult<u64> {
+            let passed: u128 = diff
+                .checked_sub(paused_duration.unwrap_or_default())
+                .unwrap_or_default()
+                .into();
+
+            let rate_per_second = balance
+                .amount()
+                .checked_div(duration.into())
+                .unwrap_or_default();
+
+            return (
+                Uint128::from(
+                    (passed * rate_per_second)
+                        .checked_sub(claimed.amount())
+                        .unwrap_or_default(),
+                ),
+                Uint128::from(rate_per_second),
+            );
+        }
+        (Uint128::new(0), Uint128::new(0))
+    }
+    pub(crate) fn calc_distribution_rate(&self, block_time: Timestamp) -> (Uint128, Uint128) {
+        Stream::calc_distribution_rate_core(
+            self.start_time,
+            self.end_time,
+            block_time,
+            self.paused_duration,
+            &self.balance,
+            &self.claimed_balance,
+        )
+    }
+    pub(crate) fn calc_pause_duration(&self, block_time: Timestamp) -> Option<u64> {
+        let end = std::cmp::min(block_time.seconds(), self.end_time);
+        self.paused_duration.unwrap_or_default().checked_add(
+            end.checked_sub(self.paused_time.unwrap_or_default())
+                .unwrap_or_default(),
+        )
+    }
+}
+pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
+pub const STREAMS: Map<StreamId, Stream> = Map::new("stream");
+
+pub fn add_stream(deps: DepsMut, stream: &Stream) -> StdResult<StreamId> {
     let id = STREAM_SEQ.load(deps.storage)?;
     let id = id.checked_add(1).unwrap();
     STREAM_SEQ.save(deps.storage, &id)?;
     STREAMS.save(deps.storage, id, stream)?;
     Ok(id)
+}
+pub fn save_stream(deps: DepsMut, id: StreamId, stream: &Stream) -> StdResult<StreamId> {
+    STREAMS.save(deps.storage, id, stream)?;
+    Ok(id)
+}
+
+pub fn remove_stream(deps: DepsMut, stream_id: StreamId) -> StdResult<StreamId> {
+    STREAMS.remove(deps.storage, stream_id);
+    Ok(stream_id)
 }

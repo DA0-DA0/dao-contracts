@@ -3,20 +3,20 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
 
     #[error("Nothing to claim")]
     NothingToClaim {},
 
-    #[error("Invalid token")]
+    #[error("Invalid token. Got ({received}), expected ({expected})")]
     InvalidToken { received: Addr, expected: Addr },
 
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error("Only the owner of this contract my execute this message")]
+    NotOwner {},
 
-    #[error("Can not unstake that which you have not staked")]
-    NotStaked {},
+    #[error("Can not unstake that which you have not staked (unstaking {token_id})")]
+    NotStaked { token_id: String },
 
     #[error("Can not stake that which has already been staked")]
     AlreadyStaked {},
@@ -24,11 +24,8 @@ pub enum ContractError {
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
 
-    #[error("{0}")]
+    #[error(transparent)]
     HookError(#[from] cw_controllers::HookError),
-
-    #[error("Only owner can change owner")]
-    OnlyOwnerCanChangeOwner {},
 
     #[error("Can't unstake zero NFTs.")]
     ZeroUnstake {},

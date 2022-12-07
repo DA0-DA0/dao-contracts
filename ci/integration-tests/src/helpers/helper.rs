@@ -1,6 +1,6 @@
 use super::chain::Chain;
 use anyhow::Result;
-use cosm_orc::config::key::SigningKey;
+use cosm_orc::orchestrator::SigningKey;
 use cosmwasm_std::{to_binary, Decimal, Empty, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;

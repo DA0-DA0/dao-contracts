@@ -3,7 +3,7 @@ use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 use cwd_pre_propose_single as cppbps;
 
-pub(crate) fn cw20_contract() -> Box<dyn Contract<Empty>> {
+pub(crate) fn cw20_base_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
@@ -12,7 +12,7 @@ pub(crate) fn cw20_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub(crate) fn cw4_contract() -> Box<dyn Contract<Empty>> {
+pub(crate) fn cw4_group_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw4_group::contract::execute,
         cw4_group::contract::instantiate,
@@ -21,7 +21,7 @@ pub(crate) fn cw4_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub(crate) fn cw721_contract() -> Box<dyn Contract<Empty>> {
+pub(crate) fn cw721_base_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw721_base::entry::execute,
         cw721_base::entry::instantiate,

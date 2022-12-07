@@ -9,6 +9,12 @@ pub enum ContractError {
     Cw20Error(#[from] cw20_base::ContractError),
     #[error("Nothing to claim")]
     NothingToClaim {},
+    #[error("Nothing to unstake")]
+    NothingStaked {},
+    #[error("Unstaking this amount violates the invariant: (cw20 total_supply <= 2^128)")]
+    Cw20InvaraintViolation {},
+    #[error("Can not unstake more than has been staked")]
+    ImpossibleUnstake {},
     #[error("Invalid token")]
     InvalidToken { received: Addr, expected: Addr },
     #[error("Unauthorized")]
