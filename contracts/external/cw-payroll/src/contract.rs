@@ -59,9 +59,7 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
-        ExecuteMsg::ResumeStream {
-            id,
-        } => execute_resume_stream(env, deps, info, id),
+        ExecuteMsg::ResumeStream { id } => execute_resume_stream(env, deps, info, id),
         ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
     }
 }
@@ -250,7 +248,7 @@ pub fn execute_create_stream(
         response = response.add_messages(create_balance_transfer_msg(
             &balance,
             Some(Uint128::new(refund)),
-            admin.clone().into(),
+            admin.into(),
         ));
     }
     Ok(response)
@@ -262,7 +260,7 @@ pub fn execute_receive(
     info: MessageInfo,
     wrapped: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    deps.api.addr_validate(&info.sender.clone().into_string())?;
+    deps.api.addr_validate(&info.sender.into_string())?;
     let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
     match msg {
         ReceiveMsg::CreateStream {
@@ -274,7 +272,7 @@ pub fn execute_receive(
             env,
             deps,
             StreamParams {
-                admin: admin.unwrap_or(wrapped.sender.clone()),
+                admin: admin.unwrap_or_else(|| wrapped.sender.clone()),
                 recipient,
                 balance: WrappedBalance::from(wrapped),
                 start_time,
@@ -294,7 +292,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     let mut msgs: Vec<CosmosMsg> = vec![];
     let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
 
-    if !stream.can_distribute_more() || available_claims.u128() <= 0 {
+    if !stream.can_distribute_more() || available_claims.u128() == 0 {
         return Err(ContractError::NoFundsToClaim {
             claimed: stream.claimed_balance,
         });
@@ -317,7 +315,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
             }],
         });
         msgs.push(msg);
-        stream.balance.checked_sub_native(&vec![to_claim]).unwrap();
+        stream.balance.checked_sub_native(&[to_claim]).unwrap();
     } else if let Some(cw20) = stream.balance.cw20() {
         let to_claim = Cw20CoinVerified {
             address: cw20.address.clone(),
@@ -790,7 +788,7 @@ mod tests {
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
                 admin: Some(sender.clone()),
-                recipient:recipient.clone(),
+                recipient: recipient.clone(),
                 start_time,
                 end_time,
             })
@@ -811,7 +809,9 @@ mod tests {
         let error = get_stream(deps.as_ref(), stream_id).unwrap_err();
         assert_eq!(
             error,
-            StdError::NotFound { kind: "cw_payroll::state::Stream".to_string() }
+            StdError::NotFound {
+                kind: "cw_payroll::state::Stream".to_string()
+            }
         );
 
         let refund_msg = remove_response.messages[0].clone().msg;
@@ -828,6 +828,6 @@ mod tests {
             })
         );
         //Check balance of stream refunded to admin
-        println!("{:?}",remove_response);
+        println!("{:?}", remove_response);
     }
 }

@@ -26,7 +26,6 @@ pub enum GenericError {
     IntegerOverflow {},
 }
 
-
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
@@ -48,7 +47,7 @@ pub enum ContractError {
     NotStreamRecipient { recipient: Addr },
 
     #[error("No tokens have vested for this stream.")]
-    NoFundsToClaim{claimed:WrappedBalance},
+    NoFundsToClaim { claimed: WrappedBalance },
 
     #[error("Stream does not exist.")]
     StreamNotFound {},

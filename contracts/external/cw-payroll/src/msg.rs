@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cw20::{Cw20ReceiveMsg};
+use cw20::Cw20ReceiveMsg;
 
 use crate::balance::WrappedBalance;
 
@@ -8,7 +8,6 @@ pub struct InstantiateMsg {
     pub admin: Option<String>,
 }
 pub type StreamId = u64;
-
 
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -21,7 +20,6 @@ pub enum ExecuteMsg {
     },
     ResumeStream {
         id: StreamId, // Stream id
-      
     },
 
     RemoveStream {
