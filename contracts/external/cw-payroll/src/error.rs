@@ -68,10 +68,10 @@ pub enum ContractError {
     CouldNotCreateBankMessage {},
 
     #[error("Initiator stream does not exist.")]
-    InitiatorStreamNotFound {stream_id:StreamId},
+    InitiatorStreamNotFound { stream_id: StreamId },
 
     #[error("Linked stream does not exist.")]
-    LinkedStreamNotFound {stream_id:StreamId},
+    LinkedStreamNotFound { stream_id: StreamId },
 
     #[error("Stream is not linked.")]
     StreamNotLinked {},

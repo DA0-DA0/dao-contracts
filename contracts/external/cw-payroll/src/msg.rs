@@ -86,12 +86,12 @@ pub struct StreamResponse {
     pub paused: bool,
     pub title: Option<String>,
     pub description: Option<String>,
-     /// Link to stream attached for sync
-     pub link_id:Option<StreamId>,
-     /// If this stream initiated linking
-     pub is_link_initiator:bool,
-     /// If Stream is detachable
-     pub is_detachable:bool,
+    /// Link to stream attached for sync
+    pub link_id: Option<StreamId>,
+    /// If this stream initiated linking
+    pub is_link_initiator: bool,
+    /// If Stream is detachable
+    pub is_detachable: bool,
 }
 
 #[cw_serde]

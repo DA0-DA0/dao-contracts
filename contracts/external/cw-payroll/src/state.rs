@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, DepsMut, StdResult, Timestamp, Uint128, Storage};
+use cosmwasm_std::{Addr, DepsMut, StdResult, Storage, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
@@ -31,11 +31,11 @@ pub struct Stream {
     /// Description of the payroll item, a more in depth description of how to meet the payroll conditions
     pub description: Option<String>,
     /// Link to stream attached for sync
-    pub link_id:Option<StreamId>,
+    pub link_id: Option<StreamId>,
     /// If this stream initiated linking
-    pub is_link_initiator:bool,
+    pub is_link_initiator: bool,
     /// If Stream is detachable
-    pub is_detachable:bool,
+    pub is_detachable: bool,
 }
 
 impl Stream {
@@ -107,7 +107,11 @@ pub fn add_stream(deps: DepsMut, stream: &Stream) -> StdResult<StreamId> {
     STREAMS.save(deps.storage, id, stream)?;
     Ok(id)
 }
-pub fn save_stream(storage: &mut dyn Storage, id: StreamId, stream: &Stream) -> StdResult<StreamId> {
+pub fn save_stream(
+    storage: &mut dyn Storage,
+    id: StreamId,
+    stream: &Stream,
+) -> StdResult<StreamId> {
     STREAMS.save(storage, id, stream)?;
     Ok(id)
 }

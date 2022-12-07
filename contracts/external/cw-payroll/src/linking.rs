@@ -96,7 +96,7 @@ impl SupportsLinking for Stream {
         if !initiator.is_detachable {
             return Err(ContractError::StreamNotDetachable {});
         }
-        
+
         let mut link = STREAMS
             .may_load(deps.storage, initiator_id)?
             .ok_or(ContractError::StreamNotFound {})?;
@@ -104,7 +104,7 @@ impl SupportsLinking for Stream {
         if initiator.admin != info.sender {
             return Err(ContractError::Unauthorized {});
         }
-        
+
         initiator.link_id = None;
         initiator.is_link_initiator = false;
         link.link_id = None;
@@ -173,19 +173,17 @@ impl SupportsLinking for Stream {
                     })?,
                     funds: vec![],
                 });
-                return Ok(msg);
+                Ok(msg)
             }
             LinkSyncType::Resumed => {
                 let msg = CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: env.contract.address.clone().into_string(),
                     msg: to_binary(&ExecuteMsg::ResumeStream {
                         id: stream.link_id.unwrap(),
-                        start_time: None,
-                        end_time: None,
                     })?,
                     funds: vec![],
                 });
-                return Ok(msg);
+                Ok(msg)
             }
         }
     }

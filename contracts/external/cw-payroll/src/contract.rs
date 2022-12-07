@@ -375,7 +375,7 @@ fn execute_link_stream(
             stream_id: initiator_id,
         },
     )?;
-    return initiator.link(initiator_id, link_id, deps, &info);
+    initiator.link(initiator_id, link_id, deps, &info)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
