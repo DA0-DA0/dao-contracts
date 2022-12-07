@@ -51,14 +51,12 @@ impl Stream {
         block_time: Timestamp,
         paused_duration: Option<u64>,
         balance: &WrappedBalance,
-        claimed:&WrappedBalance
+        claimed: &WrappedBalance,
     ) -> (Uint128, Uint128) {
         let block_time = std::cmp::min(block_time.seconds(), end_time);
-        let duration: u64 = (end_time.checked_sub(start_time).unwrap_or_default()).into();
+        let duration: u64 = end_time.checked_sub(start_time).unwrap_or_default();
         if duration > 0 {
-            let diff = block_time
-                .checked_sub(start_time)
-                .unwrap_or_default();
+            let diff = block_time.checked_sub(start_time).unwrap_or_default();
 
             let passed: u128 = diff
                 .checked_sub(paused_duration.unwrap_or_default())
@@ -71,7 +69,11 @@ impl Stream {
                 .unwrap_or_default();
 
             return (
-                Uint128::from((passed * rate_per_second).checked_sub(claimed.amount()).unwrap_or_default()),
+                Uint128::from(
+                    (passed * rate_per_second)
+                        .checked_sub(claimed.amount())
+                        .unwrap_or_default(),
+                ),
                 Uint128::from(rate_per_second),
             );
         }
@@ -84,16 +86,15 @@ impl Stream {
             block_time,
             self.paused_duration,
             &self.balance,
-            &self.claimed_balance
+            &self.claimed_balance,
         )
     }
     pub(crate) fn calc_pause_duration(&self, block_time: Timestamp) -> Option<u64> {
         let end = std::cmp::min(block_time.seconds(), self.end_time);
-        let duration = self.paused_duration.unwrap_or_default().checked_add(
+        self.paused_duration.unwrap_or_default().checked_add(
             end.checked_sub(self.paused_time.unwrap_or_default())
                 .unwrap_or_default(),
-        );
-        duration
+        )
     }
 }
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");

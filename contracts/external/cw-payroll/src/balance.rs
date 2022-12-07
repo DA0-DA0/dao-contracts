@@ -21,11 +21,11 @@ impl WrappedBalance {
             Balance::Cw20(_) => None,
         }
     }
-    
+
     pub fn cw20(&self) -> Option<&Cw20CoinVerified> {
         match &self.0 {
             Balance::Native(_) => None,
-            Balance::Cw20(cw20) => Some(&cw20),
+            Balance::Cw20(cw20) => Some(cw20),
         }
     }
     pub fn new_native_from_coin(native: Coin) -> Self {
@@ -64,16 +64,17 @@ impl From<Cw20ReceiveMsg> for WrappedBalance {
         WrappedBalance::new_cw20(Addr::unchecked(msg.sender), msg.amount)
     }
 }
-impl Into<Balance> for WrappedBalance {
-    fn into(self) -> Balance {
-        self.0
+impl From<WrappedBalance> for Balance {
+    fn from(wb: WrappedBalance) -> Balance {
+        wb.0
     }
 }
-impl Into<Option<Balance>> for WrappedBalance {
-    fn into(self) -> Option<Balance> {
-        Some(self.0)
+impl From<WrappedBalance> for Option<Balance> {
+    fn from(wb: WrappedBalance) -> Option<Balance> {
+        Some(wb.0)
     }
 }
+
 pub trait FindAndMutate<'a, T, Rhs = &'a T>
 where
     Self: IntoIterator<Item = T>,
@@ -193,7 +194,7 @@ impl WrappedBalance {
             self.0 = Balance::Native(NativeBalance(coins));
             return Ok(());
         }
-        return Err(GenericError::EmptyBalance {});
+        Err(GenericError::EmptyBalance {})
     }
 
     pub fn checked_add_cw20(&mut self, add: &[Cw20CoinVerified]) -> Result<(), GenericError> {
@@ -203,7 +204,7 @@ impl WrappedBalance {
             self.0 = Balance::Cw20(coins.get(0).unwrap().clone());
             return Ok(());
         }
-        return Err(GenericError::EmptyBalance {});
+        Err(GenericError::EmptyBalance {})
     }
 
     pub fn checked_sub_native(&mut self, sub: &[Coin]) -> Result<(), GenericError> {
@@ -213,7 +214,7 @@ impl WrappedBalance {
             self.0 = Balance::Native(NativeBalance(coins));
             return Ok(());
         }
-        return Err(GenericError::EmptyBalance {});
+        Err(GenericError::EmptyBalance {})
     }
 
     pub fn checked_sub_cw20(&mut self, sub: &[Cw20CoinVerified]) -> Result<(), GenericError> {
@@ -223,6 +224,6 @@ impl WrappedBalance {
             self.0 = Balance::Cw20(coins.get(0).unwrap().clone());
             return Ok(());
         }
-        return Err(GenericError::EmptyBalance {});
+        Err(GenericError::EmptyBalance {})
     }
 }
