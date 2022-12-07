@@ -24,8 +24,8 @@ gen-typescript:
 integration-test: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
 
-integration-test-dev test_name="": 
-	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}  
+integration-test-dev test_name="":
+	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}
 
 bootstrap-dev: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
@@ -50,6 +50,7 @@ download-deps:
 	mkdir -p artifacts target
 	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw20_base.wasm -O artifacts/cw20_base.wasm
 	wget https://github.com/CosmWasm/cw-plus/releases/latest/download/cw4_group.wasm -O artifacts/cw4_group.wasm
+	wget https://github.com/CosmWasm/cw-nfts/releases/latest/download/cw721_base.wasm -O artifacts/cw721_base.wasm
 
 optimize:
 	cargo install cw-optimizoor || true

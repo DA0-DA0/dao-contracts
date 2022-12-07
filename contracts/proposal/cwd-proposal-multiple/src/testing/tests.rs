@@ -44,7 +44,7 @@ use crate::{
 use cwd_pre_propose_multiple as cppm;
 
 use cwd_testing::{
-    contracts::{cw20_balances_voting_contract, cw20_contract},
+    contracts::{cw20_balances_voting_contract, cw20_base_contract},
     ShouldExecute,
 };
 
@@ -733,7 +733,7 @@ fn test_voting_module_token_proposal_deposit_instantiate() {
 fn test_different_token_proposal_deposit() {
     let mut app = App::default();
     let _govmod_id = app.store_code(proposal_multiple_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_addr = app
         .instantiate_contract(
             cw20_id,
@@ -786,7 +786,7 @@ fn test_different_token_proposal_deposit() {
 fn test_bad_token_proposal_deposit() {
     let mut app = App::default();
     let _govmod_id = app.store_code(proposal_multiple_contract());
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let votemod_id = app.store_code(cw20_balances_voting_contract());
 
     let votemod_addr = app

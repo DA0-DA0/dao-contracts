@@ -214,6 +214,7 @@ where
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: position,
+                rationale: None,
             },
             &[],
         );
@@ -233,6 +234,7 @@ where
                     .unwrap();
                 let expected = VoteResponse {
                     vote: Some(VoteInfo {
+                        rationale: None,
                         voter: Addr::unchecked(&voter),
                         vote: position,
                         power: match deposit_config.deposit_info {

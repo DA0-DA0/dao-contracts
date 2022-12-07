@@ -29,6 +29,9 @@ pub enum ContractError {
     #[error("no such proposal ({id})")]
     NoSuchProposal { id: u64 },
 
+    #[error("no vote exists for proposal ({id}) and voter ({voter})")]
+    NoSuchVote { id: u64, voter: String },
+
     #[error("proposal is ({size}) bytes, must be <= ({max}) bytes")]
     ProposalTooLarge { size: u64, max: u64 },
 

@@ -26,9 +26,9 @@ cw721 = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
-indexmap = { workspace = true, features = ["serde"] }
 
 [dev-dependencies]
 cw721-base = { workspace = true }
 cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
+cwd-testing = { workspace = true }

@@ -34,7 +34,7 @@ use crate::{
     state::Config,
     testing::{
         contracts::{
-            cw20_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
+            cw20_base_contract, cw20_stake_contract, cw20_staked_balances_voting_contract,
             cw_core_contract, pre_propose_single_contract, proposal_single_contract,
             v1_proposal_single_contract,
         },
@@ -44,7 +44,7 @@ use crate::{
             execute_proposal, execute_proposal_should_fail, instantiate_cw20_base_default,
             make_proposal, mint_cw20s, mint_natives, remove_proposal_hook,
             remove_proposal_hook_should_fail, remove_vote_hook, remove_vote_hook_should_fail,
-            vote_on_proposal, vote_on_proposal_should_fail,
+            update_rationale, vote_on_proposal, vote_on_proposal_should_fail,
         },
         instantiate::{
             get_default_non_token_dao_proposal_module_instantiate,
@@ -64,7 +64,10 @@ use crate::{
     ContractError,
 };
 
-use super::{do_votes::do_votes_staked_balances, CREATOR_ADDR};
+use super::{
+    do_votes::do_votes_staked_balances, execute::vote_on_proposal_with_rationale,
+    queries::query_vote, CREATOR_ADDR,
+};
 
 struct CommonTest {
     app: App,
@@ -1543,7 +1546,7 @@ fn test_migrate_from_v1() {
         address: CREATOR_ADDR.to_string(),
     }];
 
-    let cw20_id = app.store_code(cw20_contract());
+    let cw20_id = app.store_code(cw20_base_contract());
     let cw20_stake_id = app.store_code(cw20_stake_contract());
     let staked_balances_voting_id = app.store_code(cw20_staked_balances_voting_contract());
     let core_contract_id = app.store_code(cw_core_contract());
@@ -1731,6 +1734,19 @@ fn test_migrate_from_v1() {
             allow_revoting: false,
             dao: core_addr.clone(),
             close_proposal_on_execution_failure: true,
+        }
+    );
+
+    // Make sure we can still query for ballots (rationale works post
+    // migration).
+    let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, 1);
+    assert_eq!(
+        vote.vote.unwrap(),
+        VoteInfo {
+            voter: Addr::unchecked(CREATOR_ADDR),
+            vote: Vote::No,
+            power: Uint128::new(100),
+            rationale: None
         }
     );
 
@@ -2226,26 +2242,31 @@ fn test_query_list_votes() {
         votes.votes,
         vec![
             VoteInfo {
+                rationale: None,
                 voter: Addr::unchecked("five"),
                 vote: Vote::Yes,
                 power: Uint128::new(1)
             },
             VoteInfo {
+                rationale: None,
                 voter: Addr::unchecked("four"),
                 vote: Vote::Yes,
                 power: Uint128::new(1)
             },
             VoteInfo {
+                rationale: None,
                 voter: Addr::unchecked("one"),
                 vote: Vote::Yes,
                 power: Uint128::new(1)
             },
             VoteInfo {
+                rationale: None,
                 voter: Addr::unchecked("three"),
                 vote: Vote::No,
                 power: Uint128::new(1)
             },
             VoteInfo {
+                rationale: None,
                 voter: Addr::unchecked("two"),
                 vote: Vote::No,
                 power: Uint128::new(1)
@@ -2264,11 +2285,13 @@ fn test_query_list_votes() {
         votes.votes,
         vec![
             VoteInfo {
+                rationale: None,
                 voter: Addr::unchecked("one"),
                 vote: Vote::Yes,
                 power: Uint128::new(1)
             },
             VoteInfo {
+                rationale: None,
                 voter: Addr::unchecked("three"),
                 vote: Vote::No,
                 power: Uint128::new(1)
@@ -2450,7 +2473,86 @@ fn test_pre_propose_admin_is_dao() {
     assert_eq!(info.admin, Some(core_addr.into_string()));
 }
 
-// TODO: test pre-propose module that fails on new proposal hook (ugh).
+// I can add a rationale to my vote. My rational is queryable when
+// listing votes. I can later change my rationale.
+#[test]
+fn test_rationale() {
+    let CommonTest {
+        mut app,
+        proposal_module,
+        proposal_id,
+        ..
+    } = setup_test(vec![]);
 
-// - What happens if you have proposals that can not be executed but
-//   took deposits and want to migrate?
+    let rationale = Some("i support dog charities".to_string());
+
+    vote_on_proposal_with_rationale(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+        rationale.clone(),
+    );
+
+    let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
+    assert_eq!(vote.vote.unwrap().rationale, rationale);
+
+    let rationale =
+        Some("i did not realize that dog charity was gambling with customer funds".to_string());
+
+    update_rationale(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        rationale.clone(),
+    );
+
+    let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
+    assert_eq!(vote.vote.unwrap().rationale, rationale);
+}
+
+// Revoting should override any previous rationale. If no new
+// rationalle is provided, the old one will be wiped regardless.
+#[test]
+fn test_rational_clobbered_on_revote() {
+    let mut app = App::default();
+    let mut instantiate = get_default_token_dao_proposal_module_instantiate(&mut app);
+    instantiate.allow_revoting = true;
+    let core_addr = instantiate_with_staked_balances_governance(&mut app, instantiate, None);
+    let gov_token = query_dao_token(&app, &core_addr);
+    let proposal_module = query_single_proposal_module(&app, &core_addr);
+
+    mint_cw20s(&mut app, &gov_token, &core_addr, CREATOR_ADDR, 10_000_000);
+    let proposal_id = make_proposal(&mut app, &proposal_module, CREATOR_ADDR, vec![]);
+
+    let rationale = Some("to_string".to_string());
+
+    vote_on_proposal_with_rationale(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+        rationale.clone(),
+    );
+
+    let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
+    assert_eq!(vote.vote.unwrap().rationale, rationale);
+
+    let rationale = None;
+
+    // revote and clobber.
+    vote_on_proposal_with_rationale(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::No,
+        None,
+    );
+
+    let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, proposal_id);
+    assert_eq!(vote.vote.unwrap().rationale, rationale);
+}

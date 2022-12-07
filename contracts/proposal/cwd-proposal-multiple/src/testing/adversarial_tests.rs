@@ -32,12 +32,14 @@ fn setup_test(_messages: Vec<CosmosMsg>) -> CommonTest {
 
     let options = vec![
         MultipleChoiceOption {
+            title: "title 1".to_string(),
             description: "multiple choice option 1".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
         MultipleChoiceOption {
+            title: "title 2".to_string(),
             description: "multiple choice option 2".to_string(),
-            msgs: None,
+            msgs: vec![],
         },
     ];
 

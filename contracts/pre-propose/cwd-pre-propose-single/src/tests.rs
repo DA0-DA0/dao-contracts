@@ -261,6 +261,7 @@ fn vote(app: &mut App, module: Addr, sender: &str, id: u64, position: Vote) -> S
         Addr::unchecked(sender),
         module.clone(),
         &cps::msg::ExecuteMsg::Vote {
+            rationale: None,
             proposal_id: id,
             vote: position,
         },
