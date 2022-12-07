@@ -61,9 +61,7 @@ pub fn execute(
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream {
             id,
-            start_time,
-            end_time,
-        } => execute_resume_stream(env, deps, info, id, start_time, end_time),
+        } => execute_resume_stream(env, deps, info, id),
         ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
     }
 }
@@ -150,8 +148,6 @@ pub fn execute_resume_stream(
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
-    _start_time: Option<u64>,
-    _end_time: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut stream = STREAMS
         .may_load(deps.storage, id)?
@@ -298,7 +294,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     let mut msgs: Vec<CosmosMsg> = vec![];
     let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
 
-    if !stream.can_ditribute_more() || available_claims.u128() <= 0 {
+    if !stream.can_distribute_more() || available_claims.u128() <= 0 {
         return Err(ContractError::NoFundsToClaim {
             claimed: stream.claimed_balance,
         });

@@ -33,7 +33,7 @@ pub struct Stream {
 }
 
 impl Stream {
-    pub(crate) fn can_ditribute_more(&self) -> bool {
+    pub(crate) fn can_distribute_more(&self) -> bool {
         if self.balance.amount() == 0 {
             return false;
         }

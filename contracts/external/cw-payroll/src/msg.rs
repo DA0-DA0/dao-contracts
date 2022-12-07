@@ -21,8 +21,7 @@ pub enum ExecuteMsg {
     },
     ResumeStream {
         id: StreamId, // Stream id
-        start_time: Option<u64>,
-        end_time: Option<u64>
+      
     },
 
     RemoveStream {
