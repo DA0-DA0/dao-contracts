@@ -315,7 +315,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     let mut msgs: Vec<CosmosMsg> = vec![];
     let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
 
-    if !stream.can_ditribute_more() || available_claims.u128() <= 0 {
+    if !stream.can_distribute_more() || available_claims.u128() <= 0 {
         return Err(ContractError::NoFundsToClaim {
             claimed: stream.claimed_balance,
         });

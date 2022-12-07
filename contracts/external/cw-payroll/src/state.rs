@@ -39,7 +39,7 @@ pub struct Stream {
 }
 
 impl Stream {
-    pub(crate) fn can_ditribute_more(&self) -> bool {
+    pub(crate) fn can_distribute_more(&self) -> bool {
         if self.balance.amount() == 0 {
             return false;
         }
@@ -51,6 +51,7 @@ impl Stream {
         block_time: Timestamp,
         paused_duration: Option<u64>,
         balance: &WrappedBalance,
+        clained:&WrappedBalance
     ) -> (Uint128, Uint128) {
         let block_time = std::cmp::min(block_time.seconds(), end_time);
         let duration: u64 = (end_time.checked_sub(start_time).unwrap_or_default()).into();
@@ -70,7 +71,7 @@ impl Stream {
                 .unwrap_or_default();
 
             return (
-                Uint128::from(passed * rate_per_second),
+                Uint128::from((passed * rate_per_second).checked_sub(clained.amount()).unwrap_or_default()),
                 Uint128::from(rate_per_second),
             );
         }
@@ -83,6 +84,7 @@ impl Stream {
             block_time,
             self.paused_duration,
             &self.balance,
+            &self.claimed_balance
         )
     }
     pub(crate) fn calc_pause_duration(&self, block_time: Timestamp) -> Option<u64> {
