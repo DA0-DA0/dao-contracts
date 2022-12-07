@@ -51,7 +51,7 @@ impl Stream {
         block_time: Timestamp,
         paused_duration: Option<u64>,
         balance: &WrappedBalance,
-        clained:&WrappedBalance
+        claimed:&WrappedBalance
     ) -> (Uint128, Uint128) {
         let block_time = std::cmp::min(block_time.seconds(), end_time);
         let duration: u64 = (end_time.checked_sub(start_time).unwrap_or_default()).into();
@@ -71,7 +71,7 @@ impl Stream {
                 .unwrap_or_default();
 
             return (
-                Uint128::from((passed * rate_per_second).checked_sub(clained.amount()).unwrap_or_default()),
+                Uint128::from((passed * rate_per_second).checked_sub(claimed.amount()).unwrap_or_default()),
                 Uint128::from(rate_per_second),
             );
         }
