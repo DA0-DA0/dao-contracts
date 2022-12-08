@@ -1,6 +1,6 @@
 # Proposal Approver Contract
 
-This contract works in conjuction with `cwd-pre-propose-approval-single` and allows for automatically creating approval proposals when a proposal is submitted for approval.
+This contract works in conjuction with `dao-pre-propose-approval-single` and allows for automatically creating approval proposals when a proposal is submitted for approval.
 
 ## Approver Logic
 
@@ -44,7 +44,7 @@ When this contract recieves a proposal as hook from `cwd-pre-propose-approval-si
 
 ## Deposits
 
-This contract does not handle deposits. It works in conjunction with the `cwd-pre-propose-approval-single` contract, which handles the proposal deposits.
+This contract does not handle deposits. It works in conjunction with the `dao-pre-propose-approval-single` contract, which handles the proposal deposits.
 
 ### Resources
 

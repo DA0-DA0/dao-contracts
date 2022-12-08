@@ -528,6 +528,7 @@
         "additionalProperties": false
       },
       {
+        "description": "Gets the address that instantiated this module.",
         "type": "object",
         "required": [
           "active_threshold"
