@@ -876,7 +876,5 @@ mod tests {
                 funds: vec![]
             })
         );
-        //Check balance of stream refunded to admin
-        println!("{:?}", remove_response);
     }
 }
