@@ -64,7 +64,7 @@ fn new_dao_has_no_items(chain: &mut Chain) {
 }
 ```
 
-We are currently
+We are currentlying
 [ignoring](https://doc.rust-lang.org/book/ch11-02-running-tests.html#ignoring-some-tests-unless-specifically-requested)
 all integration tests by adding the `#[ignore]` annotation to them,
 because we want to skip them when people run `cargo test` from the

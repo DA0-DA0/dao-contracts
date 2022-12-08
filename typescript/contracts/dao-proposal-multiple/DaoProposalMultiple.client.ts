@@ -202,18 +202,10 @@ export interface DaoProposalMultipleInterface extends DaoProposalMultipleReadOnl
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   vote: ({
     proposalId,
-    rationale,
     vote
   }: {
     proposalId: number;
     vote: MultipleChoiceVote;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  updateRationale: ({
-    proposalId,
-    rationale
-  }: {
-    proposalId: number;
-    rationale?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   execute: ({
     proposalId
@@ -280,7 +272,6 @@ export class DaoProposalMultipleClient extends DaoProposalMultipleQueryClient im
     this.contractAddress = contractAddress;
     this.propose = this.propose.bind(this);
     this.vote = this.vote.bind(this);
-    this.updateRationale = this.updateRationale.bind(this);
     this.execute = this.execute.bind(this);
     this.close = this.close.bind(this);
     this.updateConfig = this.updateConfig.bind(this);
@@ -313,7 +304,6 @@ export class DaoProposalMultipleClient extends DaoProposalMultipleQueryClient im
   };
   vote = async ({
     proposalId,
-    rationale,
     vote
   }: {
     proposalId: number;
@@ -322,22 +312,7 @@ export class DaoProposalMultipleClient extends DaoProposalMultipleQueryClient im
     return await this.client.execute(this.sender, this.contractAddress, {
       vote: {
         proposal_id: proposalId,
-        rationale,
         vote
-      }
-    }, fee, memo, funds);
-  };
-  updateRationale = async ({
-    proposalId,
-    rationale
-  }: {
-    proposalId: number;
-    rationale?: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      update_rationale: {
-        proposal_id: proposalId,
-        rationale
       }
     }, fee, memo, funds);
   };
