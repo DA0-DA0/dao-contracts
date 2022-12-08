@@ -79,9 +79,9 @@ impl UncheckedDenom {
 
 impl CheckedDenom {
     /// Queries WHO's balance for the denomination.
-    pub fn query_balance<'a, C: CustomQuery>(
+    pub fn query_balance<C: CustomQuery>(
         &self,
-        querier: &QuerierWrapper<'a, C>,
+        querier: &QuerierWrapper<C>,
         who: &Addr,
     ) -> StdResult<Uint128> {
         match self {

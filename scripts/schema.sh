@@ -7,8 +7,8 @@ START_DIR=$(pwd)
 #  }
 # <https://stackoverflow.com/a/3162500>
 
-echo "generating schema for cwd-core"
-cd contracts/cwd-core
+echo "generating schema for dao-core"
+cd contracts/dao-core
 cargo run --example schema > /dev/null
 
 cd "$START_DIR"
