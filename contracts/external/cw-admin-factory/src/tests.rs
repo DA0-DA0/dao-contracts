@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 
 use cw_multi_test::{App, AppResponse, Contract, ContractWrapper, Executor};
-use cwd_interface::{Admin, ModuleInstantiateInfo};
+use dao_interface::{Admin, ModuleInstantiateInfo};
 
 use crate::{
     contract::instantiate,
@@ -35,12 +35,12 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
 
 fn cw_core_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cwd_core::contract::execute,
-        cwd_core::contract::instantiate,
-        cwd_core::contract::query,
+        dao_core::contract::execute,
+        dao_core::contract::instantiate,
+        dao_core::contract::query,
     )
-    .with_reply(cwd_core::contract::reply)
-    .with_migrate(cwd_core::contract::migrate);
+    .with_reply(dao_core::contract::reply)
+    .with_migrate(dao_core::contract::migrate);
     Box::new(contract)
 }
 
@@ -72,7 +72,7 @@ pub fn test_set_admin() {
 
     // Instantiate core contract using factory.
     let cw_core_code_id = app.store_code(cw_core_contract());
-    let instantiate_core = cwd_core::msg::InstantiateMsg {
+    let instantiate_core = dao_core::msg::InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
