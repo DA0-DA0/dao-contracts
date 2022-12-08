@@ -38,7 +38,6 @@ export type QueryMsg = {
 } | {
   info: {};
 };
-export interface MigrateMsg {}
 export type Addr = string;
 export interface InfoResponse {
   info: ContractVersion;
