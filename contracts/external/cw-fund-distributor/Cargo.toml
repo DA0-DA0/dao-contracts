@@ -1,0 +1,27 @@
+[package]
+name = "cw-fund-distributor"
+version = "0.1.0"
+authors = ["bekauz <bekauz@protonmail.com>"]
+edition = "2021"
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "A CosmWasm contract for distributing funds to DAO members"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-schema = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
