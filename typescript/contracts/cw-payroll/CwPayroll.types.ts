@@ -24,9 +24,7 @@ export type ExecuteMsg = {
   };
 } | {
   resume_stream: {
-    end_time?: number | null;
     id: number;
-    start_time?: number | null;
   };
 } | {
   remove_stream: {
@@ -74,6 +72,9 @@ export interface StreamResponse {
   description?: string | null;
   end_time: number;
   id: number;
+  is_detachable: boolean;
+  is_link_initiator: boolean;
+  link_id?: number | null;
   paused: boolean;
   paused_duration?: number | null;
   paused_time?: number | null;

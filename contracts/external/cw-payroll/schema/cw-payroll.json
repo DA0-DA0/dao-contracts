@@ -119,24 +119,8 @@
               "id"
             ],
             "properties": {
-              "end_time": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint64",
-                "minimum": 0.0
-              },
               "id": {
                 "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "start_time": {
-                "type": [
-                  "integer",
-                  "null"
-                ],
                 "format": "uint64",
                 "minimum": 0.0
               }
@@ -302,6 +286,8 @@
         "claimed_balance",
         "end_time",
         "id",
+        "is_detachable",
+        "is_link_initiator",
         "paused",
         "recipient",
         "start_time"
@@ -329,6 +315,23 @@
         },
         "id": {
           "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "is_detachable": {
+          "description": "If Stream is detachable",
+          "type": "boolean"
+        },
+        "is_link_initiator": {
+          "description": "If this stream initiated linking",
+          "type": "boolean"
+        },
+        "link_id": {
+          "description": "Link to stream attached for sync",
+          "type": [
+            "integer",
+            "null"
+          ],
           "format": "uint64",
           "minimum": 0.0
         },
@@ -540,6 +543,8 @@
             "claimed_balance",
             "end_time",
             "id",
+            "is_detachable",
+            "is_link_initiator",
             "paused",
             "recipient",
             "start_time"
@@ -567,6 +572,23 @@
             },
             "id": {
               "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "is_detachable": {
+              "description": "If Stream is detachable",
+              "type": "boolean"
+            },
+            "is_link_initiator": {
+              "description": "If this stream initiated linking",
+              "type": "boolean"
+            },
+            "link_id": {
+              "description": "Link to stream attached for sync",
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             },

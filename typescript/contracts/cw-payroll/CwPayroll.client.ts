@@ -96,13 +96,9 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     linkId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   resumeStream: ({
-    endTime,
-    id,
-    startTime
+    id
   }: {
-    endTime?: number;
     id: number;
-    startTime?: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   removeStream: ({
     id
@@ -182,19 +178,13 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     }, fee, memo, funds);
   };
   resumeStream = async ({
-    endTime,
-    id,
-    startTime
+    id
   }: {
-    endTime?: number;
     id: number;
-    startTime?: number;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       resume_stream: {
-        end_time: endTime,
-        id,
-        start_time: startTime
+        id
       }
     }, fee, memo, funds);
   };
