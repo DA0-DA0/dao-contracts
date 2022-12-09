@@ -1,6 +1,6 @@
 # Single choice proposal approval contract
 
-This contract implements an approval flow for proposals, it also handles deposit logic. It works with the `dao-proposal-single` proposal module.
+This contract implements an approval flow for proposals, it also handles deposit logic. It works with the `cwd-proposal-single` proposal module.
 
 ## Approval Logic
 
