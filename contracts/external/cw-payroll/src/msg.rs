@@ -83,8 +83,11 @@ pub struct StreamResponse {
     pub end_time: u64,
     pub paused_time: Option<u64>,
     pub paused_duration: Option<u64>,
+    /// Whether the payroll contract is currently paused
     pub paused: bool,
+    /// Human readable title for this contract
     pub title: Option<String>,
+    /// Human readable description for this payroll contract
     pub description: Option<String>,
     /// Link to stream attached for sync
     pub link_id: Option<StreamId>,
