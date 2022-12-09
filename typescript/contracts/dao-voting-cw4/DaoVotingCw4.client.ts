@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, Member, ExecuteMsg, MemberDiff, QueryMsg, Addr, InfoResponse, ContractVersion, Uint128, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse } from "./DaoVotingCw4.types";
+import { InstantiateMsg, Member, ExecuteMsg, MemberDiff, QueryMsg, MigrateMsg, Addr, InfoResponse, ContractVersion, Uint128, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse } from "./DaoVotingCw4.types";
 export interface DaoVotingCw4ReadOnlyInterface {
   contractAddress: string;
   groupContract: () => Promise<Addr>;

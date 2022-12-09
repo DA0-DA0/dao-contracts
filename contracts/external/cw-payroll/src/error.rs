@@ -75,8 +75,10 @@ pub enum ContractError {
 
     #[error("Stream is not linked.")]
     StreamNotLinked {},
+
     #[error("Stream is not an initiator.")]
     StreamNotInitiator {},
+    
     #[error("Stream is not detachable.")]
     StreamNotDetachable {},
 }

@@ -303,6 +303,7 @@
           "$ref": "#/definitions/WrappedBalance"
         },
         "description": {
+          "description": "Human readable description for this payroll contract",
           "type": [
             "string",
             "null"
@@ -336,6 +337,7 @@
           "minimum": 0.0
         },
         "paused": {
+          "description": "Whether the payroll contract is currently paused",
           "type": "boolean"
         },
         "paused_duration": {
@@ -363,6 +365,7 @@
           "minimum": 0.0
         },
         "title": {
+          "description": "Human readable title for this contract",
           "type": [
             "string",
             "null"
@@ -560,6 +563,7 @@
               "$ref": "#/definitions/WrappedBalance"
             },
             "description": {
+              "description": "Human readable description for this payroll contract",
               "type": [
                 "string",
                 "null"
@@ -593,6 +597,7 @@
               "minimum": 0.0
             },
             "paused": {
+              "description": "Whether the payroll contract is currently paused",
               "type": "boolean"
             },
             "paused_duration": {
@@ -620,6 +625,7 @@
               "minimum": 0.0
             },
             "title": {
+              "description": "Human readable title for this contract",
               "type": [
                 "string",
                 "null"

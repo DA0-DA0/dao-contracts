@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use dao_voting_cw4::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use dao_voting_cw4::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 fn main() {
     write_api! {
