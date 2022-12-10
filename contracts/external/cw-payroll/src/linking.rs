@@ -16,6 +16,13 @@ pub(crate) fn execute_link_stream(
     left_stream_id: StreamId,
     right_stream_id: StreamId,
 ) -> Result<Response, ContractError> {
+    if left_stream_id == right_stream_id {
+        return Err(ContractError::StreamsShouldNotBeEqual {
+            left_stream_id,
+            right_stream_id,
+        });
+    }
+
     let left_stream =
         STREAMS
             .may_load(deps.storage, left_stream_id)?
@@ -53,16 +60,24 @@ pub(crate) fn execute_detach_stream(
     left_stream_id: StreamId,
     right_stream_id: StreamId,
 ) -> Result<Response, ContractError> {
-    let mut left_stream = STREAMS.may_load(deps.storage, left_stream_id)?.ok_or(
-        ContractError::LinkedStreamNotFound {
-            stream_id: left_stream_id,
-        },
-    )?;
-    let mut right_stream = STREAMS.may_load(deps.storage, right_stream_id)?.ok_or(
-        ContractError::LinkedStreamNotFound {
-            stream_id: right_stream_id,
-        },
-    )?;
+    if left_stream_id == right_stream_id {
+        return Err(ContractError::StreamsShouldNotBeEqual {
+            left_stream_id,
+            right_stream_id,
+        });
+    }
+    let mut left_stream =
+        STREAMS
+            .may_load(deps.storage, left_stream_id)?
+            .ok_or(ContractError::StreamNotFound {
+                stream_id: left_stream_id,
+            })?;
+    let mut right_stream =
+        STREAMS
+            .may_load(deps.storage, right_stream_id)?
+            .ok_or(ContractError::StreamNotFound {
+                stream_id: right_stream_id,
+            })?;
 
     if !(left_stream.is_detachable && right_stream.is_detachable) {
         return Err(ContractError::StreamNotDetachable {});

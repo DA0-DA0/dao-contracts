@@ -67,8 +67,11 @@ pub enum ContractError {
     #[error("Could not create bank transfer message")]
     CouldNotCreateBankMessage {},
 
-    #[error("Linked stream does not exist")]
-    LinkedStreamNotFound { stream_id: StreamId },
+    #[error("Left and right stream should not be equal to each other")]
+    StreamsShouldNotBeEqual {
+        left_stream_id: StreamId,
+        right_stream_id: StreamId,
+    },
 
     #[error("Stream is not linked")]
     StreamNotLinked {},

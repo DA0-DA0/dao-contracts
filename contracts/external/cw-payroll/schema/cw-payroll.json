@@ -87,16 +87,45 @@
           "link_stream": {
             "type": "object",
             "required": [
-              "initiator_id",
-              "link_id"
+              "left_stream_id",
+              "right_stream_id"
             ],
             "properties": {
-              "initiator_id": {
+              "left_stream_id": {
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
               },
-              "link_id": {
+              "right_stream_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
+          "detach_stream"
+        ],
+        "properties": {
+          "detach_stream": {
+            "type": "object",
+            "required": [
+              "left_stream_id",
+              "right_stream_id"
+            ],
+            "properties": {
+              "left_stream_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "right_stream_id": {
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -287,7 +316,6 @@
         "end_time",
         "id",
         "is_detachable",
-        "is_link_initiator",
         "paused",
         "recipient",
         "start_time"
@@ -321,10 +349,6 @@
         },
         "is_detachable": {
           "description": "If Stream is detachable",
-          "type": "boolean"
-        },
-        "is_link_initiator": {
-          "description": "If this stream initiated linking",
           "type": "boolean"
         },
         "link_id": {
@@ -547,7 +571,6 @@
             "end_time",
             "id",
             "is_detachable",
-            "is_link_initiator",
             "paused",
             "recipient",
             "start_time"
@@ -581,10 +604,6 @@
             },
             "is_detachable": {
               "description": "If Stream is detachable",
-              "type": "boolean"
-            },
-            "is_link_initiator": {
-              "description": "If this stream initiated linking",
               "type": "boolean"
             },
             "link_id": {
