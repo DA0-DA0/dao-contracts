@@ -46,11 +46,11 @@ pub enum ContractError {
     #[error("The stream can only be claimed by original recipient")]
     NotStreamRecipient { recipient: Addr },
 
-    #[error("No tokens have vested for this stream.")]
+    #[error("No tokens have vested for this stream")]
     NoFundsToClaim { claimed: WrappedBalance },
 
-    #[error("Stream does not exist.")]
-    StreamNotFound {},
+    #[error("Stream does not exist")]
+    StreamNotFound { stream_id: StreamId },
 
     #[error("Amount must be greater than duration")]
     AmountLessThanDuration {},
@@ -58,27 +58,24 @@ pub enum ContractError {
     #[error("Stream recipient cannot be the stream owner")]
     InvalidRecipient {},
 
-    #[error("Can not pause paused stream.")]
+    #[error("Can not pause paused stream")]
     StreamAlreadyPaused {},
 
-    #[error("Stream is not pause for resume.")]
+    #[error("Stream is not pause for resume")]
     StreamNotPaused {},
 
     #[error("Could not create bank transfer message")]
     CouldNotCreateBankMessage {},
 
-    #[error("Initiator stream does not exist.")]
-    InitiatorStreamNotFound { stream_id: StreamId },
-
-    #[error("Linked stream does not exist.")]
+    #[error("Linked stream does not exist")]
     LinkedStreamNotFound { stream_id: StreamId },
 
-    #[error("Stream is not linked.")]
+    #[error("Stream is not linked")]
     StreamNotLinked {},
 
-    #[error("Stream is not an initiator.")]
-    StreamNotInitiator {},
-
-    #[error("Stream is not detachable.")]
+    #[error("Stream is not detachable")]
     StreamNotDetachable {},
+
+    #[error("Stream can't be deleted, as it's linked to another stream")]
+    LinkedStreamDeleteNotAllowed { link_id: StreamId },
 }

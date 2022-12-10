@@ -2,10 +2,10 @@ use std::vec;
 
 use crate::balance::*;
 use crate::error::{ContractError, GenericError};
-use crate::linking::SupportsLinking;
+use crate::linking::*;
 use crate::msg::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
-    StreamId, StreamParams, StreamResponse,
+    ConfigResponse, ContractResult, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg,
+    ReceiveMsg, StreamId, StreamParams, StreamResponse,
 };
 use crate::state::{
     add_stream, remove_stream, save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ,
@@ -14,7 +14,7 @@ use crate::state::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, StdResult, Uint128,
+    Order, Response, StdResult, Storage, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -29,7 +29,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let admin = match msg.admin {
@@ -50,12 +50,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> ContractResult {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
@@ -63,9 +58,13 @@ pub fn execute(
         ExecuteMsg::ResumeStream { id } => execute_resume_stream(env, deps, info, id),
         ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
         ExecuteMsg::LinkStream {
-            initiator_id,
-            link_id,
-        } => execute_link_stream(deps, info, initiator_id, link_id),
+            left_stream_id,
+            right_stream_id,
+        } => execute_link_stream(deps, &info, left_stream_id, right_stream_id),
+        ExecuteMsg::DetachStream {
+            left_stream_id,
+            right_stream_id,
+        } => execute_detach_stream(env, deps, &info, left_stream_id, right_stream_id),
     }
 }
 
@@ -74,20 +73,28 @@ pub fn execute_pause_stream(
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
-) -> Result<Response, ContractError> {
-    let mut stream = STREAMS
-        .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+) -> ContractResult {
+    let pause_stream_local =
+        |stream_id: StreamId, storage: &mut dyn Storage| -> Result<Stream, ContractError> {
+            let mut stream = STREAMS
+                .may_load(storage, stream_id)?
+                .ok_or(ContractError::StreamNotFound { stream_id: id })?;
+            if stream.admin != info.sender {
+                return Err(ContractError::Unauthorized {});
+            }
+            if stream.paused {
+                return Err(ContractError::StreamAlreadyPaused {});
+            }
+            stream.paused_time = Some(env.block.time.seconds());
+            stream.paused = true;
+            save_stream(storage, id, &stream).unwrap();
+            Ok(stream)
+        };
+    let stream = pause_stream_local(id, deps.storage).unwrap();
 
-    if stream.admin != info.sender {
-        return Err(ContractError::Unauthorized {});
+    if let Some(link_id) = stream.link_id {
+        pause_stream_local(link_id, deps.storage).unwrap();
     }
-    if stream.paused {
-        return Err(ContractError::StreamAlreadyPaused {});
-    }
-    stream.paused_time = Some(env.block.time.seconds());
-    stream.paused = true;
-    save_stream(deps.storage, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "pause_stream")
         .add_attribute("paused", stream.paused.to_string())
@@ -102,17 +109,19 @@ pub fn execute_remove_stream(
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
-) -> Result<Response, ContractError> {
+) -> ContractResult {
     let stream = STREAMS
         .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+        .ok_or(ContractError::StreamNotFound { stream_id: id })?;
 
     if stream.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-
+    if let Some(link_id) = stream.link_id {
+        return Err(ContractError::LinkedStreamDeleteNotAllowed { link_id });
+    }
     remove_stream(deps.storage, id).unwrap();
-    let mut response = Response::new()
+    let response = Response::new()
         .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender.clone())
@@ -121,14 +130,6 @@ pub fn execute_remove_stream(
             create_balance_transfer_msg(&stream.balance, None, stream.admin.clone().into())
                 .unwrap(),
         );
-
-    if stream.is_link_initiator {
-        response = response.add_message(
-            stream
-                .create_link_delete_msg(id, &env, deps, &info)
-                .unwrap(),
-        );
-    }
     Ok(response)
 }
 fn create_balance_transfer_msg(
@@ -160,23 +161,29 @@ pub fn execute_resume_stream(
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
-) -> Result<Response, ContractError> {
-    let mut stream = STREAMS
-        .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+) -> ContractResult {
+    let pause_stream_local =
+        |stream_id: StreamId, storage: &mut dyn Storage| -> Result<Stream, ContractError> {
+            let mut stream = STREAMS
+                .may_load(storage, stream_id)?
+                .ok_or(ContractError::StreamNotFound { stream_id: id })?;
+            if stream.admin != info.sender {
+                return Err(ContractError::Unauthorized {});
+            }
+            if !stream.paused {
+                return Err(ContractError::StreamNotPaused {});
+            }
+            stream.paused_duration = stream.calc_pause_duration(env.block.time);
+            stream.paused = false;
+            save_stream(storage, id, &stream).unwrap();
+            Ok(stream)
+        };
 
-    if stream.admin != info.sender {
-        return Err(ContractError::Unauthorized {});
+    let stream = pause_stream_local(id, deps.storage).unwrap();
+    if let Some(link_id) = stream.link_id {
+        pause_stream_local(link_id, deps.storage).unwrap();
     }
-    if !stream.paused {
-        return Err(ContractError::StreamNotPaused {});
-    }
-
-    stream.paused_duration = stream.calc_pause_duration(env.block.time);
     let (_, rate_per_second) = stream.calc_distribution_rate(env.block.time);
-    stream.paused = false;
-
-    save_stream(deps.storage, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "resume_stream")
         .add_attribute("stream_id", id.to_string())
@@ -191,11 +198,7 @@ pub fn execute_resume_stream(
 
     Ok(response)
 }
-pub fn execute_create_stream(
-    env: Env,
-    deps: DepsMut,
-    params: StreamParams,
-) -> Result<Response, ContractError> {
+pub fn execute_create_stream(env: Env, deps: DepsMut, params: StreamParams) -> ContractResult {
     let StreamParams {
         admin,
         recipient,
@@ -248,7 +251,6 @@ pub fn execute_create_stream(
         title,
         description,
         link_id: None,
-        is_link_initiator: false,
         is_detachable: false,
     };
     let id = add_stream(deps, &stream)?;
@@ -276,7 +278,7 @@ pub fn execute_receive(
     deps: DepsMut,
     info: MessageInfo,
     wrapped: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult {
     deps.api.addr_validate(&info.sender.into_string())?;
     let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
     match msg {
@@ -301,10 +303,10 @@ pub fn execute_receive(
     }
 }
 
-pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, ContractError> {
+pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> ContractResult {
     let mut stream = STREAMS
         .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+        .ok_or(ContractError::StreamNotFound { stream_id: id })?;
 
     let mut msgs: Vec<CosmosMsg> = vec![];
     let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
@@ -364,20 +366,6 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     Ok(res)
 }
 
-fn execute_link_stream(
-    deps: DepsMut,
-    info: MessageInfo,
-    initiator_id: StreamId,
-    link_id: StreamId,
-) -> Result<Response, ContractError> {
-    let mut initiator = STREAMS.may_load(deps.storage, initiator_id)?.ok_or(
-        ContractError::InitiatorStreamNotFound {
-            stream_id: initiator_id,
-        },
-    )?;
-    initiator.link(initiator_id, link_id, deps, &info)
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -411,7 +399,6 @@ fn query_stream(deps: Deps, id: u64) -> StdResult<StreamResponse> {
         paused_time: stream.paused_time,
         paused_duration: stream.paused_duration,
         paused: stream.paused,
-        is_link_initiator: stream.is_link_initiator,
         is_detachable: stream.is_detachable,
         link_id: stream.link_id,
     })
@@ -447,7 +434,6 @@ fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
         paused_time: stream.paused_time,
         paused_duration: stream.paused_duration,
         paused: stream.paused,
-        is_link_initiator: stream.is_link_initiator,
         is_detachable: stream.is_detachable,
         link_id: stream.link_id,
     })
@@ -532,7 +518,6 @@ mod tests {
                 paused_time: None,
                 paused_duration: None,
                 link_id: None,
-                is_link_initiator: false,
                 is_detachable: false,
             }
         );
@@ -584,7 +569,6 @@ mod tests {
                 paused_time: None,
                 paused_duration: None,
                 link_id: None,
-                is_link_initiator: false,
                 is_detachable: false,
             }
         );
@@ -654,7 +638,6 @@ mod tests {
                 paused_time: None,
                 paused_duration: None,
                 link_id: None,
-                is_link_initiator: false,
                 is_detachable: false,
             }
         );
@@ -714,7 +697,6 @@ mod tests {
                 paused_time: saved_stream.paused_time,
                 paused_duration: saved_stream.paused_duration,
                 link_id: None,
-                is_link_initiator: false,
                 is_detachable: false,
             }
         );

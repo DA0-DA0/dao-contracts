@@ -1,13 +1,15 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Response;
 use cw20::Cw20ReceiveMsg;
 
-use crate::balance::WrappedBalance;
+use crate::{balance::WrappedBalance, ContractError};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: Option<String>,
 }
 pub type StreamId = u64;
+pub type ContractResult = Result<Response, ContractError>;
 
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -19,13 +21,16 @@ pub enum ExecuteMsg {
         id: StreamId, // Stream id
     },
     LinkStream {
-        initiator_id: StreamId,
-        link_id: StreamId,
+        left_stream_id: StreamId,
+        right_stream_id: StreamId,
+    },
+    DetachStream {
+        left_stream_id: StreamId,
+        right_stream_id: StreamId,
     },
     ResumeStream {
         id: StreamId, // Stream id
     },
-
     RemoveStream {
         id: StreamId, // Stream id
     },
@@ -91,8 +96,6 @@ pub struct StreamResponse {
     pub description: Option<String>,
     /// Link to stream attached for sync
     pub link_id: Option<StreamId>,
-    /// If this stream initiated linking
-    pub is_link_initiator: bool,
     /// If Stream is detachable
     pub is_detachable: bool,
 }

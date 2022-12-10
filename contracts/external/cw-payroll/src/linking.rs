@@ -1,8 +1,8 @@
-use cosmwasm_std::{to_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response, WasmMsg};
+use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 use crate::{
-    msg::{ExecuteMsg, StreamId},
-    state::{save_stream, Stream, STREAMS},
+    msg::StreamId,
+    state::{save_stream, STREAMS},
     ContractError,
 };
 
@@ -10,181 +10,82 @@ pub enum LinkSyncType {
     Paused,
     Resumed,
 }
-pub(crate) trait SupportsLinking {
-    fn link(
-        &mut self,
-        initiator_id: StreamId,
-        link_id: StreamId,
-        deps: DepsMut,
-        info: &MessageInfo,
-    ) -> Result<Response, ContractError>;
-    fn detach(
-        &self,
-        initiator_id: StreamId,
-        link_id: StreamId,
-        deps: DepsMut,
-        info: &MessageInfo,
-    ) -> Result<Response, ContractError>;
-    fn create_link_delete_msg(
-        &self,
-        stream_id: StreamId,
-        env: &Env,
-        deps: DepsMut,
-        info: &MessageInfo,
-    ) -> Result<CosmosMsg, ContractError>;
-    fn create_sync_msg(
-        &self,
-        stream_id: StreamId,
-        env: &Env,
-        deps: DepsMut,
-        info: &MessageInfo,
-        sync_type: LinkSyncType,
-    ) -> Result<CosmosMsg, ContractError>;
+pub(crate) fn execute_link_stream(
+    deps: DepsMut,
+    info: &MessageInfo,
+    left_stream_id: StreamId,
+    right_stream_id: StreamId,
+) -> Result<Response, ContractError> {
+    let left_stream =
+        STREAMS
+            .may_load(deps.storage, left_stream_id)?
+            .ok_or(ContractError::StreamNotFound {
+                stream_id: left_stream_id,
+            })?;
+
+    let right_stream =
+        STREAMS
+            .may_load(deps.storage, right_stream_id)?
+            .ok_or(ContractError::StreamNotFound {
+                stream_id: right_stream_id,
+            })?;
+
+    if !(left_stream.admin == info.sender && right_stream.admin == info.sender) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    save_stream(deps.storage, left_stream_id, &left_stream).unwrap();
+    save_stream(deps.storage, right_stream_id, &right_stream).unwrap();
+
+    let response = Response::new()
+        .add_attribute("method", "link")
+        .add_attribute("left_stream_id", left_stream_id.to_string())
+        .add_attribute("right_stream_id", right_stream_id.to_string())
+        .add_attribute("admin", info.sender.clone());
+
+    Ok(response)
 }
 
-impl SupportsLinking for Stream {
-    fn link(
-        &mut self,
-        initiator_id: StreamId,
-        link_id: StreamId,
-        deps: DepsMut,
-        info: &MessageInfo,
-    ) -> Result<Response, ContractError> {
-        // let mut initiator = STREAMS.may_load(deps.storage, initiator_id)?.ok_or(
-        //     ContractError::InitiatorStreamNotFound {
-        //         stream_id: initiator_id,
-        //     },
-        // )?;
+pub(crate) fn execute_detach_stream(
+    env: Env,
+    deps: DepsMut,
+    info: &MessageInfo,
+    left_stream_id: StreamId,
+    right_stream_id: StreamId,
+) -> Result<Response, ContractError> {
+    let mut left_stream = STREAMS.may_load(deps.storage, left_stream_id)?.ok_or(
+        ContractError::LinkedStreamNotFound {
+            stream_id: left_stream_id,
+        },
+    )?;
+    let mut right_stream = STREAMS.may_load(deps.storage, right_stream_id)?.ok_or(
+        ContractError::LinkedStreamNotFound {
+            stream_id: right_stream_id,
+        },
+    )?;
 
-        let mut link = STREAMS
-            .may_load(deps.storage, initiator_id)?
-            .ok_or(ContractError::StreamNotFound {})?;
-
-        if self.admin != info.sender {
-            return Err(ContractError::Unauthorized {});
-        }
-        self.link_id = Some(link_id);
-        self.is_link_initiator = true;
-        link.link_id = Some(initiator_id);
-        link.is_link_initiator = false;
-
-        save_stream(deps.storage, initiator_id, self).unwrap();
-        save_stream(deps.storage, link_id, &link).unwrap();
-
-        let response = Response::new()
-            .add_attribute("method", "link")
-            .add_attribute("initiator_id", initiator_id.to_string())
-            .add_attribute("link_id", link_id.to_string())
-            .add_attribute("admin", info.sender.clone());
-
-        Ok(response)
+    if !(left_stream.is_detachable && right_stream.is_detachable) {
+        return Err(ContractError::StreamNotDetachable {});
     }
 
-    fn detach(
-        &self,
-        initiator_id: StreamId,
-        link_id: StreamId,
-        deps: DepsMut,
-        info: &MessageInfo,
-    ) -> Result<Response, ContractError> {
-        let mut initiator = STREAMS.may_load(deps.storage, initiator_id)?.ok_or(
-            ContractError::InitiatorStreamNotFound {
-                stream_id: initiator_id,
-            },
-        )?;
-
-        if !initiator.is_detachable {
-            return Err(ContractError::StreamNotDetachable {});
-        }
-
-        let mut link = STREAMS
-            .may_load(deps.storage, initiator_id)?
-            .ok_or(ContractError::StreamNotFound {})?;
-
-        if initiator.admin != info.sender {
-            return Err(ContractError::Unauthorized {});
-        }
-
-        initiator.link_id = None;
-        initiator.is_link_initiator = false;
-        link.link_id = None;
-        link.is_link_initiator = false;
-
-        save_stream(deps.storage, initiator_id, &initiator).unwrap();
-        save_stream(deps.storage, link_id, &link).unwrap();
-        let response = Response::new()
-            .add_attribute("method", "link")
-            .add_attribute("initiator_id", initiator_id.to_string())
-            .add_attribute("link_id", link_id.to_string())
-            .add_attribute("admin", info.sender.clone());
-
-        Ok(response)
+    if !(left_stream.admin == info.sender && right_stream.admin == info.sender) {
+        return Err(ContractError::Unauthorized {});
     }
 
-    fn create_link_delete_msg(
-        &self,
-        stream_id: StreamId,
-        env: &Env,
-        deps: DepsMut,
-        info: &MessageInfo,
-    ) -> Result<CosmosMsg, ContractError> {
-        let stream = STREAMS
-            .may_load(deps.storage, stream_id)?
-            .ok_or(ContractError::StreamNotFound {})?;
-        if stream.link_id.is_none() {
-            return Err(ContractError::StreamNotLinked {});
-        }
-        if stream.admin != info.sender {
-            return Err(ContractError::Unauthorized {});
-        }
-        if !stream.is_link_initiator {
-            return Err(ContractError::StreamNotInitiator {});
-        }
-        let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: env.contract.address.clone().into_string(),
-            msg: to_binary(&ExecuteMsg::RemoveStream {
-                id: stream.link_id.unwrap(),
-            })?,
-            funds: vec![],
-        });
-        Ok(msg)
-    }
+    left_stream.paused_time = Some(env.block.time.seconds());
+    left_stream.paused = true;
+    left_stream.link_id = None;
+    right_stream.paused_time = Some(env.block.time.seconds());
+    right_stream.paused = true;
+    right_stream.link_id = None;
 
-    fn create_sync_msg(
-        &self,
-        stream_id: StreamId,
-        env: &Env,
-        deps: DepsMut,
-        info: &MessageInfo,
-        sync_type: LinkSyncType,
-    ) -> Result<CosmosMsg, ContractError> {
-        let stream = STREAMS
-            .may_load(deps.storage, stream_id)?
-            .ok_or(ContractError::StreamNotFound {})?;
-        if stream.admin != info.sender {
-            return Err(ContractError::Unauthorized {});
-        }
-        match sync_type {
-            LinkSyncType::Paused => {
-                let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: env.contract.address.clone().into_string(),
-                    msg: to_binary(&ExecuteMsg::PauseStream {
-                        id: stream.link_id.unwrap(),
-                    })?,
-                    funds: vec![],
-                });
-                Ok(msg)
-            }
-            LinkSyncType::Resumed => {
-                let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: env.contract.address.clone().into_string(),
-                    msg: to_binary(&ExecuteMsg::ResumeStream {
-                        id: stream.link_id.unwrap(),
-                    })?,
-                    funds: vec![],
-                });
-                Ok(msg)
-            }
-        }
-    }
+    save_stream(deps.storage, left_stream_id, &left_stream).unwrap();
+    save_stream(deps.storage, right_stream_id, &right_stream).unwrap();
+    let response = Response::new()
+        .add_attribute("method", "link")
+        .add_attribute("left_stream_id", left_stream_id.to_string())
+        .add_attribute("right_stream_id", right_stream_id.to_string())
+        .add_attribute("admin", info.sender.clone());
+
+    Ok(response)
 }
