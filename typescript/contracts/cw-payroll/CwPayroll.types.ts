@@ -19,8 +19,13 @@ export type ExecuteMsg = {
   };
 } | {
   link_stream: {
-    initiator_id: number;
-    link_id: number;
+    left_stream_id: number;
+    right_stream_id: number;
+  };
+} | {
+  detach_stream: {
+    left_stream_id: number;
+    right_stream_id: number;
   };
 } | {
   resume_stream: {
@@ -73,7 +78,6 @@ export interface StreamResponse {
   end_time: number;
   id: number;
   is_detachable: boolean;
-  is_link_initiator: boolean;
   link_id?: number | null;
   paused: boolean;
   paused_duration?: number | null;
