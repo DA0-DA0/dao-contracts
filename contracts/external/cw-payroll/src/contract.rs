@@ -124,7 +124,7 @@ pub fn execute_remove_stream(
     let response = Response::new()
         .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender.clone())
+        .add_attribute("admin", info.sender)
         .add_attribute("removed_time", env.block.time.to_string())
         .add_message(
             create_balance_transfer_msg(&stream.balance, None, stream.admin.clone().into())
