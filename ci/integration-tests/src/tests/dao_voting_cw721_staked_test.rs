@@ -203,8 +203,12 @@ fn cw721_stake_max_claims_works(chain: &mut Chain) {
 
     // Create `MAX_CLAIMS` claims.
 
-    let mut reqs = vec![];
+    // batch_size * 3 = the number of msgs to be batched per tx.
+    // We cant batch all of the msgs under a single tx because we hit MAX_BLOCK_GAS limits.
+    let batch_size = 10;
+    let mut total_msgs = 0;
 
+    let mut reqs = vec![];
     for i in 0..MAX_CLAIMS {
         let token_id = i.to_string();
 
@@ -238,12 +242,20 @@ fn cw721_stake_max_claims_works(chain: &mut Chain) {
             }),
             funds: vec![],
         });
+
+        if (i != 0 && i % batch_size == 0) || i == MAX_CLAIMS - 1 {
+            total_msgs += reqs.len();
+
+            chain
+                .orc
+                .execute_batch("batch_cw721_stake_max_claims", reqs, &user_key)
+                .unwrap();
+
+            reqs = vec![];
+        }
     }
 
-    chain
-        .orc
-        .execute_batch("batch_cw721_stake_max_claims", reqs, &user_key)
-        .unwrap();
+    assert_eq!(total_msgs as u64, MAX_CLAIMS * 3);
 
     chain
         .orc
