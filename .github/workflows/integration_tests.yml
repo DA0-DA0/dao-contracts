@@ -52,7 +52,7 @@ jobs:
         run: echo "MAINNET_GAS_LIMIT=$(curl -s https://juno-rpc.polkachu.com/consensus_params | jq -r '.result.consensus_params.block.max_gas')" >> $GITHUB_ENV
 
       - name: Mainnet block GAS_LIMIT changed
-        if: ${{ env.MAINNET_GAS_LIMIT }} != ${{ env.GAS_LIMIT }}
+        if: ${{ env.MAINNET_GAS_LIMIT != env.GAS_LIMIT }}
         uses: actions/github-script@v6
         with:
           script: core.setFailed(`Integration tests must update GAS_LIMIT from ${process.env.GAS_LIMIT} to ${process.env.MAINNET_GAS_LIMIT}`)
