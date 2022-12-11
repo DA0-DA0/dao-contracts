@@ -1,11 +1,13 @@
-use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_schema::{cw_serde};
 
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    // To determine voting power
+    pub voting_contract: String,
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {}
 
 #[cw_serde]
-#[derive(QueryResponses)]
 pub enum QueryMsg {}
