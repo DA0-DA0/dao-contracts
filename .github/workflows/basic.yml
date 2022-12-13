@@ -29,6 +29,15 @@ jobs:
         env:
           RUST_BACKTRACE: 1
 
+      - name: Run tests w/o default features
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly
+          command: unit-test
+          args: --locked --no-default-features
+        env:
+          RUST_BACKTRACE: 1
+
       - name: Compile WASM contract
         uses: actions-rs/cargo@v1
         with:
@@ -66,6 +75,13 @@ jobs:
           toolchain: nightly
           command: clippy
           args: --all-targets -- -D warnings
+
+      - name: Run cargo clippy w/o default features
+        uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly
+          command: clippy
+          args: --all-targets --no-default-features -- -D warnings
 
       - name: Generate Schema
         run: ./scripts/schema.sh

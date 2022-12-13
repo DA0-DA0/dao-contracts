@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Addr;
 use cw2::ContractVersion;
 use cw_utils::Expiration;
 
@@ -45,11 +45,12 @@ pub struct GetItemResponse {
 
 /// Returned by the `Cw20Balances` query.
 #[cw_serde]
+#[cfg(feature = "cw20")]
 pub struct Cw20BalanceResponse {
     /// The address of the token.
     pub addr: Addr,
     /// The contract's balance.
-    pub balance: Uint128,
+    pub balance: cosmwasm_std::Uint128,
 }
 
 /// Returned by the `AdminNomination` query.

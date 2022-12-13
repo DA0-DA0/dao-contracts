@@ -15,6 +15,7 @@ pub struct Config {
     pub image_url: Option<String>,
     /// If true the contract will automatically add received cw20
     /// tokens to its treasury.
+    #[cfg(feature = "cw20")]
     pub automatically_add_cw20s: bool,
     /// If true the contract will automatically add received cw721
     /// tokens to its treasury.
@@ -24,8 +25,8 @@ pub struct Config {
     pub dao_uri: Option<String>,
 }
 
-#[cw_serde]
 /// Top level type describing a proposal module.
+#[cw_serde]
 pub struct ProposalModule {
     /// The address of the proposal module.
     pub address: Addr,
@@ -36,8 +37,8 @@ pub struct ProposalModule {
     pub status: ProposalModuleStatus,
 }
 
-#[cw_serde]
 /// The status of a proposal module.
+#[cw_serde]
 pub enum ProposalModuleStatus {
     Enabled,
     Disabled,
@@ -86,6 +87,7 @@ pub const ITEMS: Map<String, String> = Map::new("items");
 
 /// Set of cw20 tokens that have been registered with this contract's
 /// treasury.
+#[cfg(feature = "cw20")]
 pub const CW20_LIST: Map<Addr, Empty> = Map::new("cw20s");
 /// Set of cw721 tokens that have been registered with this contract's
 /// treasury.
