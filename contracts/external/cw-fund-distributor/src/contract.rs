@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_binary};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{DISTRIBUTION_HEIGHT, VOTING_CONTRACT};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TotalPowerResponse, VotingContractResponse};
+use crate::state::{DISTRIBUTION_HEIGHT, TOTAL_POWER, VOTING_CONTRACT};
 
 use dao_interface::voting;
 
@@ -34,10 +34,11 @@ pub fn instantiate(
             height: Some(env.block.height),
         },
     )?;
-
+    // validate the total power and store it
     if total_power.power.is_zero() {
         return Err(ContractError::ZeroVotingPower {});
     }
+    TOTAL_POWER.save(deps.storage, &total_power.power)?;
 
     Ok(Response::default()
         .add_attribute(
@@ -60,9 +61,25 @@ pub fn execute(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    unimplemented!()
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::VotingContract {} => query_voting_contract(deps),
+        QueryMsg::TotalPower {} => query_total_power(deps),
+    }
 }
 
-#[cfg(test)]
-mod tests {}
+pub fn query_voting_contract(deps: Deps) -> StdResult<Binary> {
+    let contract = VOTING_CONTRACT.load(deps.storage)?;
+    let distribution_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
+    to_binary(&VotingContractResponse {
+        contract,
+        distribution_height,
+    })
+}
+
+pub fn query_total_power(deps: Deps) -> StdResult<Binary> {
+    let total_power  = TOTAL_POWER.load(deps.storage)?;
+    to_binary(&TotalPowerResponse {
+        total_power,
+    })
+}

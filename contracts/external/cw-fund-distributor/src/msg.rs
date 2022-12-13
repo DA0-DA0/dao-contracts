@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde};
+use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -10,4 +11,22 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {}
 
 #[cw_serde]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    TotalPower {},
+    VotingContract {},
+}
+
+#[cw_serde]
+pub struct VotingContractResponse {
+    // voting power contract being used
+    pub contract: Addr,
+    // height at which voting power is being determined
+    pub distribution_height: u64,
+}
+
+#[cw_serde]
+pub struct TotalPowerResponse {
+    // total power at the distribution height
+    pub total_power: Uint128,
+}
+

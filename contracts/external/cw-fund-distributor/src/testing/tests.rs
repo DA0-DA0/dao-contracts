@@ -1,10 +1,11 @@
-use cosmwasm_std::{Addr, Empty, StdError, to_binary, Uint128};
+use cosmwasm_std::{Addr, Empty, to_binary, Uint128};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor, next_block};
 use cw20::Cw20Coin;
 use crate::ContractError;
-use crate::msg::InstantiateMsg;
+use crate::msg::{InstantiateMsg, TotalPowerResponse};
 
 use cosmwasm_std::StdError::GenericErr;
+use crate::msg::QueryMsg::{TotalPower};
 
 const CREATOR_ADDR: &str = "creator";
 
@@ -229,7 +230,7 @@ fn test_instantiate_fails_given_invalid_voting_contract_address() {
 }
 
 #[test]
-fn test_instantiate_zero_voting_power_error() {
+fn test_instantiate_fails_zero_voting_power() {
 
     let mut app = App::default();
     let distributor_id = app.store_code(distributor_contract());
@@ -307,5 +308,29 @@ fn test_instantiate_zero_voting_power_error() {
 
 #[test]
 fn test_instantiate_cw_fund_distributor() {
-    unimplemented!()
+    let BaseTest {
+        app,
+        distributor_address,
+        ..
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let total_power: TotalPowerResponse = app
+        .wrap()
+        .query_wasm_smart(
+            distributor_address.clone(),
+            &TotalPower {}
+        )
+        .unwrap();
+
+    // assert total power has been set correctly
+    assert_eq!(total_power.total_power, Uint128::new(30));
 }
