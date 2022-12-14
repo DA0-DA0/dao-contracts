@@ -859,4 +859,99 @@ mod tests {
             })
         );
     }
+    #[test]
+    fn test_execute_link_stream_invalid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+        
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient:recipient.clone(),
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let left_stream_id: StreamId = 1;
+        let right_stream_id: StreamId = 2;
+
+        //Link stream and verify error returned
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { left_stream_id, right_stream_id },
+        )
+        .unwrap_err();
+        assert_eq!(
+            error,
+            ContractError::StreamNotFound  { stream_id: right_stream_id }
+        );
+        let left_stream_id: StreamId = 1;
+        let right_stream_id: StreamId = 1;
+        //Link stream and verify error returned
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { left_stream_id, right_stream_id },
+        )
+        .unwrap_err();
+        assert_eq!(
+            error,
+            ContractError::StreamsShouldNotBeEqual { left_stream_id, right_stream_id }
+        );
+
+       
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient:recipient.clone(),
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        
+        let sender = Addr::unchecked("bob").to_string();
+        let left_stream_id: StreamId = 1;
+        let right_stream_id: StreamId = 2;
+        let unauthorized_info = mock_info(&sender, &[]);
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            unauthorized_info,
+            ExecuteMsg::LinkStream { left_stream_id, right_stream_id },
+        )
+        .unwrap_err();
+        assert_eq!(
+            error,
+            ContractError::Unauthorized{}
+        );
+    }
 }
