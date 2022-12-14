@@ -950,15 +950,15 @@ mod tests {
             sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
-                admin: Some(sender.clone()),
-                recipient: recipient.clone(),
+                admin: Some(sender),
+                recipient,
                 start_time,
                 end_time,
                 is_detachable: None,
             })
             .unwrap(),
         });
-        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let sender = Addr::unchecked("bob").to_string();
         let left_stream_id: StreamId = 1;
@@ -1019,8 +1019,8 @@ mod tests {
             sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
-                admin: Some(sender.clone()),
-                recipient: recipient.clone(),
+                admin: Some(sender),
+                recipient,
                 start_time,
                 end_time,
                 is_detachable: None,
@@ -1034,7 +1034,7 @@ mod tests {
         let response = execute(
             deps.as_mut(),
             mock_env(),
-            info.clone(),
+            info,
             ExecuteMsg::LinkStream {
                 left_stream_id,
                 right_stream_id,
@@ -1096,8 +1096,8 @@ mod tests {
             sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
-                admin: Some(sender.clone()),
-                recipient: recipient.clone(),
+                admin: Some(sender),
+                recipient,
                 start_time,
                 end_time,
                 is_detachable: None,
@@ -1122,7 +1122,7 @@ mod tests {
         execute(
             deps.as_mut(),
             mock_env(),
-            info.clone(),
+            info,
             ExecuteMsg::DetachStream {
                 left_stream_id,
                 right_stream_id,
@@ -1283,15 +1283,15 @@ mod tests {
             sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
-                admin: Some(sender.clone()),
-                recipient: recipient.clone(),
+                admin: Some(sender),
+                recipient,
                 start_time,
                 end_time,
                 is_detachable: Some(true),
             })
             .unwrap(),
         });
-        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let left_stream_id = 3;
         let right_stream_id = 4;
