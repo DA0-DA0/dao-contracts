@@ -288,6 +288,7 @@ pub fn execute_receive(
             start_time,
             end_time,
             recipient,
+            is_detachable
         } => execute_create_stream(
             env,
             deps,
@@ -299,7 +300,7 @@ pub fn execute_receive(
                 end_time,
                 title: None,
                 description: None,
-                is_detachable:None,
+                is_detachable,
             },
         ),
     }
@@ -500,6 +501,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -602,6 +604,7 @@ mod tests {
                 recipient: recipient.into_string(),
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -668,6 +671,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -725,6 +729,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -755,6 +760,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -790,6 +796,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -824,6 +831,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -891,6 +899,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -945,6 +954,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -998,6 +1008,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -1012,6 +1023,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -1073,6 +1085,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -1087,6 +1100,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
+                is_detachable:None,
             })
             .unwrap(),
         });
@@ -1125,6 +1139,166 @@ mod tests {
         assert!(right_stream.paused);
         assert!(right_stream.paused_time.is_some());
         assert!(right_stream.link_id.is_none());
+
+    }
+
+    #[test]
+    fn test_execute_detach_stream_invalid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable:Some(false),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable:Some(false),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let left_stream_id = 1;
+        let right_stream_id = 2;
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap();
+
+        let left_stream_id = 11;
+        let right_stream_id = 22;
+        let error=execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream  {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::StreamNotFound { stream_id: left_stream_id } );
+
+        let left_stream_id = 1;
+        let right_stream_id = 22;
+        let error=execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream  {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::StreamNotFound { stream_id: right_stream_id } );
+
+        //Check is_detachable
+        let left_stream_id = 1;
+        let right_stream_id = 2;
+        let error=execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream  {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::StreamNotDetachable {  });
+        
+        let unauthorized_info = mock_info(&recipient, &[]);
+
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable:Some(true),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable:Some(true),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let left_stream_id = 3;
+        let right_stream_id = 4;
+        let error=execute(
+            deps.as_mut(),
+            mock_env(),
+            unauthorized_info,
+            ExecuteMsg::DetachStream  {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::Unauthorized  {  });
 
     }
 }

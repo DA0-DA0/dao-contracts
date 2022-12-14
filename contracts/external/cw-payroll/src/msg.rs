@@ -44,6 +44,7 @@ pub enum ReceiveMsg {
         recipient: String,
         start_time: u64,
         end_time: u64,
+        is_detachable:Option<bool>
     },
 }
 
