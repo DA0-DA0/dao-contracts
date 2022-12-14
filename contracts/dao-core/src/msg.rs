@@ -30,6 +30,7 @@ pub struct InstantiateMsg {
 
     /// If true the contract will automatically add received cw20
     /// tokens to its treasury.
+    #[cfg(feature = "cw20")]
     pub automatically_add_cw20s: bool,
     /// If true the contract will automatically add received cw721
     /// tokens to its treasury.
@@ -66,6 +67,7 @@ pub enum ExecuteMsg {
     /// Executed when the contract receives a cw20 token. Depending on
     /// the contract's configuration the contract will automatically
     /// add the token to its treasury.
+    #[cfg(feature = "cw20")]
     Receive(cw20::Cw20ReceiveMsg),
     /// Executed when the contract receives a cw721 token. Depending
     /// on the contract's configuration the contract will
@@ -102,6 +104,7 @@ pub enum ExecuteMsg {
     /// governance contract config with the provided config.
     UpdateConfig { config: Config },
     /// Updates the list of cw20 tokens this contract has registered.
+    #[cfg(feature = "cw20")]
     UpdateCw20List {
         to_add: Vec<String>,
         to_remove: Vec<String>,
@@ -145,6 +148,7 @@ pub enum QueryMsg {
     Config {},
     /// Gets the token balance for each cw20 registered with the
     /// contract.
+    #[cfg(feature = "cw20")]
     #[returns(crate::query::Cw20BalanceResponse)]
     Cw20Balances {
         start_after: Option<String>,
@@ -152,6 +156,7 @@ pub enum QueryMsg {
     },
     /// Lists the addresses of the cw20 tokens in this contract's
     /// treasury.
+    #[cfg(feature = "cw20")]
     #[returns(Vec<cosmwasm_std::Addr>)]
     Cw20TokenList {
         start_after: Option<String>,
