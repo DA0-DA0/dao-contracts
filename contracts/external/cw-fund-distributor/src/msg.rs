@@ -8,7 +8,10 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
-pub enum ExecuteMsg {}
+pub enum ExecuteMsg {
+    Receive(cw20::Cw20ReceiveMsg),
+    FundNative {},
+}
 
 #[cw_serde]
 pub enum QueryMsg {

@@ -11,4 +11,7 @@ pub enum ContractError {
 
     #[error("Zero voting power")]
     ZeroVotingPower {},
+
+    #[error("Zero funds")]
+    ZeroFunds {},
 }

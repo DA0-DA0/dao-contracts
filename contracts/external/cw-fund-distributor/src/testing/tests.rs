@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Empty, to_binary, Uint128};
+use cosmwasm_std::{Addr, Binary, Empty, to_binary, Uint128};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor, next_block};
 use cw20::Cw20Coin;
 use crate::ContractError;
@@ -333,4 +333,62 @@ fn test_instantiate_cw_fund_distributor() {
 
     // assert total power has been set correctly
     assert_eq!(total_power.total_power, Uint128::new(30));
+}
+
+#[test]
+fn test_fund_cw20() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+    // mint 500000 tokens to CREATOR_ADDR
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        &cw20::Cw20ExecuteMsg::Mint {
+            recipient: CREATOR_ADDR.to_string(),
+            amount,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // fund the contract
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: distributor_address.to_string(),
+            amount,
+            msg: Binary::default(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // query the balance of distributor contract
+    let balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            token_address,
+            &cw20::Cw20QueryMsg::Balance {
+                address: distributor_address.into_string(),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(balance.balance, amount);
 }
