@@ -207,6 +207,7 @@ pub fn execute_create_stream(env: Env, deps: DepsMut, params: StreamParams) -> C
         end_time,
         title,
         description,
+        is_detachable
     } = params;
 
     let admin = deps.api.addr_validate(&admin)?;
@@ -251,7 +252,7 @@ pub fn execute_create_stream(env: Env, deps: DepsMut, params: StreamParams) -> C
         title,
         description,
         link_id: None,
-        is_detachable: false,
+        is_detachable:is_detachable.unwrap_or(true),
     };
     let id = add_stream(deps, &stream)?;
 
@@ -298,6 +299,7 @@ pub fn execute_receive(
                 end_time,
                 title: None,
                 description: None,
+                is_detachable:None,
             },
         ),
     }
@@ -518,7 +520,7 @@ mod tests {
                 paused_time: None,
                 paused_duration: None,
                 link_id: None,
-                is_detachable: false,
+                is_detachable: true,
             }
         );
 
@@ -569,7 +571,7 @@ mod tests {
                 paused_time: None,
                 paused_duration: None,
                 link_id: None,
-                is_detachable: false,
+                is_detachable: true,
             }
         );
 
@@ -638,7 +640,7 @@ mod tests {
                 paused_time: None,
                 paused_duration: None,
                 link_id: None,
-                is_detachable: false,
+                is_detachable: true,
             }
         );
     }
@@ -697,7 +699,7 @@ mod tests {
                 paused_time: saved_stream.paused_time,
                 paused_duration: saved_stream.paused_duration,
                 link_id: None,
-                is_detachable: false,
+                is_detachable: true,
             }
         );
     }
@@ -1027,6 +1029,11 @@ mod tests {
             },
         )
         .unwrap();
+
+        let left_stream = get_stream(deps.as_ref(), left_stream_id).unwrap();
+        let right_stream = get_stream(deps.as_ref(), right_stream_id).unwrap();
+        assert_eq!(left_stream.link_id, Some(right_stream_id));
+        assert_eq!(right_stream.link_id, Some(left_stream_id));
         assert!(response
             .attributes
             .iter()
@@ -1035,5 +1042,89 @@ mod tests {
             .attributes
             .iter()
             .any(|f| { f.key == "right_stream_id" }));
+    }
+    #[test]
+    fn test_execute_detach_stream_valid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let left_stream_id = 1;
+        let right_stream_id = 2;
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream  {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap();
+        let left_stream = get_stream(deps.as_ref(), left_stream_id).unwrap();
+        let right_stream = get_stream(deps.as_ref(), right_stream_id).unwrap();
+
+        assert!(left_stream.paused);
+        assert!(left_stream.paused_time.is_some());
+        assert!(left_stream.link_id.is_none());
+
+        assert!(right_stream.paused);
+        assert!(right_stream.paused_time.is_some());
+        assert!(right_stream.link_id.is_none());
+
     }
 }

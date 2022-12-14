@@ -56,6 +56,7 @@ pub struct StreamParams {
     pub end_time: u64,
     pub title: Option<String>,
     pub description: Option<String>,
+    pub is_detachable:Option<bool>
 }
 
 #[cw_serde]
