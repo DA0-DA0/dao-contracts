@@ -40,8 +40,8 @@ pub(crate) fn execute_link_stream(
     if !(left_stream.admin == info.sender && right_stream.admin == info.sender) {
         return Err(ContractError::Unauthorized {});
     }
-    left_stream.link_id=Some(right_stream_id);
-    right_stream.link_id=Some(left_stream_id);
+    left_stream.link_id = Some(right_stream_id);
+    right_stream.link_id = Some(left_stream_id);
 
     save_stream(deps.storage, left_stream_id, &left_stream).unwrap();
     save_stream(deps.storage, right_stream_id, &right_stream).unwrap();

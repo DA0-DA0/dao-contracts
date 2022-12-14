@@ -207,7 +207,7 @@ pub fn execute_create_stream(env: Env, deps: DepsMut, params: StreamParams) -> C
         end_time,
         title,
         description,
-        is_detachable
+        is_detachable,
     } = params;
 
     let admin = deps.api.addr_validate(&admin)?;
@@ -252,7 +252,7 @@ pub fn execute_create_stream(env: Env, deps: DepsMut, params: StreamParams) -> C
         title,
         description,
         link_id: None,
-        is_detachable:is_detachable.unwrap_or(true),
+        is_detachable: is_detachable.unwrap_or(true),
     };
     let id = add_stream(deps, &stream)?;
 
@@ -288,7 +288,7 @@ pub fn execute_receive(
             start_time,
             end_time,
             recipient,
-            is_detachable
+            is_detachable,
         } => execute_create_stream(
             env,
             deps,
@@ -501,7 +501,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -604,7 +604,7 @@ mod tests {
                 recipient: recipient.into_string(),
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -671,7 +671,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -729,7 +729,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -760,7 +760,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -796,7 +796,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -831,7 +831,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -899,7 +899,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -954,7 +954,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -1008,7 +1008,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -1023,7 +1023,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -1085,7 +1085,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -1100,7 +1100,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:None,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -1123,7 +1123,7 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::DetachStream  {
+            ExecuteMsg::DetachStream {
                 left_stream_id,
                 right_stream_id,
             },
@@ -1139,7 +1139,6 @@ mod tests {
         assert!(right_stream.paused);
         assert!(right_stream.paused_time.is_some());
         assert!(right_stream.link_id.is_none());
-
     }
 
     #[test]
@@ -1172,7 +1171,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:Some(false),
+                is_detachable: Some(false),
             })
             .unwrap(),
         });
@@ -1187,7 +1186,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:Some(false),
+                is_detachable: Some(false),
             })
             .unwrap(),
         });
@@ -1208,52 +1207,61 @@ mod tests {
 
         let left_stream_id = 11;
         let right_stream_id = 22;
-        let error=execute(
+        let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::DetachStream  {
+            ExecuteMsg::DetachStream {
                 left_stream_id,
                 right_stream_id,
             },
         )
         .unwrap_err();
 
-        assert_eq!(error, ContractError::StreamNotFound { stream_id: left_stream_id } );
+        assert_eq!(
+            error,
+            ContractError::StreamNotFound {
+                stream_id: left_stream_id
+            }
+        );
 
         let left_stream_id = 1;
         let right_stream_id = 22;
-        let error=execute(
+        let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::DetachStream  {
+            ExecuteMsg::DetachStream {
                 left_stream_id,
                 right_stream_id,
             },
         )
         .unwrap_err();
 
-        assert_eq!(error, ContractError::StreamNotFound { stream_id: right_stream_id } );
+        assert_eq!(
+            error,
+            ContractError::StreamNotFound {
+                stream_id: right_stream_id
+            }
+        );
 
         //Check is_detachable
         let left_stream_id = 1;
         let right_stream_id = 2;
-        let error=execute(
+        let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::DetachStream  {
+            ExecuteMsg::DetachStream {
                 left_stream_id,
                 right_stream_id,
             },
         )
         .unwrap_err();
 
-        assert_eq!(error, ContractError::StreamNotDetachable {  });
-        
-        let unauthorized_info = mock_info(&recipient, &[]);
+        assert_eq!(error, ContractError::StreamNotDetachable {});
 
+        let unauthorized_info = mock_info(&recipient, &[]);
 
         //Create stream 1
         let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
@@ -1264,7 +1272,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:Some(true),
+                is_detachable: Some(true),
             })
             .unwrap(),
         });
@@ -1279,7 +1287,7 @@ mod tests {
                 recipient: recipient.clone(),
                 start_time,
                 end_time,
-                is_detachable:Some(true),
+                is_detachable: Some(true),
             })
             .unwrap(),
         });
@@ -1287,18 +1295,17 @@ mod tests {
 
         let left_stream_id = 3;
         let right_stream_id = 4;
-        let error=execute(
+        let error = execute(
             deps.as_mut(),
             mock_env(),
             unauthorized_info,
-            ExecuteMsg::DetachStream  {
+            ExecuteMsg::DetachStream {
                 left_stream_id,
                 right_stream_id,
             },
         )
         .unwrap_err();
 
-        assert_eq!(error, ContractError::Unauthorized  {  });
-
+        assert_eq!(error, ContractError::Unauthorized {});
     }
 }
