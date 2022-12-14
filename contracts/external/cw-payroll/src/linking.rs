@@ -23,14 +23,14 @@ pub(crate) fn execute_link_stream(
         });
     }
 
-    let left_stream =
+    let mut left_stream =
         STREAMS
             .may_load(deps.storage, left_stream_id)?
             .ok_or(ContractError::StreamNotFound {
                 stream_id: left_stream_id,
             })?;
 
-    let right_stream =
+    let mut right_stream =
         STREAMS
             .may_load(deps.storage, right_stream_id)?
             .ok_or(ContractError::StreamNotFound {
@@ -40,6 +40,8 @@ pub(crate) fn execute_link_stream(
     if !(left_stream.admin == info.sender && right_stream.admin == info.sender) {
         return Err(ContractError::Unauthorized {});
     }
+    left_stream.link_id=Some(right_stream_id);
+    right_stream.link_id=Some(left_stream_id);
 
     save_stream(deps.storage, left_stream_id, &left_stream).unwrap();
     save_stream(deps.storage, right_stream_id, &right_stream).unwrap();

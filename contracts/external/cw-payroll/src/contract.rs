@@ -863,7 +863,7 @@ mod tests {
     fn test_execute_link_stream_invalid() {
         let mut deps = mock_dependencies();
         let sender = Addr::unchecked("alice").to_string();
-        
+
         let info = mock_info(&sender, &[]);
 
         instantiate(
@@ -886,7 +886,7 @@ mod tests {
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
                 admin: Some(sender.clone()),
-                recipient:recipient.clone(),
+                recipient: recipient.clone(),
                 start_time,
                 end_time,
             })
@@ -902,12 +902,17 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::LinkStream { left_stream_id, right_stream_id },
+            ExecuteMsg::LinkStream {
+                left_stream_id,
+                right_stream_id,
+            },
         )
         .unwrap_err();
         assert_eq!(
             error,
-            ContractError::StreamNotFound  { stream_id: right_stream_id }
+            ContractError::StreamNotFound {
+                stream_id: right_stream_id
+            }
         );
         let left_stream_id: StreamId = 1;
         let right_stream_id: StreamId = 1;
@@ -916,28 +921,33 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::LinkStream { left_stream_id, right_stream_id },
+            ExecuteMsg::LinkStream {
+                left_stream_id,
+                right_stream_id,
+            },
         )
         .unwrap_err();
         assert_eq!(
             error,
-            ContractError::StreamsShouldNotBeEqual { left_stream_id, right_stream_id }
+            ContractError::StreamsShouldNotBeEqual {
+                left_stream_id,
+                right_stream_id
+            }
         );
 
-       
         let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
             sender: sender.clone(),
             amount,
             msg: to_binary(&ReceiveMsg::CreateStream {
                 admin: Some(sender.clone()),
-                recipient:recipient.clone(),
+                recipient: recipient.clone(),
                 start_time,
                 end_time,
             })
             .unwrap(),
         });
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-        
+
         let sender = Addr::unchecked("bob").to_string();
         let left_stream_id: StreamId = 1;
         let right_stream_id: StreamId = 2;
@@ -946,12 +956,84 @@ mod tests {
             deps.as_mut(),
             mock_env(),
             unauthorized_info,
-            ExecuteMsg::LinkStream { left_stream_id, right_stream_id },
+            ExecuteMsg::LinkStream {
+                left_stream_id,
+                right_stream_id,
+            },
         )
         .unwrap_err();
-        assert_eq!(
-            error,
-            ContractError::Unauthorized{}
-        );
+        assert_eq!(error, ContractError::Unauthorized {});
+    }
+
+    #[test]
+
+    fn test_execute_link_stream_valid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let left_stream_id = 1;
+        let right_stream_id = 2;
+        let response = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream {
+                left_stream_id,
+                right_stream_id,
+            },
+        )
+        .unwrap();
+        assert!(response
+            .attributes
+            .iter()
+            .any(|f| { f.key == "left_stream_id" }));
+        assert!(response
+            .attributes
+            .iter()
+            .any(|f| { f.key == "right_stream_id" }));
     }
 }
