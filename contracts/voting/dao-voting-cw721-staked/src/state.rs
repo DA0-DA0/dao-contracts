@@ -39,7 +39,7 @@ pub const TOTAL_STAKED_NFTS: SnapshotItem<Uint128> = SnapshotItem::new(
 );
 
 /// The maximum number of claims that may be outstanding.
-pub const MAX_CLAIMS: u64 = 100;
+pub const MAX_CLAIMS: u64 = 70;
 pub const NFT_CLAIMS: NftClaims = NftClaims::new("nft_claims");
 
 // Hooks to contracts that will receive staking and unstaking

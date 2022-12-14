@@ -1,5 +1,6 @@
 orc_config := env_var_or_default('CONFIG', '`pwd`/ci/configs/cosm-orc/ci.yaml')
 test_addrs := env_var_or_default('TEST_ADDRS', `jq -r '.[].address' ci/configs/test_accounts.json | tr '\n' ' '`)
+gas_limit := env_var_or_default('GAS_LIMIT', '10000000')
 
 build:
 	cargo build
@@ -36,7 +37,7 @@ deploy-local: download-deps
 	docker run --rm -d --name cosmwasm \
 		-e PASSWORD=xxxxxxxxx \
 		-e STAKE_TOKEN=ujunox \
-		-e GAS_LIMIT=100000000 \
+		-e GAS_LIMIT={{gas_limit}} \
 		-e MAX_BYTES=22020096 \
 		-e UNSAFE_CORS=true \
 		-p 1317:1317 \
@@ -44,7 +45,7 @@ deploy-local: download-deps
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh {{test_addrs}}
+		ghcr.io/cosmoscontracts/juno:v11.0.0 /opt/setup_and_run.sh {{test_addrs}}
 
 download-deps:
 	mkdir -p artifacts target
