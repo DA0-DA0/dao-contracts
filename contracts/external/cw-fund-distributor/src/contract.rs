@@ -40,6 +40,8 @@ pub fn instantiate(
     }
     TOTAL_POWER.save(deps.storage, &total_power.power)?;
 
+    // TODO: populate ADDR_RELATIVE_SHARE map here?
+
     Ok(Response::default()
         .add_attribute(
             "distribution_height",
@@ -64,6 +66,7 @@ pub fn execute(
             msg: _,
         }) => execute_fund_cw20(deps, info.sender, amount),
         ExecuteMsg::FundNative {} => execute_fund_native(deps, info),
+        ExecuteMsg::ClaimCW20 { tokens } => execute_claim_cw20s(deps, info.sender, tokens),
     }
 }
 
@@ -118,6 +121,15 @@ pub fn execute_fund_native(deps: DepsMut, info: MessageInfo) -> Result<Response,
     };
 
     Ok(response)
+}
+
+pub fn execute_claim_cw20s(
+    deps: DepsMut,
+    sender: Addr,
+    token: Option<Vec<String>>,
+) -> Result<Response, ContractError> {
+    // TODO
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

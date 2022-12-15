@@ -5,6 +5,7 @@ use crate::ContractError;
 use crate::msg::{InstantiateMsg, TotalPowerResponse};
 
 use cosmwasm_std::StdError::GenericErr;
+use crate::msg::ExecuteMsg::ClaimCW20;
 use crate::msg::QueryMsg::{TotalPower};
 
 const CREATOR_ADDR: &str = "creator";
@@ -354,21 +355,77 @@ fn test_fund_cw20() {
     ]);
 
     let amount = Uint128::new(500000);
-    // mint 500000 tokens to CREATOR_ADDR
-    app.execute_contract(
+    mint_tokens(
+        &mut app,
         Addr::unchecked(CREATOR_ADDR),
         token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+    // fund the contract
+    fund_distributor_contract(
+        &mut app,
+        distributor_address.clone(),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+    // query the balance of distributor contract
+    let balance = query_cw20_balance(
+        &mut app,
+        token_address,
+        distributor_address
+    );
+
+    assert_eq!(balance.balance, amount);
+}
+
+pub fn query_cw20_balance(
+    app: &mut App,
+    token_address: Addr,
+    contract_address: Addr,
+) -> cw20::BalanceResponse {
+    app
+        .wrap()
+        .query_wasm_smart(
+            token_address,
+            &cw20::Cw20QueryMsg::Balance {
+                address: contract_address.into_string(),
+            },
+        )
+        .unwrap()
+}
+
+pub fn mint_tokens(
+    app: &mut App,
+    recipient: Addr,
+    token_address: Addr,
+    amount: Uint128,
+    sender: Addr
+) {
+    app.execute_contract(
+        sender,
+        token_address,
         &cw20::Cw20ExecuteMsg::Mint {
-            recipient: CREATOR_ADDR.to_string(),
+            recipient: recipient.to_string(),
             amount,
         },
         &[],
     )
     .unwrap();
+}
 
-    // fund the contract
+pub fn fund_distributor_contract(
+    app: &mut App,
+    distributor_address: Addr,
+    token_address: Addr,
+    amount: Uint128,
+    sender: Addr
+) {
     app.execute_contract(
-        Addr::unchecked(CREATOR_ADDR),
+        sender,
         token_address.clone(),
         &cw20::Cw20ExecuteMsg::Send {
             contract: distributor_address.to_string(),
@@ -378,17 +435,89 @@ fn test_fund_cw20() {
         &[],
     )
     .unwrap();
+}
+
+#[test]
+pub fn test_fund_natives() {
+    unimplemented!()
+}
+
+#[test]
+pub fn test_claim_cw20() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+    mint_tokens(
+        &mut app,
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+    // fund the contract
+    fund_distributor_contract(
+        &mut app,
+        distributor_address.clone(),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
 
     // query the balance of distributor contract
-    let balance: cw20::BalanceResponse = app
-        .wrap()
-        .query_wasm_smart(
-            token_address,
-            &cw20::Cw20QueryMsg::Balance {
-                address: distributor_address.into_string(),
-            },
-        )
-        .unwrap();
+    let balance = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        distributor_address.clone(),
+    );
 
     assert_eq!(balance.balance, amount);
+
+    // claim the tokens
+    // should result in an entitlement of (10/(10 + 20))%
+    // of funds in the distributor contract (166666.666667 floored)
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimCW20 {
+            tokens: Some(vec![token_address.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // assert user has received the expected funds
+    let expected_balance = amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        ).unwrap();
+    let user_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(expected_balance, user_balance_after_claim.balance);
+
+    // assert funds have been deducted from distributor
+    let distributor_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(amount - expected_balance, distributor_balance_after_claim.balance);
 }
