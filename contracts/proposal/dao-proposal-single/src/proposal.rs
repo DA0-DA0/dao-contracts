@@ -48,12 +48,12 @@ pub fn advance_proposal_id(store: &mut dyn Storage) -> StdResult<u64> {
 
 impl SingleChoiceProposal {
     /// Consumes the proposal and returns a version which may be used
-    /// in a query response. The difference being that proposal
+    /// in a query response. Why is this necessary? Proposal
     /// statuses are only updated on vote, execute, and close
-    /// events. It is possible though that since a vote has occured
-    /// the proposal expiring has changed its status. This method
-    /// recomputes the status so that queries get accurate
-    /// information.
+    /// events; thus, it is possible that, if the proposal expires since
+    /// a vote has occurred, the status we read from the proposal status
+    /// may be out of date. This method recomputes the status so that
+    /// queries get accurate information.
     pub fn into_response(mut self, block: &BlockInfo, id: u64) -> ProposalResponse {
         self.update_status(block);
         ProposalResponse { id, proposal: self }
