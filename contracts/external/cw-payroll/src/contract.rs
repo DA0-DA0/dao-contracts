@@ -57,14 +57,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> C
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream { id } => execute_resume_stream(env, deps, info, id),
         ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
-        ExecuteMsg::LinkStream {
-            left_stream_id,
-            right_stream_id,
-        } => execute_link_stream(deps, &info, left_stream_id, right_stream_id),
-        ExecuteMsg::DetachStream {
-            left_stream_id,
-            right_stream_id,
-        } => execute_detach_stream(env, deps, &info, left_stream_id, right_stream_id),
+        ExecuteMsg::LinkStream { ids } => execute_link_stream(deps, &info, ids),
+        ExecuteMsg::DetachStream { id } => execute_detach_stream(env, deps, &info, id),
     }
 }
 
@@ -162,7 +156,7 @@ pub fn execute_resume_stream(
     info: MessageInfo,
     id: StreamId,
 ) -> ContractResult {
-    let pause_stream_local =
+    let resume_stream_local =
         |stream_id: StreamId, storage: &mut dyn Storage| -> Result<Stream, ContractError> {
             let mut stream = STREAMS
                 .may_load(storage, stream_id)?
@@ -175,13 +169,14 @@ pub fn execute_resume_stream(
             }
             stream.paused_duration = stream.calc_pause_duration(env.block.time);
             stream.paused = false;
+            stream.paused_time = None;
             save_stream(storage, id, &stream).unwrap();
             Ok(stream)
         };
 
-    let stream = pause_stream_local(id, deps.storage).unwrap();
+    let stream = resume_stream_local(id, deps.storage)?;
     if let Some(link_id) = stream.link_id {
-        pause_stream_local(link_id, deps.storage).unwrap();
+        resume_stream_local(link_id, deps.storage).unwrap();
     }
     let (_, rate_per_second) = stream.calc_distribution_rate(env.block.time);
     let response = Response::new()
@@ -189,7 +184,7 @@ pub fn execute_resume_stream(
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
         .add_attribute("rate_per_second", rate_per_second)
-        .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
+        .add_attribute("resume_time", env.block.time.to_string())
         .add_attribute(
             "paused_duration",
             stream.paused_duration.unwrap().to_string(),
@@ -444,6 +439,8 @@ fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
 
 #[cfg(test)]
 mod tests {
+
+    use crate::msg::StreamIdsExtensions;
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -905,46 +902,34 @@ mod tests {
         });
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-        let left_stream_id: StreamId = 1;
-        let right_stream_id: StreamId = 2;
+        let ids = vec![1, 2];
 
         //Link stream and verify error returned
         let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::LinkStream {
-                left_stream_id,
-                right_stream_id,
-            },
+            ExecuteMsg::LinkStream { ids: ids.clone() },
         )
         .unwrap_err();
         assert_eq!(
             error,
             ContractError::StreamNotFound {
-                stream_id: right_stream_id
+                stream_id: *ids.second().unwrap()
             }
         );
-        let left_stream_id: StreamId = 1;
-        let right_stream_id: StreamId = 1;
+
+        let ids = vec![1, 1];
+
         //Link stream and verify error returned
         let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::LinkStream {
-                left_stream_id,
-                right_stream_id,
-            },
+            ExecuteMsg::LinkStream { ids },
         )
         .unwrap_err();
-        assert_eq!(
-            error,
-            ContractError::StreamsShouldNotBeEqual {
-                left_stream_id,
-                right_stream_id
-            }
-        );
+        assert_eq!(error, ContractError::StreamsShouldNotBeEqual {});
 
         let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
             sender: sender.clone(),
@@ -961,17 +946,14 @@ mod tests {
         execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         let sender = Addr::unchecked("bob").to_string();
-        let left_stream_id: StreamId = 1;
-        let right_stream_id: StreamId = 2;
+        let ids = vec![1, 2];
+
         let unauthorized_info = mock_info(&sender, &[]);
         let error = execute(
             deps.as_mut(),
             mock_env(),
             unauthorized_info,
-            ExecuteMsg::LinkStream {
-                left_stream_id,
-                right_stream_id,
-            },
+            ExecuteMsg::LinkStream { ids },
         )
         .unwrap_err();
         assert_eq!(error, ContractError::Unauthorized {});
@@ -1028,24 +1010,19 @@ mod tests {
             .unwrap(),
         });
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-
-        let left_stream_id = 1;
-        let right_stream_id = 2;
+        let ids = vec![1, 2];
         let response = execute(
             deps.as_mut(),
             mock_env(),
             info,
-            ExecuteMsg::LinkStream {
-                left_stream_id,
-                right_stream_id,
-            },
+            ExecuteMsg::LinkStream { ids: ids.clone() },
         )
         .unwrap();
 
-        let left_stream = get_stream(deps.as_ref(), left_stream_id).unwrap();
-        let right_stream = get_stream(deps.as_ref(), right_stream_id).unwrap();
-        assert_eq!(left_stream.link_id, Some(right_stream_id));
-        assert_eq!(right_stream.link_id, Some(left_stream_id));
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
+        assert_eq!(left_stream.link_id, Some(*ids.second().unwrap()));
+        assert_eq!(right_stream.link_id, Some(*ids.first().unwrap()));
         assert!(response
             .attributes
             .iter()
@@ -1105,17 +1082,13 @@ mod tests {
             .unwrap(),
         });
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![1, 2];
 
-        let left_stream_id = 1;
-        let right_stream_id = 2;
         execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::LinkStream {
-                left_stream_id,
-                right_stream_id,
-            },
+            ExecuteMsg::LinkStream { ids: ids.clone() },
         )
         .unwrap();
 
@@ -1124,13 +1097,12 @@ mod tests {
             mock_env(),
             info,
             ExecuteMsg::DetachStream {
-                left_stream_id,
-                right_stream_id,
+                id: *ids.first().unwrap(),
             },
         )
         .unwrap();
-        let left_stream = get_stream(deps.as_ref(), left_stream_id).unwrap();
-        let right_stream = get_stream(deps.as_ref(), right_stream_id).unwrap();
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
 
         assert!(left_stream.paused);
         assert!(left_stream.paused_time.is_some());
@@ -1191,29 +1163,23 @@ mod tests {
             .unwrap(),
         });
         execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![1, 2];
 
-        let left_stream_id = 1;
-        let right_stream_id = 2;
         execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
-            ExecuteMsg::LinkStream {
-                left_stream_id,
-                right_stream_id,
-            },
+            ExecuteMsg::LinkStream { ids },
         )
         .unwrap();
+        let ids = vec![11, 22];
 
-        let left_stream_id = 11;
-        let right_stream_id = 22;
         let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             ExecuteMsg::DetachStream {
-                left_stream_id,
-                right_stream_id,
+                id: *ids.first().unwrap(),
             },
         )
         .unwrap_err();
@@ -1221,19 +1187,17 @@ mod tests {
         assert_eq!(
             error,
             ContractError::StreamNotFound {
-                stream_id: left_stream_id
+                stream_id: *ids.first().unwrap()
             }
         );
+        let ids = vec![1, 22];
 
-        let left_stream_id = 1;
-        let right_stream_id = 22;
         let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             ExecuteMsg::DetachStream {
-                left_stream_id,
-                right_stream_id,
+                id: *ids.second().unwrap(),
             },
         )
         .unwrap_err();
@@ -1241,20 +1205,16 @@ mod tests {
         assert_eq!(
             error,
             ContractError::StreamNotFound {
-                stream_id: right_stream_id
+                stream_id: *ids.second().unwrap()
             }
         );
-
-        //Check is_detachable
-        let left_stream_id = 1;
-        let right_stream_id = 2;
+        let ids = vec![1, 2];
         let error = execute(
             deps.as_mut(),
             mock_env(),
             info.clone(),
             ExecuteMsg::DetachStream {
-                left_stream_id,
-                right_stream_id,
+                id: *ids.second().unwrap(),
             },
         )
         .unwrap_err();
@@ -1291,21 +1251,212 @@ mod tests {
             })
             .unwrap(),
         });
-        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![3, 4];
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::LinkStream { ids: ids.clone() },
+        )
+        .unwrap();
 
-        let left_stream_id = 3;
-        let right_stream_id = 4;
         let error = execute(
             deps.as_mut(),
             mock_env(),
             unauthorized_info,
             ExecuteMsg::DetachStream {
-                left_stream_id,
-                right_stream_id,
+                id: *ids.first().unwrap(),
             },
         )
         .unwrap_err();
 
         assert_eq!(error, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_execute_resume_stream_valid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient,
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![1, 2];
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids: ids.clone() },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap();
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
+
+        assert!(left_stream.paused);
+        assert!(left_stream.paused_time.is_some());
+        assert!(left_stream.link_id.is_none());
+
+        assert!(right_stream.paused);
+        assert!(right_stream.paused_time.is_some());
+        assert!(right_stream.link_id.is_none());
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::ResumeStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap();
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
+
+        assert!(!left_stream.paused);
+        assert!(left_stream.paused_time.is_none());
+
+        assert!(right_stream.paused);
+        assert!(right_stream.paused_time.is_some());
+    }
+
+    #[test]
+    fn test_execute_resume_stream_invalid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: Some(true),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: Some(false),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let ids = vec![1, 2];
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids },
+        )
+        .unwrap();
+        let ids = vec![1, 2];
+
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::ResumeStream {
+                id: *ids.second().unwrap(),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error, ContractError::StreamNotPaused {});
+
+        let ids = vec![1, 2];
+        let unauthorized_info = mock_info(&recipient, &[]);
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            unauthorized_info,
+            ExecuteMsg::DetachStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::StreamNotDetachable {});
     }
 }

@@ -1,7 +1,7 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 use crate::{
-    msg::StreamId,
+    msg::{StreamId, StreamIds, StreamIdsExtensions},
     state::{save_stream, STREAMS},
     ContractError,
 };
@@ -10,24 +10,21 @@ pub enum LinkSyncType {
     Paused,
     Resumed,
 }
+
 pub(crate) fn execute_link_stream(
     deps: DepsMut,
     info: &MessageInfo,
-    left_stream_id: StreamId,
-    right_stream_id: StreamId,
+    ids: StreamIds,
 ) -> Result<Response, ContractError> {
-    if left_stream_id == right_stream_id {
-        return Err(ContractError::StreamsShouldNotBeEqual {
-            left_stream_id,
-            right_stream_id,
-        });
-    }
+    ids.validate()?;
+    let left_stream_id = *ids.first().unwrap();
+    let right_stream_id = *ids.second().unwrap();
 
     let mut left_stream =
         STREAMS
             .may_load(deps.storage, left_stream_id)?
             .ok_or(ContractError::StreamNotFound {
-                stream_id: left_stream_id,
+                stream_id: *ids.first().unwrap(),
             })?;
 
     let mut right_stream =
@@ -59,49 +56,38 @@ pub(crate) fn execute_detach_stream(
     env: Env,
     deps: DepsMut,
     info: &MessageInfo,
-    left_stream_id: StreamId,
-    right_stream_id: StreamId,
+    id: StreamId,
 ) -> Result<Response, ContractError> {
-    if left_stream_id == right_stream_id {
-        return Err(ContractError::StreamsShouldNotBeEqual {
-            left_stream_id,
-            right_stream_id,
-        });
-    }
-    let mut left_stream =
-        STREAMS
-            .may_load(deps.storage, left_stream_id)?
-            .ok_or(ContractError::StreamNotFound {
-                stream_id: left_stream_id,
-            })?;
-    let mut right_stream =
-        STREAMS
-            .may_load(deps.storage, right_stream_id)?
-            .ok_or(ContractError::StreamNotFound {
-                stream_id: right_stream_id,
-            })?;
+    let mut detach_stream = STREAMS
+        .may_load(deps.storage, id)?
+        .ok_or(ContractError::StreamNotFound { stream_id: id })?;
 
-    if !(left_stream.is_detachable && right_stream.is_detachable) {
+    let link_id = detach_stream.link_id.unwrap();
+    let mut linked_stream = STREAMS
+        .may_load(deps.storage, link_id)?
+        .ok_or(ContractError::StreamNotFound { stream_id: link_id })?;
+
+    if !(detach_stream.is_detachable && linked_stream.is_detachable) {
         return Err(ContractError::StreamNotDetachable {});
     }
 
-    if !(left_stream.admin == info.sender && right_stream.admin == info.sender) {
+    if !(detach_stream.admin == info.sender && linked_stream.admin == info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
-    left_stream.paused_time = Some(env.block.time.seconds());
-    left_stream.paused = true;
-    left_stream.link_id = None;
-    right_stream.paused_time = Some(env.block.time.seconds());
-    right_stream.paused = true;
-    right_stream.link_id = None;
+    detach_stream.paused_time = Some(env.block.time.seconds());
+    detach_stream.paused = true;
+    detach_stream.link_id = None;
+    linked_stream.paused_time = Some(env.block.time.seconds());
+    linked_stream.paused = true;
+    linked_stream.link_id = None;
 
-    save_stream(deps.storage, left_stream_id, &left_stream).unwrap();
-    save_stream(deps.storage, right_stream_id, &right_stream).unwrap();
+    save_stream(deps.storage, id, &detach_stream).unwrap();
+    save_stream(deps.storage, link_id, &linked_stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "link")
-        .add_attribute("left_stream_id", left_stream_id.to_string())
-        .add_attribute("right_stream_id", right_stream_id.to_string())
+        .add_attribute("detach_stream_id", id.to_string())
+        .add_attribute("linked_stream_id", link_id.to_string())
         .add_attribute("admin", info.sender.clone());
 
     Ok(response)

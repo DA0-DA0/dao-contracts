@@ -19,13 +19,11 @@ export type ExecuteMsg = {
   };
 } | {
   link_stream: {
-    left_stream_id: number;
-    right_stream_id: number;
+    ids: number[];
   };
 } | {
   detach_stream: {
-    left_stream_id: number;
-    right_stream_id: number;
+    id: number;
   };
 } | {
   resume_stream: {

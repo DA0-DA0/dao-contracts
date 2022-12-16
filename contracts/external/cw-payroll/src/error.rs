@@ -68,10 +68,10 @@ pub enum ContractError {
     CouldNotCreateBankMessage {},
 
     #[error("Left and right stream should not be equal to each other")]
-    StreamsShouldNotBeEqual {
-        left_stream_id: StreamId,
-        right_stream_id: StreamId,
-    },
+    StreamsShouldNotBeEqual {},
+
+    #[error("Invalid Stream Ids")]
+    InvalidStreamIds {},
 
     #[error("Stream is not linked")]
     StreamNotLinked {},

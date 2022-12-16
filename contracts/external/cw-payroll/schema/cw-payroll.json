@@ -87,19 +87,16 @@
           "link_stream": {
             "type": "object",
             "required": [
-              "left_stream_id",
-              "right_stream_id"
+              "ids"
             ],
             "properties": {
-              "left_stream_id": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "right_stream_id": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
+              "ids": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
               }
             },
             "additionalProperties": false
@@ -116,16 +113,10 @@
           "detach_stream": {
             "type": "object",
             "required": [
-              "left_stream_id",
-              "right_stream_id"
+              "id"
             ],
             "properties": {
-              "left_stream_id": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              "right_stream_id": {
+              "id": {
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
@@ -348,7 +339,7 @@
           "minimum": 0.0
         },
         "is_detachable": {
-          "description": "If Stream is detachable",
+          "description": "Making a stream detachable will only affect linked streams. A linked stream that detaches in the future will pause both streams. Each stream must then resume on their own, or be fully removed to re-link.",
           "type": "boolean"
         },
         "link_id": {
@@ -361,7 +352,7 @@
           "minimum": 0.0
         },
         "paused": {
-          "description": "Whether the payroll contract is currently paused",
+          "description": "Whether the payroll stream is currently paused",
           "type": "boolean"
         },
         "paused_duration": {
@@ -603,7 +594,7 @@
               "minimum": 0.0
             },
             "is_detachable": {
-              "description": "If Stream is detachable",
+              "description": "Making a stream detachable will only affect linked streams. A linked stream that detaches in the future will pause both streams. Each stream must then resume on their own, or be fully removed to re-link.",
               "type": "boolean"
             },
             "link_id": {
@@ -616,7 +607,7 @@
               "minimum": 0.0
             },
             "paused": {
-              "description": "Whether the payroll contract is currently paused",
+              "description": "Whether the payroll stream is currently paused",
               "type": "boolean"
             },
             "paused_duration": {

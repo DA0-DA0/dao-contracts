@@ -32,7 +32,9 @@ pub struct Stream {
     pub description: Option<String>,
     /// Link to stream attached for sync
     pub link_id: Option<StreamId>,
-    /// If Stream is detachable
+    /// Making a stream detachable will only affect linked streams.
+    /// A linked stream that detaches in the future will pause both streams.
+    /// Each stream must then resume on their own, or be fully removed to re-link.
     pub is_detachable: bool,
 }
 

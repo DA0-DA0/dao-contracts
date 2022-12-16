@@ -89,18 +89,14 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     id: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   linkStream: ({
-    leftStreamId,
-    rightStreamId
+    ids
   }: {
-    leftStreamId: number;
-    rightStreamId: number;
+    ids: number[];
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   detachStream: ({
-    leftStreamId,
-    rightStreamId
+    id
   }: {
-    leftStreamId: number;
-    rightStreamId: number;
+    id: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   resumeStream: ({
     id
@@ -172,30 +168,24 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     }, fee, memo, funds);
   };
   linkStream = async ({
-    leftStreamId,
-    rightStreamId
+    ids
   }: {
-    leftStreamId: number;
-    rightStreamId: number;
+    ids: number[];
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       link_stream: {
-        left_stream_id: leftStreamId,
-        right_stream_id: rightStreamId
+        ids
       }
     }, fee, memo, funds);
   };
   detachStream = async ({
-    leftStreamId,
-    rightStreamId
+    id
   }: {
-    leftStreamId: number;
-    rightStreamId: number;
+    id: number;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       detach_stream: {
-        left_stream_id: leftStreamId,
-        right_stream_id: rightStreamId
+        id
       }
     }, fee, memo, funds);
   };
