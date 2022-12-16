@@ -13,15 +13,12 @@ use dao_interface::{
     Admin, ModuleInstantiateInfo,
 };
 
-#[cfg(feature = "cw20")]
-use crate::query::Cw20BalanceResponse;
-
 use crate::{
     contract::{derive_proposal_module_prefix, migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
-        AdminNominationResponse, DaoURIResponse, DumpStateResponse, GetItemResponse,
-        PauseInfoResponse, SubDao,
+        AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
+        GetItemResponse, PauseInfoResponse, SubDao,
     },
     state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
     ContractError,
@@ -116,7 +113,6 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -149,7 +145,6 @@ fn test_instantiate_with_n_gov_modules(n: usize) {
             name: "DAO DAO".to_string(),
             description: "A DAO that builds DAOs.".to_string(),
             image_url: None,
-            #[cfg(feature = "cw20")]
             automatically_add_cw20s: true,
             automatically_add_cw721s: true,
         }
@@ -221,7 +216,6 @@ makes wickedness."
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -252,7 +246,6 @@ fn test_update_config() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -298,7 +291,6 @@ fn test_update_config() {
         name: "Root DAO".to_string(),
         description: "We love trees and sudo.".to_string(),
         image_url: Some("https://moonphase.is/image.svg".to_string()),
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: false,
         automatically_add_cw721s: true,
         dao_uri: Some("https://daostar.one/EIP".to_string()),
@@ -351,7 +343,6 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -504,7 +495,6 @@ fn test_removed_modules_can_not_execute() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -662,7 +652,6 @@ fn test_module_already_disabled() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -762,7 +751,6 @@ fn test_swap_voting_module() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -879,7 +867,6 @@ fn test_permissions() {
             label: "governance module".to_string(),
         }],
         initial_items: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
     };
@@ -926,7 +913,6 @@ fn test_permissions() {
                 name: "Evil config.".to_string(),
                 description: "👿".to_string(),
                 image_url: None,
-                #[cfg(feature = "cw20")]
                 automatically_add_cw20s: true,
                 automatically_add_cw721s: true,
             },
@@ -965,7 +951,6 @@ fn do_standard_instantiate(auto_add: bool, admin: Option<String>) -> (Addr, App)
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: auto_add,
         automatically_add_cw721s: auto_add,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -1598,7 +1583,6 @@ fn test_list_items() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -1716,7 +1700,6 @@ fn test_instantiate_with_items() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -1777,7 +1760,6 @@ fn test_instantiate_with_items() {
     assert_eq!(item1_value, Some("item1_value".to_string()))
 }
 
-#[cfg(feature = "cw20")]
 #[test]
 fn test_cw20_receive_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(true, None);
@@ -1813,21 +1795,19 @@ fn test_cw20_receive_auto_add() {
         )
         .unwrap();
 
-    #[cfg(feature = "cw20")]
-    {
-        // Check that the balances query works with no tokens.
-        let cw20_balances: Vec<Cw20BalanceResponse> = app
-            .wrap()
-            .query_wasm_smart(
-                gov_addr.clone(),
-                &QueryMsg::Cw20Balances {
-                    start_after: None,
-                    limit: None,
-                },
-            )
-            .unwrap();
-        assert_eq!(cw20_balances, vec![]);
-    }
+    // Check that the balances query works with no tokens.
+    let cw20_balances: Vec<Cw20BalanceResponse> = app
+        .wrap()
+        .query_wasm_smart(
+            gov_addr.clone(),
+            &QueryMsg::Cw20Balances {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw20_balances, vec![]);
+
     // Send a gov token to the governance contract.
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
@@ -1927,7 +1907,6 @@ fn test_cw20_receive_auto_add() {
     assert_eq!(cw20_list, vec![another_cw20]);
 }
 
-#[cfg(feature = "cw20")]
 #[test]
 fn test_cw20_receive_no_auto_add() {
     let (gov_addr, mut app) = do_standard_instantiate(false, None);
@@ -2294,7 +2273,6 @@ fn test_pause() {
                 name: "The Empire Strikes Back".to_string(),
                 description: "haha lol we have pwned your DAO".to_string(),
                 image_url: None,
-                #[cfg(feature = "cw20")]
                 automatically_add_cw20s: true,
                 automatically_add_cw721s: true,
             },
@@ -2371,7 +2349,6 @@ fn test_pause() {
                     name: "The Empire Strikes Back Again".to_string(),
                     description: "haha lol we have pwned your DAO again".to_string(),
                     image_url: None,
-                    #[cfg(feature = "cw20")]
                     automatically_add_cw20s: true,
                     automatically_add_cw721s: true,
                 },
@@ -2549,7 +2526,6 @@ fn test_migrate_from_compatible() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: false,
         automatically_add_cw721s: false,
         voting_module_instantiate_info: ModuleInstantiateInfo {
@@ -2748,7 +2724,6 @@ fn test_migrate_mock() {
     assert_eq!(v2_config.name, v1_config.name);
     assert_eq!(v2_config.description, v1_config.description);
     assert_eq!(v2_config.image_url, v1_config.image_url);
-    #[cfg(feature = "cw20")]
     assert_eq!(
         v2_config.automatically_add_cw20s,
         v1_config.automatically_add_cw20s
@@ -2807,7 +2782,6 @@ fn test_module_prefixes() {
         name: "DAO DAO".to_string(),
         description: "A DAO that builds DAOs.".to_string(),
         image_url: None,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: true,
         automatically_add_cw721s: true,
         voting_module_instantiate_info: ModuleInstantiateInfo {

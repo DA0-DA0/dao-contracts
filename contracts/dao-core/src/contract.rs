@@ -13,17 +13,13 @@ use dao_interface::{voting, ModuleInstantiateCallback, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
-#[cfg(feature = "cw20")]
-use crate::query::Cw20BalanceResponse;
 use crate::query::{
-    AdminNominationResponse, DaoURIResponse, DumpStateResponse, GetItemResponse, PauseInfoResponse,
-    SubDao,
+    AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
+    GetItemResponse, PauseInfoResponse, SubDao,
 };
-#[cfg(feature = "cw20")]
-use crate::state::CW20_LIST;
 use crate::state::{
     Config, ProposalModule, ProposalModuleStatus, ACTIVE_PROPOSAL_MODULE_COUNT, ADMIN, CONFIG,
-    CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, SUBDAO_LIST,
+    CW20_LIST, CW721_LIST, ITEMS, NOMINATED_ADMIN, PAUSED, PROPOSAL_MODULES, SUBDAO_LIST,
     TOTAL_PROPOSAL_MODULE_COUNT, VOTING_MODULE,
 };
 
@@ -47,7 +43,6 @@ pub fn instantiate(
         name: msg.name,
         description: msg.description,
         image_url: msg.image_url,
-        #[cfg(feature = "cw20")]
         automatically_add_cw20s: msg.automatically_add_cw20s,
         automatically_add_cw721s: msg.automatically_add_cw721s,
         dao_uri: msg.dao_uri,
@@ -114,7 +109,6 @@ pub fn execute(
             execute_proposal_hook(deps.as_ref(), info.sender, msgs)
         }
         ExecuteMsg::Pause { duration } => execute_pause(deps, env, info.sender, duration),
-        #[cfg(feature = "cw20")]
         ExecuteMsg::Receive(_) => execute_receive_cw20(deps, info.sender),
         ExecuteMsg::ReceiveNft(_) => execute_receive_cw721(deps, info.sender),
         ExecuteMsg::RemoveItem { key } => execute_remove_item(deps, env, info.sender, key),
@@ -122,7 +116,6 @@ pub fn execute(
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info.sender, config)
         }
-        #[cfg(feature = "cw20")]
         ExecuteMsg::UpdateCw20List { to_add, to_remove } => {
             execute_update_cw20_list(deps, env, info.sender, to_add, to_remove)
         }
@@ -404,7 +397,6 @@ fn do_update_addr_list(
     Ok(())
 }
 
-#[cfg(feature = "cw20")]
 pub fn execute_update_cw20_list(
     deps: DepsMut,
     env: Env,
@@ -512,7 +504,6 @@ pub fn execute_update_sub_daos_list(
         .add_attribute("sender", sender))
 }
 
-#[cfg(feature = "cw20")]
 pub fn execute_receive_cw20(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if !config.automatically_add_cw20s {
@@ -543,9 +534,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Admin {} => query_admin(deps),
         QueryMsg::AdminNomination {} => query_admin_nomination(deps),
         QueryMsg::Config {} => query_config(deps),
-        #[cfg(feature = "cw20")]
         QueryMsg::Cw20TokenList { start_after, limit } => query_cw20_list(deps, start_after, limit),
-        #[cfg(feature = "cw20")]
         QueryMsg::Cw20Balances { start_after, limit } => {
             query_cw20_balances(deps, env, start_after, limit)
         }
@@ -738,7 +727,6 @@ pub fn query_list_items(
     )?)
 }
 
-#[cfg(feature = "cw20")]
 pub fn query_cw20_list(
     deps: Deps,
     start_after: Option<String>,
@@ -771,7 +759,6 @@ pub fn query_cw721_list(
     )?)
 }
 
-#[cfg(feature = "cw20")]
 pub fn query_cw20_balances(
     deps: Deps,
     env: Env,
@@ -879,7 +866,6 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                     name: v1_config.name,
                     description: v1_config.description,
                     image_url: v1_config.image_url,
-                    #[cfg(feature = "cw20")]
                     automatically_add_cw20s: v1_config.automatically_add_cw20s,
                     automatically_add_cw721s: v1_config.automatically_add_cw721s,
                     dao_uri,
