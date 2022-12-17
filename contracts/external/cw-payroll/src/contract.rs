@@ -2,9 +2,10 @@ use std::vec;
 
 use crate::balance::*;
 use crate::error::{ContractError, GenericError};
+use crate::linking::*;
 use crate::msg::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
-    StreamId, StreamParams, StreamResponse,
+    ConfigResponse, ContractResult, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg,
+    ReceiveMsg, StreamId, StreamParams, StreamResponse,
 };
 use crate::state::{
     add_stream, remove_stream, save_stream, Config, Stream, CONFIG, STREAMS, STREAM_SEQ,
@@ -13,7 +14,7 @@ use crate::state::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Order, Response, StdResult, Uint128,
+    Order, Response, StdResult, Storage, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::{Cw20CoinVerified, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -28,7 +29,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let admin = match msg.admin {
@@ -49,39 +50,45 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> ContractResult {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream { id } => execute_resume_stream(env, deps, info, id),
         ExecuteMsg::RemoveStream { id } => execute_remove_stream(env, deps, info, id),
+        ExecuteMsg::LinkStream { ids } => execute_link_stream(deps, &info, ids),
+        ExecuteMsg::DetachStream { id } => execute_detach_stream(env, deps, &info, id),
     }
 }
+
 pub fn execute_pause_stream(
     env: Env,
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
-) -> Result<Response, ContractError> {
-    let mut stream = STREAMS
-        .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+) -> ContractResult {
+    let pause_stream_local =
+        |stream_id: StreamId, storage: &mut dyn Storage| -> Result<Stream, ContractError> {
+            let mut stream = STREAMS
+                .may_load(storage, stream_id)?
+                .ok_or(ContractError::StreamNotFound { stream_id: id })?;
+            if stream.admin != info.sender {
+                return Err(ContractError::Unauthorized {});
+            }
+            if stream.paused {
+                return Err(ContractError::StreamAlreadyPaused {});
+            }
+            stream.paused_time = Some(env.block.time.seconds());
+            stream.paused = true;
+            save_stream(storage, id, &stream).unwrap();
+            Ok(stream)
+        };
+    let stream = pause_stream_local(id, deps.storage).unwrap();
 
-    if stream.admin != info.sender {
-        return Err(ContractError::Unauthorized {});
+    if let Some(link_id) = stream.link_id {
+        pause_stream_local(link_id, deps.storage).unwrap();
     }
-    if stream.paused {
-        return Err(ContractError::StreamAlreadyPaused {});
-    }
-    stream.paused_time = Some(env.block.time.seconds());
-    stream.paused = true;
-    save_stream(deps, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "pause_stream")
         .add_attribute("paused", stream.paused.to_string())
@@ -96,25 +103,27 @@ pub fn execute_remove_stream(
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
-) -> Result<Response, ContractError> {
+) -> ContractResult {
     let stream = STREAMS
         .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+        .ok_or(ContractError::StreamNotFound { stream_id: id })?;
 
     if stream.admin != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-
-    remove_stream(deps, id).unwrap();
+    if let Some(link_id) = stream.link_id {
+        return Err(ContractError::LinkedStreamDeleteNotAllowed { link_id });
+    }
+    remove_stream(deps.storage, id).unwrap();
     let response = Response::new()
         .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
         .add_attribute("removed_time", env.block.time.to_string())
         .add_message(
-            create_balance_transfer_msg(&stream.balance, None, stream.admin.into()).unwrap(),
+            create_balance_transfer_msg(&stream.balance, None, stream.admin.clone().into())
+                .unwrap(),
         );
-
     Ok(response)
 }
 fn create_balance_transfer_msg(
@@ -146,29 +155,36 @@ pub fn execute_resume_stream(
     deps: DepsMut,
     info: MessageInfo,
     id: StreamId,
-) -> Result<Response, ContractError> {
-    let mut stream = STREAMS
-        .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+) -> ContractResult {
+    let resume_stream_local =
+        |stream_id: StreamId, storage: &mut dyn Storage| -> Result<Stream, ContractError> {
+            let mut stream = STREAMS
+                .may_load(storage, stream_id)?
+                .ok_or(ContractError::StreamNotFound { stream_id: id })?;
+            if stream.admin != info.sender {
+                return Err(ContractError::Unauthorized {});
+            }
+            if !stream.paused {
+                return Err(ContractError::StreamNotPaused {});
+            }
+            stream.paused_duration = stream.calc_pause_duration(env.block.time);
+            stream.paused = false;
+            stream.paused_time = None;
+            save_stream(storage, id, &stream).unwrap();
+            Ok(stream)
+        };
 
-    if stream.admin != info.sender {
-        return Err(ContractError::Unauthorized {});
+    let stream = resume_stream_local(id, deps.storage)?;
+    if let Some(link_id) = stream.link_id {
+        resume_stream_local(link_id, deps.storage).unwrap();
     }
-    if !stream.paused {
-        return Err(ContractError::StreamNotPaused {});
-    }
-
-    stream.paused_duration = stream.calc_pause_duration(env.block.time);
     let (_, rate_per_second) = stream.calc_distribution_rate(env.block.time);
-    stream.paused = false;
-
-    save_stream(deps, id, &stream).unwrap();
     let response = Response::new()
         .add_attribute("method", "resume_stream")
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
         .add_attribute("rate_per_second", rate_per_second)
-        .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
+        .add_attribute("resume_time", env.block.time.to_string())
         .add_attribute(
             "paused_duration",
             stream.paused_duration.unwrap().to_string(),
@@ -177,11 +193,7 @@ pub fn execute_resume_stream(
 
     Ok(response)
 }
-pub fn execute_create_stream(
-    env: Env,
-    deps: DepsMut,
-    params: StreamParams,
-) -> Result<Response, ContractError> {
+pub fn execute_create_stream(env: Env, deps: DepsMut, params: StreamParams) -> ContractResult {
     let StreamParams {
         admin,
         recipient,
@@ -190,6 +202,7 @@ pub fn execute_create_stream(
         end_time,
         title,
         description,
+        is_detachable,
     } = params;
 
     let admin = deps.api.addr_validate(&admin)?;
@@ -233,6 +246,8 @@ pub fn execute_create_stream(
         paused: false,
         title,
         description,
+        link_id: None,
+        is_detachable: is_detachable.unwrap_or(true),
     };
     let id = add_stream(deps, &stream)?;
 
@@ -259,7 +274,7 @@ pub fn execute_receive(
     deps: DepsMut,
     info: MessageInfo,
     wrapped: Cw20ReceiveMsg,
-) -> Result<Response, ContractError> {
+) -> ContractResult {
     deps.api.addr_validate(&info.sender.into_string())?;
     let msg: ReceiveMsg = from_binary(&wrapped.msg)?;
     match msg {
@@ -268,6 +283,7 @@ pub fn execute_receive(
             start_time,
             end_time,
             recipient,
+            is_detachable,
         } => execute_create_stream(
             env,
             deps,
@@ -279,15 +295,16 @@ pub fn execute_receive(
                 end_time,
                 title: None,
                 description: None,
+                is_detachable,
             },
         ),
     }
 }
 
-pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, ContractError> {
+pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> ContractResult {
     let mut stream = STREAMS
         .may_load(deps.storage, id)?
-        .ok_or(ContractError::StreamNotFound {})?;
+        .ok_or(ContractError::StreamNotFound { stream_id: id })?;
 
     let mut msgs: Vec<CosmosMsg> = vec![];
     let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
@@ -335,7 +352,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
         stream.balance.checked_sub_cw20(&[to_claim]).unwrap();
     }
 
-    save_stream(deps, id, &stream).unwrap();
+    save_stream(deps.storage, id, &stream).unwrap();
 
     let mut res = Response::new()
         .add_attribute("method", "distribute")
@@ -380,6 +397,8 @@ fn query_stream(deps: Deps, id: u64) -> StdResult<StreamResponse> {
         paused_time: stream.paused_time,
         paused_duration: stream.paused_duration,
         paused: stream.paused,
+        is_detachable: stream.is_detachable,
+        link_id: stream.link_id,
     })
 }
 
@@ -413,11 +432,15 @@ fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
         paused_time: stream.paused_time,
         paused_duration: stream.paused_duration,
         paused: stream.paused,
+        is_detachable: stream.is_detachable,
+        link_id: stream.link_id,
     })
 }
 
 #[cfg(test)]
 mod tests {
+
+    use crate::msg::StreamIdsExtensions;
 
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
@@ -475,6 +498,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -494,6 +518,8 @@ mod tests {
                 paused: false,
                 paused_time: None,
                 paused_duration: None,
+                link_id: None,
+                is_detachable: true,
             }
         );
 
@@ -543,6 +569,8 @@ mod tests {
                 paused: false,
                 paused_time: None,
                 paused_duration: None,
+                link_id: None,
+                is_detachable: true,
             }
         );
 
@@ -573,6 +601,7 @@ mod tests {
                 recipient: recipient.into_string(),
                 start_time,
                 end_time,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -610,6 +639,8 @@ mod tests {
                 paused: false,
                 paused_time: None,
                 paused_duration: None,
+                link_id: None,
+                is_detachable: true,
             }
         );
     }
@@ -637,6 +668,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -667,6 +699,8 @@ mod tests {
                 paused: true,
                 paused_time: saved_stream.paused_time,
                 paused_duration: saved_stream.paused_duration,
+                link_id: None,
+                is_detachable: true,
             }
         );
     }
@@ -692,6 +726,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -722,6 +757,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -757,6 +793,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -791,6 +828,7 @@ mod tests {
                 recipient,
                 start_time,
                 end_time,
+                is_detachable: None,
             })
             .unwrap(),
         });
@@ -827,7 +865,598 @@ mod tests {
                 funds: vec![]
             })
         );
-        //Check balance of stream refunded to admin
-        println!("{:?}", remove_response);
+    }
+    #[test]
+    fn test_execute_link_stream_invalid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let ids = vec![1, 2];
+
+        //Link stream and verify error returned
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids: ids.clone() },
+        )
+        .unwrap_err();
+        assert_eq!(
+            error,
+            ContractError::StreamNotFound {
+                stream_id: *ids.second().unwrap()
+            }
+        );
+
+        let ids = vec![1, 1];
+
+        //Link stream and verify error returned
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids },
+        )
+        .unwrap_err();
+        assert_eq!(error, ContractError::StreamsShouldNotBeEqual {});
+
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient,
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let sender = Addr::unchecked("bob").to_string();
+        let ids = vec![1, 2];
+
+        let unauthorized_info = mock_info(&sender, &[]);
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            unauthorized_info,
+            ExecuteMsg::LinkStream { ids },
+        )
+        .unwrap_err();
+        assert_eq!(error, ContractError::Unauthorized {});
+    }
+
+    #[test]
+
+    fn test_execute_link_stream_valid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient,
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![1, 2];
+        let response = execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::LinkStream { ids: ids.clone() },
+        )
+        .unwrap();
+
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
+        assert_eq!(left_stream.link_id, Some(*ids.second().unwrap()));
+        assert_eq!(right_stream.link_id, Some(*ids.first().unwrap()));
+        assert!(response
+            .attributes
+            .iter()
+            .any(|f| { f.key == "left_stream_id" }));
+        assert!(response
+            .attributes
+            .iter()
+            .any(|f| { f.key == "right_stream_id" }));
+    }
+    #[test]
+    fn test_execute_detach_stream_valid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient,
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![1, 2];
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids: ids.clone() },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::DetachStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap();
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
+
+        assert!(left_stream.paused);
+        assert!(left_stream.paused_time.is_some());
+        assert!(left_stream.link_id.is_none());
+
+        assert!(right_stream.paused);
+        assert!(right_stream.paused_time.is_some());
+        assert!(right_stream.link_id.is_none());
+    }
+
+    #[test]
+    fn test_execute_detach_stream_invalid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: Some(false),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: Some(false),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![1, 2];
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids },
+        )
+        .unwrap();
+        let ids = vec![11, 22];
+
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error,
+            ContractError::StreamNotFound {
+                stream_id: *ids.first().unwrap()
+            }
+        );
+        let ids = vec![1, 22];
+
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream {
+                id: *ids.second().unwrap(),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(
+            error,
+            ContractError::StreamNotFound {
+                stream_id: *ids.second().unwrap()
+            }
+        );
+        let ids = vec![1, 2];
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream {
+                id: *ids.second().unwrap(),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::StreamNotDetachable {});
+
+        let unauthorized_info = mock_info(&recipient, &[]);
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: Some(true),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient,
+                start_time,
+                end_time,
+                is_detachable: Some(true),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![3, 4];
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::LinkStream { ids: ids.clone() },
+        )
+        .unwrap();
+
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            unauthorized_info,
+            ExecuteMsg::DetachStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::Unauthorized {});
+    }
+
+    #[test]
+    fn test_execute_resume_stream_valid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient,
+                start_time,
+                end_time,
+                is_detachable: None,
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+        let ids = vec![1, 2];
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids: ids.clone() },
+        )
+        .unwrap();
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::DetachStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap();
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
+
+        assert!(left_stream.paused);
+        assert!(left_stream.paused_time.is_some());
+        assert!(left_stream.link_id.is_none());
+
+        assert!(right_stream.paused);
+        assert!(right_stream.paused_time.is_some());
+        assert!(right_stream.link_id.is_none());
+
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::ResumeStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap();
+        let left_stream = get_stream(deps.as_ref(), *ids.first().unwrap()).unwrap();
+        let right_stream = get_stream(deps.as_ref(), *ids.second().unwrap()).unwrap();
+
+        assert!(!left_stream.paused);
+        assert!(left_stream.paused_time.is_none());
+
+        assert!(right_stream.paused);
+        assert!(right_stream.paused_time.is_some());
+    }
+
+    #[test]
+    fn test_execute_resume_stream_invalid() {
+        let mut deps = mock_dependencies();
+        let sender = Addr::unchecked("alice").to_string();
+
+        let info = mock_info(&sender, &[]);
+
+        instantiate(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            InstantiateMsg { admin: None },
+        )
+        .unwrap();
+
+        let recipient = Addr::unchecked("bob").to_string();
+        let amount = Uint128::new(350);
+        let env = mock_env();
+        let start_time = env.block.time.plus_seconds(100).seconds();
+        let end_time = env.block.time.plus_seconds(400).seconds();
+
+        //Create stream 1
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender.clone()),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: Some(true),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        //Create stream 2
+        let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+            sender: sender.clone(),
+            amount,
+            msg: to_binary(&ReceiveMsg::CreateStream {
+                admin: Some(sender),
+                recipient: recipient.clone(),
+                start_time,
+                end_time,
+                is_detachable: Some(false),
+            })
+            .unwrap(),
+        });
+        execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+        let ids = vec![1, 2];
+        execute(
+            deps.as_mut(),
+            mock_env(),
+            info.clone(),
+            ExecuteMsg::LinkStream { ids },
+        )
+        .unwrap();
+        let ids = vec![1, 2];
+
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            ExecuteMsg::ResumeStream {
+                id: *ids.second().unwrap(),
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error, ContractError::StreamNotPaused {});
+
+        let ids = vec![1, 2];
+        let unauthorized_info = mock_info(&recipient, &[]);
+        let error = execute(
+            deps.as_mut(),
+            mock_env(),
+            unauthorized_info,
+            ExecuteMsg::DetachStream {
+                id: *ids.first().unwrap(),
+            },
+        )
+        .unwrap_err();
+
+        assert_eq!(error, ContractError::StreamNotDetachable {});
     }
 }
