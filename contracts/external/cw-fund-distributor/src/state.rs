@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 
 // block height for distribution snapshot
@@ -10,7 +10,7 @@ pub const TOTAL_POWER: Item<Uint128> = Item::new("total_power");
 
 // maps user (ADDRESS) to the respective relative share
 // of all types of collateral
-pub const ADDR_RELATIVE_SHARE: Map<Addr, f64> = Map::new("relative_share");
+pub const ADDR_RELATIVE_SHARE: Map<Addr, Decimal> = Map::new("relative_share");
 
 // maps token address to the amount being distributed
 pub const CW20_BALANCES: Map<Addr, Uint128> = Map::new("cw20_balances");

@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_binary, Uint128};
+use cosmwasm_std::{Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, to_binary, Uint128, WasmMsg};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TotalPowerResponse, VotingContractResponse};
-use crate::state::{CW20_BALANCES, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, TOTAL_POWER, VOTING_CONTRACT};
+use crate::state::{CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, TOTAL_POWER, VOTING_CONTRACT};
 
 use dao_interface::voting;
 
@@ -128,8 +128,70 @@ pub fn execute_claim_cw20s(
     sender: Addr,
     token: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    // TODO
-    Ok(Response::default())
+    // calculate the entitlement
+    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
+    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
+    let total_power = TOTAL_POWER.load(deps.storage)?;
+
+    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        voting_contract,
+        &voting::Query::VotingPowerAtHeight {
+            address: sender.to_string(),
+            height: Some(dist_height),
+        },
+    )?;
+
+    let mut response = Response::default();
+    match token {
+        Some(tokens) => {
+            for addr in tokens {
+                // get the balance of distributor at instantiation
+                let bal = CW20_BALANCES.load(
+                    deps.storage,
+                    Addr::unchecked(addr.clone())
+                )?;
+
+                // check for any previous claims
+                let previous_claim = CW20_CLAIMS.load(
+                    deps.storage,
+                    (sender.clone(), Addr::unchecked(addr.clone()))
+                ).unwrap_or_default();
+
+                // get % share of sender and subtract any previous claims
+                let entitlement = bal.multiply_ratio(
+                voting_power.power,
+                total_power
+                ) - previous_claim;
+
+                // reflect the new total claim amount
+                CW20_CLAIMS.update(
+                    deps.storage,
+                    (sender.clone(), Addr::unchecked(addr.clone())),
+                    |claim| {
+                        claim.unwrap_or_default()
+                            .checked_add(entitlement)
+                            .map_err(StdError::overflow)
+                    }
+                )?;
+
+                // add the transfer message
+                response = response.add_message(WasmMsg::Execute {
+                    contract_addr: addr,
+                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                        recipient: sender.to_string(),
+                        amount: entitlement,
+                    })?,
+                    funds: vec![],
+                });
+            }
+        },
+        None => {},
+    }
+
+    Ok(response
+        .add_attribute("method", "claim_cw20s")
+        .add_attribute("sender", sender.clone())
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

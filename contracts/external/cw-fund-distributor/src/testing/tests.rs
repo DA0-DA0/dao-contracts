@@ -271,22 +271,6 @@ fn test_instantiate_fails_zero_voting_power() {
         )
         .unwrap();
 
-    let staking_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_address.clone(),
-            &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
-        )
-        .unwrap();
-
-    let token_contract: Addr = app
-        .wrap()
-        .query_wasm_smart(
-            voting_address.clone(),
-            &dao_voting_cw20_staked::msg::QueryMsg::TokenContract {},
-        )
-        .unwrap();
-
     app.update_block(next_block);
 
     let expected_error: ContractError = app
@@ -341,7 +325,7 @@ fn test_fund_cw20() {
     let BaseTest {
         mut app,
         distributor_address,
-        staking_address,
+        staking_address: _,
         token_address,
     } = setup_test(vec![
         Cw20Coin {
@@ -447,7 +431,7 @@ pub fn test_claim_cw20() {
     let BaseTest {
         mut app,
         distributor_address,
-        staking_address,
+        staking_address: _,
         token_address,
     } = setup_test(vec![
         Cw20Coin {
@@ -506,6 +490,7 @@ pub fn test_claim_cw20() {
             Uint128::new(10),
             Uint128::new(30)
         ).unwrap();
+
     let user_balance_after_claim = query_cw20_balance(
         &mut app,
         token_address.clone(),
@@ -517,7 +502,52 @@ pub fn test_claim_cw20() {
     let distributor_balance_after_claim = query_cw20_balance(
         &mut app,
         token_address.clone(),
-        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
     );
     assert_eq!(amount - expected_balance, distributor_balance_after_claim.balance);
+
+    app.update_block(next_block);
+    // fund contract again with 10_000
+    let new_amount = Uint128::new(100000);
+    mint_tokens(
+        &mut app,
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        new_amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+    fund_distributor_contract(
+        &mut app,
+        distributor_address.clone(),
+        token_address.clone(),
+        new_amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+    // claim the tokens again
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimCW20 {
+            tokens: Some(vec![token_address.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // assert that user has been able to claim the difference
+    // between total funded CW20_BALANCES of the token being
+    // claimed and the amount previously claimed.
+    // while in theory 100000 * (1/3) floored is 33333,
+    // 600000 * (1/3) => 200000
+    // previous claim => 166666
+    // new claim => (200000 - 166666) => 33334
+    let total_expected_claim = Uint128::new(200000);
+
+    let user_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(total_expected_claim, user_balance_after_claim.balance);
 }
