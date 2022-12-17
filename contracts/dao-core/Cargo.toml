@@ -12,11 +12,8 @@ crate-type = ["cdylib", "rlib"]
 [features]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
-# enables cw20 treasury management
-cw20 = []
 # use library feature to disable all instantiate/execute/query exports
 library = []
-default = ["cw20"]
 
 [dependencies]
 cosmwasm-std = { workspace = true, features = ["ibc3"] }
