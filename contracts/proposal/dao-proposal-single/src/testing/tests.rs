@@ -499,6 +499,60 @@ fn test_execute_no_non_passed_execution() {
 }
 
 #[test]
+fn test_cant_execute_not_member_when_proposal_created() {
+    let CommonTest {
+        mut app,
+        core_addr,
+        proposal_module,
+        gov_token,
+        proposal_id,
+    } = setup_test(vec![BankMsg::Send {
+        to_address: CREATOR_ADDR.to_string(),
+        amount: coins(10, "ujuno"),
+    }
+    .into()]);
+    mint_natives(&mut app, core_addr.as_str(), coins(100, "ujuno"));
+
+    vote_on_proposal(
+        &mut app,
+        &proposal_module,
+        CREATOR_ADDR,
+        proposal_id,
+        Vote::Yes,
+    );
+
+    // Give noah some tokens.
+    mint_cw20s(&mut app, &gov_token, &core_addr, "noah", 20_000_000);
+    // Have noah stake some.
+    let voting_module = query_voting_module(&app, &core_addr);
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    app.execute_contract(
+        Addr::unchecked("noah"),
+        gov_token,
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: staking_contract.to_string(),
+            amount: Uint128::new(10_000_000),
+            msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+    // Update the block so that the staked balance appears.
+    app.update_block(|block| block.height += 1);
+
+    // Can't execute from member who wasn't a member when the proposal was
+    // created.
+    let err = execute_proposal_should_fail(&mut app, &proposal_module, "noah", proposal_id);
+    assert!(matches!(err, ContractError::Unauthorized {}));
+}
+
+#[test]
 fn test_update_config() {
     let CommonTest {
         mut app,
