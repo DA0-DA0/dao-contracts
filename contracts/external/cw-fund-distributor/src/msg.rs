@@ -11,8 +11,8 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Receive(cw20::Cw20ReceiveMsg),
     FundNative {},
-    ClaimCW20 {tokens: Option<Vec<String>>},
-
+    ClaimCW20 { tokens: Option<Vec<String>> },
+    ClaimNatives { denoms: Option<Vec<String>> },
 }
 
 #[cw_serde]

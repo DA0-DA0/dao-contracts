@@ -1,14 +1,15 @@
-use cosmwasm_std::{Addr, Binary, Empty, to_binary, Uint128};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor, next_block};
+use cosmwasm_std::{Addr, Binary, Coin, Empty, to_binary, Uint128};
+use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, next_block, SudoMsg};
 use cw20::Cw20Coin;
 use crate::ContractError;
-use crate::msg::{InstantiateMsg, TotalPowerResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, TotalPowerResponse};
 
 use cosmwasm_std::StdError::GenericErr;
-use crate::msg::ExecuteMsg::ClaimCW20;
+use crate::msg::ExecuteMsg::{ClaimCW20, ClaimNatives};
 use crate::msg::QueryMsg::{TotalPower};
 
 const CREATOR_ADDR: &str = "creator";
+const FEE_DENOM: &str = "ujuno";
 
 fn distributor_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -137,6 +138,105 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
         staking_address: staking_contract,
         token_address: token_contract,
     }
+}
+
+pub fn query_cw20_balance(
+    app: &mut App,
+    token_address: Addr,
+    account: Addr,
+) -> cw20::BalanceResponse {
+    app
+        .wrap()
+        .query_wasm_smart(
+            token_address,
+            &cw20::Cw20QueryMsg::Balance {
+                address: account.into_string(),
+            },
+        )
+        .unwrap()
+}
+
+pub fn query_native_balance(
+    app: &mut App,
+    account: Addr,
+) -> Coin {
+    app
+        .wrap()
+        .query_balance(account.to_string(), FEE_DENOM.to_string())
+        .unwrap()
+}
+
+pub fn mint_cw20s(
+    app: &mut App,
+    recipient: Addr,
+    token_address: Addr,
+    amount: Uint128,
+    sender: Addr
+) {
+    app.execute_contract(
+        sender,
+        token_address,
+        &cw20::Cw20ExecuteMsg::Mint {
+            recipient: recipient.to_string(),
+            amount,
+        },
+        &[],
+    )
+        .unwrap();
+}
+
+pub fn mint_natives(
+    app: &mut App,
+    recipient: Addr,
+    amount: Uint128,
+) {
+    app
+        .sudo(SudoMsg::Bank(BankSudo::Mint {
+            to_address: recipient.to_string(),
+            amount: vec![Coin {
+                amount,
+                denom: FEE_DENOM.to_string(),
+            }],
+        }))
+        .unwrap();
+}
+
+pub fn fund_distributor_contract_cw20(
+    app: &mut App,
+    distributor_address: Addr,
+    token_address: Addr,
+    amount: Uint128,
+    sender: Addr
+) {
+    app.execute_contract(
+        sender,
+        token_address.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: distributor_address.to_string(),
+            amount,
+            msg: Binary::default(),
+        },
+        &[],
+    )
+        .unwrap();
+}
+
+pub fn fund_distributor_contract_natives(
+    app: &mut App,
+    distributor_address: Addr,
+    amount: Uint128,
+    sender: Addr
+) {
+    app.execute_contract(
+        Addr::unchecked(sender),
+        distributor_address,
+        &ExecuteMsg::FundNative {},
+        &[Coin {
+            amount,
+            denom: FEE_DENOM.to_string(),
+        }],
+    )
+        .unwrap();
 }
 
 #[test]
@@ -339,7 +439,7 @@ fn test_fund_cw20() {
     ]);
 
     let amount = Uint128::new(500000);
-    mint_tokens(
+    mint_cw20s(
         &mut app,
         Addr::unchecked(CREATOR_ADDR),
         token_address.clone(),
@@ -348,7 +448,7 @@ fn test_fund_cw20() {
     );
 
     // fund the contract
-    fund_distributor_contract(
+    fund_distributor_contract_cw20(
         &mut app,
         distributor_address.clone(),
         token_address.clone(),
@@ -366,64 +466,38 @@ fn test_fund_cw20() {
     assert_eq!(balance.balance, amount);
 }
 
-pub fn query_cw20_balance(
-    app: &mut App,
-    token_address: Addr,
-    contract_address: Addr,
-) -> cw20::BalanceResponse {
-    app
-        .wrap()
-        .query_wasm_smart(
-            token_address,
-            &cw20::Cw20QueryMsg::Balance {
-                address: contract_address.into_string(),
-            },
-        )
-        .unwrap()
-}
-
-pub fn mint_tokens(
-    app: &mut App,
-    recipient: Addr,
-    token_address: Addr,
-    amount: Uint128,
-    sender: Addr
-) {
-    app.execute_contract(
-        sender,
-        token_address,
-        &cw20::Cw20ExecuteMsg::Mint {
-            recipient: recipient.to_string(),
-            amount,
-        },
-        &[],
-    )
-    .unwrap();
-}
-
-pub fn fund_distributor_contract(
-    app: &mut App,
-    distributor_address: Addr,
-    token_address: Addr,
-    amount: Uint128,
-    sender: Addr
-) {
-    app.execute_contract(
-        sender,
-        token_address.clone(),
-        &cw20::Cw20ExecuteMsg::Send {
-            contract: distributor_address.to_string(),
-            amount,
-            msg: Binary::default(),
-        },
-        &[],
-    )
-    .unwrap();
-}
-
 #[test]
 pub fn test_fund_natives() {
-    unimplemented!()
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR)
+    );
+
+    let balance = query_native_balance(&mut app, distributor_address).amount;
+
+    assert_eq!(amount, balance);
 }
 
 #[test]
@@ -445,7 +519,7 @@ pub fn test_claim_cw20() {
     ]);
 
     let amount = Uint128::new(500000);
-    mint_tokens(
+    mint_cw20s(
         &mut app,
         Addr::unchecked(CREATOR_ADDR),
         token_address.clone(),
@@ -454,7 +528,7 @@ pub fn test_claim_cw20() {
     );
 
     // fund the contract
-    fund_distributor_contract(
+    fund_distributor_contract_cw20(
         &mut app,
         distributor_address.clone(),
         token_address.clone(),
@@ -509,14 +583,14 @@ pub fn test_claim_cw20() {
     app.update_block(next_block);
     // fund contract again with 10_000
     let new_amount = Uint128::new(100000);
-    mint_tokens(
+    mint_cw20s(
         &mut app,
         Addr::unchecked(CREATOR_ADDR),
         token_address.clone(),
         new_amount,
         Addr::unchecked(CREATOR_ADDR),
     );
-    fund_distributor_contract(
+    fund_distributor_contract_cw20(
         &mut app,
         distributor_address.clone(),
         token_address.clone(),
@@ -550,4 +624,64 @@ pub fn test_claim_cw20() {
         Addr::unchecked("bekauz"),
     );
     assert_eq!(total_expected_claim, user_balance_after_claim.balance);
+}
+
+
+#[test]
+pub fn test_claim_natives() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR)
+    );
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimNatives {
+            denoms: Some(vec![FEE_DENOM.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let expected_balance = amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        ).unwrap();
+
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(expected_balance, user_balance_after_claim.amount);
+
+    // assert funds have been deducted from distributor
+    let distributor_balance_after_claim = query_native_balance(
+        &mut app,
+        distributor_address.clone(),
+    );
+    assert_eq!(amount - expected_balance, distributor_balance_after_claim.amount);
 }

@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Addr, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, to_binary, Uint128, WasmMsg};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TotalPowerResponse, VotingContractResponse};
-use crate::state::{CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, TOTAL_POWER, VOTING_CONTRACT};
+use crate::state::{CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT};
 
 use dao_interface::voting;
 
@@ -66,7 +66,16 @@ pub fn execute(
             msg: _,
         }) => execute_fund_cw20(deps, info.sender, amount),
         ExecuteMsg::FundNative {} => execute_fund_native(deps, info),
-        ExecuteMsg::ClaimCW20 { tokens } => execute_claim_cw20s(deps, info.sender, tokens),
+        ExecuteMsg::ClaimCW20 { tokens } => execute_claim_cw20s(
+            deps,
+            info.sender,
+            tokens,
+        ),
+        ExecuteMsg::ClaimNatives { denoms } => execute_claim_natives(
+            deps,
+            info.sender,
+            denoms,
+        ),
     }
 }
 
@@ -128,7 +137,6 @@ pub fn execute_claim_cw20s(
     sender: Addr,
     token: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    // calculate the entitlement
     let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
     let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
     let total_power = TOTAL_POWER.load(deps.storage)?;
@@ -190,6 +198,76 @@ pub fn execute_claim_cw20s(
 
     Ok(response
         .add_attribute("method", "claim_cw20s")
+        .add_attribute("sender", sender.clone())
+    )
+}
+
+pub fn execute_claim_natives(
+    deps: DepsMut,
+    sender: Addr,
+    denoms: Option<Vec<String>>,
+) -> Result<Response, ContractError> {
+    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
+    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
+    let total_power = TOTAL_POWER.load(deps.storage)?;
+
+    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        voting_contract,
+        &voting::Query::VotingPowerAtHeight {
+            address: sender.to_string(),
+            height: Some(dist_height),
+        },
+    )?;
+
+    let mut response = Response::default();
+
+    match denoms {
+        Some(denom_list) => {
+            for addr in denom_list {
+                // get the balance of distributor at instantiation
+                let bal = NATIVE_BALANCES.load(
+                    deps.storage,
+                    addr.clone(),
+                )?;
+
+                // check for any previous claims
+                let previous_claim = NATIVE_CLAIMS.load(
+                    deps.storage,
+                    (sender.clone(), addr.clone()),
+                ).unwrap_or_default();
+
+                // get % share of sender and subtract any previous claims
+                let entitlement = bal.multiply_ratio(
+                    voting_power.power,
+                    total_power
+                ) - previous_claim;
+
+                // reflect the new total claim amount
+                NATIVE_CLAIMS.update(
+                    deps.storage,
+                    (sender.clone(), addr.clone()),
+                    |claim| {
+                        claim.unwrap_or_default()
+                            .checked_add(entitlement)
+                            .map_err(StdError::overflow)
+                    }
+                )?;
+
+                // add the transfer message
+                response = response.add_message(BankMsg::Send {
+                    to_address: sender.to_string(),
+                    amount: vec![Coin {
+                        denom: addr,
+                        amount: entitlement,
+                    }],
+                });
+            }
+        },
+        None => {},
+    }
+
+    Ok(response
+        .add_attribute("method", "claim_natives")
         .add_attribute("sender", sender.clone())
     )
 }
