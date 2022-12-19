@@ -144,7 +144,7 @@ pub fn execute_unstake(
             let outstanding_claims = NFT_CLAIMS
                 .query_claims(deps.as_ref(), &info.sender)?
                 .nft_claims;
-            if outstanding_claims.len() >= MAX_CLAIMS as usize {
+            if outstanding_claims.len() + token_ids.len() > MAX_CLAIMS as usize {
                 return Err(ContractError::TooManyClaims {});
             }
 
