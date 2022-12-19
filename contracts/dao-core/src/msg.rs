@@ -47,6 +47,8 @@ pub struct InstantiateMsg {
     /// added to the items map. The key is the name of the item in the
     /// items map. The value is an enum that either uses an existing
     /// address or instantiates a new contract.
+    ///
+    /// It is an error to provide two items with the same key.
     pub initial_items: Option<Vec<InitialItem>>,
     /// Implements the DAO Star standard: <https://daostar.one/EIP>
     pub dao_uri: Option<String>,
