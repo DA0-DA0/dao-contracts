@@ -7,6 +7,8 @@ pub enum ContractError {
     Std(#[from] StdError),
     #[error("{0}")]
     Cw20Error(#[from] cw20_base::ContractError),
+    #[error("Provided cw20 errored in response to TokenInfo query")]
+    InvalidCw20 {},
     #[error("Nothing to claim")]
     NothingToClaim {},
     #[error("Nothing to unstake")]

@@ -7,7 +7,7 @@ use cosmwasm_std::{
     MessageInfo, Response, StdError, StdResult, Uint128,
 };
 
-use cw20::Cw20ReceiveMsg;
+use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
 
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::math;
@@ -72,11 +72,22 @@ pub fn instantiate(
         None => None,
     };
 
+    // Smoke test that the provided cw20 contract responds to a
+    // token_info query. It is not possible to determine if the
+    // contract implements the entire cw20 standard and runtime,
+    // though this provides some protection against mistakes where the
+    // wrong address is provided.
+    let token_address = deps.api.addr_validate(&msg.token_address)?;
+    let _: TokenInfoResponse = deps
+        .querier
+        .query_wasm_smart(&token_address, &cw20::Cw20QueryMsg::TokenInfo {})
+        .map_err(|_| ContractError::InvalidCw20 {})?;
+
     validate_duration(msg.unstaking_duration)?;
     let config = Config {
         owner,
         manager,
-        token_address: deps.api.addr_validate(&msg.token_address)?,
+        token_address,
         unstaking_duration: msg.unstaking_duration,
     };
     CONFIG.save(deps.storage, &config)?;
