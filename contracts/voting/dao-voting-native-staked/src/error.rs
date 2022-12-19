@@ -27,4 +27,7 @@ pub enum ContractError {
 
     #[error("Can only unstake less than or equal to the amount you have staked")]
     InvalidUnstakeAmount {},
+
+    #[error("Amount being unstaked must be non-zero")]
+    ZeroUnstake {},
 }
