@@ -129,6 +129,39 @@ fn test_instantiate_no_balances() {
 }
 
 #[test]
+#[should_panic(expected = "Active threshold count must be greater than zero")]
+fn test_instantiate_zero_active_threshold_count() {
+    let mut app = App::default();
+    let cw20_id = app.store_code(cw20_contract());
+    let voting_id = app.store_code(staked_balance_voting_contract());
+    let staking_contract_id = app.store_code(staking_contract());
+    instantiate_voting(
+        &mut app,
+        voting_id,
+        InstantiateMsg {
+            token_info: crate::msg::TokenInfo::New {
+                code_id: cw20_id,
+                label: "DAO DAO voting".to_string(),
+                name: "DAO DAO".to_string(),
+                symbol: "DAO".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount: Uint128::one(),
+                }],
+                marketing: None,
+                unstaking_duration: None,
+                staking_code_id: staking_contract_id,
+                initial_dao_balance: Some(Uint128::zero()),
+            },
+            active_threshold: Some(ActiveThreshold::AbsoluteCount {
+                count: Uint128::new(0),
+            }),
+        },
+    );
+}
+
+#[test]
 fn test_contract_info() {
     let mut app = App::default();
     let cw20_id = app.store_code(cw20_contract());
