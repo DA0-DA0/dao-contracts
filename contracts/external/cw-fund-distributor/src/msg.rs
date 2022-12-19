@@ -13,6 +13,7 @@ pub enum ExecuteMsg {
     FundNative {},
     ClaimCW20 { tokens: Option<Vec<String>> },
     ClaimNatives { denoms: Option<Vec<String>> },
+    ClaimAll {},
 }
 
 #[cw_serde]

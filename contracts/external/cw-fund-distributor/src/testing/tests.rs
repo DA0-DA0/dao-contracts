@@ -5,7 +5,7 @@ use crate::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, TotalPowerResponse};
 
 use cosmwasm_std::StdError::GenericErr;
-use crate::msg::ExecuteMsg::{ClaimCW20, ClaimNatives};
+use crate::msg::ExecuteMsg::{ClaimAll, ClaimCW20, ClaimNatives};
 use crate::msg::QueryMsg::{TotalPower};
 
 const CREATOR_ADDR: &str = "creator";
@@ -684,4 +684,90 @@ pub fn test_claim_natives() {
         distributor_address.clone(),
     );
     assert_eq!(amount - expected_balance, distributor_balance_after_claim.amount);
+}
+
+#[test]
+pub fn test_claim_all() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR)
+    );
+
+    mint_cw20s(
+        &mut app,
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+    fund_distributor_contract_cw20(
+        &mut app,
+        distributor_address.clone(),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimAll {},
+        &[],
+    )
+    .unwrap();
+
+    let expected_balance = amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        ).unwrap();
+
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(expected_balance, user_balance_after_claim.amount);
+
+    // assert funds have been deducted from distributor
+    let distributor_balance_after_claim = query_native_balance(
+        &mut app,
+        distributor_address.clone(),
+    );
+    assert_eq!(amount - expected_balance, distributor_balance_after_claim.amount);
+
+    let user_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(expected_balance, user_balance_after_claim.balance);
+
+    // assert funds have been deducted from distributor
+    let distributor_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        distributor_address.clone(),
+    );
+    assert_eq!(amount - expected_balance, distributor_balance_after_claim.balance);
 }

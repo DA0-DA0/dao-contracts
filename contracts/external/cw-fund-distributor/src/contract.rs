@@ -76,6 +76,7 @@ pub fn execute(
             info.sender,
             denoms,
         ),
+        ExecuteMsg::ClaimAll {} => execute_claim_all(deps, info.sender),
     }
 }
 
@@ -270,6 +271,121 @@ pub fn execute_claim_natives(
         .add_attribute("method", "claim_natives")
         .add_attribute("sender", sender.clone())
     )
+}
+
+pub fn execute_claim_all(mut deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
+    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
+    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
+    let total_power = TOTAL_POWER.load(deps.storage)?;
+
+    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        voting_contract,
+        &voting::Query::VotingPowerAtHeight {
+            address: sender.to_string(),
+            height: Some(dist_height),
+        },
+    )?;
+    let mut response = Response::default();
+
+    let cw20s: Vec<(Addr, Uint128)> = CW20_BALANCES.range(
+        deps.storage,
+        None,
+        None,
+        cosmwasm_std::Order::Descending
+    )
+        .map(|cw20| cw20.unwrap())
+        .collect();
+
+    for (addr, amount) in cw20s {
+        // get the balance of distributor at instantiation
+        let bal = CW20_BALANCES.load(
+            deps.storage,
+            Addr::unchecked(addr.clone())
+        )?;
+
+        // check for any previous claims
+        let previous_claim = CW20_CLAIMS.load(
+            deps.storage,
+            (sender.clone(), addr.clone())
+        ).unwrap_or_default();
+
+        // get % share of sender and subtract any previous claims
+        let entitlement = bal.multiply_ratio(
+            voting_power.power,
+            total_power
+        ) - previous_claim;
+
+        // reflect the new total claim amount
+        CW20_CLAIMS.update(
+            deps.storage,
+            (sender.clone(), addr.clone()),
+            |claim| {
+                claim.unwrap_or_default()
+                    .checked_add(entitlement)
+                    .map_err(StdError::overflow)
+            }
+        )?;
+
+        // add the transfer message
+        response = response.add_message(WasmMsg::Execute {
+            contract_addr: addr.to_string(),
+            msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                recipient: sender.to_string(),
+                amount: entitlement,
+            })?,
+            funds: vec![],
+        });
+    }
+
+    let natives: Vec<(String, Uint128)> = NATIVE_BALANCES.range(
+        deps.storage,
+        None,
+        None,
+        cosmwasm_std::Order::Descending
+    )
+        .map(|native| native.unwrap())
+        .collect();
+
+    for (denom, amount) in natives {
+        // get the balance of distributor at instantiation
+        let bal = NATIVE_BALANCES.load(
+            deps.storage,
+            denom.clone(),
+        )?;
+
+        // check for any previous claims
+        let previous_claim = NATIVE_CLAIMS.load(
+            deps.storage,
+            (sender.clone(), denom.clone()),
+        ).unwrap_or_default();
+
+        // get % share of sender and subtract any previous claims
+        let entitlement = bal.multiply_ratio(
+            voting_power.power,
+            total_power
+        ) - previous_claim;
+
+        // reflect the new total claim amount
+        NATIVE_CLAIMS.update(
+            deps.storage,
+            (sender.clone(), denom.clone()),
+            |claim| {
+                claim.unwrap_or_default()
+                    .checked_add(entitlement)
+                    .map_err(StdError::overflow)
+            }
+        )?;
+
+        // add the transfer message
+        response = response.add_message(BankMsg::Send {
+            to_address: sender.to_string(),
+            amount: vec![Coin {
+                denom,
+                amount: entitlement,
+            }],
+        });
+    }
+    Ok(response.add_attribute("method", "claim_all"))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
