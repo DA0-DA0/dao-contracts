@@ -1772,6 +1772,20 @@
         "additionalProperties": false
       },
       {
+        "description": "Gets the number of active and total proposal modules registered with this module.",
+        "type": "object",
+        "required": [
+          "proposal_module_count"
+        ],
+        "properties": {
+          "proposal_module_count": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Returns information about if the contract is currently paused.",
         "type": "object",
         "required": [
@@ -2620,6 +2634,30 @@
           "type": "string"
         }
       }
+    },
+    "proposal_module_count": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ProposalModuleCountResponse",
+      "type": "object",
+      "required": [
+        "active_proposal_module_count",
+        "total_proposal_module_count"
+      ],
+      "properties": {
+        "active_proposal_module_count": {
+          "description": "The number of active proposal modules.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "total_proposal_module_count": {
+          "description": "The total number of proposal modules.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
     },
     "proposal_modules": {
       "$schema": "http://json-schema.org/draft-07/schema#",

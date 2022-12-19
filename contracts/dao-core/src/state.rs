@@ -24,8 +24,8 @@ pub struct Config {
     pub dao_uri: Option<String>,
 }
 
-#[cw_serde]
 /// Top level type describing a proposal module.
+#[cw_serde]
 pub struct ProposalModule {
     /// The address of the proposal module.
     pub address: Addr,

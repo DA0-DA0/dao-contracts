@@ -317,6 +317,8 @@ export type QueryMsg = {
     start_after?: string | null;
   };
 } | {
+  proposal_module_count: {};
+} | {
   pause_info: {};
 } | {
   voting_module: {};
@@ -399,6 +401,10 @@ export interface InfoResponse {
 }
 export type ArrayOfString = string[];
 export type ArrayOfSubDao = SubDao[];
+export interface ProposalModuleCountResponse {
+  active_proposal_module_count: number;
+  total_proposal_module_count: number;
+}
 export interface TotalPowerAtHeightResponse {
   height: number;
   power: Uint128;
