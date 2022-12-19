@@ -2,7 +2,7 @@ use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    register_staked_nft, register_unstaked_nft, Config, CONFIG, DAO, HOOKS, MAX_CLAIMS,
+    register_staked_nft, register_unstaked_nfts, Config, CONFIG, DAO, HOOKS, MAX_CLAIMS,
     NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
@@ -111,7 +111,38 @@ pub fn execute_unstake(
         return Err(ContractError::ZeroUnstake {});
     }
 
-    register_unstaked_nft(deps.storage, env.block.height, &info.sender, &token_ids)?;
+    register_unstaked_nfts(deps.storage, env.block.height, &info.sender, &token_ids)?;
+
+    // Provided that the backing cw721 contract is non-malicious:
+    //
+    // 1. no token that has been staked may be staked again before
+    //    first being unstaked.
+    //
+    // Provided that the other methods on this contract are functional:
+    //
+    // 2. there will never exist a pending claim for a token that is
+    //    unstaked.
+    // 3. (6) => claims may only be created for tokens that are staked.
+    // 4. (1) && (2) && (3) => there will never be a staked NFT for
+    //    which there is also a pending claim.
+    //
+    // (aside: the requirement on (1) for (4) may be confusing. it is
+    // needed because if a token could be staked more than once, a
+    // token could be staked, moved into the claims queue, and then
+    // staked again, in which case the token is both staked and has a
+    // pending claim.)
+    //
+    // If we reach this point in execution, `register_unstaked_nfts`
+    // has not errored and thus:
+    //
+    // 5. token_ids contains no duplicate values.
+    // 6. all NFTs in token_ids were staked by `info.sender`
+    // 7. (4) && (6) => none of the tokens in token_ids are in the
+    //    claims queue for `info.sender`
+    //
+    // (5) && (7) are the invariants for calling `create_nft_claims`
+    // so if we reach this point in execution, we may safely create
+    // claims.
 
     let hook_msgs = unstake_hook_msgs(deps.storage, info.sender.clone(), token_ids.clone())?;
 

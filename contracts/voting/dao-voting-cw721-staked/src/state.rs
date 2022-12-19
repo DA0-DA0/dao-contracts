@@ -65,7 +65,11 @@ pub fn register_staked_nft(
         .map(|_| ())
 }
 
-pub fn register_unstaked_nft(
+/// Registers the unstaking of TOKEN_IDs in storage. Errors if:
+///
+/// 1. `token_ids` is non-unique.
+/// 2. a NFT being staked has not previously been staked.
+pub fn register_unstaked_nfts(
     storage: &mut dyn Storage,
     height: u64,
     staker: &Addr,
