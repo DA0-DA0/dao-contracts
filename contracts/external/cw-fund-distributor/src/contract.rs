@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, to_binary, Uint128, WasmMsg};
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, TotalPowerResponse, VotingContractResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TotalPowerResponse, VotingContractResponse};
 use crate::state::{CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT};
 
 use dao_interface::voting;
@@ -343,8 +344,8 @@ pub fn execute_claim_all(mut deps: DepsMut, sender: Addr) -> Result<Response, Co
         None,
         cosmwasm_std::Order::Descending
     )
-        .map(|native| native.unwrap())
-        .collect();
+    .map(|native| native.unwrap())
+    .collect();
 
     for (denom, amount) in natives {
         // get the balance of distributor at instantiation
@@ -410,4 +411,65 @@ pub fn query_total_power(deps: Deps) -> StdResult<Binary> {
     to_binary(&TotalPowerResponse {
         total_power,
     })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    match msg {
+        MigrateMsg::ReevaluateClaims { distribution_height } => {
+            // update the distribution height
+            DISTRIBUTION_HEIGHT.save(
+                deps.storage,
+                &distribution_height,
+            )?;
+
+            // get performed claims of cw20 and native tokens
+            let performed_cw20_claims: HashMap<(Addr, Addr), Uint128> = CW20_CLAIMS.range(
+                deps.storage,
+                None,
+                None,
+                cosmwasm_std::Order::Descending
+            )
+            .map(|native| native.unwrap())
+            .collect();
+
+            let performed_native_claims: HashMap<(Addr, String), Uint128> = NATIVE_CLAIMS.range(
+                deps.storage,
+                None,
+                None,
+                cosmwasm_std::Order::Descending
+            )
+            .map(|native| native.unwrap())
+            .collect();
+
+            // subtract the performed claim amounts from
+            // balances available for claiming
+            for ((_, denom), amount) in performed_native_claims {
+                NATIVE_BALANCES.update(
+                    deps.storage,
+                    denom,
+                    |bal| bal
+                        .unwrap_or_default()
+                        .checked_sub(amount)
+                        .map_err(StdError::overflow)
+                ).unwrap();
+            }
+            for ((_, cw20_addr), amount) in performed_cw20_claims {
+                CW20_BALANCES.update(
+                    deps.storage,
+                    cw20_addr,
+                    |bal| bal
+                        .unwrap_or_default()
+                        .checked_sub(amount)
+                        .map_err(StdError::overflow)
+                ).unwrap();
+            }
+
+            // nullify previous claims
+            CW20_CLAIMS.clear(deps.storage);
+            NATIVE_CLAIMS.clear(deps.storage);
+
+            Ok(Response::default().add_attribute("method", "reevaluate_total_power"))
+        }
+    }
 }

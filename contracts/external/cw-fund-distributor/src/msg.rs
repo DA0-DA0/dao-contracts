@@ -36,3 +36,9 @@ pub struct TotalPowerResponse {
     pub total_power: Uint128,
 }
 
+#[cw_serde]
+pub enum MigrateMsg {
+    ReevaluateClaims {
+        distribution_height: u64,
+    }
+}

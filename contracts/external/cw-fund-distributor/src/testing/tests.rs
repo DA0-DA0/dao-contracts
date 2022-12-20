@@ -1,8 +1,8 @@
-use cosmwasm_std::{Addr, Binary, Coin, Empty, to_binary, Uint128};
+use cosmwasm_std::{Addr, Binary, Coin, Empty, to_binary, Uint128, WasmMsg};
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, next_block, SudoMsg};
 use cw20::Cw20Coin;
 use crate::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, TotalPowerResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, TotalPowerResponse};
 
 use cosmwasm_std::StdError::GenericErr;
 use crate::msg::ExecuteMsg::{ClaimAll, ClaimCW20, ClaimNatives};
@@ -16,7 +16,8 @@ fn distributor_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
-    );
+    )
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -128,7 +129,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             },
             &[],
             "distribution contract",
-            None,
+            Some(CREATOR_ADDR.parse().unwrap()),
         )
         .unwrap();
 
@@ -770,4 +771,108 @@ pub fn test_claim_all() {
         distributor_address.clone(),
     );
     assert_eq!(amount - expected_balance, distributor_balance_after_claim.balance);
+}
+
+#[test]
+pub fn test_reevaluate_claims() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR)
+    );
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimNatives {
+            denoms: Some(vec![FEE_DENOM.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let expected_balance = amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        ).unwrap();
+
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(expected_balance, user_balance_after_claim.amount);
+
+    app.update_block(next_block);
+
+    let distributor_id = app.store_code(distributor_contract());
+    let migrate_msg = &MigrateMsg::ReevaluateClaims {
+        distribution_height: app.block_info().height,
+    };
+
+    // reclaim 2/3rds of tokens back for claiming
+    app.execute(
+        Addr::unchecked(CREATOR_ADDR),
+        WasmMsg::Migrate {
+            contract_addr: distributor_address.to_string(),
+            new_code_id: distributor_id,
+            msg: to_binary(migrate_msg).unwrap(),
+        }
+        .into(),
+    )
+    .unwrap();
+
+    let distributor_balance = query_native_balance(
+        &mut app,
+        distributor_address.clone(),
+    );
+    let expected_claim = distributor_balance.amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        )
+        .unwrap();
+
+    app.update_block(next_block);
+
+    // claim the newly made available tokens
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimNatives {
+            denoms: Some(vec![FEE_DENOM.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let user_balance_after_second_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(
+        user_balance_after_second_claim.amount,
+        expected_balance + expected_claim
+    );
 }
