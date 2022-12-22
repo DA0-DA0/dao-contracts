@@ -629,6 +629,166 @@ pub fn test_claim_cw20() {
 
 
 #[test]
+pub fn test_claim_cw20_twice() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+    mint_cw20s(
+        &mut app,
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+    // fund the contract
+    fund_distributor_contract_cw20(
+        &mut app,
+        distributor_address.clone(),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+    // query the balance of distributor contract
+    let balance = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        distributor_address.clone(),
+    );
+
+    assert_eq!(balance.balance, amount);
+
+    // claim the tokens twice
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimCW20 {
+            tokens: Some(vec![token_address.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimCW20 {
+            tokens: Some(vec![token_address.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // assert user has received the expected funds
+    let expected_balance = amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        ).unwrap();
+
+    let user_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        Addr::unchecked("bekauz"),
+    );
+
+    // assert only a single claim has been deducted from the distributor
+    let distributor_balance_after_claim = query_cw20_balance(
+        &mut app,
+        token_address.clone(),
+        distributor_address.clone(),
+    );
+
+    assert_eq!(amount - expected_balance, distributor_balance_after_claim.balance);
+    assert_eq!(expected_balance, user_balance_after_claim.balance);
+}
+
+#[test]
+pub fn test_claim_natives_twice() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR)
+    );
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimNatives {
+            denoms: Some(vec![FEE_DENOM.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimNatives {
+            denoms: Some(vec![FEE_DENOM.to_string()]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let expected_balance = amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        ).unwrap();
+
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("bekauz"),
+    );
+
+    // assert only a single claim has occured
+    let distributor_balance_after_claim = query_native_balance(
+    &mut app,
+    distributor_address.clone(),
+    );
+
+    assert_eq!(expected_balance, user_balance_after_claim.amount);
+    assert_eq!(amount - expected_balance, distributor_balance_after_claim.amount);
+}
+
+#[test]
 pub fn test_claim_natives() {
     let BaseTest {
         mut app,
@@ -772,6 +932,12 @@ pub fn test_claim_all() {
     );
     assert_eq!(amount - expected_balance, distributor_balance_after_claim.balance);
 }
+
+#[test]
+pub fn test_claim_empty_list_of_denoms() {
+    unimplemented!()
+}
+
 
 #[test]
 pub fn test_reevaluate_claims() {
