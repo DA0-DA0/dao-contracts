@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{Addr, BankMsg, Binary, Coin, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, to_binary, Uint128, WasmMsg};
 use cw2::set_contract_version;
-use cw_multi_test::Wasm;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, TotalPowerResponse, VotingContractResponse};
@@ -116,7 +115,9 @@ pub fn execute_fund_native(deps: DepsMut, info: MessageInfo) -> Result<Response,
     let mut response = Response::default()
         .add_attribute("method", "fund_native");
 
-    for Coin {amount, denom } in info.funds.into_iter() {
+    for Coin {amount, denom } in info.funds
+        .into_iter()
+        .filter(|coin| coin.amount > Uint128::zero()) {
         match NATIVE_BALANCES.load(deps.storage, denom.clone()) {
             Ok(old_amount) => NATIVE_BALANCES.save(
                 deps.storage,
@@ -197,8 +198,8 @@ pub fn execute_claim_cw20s(
                 }, entitlement)
             })
             // filter out zero entitlement messages
-            .filter(|(msg, entitlement)| *entitlement > Uint128::zero())
-            .map(|(msg, entitlement)| msg)
+            .filter(|(_, entitlement)| !entitlement.is_zero())
+            .map(|(msg, _)| msg)
             .collect();
         response = response.add_messages(messages);
     }
@@ -271,8 +272,8 @@ pub fn execute_claim_natives(
                 }, entitlement)
             })
             // filter out zero entitlement messages
-            .filter(|(msg, entitlement)| *entitlement > Uint128::zero())
-            .map(|(msg, entitlement)| msg)
+            .filter(|(_, entitlement)| !entitlement.is_zero())
+            .map(|(msg, _)| msg)
             .collect();
         response = response.add_messages(messages);
     }
@@ -283,11 +284,10 @@ pub fn execute_claim_natives(
     )
 }
 
-pub fn execute_claim_all(mut deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
+pub fn execute_claim_all(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
     let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
     let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
     let total_power = TOTAL_POWER.load(deps.storage)?;
-    let mut response = Response::default();
 
     let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
         voting_contract,
@@ -318,17 +318,13 @@ pub fn execute_claim_all(mut deps: DepsMut, sender: Addr) -> Result<Response, Co
     // collect transfer messages and update store
     let cw20_transfer_msgs: Vec<WasmMsg> = cw20s.into_iter()
         .map(|(addr, amount)| {
-            let bal = CW20_BALANCES.load(
-                deps.storage,
-                Addr::unchecked(addr.clone())
-            ).unwrap();
             let previous_claim = CW20_CLAIMS.load(
                 deps.storage,
                 (sender.clone(), addr.clone())
             ).unwrap_or_default();
 
             // get % share of sender and subtract any previous claims
-            let entitlement = bal.multiply_ratio(
+            let entitlement = amount.multiply_ratio(
                 voting_power.power,
                 total_power
             ) - previous_claim;
@@ -344,29 +340,29 @@ pub fn execute_claim_all(mut deps: DepsMut, sender: Addr) -> Result<Response, Co
                 }
             ).unwrap();
 
-            WasmMsg::Execute {
+            (WasmMsg::Execute {
                 contract_addr: addr.to_string(),
                 msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
                     recipient: sender.to_string(),
                     amount: entitlement,
                 }).unwrap(),
                 funds: vec![],
-            }
-    }).collect();
+            }, entitlement)
+    })
+    // filter out zero entitlement messages
+    .filter(|(_, entitlement)| !entitlement.is_zero())
+    .map(|(msg, _)| msg)
+    .collect();
 
     let native_transfer_msgs: Vec<BankMsg> = natives.into_iter()
         .map(|(denom, amount)| {
-            let bal = NATIVE_BALANCES.load(
-                deps.storage,
-                denom.clone(),
-            ).unwrap();
             let previous_claim = NATIVE_CLAIMS.load(
                 deps.storage,
                 (sender.clone(), denom.clone()),
             ).unwrap_or_default();
 
             // get % share of sender and subtract any previous claims
-            let entitlement = bal.multiply_ratio(
+            let entitlement = amount.multiply_ratio(
                 voting_power.power,
                 total_power
             ) - previous_claim;
@@ -383,16 +379,20 @@ pub fn execute_claim_all(mut deps: DepsMut, sender: Addr) -> Result<Response, Co
             ).unwrap();
 
             // add the transfer message
-            BankMsg::Send {
+            (BankMsg::Send {
                 to_address: sender.to_string(),
                 amount: vec![Coin {
                     denom,
                     amount: entitlement,
                 }],
-            }
-    }).collect();
+            }, entitlement)
+    })
+    // filter out zero entitlement messages
+    .filter(|(_, entitlement)| !entitlement.is_zero())
+    .map(|(msg, _)| msg)
+    .collect();
 
-    Ok(response
+    Ok(Response::default()
         .add_messages(cw20_transfer_msgs)
         .add_messages(native_transfer_msgs)
         .add_attribute("method", "claim_all"))
@@ -425,66 +425,74 @@ pub fn query_total_power(deps: Deps) -> StdResult<Binary> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     match msg {
-        MigrateMsg::ReevaluateClaims { distribution_height } => {
-            // update the distribution height
-            DISTRIBUTION_HEIGHT.save(
-                deps.storage,
-                &distribution_height,
-            )?;
-
-            // get performed claims of cw20 and native tokens
-            let performed_cw20_claims: HashMap<(Addr, Addr), Uint128> = CW20_CLAIMS.range(
-                deps.storage,
-                None,
-                None,
-                cosmwasm_std::Order::Descending
-            )
-            .map(|native| native.unwrap())
-            .collect();
-
-            let performed_native_claims: HashMap<(Addr, String), Uint128> = NATIVE_CLAIMS.range(
-                deps.storage,
-                None,
-                None,
-                cosmwasm_std::Order::Descending
-            )
-            .map(|native| native.unwrap())
-            .collect();
-
-            // subtract the performed claim amounts from
-            // balances available for claiming
-            performed_native_claims
-                .into_iter()
-                .for_each(|((_, denom), amount)| {
-                    NATIVE_BALANCES.update(
-                        deps.storage,
-                        denom,
-                        |bal| bal
-                            .unwrap_or_default()
-                            .checked_sub(amount)
-                            .map_err(StdError::overflow)
-                    ).unwrap();
-                });
-
-            performed_cw20_claims
-                .into_iter()
-                .for_each(|((_, cw20_addr), amount)| {
-                    CW20_BALANCES.update(
-                        deps.storage,
-                        cw20_addr,
-                        |bal| bal
-                            .unwrap_or_default()
-                            .checked_sub(amount)
-                            .map_err(StdError::overflow)
-                    )
-                        .unwrap();
-                });
-
-            // nullify previous claims
-            CW20_CLAIMS.clear(deps.storage);
-            NATIVE_CLAIMS.clear(deps.storage);
-
-            Ok(Response::default().add_attribute("method", "reevaluate_total_power"))
-        }
+        MigrateMsg::RedistributeUnclaimedFunds { distribution_height } =>
+            execute_redistribute_unclaimed_funds(deps, &distribution_height),
     }
+}
+
+// only cw_admin can call this
+fn execute_redistribute_unclaimed_funds(
+    deps: DepsMut,
+    distribution_height: &u64
+) -> Result<Response, ContractError> {
+    // update the distribution height
+    DISTRIBUTION_HEIGHT.save(
+        deps.storage,
+        &distribution_height,
+    )?;
+
+    // get performed claims of cw20 and native tokens
+    let performed_cw20_claims: HashMap<(Addr, Addr), Uint128> = CW20_CLAIMS.range(
+        deps.storage,
+        None,
+        None,
+        cosmwasm_std::Order::Descending
+    )
+    .map(|native| native.unwrap())
+    .collect();
+
+    let performed_native_claims: HashMap<(Addr, String), Uint128> = NATIVE_CLAIMS.range(
+        deps.storage,
+        None,
+        None,
+        cosmwasm_std::Order::Descending
+    )
+    .map(|native| native.unwrap())
+    .collect();
+
+    // subtract the performed claim amounts from
+    // balances available for claiming
+    performed_native_claims
+        .into_iter()
+        .for_each(|((_, denom), amount)| {
+            NATIVE_BALANCES.update(
+                deps.storage,
+                denom,
+                |bal| bal
+                    .unwrap_or_default()
+                    .checked_sub(amount)
+                    .map_err(StdError::overflow)
+            )
+            .unwrap();
+        });
+
+    performed_cw20_claims
+        .into_iter()
+        .for_each(|((_, cw20_addr), amount)| {
+            CW20_BALANCES.update(
+                deps.storage,
+                cw20_addr,
+                |bal| bal
+                    .unwrap_or_default()
+                    .checked_sub(amount)
+                    .map_err(StdError::overflow)
+            )
+            .unwrap();
+        });
+
+    // nullify previous claims
+    CW20_CLAIMS.clear(deps.storage);
+    NATIVE_CLAIMS.clear(deps.storage);
+
+    Ok(Response::default().add_attribute("method", "redistribute_unclaimed_funds"))
 }

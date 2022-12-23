@@ -468,12 +468,60 @@ fn test_fund_cw20() {
 }
 
 #[test]
-pub fn test_fund_natives() {
+pub fn test_fund_cw20_zero_amount() {
     let BaseTest {
         mut app,
         distributor_address,
         staking_address: _,
         token_address,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+    mint_cw20s(
+        &mut app,
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR),
+    );
+
+     app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        token_address.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: distributor_address.to_string(),
+            amount: Uint128::zero(),
+            msg: Binary::default(),
+        },
+        &[],
+    )
+    .unwrap_err();
+
+    // assert no funds have been credited
+    let balance = query_cw20_balance(
+        &mut app,
+        token_address,
+        distributor_address
+    );
+    assert_eq!(balance.balance, Uint128::zero());
+}
+
+#[test]
+pub fn test_fund_natives() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address: _,
     } = setup_test(vec![
         Cw20Coin {
             address: "bekauz".to_string(),
@@ -499,6 +547,43 @@ pub fn test_fund_natives() {
     let balance = query_native_balance(&mut app, distributor_address).amount;
 
     assert_eq!(amount, balance);
+}
+
+#[test]
+pub fn test_fund_natives_zero_amount() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address: _,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        distributor_address.clone(),
+        &ExecuteMsg::FundNative {},
+        &[Coin {
+            amount: Uint128::zero(),
+            denom: FEE_DENOM.to_string(),
+        }],
+    )
+    .unwrap_err();
+
+    let balance = query_native_balance(&mut app, distributor_address).amount;
+    assert_eq!(Uint128::zero(), balance);
 }
 
 #[test]
@@ -724,7 +809,7 @@ pub fn test_claim_natives_twice() {
         mut app,
         distributor_address,
         staking_address: _,
-        token_address,
+        token_address: _,
     } = setup_test(vec![
         Cw20Coin {
             address: "bekauz".to_string(),
@@ -794,7 +879,7 @@ pub fn test_claim_natives() {
         mut app,
         distributor_address,
         staking_address: _,
-        token_address,
+        token_address: _,
     } = setup_test(vec![
         Cw20Coin {
             address: "bekauz".to_string(),
@@ -935,17 +1020,65 @@ pub fn test_claim_all() {
 
 #[test]
 pub fn test_claim_empty_list_of_denoms() {
-    unimplemented!()
-}
-
-
-#[test]
-pub fn test_reevaluate_claims() {
     let BaseTest {
         mut app,
         distributor_address,
         staking_address: _,
-        token_address,
+        token_address: _,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR)
+    );
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimNatives {
+            denoms: Some(vec![]),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let user_balance_after_claim = query_native_balance(
+        &mut app,
+        Addr::unchecked("bekauz"),
+    );
+    assert_eq!(Uint128::zero(), user_balance_after_claim.amount);
+
+    // assert no funds have been deducted from distributor
+    let distributor_balance_after_claim = query_native_balance(
+        &mut app,
+        distributor_address.clone(),
+    );
+    assert_eq!(amount, distributor_balance_after_claim.amount);
+}
+
+
+#[test]
+pub fn test_redistribute_unclaimed_funds() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address: _,
     } = setup_test(vec![
         Cw20Coin {
             address: "bekauz".to_string(),
@@ -993,7 +1126,7 @@ pub fn test_reevaluate_claims() {
     app.update_block(next_block);
 
     let distributor_id = app.store_code(distributor_contract());
-    let migrate_msg = &MigrateMsg::ReevaluateClaims {
+    let migrate_msg = &MigrateMsg::RedistributeUnclaimedFunds {
         distribution_height: app.block_info().height,
     };
 
@@ -1041,4 +1174,50 @@ pub fn test_reevaluate_claims() {
         user_balance_after_second_claim.amount,
         expected_balance + expected_claim
     );
+}
+
+#[test]
+pub fn test_unauthorized_redistribute_unclaimed_funds() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address: _,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
+
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked(CREATOR_ADDR)
+    );
+
+    let distributor_id = app.store_code(distributor_contract());
+    let migrate_msg = &MigrateMsg::RedistributeUnclaimedFunds {
+        distribution_height: app.block_info().height,
+    };
+
+    // panics on non-admin sender
+    app.execute(
+        Addr::unchecked("bekauz"),
+        WasmMsg::Migrate {
+            contract_addr: distributor_address.to_string(),
+            new_code_id: distributor_id,
+            msg: to_binary(migrate_msg).unwrap(),
+        }.into(),
+    )
+    .unwrap_err();
 }

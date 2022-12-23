@@ -1,10 +1,8 @@
-use std::ops::Add;
-use cosmwasm_std::{Addr, Binary, Coin, Empty, to_binary, Uint128};
+use cosmwasm_std::{Addr, Coin, Empty, to_binary, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, next_block, SudoMsg};
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::msg::ExecuteMsg::ClaimAll;
-use crate::testing::tests::{mint_natives};
 
 const CREATOR_ADDR: &str = "creator";
 const FEE_DENOM: &str = "ujuno";
@@ -145,7 +143,7 @@ pub fn test_claim_lots_of_tokens() {
         mut app,
         distributor_address,
         staking_address: _,
-        token_address,
+        token_address: _,
     } = setup_test(vec![
         Cw20Coin {
             address: "bekauz".to_string(),
