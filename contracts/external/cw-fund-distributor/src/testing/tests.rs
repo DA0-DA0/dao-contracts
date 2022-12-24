@@ -36,7 +36,7 @@ fn staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_cw20_staked::contract::instantiate,
         dao_voting_cw20_staked::contract::query,
     )
-        .with_reply(dao_voting_cw20_staked::contract::reply);
+    .with_reply(dao_voting_cw20_staked::contract::reply);
     Box::new(contract)
 }
 
@@ -468,6 +468,7 @@ fn test_fund_cw20() {
 }
 
 #[test]
+#[should_panic(expected = "Invalid zero amount")]
 pub fn test_fund_cw20_zero_amount() {
     let BaseTest {
         mut app,
@@ -504,15 +505,7 @@ pub fn test_fund_cw20_zero_amount() {
         },
         &[],
     )
-    .unwrap_err();
-
-    // assert no funds have been credited
-    let balance = query_cw20_balance(
-        &mut app,
-        token_address,
-        distributor_address
-    );
-    assert_eq!(balance.balance, Uint128::zero());
+    .unwrap();
 }
 
 #[test]
@@ -550,6 +543,7 @@ pub fn test_fund_natives() {
 }
 
 #[test]
+#[should_panic(expected = "Cannot transfer empty coins amount")]
 pub fn test_fund_natives_zero_amount() {
     let BaseTest {
         mut app,
@@ -580,10 +574,7 @@ pub fn test_fund_natives_zero_amount() {
             denom: FEE_DENOM.to_string(),
         }],
     )
-    .unwrap_err();
-
-    let balance = query_native_balance(&mut app, distributor_address).amount;
-    assert_eq!(Uint128::zero(), balance);
+    .unwrap();
 }
 
 #[test]
@@ -1177,6 +1168,7 @@ pub fn test_redistribute_unclaimed_funds() {
 }
 
 #[test]
+#[should_panic(expected = "Only admin can migrate contract")]
 pub fn test_unauthorized_redistribute_unclaimed_funds() {
     let BaseTest {
         mut app,
@@ -1219,5 +1211,5 @@ pub fn test_unauthorized_redistribute_unclaimed_funds() {
             msg: to_binary(migrate_msg).unwrap(),
         }.into(),
     )
-    .unwrap_err();
+    .unwrap();
 }

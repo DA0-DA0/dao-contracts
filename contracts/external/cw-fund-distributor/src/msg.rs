@@ -20,6 +20,12 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     TotalPower {},
     VotingContract {},
+    NativeDenoms {},
+    CW20Tokens {},
+    NativeEntitlement { sender: String, denom: String },
+    CW20Entitlement { sender: String, token: String },
+    NativeEntitlements { sender: Addr },
+    CW20Entitlements { sender: Addr },
 }
 
 #[cw_serde]
@@ -42,3 +48,28 @@ pub enum MigrateMsg {
         distribution_height: u64,
     }
 }
+
+#[cw_serde]
+pub struct DenomResponse {
+    pub contract_balance: Uint128,
+    pub denom: String,
+}
+
+#[cw_serde]
+pub struct CW20Response {
+    pub contract_balance: Uint128,
+    pub token: String,
+}
+
+#[cw_serde]
+pub struct NativeEntitlementResponse {
+    pub amount: Uint128,
+    pub denom: String,
+}
+
+#[cw_serde]
+pub struct CW20EntitlementResponse {
+    pub amount: Uint128,
+    pub token_contract: Addr,
+}
+
