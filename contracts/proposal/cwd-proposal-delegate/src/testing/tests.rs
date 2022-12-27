@@ -1,6 +1,6 @@
-use crate::contract::{execute, execute_delegate, execute_execute, instantiate};
+use crate::contract::{execute_delegate, execute_execute, execute_remove_delegation, instantiate};
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::InstantiateMsg;
 use crate::state::Delegation;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::Addr;
@@ -243,4 +243,86 @@ fn test_execute_on_expired() {
 // Un-authorized revocation should fail
 // If delegation is irrevocable, admin cannot revoke
 #[test]
-fn test_revocable_policy() {}
+fn test_revocable_policy() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("any_addr", &[]);
+
+    instantiate(
+        deps.as_mut(),
+        env,
+        info,
+        InstantiateMsg {
+            admin: ADMIN_ADDR.to_string(),
+        },
+    )
+    .unwrap();
+    let env = mock_env();
+    let info = mock_info(ADMIN_ADDR, &[]);
+    execute_delegate(
+        deps.as_mut(),
+        env,
+        info,
+        Delegation {
+            delegate: Addr::unchecked("dest_addr"),
+            msgs: Vec::new(),
+            expiration: None,
+            policy_irrevocable: true, // Make it irrevocable
+            policy_preserve_on_failure: false,
+        },
+    )
+    .unwrap();
+
+    // Admin and non-admin cannot revoke an irrevocable delegation
+    let err = execute_remove_delegation(deps.as_mut(), mock_env(), mock_info(ADMIN_ADDR, &[]), 1)
+        .unwrap_err();
+    assert!(matches!(err, ContractError::DelegationIrrevocable {}));
+    let err = execute_remove_delegation(deps.as_mut(), mock_env(), mock_info("non-admin", &[]), 1)
+        .unwrap_err();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
+    // Make revocable delegation
+    execute_delegate(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(ADMIN_ADDR, &[]),
+        Delegation {
+            delegate: Addr::unchecked("dest_addr"),
+            msgs: Vec::new(),
+            expiration: None,
+            policy_irrevocable: false,
+            policy_preserve_on_failure: false,
+        },
+    )
+    .unwrap(); // has id of `2`
+    let revocable_delegate_id: u64 = 2;
+
+    // Non-admin cannot revoke a revocable delegation
+    let err = execute_remove_delegation(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("non-admin", &[]),
+        revocable_delegate_id,
+    )
+    .unwrap_err();
+    assert!(matches!(err, ContractError::Unauthorized {}));
+
+    // Admin can revoke a revocable delegation
+    execute_remove_delegation(
+        deps.as_mut(),
+        mock_env(),
+        mock_info(ADMIN_ADDR, &[]),
+        revocable_delegate_id,
+    )
+    .unwrap();
+
+    // Can no longer execute
+    let err = execute_execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("dest_addr", &[]),
+        revocable_delegate_id,
+    )
+    .unwrap_err();
+    assert!(matches!(err, ContractError::DelegationNotFound {}));
+}

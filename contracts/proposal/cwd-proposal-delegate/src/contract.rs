@@ -8,9 +8,7 @@ use cw_utils::Expiration;
 // use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{
-    DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
-};
+use crate::msg::{DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{Config, Delegation, CONFIG, DELEGATIONS, DELEGATION_COUNT, EXECUTE_CTX};
 
 /*
@@ -170,7 +168,11 @@ pub fn execute_execute(
         msgs,
         expiration,
         ..
-    } = DELEGATIONS.load(deps.storage, delegation_id)?;
+    } = match DELEGATIONS.load(deps.storage, delegation_id) {
+        Ok(res) => res,
+        Err(_) => return Err(ContractError::DelegationNotFound {}),
+    };
+
     if delegate != info.sender {
         return Err(ContractError::Unauthorized {});
     }
