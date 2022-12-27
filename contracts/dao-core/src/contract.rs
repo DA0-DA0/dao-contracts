@@ -4,7 +4,7 @@ use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
     Reply, Response, StdError, StdResult, SubMsg,
 };
-use cw2::{get_contract_version, set_contract_version};
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
@@ -837,9 +837,18 @@ pub fn query_proposal_module_count(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
         MigrateMsg::FromV1 { dao_uri } => {
+            // `CONTRACT_VERSION` here is from the data section of the
+            // blob we are migrating to. `version` is from storage. If
+            // the version in storage matches the version in the blob
+            // we are not upgrading.
+            if version == CONTRACT_VERSION {
+                return Err(ContractError::AlreadyMigrated {});
+            }
+
             use cw_core_v1 as v1;
 
             let current_keys = v1::state::PROPOSAL_MODULES

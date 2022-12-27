@@ -50,4 +50,7 @@ pub enum ContractError {
 
     #[error("Proposal module with address is disabled and cannot execute messages.")]
     ModuleDisabledCannotExecute { address: Addr },
+
+    #[error("Can not migrate. Current version is up to date.")]
+    AlreadyMigrated {},
 }
