@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GAS_OUT_DIR: gas_reports
+      GAS_LIMIT: 10000000
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
@@ -46,6 +47,15 @@ jobs:
 
       - name: Install just
         run: cargo install just || true
+
+      - name: Get mainnet GAS_LIMIT
+        run: echo "MAINNET_GAS_LIMIT=$(curl -s https://juno-rpc.polkachu.com/consensus_params | jq -r '.result.consensus_params.block.max_gas')" >> $GITHUB_ENV
+
+      - name: Mainnet block GAS_LIMIT changed
+        if: ${{ env.MAINNET_GAS_LIMIT != env.GAS_LIMIT }}
+        uses: actions/github-script@v6
+        with:
+          script: core.setFailed(`Integration tests must update GAS_LIMIT from ${process.env.GAS_LIMIT} to ${process.env.MAINNET_GAS_LIMIT}`)
 
       - name: Run Integration Tests
         run: just integration-test

@@ -32,6 +32,13 @@ impl<'a> NftClaims<'a> {
 
     /// Creates a number of NFT claims simeltaniously for a given
     /// address.
+    ///
+    /// # Invariants
+    ///
+    /// - token_ids must be deduplicated
+    /// - token_ids must not contain any IDs which are currently in
+    ///   the claims queue for ADDR. This can be ensured by requiring
+    ///   that claims are completed before the tokens may be restaked.
     pub fn create_nft_claims(
         &self,
         storage: &mut dyn Storage,

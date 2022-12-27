@@ -1,0 +1,13 @@
+[package]
+name = "dao-proposal-hooks"
+version = "2.0.0-beta"
+edition = "2021"
+authors = ["Callum Anderson <callumanderson745@gmail.com>"]
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "A package for managing proposal hooks."
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-hooks = { workspace = true }
+dao-voting = { workspace = true }

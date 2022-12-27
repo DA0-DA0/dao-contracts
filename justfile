@@ -1,5 +1,6 @@
 orc_config := env_var_or_default('CONFIG', '`pwd`/ci/configs/cosm-orc/ci.yaml')
 test_addrs := env_var_or_default('TEST_ADDRS', `jq -r '.[].address' ci/configs/test_accounts.json | tr '\n' ' '`)
+gas_limit := env_var_or_default('GAS_LIMIT', '10000000')
 
 build:
 	cargo build
@@ -27,10 +28,6 @@ integration-test: deploy-local workspace-optimize
 integration-test-dev test_name="":
 	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}
 
-# run all integration tests including slow ones.
-integration-test-slow: deploy-local workspace-optimize
-	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test-slow
-
 bootstrap-dev: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
 
@@ -40,7 +37,7 @@ deploy-local: download-deps
 	docker run --rm -d --name cosmwasm \
 		-e PASSWORD=xxxxxxxxx \
 		-e STAKE_TOKEN=ujunox \
-		-e GAS_LIMIT=100000000 \
+		-e GAS_LIMIT={{gas_limit}} \
 		-e MAX_BYTES=22020096 \
 		-e UNSAFE_CORS=true \
 		-p 1317:1317 \
@@ -48,7 +45,7 @@ deploy-local: download-deps
 		-p 26657:26657 \
 		-p 9090:9090 \
 		--mount type=volume,source=junod_data,target=/root \
-		ghcr.io/cosmoscontracts/juno:v9.0.0 /opt/setup_and_run.sh {{test_addrs}}
+		ghcr.io/cosmoscontracts/juno:v11.0.0 /opt/setup_and_run.sh {{test_addrs}}
 
 download-deps:
 	mkdir -p artifacts target
@@ -65,4 +62,4 @@ workspace-optimize:
 		--mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		--platform linux/amd64 \
-		cosmwasm/workspace-optimizer:0.12.9
+		cosmwasm/workspace-optimizer:0.12.10
