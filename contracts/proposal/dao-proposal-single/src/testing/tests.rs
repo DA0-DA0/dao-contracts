@@ -1783,6 +1783,21 @@ fn test_migrate_from_v1() {
         }
     );
 
+    // We can not migrate more than once.
+    let err: ContractError = app
+        .execute(
+            core_addr.clone(),
+            CosmosMsg::Wasm(WasmMsg::Migrate {
+                contract_addr: proposal_module.to_string(),
+                new_code_id: v2_proposal_single,
+                msg: to_binary(&migrate_msg).unwrap(),
+            }),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::AlreadyMigrated {}));
+
     // Make sure we can still query for ballots (rationale works post
     // migration).
     let vote = query_vote(&app, &proposal_module, CREATOR_ADDR, 1);
