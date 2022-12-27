@@ -213,7 +213,7 @@ pub fn execute_update_active_threshold(
     if let Some(active_threshold) = new_active_threshold {
         match active_threshold {
             ActiveThreshold::Percentage { percent } => {
-                if percent > Decimal::percent(100) || percent <= Decimal::percent(0) {
+                if percent > Decimal::percent(100) || percent.is_zero() {
                     return Err(ContractError::InvalidActivePercentage {});
                 }
             }
