@@ -36,7 +36,6 @@ library = []
 [dependencies]
 cosmwasm-schema = "1.1.3"
 cosmwasm-std = "1.1.3"
-cosmwasm-storage = "1.1.3"
 cw-storage-plus = "0.15.1"
 cw-utils.workspace = true
 cw2 = "0.15.1"
