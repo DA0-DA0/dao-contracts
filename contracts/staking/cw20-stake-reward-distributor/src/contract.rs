@@ -22,7 +22,6 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = deps.api.addr_validate(&msg.owner)?;
     let staking_addr = deps.api.addr_validate(&msg.staking_addr)?;
     if !validate_staking(deps.as_ref(), staking_addr.clone()) {
         return Err(ContractError::InvalidStakingContract {});
@@ -34,19 +33,19 @@ pub fn instantiate(
     }
 
     let config = Config {
-        owner: owner.clone(),
         staking_addr: staking_addr.clone(),
         reward_token: reward_token.clone(),
         reward_rate: msg.reward_rate,
     };
     CONFIG.save(deps.storage, &config)?;
+    cw_ownable::initialize_owner(deps.storage, deps.api, &msg.owner)?;
 
     // Initialize last payment block
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
     Ok(Response::new()
         .add_attribute("action", "instantiate")
-        .add_attribute("owner", owner.into_string())
+        .add_attribute("owner", msg.owner)
         .add_attribute("staking_addr", staking_addr.into_string())
         .add_attribute("reward_token", reward_token.into_string())
         .add_attribute("reward_rate", msg.reward_rate))
@@ -61,21 +60,13 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::UpdateConfig {
-            owner,
             staking_addr,
             reward_rate,
             reward_token,
-        } => execute_update_config(
-            deps,
-            info,
-            env,
-            owner,
-            staking_addr,
-            reward_rate,
-            reward_token,
-        ),
+        } => execute_update_config(deps, info, env, staking_addr, reward_rate, reward_token),
         ExecuteMsg::Distribute {} => execute_distribute(deps, env),
         ExecuteMsg::Withdraw {} => execute_withdraw(deps, info, env),
+        ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
     }
 }
 
@@ -83,19 +74,14 @@ pub fn execute_update_config(
     deps: DepsMut,
     info: MessageInfo,
     env: Env,
-    owner: String,
     staking_addr: String,
     reward_rate: Uint128,
     reward_token: String,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
 
-    let owner = deps.api.addr_validate(&owner)?;
     let staking_addr = deps.api.addr_validate(&staking_addr)?;
     if !validate_staking(deps.as_ref(), staking_addr.clone()) {
         return Err(ContractError::InvalidStakingContract {});
@@ -107,7 +93,6 @@ pub fn execute_update_config(
     }
 
     let config = Config {
-        owner: owner.clone(),
         staking_addr: staking_addr.clone(),
         reward_token: reward_token.clone(),
         reward_rate,
@@ -123,10 +108,19 @@ pub fn execute_update_config(
 
     Ok(resp
         .add_attribute("action", "update_config")
-        .add_attribute("owner", owner.into_string())
         .add_attribute("staking_addr", staking_addr.into_string())
         .add_attribute("reward_token", reward_token.into_string())
         .add_attribute("reward_rate", reward_rate))
+}
+
+pub fn execute_update_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    action: cw_ownable::Action,
+) -> Result<Response, ContractError> {
+    let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+    Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
 pub fn validate_cw20(deps: Deps, cw20_addr: Addr) -> bool {
@@ -196,10 +190,8 @@ pub fn execute_withdraw(
     info: MessageInfo,
     env: Env,
 ) -> Result<Response, ContractError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
     let config = CONFIG.load(deps.storage)?;
-    if config.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
 
     let balance_info: cw20::BalanceResponse = deps.querier.query_wasm_smart(
         config.reward_token.clone(),
@@ -209,7 +201,9 @@ pub fn execute_withdraw(
     )?;
 
     let msg = to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-        recipient: config.owner.clone().into(),
+        // `assert_owner` call above validates that the sender is the
+        // owner.
+        recipient: info.sender.to_string(),
         amount: balance_info.balance,
     })?;
     let send_msg: CosmosMsg = WasmMsg::Execute {
@@ -223,13 +217,14 @@ pub fn execute_withdraw(
         .add_message(send_msg)
         .add_attribute("action", "withdraw")
         .add_attribute("amount", balance_info.balance)
-        .add_attribute("recipient", config.owner.into_string()))
+        .add_attribute("recipient", &info.sender))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => to_binary(&query_info(deps, env)?),
+        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
