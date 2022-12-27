@@ -4,6 +4,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::Delegation;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::Addr;
+use cw_utils::Expiration;
 use std::matches;
 
 const ADMIN_ADDR: &str = "admin";
@@ -183,11 +184,61 @@ fn test_execute_authorization() {
 // Can execute multiple if `preserve_on_failure` is true
 // and execution fails.
 #[test]
-fn test_execute_on_failure_policy() {}
+fn test_execute_on_failure_policy() {
+    // Should I mock a Reply object here or do integration testing?
+}
 
 // Cannot execute delegation if expired
 #[test]
-fn test_execute_on_expired() {}
+fn test_execute_on_expired() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("any_addr", &[]);
+
+    instantiate(
+        deps.as_mut(),
+        env,
+        info,
+        InstantiateMsg {
+            admin: ADMIN_ADDR.to_string(),
+        },
+    )
+    .unwrap();
+
+    let mut env = mock_env();
+    env.block.height = 0;
+    execute_delegate(
+        deps.as_mut(),
+        env,
+        mock_info(ADMIN_ADDR, &[]),
+        Delegation {
+            delegate: Addr::unchecked("dest_addr"),
+            msgs: Vec::new(),
+            expiration: Some(Expiration::AtHeight(10)),
+            policy_irrevocable: false,
+            policy_preserve_on_failure: false,
+        },
+    )
+    .unwrap();
+
+    // 10 height should fail
+    let mut expired_env = mock_env();
+    expired_env.block.height = 10;
+    let err =
+        execute_execute(deps.as_mut(), expired_env, mock_info("dest_addr", &[]), 1).unwrap_err();
+    assert!(matches!(err, ContractError::DelegationExpired {}));
+
+    // 9 height should succeed
+    let mut not_expired_env = mock_env();
+    not_expired_env.block.height = 9;
+    execute_execute(
+        deps.as_mut(),
+        not_expired_env,
+        mock_info("dest_addr", &[]),
+        1,
+    )
+    .unwrap();
+}
 
 // Un-authorized revocation should fail
 // If delegation is irrevocable, admin cannot revoke
