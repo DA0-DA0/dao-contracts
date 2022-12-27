@@ -1,16 +1,15 @@
 use std::collections::HashMap;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, to_binary, Uint128, WasmMsg};
-use cw20::Denom;
+use cosmwasm_std::{Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Order, Response, StdError, StdResult, to_binary, Uint128, WasmMsg};
 use cw2::set_contract_version;
+use cw20_stake::msg::ListStakersResponse;
 
 use crate::error::ContractError;
 use crate::msg::{CW20EntitlementResponse, CW20Response, DenomResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, NativeEntitlementResponse, QueryMsg, TotalPowerResponse, VotingContractResponse};
-use crate::state::{CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT};
+use crate::state::{ADDR_RELATIVE_SHARE, CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT};
 
 use dao_interface::voting;
-use crate::msg;
 
 const CONTRACT_NAME: &str = "crates.io:cw-fund-distributor";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -37,13 +36,39 @@ pub fn instantiate(
             height: Some(env.block.height),
         },
     )?;
+
     // validate the total power and store it
     if total_power.power.is_zero() {
         return Err(ContractError::ZeroVotingPower {});
     }
     TOTAL_POWER.save(deps.storage, &total_power.power)?;
 
-    // TODO: populate ADDR_RELATIVE_SHARE map here?
+    // get the staking contract address wrapped by the voting contract
+    let staking_contract_addr: Addr = deps.querier.query_wasm_smart(
+        voting_contract.clone(),
+        &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
+    )?;
+    // query it for stakers
+    let stakers_response: ListStakersResponse = deps.querier.query_wasm_smart(
+        staking_contract_addr.clone(),
+        &cw20_stake::msg::QueryMsg::ListStakers {
+            start_after: None,
+            limit: None
+        },
+    )?;
+    // save ratios of all stakers balances relative to total power
+    stakers_response.stakers.into_iter()
+        .for_each(|resp| {
+            ADDR_RELATIVE_SHARE.save(
+                deps.storage,
+                Addr::unchecked(resp.address),
+                &Decimal::from_ratio(
+                    resp.balance,
+                    total_power.power,
+                ),
+            )
+            .unwrap();
+        });
 
     Ok(Response::default()
         .add_attribute(
@@ -138,22 +163,26 @@ pub fn execute_fund_native(deps: DepsMut, info: MessageInfo) -> Result<Response,
     Ok(response)
 }
 
+fn get_entitlement(
+    distributor_funds: Uint128,
+    relative_share: Decimal,
+    previous_claim: Uint128
+) -> Uint128 {
+    distributor_funds
+        .multiply_ratio(
+            relative_share.numerator(),
+            relative_share.denominator()
+        )
+        .checked_sub(previous_claim)
+        .unwrap()
+}
+
 pub fn execute_claim_cw20s(
     deps: DepsMut,
     sender: Addr,
     token: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: sender.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
+    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
 
     let mut response = Response::default();
     if let Some(tokens) = token {
@@ -165,18 +194,14 @@ pub fn execute_claim_cw20s(
                     deps.storage,
                     Addr::unchecked(addr.clone())
                 ).unwrap();
-
                 // check for any previous claims
                 let previous_claim = CW20_CLAIMS.load(
-                    deps.storage,
-                    (sender.clone(), Addr::unchecked(addr.clone()))
+                deps.storage,
+                (sender.clone(), Addr::unchecked(addr.clone()))
                 ).unwrap_or_default();
 
                 // get % share of sender and subtract any previous claims
-                let entitlement = bal.multiply_ratio(
-                voting_power.power,
-                total_power
-                ) - previous_claim;
+                let entitlement = get_entitlement(bal, relative_share, previous_claim);
 
                 // reflect the new total claim amount
                 CW20_CLAIMS.update(
@@ -217,17 +242,7 @@ pub fn execute_claim_natives(
     sender: Addr,
     denoms: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: sender.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
+    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
 
     let mut response = Response::default();
 
@@ -248,10 +263,7 @@ pub fn execute_claim_natives(
                 ).unwrap_or_default();
 
                 // get % share of sender and subtract any previous claims
-                let entitlement = bal.multiply_ratio(
-                    voting_power.power,
-                    total_power
-                ) - previous_claim;
+                let entitlement = get_entitlement(bal, relative_share, previous_claim);
 
                 // reflect the new total claim amount
                 NATIVE_CLAIMS.update(
@@ -287,17 +299,7 @@ pub fn execute_claim_natives(
 }
 
 pub fn execute_claim_all(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: sender.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
+    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
 
     let cw20s: Vec<(Addr, Uint128)> = CW20_BALANCES.range(
         deps.storage,
@@ -326,10 +328,7 @@ pub fn execute_claim_all(deps: DepsMut, sender: Addr) -> Result<Response, Contra
             ).unwrap_or_default();
 
             // get % share of sender and subtract any previous claims
-            let entitlement = amount.multiply_ratio(
-                voting_power.power,
-                total_power
-            ) - previous_claim;
+            let entitlement = get_entitlement(amount, relative_share, previous_claim);
 
             // reflect the new total claim amount
             CW20_CLAIMS.update(
@@ -364,10 +363,7 @@ pub fn execute_claim_all(deps: DepsMut, sender: Addr) -> Result<Response, Contra
             ).unwrap_or_default();
 
             // get % share of sender and subtract any previous claims
-            let entitlement = amount.multiply_ratio(
-                voting_power.power,
-                total_power
-            ) - previous_claim;
+            let entitlement = get_entitlement(amount, relative_share, previous_claim);
 
             // reflect the new total claim amount
             NATIVE_CLAIMS.update(
@@ -450,7 +446,7 @@ pub fn query_native_denoms(deps: Deps) -> StdResult<Binary> {
         .map(|(denom, amount)| {
             DenomResponse {
                 contract_balance: amount,
-                denom: denom,
+                denom,
             }
         })
         .collect();
@@ -484,24 +480,13 @@ pub fn query_native_entitlement(
     denom: String,
 ) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: address.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
-
+    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
     let prev_claim = NATIVE_CLAIMS.load(deps.storage,(address, denom.clone()))?;
     let total_bal = NATIVE_BALANCES.load(deps.storage, denom.clone())?;
-    let entitlement = total_bal
-        .checked_multiply_ratio(voting_power.power, total_power).unwrap();
+    let entitlement = get_entitlement(total_bal, relative_share, prev_claim);
 
     to_binary(&NativeEntitlementResponse {
-        amount: entitlement.checked_sub(prev_claim)?,
+        amount: entitlement,
         denom,
     })
 }
@@ -512,26 +497,14 @@ pub fn query_cw20_entitlement(
     token: String,
 ) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let total_power = TOTAL_POWER.load(deps.storage)?;
+    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
     let token = Addr::unchecked(token);
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: address.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
-
     let prev_claim = CW20_CLAIMS.load(deps.storage,(address, token.clone()))?;
     let total_bal = CW20_BALANCES.load(deps.storage, token.clone())?;
-    let entitlement = total_bal
-        .checked_multiply_ratio(voting_power.power, total_power).unwrap();
-        ;
+    let entitlement = get_entitlement(total_bal, relative_share, prev_claim);
 
     to_binary(&CW20EntitlementResponse {
-        amount: entitlement.checked_sub(prev_claim)?,
+        amount: entitlement,
         token_contract: token,
     })
 }
@@ -541,17 +514,7 @@ pub fn query_native_entitlements(
     sender: Addr,
 ) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: address.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
+    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
 
     let entitlements: Vec<NativeEntitlementResponse> = NATIVE_BALANCES.range(
         deps.storage,
@@ -562,13 +525,9 @@ pub fn query_native_entitlements(
     .into_iter()
     .map(|item| item.unwrap())
     .map(|(denom, amount)| {
-        let claim = NATIVE_CLAIMS.load(deps.storage, (address.clone(), denom.clone())).unwrap();
+        let prev_claim = NATIVE_CLAIMS.load(deps.storage, (address.clone(), denom.clone())).unwrap();
         NativeEntitlementResponse {
-            amount: amount
-                .checked_multiply_ratio(voting_power.power, total_power)
-                .unwrap()
-                .checked_sub(claim)
-                .unwrap(),
+            amount: get_entitlement(amount, relative_share, prev_claim),
             denom,
         }
     })
@@ -582,17 +541,7 @@ pub fn query_cw20_entitlements(
     sender: Addr,
 ) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let voting_contract = VOTING_CONTRACT.load(deps.storage)?;
-    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage)?;
-    let total_power = TOTAL_POWER.load(deps.storage)?;
-
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: address.to_string(),
-            height: Some(dist_height),
-        },
-    )?;
+    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
 
     let entitlements: Vec<CW20EntitlementResponse> = CW20_BALANCES.range(
         deps.storage,
@@ -602,10 +551,14 @@ pub fn query_cw20_entitlements(
     )
     .into_iter()
     .map(|item| item.unwrap())
-    .map(|(addr, amount)| {
+    .map(|(token, amount)| {
+        let prev_claim = CW20_CLAIMS.load(
+            deps.storage,
+            (address.clone(), token.clone())
+        ).unwrap();
         CW20EntitlementResponse {
-            amount: amount.checked_multiply_ratio(voting_power.power, total_power).unwrap(),
-            token_contract: addr,
+            amount: get_entitlement(amount, relative_share, prev_claim),
+            token_contract: token,
         }
     })
     .collect();
@@ -638,7 +591,7 @@ fn execute_redistribute_unclaimed_funds(
         deps.storage,
         None,
         None,
-        cosmwasm_std::Order::Descending
+        Order::Descending
     )
     .map(|native| native.unwrap())
     .collect();
@@ -647,7 +600,7 @@ fn execute_redistribute_unclaimed_funds(
         deps.storage,
         None,
         None,
-        cosmwasm_std::Order::Descending
+        Order::Descending
     )
     .map(|native| native.unwrap())
     .collect();

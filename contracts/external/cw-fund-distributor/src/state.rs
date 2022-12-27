@@ -9,7 +9,8 @@ pub const VOTING_CONTRACT: Item<Addr> = Item::new("voting_contract");
 pub const TOTAL_POWER: Item<Uint128> = Item::new("total_power");
 
 // maps user (ADDRESS) to the respective relative share
-// of all types of collateral
+// of all types of collateral at the time of contract
+// instantiation (DISTRIBUTION_HEIGHT)
 pub const ADDR_RELATIVE_SHARE: Map<Addr, Decimal> = Map::new("relative_share");
 
 // maps token address to the amount being distributed

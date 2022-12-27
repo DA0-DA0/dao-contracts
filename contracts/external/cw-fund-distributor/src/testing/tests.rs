@@ -689,11 +689,8 @@ pub fn test_claim_cw20() {
     // assert that user has been able to claim the difference
     // between total funded CW20_BALANCES of the token being
     // claimed and the amount previously claimed.
-    // while in theory 100000 * (1/3) floored is 33333,
-    // 600000 * (1/3) => 200000
-    // previous claim => 166666
-    // new claim => (200000 - 166666) => 33334
-    let total_expected_claim = Uint128::new(200000);
+    // because of integer division, almost always rounds down
+    let total_expected_claim = Uint128::new(199999);
 
     let user_balance_after_claim = query_cw20_balance(
         &mut app,
