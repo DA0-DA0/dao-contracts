@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Deps, DepsMut, Empty, Env, MessageInfo, OverflowError, Reply,
-    Response, StdError, StdResult, Storage, SubMsg, SubMsgResult, WasmMsg,
+    Response, StdError, StdResult, Storage, SubMsg, WasmMsg,
 };
 use cw_utils::Expiration;
 // use cw2::set_contract_version;
@@ -119,7 +119,7 @@ fn query_delegation(deps: Deps, delegation_id: u64) -> StdResult<DelegationRespo
 
 // MARK: Execute subroutines
 
-fn execute_delegate(
+pub fn execute_delegate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -137,7 +137,7 @@ fn execute_delegate(
     Ok(Response::default().add_attribute("delegate_id", id.to_string()))
 }
 
-fn execute_remove_delegation(
+pub fn execute_remove_delegation(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -159,7 +159,7 @@ fn execute_remove_delegation(
     Ok(Response::default())
 }
 
-fn execute_execute(
+pub fn execute_execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -224,6 +224,3 @@ fn assert_not_expired(
         None => Ok(()),
     }
 }
-
-#[cfg(test)]
-mod tests {}
