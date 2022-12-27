@@ -3,8 +3,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    Ownership(#[from] cw_ownable::OwnershipError),
 
     #[error("Unauthorized")]
     Unauthorized {},

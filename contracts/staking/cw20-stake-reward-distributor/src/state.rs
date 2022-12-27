@@ -4,7 +4,6 @@ use cw_storage_plus::Item;
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Addr,
     pub staking_addr: Addr,
     pub reward_rate: Uint128,
     pub reward_token: Addr,
