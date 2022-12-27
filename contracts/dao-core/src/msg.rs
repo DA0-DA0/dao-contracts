@@ -43,10 +43,8 @@ pub struct InstantiateMsg {
     /// that the core module instantiates its proposal module.
     pub proposal_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
 
-    /// Initial information for arbitrary contract addresses to be
-    /// added to the items map. The key is the name of the item in the
-    /// items map. The value is an enum that either uses an existing
-    /// address or instantiates a new contract.
+    /// The items to instantiate this DAO with. Items are arbitrary
+    /// key-value pairs who's contents are controlled by governance.
     ///
     /// It is an error to provide two items with the same key.
     pub initial_items: Option<Vec<InitialItem>>,
