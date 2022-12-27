@@ -339,6 +339,25 @@ fn test_unstake_none_staked() {
 }
 
 #[test]
+#[should_panic(expected = "Amount being unstaked must be non-zero")]
+fn test_unstake_zero_tokens() {
+    let mut app = mock_app();
+    let staking_id = app.store_code(staking_contract());
+    let addr = instantiate_staking(
+        &mut app,
+        staking_id,
+        InstantiateMsg {
+            owner: Some(Admin::CoreModule {}),
+            manager: Some(ADDR1.to_string()),
+            denom: DENOM.to_string(),
+            unstaking_duration: Some(Duration::Height(5)),
+        },
+    );
+
+    unstake_tokens(&mut app, addr, ADDR1, 0).unwrap();
+}
+
+#[test]
 #[should_panic(expected = "Can only unstake less than or equal to the amount you have staked")]
 fn test_unstake_invalid_balance() {
     let mut app = mock_app();

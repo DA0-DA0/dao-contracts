@@ -140,7 +140,9 @@ pub fn execute_unstake(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
+    if amount.is_zero() {
+        return Err(ContractError::ZeroUnstake {});
+    }
 
     STAKED_BALANCES.update(
         deps.storage,
@@ -164,6 +166,7 @@ pub fn execute_unstake(
         },
     )?;
 
+    let config = CONFIG.load(deps.storage)?;
     match config.unstaking_duration {
         None => {
             let msg = CosmosMsg::Bank(BankMsg::Send {
