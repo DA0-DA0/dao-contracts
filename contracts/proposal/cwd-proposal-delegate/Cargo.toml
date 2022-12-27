@@ -1,9 +1,10 @@
 [package]
 name = "cwd-proposal-delegate"
-version = "0.1.0"
-authors = ["Bao <baomai@berkeley.edu>"]
+version = "1.0.0-beta"
+authors = ["baoskee"]
 edition = "2021"
-
+repository = "https://github.com/DA0-DA0/dao-contracts"
+description = "Proposal execute delegation to any smart contract"
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
   "contract.wasm",
@@ -11,20 +12,8 @@ exclude = [
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 crate-type = ["cdylib", "rlib"]
-
-[profile.release]
-opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-panic = 'abort'
-incremental = false
-overflow-checks = true
 
 [features]
 # for more explicit tests, cargo test --features=backtraces
@@ -32,24 +21,39 @@ backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
 
-[package.metadata.scripts]
-optimize = """docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.12.6
-"""
-
 [dependencies]
-cosmwasm-schema = "1.1.3"
-cosmwasm-std = "1.1.3"
-cosmwasm-storage = "1.1.3"
-cw-storage-plus = "0.15.1"
-cw-utils.workspace = true
-cw2 = "0.15.1"
-schemars = "0.8.10"
-serde = { version = "1.0.145", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.31" }
-cwd-core = { workspace = true, features = ["library"] }
+cosmwasm-std = { workspace = true, features = ["ibc3"] }
+cosmwasm-storage = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw20 = { workspace = true }
+cw3 = { workspace = true }
+thiserror = { version = "1.0" }
+dao-core = { workspace = true, features = ["library"] }
+dao-macros = { workspace = true }
+dao-pre-propose-base = { workspace = true }
+dao-interface = { workspace = true }
+dao-voting = { workspace = true }
+cw-hooks = { workspace = true }
+dao-proposal-hooks = { workspace = true }
+dao-vote-hooks = { workspace = true }
+dao-pre-propose-multiple = { workspace = true }
+voting-v1 = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test = "0.15.1"
+cw-multi-test = { workspace = true }
+dao-voting-cw4 = { workspace = true }
+dao-voting-cw20-balance = { workspace = true }
+dao-voting-cw20-staked = { workspace = true }
+dao-voting-native-staked = { workspace = true }
+dao-voting-cw721-staked = { workspace = true }
+cw-denom = { workspace = true }
+dao-testing = { workspace = true }
+cw20-stake = { workspace = true }
+cw20-base = { workspace = true }
+cw721-base = { workspace = true }
+cw4 = { workspace = true }
+cw4-group = { workspace = true }
+rand = { workspace = true }

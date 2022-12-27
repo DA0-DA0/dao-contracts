@@ -188,7 +188,7 @@ fn execute_execute(
     let Config { admin } = CONFIG.load(deps.storage)?;
     let wasm_msg = WasmMsg::Execute {
         contract_addr: admin.to_string(),
-        msg: to_binary(&cwd_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+        msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
         funds: vec![],
     };
     let submsg: SubMsg<Empty> = SubMsg::reply_always(wasm_msg, REPLY_ID_EXECUTE_PROPOSAL_HOOK);
