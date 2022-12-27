@@ -173,6 +173,9 @@ pub fn assert_valid_absolute_count_threshold(
     token_addr: &Addr,
     count: Uint128,
 ) -> Result<(), ContractError> {
+    if count.is_zero() {
+        return Err(ContractError::ZeroActiveCount {});
+    }
     let token_info: cw20::TokenInfoResponse = deps
         .querier
         .query_wasm_smart(token_addr, &cw20_base::msg::QueryMsg::TokenInfo {})?;
