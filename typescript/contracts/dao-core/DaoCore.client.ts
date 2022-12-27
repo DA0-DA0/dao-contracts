@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { Admin, Binary, InstantiateMsg, InitialItem, ModuleInstantiateInfo, ExecuteMsg, CosmosMsgForEmpty, BankMsg, Uint128, StakingMsg, DistributionMsg, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Duration, Coin, Empty, IbcTimeout, IbcTimeoutBlock, Cw20ReceiveMsg, Cw721ReceiveMsg, Config, SubDao, QueryMsg, MigrateMsg, Addr, ProposalModuleStatus, ArrayOfProposalModule, ProposalModule, AdminNominationResponse, Cw20BalanceResponse, ArrayOfAddr, DaoURIResponse, PauseInfoResponse, Expiration, DumpStateResponse, ContractVersion, GetItemResponse, InfoResponse, ArrayOfString, ArrayOfSubDao, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse } from "./DaoCore.types";
+import { Admin, Binary, InstantiateMsg, InitialItem, ModuleInstantiateInfo, ExecuteMsg, CosmosMsgForEmpty, BankMsg, Uint128, StakingMsg, DistributionMsg, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, Duration, Coin, Empty, IbcTimeout, IbcTimeoutBlock, Cw20ReceiveMsg, Cw721ReceiveMsg, Config, SubDao, QueryMsg, MigrateMsg, Addr, ProposalModuleStatus, ArrayOfProposalModule, ProposalModule, AdminNominationResponse, Cw20BalanceResponse, ArrayOfAddr, DaoURIResponse, PauseInfoResponse, Expiration, DumpStateResponse, ContractVersion, GetItemResponse, InfoResponse, ArrayOfString, ArrayOfSubDao, ProposalModuleCountResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse } from "./DaoCore.types";
 export interface DaoCoreReadOnlyInterface {
   contractAddress: string;
   admin: () => Promise<Addr>;
@@ -61,6 +61,7 @@ export interface DaoCoreReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ArrayOfProposalModule>;
+  proposalModuleCount: () => Promise<ProposalModuleCountResponse>;
   pauseInfo: () => Promise<PauseInfoResponse>;
   votingModule: () => Promise<Addr>;
   listSubDaos: ({
@@ -103,6 +104,7 @@ export class DaoCoreQueryClient implements DaoCoreReadOnlyInterface {
     this.info = this.info.bind(this);
     this.proposalModules = this.proposalModules.bind(this);
     this.activeProposalModules = this.activeProposalModules.bind(this);
+    this.proposalModuleCount = this.proposalModuleCount.bind(this);
     this.pauseInfo = this.pauseInfo.bind(this);
     this.votingModule = this.votingModule.bind(this);
     this.listSubDaos = this.listSubDaos.bind(this);
@@ -229,6 +231,11 @@ export class DaoCoreQueryClient implements DaoCoreReadOnlyInterface {
         limit,
         start_after: startAfter
       }
+    });
+  };
+  proposalModuleCount = async (): Promise<ProposalModuleCountResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      proposal_module_count: {}
     });
   };
   pauseInfo = async (): Promise<PauseInfoResponse> => {

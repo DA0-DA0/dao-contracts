@@ -198,6 +198,10 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Gets the number of active and total proposal modules
+    /// registered with this module.
+    #[returns(crate::query::ProposalModuleCountResponse)]
+    ProposalModuleCount {},
     /// Returns information about if the contract is currently paused.
     #[returns(crate::query::PauseInfoResponse)]
     PauseInfo {},

@@ -18,7 +18,7 @@ use crate::{
     msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg},
     query::{
         AdminNominationResponse, Cw20BalanceResponse, DaoURIResponse, DumpStateResponse,
-        GetItemResponse, PauseInfoResponse, SubDao,
+        GetItemResponse, PauseInfoResponse, ProposalModuleCountResponse, SubDao,
     },
     state::{Config, ProposalModule, ProposalModuleStatus, PROPOSAL_MODULES},
     ContractError,
@@ -384,6 +384,21 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
 
     assert_eq!(modules.len(), 1);
 
+    let module_count = query_proposal_module_count(&app, &gov_addr);
+    assert_eq!(
+        module_count,
+        ProposalModuleCountResponse {
+            active_proposal_module_count: 1,
+            total_proposal_module_count: 1,
+        }
+    );
+
+    let (to_add, to_remove) = swaps
+        .iter()
+        .cloned()
+        .reduce(|(to_add, to_remove), (add, remove)| (to_add + add, to_remove + remove))
+        .unwrap_or((0, 0));
+
     for (add, remove) in swaps {
         let start_modules: Vec<ProposalModule> = app
             .wrap()
@@ -460,6 +475,15 @@ fn test_swap_governance(swaps: Vec<(u32, u32)>) {
             start_modules.len() as u32 + add
         )
     }
+
+    let module_count = query_proposal_module_count(&app, &gov_addr);
+    assert_eq!(
+        module_count,
+        ProposalModuleCountResponse {
+            active_proposal_module_count: 1 + to_add - to_remove,
+            total_proposal_module_count: 1 + to_add,
+        }
+    );
 }
 
 #[test]
@@ -2869,6 +2893,12 @@ fn get_active_modules(app: &App, gov_addr: Addr) -> Vec<ProposalModule> {
         .into_iter()
         .filter(|module: &ProposalModule| module.status == ProposalModuleStatus::Enabled)
         .collect()
+}
+
+fn query_proposal_module_count(app: &App, core_addr: &Addr) -> ProposalModuleCountResponse {
+    app.wrap()
+        .query_wasm_smart(core_addr, &QueryMsg::ProposalModuleCount {})
+        .unwrap()
 }
 
 #[test]

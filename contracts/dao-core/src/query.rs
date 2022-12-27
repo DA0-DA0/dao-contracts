@@ -72,3 +72,11 @@ pub struct SubDao {
 pub struct DaoURIResponse {
     pub dao_uri: Option<String>,
 }
+
+#[cw_serde]
+pub struct ProposalModuleCountResponse {
+    /// The number of active proposal modules.
+    pub active_proposal_module_count: u32,
+    /// The total number of proposal modules.
+    pub total_proposal_module_count: u32,
+}
