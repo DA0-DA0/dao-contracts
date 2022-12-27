@@ -29,16 +29,8 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(DelegationCountResponse)]
-    DelegationCount {},
-
     #[returns(DelegationResponse)]
     Delegation { delegation_id: u64 },
-}
-
-#[cw_serde]
-pub struct DelegationCountResponse {
-    pub count: u64,
 }
 
 pub type DelegationResponse = Delegation;

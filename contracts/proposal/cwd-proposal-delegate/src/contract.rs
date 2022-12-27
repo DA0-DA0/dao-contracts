@@ -9,7 +9,7 @@ use cw_utils::Expiration;
 
 use crate::error::ContractError;
 use crate::msg::{
-    DelegationCountResponse, DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    DelegationResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use crate::state::{Config, Delegation, CONFIG, DELEGATIONS, DELEGATION_COUNT, EXECUTE_CTX};
 
@@ -87,12 +87,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 ..
             } = DELEGATIONS.load(deps.storage, id)?;
 
-            if let SubMsgResult::Err(_) = msg.result {
-                // && with `let` expression above gives unstable Rust error
-                if policy_preserve_on_failure {
-                    return Ok(Response::default()
-                        .add_attribute("execute_failed_but_preserved", id.to_string()));
-                }
+            if msg.result.is_err() && policy_preserve_on_failure {
+                return Ok(Response::default()
+                    .add_attribute("execute_failed_but_preserved", id.to_string()));
             }
             // Delete delegation in both success and error case
             DELEGATIONS.remove(deps.storage, id);
@@ -107,7 +104,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::DelegationCount {} => Ok(to_binary(&query_delegation_count(deps)?)?),
         QueryMsg::Delegation { delegation_id } => {
             Ok(to_binary(&query_delegation(deps, delegation_id)?)?)
         }
@@ -115,11 +111,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 // MARK: Query helpers
-
-fn query_delegation_count(deps: Deps) -> StdResult<DelegationCountResponse> {
-    let count = DELEGATION_COUNT.load(deps.storage)?;
-    Ok(DelegationCountResponse { count })
-}
 
 fn query_delegation(deps: Deps, delegation_id: u64) -> StdResult<DelegationResponse> {
     let delegation = DELEGATIONS.load(deps.storage, delegation_id)?;
