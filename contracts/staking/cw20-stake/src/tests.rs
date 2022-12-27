@@ -226,6 +226,13 @@ fn test_instantiate_invalid_unstaking_duration() {
 }
 
 #[test]
+#[should_panic(expected = "Provided cw20 errored in response to TokenInfo query")]
+fn test_instantiate_with_non_cw20_token() {
+    let app = &mut mock_app();
+    instantiate_staking(app, Addr::unchecked("ekez"), None);
+}
+
+#[test]
 fn test_update_config() {
     let _deps = mock_dependencies();
 
