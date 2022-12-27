@@ -356,22 +356,22 @@ pub fn execute_execute(
     info: MessageInfo,
     proposal_id: u64,
 ) -> Result<Response, ContractError> {
+    let mut prop = PROPOSALS
+        .may_load(deps.storage, proposal_id)?
+        .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
+
     let config = CONFIG.load(deps.storage)?;
     if config.only_members_execute {
         let power = get_voting_power(
             deps.as_ref(),
             info.sender.clone(),
             config.dao.clone(),
-            Some(env.block.height),
+            Some(prop.start_height),
         )?;
         if power.is_zero() {
             return Err(ContractError::Unauthorized {});
         }
     }
-
-    let mut prop = PROPOSALS
-        .may_load(deps.storage, proposal_id)?
-        .ok_or(ContractError::NoSuchProposal { id: proposal_id })?;
 
     // Check here that the proposal is passed. Allow it to be
     // executed even if it is expired so long as it passed during its

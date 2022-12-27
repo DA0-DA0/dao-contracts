@@ -33,8 +33,8 @@ use crate::{
             instantiate_with_staking_active_threshold,
         },
         queries::{
-            query_balance_cw20, query_balance_native, query_dao_token,
-            query_deposit_config_and_pre_propose_module, query_list_proposals,
+            query_balance_cw20, query_balance_native, query_cw20_token_staking_contracts,
+            query_dao_token, query_deposit_config_and_pre_propose_module, query_list_proposals,
             query_list_proposals_reverse, query_multiple_proposal_module, query_proposal,
             query_proposal_config, query_proposal_hooks, query_vote_hooks,
         },
@@ -1603,6 +1603,124 @@ fn test_cant_execute_not_member() {
     .unwrap();
 
     // Execute should error as blue2 is not a member
+    let err = app
+        .execute_contract(
+            Addr::unchecked("blue2"),
+            govmod,
+            &ExecuteMsg::Execute { proposal_id: 1 },
+            &[],
+        )
+        .unwrap_err();
+
+    assert!(matches!(
+        err.downcast().unwrap(),
+        ContractError::Unauthorized {}
+    ))
+}
+
+#[test]
+fn test_cant_execute_not_member_when_proposal_created() {
+    // Create proposal with only_members_execute: true and ensure member cannot
+    // execute if they were not a member when the proposal was created
+    let mut app = App::default();
+    let _govmod_id = app.store_code(proposal_multiple_contract());
+
+    let max_voting_period = cw_utils::Duration::Height(6);
+    let quorum = PercentageThreshold::Majority {};
+
+    let voting_strategy = VotingStrategy::SingleChoice { quorum };
+
+    let instantiate = InstantiateMsg {
+        min_voting_period: None,
+        close_proposal_on_execution_failure: true,
+        max_voting_period,
+        only_members_execute: true,
+        allow_revoting: false,
+        voting_strategy,
+        pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+    };
+
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        instantiate,
+        Some(vec![Cw20Coin {
+            address: "blue".to_string(),
+            amount: Uint128::new(10),
+        }]),
+    );
+    let govmod = query_multiple_proposal_module(&app, &core_addr);
+
+    // Create proposal
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::Propose {
+            title: "A simple text proposal".to_string(),
+            description: "A simple text proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Proposal should pass after this vote
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+        },
+        &[],
+    )
+    .unwrap();
+
+    let (token_contract, staking_contract) = query_cw20_token_staking_contracts(&app, &core_addr);
+    // Mint funds for blue2
+    app.execute_contract(
+        core_addr,
+        token_contract.clone(),
+        &cw20::Cw20ExecuteMsg::Mint {
+            recipient: "blue2".to_string(),
+            amount: Uint128::new(10),
+        },
+        &[],
+    )
+    .unwrap();
+    // Have blue2 stake funds
+    app.execute_contract(
+        Addr::unchecked("blue2"),
+        token_contract,
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: staking_contract.to_string(),
+            amount: Uint128::new(10),
+            msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Update the block so that the staked balance appears.
+    app.update_block(|block| block.height += 1);
+
+    // Execute should error as blue2 was not a member when the proposal was
+    // created even though they are now
     let err = app
         .execute_contract(
             Addr::unchecked("blue2"),

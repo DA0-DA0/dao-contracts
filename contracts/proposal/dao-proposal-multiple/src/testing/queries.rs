@@ -131,6 +131,28 @@ pub fn query_voting_module(app: &App, core_addr: &Addr) -> Addr {
         .unwrap()
 }
 
+pub fn query_cw20_token_staking_contracts(app: &App, core_addr: &Addr) -> (Addr, Addr) {
+    let voting_module: Addr = app
+        .wrap()
+        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::VotingModule {})
+        .unwrap();
+    let token_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module.clone(),
+            &dao_voting_cw20_staked::msg::QueryMsg::TokenContract {},
+        )
+        .unwrap();
+    let staking_contract: Addr = app
+        .wrap()
+        .query_wasm_smart(
+            voting_module,
+            &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
+        )
+        .unwrap();
+    (token_contract, staking_contract)
+}
+
 pub fn query_balance_cw20<T: Into<String>, U: Into<String>>(
     app: &App,
     contract_addr: T,
