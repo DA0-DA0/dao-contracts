@@ -1718,7 +1718,22 @@ fn test_instantiate_with_items() {
         },
     };
 
-    let gov_instantiate = InstantiateMsg {
+    let mut initial_items = vec![
+        InitialItem {
+            key: "item0".to_string(),
+            value: "item0_value".to_string(),
+        },
+        InitialItem {
+            key: "item1".to_string(),
+            value: "item1_value".to_string(),
+        },
+        InitialItem {
+            key: "item0".to_string(),
+            value: "item0_value_override".to_string(),
+        },
+    ];
+
+    let mut gov_instantiate = InstantiateMsg {
         dao_uri: None,
         admin: None,
         name: "DAO DAO".to_string(),
@@ -1738,22 +1753,31 @@ fn test_instantiate_with_items() {
             admin: Some(Admin::CoreModule {}),
             label: "governance module".to_string(),
         }],
-        initial_items: Some(vec![
-            InitialItem {
-                key: "item0".to_string(),
-                value: "item0_value".to_string(),
-            },
-            InitialItem {
-                key: "item1".to_string(),
-                value: "item1_value".to_string(),
-            },
-            InitialItem {
-                key: "item0".to_string(),
-                value: "item0_value_override".to_string(),
-            },
-        ]),
+        initial_items: Some(initial_items.clone()),
     };
 
+    // Ensure duplicates are dissallowed.
+    let err: ContractError = app
+        .instantiate_contract(
+            gov_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &gov_instantiate,
+            &[],
+            "cw-governance",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::DuplicateInitialItem {
+            item: "item0".to_string()
+        }
+    );
+
+    initial_items.pop();
+    gov_instantiate.initial_items = Some(initial_items);
     let gov_addr = app
         .instantiate_contract(
             gov_id,
@@ -1765,7 +1789,7 @@ fn test_instantiate_with_items() {
         )
         .unwrap();
 
-    // Ensure initial items were added. One was overriden.
+    // Ensure initial items were added.
     let items = list_items(&mut app, gov_addr.clone(), None, None);
     assert_eq!(items.len(), 2);
 
@@ -1775,7 +1799,7 @@ fn test_instantiate_with_items() {
     assert_eq!(
         get_item0,
         GetItemResponse {
-            item: Some("item0_value_override".to_string()),
+            item: Some("item0_value".to_string()),
         }
     );
 

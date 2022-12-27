@@ -73,8 +73,16 @@ pub fn instantiate(
         return Err(ContractError::NoActiveProposalModules {});
     }
 
-    for InitialItem { key, value } in msg.initial_items.unwrap_or_default() {
-        ITEMS.save(deps.storage, key, &value)?;
+    if let Some(initial_items) = msg.initial_items {
+        // O(N*N) deduplication.
+        let mut seen = Vec::with_capacity(initial_items.len());
+        for InitialItem { key, value } in initial_items {
+            if seen.contains(&key) {
+                return Err(ContractError::DuplicateInitialItem { item: key });
+            }
+            seen.push(key.clone());
+            ITEMS.save(deps.storage, key, &value)?;
+        }
     }
 
     TOTAL_PROPOSAL_MODULE_COUNT.save(deps.storage, &0)?;
