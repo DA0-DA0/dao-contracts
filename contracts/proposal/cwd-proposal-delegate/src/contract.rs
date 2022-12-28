@@ -20,7 +20,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEFAULT_POLICY_IRREVOCABLE: bool = false;
 const DEFAULT_POLICY_PRESERVE_ON_FAILURE: bool = false;
 
-const REPLY_ID_EXECUTE_PROPOSAL_HOOK: u64 = 0;
+pub const REPLY_ID_EXECUTE_PROPOSAL_HOOK: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(

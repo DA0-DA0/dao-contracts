@@ -1,9 +1,12 @@
-use crate::contract::{execute_delegate, execute_execute, execute_remove_delegation, instantiate};
+use crate::contract::{
+    execute_delegate, execute_execute, execute_remove_delegation, instantiate, reply,
+    REPLY_ID_EXECUTE_PROPOSAL_HOOK,
+};
 use crate::error::ContractError;
 use crate::msg::InstantiateMsg;
 use crate::state::Delegation;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Reply, SubMsgResponse, SubMsgResult};
 use cw_utils::Expiration;
 use std::matches;
 
@@ -185,7 +188,63 @@ fn test_execute_authorization() {
 // and execution fails.
 #[test]
 fn test_execute_on_failure_policy() {
-    // Should I mock a Reply object here or do integration testing?
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("any_addr", &[]);
+
+    instantiate(
+        deps.as_mut(),
+        env,
+        info,
+        InstantiateMsg {
+            admin: ADMIN_ADDR.to_string(),
+        },
+    )
+    .unwrap();
+    let env = mock_env();
+    let info = mock_info(ADMIN_ADDR, &[]);
+    execute_delegate(
+        deps.as_mut(),
+        env,
+        info,
+        Delegation {
+            delegate: Addr::unchecked("dest_addr"),
+            msgs: Vec::new(),
+            expiration: None,
+            policy_irrevocable: false,
+            policy_preserve_on_failure: false,
+        },
+    )
+    .unwrap();
+
+    // Multiple execution fails
+    let failed_reply_msg = Reply {
+        id: REPLY_ID_EXECUTE_PROPOSAL_HOOK,
+        result: SubMsgResult::Err("Execution of delegated message failed".to_string()),
+    };
+    reply(deps.as_mut(), mock_env(), failed_reply_msg).unwrap();
+
+    let err =
+        execute_execute(deps.as_mut(), mock_env(), mock_info("dest_addr", &[]), 1).unwrap_err();
+    assert!(matches!(err, ContractError::DelegationNotFound {  }));
+
+    // `preserve_on_failure` set to true
+    {
+        // For `preserve_on_failure`, multiple failed execution is ok
+        let failed_reply_msg = Reply {
+            id: REPLY_ID_EXECUTE_PROPOSAL_HOOK,
+            result: SubMsgResult::Err("Execution of delegated message failed".to_string()),
+        };
+
+        let ok_reply_msg = Reply {
+            id: REPLY_ID_EXECUTE_PROPOSAL_HOOK,
+            result: SubMsgResult::Ok(SubMsgResponse {
+                events: Vec::new(),
+                data: None,
+            }),
+        };
+        // Successful execution prevents future execution
+    }
 }
 
 // Cannot execute delegation if expired
