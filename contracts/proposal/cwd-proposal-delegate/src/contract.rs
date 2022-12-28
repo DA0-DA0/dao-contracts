@@ -4,6 +4,7 @@ use cosmwasm_std::{
     to_binary, Binary, BlockInfo, Deps, DepsMut, Empty, Env, MessageInfo, OverflowError, Reply,
     Response, StdError, StdResult, Storage, SubMsg, WasmMsg,
 };
+use cw_paginate::paginate_map_values;
 use cw_utils::Expiration;
 // use cw2::set_contract_version;
 
@@ -104,6 +105,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Delegation { delegation_id } => {
             Ok(to_binary(&query_delegation(deps, delegation_id)?)?)
+        }
+        QueryMsg::Delegations { start_after, limit } => {
+            let delegations = paginate_map_values(
+                deps,
+                &DELEGATIONS,
+                start_after,
+                limit,
+                cosmwasm_std::Order::Ascending,
+            )?;
+            Ok(to_binary(&delegations)?)
         }
     }
 }

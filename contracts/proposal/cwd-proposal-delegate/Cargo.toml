@@ -37,6 +37,7 @@ dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }
 cw-hooks = { workspace = true }
+cw-paginate = { workspace = true }
 dao-proposal-hooks = { workspace = true }
 dao-vote-hooks = { workspace = true }
 dao-pre-propose-multiple = { workspace = true }

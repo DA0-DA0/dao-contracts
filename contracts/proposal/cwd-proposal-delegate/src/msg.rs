@@ -29,8 +29,13 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(DelegationResponse)]
+    #[returns(Delegation)]
     Delegation { delegation_id: u64 },
+    #[returns(Vec<Delegation>)]
+    Delegations {
+        start_after: Option<u64>,
+        limit: Option<u32>,
+    },
 }
 
 pub type DelegationResponse = Delegation;
