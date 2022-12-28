@@ -4,7 +4,7 @@ use crate::contract::{
 };
 use crate::error::ContractError;
 use crate::msg::InstantiateMsg;
-use crate::state::Delegation;
+use crate::state::{Delegation, EXECUTE_CTX};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{Addr, Reply, SubMsgResponse, SubMsgResult};
 use cw_utils::Expiration;
@@ -222,19 +222,41 @@ fn test_execute_on_failure_policy() {
         id: REPLY_ID_EXECUTE_PROPOSAL_HOOK,
         result: SubMsgResult::Err("Execution of delegated message failed".to_string()),
     };
+    EXECUTE_CTX.save(deps.as_mut().storage, &1).unwrap();
     reply(deps.as_mut(), mock_env(), failed_reply_msg).unwrap();
 
     let err =
         execute_execute(deps.as_mut(), mock_env(), mock_info("dest_addr", &[]), 1).unwrap_err();
-    assert!(matches!(err, ContractError::DelegationNotFound {  }));
+    assert!(matches!(err, ContractError::DelegationNotFound {}));
 
     // `preserve_on_failure` set to true
     {
+        let delegate_id: u64 = 2;
+        let info = mock_info(ADMIN_ADDR, &[]);
+        execute_delegate(
+            deps.as_mut(),
+            mock_env(),
+            info,
+            Delegation {
+                delegate: Addr::unchecked("dest_addr"),
+                msgs: Vec::new(),
+                expiration: None,
+                policy_irrevocable: false,
+                policy_preserve_on_failure: true,
+            },
+        )
+        .unwrap();
         // For `preserve_on_failure`, multiple failed execution is ok
         let failed_reply_msg = Reply {
             id: REPLY_ID_EXECUTE_PROPOSAL_HOOK,
             result: SubMsgResult::Err("Execution of delegated message failed".to_string()),
         };
+        EXECUTE_CTX
+            .save(deps.as_mut().storage, &delegate_id)
+            .unwrap();
+        reply(deps.as_mut(), mock_env(), failed_reply_msg.clone()).unwrap();
+        reply(deps.as_mut(), mock_env(), failed_reply_msg.clone()).unwrap();
+        reply(deps.as_mut(), mock_env(), failed_reply_msg.clone()).unwrap();
 
         let ok_reply_msg = Reply {
             id: REPLY_ID_EXECUTE_PROPOSAL_HOOK,
@@ -243,7 +265,17 @@ fn test_execute_on_failure_policy() {
                 data: None,
             }),
         };
+        reply(deps.as_mut(), mock_env(), ok_reply_msg).unwrap();
+
         // Successful execution prevents future execution
+        let err = execute_execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("dest_addr", &[]),
+            delegate_id,
+        )
+        .unwrap_err();
+        assert!(matches!(err, ContractError::DelegationNotFound {}));
     }
 }
 
