@@ -40,7 +40,7 @@ fn test_unauthorized_delegation() {
             delegate: Addr::unchecked("dest_addr"),
             msgs: Vec::new(),
             expiration: None,
-            policy_irrevocable: false,
+            policy_module_irrevocable: false,
             policy_preserve_on_failure: true,
         },
     )
@@ -58,7 +58,7 @@ fn test_unauthorized_delegation() {
             delegate: Addr::unchecked("dest_addr"),
             msgs: Vec::new(),
             expiration: None,
-            policy_irrevocable: false,
+            policy_module_irrevocable: false,
             policy_preserve_on_failure: false,
         },
     )
@@ -93,7 +93,7 @@ fn test_execute_authorization() {
             delegate: Addr::unchecked("dest_addr"),
             msgs: Vec::new(),
             expiration: None,
-            policy_irrevocable: false,
+            policy_module_irrevocable: false,
             policy_preserve_on_failure: false,
         },
     )
@@ -145,7 +145,7 @@ fn test_execute_authorization() {
             delegate: Addr::unchecked("dest_addr_2"),
             msgs: Vec::new(),
             expiration: None,
-            policy_irrevocable: false,
+            policy_module_irrevocable: false,
             policy_preserve_on_failure: false,
         },
     )
@@ -211,7 +211,7 @@ fn test_execute_on_failure_policy() {
             delegate: Addr::unchecked("dest_addr"),
             msgs: Vec::new(),
             expiration: None,
-            policy_irrevocable: false,
+            policy_module_irrevocable: false,
             policy_preserve_on_failure: false,
         },
     )
@@ -241,7 +241,7 @@ fn test_execute_on_failure_policy() {
                 delegate: Addr::unchecked("dest_addr"),
                 msgs: Vec::new(),
                 expiration: None,
-                policy_irrevocable: false,
+                policy_module_irrevocable: false,
                 policy_preserve_on_failure: true,
             },
         )
@@ -306,7 +306,7 @@ fn test_execute_on_expired() {
             delegate: Addr::unchecked("dest_addr"),
             msgs: Vec::new(),
             expiration: Some(Expiration::AtHeight(10)),
-            policy_irrevocable: false,
+            policy_module_irrevocable: false,
             policy_preserve_on_failure: false,
         },
     )
@@ -358,7 +358,7 @@ fn test_revocable_policy() {
             delegate: Addr::unchecked("dest_addr"),
             msgs: Vec::new(),
             expiration: None,
-            policy_irrevocable: true, // Make it irrevocable
+            policy_module_irrevocable: true, // Make it irrevocable
             policy_preserve_on_failure: false,
         },
     )
@@ -381,7 +381,7 @@ fn test_revocable_policy() {
             delegate: Addr::unchecked("dest_addr"),
             msgs: Vec::new(),
             expiration: None,
-            policy_irrevocable: false,
+            policy_module_irrevocable: false,
             policy_preserve_on_failure: false,
         },
     )

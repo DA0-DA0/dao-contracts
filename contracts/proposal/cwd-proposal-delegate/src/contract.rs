@@ -52,7 +52,8 @@ pub fn execute(
             policy_irrevocable,
             policy_preserve_on_failure,
         } => {
-            let policy_irrevocable = policy_irrevocable.unwrap_or(DEFAULT_POLICY_IRREVOCABLE);
+            let policy_module_irrevocable =
+                policy_irrevocable.unwrap_or(DEFAULT_POLICY_IRREVOCABLE);
             let policy_preserve_on_failure =
                 policy_preserve_on_failure.unwrap_or(DEFAULT_POLICY_PRESERVE_ON_FAILURE);
             let delegate = deps.api.addr_validate(&delegate)?;
@@ -64,7 +65,7 @@ pub fn execute(
                     delegate,
                     msgs,
                     expiration,
-                    policy_irrevocable,
+                    policy_module_irrevocable,
                     policy_preserve_on_failure,
                 },
             )
@@ -158,9 +159,10 @@ pub fn execute_remove_delegation(
     }
     // If delegation is irrevocable, return Error
     let Delegation {
-        policy_irrevocable, ..
+        policy_module_irrevocable,
+        ..
     } = DELEGATIONS.load(deps.storage, delegation_id)?;
-    if policy_irrevocable {
+    if policy_module_irrevocable {
         return Err(ContractError::DelegationIrrevocable {});
     }
     // Else remove the delegation
