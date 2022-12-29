@@ -436,6 +436,12 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
     })
 }
 
+/// Manages the contract migration.
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, ContractError> {
+    Ok(Response::new())
+}
+
 #[cfg(test)]
 mod tests {
     use std::borrow::BorrowMut;
