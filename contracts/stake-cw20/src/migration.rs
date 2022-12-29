@@ -14,7 +14,7 @@ pub type UnbondingPeriod = u64;
 
 pub const TWO_WEEKS: u64 = 86400 * 14;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
 pub struct WyndexConfig {
     /// address of cw20 contract token to stake
     pub cw20_contract: Addr,
