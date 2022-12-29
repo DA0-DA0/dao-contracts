@@ -106,3 +106,13 @@ pub struct GetConfigResponse {
 pub struct GetHooksResponse {
     pub hooks: Vec<String>,
 }
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct MigrateMsg {
+    pub new_admin: Option<String>,
+    pub pool_contract: String,
+    pub tokens_per_power: Uint128,
+    pub min_bond: Uint128,
+    pub unbonding_periods: Vec<u64>,
+    pub max_distributions: u32,
+}

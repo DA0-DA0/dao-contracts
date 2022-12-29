@@ -10,8 +10,8 @@ use cw20::Cw20ReceiveMsg;
 
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 use crate::msg::{
-    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, QueryMsg, ReceiveMsg,
-    StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
+    ExecuteMsg, GetConfigResponse, GetHooksResponse, InstantiateMsg, MigrateMsg, QueryMsg,
+    ReceiveMsg, StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse,
     TotalValueResponse,
 };
 use crate::state::{
@@ -438,7 +438,9 @@ pub fn query_hooks(deps: Deps) -> StdResult<GetHooksResponse> {
 
 /// Manages the contract migration.
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(_deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    crate::migration::migrate(deps, msg)?;
+
     Ok(Response::new())
 }
 
