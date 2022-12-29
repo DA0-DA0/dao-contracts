@@ -87,4 +87,4 @@ voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/D
 cw-utils-v1 = {package = "cw-utils", version = "0.13"}
 
 # https://github.com/steak-enjoyers/cw-plus-plus/tree/main/packages/ownable
-cw-ownable = "0.3.0" 
+cw-ownable = "0.3.0"

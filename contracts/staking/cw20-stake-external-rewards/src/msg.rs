@@ -9,7 +9,6 @@ pub use cw_controllers::ClaimsResponse;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
-    pub manager: Option<String>,
     pub staking_contract: String,
     pub reward_token: Denom,
     pub reward_duration: u64,
@@ -26,7 +25,6 @@ pub enum ExecuteMsg {
     Fund {},
     UpdateRewardDuration { new_duration: u64 },
     UpdateOwner { new_owner: Option<String> },
-    UpdateManager { new_manager: Option<String> },
 }
 
 #[cw_serde]
