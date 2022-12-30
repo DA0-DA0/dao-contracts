@@ -40,3 +40,4 @@ dao-proposal-single = { workspace = true }
 dao-voting-cw721-staked = { workspace = true }
 dao-voting-native-staked = { workspace = true }
 cw721-base = { workspace = true }
+cw-core-v1 = { workspace = true, features = ["library"] }

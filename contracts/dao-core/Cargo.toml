@@ -28,7 +28,7 @@ thiserror = { workspace = true }
 dao-interface = { workspace = true }
 dao-macros = { workspace = true }
 cw-paginate = { workspace = true }
-cw-core-v1 = { workspace = true }
+cw-core-v1 = { workspace = true, features = ["library"] }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true, features = ["stargate"] }

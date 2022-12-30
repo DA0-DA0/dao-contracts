@@ -1202,6 +1202,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
+ "cw-core",
  "cw-denom",
  "cw-hooks",
  "cw-multi-test",
@@ -1256,6 +1257,7 @@ version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-core",
  "cw-hooks",
  "cw-multi-test",
  "cw-proposal-single",

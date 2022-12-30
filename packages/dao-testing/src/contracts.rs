@@ -40,17 +40,6 @@ pub fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn v1_proposal_single_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        cw_proposal_single_v1::contract::execute,
-        cw_proposal_single_v1::contract::instantiate,
-        cw_proposal_single_v1::contract::query,
-    )
-    .with_reply(cw_proposal_single_v1::contract::reply)
-    .with_migrate(cw_proposal_single_v1::contract::migrate);
-    Box::new(contract)
-}
-
 pub fn proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         dao_proposal_single::contract::execute,
@@ -124,7 +113,8 @@ pub fn dao_core_contract() -> Box<dyn Contract<Empty>> {
         dao_core::contract::instantiate,
         dao_core::contract::query,
     )
-    .with_reply(dao_core::contract::reply);
+    .with_reply(dao_core::contract::reply)
+    .with_migrate(dao_core::contract::migrate);
     Box::new(contract)
 }
 
@@ -135,5 +125,26 @@ pub fn dao_voting_cw4_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_cw4::contract::query,
     )
     .with_reply(dao_voting_cw4::contract::reply);
+    Box::new(contract)
+}
+
+pub fn v1_proposal_single_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_proposal_single_v1::contract::execute,
+        cw_proposal_single_v1::contract::instantiate,
+        cw_proposal_single_v1::contract::query,
+    )
+    .with_reply(cw_proposal_single_v1::contract::reply)
+    .with_migrate(cw_proposal_single_v1::contract::migrate);
+    Box::new(contract)
+}
+
+pub fn v1_dao_core_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_core_v1::contract::execute,
+        cw_core_v1::contract::instantiate,
+        cw_core_v1::contract::query,
+    )
+    .with_reply(cw_core_v1::contract::reply);
     Box::new(contract)
 }
