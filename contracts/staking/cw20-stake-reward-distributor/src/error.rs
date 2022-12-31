@@ -20,4 +20,7 @@ pub enum ContractError {
 
     #[error("Rewards have already been distributed for this block")]
     RewardsDistributedForBlock {},
+
+    #[error("can not migrate. current version is up to date")]
+    AlreadyMigrated {},
 }

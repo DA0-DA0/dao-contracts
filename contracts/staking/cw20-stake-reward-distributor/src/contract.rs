@@ -8,7 +8,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{Config, CONFIG, LAST_PAYMENT_BLOCK};
 use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-stake-reward-distributor";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -229,10 +229,31 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    use cw20_stake_reward_distributor_v1 as v1;
+
+    let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
+    match msg {
+        MigrateMsg::FromV1 {} => {
+            if version == CONTRACT_VERSION {
+                // You can not possibly be migrating from v1 to v2 and
+                // also not changing your contract version.
+                return Err(ContractError::AlreadyMigrated {});
+            }
+            // From v1 -> v2 we moved `owner` out of config and into
+            // the `cw_ownable` package.
+            let config = v1::state::CONFIG.load(deps.storage)?;
+            cw_ownable::initialize_owner(deps.storage, deps.api, Some(config.owner.as_str()))?;
+            let config = Config {
+                staking_addr: config.staking_addr,
+                reward_rate: config.reward_rate,
+                reward_token: config.reward_token,
+            };
+            CONFIG.save(deps.storage, &config)?;
+
+            Ok(Response::default())
+        }
+    }
 }
 
 fn query_info(deps: Deps, env: Env) -> StdResult<InfoResponse> {

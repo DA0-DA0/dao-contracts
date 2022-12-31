@@ -69,11 +69,6 @@ export interface Cw20StakeExternalRewardsInterface extends Cw20StakeExternalRewa
   }: {
     newOwner?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  updateManager: ({
-    newManager
-  }: {
-    newManager?: string;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRewardsInterface {
   client: SigningCosmWasmClient;
@@ -91,7 +86,6 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
     this.fund = this.fund.bind(this);
     this.updateRewardDuration = this.updateRewardDuration.bind(this);
     this.updateOwner = this.updateOwner.bind(this);
-    this.updateManager = this.updateManager.bind(this);
   }
 
   stakeChangeHook = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
@@ -145,17 +139,6 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
     return await this.client.execute(this.sender, this.contractAddress, {
       update_owner: {
         new_owner: newOwner
-      }
-    }, fee, memo, funds);
-  };
-  updateManager = async ({
-    newManager
-  }: {
-    newManager?: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      update_manager: {
-        new_manager: newManager
       }
     }, fee, memo, funds);
   };

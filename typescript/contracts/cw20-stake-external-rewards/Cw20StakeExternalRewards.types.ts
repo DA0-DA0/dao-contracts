@@ -11,7 +11,6 @@ export type Denom = {
 };
 export type Addr = string;
 export interface InstantiateMsg {
-  manager?: string | null;
   owner?: string | null;
   reward_duration: number;
   reward_token: Denom;
@@ -32,10 +31,6 @@ export type ExecuteMsg = {
 } | {
   update_owner: {
     new_owner?: string | null;
-  };
-} | {
-  update_manager: {
-    new_manager?: string | null;
   };
 };
 export type StakeChangedHookMsg = {
@@ -75,7 +70,6 @@ export interface InfoResponse {
   reward: RewardConfig;
 }
 export interface Config {
-  manager?: Addr | null;
   owner?: Addr | null;
   reward_token: Denom;
   staking_contract: Addr;

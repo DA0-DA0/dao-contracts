@@ -359,7 +359,7 @@ pub fn execute_update_reward_duration(
     new_duration: u64,
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner {
+    if Some(info.sender) != config.owner {
         return Err(ContractError::Unauthorized {});
     };
 

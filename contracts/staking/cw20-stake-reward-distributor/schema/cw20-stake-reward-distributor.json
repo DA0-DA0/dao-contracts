@@ -1,5 +1,5 @@
 {
-  "contract_name": "stake-cw20-reward-distributor",
+  "contract_name": "cw20-stake-reward-distributor",
   "contract_version": "2.0.0-beta",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -259,8 +259,22 @@
   "migrate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "MigrateMsg",
-    "type": "object",
-    "additionalProperties": false
+    "oneOf": [
+      {
+        "description": "Updates the contract from v1 -> v2. Version two implements a two step ownership transfer.",
+        "type": "object",
+        "required": [
+          "from_v1"
+        ],
+        "properties": {
+          "from_v1": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ]
   },
   "sudo": null,
   "responses": {

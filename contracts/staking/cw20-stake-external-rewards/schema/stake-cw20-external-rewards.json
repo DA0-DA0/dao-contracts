@@ -12,12 +12,6 @@
       "staking_contract"
     ],
     "properties": {
-      "manager": {
-        "type": [
-          "string",
-          "null"
-        ]
-      },
       "owner": {
         "type": [
           "string",
@@ -159,27 +153,6 @@
             "type": "object",
             "properties": {
               "new_owner": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
-          "update_manager"
-        ],
-        "properties": {
-          "update_manager": {
-            "type": "object",
-            "properties": {
-              "new_manager": {
                 "type": [
                   "string",
                   "null"
@@ -425,16 +398,6 @@
             "staking_contract"
           ],
           "properties": {
-            "manager": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Addr"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
             "owner": {
               "anyOf": [
                 {

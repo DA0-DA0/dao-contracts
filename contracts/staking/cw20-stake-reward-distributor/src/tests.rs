@@ -1,13 +1,12 @@
 use crate::{
-    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InfoResponse, InstantiateMsg, MigrateMsg, QueryMsg},
     state::Config,
     ContractError,
 };
-use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env},
-    Addr, Empty, Uint128,
-};
+
+use cw20_stake_reward_distributor_v1 as v1;
+
+use cosmwasm_std::{to_binary, Addr, Empty, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use cw_ownable::{Action, Expiration, Ownership, OwnershipError};
@@ -39,6 +38,16 @@ fn distributor_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
+    )
+    .with_migrate(crate::contract::migrate);
+    Box::new(contract)
+}
+
+fn distributor_contract_v1() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        v1::contract::execute,
+        v1::contract::instantiate,
+        v1::contract::query,
     );
     Box::new(contract)
 }
@@ -669,11 +678,68 @@ fn test_ownership_expiry() {
 }
 
 #[test]
-pub fn test_migrate_update_version() {
-    let mut deps = mock_dependencies();
-    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
-    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
-    let version = cw2::get_contract_version(&deps.storage).unwrap();
-    assert_eq!(version.version, CONTRACT_VERSION);
-    assert_eq!(version.contract, CONTRACT_NAME);
+fn test_migrate_from_v1() {
+    let mut app = App::default();
+    let sender = Addr::unchecked("sender");
+
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: sender.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+    let staking_addr = instantiate_staking(&mut app, cw20_addr.clone());
+
+    let v1_code = app.store_code(distributor_contract_v1());
+    let v2_code = app.store_code(distributor_contract());
+    let distributor = app
+        .instantiate_contract(
+            v1_code,
+            sender.clone(),
+            &v1::msg::InstantiateMsg {
+                owner: sender.to_string(),
+                staking_addr: staking_addr.to_string(),
+                reward_rate: Uint128::new(1),
+                reward_token: cw20_addr.to_string(),
+            },
+            &[],
+            "distributor",
+            Some(sender.to_string()),
+        )
+        .unwrap();
+    app.execute(
+        sender.clone(),
+        WasmMsg::Migrate {
+            contract_addr: distributor.to_string(),
+            new_code_id: v2_code,
+            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+        }
+        .into(),
+    )
+    .unwrap();
+
+    let ownership = get_owner(&app, &distributor);
+    assert_eq!(
+        ownership,
+        Ownership::<Addr> {
+            owner: Some(sender),
+            pending_owner: None,
+            pending_expiry: None,
+        }
+    );
+
+    let info = get_info(&app, &distributor);
+    assert_eq!(
+        info,
+        InfoResponse {
+            config: Config {
+                staking_addr,
+                reward_rate: Uint128::new(1),
+                reward_token: cw20_addr
+            },
+            last_payment_block: app.block_info().height,
+            balance: Uint128::zero()
+        }
+    );
 }

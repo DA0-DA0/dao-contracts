@@ -44,7 +44,9 @@ export type QueryMsg = {
 } | {
   ownership: {};
 };
-export interface MigrateMsg {}
+export type MigrateMsg = {
+  from_v1: {};
+};
 export type Addr = string;
 export interface InfoResponse {
   balance: Uint128;

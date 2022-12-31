@@ -42,4 +42,8 @@ pub struct InfoResponse {
 }
 
 #[cw_serde]
-pub struct MigrateMsg {}
+pub enum MigrateMsg {
+    /// Updates the contract from v1 -> v2. Version two implements a
+    /// two step ownership transfer.
+    FromV1 {},
+}
