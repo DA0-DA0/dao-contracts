@@ -611,8 +611,7 @@ dependencies = [
 [[package]]
 name = "cw-ownable"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6af8128a2c83862868f3d576cadde8c0f56b3845d8cb82d0b15b9a3fdbf23690"
+source = "git+https://github.com/steak-enjoyers/cw-plus-plus?rev=50d4d9333305894457e5028072a0465f4635b15b#50d4d9333305894457e5028072a0465f4635b15b"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -625,8 +624,7 @@ dependencies = [
 [[package]]
 name = "cw-ownable-derive"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05415700faa6f47185e9cd30d2ac5d49d872378b3329f07eae80a58c703cb592"
+source = "git+https://github.com/steak-enjoyers/cw-plus-plus?rev=50d4d9333305894457e5028072a0465f4635b15b#50d4d9333305894457e5028072a0465f4635b15b"
 dependencies = [
  "proc-macro2",
  "quote",

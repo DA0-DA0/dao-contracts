@@ -86,5 +86,6 @@ cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0", git
 voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw-utils-v1 = {package = "cw-utils", version = "0.13"}
 
-# https://github.com/steak-enjoyers/cw-plus-plus/tree/main/packages/ownable
-cw-ownable = "0.3.0"
+# One commit ahead of version 0.3.0. Allows initialization with an
+# optional owner.
+cw-ownable = { git = "https://github.com/steak-enjoyers/cw-plus-plus", rev = "50d4d9333305894457e5028072a0465f4635b15b" }

@@ -38,7 +38,7 @@ pub fn instantiate(
         reward_rate: msg.reward_rate,
     };
     CONFIG.save(deps.storage, &config)?;
-    cw_ownable::initialize_owner(deps.storage, deps.api, &msg.owner)?;
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(&msg.owner))?;
 
     // Initialize last payment block
     LAST_PAYMENT_BLOCK.save(deps.storage, &env.block.height)?;
