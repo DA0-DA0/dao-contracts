@@ -6,7 +6,6 @@ use cw_storage_plus::{Item, Map};
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Option<Addr>,
     pub staking_contract: Addr,
     pub reward_token: Denom,
 }

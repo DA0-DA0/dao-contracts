@@ -8,7 +8,7 @@ use crate::state::{
 };
 use crate::ContractError;
 use crate::ContractError::{
-    InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodNotFinished, Unauthorized,
+    InvalidCw20, InvalidFunds, NoRewardsClaimable, RewardPeriodNotFinished,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -37,7 +37,7 @@ pub fn instantiate(
 ) -> Result<Response<Empty>, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let owner = msg.owner.map(|a| deps.api.addr_validate(&a)).transpose()?;
+    cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
     let reward_token = match msg.reward_token {
         Denom::Native(denom) => Denom::Native(denom),
@@ -51,7 +51,6 @@ pub fn instantiate(
     )?;
 
     let config = Config {
-        owner,
         staking_contract: deps.api.addr_validate(&msg.staking_contract)?,
         reward_token,
     };
@@ -69,13 +68,7 @@ pub fn instantiate(
     REWARD_CONFIG.save(deps.storage, &reward_config)?;
 
     Ok(Response::new()
-        .add_attribute(
-            "owner",
-            config
-                .owner
-                .map(|a| a.into_string())
-                .unwrap_or_else(|| "None".to_string()),
-        )
+        .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
         .add_attribute("staking_contract", config.staking_contract)
         .add_attribute(
             "reward_token",
@@ -111,7 +104,7 @@ pub fn execute(
         ExecuteMsg::UpdateRewardDuration { new_duration } => {
             execute_update_reward_duration(deps, env, info, new_duration)
         }
-        ExecuteMsg::UpdateOwner { new_owner } => execute_update_owner(deps, env, info, new_owner),
+        ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
     }
 }
 
@@ -154,10 +147,7 @@ pub fn execute_fund(
     sender: Addr,
     amount: Uint128,
 ) -> Result<Response<Empty>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(sender.clone()) {
-        return Err(Unauthorized {});
-    };
+    cw_ownable::assert_owner(deps.storage, &sender)?;
 
     update_rewards(&mut deps, &env, &sender)?;
     let reward_config = REWARD_CONFIG.load(deps.storage)?;
@@ -196,7 +186,7 @@ pub fn execute_stake_changed(
 ) -> Result<Response<Empty>, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if info.sender != config.staking_contract {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::InvalidHookSender {});
     };
     match msg {
         StakeChangedHookMsg::Stake { addr, .. } => execute_stake(deps, env, addr),
@@ -241,6 +231,16 @@ pub fn execute_claim(
         .add_message(transfer_msg)
         .add_attribute("action", "claim")
         .add_attribute("amount", rewards))
+}
+
+pub fn execute_update_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    action: cw_ownable::Action,
+) -> Result<Response, ContractError> {
+    let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+    Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
 pub fn get_transfer_msg(recipient: Addr, amount: Uint128, denom: Denom) -> StdResult<CosmosMsg> {
@@ -358,10 +358,7 @@ pub fn execute_update_reward_duration(
     info: MessageInfo,
     new_duration: u64,
 ) -> Result<Response<Empty>, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if Some(info.sender) != config.owner {
-        return Err(ContractError::Unauthorized {});
-    };
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     let mut reward_config = REWARD_CONFIG.load(deps.storage)?;
     if reward_config.period_finish > env.block.height {
@@ -382,38 +379,6 @@ pub fn execute_update_reward_duration(
         .add_attribute("old_duration", old_duration.to_string()))
 }
 
-pub fn execute_update_owner(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    new_owner: Option<String>,
-) -> Result<Response<Empty>, ContractError> {
-    let new_owner = new_owner.map(|a| deps.api.addr_validate(&a)).transpose()?;
-
-    let mut config = CONFIG.load(deps.storage)?;
-    if Some(info.sender) != config.owner {
-        return Err(ContractError::Unauthorized {});
-    };
-    let old_owner = config.owner.clone();
-    config.owner = new_owner.clone();
-    CONFIG.save(deps.storage, &config)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "update_owner")
-        .add_attribute(
-            "new_owner",
-            new_owner
-                .map(|a| a.into_string())
-                .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute(
-            "old_owner",
-            old_owner
-                .map(|a| a.into_string())
-                .unwrap_or_else(|| "None".to_string()),
-        ))
-}
-
 fn scale_factor() -> Uint256 {
     Uint256::from(10u8).pow(39)
 }
@@ -424,6 +389,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::GetPendingRewards { address } => {
             Ok(to_binary(&query_pending_rewards(deps, env, address)?)?)
         }
+        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
@@ -477,6 +443,7 @@ mod tests {
         to_binary, Addr, Empty, Uint128,
     };
     use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
+    use cw_ownable::{Action, Ownership, OwnershipError};
     use cw_utils::Duration;
 
     use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
@@ -644,6 +611,12 @@ mod tests {
         denom: U,
     ) -> Uint128 {
         app.wrap().query_balance(address, denom).unwrap().amount
+    }
+
+    fn get_ownership<T: Into<String>>(app: &App, address: T) -> Ownership<Addr> {
+        app.wrap()
+            .query_wasm_smart(address, &QueryMsg::Ownership {})
+            .unwrap()
     }
 
     fn assert_pending_rewards(app: &mut App, reward_addr: &Addr, address: &str, expected: u128) {
@@ -1246,7 +1219,7 @@ mod tests {
             .downcast()
             .unwrap();
 
-        assert_eq!(err, ContractError::Unauthorized {});
+        assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
 
         let _res = app
             .borrow_mut()
@@ -1403,7 +1376,7 @@ mod tests {
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::Unauthorized {});
+        assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
 
         let reward_funding = vec![coin(1000, denom)];
         app.sudo(SudoMsg::Bank({
@@ -1479,7 +1452,7 @@ mod tests {
     #[test]
     fn test_update_owner() {
         let mut app = mock_app();
-        let owner = Addr::unchecked(OWNER);
+        let addr_owner = Addr::unchecked(OWNER);
         app.borrow_mut().update_block(|b| b.height = 0);
         let initial_balances = vec![
             Cw20Coin {
@@ -1498,60 +1471,81 @@ mod tests {
         let denom = "utest".to_string();
         let (staking_addr, _cw20_addr) = setup_staking_contract(&mut app, initial_balances);
 
-        let reward_addr =
-            setup_reward_contract(&mut app, staking_addr, Denom::Native(denom), owner.clone());
+        let reward_addr = setup_reward_contract(
+            &mut app,
+            staking_addr,
+            Denom::Native(denom),
+            addr_owner.clone(),
+        );
 
-        let res: InfoResponse = app
-            .borrow_mut()
-            .wrap()
-            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
-            .unwrap();
-
-        assert_eq!(res.config.owner, Some(owner.clone()));
+        let owner = get_ownership(&app, &reward_addr).owner;
+        assert_eq!(owner, Some(addr_owner.clone()));
 
         // random addr cannot update owner
-        let msg = ExecuteMsg::UpdateOwner {
-            new_owner: Some(ADDR1.to_string()),
-        };
+        let msg = ExecuteMsg::UpdateOwnership(Action::TransferOwnership {
+            new_owner: ADDR1.to_string(),
+            expiry: None,
+        });
         let err: ContractError = app
             .borrow_mut()
             .execute_contract(Addr::unchecked(ADDR1), reward_addr.clone(), &msg, &[])
             .unwrap_err()
             .downcast()
             .unwrap();
-        assert_eq!(err, ContractError::Unauthorized {});
+        assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
 
-        // Update owner
-        let msg = ExecuteMsg::UpdateOwner {
-            new_owner: Some(ADDR1.to_string()),
-        };
-        let _resp = app
-            .borrow_mut()
-            .execute_contract(owner, reward_addr.clone(), &msg, &[])
+        // owner nominates a new onwer.
+        app.borrow_mut()
+            .execute_contract(addr_owner.clone(), reward_addr.clone(), &msg, &[])
             .unwrap();
 
-        let res: InfoResponse = app
-            .borrow_mut()
-            .wrap()
-            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
-            .unwrap();
+        let ownership = get_ownership(&app, &reward_addr);
+        assert_eq!(
+            ownership,
+            Ownership::<Addr> {
+                owner: Some(addr_owner),
+                pending_owner: Some(Addr::unchecked(ADDR1)),
+                pending_expiry: None,
+            }
+        );
 
-        assert_eq!(res.config.owner, Some(Addr::unchecked(ADDR1)));
+        // new owner accepts the nomination.
+        app.execute_contract(
+            Addr::unchecked(ADDR1),
+            reward_addr.clone(),
+            &ExecuteMsg::UpdateOwnership(Action::AcceptOwnership),
+            &[],
+        )
+        .unwrap();
 
-        // Remove owner
-        let msg = ExecuteMsg::UpdateOwner { new_owner: None };
-        let _resp = app
-            .borrow_mut()
-            .execute_contract(Addr::unchecked(ADDR1), reward_addr.clone(), &msg, &[])
-            .unwrap();
+        let ownership = get_ownership(&app, &reward_addr);
+        assert_eq!(
+            ownership,
+            Ownership::<Addr> {
+                owner: Some(Addr::unchecked(ADDR1)),
+                pending_owner: None,
+                pending_expiry: None,
+            }
+        );
 
-        let res: InfoResponse = app
-            .borrow_mut()
-            .wrap()
-            .query_wasm_smart(&reward_addr, &QueryMsg::Info {})
-            .unwrap();
+        // new owner renounces ownership.
+        app.execute_contract(
+            Addr::unchecked(ADDR1),
+            reward_addr.clone(),
+            &ExecuteMsg::UpdateOwnership(Action::RenounceOwnership),
+            &[],
+        )
+        .unwrap();
 
-        assert_eq!(res.config.owner, None);
+        let ownership = get_ownership(&app, &reward_addr);
+        assert_eq!(
+            ownership,
+            Ownership::<Addr> {
+                owner: None,
+                pending_owner: None,
+                pending_expiry: None,
+            }
+        );
     }
 
     #[test]

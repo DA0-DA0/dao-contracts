@@ -6,6 +6,8 @@ use cw20_stake::hooks::StakeChangedHookMsg;
 use crate::state::{Config, RewardConfig};
 pub use cw_controllers::ClaimsResponse;
 
+use cw_ownable::cw_ownable;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
@@ -17,6 +19,7 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub struct MigrateMsg {}
 
+#[cw_ownable]
 #[cw_serde]
 pub enum ExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),
@@ -24,7 +27,6 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Fund {},
     UpdateRewardDuration { new_duration: u64 },
-    UpdateOwner { new_owner: Option<String> },
 }
 
 #[cw_serde]
@@ -39,6 +41,8 @@ pub enum QueryMsg {
     Info {},
     #[returns(PendingRewardsResponse)]
     GetPendingRewards { address: String },
+    #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
+    Ownership {},
 }
 
 #[cw_serde]

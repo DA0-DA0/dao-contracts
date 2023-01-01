@@ -3,12 +3,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
-    #[error("{0}")]
+    #[error(transparent)]
+    Ownable(#[from] cw_ownable::OwnershipError),
+    #[error(transparent)]
     Cw20Error(#[from] cw20_base::ContractError),
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error("Staking change hook sender is not staking contract")]
+    InvalidHookSender {},
     #[error("No rewards claimable")]
     NoRewardsClaimable {},
     #[error("Reward period not finished")]

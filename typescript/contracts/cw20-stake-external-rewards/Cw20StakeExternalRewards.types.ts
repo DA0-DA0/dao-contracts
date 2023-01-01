@@ -29,9 +29,7 @@ export type ExecuteMsg = {
     new_duration: number;
   };
 } | {
-  update_owner: {
-    new_owner?: string | null;
-  };
+  update_ownership: Action;
 };
 export type StakeChangedHookMsg = {
   stake: {
@@ -46,6 +44,21 @@ export type StakeChangedHookMsg = {
 };
 export type Uint128 = string;
 export type Binary = string;
+export type Action = {
+  transfer_ownership: {
+    expiry?: Expiration | null;
+    new_owner: string;
+  };
+} | "accept_ownership" | "renounce_ownership";
+export type Expiration = {
+  at_height: number;
+} | {
+  at_time: Timestamp;
+} | {
+  never: {};
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
@@ -57,6 +70,8 @@ export type QueryMsg = {
   get_pending_rewards: {
     address: string;
   };
+} | {
+  ownership: {};
 };
 export interface MigrateMsg {}
 export interface PendingRewardsResponse {
@@ -70,7 +85,6 @@ export interface InfoResponse {
   reward: RewardConfig;
 }
 export interface Config {
-  owner?: Addr | null;
   reward_token: Denom;
   staking_contract: Addr;
 }
@@ -78,4 +92,9 @@ export interface RewardConfig {
   period_finish: number;
   reward_duration: number;
   reward_rate: Uint128;
+}
+export interface OwnershipForAddr {
+  owner?: Addr | null;
+  pending_expiry?: Expiration | null;
+  pending_owner?: Addr | null;
 }
