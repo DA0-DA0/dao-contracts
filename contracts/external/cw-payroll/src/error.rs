@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use cosmwasm_std::Addr;
 
-use crate::balance::WrappedBalance;
+use crate::{balance::WrappedBalance, msg::StreamId};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum GenericError {
@@ -46,11 +46,11 @@ pub enum ContractError {
     #[error("The stream can only be claimed by original recipient")]
     NotStreamRecipient { recipient: Addr },
 
-    #[error("No tokens have vested for this stream.")]
+    #[error("No tokens have vested for this stream")]
     NoFundsToClaim { claimed: WrappedBalance },
 
-    #[error("Stream does not exist.")]
-    StreamNotFound {},
+    #[error("Stream does not exist")]
+    StreamNotFound { stream_id: StreamId },
 
     #[error("Amount must be greater than duration")]
     AmountLessThanDuration {},
@@ -58,12 +58,27 @@ pub enum ContractError {
     #[error("Stream recipient cannot be the stream owner")]
     InvalidRecipient {},
 
-    #[error("Can not pause paused stream.")]
+    #[error("Can not pause paused stream")]
     StreamAlreadyPaused {},
 
-    #[error("Stream is not pause for resume!")]
+    #[error("Stream is not pause for resume")]
     StreamNotPaused {},
 
-    #[error("Could not create bank transfer message!")]
+    #[error("Could not create bank transfer message")]
     CouldNotCreateBankMessage {},
+
+    #[error("Left and right stream should not be equal to each other")]
+    StreamsShouldNotBeEqual {},
+
+    #[error("Invalid Stream Ids")]
+    InvalidStreamIds {},
+
+    #[error("Stream is not linked")]
+    StreamNotLinked {},
+
+    #[error("Stream is not detachable")]
+    StreamNotDetachable {},
+
+    #[error("Stream can't be deleted, as it's linked to another stream")]
+    LinkedStreamDeleteNotAllowed { link_id: StreamId },
 }
