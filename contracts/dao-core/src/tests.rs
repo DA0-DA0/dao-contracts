@@ -4,7 +4,7 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
     to_binary, Addr, CosmosMsg, Empty, Storage, Uint128, WasmMsg,
 };
-use cw2::ContractVersion;
+use cw2::{set_contract_version, ContractVersion};
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_storage_plus::{Item, Map};
 use cw_utils::{Duration, Expiration};
@@ -2708,7 +2708,7 @@ fn test_migrate_from_beta() {
 
     let new_state: DumpStateResponse = app
         .wrap()
-        .query_wasm_smart(core_addr, &QueryMsg::DumpState {})
+        .query_wasm_smart(&core_addr, &QueryMsg::DumpState {})
         .unwrap();
 
     let proposal_modules = new_state.proposal_modules;
@@ -2718,6 +2718,21 @@ fn test_migrate_from_beta() {
         assert_eq!(prefix, module.prefix);
         assert_eq!(ProposalModuleStatus::Enabled, module.status);
     }
+
+    // Check that we may not migrate more than once.
+    let err: ContractError = app
+        .execute(
+            Addr::unchecked(CREATOR_ADDR),
+            CosmosMsg::Wasm(WasmMsg::Migrate {
+                contract_addr: core_addr.to_string(),
+                new_code_id: core_id,
+                msg: to_binary(&MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
+            }),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::AlreadyMigrated {})
 }
 
 #[test]
@@ -2728,6 +2743,9 @@ fn test_migrate_mock() {
         dao_uri: Some(dao_uri.clone()),
     };
     let env = mock_env();
+
+    // Set starting version to v1.
+    set_contract_version(&mut deps.storage, CONTRACT_NAME, "0.1.0").unwrap();
 
     // Write to storage in old proposal module format
     let proposal_modules_key = Addr::unchecked("addr");

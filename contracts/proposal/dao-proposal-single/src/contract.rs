@@ -4,7 +4,7 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply,
     Response, StdResult, Storage, SubMsg, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_hooks::Hooks;
 use cw_proposal_single_v1 as v1;
 use cw_storage_plus::Bound;
@@ -851,7 +851,7 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
+    let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     match msg {
@@ -859,6 +859,14 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
             close_proposal_on_execution_failure,
             pre_propose_info,
         } => {
+            // `CONTRACT_VERSION` here is from the data section of the
+            // blob we are migrating to. `version` is from storage. If
+            // the version in storage matches the version in the blob
+            // we are not upgrading.
+            if version == CONTRACT_VERSION {
+                return Err(ContractError::AlreadyMigrated {});
+            }
+
             // Update the stored config to have the new
             // `close_proposal_on_execution_falure` field.
             let current_config = v1::state::CONFIG.load(deps.storage)?;

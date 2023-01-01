@@ -53,4 +53,7 @@ pub enum ContractError {
 
     #[error("Duplicate initial item: ({item})")]
     DuplicateInitialItem { item: String },
+
+    #[error("Can not migrate. Current version is up to date.")]
+    AlreadyMigrated {},
 }
