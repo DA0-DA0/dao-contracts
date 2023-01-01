@@ -156,11 +156,9 @@ export interface Cw20StakeInterface extends Cw20StakeReadOnlyInterface {
   claim: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
     duration,
-    manager,
     owner
   }: {
     duration?: Duration;
-    manager?: string;
     owner?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   addHook: ({
@@ -227,17 +225,14 @@ export class Cw20StakeClient extends Cw20StakeQueryClient implements Cw20StakeIn
   };
   updateConfig = async ({
     duration,
-    manager,
     owner
   }: {
     duration?: Duration;
-    manager?: string;
     owner?: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
         duration,
-        manager,
         owner
       }
     }, fee, memo, funds);

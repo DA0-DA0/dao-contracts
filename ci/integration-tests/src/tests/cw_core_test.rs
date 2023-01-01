@@ -305,7 +305,6 @@ fn instantiate_with_admin(chain: &mut Chain) {
             chain.orc.contract_map.address("dao_core").unwrap()
         ))
     );
-    assert_eq!(config_res.manager, None);
 
     let res = &chain
         .orc

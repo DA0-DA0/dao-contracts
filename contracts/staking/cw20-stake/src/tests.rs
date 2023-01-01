@@ -8,9 +8,8 @@ use crate::msg::{
 };
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
-use cosmwasm_schema::cw_serde;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_slice, to_binary, Addr, Empty, MessageInfo, Storage, Uint128};
+use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
 use cw20::Cw20Coin;
 use cw_utils::Duration;
 
@@ -80,7 +79,6 @@ fn instantiate_staking(app: &mut App, cw20: Addr, unstaking_duration: Option<Dur
     let staking_code_id = app.store_code(contract_staking());
     let msg = crate::msg::InstantiateMsg {
         owner: Some("owner".to_string()),
-        manager: Some("manager".to_string()),
         token_address: cw20.to_string(),
         unstaking_duration,
     };
@@ -185,12 +183,10 @@ fn update_config(
     staking_addr: &Addr,
     info: MessageInfo,
     owner: Option<Addr>,
-    manager: Option<Addr>,
     duration: Option<Duration>,
 ) -> AnyResult<AppResponse> {
     let msg = ExecuteMsg::UpdateConfig {
         owner: owner.map(|a| a.to_string()),
-        manager: manager.map(|a| a.to_string()),
         duration,
     };
     app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
@@ -253,7 +249,6 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner2")),
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap();
@@ -269,12 +264,11 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner3")),
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap_err();
 
-    // Add manager
+    // owner2's time to shine
     let info = mock_info("owner2", &[]);
     let _env = mock_env();
     update_config(
@@ -282,60 +276,12 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner2")),
-        Some(Addr::unchecked("manager")),
         Some(Duration::Height(100)),
     )
     .unwrap();
 
     let config = query_config(&app, &staking_addr);
     assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
-    assert_eq!(config.manager, Some(Addr::unchecked("manager")));
-
-    // Manager can update unstaking duration
-    let info = mock_info("manager", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(50)),
-    )
-    .unwrap();
-    let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
-    assert_eq!(config.unstaking_duration, Some(Duration::Height(50)));
-
-    // Manager cannot update owner
-    let info = mock_info("manager", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("manager")),
-        Some(Addr::unchecked("manager")),
-        Some(Duration::Height(50)),
-    )
-    .unwrap_err();
-
-    // Manager can update manager
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        None,
-        Some(Duration::Height(50)),
-    )
-    .unwrap();
-
-    let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
-    assert_eq!(config.manager, None);
 
     // Invalid duration
     let info = mock_info("owner2", &[]);
@@ -345,7 +291,6 @@ fn test_update_config() {
         &staking_addr,
         info,
         Some(Addr::unchecked("owner2")),
-        None,
         Some(Duration::Height(0)),
     )
     .unwrap_err()
@@ -361,7 +306,6 @@ fn test_update_config() {
         &staking_addr,
         info,
         None,
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap();
@@ -374,64 +318,12 @@ fn test_update_config() {
         &staking_addr,
         info,
         None,
-        None,
         Some(Duration::Height(100)),
     )
     .unwrap_err()
     .downcast()
     .unwrap();
     assert_eq!(err, ContractError::Unauthorized {});
-
-    let info = mock_info("manager", &[]);
-    let _env = mock_env();
-    let err: ContractError = update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        None,
-        None,
-        Some(Duration::Height(100)),
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap();
-    assert_eq!(err, ContractError::Unauthorized {})
-}
-
-#[test]
-fn test_migrate_from_beta() {
-    let mut deps = mock_dependencies();
-    let env = mock_env();
-    let token_address = Addr::unchecked("token_address");
-
-    // Write to storage in old config format
-    let key = b"config";
-    #[cw_serde]
-    struct BetaConfig {
-        pub admin: Addr,
-        pub token_address: Addr,
-        pub unstaking_duration: Option<Duration>,
-    }
-    let beta_config = BetaConfig {
-        admin: Addr::unchecked("beta_admin"),
-        token_address: token_address.clone(),
-        unstaking_duration: None,
-    };
-
-    deps.storage.set(key, &to_binary(&beta_config).unwrap());
-
-    let migrate_msg = MigrateMsg::FromBeta {
-        manager: Some("new_manager".to_string()),
-    };
-
-    migrate(deps.as_mut(), env, migrate_msg).unwrap();
-
-    let config_bytes = deps.storage.get(key).unwrap();
-    let config: Config = from_slice(&config_bytes).unwrap();
-    assert_eq!(config.owner, Some(Addr::unchecked("beta_admin")));
-    assert_eq!(config.manager, Some(Addr::unchecked("new_manager")));
-    assert_eq!(config.unstaking_duration, None);
-    assert_eq!(config.token_address, token_address)
 }
 
 #[test]

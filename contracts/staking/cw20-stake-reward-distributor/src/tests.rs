@@ -13,7 +13,6 @@ use cw_ownable::{Action, Expiration, Ownership, OwnershipError};
 
 const OWNER: &str = "owner";
 const OWNER2: &str = "owner2";
-const MANAGER: &str = "manager";
 
 pub fn cw20_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -71,7 +70,6 @@ fn instantiate_staking(app: &mut App, cw20_addr: Addr) -> Addr {
     let staking_id = app.store_code(staking_contract());
     let msg = cw20_stake::msg::InstantiateMsg {
         owner: Some(OWNER.to_string()),
-        manager: Some(MANAGER.to_string()),
         token_address: cw20_addr.to_string(),
         unstaking_duration: None,
     };
@@ -479,7 +477,7 @@ fn test_withdraw() {
     // Unauthorized user cannot withdraw funds
     let err = app
         .execute_contract(
-            Addr::unchecked(MANAGER),
+            Addr::unchecked("notowner"),
             distributor_addr.clone(),
             &ExecuteMsg::Withdraw {},
             &[],

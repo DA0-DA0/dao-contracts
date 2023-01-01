@@ -542,7 +542,6 @@ mod tests {
         let staking_code_id = app.store_code(contract_staking());
         let msg = cw20_stake::msg::InstantiateMsg {
             owner: Some(OWNER.to_string()),
-            manager: Some("manager".to_string()),
             token_address: cw20.to_string(),
             unstaking_duration,
         };

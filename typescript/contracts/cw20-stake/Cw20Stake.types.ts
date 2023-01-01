@@ -10,7 +10,6 @@ export type Duration = {
   time: number;
 };
 export interface InstantiateMsg {
-  manager?: string | null;
   owner?: string | null;
   token_address: string;
   unstaking_duration?: Duration | null;
@@ -26,7 +25,6 @@ export type ExecuteMsg = {
 } | {
   update_config: {
     duration?: Duration | null;
-    manager?: string | null;
     owner?: string | null;
   };
 } | {
@@ -75,10 +73,6 @@ export type QueryMsg = {
   };
 };
 export type MigrateMsg = {
-  from_beta: {
-    manager?: string | null;
-  };
-} | {
   from_compatible: {};
 };
 export type Expiration = {
@@ -99,7 +93,6 @@ export interface Claim {
 }
 export type Addr = string;
 export interface Config {
-  manager?: Addr | null;
   owner?: Addr | null;
   token_address: Addr;
   unstaking_duration?: Duration | null;

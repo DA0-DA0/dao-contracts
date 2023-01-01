@@ -95,7 +95,6 @@ pub fn instantiate(
                             owner: Some(info.sender.to_string()),
                             unstaking_duration,
                             token_address: address.to_string(),
-                            manager: None,
                         })?,
                     };
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);
@@ -413,7 +412,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                             owner: Some(dao.to_string()),
                             unstaking_duration,
                             token_address: token.to_string(),
-                            manager: None,
                         })?,
                     };
                     let msg = SubMsg::reply_on_success(msg, INSTANTIATE_STAKING_REPLY_ID);

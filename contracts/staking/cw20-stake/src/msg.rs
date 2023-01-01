@@ -8,8 +8,6 @@ use cw_utils::Duration;
 pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<String>,
-    // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
-    pub manager: Option<String>,
     pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
@@ -23,7 +21,6 @@ pub enum ExecuteMsg {
     Claim {},
     UpdateConfig {
         owner: Option<String>,
-        manager: Option<String>,
         duration: Option<Duration>,
     },
     AddHook {
@@ -69,7 +66,6 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    FromBeta { manager: Option<String> },
     FromCompatible {},
 }
 

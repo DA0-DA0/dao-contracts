@@ -10,12 +10,6 @@
       "token_address"
     ],
     "properties": {
-      "manager": {
-        "type": [
-          "string",
-          "null"
-        ]
-      },
       "owner": {
         "type": [
           "string",
@@ -141,12 +135,6 @@
                   {
                     "type": "null"
                   }
-                ]
-              },
-              "manager": {
-                "type": [
-                  "string",
-                  "null"
                 ]
               },
               "owner": {
@@ -445,27 +433,6 @@
       {
         "type": "object",
         "required": [
-          "from_beta"
-        ],
-        "properties": {
-          "from_beta": {
-            "type": "object",
-            "properties": {
-              "manager": {
-                "type": [
-                  "string",
-                  "null"
-                ]
-              }
-            },
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
-        "type": "object",
-        "required": [
           "from_compatible"
         ],
         "properties": {
@@ -586,16 +553,6 @@
         "token_address"
       ],
       "properties": {
-        "manager": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Addr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
         "owner": {
           "anyOf": [
             {

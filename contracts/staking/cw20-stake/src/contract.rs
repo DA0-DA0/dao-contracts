@@ -1,10 +1,9 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, to_vec, Addr, Binary, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128,
 };
 
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
@@ -67,11 +66,6 @@ pub fn instantiate(
         None => None,
     };
 
-    let manager = match msg.manager {
-        Some(manager) => Some(deps.api.addr_validate(manager.as_str())?),
-        None => None,
-    };
-
     // Smoke test that the provided cw20 contract responds to a
     // token_info query. It is not possible to determine if the
     // contract implements the entire cw20 standard and runtime,
@@ -86,7 +80,6 @@ pub fn instantiate(
     validate_duration(msg.unstaking_duration)?;
     let config = Config {
         owner,
-        manager,
         token_address,
         unstaking_duration: msg.unstaking_duration,
     };
@@ -115,11 +108,9 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
-        ExecuteMsg::UpdateConfig {
-            owner,
-            manager,
-            duration,
-        } => execute_update_config(info, deps, owner, manager, duration),
+        ExecuteMsg::UpdateConfig { owner, duration } => {
+            execute_update_config(info, deps, owner, duration)
+        }
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
     }
@@ -129,17 +120,17 @@ pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
     new_owner: Option<String>,
-    new_manager: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let new_owner = new_owner
         .map(|new_owner| deps.api.addr_validate(&new_owner))
         .transpose()?;
-    let new_manager = new_manager
-        .map(|new_manager| deps.api.addr_validate(&new_manager))
-        .transpose()?;
     let mut config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
+    if config
+        .owner
+        .as_ref()
+        .map_or(true, |owner| *owner != info.sender)
+    {
         return Err(ContractError::Unauthorized {});
     };
     if Some(info.sender) != config.owner && new_owner != config.owner {
@@ -149,8 +140,6 @@ pub fn execute_update_config(
     validate_duration(duration)?;
 
     config.owner = new_owner;
-    config.manager = new_manager;
-
     config.unstaking_duration = duration;
 
     CONFIG.save(deps.storage, &config)?;
@@ -160,13 +149,6 @@ pub fn execute_update_config(
             "owner",
             config
                 .owner
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute(
-            "manager",
-            config
-                .manager
                 .map(|a| a.to_string())
                 .unwrap_or_else(|| "None".to_string()),
         ))
@@ -359,7 +341,7 @@ pub fn execute_add_hook(
 ) -> Result<Response, ContractError> {
     let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
+    if config.owner.map_or(true, |owner| owner != info.sender) {
         return Err(ContractError::Unauthorized {});
     };
     HOOKS.add_hook(deps.storage, addr.clone())?;
@@ -376,7 +358,7 @@ pub fn execute_remove_hook(
 ) -> Result<Response, ContractError> {
     let addr = deps.api.addr_validate(&addr)?;
     let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
+    if config.owner.map_or(true, |owner| owner != info.sender) {
         return Err(ContractError::Unauthorized {});
     };
     HOOKS.remove_hook(deps.storage, addr.clone())?;
@@ -509,31 +491,7 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     // Set contract to version to latest
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    #[cw_serde]
-    struct BetaConfig {
-        pub admin: Addr,
-        pub token_address: Addr,
-        pub unstaking_duration: Option<Duration>,
-    }
-
     match msg {
-        MigrateMsg::FromBeta { manager } => {
-            let data = deps
-                .storage
-                .get(b"config")
-                .ok_or_else(|| StdError::not_found("config"))?;
-            let beta_config: BetaConfig = from_slice(&data)?;
-            let new_config = Config {
-                owner: Some(beta_config.admin),
-                manager: manager
-                    .map(|human| deps.api.addr_validate(&human))
-                    .transpose()?,
-                token_address: beta_config.token_address,
-                unstaking_duration: beta_config.unstaking_duration,
-            };
-            deps.storage.set(b"config", &to_vec(&new_config)?);
-            Ok(Response::default())
-        }
         MigrateMsg::FromCompatible {} => Ok(Response::default()),
     }
 }
