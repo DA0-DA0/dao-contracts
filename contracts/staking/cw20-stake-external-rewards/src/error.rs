@@ -23,4 +23,6 @@ pub enum ContractError {
     RewardRateLessThenOnePerBlock {},
     #[error("Reward duration can not be zero")]
     ZeroRewardDuration {},
+    #[error("can not migrate. current version is up to date")]
+    AlreadyMigrated {},
 }

@@ -17,7 +17,7 @@ use cosmwasm_std::{
     from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Empty, Env,
     MessageInfo, Response, StdError, StdResult, Uint128, Uint256, WasmMsg,
 };
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw20::{Cw20ReceiveMsg, Denom};
 use cw20_stake::hooks::StakeChangedHookMsg;
 
@@ -83,10 +83,39 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
+pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+    use cw20_stake_external_rewards_v1 as v1;
+
+    let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
+
+    match msg {
+        MigrateMsg::FromV1 {} => {
+            if version == CONTRACT_VERSION {
+                // You can not possibly be migrating from v1 to v2 and
+                // also not changing your contract version.
+                return Err(ContractError::AlreadyMigrated {});
+            }
+            // From v1 -> v2 we moved `owner` out of config and into
+            // the `cw_ownable` package.
+            let config = v1::state::CONFIG.load(deps.storage)?;
+            cw_ownable::initialize_owner(
+                deps.storage,
+                deps.api,
+                config.owner.map(|a| a.into_string()).as_deref(),
+            )?;
+            let config = Config {
+                staking_contract: config.staking_contract,
+                reward_token: match config.reward_token {
+                    cw20_013::Denom::Native(n) => Denom::Native(n),
+                    cw20_013::Denom::Cw20(a) => Denom::Cw20(a),
+                },
+            };
+            CONFIG.save(deps.storage, &config)?;
+
+            Ok(Response::default())
+        }
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -431,22 +460,16 @@ pub fn query_pending_rewards(
 mod tests {
     use std::borrow::BorrowMut;
 
-    use crate::{
-        contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-        msg::MigrateMsg,
-        ContractError,
-    };
+    use crate::{msg::MigrateMsg, ContractError};
 
-    use cosmwasm_std::{
-        coin,
-        testing::{mock_dependencies, mock_env},
-        to_binary, Addr, Empty, Uint128,
-    };
+    use cosmwasm_std::{coin, to_binary, Addr, Empty, Uint128, WasmMsg};
     use cw20::{Cw20Coin, Cw20ExecuteMsg, Denom};
     use cw_ownable::{Action, Ownership, OwnershipError};
     use cw_utils::Duration;
 
     use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+
+    use cw20_stake_external_rewards_v1 as v1;
 
     use crate::msg::{ExecuteMsg, InfoResponse, PendingRewardsResponse, QueryMsg, ReceiveMsg};
 
@@ -460,6 +483,16 @@ mod tests {
             crate::contract::execute,
             crate::contract::instantiate,
             crate::contract::query,
+        )
+        .with_migrate(crate::contract::migrate);
+        Box::new(contract)
+    }
+
+    pub fn contract_rewards_v1() -> Box<dyn Contract<Empty>> {
+        let contract = ContractWrapper::new(
+            v1::contract::execute,
+            v1::contract::instantiate,
+            v1::contract::query,
         );
         Box::new(contract)
     }
@@ -1926,12 +1959,80 @@ mod tests {
     }
 
     #[test]
-    pub fn test_migrate_update_version() {
-        let mut deps = mock_dependencies();
-        cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
-        migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
-        let version = cw2::get_contract_version(&deps.storage).unwrap();
-        assert_eq!(version.version, CONTRACT_VERSION);
-        assert_eq!(version.contract, CONTRACT_NAME);
+    fn test_migrate_from_v1() {
+        let mut app = App::default();
+
+        let v1_code = app.store_code(contract_rewards_v1());
+        let v2_code = app.store_code(contract_rewards());
+
+        let initial_balances = vec![
+            Cw20Coin {
+                address: ADDR1.to_string(),
+                amount: Uint128::new(100),
+            },
+            Cw20Coin {
+                address: ADDR2.to_string(),
+                amount: Uint128::new(50),
+            },
+            Cw20Coin {
+                address: ADDR3.to_string(),
+                amount: Uint128::new(50),
+            },
+        ];
+        let denom = "utest".to_string();
+        let (staking_addr, _) = setup_staking_contract(&mut app, initial_balances);
+
+        let rewards_addr = app
+            .instantiate_contract(
+                v1_code,
+                Addr::unchecked(OWNER),
+                &v1::msg::InstantiateMsg {
+                    owner: Some(OWNER.to_string()),
+                    manager: Some(ADDR1.to_string()),
+                    staking_contract: staking_addr.into_string(),
+                    reward_token: cw20_013::Denom::Native(denom),
+                    reward_duration: 10000,
+                },
+                &[],
+                "rewards".to_string(),
+                Some(OWNER.to_string()),
+            )
+            .unwrap();
+
+        app.execute(
+            Addr::unchecked(OWNER),
+            WasmMsg::Migrate {
+                contract_addr: rewards_addr.to_string(),
+                new_code_id: v2_code,
+                msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+            }
+            .into(),
+        )
+        .unwrap();
+
+        let ownership = get_ownership(&app, &rewards_addr);
+        assert_eq!(
+            ownership,
+            Ownership::<Addr> {
+                owner: Some(Addr::unchecked(OWNER)),
+                pending_owner: None,
+                pending_expiry: None,
+            }
+        );
+
+        let err: ContractError = app
+            .execute(
+                Addr::unchecked(OWNER),
+                WasmMsg::Migrate {
+                    contract_addr: rewards_addr.to_string(),
+                    new_code_id: v2_code,
+                    msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+                }
+                .into(),
+            )
+            .unwrap_err()
+            .downcast()
+            .unwrap();
+        assert_eq!(err, ContractError::AlreadyMigrated {});
     }
 }

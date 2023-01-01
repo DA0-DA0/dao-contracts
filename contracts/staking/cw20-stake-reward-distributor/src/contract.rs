@@ -233,6 +233,8 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     use cw20_stake_reward_distributor_v1 as v1;
 
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
     match msg {
         MigrateMsg::FromV1 {} => {
             if version == CONTRACT_VERSION {

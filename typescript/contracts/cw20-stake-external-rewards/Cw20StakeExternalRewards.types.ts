@@ -73,7 +73,9 @@ export type QueryMsg = {
 } | {
   ownership: {};
 };
-export interface MigrateMsg {}
+export type MigrateMsg = {
+  from_v1: {};
+};
 export interface PendingRewardsResponse {
   address: string;
   denom: Denom;

@@ -16,9 +16,6 @@ pub struct InstantiateMsg {
     pub reward_duration: u64,
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
 #[cw_ownable]
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -27,6 +24,15 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Fund {},
     UpdateRewardDuration { new_duration: u64 },
+}
+
+#[cw_serde]
+pub enum MigrateMsg {
+    /// Migrates from version 0.2.6 to 2.0.0. The significant changes
+    /// being the addition of a two-step ownership transfer using
+    /// `cw_ownable` and the removal of the manager. Migrating will
+    /// automatically remove the current manager.
+    FromV1 {},
 }
 
 #[cw_serde]

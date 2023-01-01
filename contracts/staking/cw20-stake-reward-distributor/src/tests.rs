@@ -723,7 +723,7 @@ fn test_migrate_from_v1() {
     assert_eq!(
         ownership,
         Ownership::<Addr> {
-            owner: Some(sender),
+            owner: Some(sender.clone()),
             pending_owner: None,
             pending_expiry: None,
         }
@@ -742,4 +742,19 @@ fn test_migrate_from_v1() {
             balance: Uint128::zero()
         }
     );
+
+    let err: ContractError = app
+        .execute(
+            sender,
+            WasmMsg::Migrate {
+                contract_addr: distributor.to_string(),
+                new_code_id: v2_code,
+                msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+            }
+            .into(),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::AlreadyMigrated {});
 }
