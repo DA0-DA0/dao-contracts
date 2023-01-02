@@ -675,6 +675,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-escrow-streams"
+version = "0.0.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-multi-test",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw20-base",
+ "dao-testing",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw-hooks"
 version = "2.0.0-beta"
 dependencies = [
@@ -723,21 +741,6 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "serde",
-]
-
-[[package]]
-name = "cw-payroll"
-version = "0.0.1"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "serde",
- "thiserror",
 ]
 
 [[package]]

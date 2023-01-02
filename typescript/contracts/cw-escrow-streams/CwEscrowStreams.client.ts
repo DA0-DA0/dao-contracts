@@ -6,8 +6,8 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, Binary, Cw20ReceiveMsg, QueryMsg, ConfigResponse, CheckedDenom, Addr, StreamResponse, ListStreamsResponse } from "./CwPayroll.types";
-export interface CwPayrollReadOnlyInterface {
+import { InstantiateMsg, ExecuteMsg, Uint128, Binary, CheckedDenom, Addr, Cw20ReceiveMsg, StreamParams, QueryMsg, ConfigResponse, StreamResponse, ListStreamsResponse } from "./CwEscrowStreams.types";
+export interface CwEscrowStreamsReadOnlyInterface {
   contractAddress: string;
   getConfig: () => Promise<ConfigResponse>;
   getStream: ({
@@ -23,7 +23,7 @@ export interface CwPayrollReadOnlyInterface {
     start?: number;
   }) => Promise<ListStreamsResponse>;
 }
-export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
+export class CwEscrowStreamsQueryClient implements CwEscrowStreamsReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -66,7 +66,7 @@ export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
     });
   };
 }
-export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
+export interface CwEscrowStreamsInterface extends CwEscrowStreamsReadOnlyInterface {
   contractAddress: string;
   sender: string;
   receive: ({
@@ -78,7 +78,11 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     msg: Binary;
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  create: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  create: ({
+    params
+  }: {
+    params: StreamParams;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   distribute: ({
     id
   }: {
@@ -110,7 +114,7 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     id: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
-export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollInterface {
+export class CwEscrowStreamsClient extends CwEscrowStreamsQueryClient implements CwEscrowStreamsInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;
@@ -147,9 +151,15 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
       }
     }, fee, memo, funds);
   };
-  create = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  create = async ({
+    params
+  }: {
+    params: StreamParams;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      create: {}
+      create: {
+        params
+      }
     }, fee, memo, funds);
   };
   distribute = async ({
