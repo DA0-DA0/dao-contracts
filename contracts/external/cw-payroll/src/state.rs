@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Response, StdError, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Response, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
@@ -70,12 +70,10 @@ impl Stream {
             let rate_per_second = balance.checked_div(duration.into()).unwrap_or_default();
 
             return Ok((
-                Uint128::from(
-                    (Uint128::from(passed) * rate_per_second)
-                        .checked_sub(claimed_balance)
-                        .unwrap_or_default(),
-                ),
-                Uint128::from(rate_per_second),
+                (Uint128::from(passed) * rate_per_second)
+                    .checked_sub(claimed_balance)
+                    .unwrap_or_default(),
+                rate_per_second,
             ));
         }
         Ok((Uint128::new(0), Uint128::new(0)))

@@ -238,7 +238,7 @@ pub fn execute_create_stream(
     Ok(Response::new()
         .add_attribute("method", "create_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", admin.clone())
+        .add_attribute("admin", admin)
         .add_attribute("recipient", recipient)
         .add_attribute("start_time", start_time.to_string())
         .add_attribute("end_time", end_time.to_string()))
