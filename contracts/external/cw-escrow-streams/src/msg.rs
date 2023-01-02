@@ -13,7 +13,10 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Create {},
+    // TODO be able to create steam with native token
+    Create {
+        params: StreamParams,
+    },
     Distribute {
         id: StreamId, // Stream id
     },
@@ -37,11 +40,13 @@ pub enum ExecuteMsg {
 // Receiver setup
 #[cw_serde]
 pub enum ReceiveMsg {
+    // TODO support all StreamParams or delete them
     CreateStream {
         admin: Option<String>,
         recipient: String,
         start_time: u64,
         end_time: u64,
+        // TODO just make this a bool
         is_detachable: Option<bool>,
     },
 }
@@ -56,6 +61,7 @@ pub struct StreamParams {
     pub end_time: u64,
     pub title: Option<String>,
     pub description: Option<String>,
+    // TODO just make this a bool
     pub is_detachable: Option<bool>,
 }
 

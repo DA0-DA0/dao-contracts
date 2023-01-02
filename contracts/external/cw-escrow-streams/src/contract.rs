@@ -29,6 +29,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    // TODO what is the point of this admin? It doesn't do anything.
+    // Delete if it doesn't do anything
     let admin = match msg.admin {
         Some(ad) => deps.api.addr_validate(&ad)?,
         None => info.sender,
@@ -40,8 +42,6 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     STREAM_SEQ.save(deps.storage, &0u64)?;
-
-    // TODO optionally fund on instantiate?
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -58,7 +58,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         // TODO should be able to create and fund with a native token
-        ExecuteMsg::Create {} => unimplemented!(),
+        ExecuteMsg::Create { .. } => unimplemented!(),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream { id } => execute_resume_stream(env, deps, info, id),
@@ -91,10 +91,10 @@ pub fn execute_pause_stream(
             Ok(stream)
         };
 
-    // TODO no unwrap
-    let stream = pause_stream_local(id, deps.storage).unwrap();
+    // TODO this is weird... needs comments at the very least
+    let stream = pause_stream_local(id, deps.storage)?;
     if let Some(link_id) = stream.link_id {
-        pause_stream_local(link_id, deps.storage).unwrap();
+        pause_stream_local(link_id, deps.storage)?;
     }
 
     Ok(Response::new()
@@ -119,7 +119,6 @@ pub fn execute_remove_stream(
         return Err(ContractError::Unauthorized {});
     }
 
-    // TODO what do we want here?
     if let Some(link_id) = stream.link_id {
         return Err(ContractError::LinkedStreamDeleteNotAllowed { link_id });
     }
@@ -227,6 +226,7 @@ pub fn execute_create_stream(
         title,
         description,
         link_id: None,
+        // TODO Should not be an option type
         is_detachable: is_detachable.unwrap_or(true),
     };
 
@@ -255,6 +255,7 @@ pub fn execute_receive(
     let checked_denom =
         UncheckedDenom::Cw20(info.sender.to_string()).into_checked(deps.as_ref())?;
 
+    // TODO should support all stream params
     match msg {
         ReceiveMsg::CreateStream {
             admin,

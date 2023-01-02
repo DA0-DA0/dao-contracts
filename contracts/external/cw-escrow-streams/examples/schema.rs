@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use cw_payroll::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw_escrow_streams::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

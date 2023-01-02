@@ -16,6 +16,7 @@ pub(crate) fn execute_link_stream(
     ids: StreamIds,
 ) -> Result<Response, ContractError> {
     ids.validate()?;
+    // TODO no unwrap
     let left_stream_id = *ids.first().unwrap();
     let right_stream_id = *ids.second().unwrap();
 

@@ -1,5 +1,5 @@
 {
-  "contract_name": "cw-payroll",
+  "contract_name": "cw-escrow-streams",
   "contract_version": "0.0.1",
   "idl_version": "1.0.0",
   "instantiate": {
@@ -40,6 +40,14 @@
         "properties": {
           "create": {
             "type": "object",
+            "required": [
+              "params"
+            ],
+            "properties": {
+              "params": {
+                "$ref": "#/definitions/StreamParams"
+              }
+            },
             "additionalProperties": false
           }
         },
@@ -188,9 +196,44 @@
       }
     ],
     "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
       "Binary": {
         "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
         "type": "string"
+      },
+      "CheckedDenom": {
+        "description": "A denom that has been checked to point to a valid asset. This enum should never be constructed literally and should always be built by calling `into_checked` on an `UncheckedDenom` instance.",
+        "oneOf": [
+          {
+            "description": "A native (bank module) asset.",
+            "type": "object",
+            "required": [
+              "native"
+            ],
+            "properties": {
+              "native": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "A cw20 asset.",
+            "type": "object",
+            "required": [
+              "cw20"
+            ],
+            "properties": {
+              "cw20": {
+                "$ref": "#/definitions/Addr"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
       },
       "Cw20ReceiveMsg": {
         "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
@@ -209,6 +252,60 @@
           },
           "sender": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "StreamParams": {
+        "type": "object",
+        "required": [
+          "admin",
+          "balance",
+          "denom",
+          "end_time",
+          "recipient",
+          "start_time"
+        ],
+        "properties": {
+          "admin": {
+            "type": "string"
+          },
+          "balance": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "$ref": "#/definitions/CheckedDenom"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "end_time": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "is_detachable": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "start_time": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "additionalProperties": false
