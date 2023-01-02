@@ -4,6 +4,10 @@ use cosmwasm_std::Uint128;
 
 use cw_ownable::cw_ownable;
 
+// so that consumers don't need a cw_ownable dependency to consume
+// this contract's queries.
+pub use cw_ownable::Ownership;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: String,

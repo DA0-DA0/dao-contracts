@@ -27,6 +27,7 @@ cw20-base = {  workspace = true, features = ["library"] }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
 cw-paginate = { workspace = true }
+cw-ownable = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

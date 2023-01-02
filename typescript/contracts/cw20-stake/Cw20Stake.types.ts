@@ -25,7 +25,6 @@ export type ExecuteMsg = {
 } | {
   update_config: {
     duration?: Duration | null;
-    owner?: string | null;
   };
 } | {
   add_hook: {
@@ -35,9 +34,26 @@ export type ExecuteMsg = {
   remove_hook: {
     addr: string;
   };
+} | {
+  update_ownership: Action;
 };
 export type Uint128 = string;
 export type Binary = string;
+export type Action = {
+  transfer_ownership: {
+    expiry?: Expiration | null;
+    new_owner: string;
+  };
+} | "accept_ownership" | "renounce_ownership";
+export type Expiration = {
+  at_height: number;
+} | {
+  at_time: Timestamp;
+} | {
+  never: {};
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
@@ -71,19 +87,12 @@ export type QueryMsg = {
     limit?: number | null;
     start_after?: string | null;
   };
+} | {
+  ownership: {};
 };
 export type MigrateMsg = {
   from_compatible: {};
 };
-export type Expiration = {
-  at_height: number;
-} | {
-  at_time: Timestamp;
-} | {
-  never: {};
-};
-export type Timestamp = Uint64;
-export type Uint64 = string;
 export interface ClaimsResponse {
   claims: Claim[];
 }
@@ -93,7 +102,6 @@ export interface Claim {
 }
 export type Addr = string;
 export interface Config {
-  owner?: Addr | null;
   token_address: Addr;
   unstaking_duration?: Duration | null;
 }
@@ -106,6 +114,11 @@ export interface ListStakersResponse {
 export interface StakerBalanceResponse {
   address: string;
   balance: Uint128;
+}
+export interface OwnershipForAddr {
+  owner?: Addr | null;
+  pending_expiry?: Expiration | null;
+  pending_owner?: Addr | null;
 }
 export interface StakedBalanceAtHeightResponse {
   balance: Uint128;

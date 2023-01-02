@@ -299,11 +299,22 @@ fn instantiate_with_admin(chain: &mut Chain) {
         .query("cw20_stake", &cw20_stake::msg::QueryMsg::GetConfig {})
         .unwrap();
     let config_res: cw20_stake::state::Config = res.data().unwrap();
+    assert_eq!(config_res.unstaking_duration, Some(Duration::Time(1209600)));
+
+    let res = chain
+        .orc
+        .query("cw20_stake", &cw20_stake::msg::QueryMsg::Ownership {})
+        .unwrap();
+    let ownership: cw20_stake::msg::Ownership<Addr> = res.data().unwrap();
     assert_eq!(
-        config_res.owner,
-        Some(Addr::unchecked(
-            chain.orc.contract_map.address("dao_core").unwrap()
-        ))
+        ownership,
+        cw20_stake::msg::Ownership::<Addr> {
+            owner: Some(Addr::unchecked(
+                chain.orc.contract_map.address("dao_core").unwrap()
+            )),
+            pending_owner: None,
+            pending_expiry: None
+        }
     );
 
     let res = &chain

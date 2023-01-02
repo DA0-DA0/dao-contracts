@@ -11,6 +11,7 @@ use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
 use cw20::Cw20Coin;
+use cw_ownable::{Action, Ownership, OwnershipError};
 use cw_utils::Duration;
 
 use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
@@ -24,6 +25,7 @@ const ADDR1: &str = "addr0001";
 const ADDR2: &str = "addr0002";
 const ADDR3: &str = "addr0003";
 const ADDR4: &str = "addr0004";
+const OWNER: &str = "owner";
 
 pub fn contract_staking() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -78,7 +80,7 @@ fn instantiate_cw20(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Addr {
 fn instantiate_staking(app: &mut App, cw20: Addr, unstaking_duration: Option<Duration>) -> Addr {
     let staking_code_id = app.store_code(contract_staking());
     let msg = crate::msg::InstantiateMsg {
-        owner: Some("owner".to_string()),
+        owner: Some(OWNER.to_string()),
         token_address: cw20.to_string(),
         unstaking_duration,
     };
@@ -124,6 +126,12 @@ fn query_staked_balance<T: Into<String>, U: Into<String>>(
 fn query_config<T: Into<String>>(app: &App, contract_addr: T) -> Config {
     let msg = QueryMsg::GetConfig {};
     app.wrap().query_wasm_smart(contract_addr, &msg).unwrap()
+}
+
+fn query_owner<T: Into<String>>(app: &App, contract: T) -> Ownership<Addr> {
+    app.wrap()
+        .query_wasm_smart(contract, &QueryMsg::Ownership {})
+        .unwrap()
 }
 
 fn query_total_staked<T: Into<String>>(app: &App, contract_addr: T) -> Uint128 {
@@ -182,13 +190,9 @@ fn update_config(
     app: &mut App,
     staking_addr: &Addr,
     info: MessageInfo,
-    owner: Option<Addr>,
     duration: Option<Duration>,
 ) -> AnyResult<AppResponse> {
-    let msg = ExecuteMsg::UpdateConfig {
-        owner: owner.map(|a| a.to_string()),
-        duration,
-    };
+    let msg = ExecuteMsg::UpdateConfig { duration };
     app.execute_contract(info.sender, staking_addr.clone(), &msg, &[])
 }
 
@@ -230,100 +234,43 @@ fn test_instantiate_with_non_cw20_token() {
 
 #[test]
 fn test_update_config() {
-    let _deps = mock_dependencies();
-
     let mut app = mock_app();
     let amount1 = Uint128::from(100u128);
-    let _token_address = Addr::unchecked("token_address");
     let initial_balances = vec![Cw20Coin {
         address: ADDR1.to_string(),
         amount: amount1,
     }];
     let (staking_addr, _cw20_addr) = setup_test_case(&mut app, initial_balances, None);
 
-    let info = mock_info("owner", &[]);
-    let _env = mock_env();
-    // Test update admin
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Duration::Height(100)),
-    )
-    .unwrap();
-
+    // Owner can update configuration.
+    let info = mock_info(OWNER, &[]);
+    update_config(&mut app, &staking_addr, info, Some(Duration::Height(1234))).unwrap();
     let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
-    assert_eq!(config.unstaking_duration, Some(Duration::Height(100)));
+    assert_eq!(config.unstaking_duration, Some(Duration::Height(1234)));
 
-    // Try updating owner with original owner, which is now invalid
-    let info = mock_info("owner", &[]);
-    let _err = update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner3")),
-        Some(Duration::Height(100)),
-    )
-    .unwrap_err();
+    // Non owner may not update configuration.
+    let info = mock_info(ADDR1, &[]);
+    let err: ContractError = update_config(&mut app, &staking_addr, info, None)
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownership(OwnershipError::NotOwner));
 
-    // owner2's time to shine
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Duration::Height(100)),
-    )
-    .unwrap();
-
-    let config = query_config(&app, &staking_addr);
-    assert_eq!(config.owner, Some(Addr::unchecked("owner2")));
-
-    // Invalid duration
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    let err: ContractError = update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        Some(Addr::unchecked("owner2")),
-        Some(Duration::Height(0)),
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap();
+    // Zero durations not allowed.
+    let info = mock_info(OWNER, &[]);
+    let err: ContractError =
+        update_config(&mut app, &staking_addr, info, Some(Duration::Height(0)))
+            .unwrap_err()
+            .downcast()
+            .unwrap();
     assert_eq!(err, ContractError::InvalidUnstakingDuration {});
 
-    // Remove owner
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        None,
-        Some(Duration::Height(100)),
-    )
-    .unwrap();
-
-    // Assert no further updates can be made
-    let info = mock_info("owner2", &[]);
-    let _env = mock_env();
-    let err: ContractError = update_config(
-        &mut app,
-        &staking_addr,
-        info,
-        None,
-        Some(Duration::Height(100)),
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap();
-    assert_eq!(err, ContractError::Unauthorized {});
+    let info = mock_info(OWNER, &[]);
+    let err: ContractError = update_config(&mut app, &staking_addr, info, Some(Duration::Time(0)))
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::InvalidUnstakingDuration {});
 }
 
 #[test]
@@ -1110,4 +1057,56 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+fn test_ownership_transfer() {
+    let mut app = App::default();
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+    let staking_addr = instantiate_staking(&mut app, cw20_addr, None);
+
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        staking_addr.clone(),
+        &ExecuteMsg::UpdateOwnership(Action::TransferOwnership {
+            new_owner: ADDR1.to_string(),
+            expiry: None,
+        }),
+        &[],
+    )
+    .unwrap();
+
+    let ownership = query_owner(&app, &staking_addr);
+    assert_eq!(
+        ownership,
+        Ownership::<Addr> {
+            owner: Some(Addr::unchecked(OWNER)),
+            pending_owner: Some(Addr::unchecked(ADDR1)),
+            pending_expiry: None
+        }
+    );
+
+    app.execute_contract(
+        Addr::unchecked(ADDR1),
+        staking_addr.clone(),
+        &ExecuteMsg::UpdateOwnership(Action::AcceptOwnership),
+        &[],
+    )
+    .unwrap();
+
+    let ownership = query_owner(&app, &staking_addr);
+    assert_eq!(
+        ownership,
+        Ownership::<Addr> {
+            owner: Some(Addr::unchecked(ADDR1)),
+            pending_owner: None,
+            pending_expiry: None
+        }
+    );
 }

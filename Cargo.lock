@@ -906,6 +906,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-controllers 0.16.0",
  "cw-multi-test",
+ "cw-ownable",
  "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",

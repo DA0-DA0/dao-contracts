@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { Duration, InstantiateMsg, ExecuteMsg, Uint128, Binary, Cw20ReceiveMsg, QueryMsg, MigrateMsg, Expiration, Timestamp, Uint64, ClaimsResponse, Claim, Addr, Config, GetHooksResponse, ListStakersResponse, StakerBalanceResponse, StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse } from "./Cw20Stake.types";
+import { Duration, InstantiateMsg, ExecuteMsg, Uint128, Binary, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, QueryMsg, MigrateMsg, ClaimsResponse, Claim, Addr, Config, GetHooksResponse, ListStakersResponse, StakerBalanceResponse, OwnershipForAddr, StakedBalanceAtHeightResponse, StakedValueResponse, TotalStakedAtHeightResponse, TotalValueResponse } from "./Cw20Stake.types";
 export interface Cw20StakeReadOnlyInterface {
   contractAddress: string;
   stakedBalanceAtHeight: ({
@@ -41,6 +41,7 @@ export interface Cw20StakeReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ListStakersResponse>;
+  ownership: () => Promise<OwnershipForAddr>;
 }
 export class Cw20StakeQueryClient implements Cw20StakeReadOnlyInterface {
   client: CosmWasmClient;
@@ -57,6 +58,7 @@ export class Cw20StakeQueryClient implements Cw20StakeReadOnlyInterface {
     this.claims = this.claims.bind(this);
     this.getHooks = this.getHooks.bind(this);
     this.listStakers = this.listStakers.bind(this);
+    this.ownership = this.ownership.bind(this);
   }
 
   stakedBalanceAtHeight = async ({
@@ -135,6 +137,11 @@ export class Cw20StakeQueryClient implements Cw20StakeReadOnlyInterface {
       }
     });
   };
+  ownership = async (): Promise<OwnershipForAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      ownership: {}
+    });
+  };
 }
 export interface Cw20StakeInterface extends Cw20StakeReadOnlyInterface {
   contractAddress: string;
@@ -155,11 +162,9 @@ export interface Cw20StakeInterface extends Cw20StakeReadOnlyInterface {
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   claim: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updateConfig: ({
-    duration,
-    owner
+    duration
   }: {
     duration?: Duration;
-    owner?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   addHook: ({
     addr
@@ -171,6 +176,7 @@ export interface Cw20StakeInterface extends Cw20StakeReadOnlyInterface {
   }: {
     addr: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class Cw20StakeClient extends Cw20StakeQueryClient implements Cw20StakeInterface {
   client: SigningCosmWasmClient;
@@ -188,6 +194,7 @@ export class Cw20StakeClient extends Cw20StakeQueryClient implements Cw20StakeIn
     this.updateConfig = this.updateConfig.bind(this);
     this.addHook = this.addHook.bind(this);
     this.removeHook = this.removeHook.bind(this);
+    this.updateOwnership = this.updateOwnership.bind(this);
   }
 
   receive = async ({
@@ -224,16 +231,13 @@ export class Cw20StakeClient extends Cw20StakeQueryClient implements Cw20StakeIn
     }, fee, memo, funds);
   };
   updateConfig = async ({
-    duration,
-    owner
+    duration
   }: {
     duration?: Duration;
-    owner?: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
-        duration,
-        owner
+        duration
       }
     }, fee, memo, funds);
   };
@@ -257,6 +261,11 @@ export class Cw20StakeClient extends Cw20StakeQueryClient implements Cw20StakeIn
       remove_hook: {
         addr
       }
+    }, fee, memo, funds);
+  };
+  updateOwnership = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_ownership: {}
     }, fee, memo, funds);
   };
 }

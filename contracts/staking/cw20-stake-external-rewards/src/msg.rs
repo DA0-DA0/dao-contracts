@@ -4,7 +4,11 @@ use cw20::{Cw20ReceiveMsg, Denom};
 use cw20_stake::hooks::StakeChangedHookMsg;
 
 use crate::state::{Config, RewardConfig};
+
 pub use cw_controllers::ClaimsResponse;
+// so that consumers don't need a cw_ownable dependency to consume
+// this contract's queries.
+pub use cw_ownable::Ownership;
 
 use cw_ownable::cw_ownable;
 
