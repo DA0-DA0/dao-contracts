@@ -10,6 +10,8 @@ export interface InstantiateMsg {
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
+  create: {};
+} | {
   distribute: {
     id: number;
   };
@@ -56,22 +58,17 @@ export type QueryMsg = {
 export interface ConfigResponse {
   admin: string;
 }
-export type WrappedBalance = {
-  native: NativeBalance;
+export type CheckedDenom = {
+  native: string;
 } | {
-  cw20: Cw20CoinVerified;
+  cw20: Addr;
 };
-export type NativeBalance = Coin[];
 export type Addr = string;
-export type WrappedBalance1 = {
-  native: NativeBalance;
-} | {
-  cw20: Cw20CoinVerified;
-};
 export interface StreamResponse {
   admin: string;
-  balance: WrappedBalance;
-  claimed_balance: WrappedBalance1;
+  balance: Uint128;
+  claimed_balance: Uint128;
+  denom: CheckedDenom;
   description?: string | null;
   end_time: number;
   id: number;
@@ -83,15 +80,6 @@ export interface StreamResponse {
   recipient: string;
   start_time: number;
   title?: string | null;
-}
-export interface Coin {
-  amount: Uint128;
-  denom: string;
-  [k: string]: unknown;
-}
-export interface Cw20CoinVerified {
-  address: Addr;
-  amount: Uint128;
 }
 export interface ListStreamsResponse {
   streams: StreamResponse[];

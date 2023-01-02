@@ -5,8 +5,8 @@
 */
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
-import { StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, Binary, Cw20ReceiveMsg, QueryMsg, ConfigResponse, WrappedBalance, NativeBalance, Addr, WrappedBalance1, StreamResponse, Coin, Cw20CoinVerified, ListStreamsResponse } from "./CwPayroll.types";
+import { Coin, StdFee } from "@cosmjs/amino";
+import { InstantiateMsg, ExecuteMsg, Uint128, Binary, Cw20ReceiveMsg, QueryMsg, ConfigResponse, CheckedDenom, Addr, StreamResponse, ListStreamsResponse } from "./CwPayroll.types";
 export interface CwPayrollReadOnlyInterface {
   contractAddress: string;
   getConfig: () => Promise<ConfigResponse>;
@@ -78,6 +78,7 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     msg: Binary;
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  create: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   distribute: ({
     id
   }: {
@@ -120,6 +121,7 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     this.sender = sender;
     this.contractAddress = contractAddress;
     this.receive = this.receive.bind(this);
+    this.create = this.create.bind(this);
     this.distribute = this.distribute.bind(this);
     this.pauseStream = this.pauseStream.bind(this);
     this.linkStream = this.linkStream.bind(this);
@@ -143,6 +145,11 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
         msg,
         sender
       }
+    }, fee, memo, funds);
+  };
+  create = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      create: {}
     }, fee, memo, funds);
   };
   distribute = async ({
