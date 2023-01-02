@@ -1,39 +1,22 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Response;
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
+use cw_denom::CheckedDenom;
 
-use crate::{balance::WrappedBalance, ContractError};
+use crate::state::{StreamId, StreamIds};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: Option<String>,
 }
-pub type StreamId = u64;
-pub type StreamIds = Vec<StreamId>;
-pub type ContractResult = Result<Response, ContractError>;
-
-pub(crate) trait StreamIdsExtensions {
-    fn second(&self) -> Option<&StreamId>;
-    fn validate(&self) -> Result<(), ContractError>;
-}
-impl StreamIdsExtensions for StreamIds {
-    fn second(&self) -> Option<&StreamId> {
-        self.get(1)
-    }
-    fn validate(&self) -> Result<(), ContractError> {
-        if self.len() != 2 {
-            return Err(ContractError::InvalidStreamIds {});
-        }
-        if self.first() == self.second() {
-            return Err(ContractError::StreamsShouldNotBeEqual {});
-        }
-        Ok(())
-    }
-}
 
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
+    // TODO be able to create steam with native token
+    Create {
+        params: StreamParams,
+    },
     Distribute {
         id: StreamId, // Stream id
     },
@@ -57,11 +40,13 @@ pub enum ExecuteMsg {
 // Receiver setup
 #[cw_serde]
 pub enum ReceiveMsg {
+    // TODO support all StreamParams or delete them
     CreateStream {
         admin: Option<String>,
         recipient: String,
         start_time: u64,
         end_time: u64,
+        // TODO just make this a bool
         is_detachable: Option<bool>,
     },
 }
@@ -70,11 +55,13 @@ pub enum ReceiveMsg {
 pub struct StreamParams {
     pub admin: String,
     pub recipient: String,
-    pub balance: WrappedBalance,
+    pub balance: Uint128,
+    pub denom: CheckedDenom,
     pub start_time: u64,
     pub end_time: u64,
     pub title: Option<String>,
     pub description: Option<String>,
+    // TODO just make this a bool
     pub is_detachable: Option<bool>,
 }
 
@@ -102,8 +89,9 @@ pub struct StreamResponse {
     pub id: u64,
     pub admin: String,
     pub recipient: String,
-    pub balance: WrappedBalance,
-    pub claimed_balance: WrappedBalance,
+    pub balance: Uint128,
+    pub claimed_balance: Uint128,
+    pub denom: CheckedDenom,
     pub start_time: u64,
     pub end_time: u64,
     pub paused_time: Option<u64>,

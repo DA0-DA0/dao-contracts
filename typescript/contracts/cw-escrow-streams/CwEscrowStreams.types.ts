@@ -10,7 +10,9 @@ export interface InstantiateMsg {
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
-  create: {};
+  create: {
+    params: StreamParams;
+  };
 } | {
   distribute: {
     id: number;
@@ -38,10 +40,27 @@ export type ExecuteMsg = {
 };
 export type Uint128 = string;
 export type Binary = string;
+export type CheckedDenom = {
+  native: string;
+} | {
+  cw20: Addr;
+};
+export type Addr = string;
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
   sender: string;
+}
+export interface StreamParams {
+  admin: string;
+  balance: Uint128;
+  denom: CheckedDenom;
+  description?: string | null;
+  end_time: number;
+  is_detachable?: boolean | null;
+  recipient: string;
+  start_time: number;
+  title?: string | null;
 }
 export type QueryMsg = {
   get_config: {};
@@ -58,12 +77,6 @@ export type QueryMsg = {
 export interface ConfigResponse {
   admin: string;
 }
-export type CheckedDenom = {
-  native: string;
-} | {
-  cw20: Addr;
-};
-export type Addr = string;
 export interface StreamResponse {
   admin: string;
   balance: Uint128;
