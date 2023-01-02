@@ -14,7 +14,6 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Stream {
-    pub admin: Addr,
     pub recipient: Addr,
     /// Balance in Native and Cw20 tokens
     pub balance: Uint128,
@@ -31,12 +30,6 @@ pub struct Stream {
     pub title: Option<String>,
     /// Description of the payroll item, a more in depth description of how to meet the payroll conditions
     pub description: Option<String>,
-    /// Link to stream attached for sync
-    pub link_id: Option<StreamId>,
-    /// Making a stream detachable will only affect linked streams.
-    /// A linked stream that detaches in the future will pause both streams.
-    /// Each stream must then resume on their own, or be fully removed to re-link.
-    pub is_detachable: bool,
 }
 
 impl Stream {
@@ -102,28 +95,5 @@ impl Stream {
     }
 }
 
-pub type StreamId = u64;
-pub type StreamIds = Vec<StreamId>;
-pub type ContractResult = Result<Response, ContractError>;
-
-pub(crate) trait StreamIdsExtensions {
-    fn second(&self) -> Option<&StreamId>;
-    fn validate(&self) -> Result<(), ContractError>;
-}
-impl StreamIdsExtensions for StreamIds {
-    fn second(&self) -> Option<&StreamId> {
-        self.get(1)
-    }
-    fn validate(&self) -> Result<(), ContractError> {
-        if self.len() != 2 {
-            return Err(ContractError::InvalidStreamIds {});
-        }
-        if self.first() == self.second() {
-            return Err(ContractError::StreamsShouldNotBeEqual {});
-        }
-        Ok(())
-    }
-}
-
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
-pub const STREAMS: Map<StreamId, Stream> = Map::new("stream");
+pub const STREAMS: Map<u64, Stream> = Map::new("stream");

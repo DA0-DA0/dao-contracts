@@ -3,8 +3,6 @@ use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_denom::CheckedDenom;
 
-use crate::state::{StreamId, StreamIds};
-
 #[cw_serde]
 pub struct InstantiateMsg {
     pub admin: Option<String>,
@@ -13,57 +11,42 @@ pub struct InstantiateMsg {
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Create {},
-    Distribute {
-        id: StreamId, // Stream id
-    },
-    PauseStream {
-        id: StreamId, // Stream id
-    },
-    LinkStream {
-        ids: StreamIds,
-    },
-    DetachStream {
-        id: StreamId, // Stream id
-    },
-    ResumeStream {
-        id: StreamId, // Stream id
-    },
-    RemoveStream {
-        id: StreamId, // Stream id
-    },
+    Create(StreamParams),
+    Distribute { id: u64 },
+    Pause { id: u64 },
+    Resume { id: u64 },
+    Cancel { id: u64 },
+    Delegate {},
+    Undelegate {},
+    Redelgate {},
+    WithdrawRewards {},
 }
 
 // Receiver setup
 #[cw_serde]
 pub enum ReceiveMsg {
-    CreateStream {
-        admin: Option<String>,
-        recipient: String,
-        start_time: u64,
-        end_time: u64,
-        is_detachable: Option<bool>,
-    },
+    CreateStream(StreamParams),
 }
 
+// TODO rename to vesting
 #[cw_serde]
 pub struct StreamParams {
-    pub admin: String,
     pub recipient: String,
     pub balance: Uint128,
     pub denom: CheckedDenom,
+    // pub curve: Curve,
     pub start_time: u64,
     pub end_time: u64,
     pub title: Option<String>,
     pub description: Option<String>,
-    pub is_detachable: Option<bool>,
 }
 
+// TODO get stream by recipient
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
-    GetConfig {},
+    Config {},
     #[returns(StreamResponse)]
     GetStream { id: u64 },
     #[returns(ListStreamsResponse)]
@@ -81,7 +64,6 @@ pub struct ConfigResponse {
 #[cw_serde]
 pub struct StreamResponse {
     pub id: u64,
-    pub admin: String,
     pub recipient: String,
     pub balance: Uint128,
     pub claimed_balance: Uint128,
@@ -96,12 +78,6 @@ pub struct StreamResponse {
     pub title: Option<String>,
     /// Human readable description for this payroll contract
     pub description: Option<String>,
-    /// Link to stream attached for sync
-    pub link_id: Option<StreamId>,
-    /// Making a stream detachable will only affect linked streams.
-    /// A linked stream that detaches in the future will pause both streams.
-    /// Each stream must then resume on their own, or be fully removed to re-link.
-    pub is_detachable: bool,
 }
 
 #[cw_serde]

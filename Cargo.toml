@@ -54,6 +54,7 @@ serde = "1.0"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0", features = ["derive"] }
+wynd-utils = "0.4.1"
 
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
 dao-core = { path = "./contracts/dao-core" }
