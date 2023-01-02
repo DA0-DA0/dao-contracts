@@ -90,19 +90,19 @@ pub fn execute_pause_stream(
             STREAMS.save(storage, id, &stream)?;
             Ok(stream)
         };
-    let stream = pause_stream_local(id, deps.storage).unwrap();
 
+    // TODO no unwrap
+    let stream = pause_stream_local(id, deps.storage).unwrap();
     if let Some(link_id) = stream.link_id {
         pause_stream_local(link_id, deps.storage).unwrap();
     }
-    let response = Response::new()
+
+    Ok(Response::new()
         .add_attribute("method", "pause_stream")
         .add_attribute("paused", stream.paused.to_string())
         .add_attribute("stream_id", id.to_string())
         .add_attribute("admin", info.sender)
-        .add_attribute("paused_time", stream.paused_time.unwrap().to_string());
-
-    Ok(response)
+        .add_attribute("paused_time", stream.paused_time.unwrap().to_string()))
 }
 
 pub fn execute_remove_stream(
@@ -166,7 +166,8 @@ pub fn execute_resume_stream(
     if let Some(link_id) = stream.link_id {
         resume_stream_local(link_id, deps.storage).unwrap();
     }
-    let (_, rate_per_second) = stream.calc_distribution_rate(env.block.time);
+
+    let (_, rate_per_second) = stream.calc_distribution_rate(env.block.time)?;
     let response = Response::new()
         .add_attribute("method", "resume_stream")
         .add_attribute("stream_id", id.to_string())
@@ -280,11 +281,11 @@ pub fn execute_receive(
 }
 
 pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, ContractError> {
-    let stream = STREAMS
+    let mut stream = STREAMS
         .may_load(deps.storage, id)?
         .ok_or(ContractError::StreamNotFound { stream_id: id })?;
 
-    let (available_claims, _) = stream.calc_distribution_rate(env.block.time);
+    let (available_claims, _) = stream.calc_distribution_rate(env.block.time)?;
 
     if !stream.can_distribute_more() || available_claims.u128() == 0 {
         return Err(ContractError::NoFundsToClaim {
@@ -293,12 +294,13 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     }
 
     // Update claimed amount
-    stream
+    stream.claimed_balance = stream
         .claimed_balance
         .checked_add(available_claims)
         .map_err(StdError::overflow)?;
+
     // Update remaining balance
-    stream
+    stream.balance = stream
         .balance
         .checked_sub(available_claims)
         .map_err(StdError::overflow)?;

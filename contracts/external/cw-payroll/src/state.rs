@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Response, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Response, StdError, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
@@ -54,8 +54,10 @@ impl Stream {
         paused_duration: Option<u64>,
         balance: Uint128,
         claimed_balance: Uint128,
-    ) -> (Uint128, Uint128) {
+    ) -> Result<(Uint128, Uint128), ContractError> {
+        // TODO rename? This is not strictly speaking block time
         let block_time = std::cmp::min(block_time.seconds(), end_time);
+        // TODO NO UNWRAP OR DEFAULT, throw real errors
         let duration: u64 = end_time.checked_sub(start_time).unwrap_or_default();
         if duration > 0 {
             let diff = block_time.checked_sub(start_time).unwrap_or_default();
@@ -67,19 +69,22 @@ impl Stream {
 
             let rate_per_second = balance.checked_div(duration.into()).unwrap_or_default();
 
-            return (
+            return Ok((
                 Uint128::from(
                     (Uint128::from(passed) * rate_per_second)
                         .checked_sub(claimed_balance)
                         .unwrap_or_default(),
                 ),
                 Uint128::from(rate_per_second),
-            );
+            ));
         }
-        (Uint128::new(0), Uint128::new(0))
+        Ok((Uint128::new(0), Uint128::new(0)))
     }
 
-    pub(crate) fn calc_distribution_rate(&self, block_time: Timestamp) -> (Uint128, Uint128) {
+    pub(crate) fn calc_distribution_rate(
+        &self,
+        block_time: Timestamp,
+    ) -> Result<(Uint128, Uint128), ContractError> {
         Stream::calc_distribution_rate_core(
             self.start_time,
             self.end_time,
