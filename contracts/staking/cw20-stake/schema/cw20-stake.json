@@ -561,12 +561,13 @@
     "title": "MigrateMsg",
     "oneOf": [
       {
+        "description": "Migrates the contract from version one to version two. This will remove the contract's current manager, and require a nomination -> acceptance flow for future ownership transfers.",
         "type": "object",
         "required": [
-          "from_compatible"
+          "from_v1"
         ],
         "properties": {
-          "from_compatible": {
+          "from_v1": {
             "type": "object",
             "additionalProperties": false
           }

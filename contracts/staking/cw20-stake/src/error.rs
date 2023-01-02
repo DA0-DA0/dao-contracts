@@ -28,4 +28,6 @@ pub enum ContractError {
     TooManyClaims {},
     #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
     InvalidUnstakingDuration {},
+    #[error("can not migrate. current version is up to date")]
+    AlreadyMigrated {},
 }

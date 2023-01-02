@@ -1,6 +1,5 @@
 use std::borrow::BorrowMut;
 
-use crate::contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION};
 use crate::msg::{
     ExecuteMsg, ListStakersResponse, MigrateMsg, QueryMsg, ReceiveMsg,
     StakedBalanceAtHeightResponse, StakedValueResponse, StakerBalanceResponse,
@@ -9,7 +8,7 @@ use crate::msg::{
 use crate::state::{Config, MAX_CLAIMS};
 use crate::ContractError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128};
+use cosmwasm_std::{to_binary, Addr, Empty, MessageInfo, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_ownable::{Action, Ownership, OwnershipError};
 use cw_utils::Duration;
@@ -17,6 +16,7 @@ use cw_utils::Duration;
 use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Executor};
 
 use anyhow::Result as AnyResult;
+use cw20_stake_v1 as v1;
 
 use cw_controllers::{Claim, ClaimsResponse};
 use cw_utils::Expiration::AtHeight;
@@ -27,7 +27,7 @@ const ADDR3: &str = "addr0003";
 const ADDR4: &str = "addr0004";
 const OWNER: &str = "owner";
 
-pub fn contract_staking() -> Box<dyn Contract<Empty>> {
+fn contract_staking() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -37,7 +37,17 @@ pub fn contract_staking() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn contract_cw20() -> Box<dyn Contract<Empty>> {
+fn contract_staking_v1() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        v1::contract::execute,
+        v1::contract::instantiate,
+        v1::contract::query,
+    )
+    .with_migrate(v1::contract::migrate);
+    Box::new(contract)
+}
+
+fn contract_cw20() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
@@ -1050,16 +1060,6 @@ fn test_query_list_stakers() {
 }
 
 #[test]
-pub fn test_migrate_update_version() {
-    let mut deps = mock_dependencies();
-    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
-    migrate(deps.as_mut(), mock_env(), MigrateMsg::FromCompatible {}).unwrap();
-    let version = cw2::get_contract_version(&deps.storage).unwrap();
-    assert_eq!(version.version, CONTRACT_VERSION);
-    assert_eq!(version.contract, CONTRACT_NAME);
-}
-
-#[test]
 fn test_ownership_transfer() {
     let mut app = App::default();
     let cw20_addr = instantiate_cw20(
@@ -1107,6 +1107,86 @@ fn test_ownership_transfer() {
             owner: Some(Addr::unchecked(ADDR1)),
             pending_owner: None,
             pending_expiry: None
+        }
+    );
+}
+
+#[test]
+fn test_migrate_from_v1() {
+    let mut app = App::default();
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+
+    let v1_code = app.store_code(contract_staking_v1());
+    let v2_code = app.store_code(contract_staking());
+
+    let staking = app
+        .instantiate_contract(
+            v1_code,
+            Addr::unchecked(OWNER),
+            &v1::msg::InstantiateMsg {
+                owner: Some(OWNER.to_string()),
+                manager: Some(OWNER.to_string()),
+                token_address: cw20_addr.to_string(),
+                unstaking_duration: None,
+            },
+            &[],
+            "staking".to_string(),
+            Some(OWNER.to_string()),
+        )
+        .unwrap();
+
+    app.execute(
+        Addr::unchecked(OWNER),
+        WasmMsg::Migrate {
+            contract_addr: staking.to_string(),
+            new_code_id: v2_code,
+            msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+        }
+        .into(),
+    )
+    .unwrap();
+
+    // can not migrate more than once.
+    let err: ContractError = app
+        .execute(
+            Addr::unchecked(OWNER),
+            WasmMsg::Migrate {
+                contract_addr: staking.to_string(),
+                new_code_id: v2_code,
+                msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+            }
+            .into(),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::AlreadyMigrated {});
+
+    // owner is moved into cw_ownable.
+    let ownership = query_owner(&app, &staking);
+    assert_eq!(
+        ownership,
+        Ownership::<Addr> {
+            owner: Some(Addr::unchecked(OWNER)),
+            pending_owner: None,
+            pending_expiry: None
+        }
+    );
+
+    // config is loadable and has no manager, but is otherwise
+    // unchanged.
+    let config = query_config(&app, &staking);
+    assert_eq!(
+        config,
+        Config {
+            token_address: cw20_addr,
+            unstaking_duration: None,
         }
     );
 }

@@ -909,10 +909,12 @@ dependencies = [
  "cw-ownable",
  "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
+ "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
+ "cw20-stake 0.2.6",
  "thiserror",
 ]
 

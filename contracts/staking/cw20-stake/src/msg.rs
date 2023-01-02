@@ -67,7 +67,10 @@ pub enum QueryMsg {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    FromCompatible {},
+    /// Migrates the contract from version one to version two. This
+    /// will remove the contract's current manager, and require a
+    /// nomination -> acceptance flow for future ownership transfers.
+    FromV1 {},
 }
 
 #[cw_serde]

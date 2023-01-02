@@ -91,7 +91,7 @@ export type QueryMsg = {
   ownership: {};
 };
 export type MigrateMsg = {
-  from_compatible: {};
+  from_v1: {};
 };
 export interface ClaimsResponse {
   claims: Claim[];
