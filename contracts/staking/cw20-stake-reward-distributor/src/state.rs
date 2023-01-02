@@ -9,6 +9,7 @@ pub struct Config {
     pub reward_token: Addr,
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+// `"config"` key stores v1 configuration.
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 
 pub const LAST_PAYMENT_BLOCK: Item<u64> = Item::new("last_payment_block");

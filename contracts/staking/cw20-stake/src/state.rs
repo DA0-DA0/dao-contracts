@@ -11,7 +11,8 @@ pub struct Config {
     pub unstaking_duration: Option<Duration>,
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+// `"config"` key stores v1 configuration.
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 
 pub const STAKED_BALANCES: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
     "staked_balances",

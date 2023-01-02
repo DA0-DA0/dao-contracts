@@ -9,7 +9,9 @@ pub struct Config {
     pub staking_contract: Addr,
     pub reward_token: Denom,
 }
-pub const CONFIG: Item<Config> = Item::new("config");
+
+// `"config"` key stores v1 configuration.
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 
 #[cw_serde]
 pub struct RewardConfig {
