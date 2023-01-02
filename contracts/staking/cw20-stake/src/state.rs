@@ -7,13 +7,12 @@ use cw_utils::Duration;
 
 #[cw_serde]
 pub struct Config {
-    pub owner: Option<Addr>,
-    pub manager: Option<Addr>,
     pub token_address: Addr,
     pub unstaking_duration: Option<Duration>,
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+// `"config"` key stores v1 configuration.
+pub const CONFIG: Item<Config> = Item::new("config_v2");
 
 pub const STAKED_BALANCES: SnapshotMap<&Addr, Uint128> = SnapshotMap::new(
     "staked_balances",

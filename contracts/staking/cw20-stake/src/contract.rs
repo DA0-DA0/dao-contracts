@@ -1,10 +1,9 @@
-use cosmwasm_schema::cw_serde;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, to_vec, Addr, Binary, Deps, DepsMut, Empty, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128,
 };
 
 use cw20::{Cw20ReceiveMsg, TokenInfoResponse};
@@ -20,7 +19,7 @@ use crate::state::{
     Config, BALANCE, CLAIMS, CONFIG, HOOKS, MAX_CLAIMS, STAKED_BALANCES, STAKED_TOTAL,
 };
 use crate::ContractError;
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version, ContractVersion};
 pub use cw20_base::allowances::{
     execute_burn_from, execute_decrease_allowance, execute_increase_allowance, execute_send_from,
     execute_transfer_from, query_allowance,
@@ -62,16 +61,7 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    let owner = match msg.owner {
-        Some(owner) => Some(deps.api.addr_validate(owner.as_str())?),
-        None => None,
-    };
-
-    let manager = match msg.manager {
-        Some(manager) => Some(deps.api.addr_validate(manager.as_str())?),
-        None => None,
-    };
-
+    cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
     // Smoke test that the provided cw20 contract responds to a
     // token_info query. It is not possible to determine if the
     // contract implements the entire cw20 standard and runtime,
@@ -85,8 +75,6 @@ pub fn instantiate(
 
     validate_duration(msg.unstaking_duration)?;
     let config = Config {
-        owner,
-        manager,
         token_address,
         unstaking_duration: msg.unstaking_duration,
     };
@@ -115,60 +103,34 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive(deps, env, info, msg),
         ExecuteMsg::Unstake { amount } => execute_unstake(deps, env, info, amount),
         ExecuteMsg::Claim {} => execute_claim(deps, env, info),
-        ExecuteMsg::UpdateConfig {
-            owner,
-            manager,
-            duration,
-        } => execute_update_config(info, deps, owner, manager, duration),
+        ExecuteMsg::UpdateConfig { duration } => execute_update_config(info, deps, duration),
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, env, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, env, info, addr),
+        ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
     }
 }
 
 pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
-    new_owner: Option<String>,
-    new_manager: Option<String>,
     duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
-    let new_owner = new_owner
-        .map(|new_owner| deps.api.addr_validate(&new_owner))
-        .transpose()?;
-    let new_manager = new_manager
-        .map(|new_manager| deps.api.addr_validate(&new_manager))
-        .transpose()?;
-    let mut config: Config = CONFIG.load(deps.storage)?;
-    if Some(info.sender.clone()) != config.owner && Some(info.sender.clone()) != config.manager {
-        return Err(ContractError::Unauthorized {});
-    };
-    if Some(info.sender) != config.owner && new_owner != config.owner {
-        return Err(ContractError::OnlyOwnerCanChangeOwner {});
-    };
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     validate_duration(duration)?;
 
-    config.owner = new_owner;
-    config.manager = new_manager;
+    CONFIG.update(deps.storage, |mut config| -> Result<Config, StdError> {
+        config.unstaking_duration = duration;
+        Ok(config)
+    })?;
 
-    config.unstaking_duration = duration;
-
-    CONFIG.save(deps.storage, &config)?;
     Ok(Response::new()
         .add_attribute("action", "update_config")
         .add_attribute(
-            "owner",
-            config
-                .owner
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
-        )
-        .add_attribute(
-            "manager",
-            config
-                .manager
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
+            "unstaking_duration",
+            duration
+                .map(|d| format!("{d}"))
+                .unwrap_or_else(|| "none".to_string()),
         ))
 }
 
@@ -290,7 +252,7 @@ pub fn execute_unstake(
         }
         Some(duration) => {
             let outstanding_claims = CLAIMS.query_claims(deps.as_ref(), &info.sender)?.claims;
-            if outstanding_claims.len() >= MAX_CLAIMS as usize {
+            if outstanding_claims.len() + 1 > MAX_CLAIMS as usize {
                 return Err(ContractError::TooManyClaims {});
             }
 
@@ -357,12 +319,9 @@ pub fn execute_add_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let addr = deps.api.addr_validate(&addr)?;
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
-        return Err(ContractError::Unauthorized {});
-    };
-    HOOKS.add_hook(deps.storage, addr.clone())?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.add_hook(deps.storage, hook)?;
     Ok(Response::new()
         .add_attribute("action", "add_hook")
         .add_attribute("hook", addr))
@@ -374,15 +333,22 @@ pub fn execute_remove_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    let addr = deps.api.addr_validate(&addr)?;
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner != Some(info.sender.clone()) && config.manager != Some(info.sender) {
-        return Err(ContractError::Unauthorized {});
-    };
-    HOOKS.remove_hook(deps.storage, addr.clone())?;
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let hook = deps.api.addr_validate(&addr)?;
+    HOOKS.remove_hook(deps.storage, hook)?;
     Ok(Response::new()
         .add_attribute("action", "remove_hook")
         .add_attribute("hook", addr))
+}
+
+pub fn execute_update_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    action: cw_ownable::Action,
+) -> Result<Response, ContractError> {
+    let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+    Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -402,6 +368,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListStakers { start_after, limit } => {
             query_list_stakers(deps, start_after, limit)
         }
+        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
 }
 
@@ -506,34 +473,33 @@ pub fn query_list_stakers(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
+    use cw20_stake_v1 as v1;
+
+    let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    #[cw_serde]
-    struct BetaConfig {
-        pub admin: Addr,
-        pub token_address: Addr,
-        pub unstaking_duration: Option<Duration>,
-    }
-
     match msg {
-        MigrateMsg::FromBeta { manager } => {
-            let data = deps
-                .storage
-                .get(b"config")
-                .ok_or_else(|| StdError::not_found("config"))?;
-            let beta_config: BetaConfig = from_slice(&data)?;
-            let new_config = Config {
-                owner: Some(beta_config.admin),
-                manager: manager
-                    .map(|human| deps.api.addr_validate(&human))
-                    .transpose()?,
-                token_address: beta_config.token_address,
-                unstaking_duration: beta_config.unstaking_duration,
+        MigrateMsg::FromV1 {} => {
+            if version == CONTRACT_VERSION {
+                // Migrating from a version to a new one implies that
+                // the new version must be different.
+                return Err(ContractError::AlreadyMigrated {});
+            }
+            let config = v1::state::CONFIG.load(deps.storage)?;
+            cw_ownable::initialize_owner(
+                deps.storage,
+                deps.api,
+                config.owner.map(|a| a.into_string()).as_deref(),
+            )?;
+            let config = Config {
+                token_address: config.token_address,
+                unstaking_duration: config.unstaking_duration.map(|duration| match duration {
+                    cw_utils_v1::Duration::Time(t) => Duration::Time(t),
+                    cw_utils_v1::Duration::Height(h) => Duration::Height(h),
+                }),
             };
-            deps.storage.set(b"config", &to_vec(&new_config)?);
+            CONFIG.save(deps.storage, &config)?;
+
             Ok(Response::default())
         }
-        MigrateMsg::FromCompatible {} => Ok(Response::default()),
     }
 }

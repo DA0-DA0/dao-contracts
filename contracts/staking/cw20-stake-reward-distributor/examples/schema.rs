@@ -1,5 +1,5 @@
 use cosmwasm_schema::write_api;
-use stake_cw20_reward_distributor::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use cw20_stake_reward_distributor::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 fn main() {
     write_api! {

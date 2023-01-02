@@ -3,11 +3,11 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error(transparent)]
+    Ownership(#[from] cw_ownable::OwnershipError),
 
     #[error("Invalid Cw20")]
     InvalidCw20 {},
@@ -20,4 +20,7 @@ pub enum ContractError {
 
     #[error("Rewards have already been distributed for this block")]
     RewardsDistributedForBlock {},
+
+    #[error("can not migrate. current version is up to date")]
+    AlreadyMigrated {},
 }

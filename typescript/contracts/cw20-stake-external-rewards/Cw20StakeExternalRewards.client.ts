@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { Denom, Addr, InstantiateMsg, ExecuteMsg, StakeChangedHookMsg, Uint128, Binary, Cw20ReceiveMsg, QueryMsg, MigrateMsg, PendingRewardsResponse, InfoResponse, Config, RewardConfig } from "./Cw20StakeExternalRewards.types";
+import { Denom, Addr, InstantiateMsg, ExecuteMsg, StakeChangedHookMsg, Uint128, Binary, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, QueryMsg, MigrateMsg, PendingRewardsResponse, InfoResponse, Config, RewardConfig, OwnershipForAddr } from "./Cw20StakeExternalRewards.types";
 export interface Cw20StakeExternalRewardsReadOnlyInterface {
   contractAddress: string;
   info: () => Promise<InfoResponse>;
@@ -15,6 +15,7 @@ export interface Cw20StakeExternalRewardsReadOnlyInterface {
   }: {
     address: string;
   }) => Promise<PendingRewardsResponse>;
+  ownership: () => Promise<OwnershipForAddr>;
 }
 export class Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRewardsReadOnlyInterface {
   client: CosmWasmClient;
@@ -25,6 +26,7 @@ export class Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRew
     this.contractAddress = contractAddress;
     this.info = this.info.bind(this);
     this.getPendingRewards = this.getPendingRewards.bind(this);
+    this.ownership = this.ownership.bind(this);
   }
 
   info = async (): Promise<InfoResponse> => {
@@ -41,6 +43,11 @@ export class Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRew
       get_pending_rewards: {
         address
       }
+    });
+  };
+  ownership = async (): Promise<OwnershipForAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      ownership: {}
     });
   };
 }
@@ -64,16 +71,7 @@ export interface Cw20StakeExternalRewardsInterface extends Cw20StakeExternalRewa
   }: {
     newDuration: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  updateOwner: ({
-    newOwner
-  }: {
-    newOwner?: string;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  updateManager: ({
-    newManager
-  }: {
-    newManager?: string;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQueryClient implements Cw20StakeExternalRewardsInterface {
   client: SigningCosmWasmClient;
@@ -90,8 +88,7 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
     this.receive = this.receive.bind(this);
     this.fund = this.fund.bind(this);
     this.updateRewardDuration = this.updateRewardDuration.bind(this);
-    this.updateOwner = this.updateOwner.bind(this);
-    this.updateManager = this.updateManager.bind(this);
+    this.updateOwnership = this.updateOwnership.bind(this);
   }
 
   stakeChangeHook = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
@@ -137,26 +134,9 @@ export class Cw20StakeExternalRewardsClient extends Cw20StakeExternalRewardsQuer
       }
     }, fee, memo, funds);
   };
-  updateOwner = async ({
-    newOwner
-  }: {
-    newOwner?: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  updateOwnership = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      update_owner: {
-        new_owner: newOwner
-      }
-    }, fee, memo, funds);
-  };
-  updateManager = async ({
-    newManager
-  }: {
-    newManager?: string;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      update_manager: {
-        new_manager: newManager
-      }
+      update_ownership: {}
     }, fee, memo, funds);
   };
 }

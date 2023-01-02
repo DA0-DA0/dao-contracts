@@ -1,37 +1,33 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
-pub use cw_controllers::ClaimsResponse;
+
 use cw_utils::Duration;
+
+use cw_ownable::cw_ownable;
+
+pub use cw_controllers::ClaimsResponse;
+// so that consumers don't need a cw_ownable dependency to consume
+// this contract's queries.
+pub use cw_ownable::Ownership;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     // Owner can update all configs including changing the owner. This will generally be a DAO.
     pub owner: Option<String>,
-    // Manager can update all configs except changing the owner. This will generally be an operations multisig for a DAO.
-    pub manager: Option<String>,
     pub token_address: String,
     pub unstaking_duration: Option<Duration>,
 }
 
+#[cw_ownable]
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    Unstake {
-        amount: Uint128,
-    },
+    Unstake { amount: Uint128 },
     Claim {},
-    UpdateConfig {
-        owner: Option<String>,
-        manager: Option<String>,
-        duration: Option<Duration>,
-    },
-    AddHook {
-        addr: String,
-    },
-    RemoveHook {
-        addr: String,
-    },
+    UpdateConfig { duration: Option<Duration> },
+    AddHook { addr: String },
+    RemoveHook { addr: String },
 }
 
 #[cw_serde]
@@ -65,12 +61,16 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[returns(::cw_ownable::Ownership::<::cosmwasm_std::Addr>)]
+    Ownership {},
 }
 
 #[cw_serde]
 pub enum MigrateMsg {
-    FromBeta { manager: Option<String> },
-    FromCompatible {},
+    /// Migrates the contract from version one to version two. This
+    /// will remove the contract's current manager, and require a
+    /// nomination -> acceptance flow for future ownership transfers.
+    FromV1 {},
 }
 
 #[cw_serde]

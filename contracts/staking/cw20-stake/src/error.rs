@@ -3,10 +3,15 @@ use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
-    #[error("{0}")]
+    #[error(transparent)]
     Cw20Error(#[from] cw20_base::ContractError),
+    #[error(transparent)]
+    Ownership(#[from] cw_ownable::OwnershipError),
+    #[error(transparent)]
+    HookError(#[from] cw_controllers::HookError),
+
     #[error("Provided cw20 errored in response to TokenInfo query")]
     InvalidCw20 {},
     #[error("Nothing to claim")]
@@ -19,16 +24,10 @@ pub enum ContractError {
     ImpossibleUnstake {},
     #[error("Invalid token")]
     InvalidToken { received: Addr, expected: Addr },
-    #[error("Unauthorized")]
-    Unauthorized {},
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
-    #[error("No admin configured")]
-    NoAdminConfigured {},
-    #[error("{0}")]
-    HookError(#[from] cw_controllers::HookError),
-    #[error("Only owner can change owner")]
-    OnlyOwnerCanChangeOwner {},
     #[error("Invalid unstaking duration, unstaking duration cannot be 0")]
     InvalidUnstakingDuration {},
+    #[error("can not migrate. current version is up to date")]
+    AlreadyMigrated {},
 }

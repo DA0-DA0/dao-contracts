@@ -4,20 +4,23 @@ use cw20::{Cw20ReceiveMsg, Denom};
 use cw20_stake::hooks::StakeChangedHookMsg;
 
 use crate::state::{Config, RewardConfig};
+
 pub use cw_controllers::ClaimsResponse;
+// so that consumers don't need a cw_ownable dependency to consume
+// this contract's queries.
+pub use cw_ownable::Ownership;
+
+use cw_ownable::cw_ownable;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
-    pub manager: Option<String>,
     pub staking_contract: String,
     pub reward_token: Denom,
     pub reward_duration: u64,
 }
 
-#[cw_serde]
-pub struct MigrateMsg {}
-
+#[cw_ownable]
 #[cw_serde]
 pub enum ExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),
@@ -25,8 +28,15 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     Fund {},
     UpdateRewardDuration { new_duration: u64 },
-    UpdateOwner { new_owner: Option<String> },
-    UpdateManager { new_manager: Option<String> },
+}
+
+#[cw_serde]
+pub enum MigrateMsg {
+    /// Migrates from version 0.2.6 to 2.0.0. The significant changes
+    /// being the addition of a two-step ownership transfer using
+    /// `cw_ownable` and the removal of the manager. Migrating will
+    /// automatically remove the current manager.
+    FromV1 {},
 }
 
 #[cw_serde]
@@ -41,6 +51,8 @@ pub enum QueryMsg {
     Info {},
     #[returns(PendingRewardsResponse)]
     GetPendingRewards { address: String },
+    #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
+    Ownership {},
 }
 
 #[cw_serde]

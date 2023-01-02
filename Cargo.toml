@@ -40,7 +40,6 @@ cw2 = "0.16"
 cw20 = "0.16"
 cw721 = "0.16"
 cw20-base = "0.16"
-cw-core-v1 = { package = "cw-core", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw-multi-test = "0.16"
 cw721-base = "0.16"
 cw-controllers = "0.16"
@@ -49,15 +48,18 @@ cw4-group = "0.16"
 rand = "0.8"
 cw4 = "0.16"
 cw3 = "0.16"
-indexmap = "1.9"
 serde = "1.0"
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "1.0", features = ["derive"] }
 
+# One commit ahead of version 0.3.0. Allows initialization with an
+# optional owner.
+cw-ownable = { git = "https://github.com/steak-enjoyers/cw-plus-plus", rev = "50d4d9333305894457e5028072a0465f4635b15b" }
+
+
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
 dao-core = { path = "./contracts/dao-core" }
-
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single" }
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple" }
 dao-pre-propose-single = { path = "./contracts/pre-propose/dao-pre-propose-single" }
@@ -82,6 +84,12 @@ dao-vote-hooks = { path = "./packages/dao-vote-hooks" }
 cw-paginate = { path = "./packages/cw-paginate" }
 dao-interface = { path = "./packages/dao-interface" }
 dao-voting = { path = "./packages/dao-voting" }
+
+# v1 dependencies. used for state migrations.
+cw-core-v1 = { package = "cw-core", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw-utils-v1 = {package = "cw-utils", version = "0.13"}
+cw20-stake-reward-distributor-v1 = { package = "stake-cw20-reward-distributor", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw20-stake-external-rewards-v1 = { package = "stake-cw20-external-rewards", version = "0.2.6", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw20-stake-v1 = { package = "cw20-stake", version = "0.2.6", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }

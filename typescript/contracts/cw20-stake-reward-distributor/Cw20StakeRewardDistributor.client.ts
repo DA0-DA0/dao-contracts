@@ -6,10 +6,11 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { Uint128, InstantiateMsg, ExecuteMsg, QueryMsg, MigrateMsg, Addr, InfoResponse, Config } from "./Cw20StakeRewardDistributor.types";
+import { Uint128, InstantiateMsg, ExecuteMsg, Action, Expiration, Timestamp, Uint64, QueryMsg, MigrateMsg, Addr, InfoResponse, Config, OwnershipForAddr } from "./Cw20StakeRewardDistributor.types";
 export interface Cw20StakeRewardDistributorReadOnlyInterface {
   contractAddress: string;
   info: () => Promise<InfoResponse>;
+  ownership: () => Promise<OwnershipForAddr>;
 }
 export class Cw20StakeRewardDistributorQueryClient implements Cw20StakeRewardDistributorReadOnlyInterface {
   client: CosmWasmClient;
@@ -19,6 +20,7 @@ export class Cw20StakeRewardDistributorQueryClient implements Cw20StakeRewardDis
     this.client = client;
     this.contractAddress = contractAddress;
     this.info = this.info.bind(this);
+    this.ownership = this.ownership.bind(this);
   }
 
   info = async (): Promise<InfoResponse> => {
@@ -26,23 +28,27 @@ export class Cw20StakeRewardDistributorQueryClient implements Cw20StakeRewardDis
       info: {}
     });
   };
+  ownership = async (): Promise<OwnershipForAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      ownership: {}
+    });
+  };
 }
 export interface Cw20StakeRewardDistributorInterface extends Cw20StakeRewardDistributorReadOnlyInterface {
   contractAddress: string;
   sender: string;
   updateConfig: ({
-    owner,
     rewardRate,
     rewardToken,
     stakingAddr
   }: {
-    owner: string;
     rewardRate: Uint128;
     rewardToken: string;
     stakingAddr: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   distribute: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   withdraw: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class Cw20StakeRewardDistributorClient extends Cw20StakeRewardDistributorQueryClient implements Cw20StakeRewardDistributorInterface {
   client: SigningCosmWasmClient;
@@ -57,22 +63,20 @@ export class Cw20StakeRewardDistributorClient extends Cw20StakeRewardDistributor
     this.updateConfig = this.updateConfig.bind(this);
     this.distribute = this.distribute.bind(this);
     this.withdraw = this.withdraw.bind(this);
+    this.updateOwnership = this.updateOwnership.bind(this);
   }
 
   updateConfig = async ({
-    owner,
     rewardRate,
     rewardToken,
     stakingAddr
   }: {
-    owner: string;
     rewardRate: Uint128;
     rewardToken: string;
     stakingAddr: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       update_config: {
-        owner,
         reward_rate: rewardRate,
         reward_token: rewardToken,
         staking_addr: stakingAddr
@@ -87,6 +91,11 @@ export class Cw20StakeRewardDistributorClient extends Cw20StakeRewardDistributor
   withdraw = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       withdraw: {}
+    }, fee, memo, funds);
+  };
+  updateOwnership = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_ownership: {}
     }, fee, memo, funds);
   };
 }
