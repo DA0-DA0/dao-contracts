@@ -1,8 +1,7 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 use crate::{
-    msg::{StreamId, StreamIds, StreamIdsExtensions},
-    state::{save_stream, STREAMS},
+    state::{StreamId, StreamIds, StreamIdsExtensions, STREAMS},
     ContractError,
 };
 
@@ -40,8 +39,8 @@ pub(crate) fn execute_link_stream(
     left_stream.link_id = Some(right_stream_id);
     right_stream.link_id = Some(left_stream_id);
 
-    save_stream(deps.storage, left_stream_id, &left_stream).unwrap();
-    save_stream(deps.storage, right_stream_id, &right_stream).unwrap();
+    STREAMS.save(deps.storage, left_stream_id, &left_stream)?;
+    STREAMS.save(deps.storage, right_stream_id, &right_stream)?;
 
     let response = Response::new()
         .add_attribute("method", "link")
@@ -82,8 +81,9 @@ pub(crate) fn execute_detach_stream(
     linked_stream.paused = true;
     linked_stream.link_id = None;
 
-    save_stream(deps.storage, id, &detach_stream).unwrap();
-    save_stream(deps.storage, link_id, &linked_stream).unwrap();
+    STREAMS.save(deps.storage, id, &detach_stream)?;
+    STREAMS.save(deps.storage, link_id, &linked_stream)?;
+
     let response = Response::new()
         .add_attribute("method", "link")
         .add_attribute("detach_stream_id", id.to_string())

@@ -1,35 +1,16 @@
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{Addr, StdError, Uint128};
+use cw_denom::DenomError;
 use thiserror::Error;
 
-use cosmwasm_std::Addr;
-
-use crate::{balance::WrappedBalance, msg::StreamId};
-
-#[derive(Error, Debug, PartialEq)]
-pub enum GenericError {
-    #[error("{0}")]
-    Std(#[from] StdError),
-
-    #[error("No coin balance found")]
-    EmptyBalance {},
-
-    #[error("Not enough cw20 balance of {addr}, need {lack} more")]
-    NotEnoughCw20 { addr: String, lack: Uint128 },
-
-    #[error("Not enough native balance of {denom}, need {lack} more")]
-    NotEnoughNative { denom: String, lack: Uint128 },
-
-    #[error("invalid cosmwasm message")]
-    InvalidWasmMsg {},
-
-    #[error("Numerical overflow")]
-    IntegerOverflow {},
-}
+use crate::state::StreamId;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    Denom(#[from] DenomError),
 
     #[error("Not authorized to perform action")]
     Unauthorized {},
@@ -47,13 +28,10 @@ pub enum ContractError {
     NotStreamRecipient { recipient: Addr },
 
     #[error("No tokens have vested for this stream")]
-    NoFundsToClaim { claimed: WrappedBalance },
+    NoFundsToClaim { claimed: Uint128 },
 
     #[error("Stream does not exist")]
     StreamNotFound { stream_id: StreamId },
-
-    #[error("Amount must be greater than duration")]
-    AmountLessThanDuration {},
 
     #[error("Stream recipient cannot be the stream owner")]
     InvalidRecipient {},

@@ -6,6 +6,10 @@ This contract enables the creation of native && cw20 token streams, which allows
 
 To instantiate a new instance of this contract you must specify a contract owner.
 
+```sh
+junod tx wasm instantiate <code-id> '{"admin": "juno12xyz..."}'  --label "cw-payroll contract" --from <your-key> 
+```
+
 ## Creating a Native Token Stream
 
 TBD: Update upon native token completion
@@ -15,33 +19,4 @@ A stream can be created using the cw20 [Send / Receive](https://github.com/CosmW
 
 ## Distribute payments
 Streamed payments can be claimed continously at any point after the start time by triggering a Distribute message.
-
-## Development
-### Compiling
-
-To generate a development build run:
-```
-cargo build
-```
-
-To generate an optimized build run:
-
-```
-docker run --rm -v "$(pwd)":/code \
-  --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.12.4
-```
-
-### Testing
-To execute unit tests run:
-```
-cargo test
-```
-
-### Lint
-To lint repo run:
-```
-cargo fmt
-```
 

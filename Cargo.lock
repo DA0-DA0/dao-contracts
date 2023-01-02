@@ -731,11 +731,12 @@ version = "0.0.1"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
+ "cw-denom",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
+ "dao-testing",
  "serde",
  "thiserror",
 ]

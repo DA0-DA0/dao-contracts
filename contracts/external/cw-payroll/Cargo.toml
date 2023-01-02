@@ -1,7 +1,7 @@
 [package]
 name = "cw-payroll"
 version = "0.0.1"
-authors = ["Vernon Johnson <vtj2105@columbia.edu>", "tjtc <meow@cron.cat>"]
+authors = ["Vernon Johnson <vtj2105@columbia.edu>", "tjtc <meow@cron.cat>", "Jake Hartnell <jake@no-reply.com>"]
 edition = "2018"
 
 [lib]
@@ -15,8 +15,8 @@ library = []
 
 [dependencies]
 cosmwasm-std = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cosmwasm-schema = { workspace = true }
+cw-denom = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
@@ -25,4 +25,4 @@ thiserror = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
-
+dao-testing = { workspace = true }
