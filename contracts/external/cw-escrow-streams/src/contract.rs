@@ -31,10 +31,11 @@ pub fn instantiate(
 
     // TODO what is the point of this admin? It doesn't do anything.
     // Delete if it doesn't do anything
-    let admin = match msg.admin {
-        Some(ad) => deps.api.addr_validate(&ad)?,
-        None => info.sender,
-    };
+    let admin = msg
+        .admin
+        .map(|a| deps.api.addr_validate(&a))
+        .transpose()?
+        .expect("Invalid owner address");
 
     let config = Config {
         admin: admin.clone(),
@@ -45,7 +46,7 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("admin", admin))
+        .add_attribute("owner", admin))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -79,7 +80,7 @@ pub fn execute_pause_stream(
             let mut stream = STREAMS
                 .may_load(storage, stream_id)?
                 .ok_or(ContractError::StreamNotFound { stream_id: id })?;
-            if stream.admin != info.sender {
+            if stream.owner != info.sender {
                 return Err(ContractError::Unauthorized {});
             }
             if stream.paused {
@@ -92,17 +93,19 @@ pub fn execute_pause_stream(
         };
 
     // TODO this is weird... needs comments at the very least
+    // Pausing left stream right stream should also be paused
     let stream = pause_stream_local(id, deps.storage)?;
     if let Some(link_id) = stream.link_id {
         pause_stream_local(link_id, deps.storage)?;
     }
-
     Ok(Response::new()
         .add_attribute("method", "pause_stream")
         .add_attribute("paused", stream.paused.to_string())
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender)
-        .add_attribute("paused_time", stream.paused_time.unwrap().to_string()))
+        .add_attribute("owner", stream.owner.to_string())
+        .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
+        .add_attribute("link_id", stream.link_id.map_or(String::default(),|n|n.to_string())))
+
 }
 
 pub fn execute_remove_stream(
@@ -115,7 +118,7 @@ pub fn execute_remove_stream(
     let stream = STREAMS
         .may_load(deps.storage, id)?
         .ok_or(ContractError::StreamNotFound { stream_id: id })?;
-    if stream.admin != info.sender {
+    if stream.owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -127,12 +130,12 @@ pub fn execute_remove_stream(
     // Transfer any remaining balance to the owner
     let transfer_to_admin_msg = stream
         .denom
-        .get_transfer_to_message(&stream.admin, stream.balance)?;
+        .get_transfer_to_message(&stream.owner, stream.balance)?;
 
     Ok(Response::new()
         .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender)
+        .add_attribute("owner", info.sender)
         .add_attribute("removed_time", env.block.time.to_string())
         .add_message(transfer_to_admin_msg))
 }
@@ -148,7 +151,7 @@ pub fn execute_resume_stream(
             let mut stream = STREAMS
                 .may_load(storage, stream_id)?
                 .ok_or(ContractError::StreamNotFound { stream_id: id })?;
-            if stream.admin != info.sender {
+            if stream.owner != info.sender {
                 return Err(ContractError::Unauthorized {});
             }
             if !stream.paused {
@@ -170,7 +173,7 @@ pub fn execute_resume_stream(
     let response = Response::new()
         .add_attribute("method", "resume_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender)
+        .add_attribute("owner", info.sender)
         .add_attribute("rate_per_second", rate_per_second)
         .add_attribute("resume_time", env.block.time.to_string())
         .add_attribute(
@@ -188,7 +191,7 @@ pub fn execute_create_stream(
     params: StreamParams,
 ) -> Result<Response, ContractError> {
     let StreamParams {
-        admin,
+        owner,
         recipient,
         balance,
         denom,
@@ -199,7 +202,7 @@ pub fn execute_create_stream(
         is_detachable,
     } = params;
 
-    let admin = deps.api.addr_validate(&admin)?;
+    let owner = deps.api.addr_validate(&owner)?;
     let recipient = deps.api.addr_validate(&recipient)?;
 
     if start_time > end_time {
@@ -213,7 +216,7 @@ pub fn execute_create_stream(
     }
 
     let stream = Stream {
-        admin: admin.clone(),
+        owner: owner.clone(),
         recipient: recipient.clone(),
         balance,
         claimed_balance: Uint128::zero(),
@@ -238,7 +241,7 @@ pub fn execute_create_stream(
     Ok(Response::new()
         .add_attribute("method", "create_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", admin)
+        .add_attribute("owner", owner)
         .add_attribute("recipient", recipient)
         .add_attribute("start_time", start_time.to_string())
         .add_attribute("end_time", end_time.to_string()))
@@ -258,7 +261,7 @@ pub fn execute_receive(
     // TODO should support all stream params
     match msg {
         ReceiveMsg::CreateStream {
-            admin,
+            owner,
             start_time,
             end_time,
             recipient,
@@ -267,7 +270,7 @@ pub fn execute_receive(
             env,
             deps,
             StreamParams {
-                admin: admin.unwrap_or_else(|| receive_msg.sender.clone()),
+                owner: owner.unwrap_or_else(|| receive_msg.sender.clone()),
                 recipient,
                 balance: receive_msg.amount,
                 denom: checked_denom,
@@ -343,7 +346,7 @@ fn query_stream(deps: Deps, id: u64) -> StdResult<StreamResponse> {
     let stream = STREAMS.load(deps.storage, id)?;
     Ok(StreamResponse {
         id,
-        admin: stream.admin.into(),
+        owner: stream.owner.into(),
         recipient: stream.recipient.into(),
         balance: stream.balance,
         claimed_balance: stream.claimed_balance,
@@ -379,7 +382,7 @@ fn query_list_streams(
 fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
     item.map(|(id, stream)| StreamResponse {
         id,
-        admin: stream.admin.to_string(),
+        owner: stream.owner.to_string(),
         recipient: stream.recipient.to_string(),
         balance: stream.balance,
         claimed_balance: stream.claimed_balance,

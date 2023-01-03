@@ -42,7 +42,7 @@ pub enum ExecuteMsg {
 pub enum ReceiveMsg {
     // TODO support all StreamParams or delete them
     CreateStream {
-        admin: Option<String>,
+        owner: Option<String>,
         recipient: String,
         start_time: u64,
         end_time: u64,
@@ -53,7 +53,7 @@ pub enum ReceiveMsg {
 
 #[cw_serde]
 pub struct StreamParams {
-    pub admin: String,
+    pub owner: String,
     pub recipient: String,
     pub balance: Uint128,
     pub denom: CheckedDenom,
@@ -87,7 +87,7 @@ pub struct ConfigResponse {
 #[cw_serde]
 pub struct StreamResponse {
     pub id: u64,
-    pub admin: String,
+    pub owner: String,
     pub recipient: String,
     pub balance: Uint128,
     pub claimed_balance: Uint128,

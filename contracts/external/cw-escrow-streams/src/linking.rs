@@ -34,7 +34,7 @@ pub(crate) fn execute_link_stream(
                 stream_id: right_stream_id,
             })?;
 
-    if !(left_stream.admin == info.sender && right_stream.admin == info.sender) {
+    if !(left_stream.owner == info.sender && right_stream.owner == info.sender) {
         return Err(ContractError::Unauthorized {});
     }
     left_stream.link_id = Some(right_stream_id);
@@ -47,7 +47,7 @@ pub(crate) fn execute_link_stream(
         .add_attribute("method", "link")
         .add_attribute("left_stream_id", left_stream_id.to_string())
         .add_attribute("right_stream_id", right_stream_id.to_string())
-        .add_attribute("admin", info.sender.clone());
+        .add_attribute("owner", info.sender.clone());
 
     Ok(response)
 }
@@ -71,7 +71,7 @@ pub(crate) fn execute_detach_stream(
         return Err(ContractError::StreamNotDetachable {});
     }
 
-    if !(detach_stream.admin == info.sender && linked_stream.admin == info.sender) {
+    if !(detach_stream.owner == info.sender && linked_stream.owner == info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -89,7 +89,7 @@ pub(crate) fn execute_detach_stream(
         .add_attribute("method", "link")
         .add_attribute("detach_stream_id", id.to_string())
         .add_attribute("linked_stream_id", link_id.to_string())
-        .add_attribute("admin", info.sender.clone());
+        .add_attribute("owner", info.sender.clone());
 
     Ok(response)
 }

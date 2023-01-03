@@ -14,7 +14,7 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Stream {
-    pub admin: Addr,
+    pub owner: Addr,
     pub recipient: Addr,
     /// Balance in Native and Cw20 tokens
     pub balance: Uint128,

@@ -92,7 +92,7 @@ fn test_execute_distribute() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -106,7 +106,7 @@ fn test_execute_distribute() {
     assert_eq!(
         get_stream(&app, cw_payroll_addr.clone(), 1),
         Stream {
-            admin: info.sender.clone(),
+            owner: info.sender.clone(),
             recipient: Addr::unchecked("bob"),
             balance: amount,
             claimed_balance: claimed.clone(),
@@ -156,7 +156,7 @@ fn test_execute_distribute() {
     assert_eq!(
         get_stream(&app, cw_payroll_addr.clone(), 1),
         Stream {
-            admin: info.sender,
+            owner: info.sender,
             recipient: Addr::unchecked("bob"),
             balance: Uint128::new(750),
             claimed_balance: Uint128::new(250),
@@ -240,7 +240,7 @@ fn test_execute_pause_stream() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -266,7 +266,7 @@ fn test_execute_pause_stream() {
     assert_eq!(
         saved_stream,
         Stream {
-            admin: Addr::unchecked("alice"),
+            owner: Addr::unchecked("alice"),
             recipient: Addr::unchecked("bob"),
             balance: amount,
             claimed_balance: Uint128::zero(),
@@ -299,7 +299,7 @@ fn test_invalid_start_time() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -404,7 +404,7 @@ fn test_execute_remove_stream() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(alice.to_string()),
+            owner: Some(alice.to_string()),
             recipient,
             start_time,
             end_time,
@@ -450,7 +450,7 @@ fn test_execute_link_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -498,7 +498,7 @@ fn test_execute_link_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -542,7 +542,7 @@ fn test_execute_link_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -558,7 +558,7 @@ fn test_execute_link_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -599,7 +599,7 @@ fn test_execute_detach_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -615,7 +615,7 @@ fn test_execute_detach_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -674,7 +674,7 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -690,7 +690,7 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -773,7 +773,7 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -789,7 +789,7 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -840,7 +840,7 @@ fn test_execute_resume_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -856,7 +856,7 @@ fn test_execute_resume_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient,
             start_time,
             end_time,
@@ -936,7 +936,7 @@ fn test_execute_resume_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
@@ -952,7 +952,7 @@ fn test_execute_resume_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            admin: Some(info.sender.to_string()),
+            owner: Some(info.sender.to_string()),
             recipient: recipient.clone(),
             start_time,
             end_time,
