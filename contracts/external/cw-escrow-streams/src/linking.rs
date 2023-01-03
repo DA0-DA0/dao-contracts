@@ -1,7 +1,7 @@
 use cosmwasm_std::{DepsMut, Env, MessageInfo, Response};
 
 use crate::{
-    state::{StreamId, StreamIds, StreamIdsExtensions, STREAMS},
+    state::{StreamId, StreamIds, STREAMS},
     ContractError,
 };
 
@@ -15,16 +15,13 @@ pub(crate) fn execute_link_stream(
     info: &MessageInfo,
     ids: StreamIds,
 ) -> Result<Response, ContractError> {
-    ids.validate()?;
-    // TODO no unwrap
-    let left_stream_id = *ids.first().unwrap();
-    let right_stream_id = *ids.second().unwrap();
+    let (left_stream_id, right_stream_id) = ids.into_checked()?.into_inner();
 
     let mut left_stream =
         STREAMS
             .may_load(deps.storage, left_stream_id)?
             .ok_or(ContractError::StreamNotFound {
-                stream_id: *ids.first().unwrap(),
+                stream_id: left_stream_id,
             })?;
 
     let mut right_stream =

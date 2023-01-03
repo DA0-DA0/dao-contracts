@@ -1,5 +1,5 @@
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{Stream, StreamId, StreamIdsExtensions};
+use crate::state::{Stream, StreamId, StreamIds};
 use crate::ContractError;
 
 use cosmwasm_std::testing::mock_info;
@@ -476,7 +476,7 @@ fn test_execute_link_stream_invalid() {
     app.execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    let ids = vec![1, 2];
+    let ids = StreamIds::new(1, 2).unwrap();
 
     //Link stream and verify error returned
     let error: ContractError = app
@@ -493,21 +493,9 @@ fn test_execute_link_stream_invalid() {
     assert_eq!(
         error,
         ContractError::StreamNotFound {
-            stream_id: *ids.second().unwrap()
+            stream_id: *ids.right()
         }
     );
-
-    let ids = vec![1, 1];
-
-    //Link stream and verify error returned
-    app.execute_contract(
-        info.sender.clone(),
-        cw_payroll_addr.clone(),
-        &ExecuteMsg::LinkStream { ids: ids.clone() },
-        &[],
-    )
-    .unwrap_err();
-    // assert_eq!(error, ContractError::StreamsShouldNotBeEqual {});
 
     let msg = Cw20ExecuteMsg::Send {
         contract: cw_payroll_addr.to_string(),
@@ -528,7 +516,7 @@ fn test_execute_link_stream_invalid() {
         .unwrap();
 
     let sender = Addr::unchecked("bob").to_string();
-    let ids = vec![1, 2];
+    let ids = StreamIds::new(1, 2).unwrap();
 
     let unauthorized_info = mock_info(&sender, &[]);
     let error: ContractError = app
@@ -593,7 +581,8 @@ fn test_execute_link_stream_valid() {
     app.execute_contract(info.sender.clone(), cw20_addr, &msg, &[])
         .unwrap();
 
-    let ids = vec![1, 2];
+    let ids = StreamIds::new(1, 2).unwrap();
+    let (left_id, right_id) = ids.clone().into_inner();
     app.execute_contract(
         info.sender.clone(),
         cw_payroll_addr.clone(),
@@ -602,10 +591,10 @@ fn test_execute_link_stream_valid() {
     )
     .unwrap();
 
-    let left_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.first().unwrap());
-    let right_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.second().unwrap());
-    assert_eq!(left_stream.link_id, Some(*ids.second().unwrap()));
-    assert_eq!(right_stream.link_id, Some(*ids.first().unwrap()));
+    let left_stream = get_stream(&app, cw_payroll_addr.clone(), left_id);
+    let right_stream = get_stream(&app, cw_payroll_addr.clone(), right_id);
+    assert_eq!(left_stream.link_id, Some(right_id));
+    assert_eq!(right_stream.link_id, Some(left_id));
 }
 
 #[test]
@@ -624,7 +613,7 @@ fn test_execute_detach_stream_valid() {
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
             owner: info.sender.to_string(),
-            recipient:recipient.clone(),
+            recipient: recipient.clone(),
             start_time,
             end_time,
             is_detachable: true,
@@ -656,8 +645,8 @@ fn test_execute_detach_stream_valid() {
     app.execute_contract(info.sender.clone(), cw20_addr, &msg, &[])
         .unwrap();
 
-    let ids = vec![1, 2];
-
+    let ids = StreamIds::new(1, 2).unwrap();
+    let (left_id, right_id) = ids.clone().into_inner();
     app.execute_contract(
         info.sender.clone(),
         cw_payroll_addr.clone(),
@@ -669,15 +658,13 @@ fn test_execute_detach_stream_valid() {
     app.execute_contract(
         info.sender.clone(),
         cw_payroll_addr.clone(),
-        &ExecuteMsg::DetachStream {
-            id: *ids.first().unwrap(),
-        },
+        &ExecuteMsg::DetachStream { id: left_id },
         &[],
     )
     .unwrap();
 
-    let left_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.first().unwrap());
-    let right_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.second().unwrap());
+    let left_stream = get_stream(&app, cw_payroll_addr.clone(), left_id);
+    let right_stream = get_stream(&app, cw_payroll_addr.clone(), right_id);
 
     assert!(left_stream.paused);
     assert!(left_stream.paused_time.is_some());
@@ -705,7 +692,7 @@ fn test_execute_detach_stream_invalid() {
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
             owner: info.sender.to_string(),
-            recipient:recipient.clone(),
+            recipient: recipient.clone(),
             start_time,
             end_time,
             is_detachable: false,
@@ -724,7 +711,7 @@ fn test_execute_detach_stream_invalid() {
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
             owner: info.sender.to_string(),
-            recipient:recipient.clone(),
+            recipient: recipient.clone(),
             start_time,
             end_time,
             is_detachable: false,
@@ -737,7 +724,7 @@ fn test_execute_detach_stream_invalid() {
     app.execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    let ids = vec![1, 2];
+    let ids = StreamIds::new(1, 2).unwrap();
 
     app.execute_contract(
         info.sender.clone(),
@@ -747,13 +734,14 @@ fn test_execute_detach_stream_invalid() {
     )
     .unwrap();
 
-    let ids = vec![11, 22];
+    let ids = StreamIds::new(11, 22).unwrap();
+    let (left_id,right_id)=ids.into_inner();
     let error: ContractError = app
         .execute_contract(
             info.sender.clone(),
             cw_payroll_addr.clone(),
             &ExecuteMsg::DetachStream {
-                id: *ids.first().unwrap(),
+                id: left_id,
             },
             &[],
         )
@@ -763,17 +751,16 @@ fn test_execute_detach_stream_invalid() {
     assert_eq!(
         error,
         ContractError::StreamNotFound {
-            stream_id: *ids.first().unwrap()
+            stream_id: left_id
         }
     );
 
-    let ids = vec![1, 22];
     let error: ContractError = app
         .execute_contract(
             info.sender.clone(),
             cw_payroll_addr.clone(),
             &ExecuteMsg::DetachStream {
-                id: *ids.second().unwrap(),
+                id: right_id,
             },
             &[],
         )
@@ -783,17 +770,18 @@ fn test_execute_detach_stream_invalid() {
     assert_eq!(
         error,
         ContractError::StreamNotFound {
-            stream_id: *ids.second().unwrap()
+            stream_id: right_id
         }
     );
 
-    let ids = vec![1, 2];
+    let (_,right_id) = StreamIds::new(1, 2).unwrap().into_inner();
+
     let error: ContractError = app
         .execute_contract(
             info.sender.clone(),
             cw_payroll_addr.clone(),
             &ExecuteMsg::DetachStream {
-                id: *ids.second().unwrap(),
+                id: right_id,
             },
             &[],
         )
@@ -810,7 +798,7 @@ fn test_execute_detach_stream_invalid() {
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
             owner: info.sender.to_string(),
-            recipient:recipient.clone(),
+            recipient: recipient.clone(),
             start_time,
             end_time,
             is_detachable: true,
@@ -842,7 +830,7 @@ fn test_execute_detach_stream_invalid() {
     app.execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    let ids = vec![3, 4];
+    let ids =StreamIds::new(3, 4).unwrap();
     app.execute_contract(
         info.sender,
         cw_payroll_addr.clone(),
@@ -856,7 +844,7 @@ fn test_execute_detach_stream_invalid() {
             unauthorized_info.sender,
             cw_payroll_addr.clone(),
             &ExecuteMsg::DetachStream {
-                id: *ids.first().unwrap(),
+                id: *ids.left(),
             },
             &[],
         )
@@ -883,7 +871,7 @@ fn test_execute_resume_stream_valid() {
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
             owner: info.sender.to_string(),
-            recipient:recipient.clone(),
+            recipient: recipient.clone(),
             start_time,
             end_time,
             is_detachable: true,
@@ -915,8 +903,8 @@ fn test_execute_resume_stream_valid() {
     app.execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    let ids = vec![1, 2];
-
+    let ids =StreamIds::new(1, 2).unwrap();
+    let (left_id,right_id)=ids.clone().into_inner();
     app.execute_contract(
         info.sender.clone(),
         cw_payroll_addr.clone(),
@@ -929,14 +917,14 @@ fn test_execute_resume_stream_valid() {
         info.sender.clone(),
         cw_payroll_addr.clone(),
         &ExecuteMsg::DetachStream {
-            id: *ids.first().unwrap(),
+            id: left_id,
         },
         &[],
     )
     .unwrap();
 
-    let left_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.first().unwrap());
-    let right_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.second().unwrap());
+    let left_stream = get_stream(&app, cw_payroll_addr.clone(), left_id);
+    let right_stream = get_stream(&app, cw_payroll_addr.clone(), right_id);
 
     assert!(left_stream.paused);
     assert!(left_stream.paused_time.is_some());
@@ -950,14 +938,14 @@ fn test_execute_resume_stream_valid() {
         info.sender.clone(),
         cw_payroll_addr.clone(),
         &ExecuteMsg::ResumeStream {
-            id: *ids.first().unwrap(),
+            id: left_id,
         },
         &[],
     )
     .unwrap();
 
-    let left_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.first().unwrap());
-    let right_stream = get_stream(&app, cw_payroll_addr.clone(), *ids.second().unwrap());
+    let left_stream = get_stream(&app, cw_payroll_addr.clone(), left_id);
+    let right_stream = get_stream(&app, cw_payroll_addr.clone(), right_id);
 
     assert!(!left_stream.paused);
     assert!(left_stream.paused_time.is_none());
@@ -1004,7 +992,7 @@ fn test_execute_resume_stream_invalid() {
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
             owner: info.sender.to_string(),
-            recipient:recipient.clone(),
+            recipient: recipient.clone(),
             start_time,
             end_time,
             is_detachable: false,
@@ -1017,7 +1005,7 @@ fn test_execute_resume_stream_invalid() {
     app.execute_contract(info.sender.clone(), cw20_addr.clone(), &msg, &[])
         .unwrap();
 
-    let ids = vec![1, 2];
+    let ids = StreamIds::new(1, 2).unwrap();
     app.execute_contract(
         info.sender.clone(),
         cw_payroll_addr.clone(),
@@ -1031,7 +1019,7 @@ fn test_execute_resume_stream_invalid() {
             info.sender.clone(),
             cw_payroll_addr.clone(),
             &ExecuteMsg::ResumeStream {
-                id: *ids.second().unwrap(),
+                id: *ids.right(),
             },
             &[],
         )
@@ -1046,7 +1034,7 @@ fn test_execute_resume_stream_invalid() {
             unauthorized_info.sender,
             cw_payroll_addr.clone(),
             &ExecuteMsg::DetachStream {
-                id: *ids.first().unwrap(),
+                id: *ids.left(),
             },
             &[],
         )

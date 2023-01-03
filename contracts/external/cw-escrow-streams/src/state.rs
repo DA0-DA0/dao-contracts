@@ -127,27 +127,30 @@ impl Stream {
 }
 
 pub type StreamId = u64;
-pub type StreamIds = Vec<StreamId>;
+#[cw_serde]
+pub struct StreamIds(pub (StreamId, StreamId));
+impl StreamIds {
+    pub fn new(l: StreamId, r: StreamId) -> Result<Self, ContractError> {
+        if l == r {
+            Err(ContractError::StreamsShouldNotBeEqual {})
+        } else {
+            Ok(Self((l, r)))
+        }
+    }
+    pub fn into_checked(self) -> Result<Self, ContractError> {
+        Self::new(*self.left(), *self.right())
+    }
+    pub fn into_inner(self) -> (StreamId, StreamId) {
+        self.0
+    }
+    pub fn left(&self) -> &StreamId {
+        &self.0 .0
+    }
+   pub fn right(&self) -> &StreamId {
+        &self.0 .1
+    }
+}
 pub type ContractResult = Result<Response, ContractError>;
-
-pub(crate) trait StreamIdsExtensions {
-    fn second(&self) -> Option<&StreamId>;
-    fn validate(&self) -> Result<(), ContractError>;
-}
-impl StreamIdsExtensions for StreamIds {
-    fn second(&self) -> Option<&StreamId> {
-        self.get(1)
-    }
-    fn validate(&self) -> Result<(), ContractError> {
-        if self.len() != 2 {
-            return Err(ContractError::InvalidStreamIds {});
-        }
-        if self.first() == self.second() {
-            return Err(ContractError::StreamsShouldNotBeEqual {});
-        }
-        Ok(())
-    }
-}
 
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
 pub const STREAMS: Map<StreamId, Stream> = Map::new("stream");
@@ -180,4 +183,3 @@ impl UncheckedStreamData {
         })
     }
 }
-
