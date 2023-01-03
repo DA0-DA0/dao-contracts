@@ -11,7 +11,7 @@ export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
   create: {
-    params: StreamParams;
+    params: UncheckedStreamData;
   };
 } | {
   distribute: {
@@ -23,7 +23,7 @@ export type ExecuteMsg = {
   };
 } | {
   link_stream: {
-    ids: number[];
+    ids: StreamIds;
   };
 } | {
   detach_stream: {
@@ -40,24 +40,24 @@ export type ExecuteMsg = {
 };
 export type Uint128 = string;
 export type Binary = string;
-export type CheckedDenom = {
+export type UncheckedDenom = {
   native: string;
 } | {
-  cw20: Addr;
+  cw20: string;
 };
-export type Addr = string;
+export type StreamIds = [number, number];
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
   sender: string;
 }
-export interface StreamParams {
-  admin: string;
+export interface UncheckedStreamData {
   balance: Uint128;
-  denom: CheckedDenom;
+  denom: UncheckedDenom;
   description?: string | null;
   end_time: number;
-  is_detachable?: boolean | null;
+  is_detachable: boolean;
+  owner: string;
   recipient: string;
   start_time: number;
   title?: string | null;
@@ -77,8 +77,13 @@ export type QueryMsg = {
 export interface ConfigResponse {
   admin: string;
 }
+export type CheckedDenom = {
+  native: string;
+} | {
+  cw20: Addr;
+};
+export type Addr = string;
 export interface StreamResponse {
-  admin: string;
   balance: Uint128;
   claimed_balance: Uint128;
   denom: CheckedDenom;
@@ -87,6 +92,7 @@ export interface StreamResponse {
   id: number;
   is_detachable: boolean;
   link_id?: number | null;
+  owner: string;
   paused: boolean;
   paused_duration?: number | null;
   paused_time?: number | null;
