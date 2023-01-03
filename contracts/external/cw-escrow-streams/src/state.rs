@@ -83,7 +83,7 @@ impl Stream {
     ) -> Result<(Uint128, Uint128), ContractError> {
         let diff_end = std::cmp::min(block_time.seconds(), end_time);
         let duration: u64 = end_time - start_time;
-        let paused_dur = paused_duration.unwrap_or_else(|| 0);
+        let paused_dur = paused_duration.unwrap_or(0);
         if duration > 0 && start_time < diff_end {
             let diff = diff_end - start_time;
             let passed: u128 = (diff - paused_dur).into();

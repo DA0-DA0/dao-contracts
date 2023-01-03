@@ -233,7 +233,7 @@ pub fn execute_receive(
             UncheckedStreamData {
                 owner,
                 recipient,
-                balance: balance.unwrap_or_else(|| receive_msg.amount),
+                balance: balance.unwrap_or(receive_msg.amount),
                 denom: UncheckedDenom::Cw20(info.sender.to_string()),
                 start_time,
                 end_time,
