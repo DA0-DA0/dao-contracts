@@ -49,10 +49,9 @@ pub fn execute(
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::Cancel { id } => execute_cancel_vesting_payment(env, deps, info, id),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
-        ExecuteMsg::Delegate {} => unimplemented!(),
-        ExecuteMsg::Redelgate {} => unimplemented!(),
-        ExecuteMsg::Undelegate {} => unimplemented!(),
-        ExecuteMsg::WithdrawRewards {} => unimplemented!(),
+        ExecuteMsg::Delegate { .. } => unimplemented!(),
+        ExecuteMsg::Undelegate { .. } => unimplemented!(),
+        ExecuteMsg::WithdrawDelegatorReward { .. } => unimplemented!(),
     }
 }
 

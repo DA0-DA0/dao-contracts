@@ -379,6 +379,73 @@ fn test_happy_native_path() {
 
 #[test]
 fn test_cancel_vesting() {
-    // TODO only admin can cancel
-    // TODO unvested funds are returned to owner
+    let owner = Addr::unchecked("owner");
+    let (mut app, _, cw_payroll_addr) =
+        setup_app_and_instantiate_contracts(Some(owner.to_string()));
+
+    let amount = Uint128::new(1000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+
+    // Basic linear vesting schedule
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    let TestCase { alice, bob, .. } = setup_test_case(
+        &mut app,
+        cw_payroll_addr.clone(),
+        vesting_schedule.clone(),
+        amount,
+        unchecked_denom,
+    );
+
+    // Non-owner can't cancel
+    let err: ContractError = app
+        .execute_contract(
+            alice,
+            cw_payroll_addr.clone(),
+            &ExecuteMsg::Cancel { id: 1 },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
+
+    // Advance the clock
+    app.update_block(|block| {
+        block.time = block.time.plus_seconds(150);
+    });
+
+    // Bob claims vested funds
+    app.execute_contract(
+        bob,
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Distribute { id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    // Advance the clock again
+    app.update_block(|block| {
+        block.time = block.time.plus_seconds(50);
+    });
+
+    // Owner DAO cancels vesting contract
+    app.execute_contract(owner, cw_payroll_addr, &ExecuteMsg::Cancel { id: 1 }, &[])
+        .unwrap();
+
+    // Unvested funds have been returned to contract owner
+    assert_eq!(
+        get_balance_native(&app, "owner", NATIVE_DENOM),
+        Uint128::new(750)
+    );
+    // Bob has claimed vested funds and is up 250
+    assert_eq!(
+        get_balance_native(&app, BOB, NATIVE_DENOM),
+        Uint128::new(10250)
+    );
 }

@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_ownable::cw_ownable;
 
@@ -20,14 +21,35 @@ pub enum ExecuteMsg {
     Distribute { id: u64 },
     /// Cancel vesting contract and return funds to owner (if configured)
     Cancel { id: u64 },
-    /// Delegate vested native tokens
-    Delegate {},
-    /// Undelegate vested native tokens
-    Undelegate {},
-    /// Redelegate vested native tokens
-    Redelgate {},
-    /// Withdraw rewards from staked native tokens
-    WithdrawRewards {},
+    /// This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90).
+    /// `delegator_address` is automatically filled with the current contract's address.
+    /// Note: this only works with the native staking denom of a Cosmos chain
+    Delegate {
+        /// The ID for the vesting payment
+        vesting_payment_id: u64,
+        /// The validator to delegate to
+        validator: String,
+        /// The amount to delegate
+        amount: Uint128,
+    },
+    /// This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121).
+    /// `delegator_address` is automatically filled with the current contract's address.
+    Undelegate {
+        /// The ID for the vesting payment
+        vesting_payment_id: u64,
+        /// The validator to undelegate from
+        validator: String,
+        /// The amount to delegate
+        amount: Uint128,
+    },
+    /// This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50).
+    /// `delegator_address` is automatically filled with the current contract's address.
+    WithdrawDelegatorReward {
+        /// The ID for the vesting payment
+        vesting_payment_id: u64,
+        /// The `validator_address` to claim rewards for
+        validator: String,
+    },
 }
 
 // Receiver setup
