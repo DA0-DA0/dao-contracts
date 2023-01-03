@@ -1,12 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
-use cw_denom::CheckedDenom;
-use wynd_utils::Curve;
-// so that consumers don't need a cw_ownable dependency to consume
-// this contract's queries.
-pub use cw_ownable::Ownership;
-
 use cw_ownable::cw_ownable;
 
 use crate::state::UncheckedVestingParams;
@@ -14,7 +7,6 @@ use crate::state::UncheckedVestingParams;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
-    pub create_new_vesting_schedule_params: Option<UncheckedVestingParams>,
 }
 
 #[cw_ownable]
@@ -26,10 +18,6 @@ pub enum ExecuteMsg {
     Create(UncheckedVestingParams),
     /// Distribute unlocked vesting tokens
     Distribute { id: u64 },
-    /// Pause the vesting contract
-    Pause { id: u64 },
-    /// Resume the vesting schedule
-    Resume { id: u64 },
     /// Cancel vesting contract and return funds to owner (if configured)
     Cancel { id: u64 },
     /// Delegate vested native tokens

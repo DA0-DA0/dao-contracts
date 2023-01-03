@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
-    StdResult, Uint128,
+    from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
+    Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -47,44 +47,13 @@ pub fn execute(
             execute_create_vesting_payment_native(env, deps, info, vesting_params)
         }
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
-        ExecuteMsg::Pause { id } => execute_pause_vesting_payment(env, deps, info, id),
-        ExecuteMsg::Resume { id } => execute_resume_vesting_payment(env, deps, info, id),
         ExecuteMsg::Cancel { id } => execute_cancel_vesting_payment(env, deps, info, id),
+        ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
         ExecuteMsg::Delegate {} => unimplemented!(),
         ExecuteMsg::Redelgate {} => unimplemented!(),
         ExecuteMsg::Undelegate {} => unimplemented!(),
         ExecuteMsg::WithdrawRewards {} => unimplemented!(),
-        ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
     }
-}
-
-pub fn execute_pause_vesting_payment(
-    env: Env,
-    deps: DepsMut,
-    info: MessageInfo,
-    id: u64,
-) -> Result<Response, ContractError> {
-    unimplemented!()
-    // // TODO check admin
-    // let mut vesting_payment = VESTING_PAYMENTS
-    //     .may_load(deps.storage, id)?
-    //     .ok_or(ContractError::VestingPaymentNotFound { vesting_payment_id: id })?;
-    // if vesting_payment.admin != info.sender {
-    //     return Err(ContractError::Unauthorized {});
-    // }
-    // if vesting_payment.paused {
-    //     return Err(ContractError::AlreadyPaused {});
-    // }
-    // vesting_payment.paused_time = Some(env.block.time.seconds());
-    // vesting_payment.paused = true;
-    // VESTING_PAYMENTS.save(deps.storage, id, &vesting_payment)?;
-
-    // Ok(Response::new()
-    //     .add_attribute("method", "pause_vesting_payment")
-    //     .add_attribute("paused", vesting_payment.paused.to_string())
-    //     .add_attribute("vesting_payment_id", id.to_string())
-    //     .add_attribute("admin", info.sender)
-    //     .add_attribute("paused_time", vesting_payment.paused_time.unwrap().to_string()))
 }
 
 pub fn execute_cancel_vesting_payment(
@@ -115,44 +84,6 @@ pub fn execute_cancel_vesting_payment(
         .add_attribute("owner", info.sender)
         .add_attribute("removed_time", env.block.time.to_string())
         .add_message(transfer_to_contract_owner_msg))
-}
-
-pub fn execute_resume_vesting_payment(
-    env: Env,
-    deps: DepsMut,
-    info: MessageInfo,
-    id: u64,
-) -> Result<Response, ContractError> {
-    unimplemented!()
-    // // TODO check admin
-    // let mut vesting_payment = VESTING_PAYMENTS
-    //     .may_load(deps.storage, id)?
-    //     .ok_or(ContractError::VestingPaymentNotFound { vesting_payment_id: id })?;
-    // if vesting_payment.admin != info.sender {
-    //     return Err(ContractError::Unauthorized {});
-    // }
-    // if !vesting_payment.paused {
-    //     return Err(ContractError::NotPaused {});
-    // }
-    // vesting_payment.paused_duration = vesting_payment.calc_pause_duration(env.block.time);
-    // vesting_payment.paused = false;
-    // vesting_payment.paused_time = None;
-    // VESTING_PAYMENTS.save(deps.storage, id, &vesting_payment)?;
-
-    // let (_, rate_per_second) = vesting_payment.calc_distribution_rate(env.block.time)?;
-    // let response = Response::new()
-    //     .add_attribute("method", "resume_vesting_payment")
-    //     .add_attribute("vesting_payment_id", id.to_string())
-    //     .add_attribute("admin", info.sender)
-    //     .add_attribute("rate_per_second", rate_per_second)
-    //     .add_attribute("resume_time", env.block.time.to_string())
-    //     .add_attribute(
-    //         "paused_duration",
-    //         vesting_payment.paused_duration.unwrap().to_string(),
-    //     )
-    //     .add_attribute("resume_time", env.block.time.to_string());
-
-    // Ok(response)
 }
 
 pub fn execute_create_vesting_payment_native(
@@ -245,6 +176,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     VESTING_PAYMENTS.update(deps.storage, id, |v| -> Result<_, ContractError> {
         match v {
             Some(mut v) => {
+                // TODO if this becomes zero, update status to fully vested
                 v.amount -= vested_amount;
                 v.claimed_amount += vested_amount;
                 Ok(v)
