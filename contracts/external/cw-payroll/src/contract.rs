@@ -6,12 +6,12 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
-use cw_denom::UncheckedDenom;
 use cw_paginate::paginate_map_values;
+use cw_utils::must_pay;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, VestingParams};
-use crate::state::{VestingPayment, VESTING_PAYMENTS, VESTING_PAYMENT_SEQ};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
+use crate::state::{UncheckedVestingParams, VestingPayment, VESTING_PAYMENTS, VESTING_PAYMENT_SEQ};
 
 const CONTRACT_NAME: &str = "crates.io:cw-payroll";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -19,8 +19,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    _env: Env,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -28,12 +28,6 @@ pub fn instantiate(
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
     VESTING_PAYMENT_SEQ.save(deps.storage, &0u64)?;
-
-    // TODO optionally fund on instantiate?
-    // match msg.create_new_vesting_schedule_params {
-    //     Some(vesting_params) => execute_create_vesting_payment(env, deps, vesting_params),
-    //     None => Ok(()),
-    // }
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -48,15 +42,14 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
-        // TODO should be able to create and fund with a native token
+        ExecuteMsg::Receive(msg) => execute_receive_cw20(env, deps, info, msg),
         ExecuteMsg::Create(vesting_params) => {
-            execute_create_vesting_payment(env, deps, vesting_params)
+            execute_create_vesting_payment_native(env, deps, info, vesting_params)
         }
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::Pause { id } => execute_pause_vesting_payment(env, deps, info, id),
         ExecuteMsg::Resume { id } => execute_resume_vesting_payment(env, deps, info, id),
-        ExecuteMsg::Cancel { id } => execute_remove_vesting_payment(env, deps, info, id),
+        ExecuteMsg::Cancel { id } => execute_cancel_vesting_payment(env, deps, info, id),
         ExecuteMsg::Delegate {} => unimplemented!(),
         ExecuteMsg::Redelgate {} => unimplemented!(),
         ExecuteMsg::Undelegate {} => unimplemented!(),
@@ -94,34 +87,34 @@ pub fn execute_pause_vesting_payment(
     //     .add_attribute("paused_time", vesting_payment.paused_time.unwrap().to_string()))
 }
 
-pub fn execute_remove_vesting_payment(
+pub fn execute_cancel_vesting_payment(
     env: Env,
     deps: DepsMut,
     info: MessageInfo,
     id: u64,
 ) -> Result<Response, ContractError> {
-    unimplemented!()
-    // // TODO Check that sender is admin
-    // let vesting_payment = VESTING_PAYMENTS
-    //     .may_load(deps.storage, id)?
-    //     .ok_or(ContractError::VestingPaymentNotFound { vesting_payment_id: id })?;
-    // if vesting_payment.admin != info.sender {
-    //     return Err(ContractError::Unauthorized {});
-    // }
+    // Check sender is contract owner
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    // VESTING_PAYMENTS.remove(deps.storage, id);
+    let vesting_payment = VESTING_PAYMENTS.may_load(deps.storage, id)?.ok_or(
+        ContractError::VestingPaymentNotFound {
+            vesting_payment_id: id,
+        },
+    )?;
 
-    // // Transfer any remaining amount to the owner
-    // let transfer_to_admin_msg = vesting_payment
-    //     .denom
-    //     .get_transfer_to_message(&vesting_payment.admin, vesting_payment.amount)?;
+    VESTING_PAYMENTS.remove(deps.storage, id);
 
-    // Ok(Response::new()
-    //     .add_attribute("method", "remove_vesting_payment")
-    //     .add_attribute("vesting_payment_id", id.to_string())
-    //     .add_attribute("admin", info.sender)
-    //     .add_attribute("removed_time", env.block.time.to_string())
-    //     .add_message(transfer_to_admin_msg))
+    // Transfer any remaining amount to the owner
+    let transfer_to_contract_owner_msg = vesting_payment
+        .denom
+        .get_transfer_to_message(&info.sender, vesting_payment.amount)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "remove_vesting_payment")
+        .add_attribute("vesting_payment_id", id.to_string())
+        .add_attribute("owner", info.sender)
+        .add_attribute("removed_time", env.block.time.to_string())
+        .add_message(transfer_to_contract_owner_msg))
 }
 
 pub fn execute_resume_vesting_payment(
@@ -162,71 +155,63 @@ pub fn execute_resume_vesting_payment(
     // Ok(response)
 }
 
-pub fn execute_create_vesting_payment(
+pub fn execute_create_vesting_payment_native(
     _env: Env,
     deps: DepsMut,
-    vesting_params: VestingParams,
+    info: MessageInfo,
+    unchecked_vesting_params: UncheckedVestingParams,
 ) -> Result<Response, ContractError> {
-    let VestingParams {
-        recipient,
-        amount,
-        denom,
-        vesting_schedule,
-        title,
-        description,
-    } = vesting_params;
+    // Validate all vesting payment params
+    let checked_params = unchecked_vesting_params.into_checked(deps.as_ref())?;
 
-    let recipient = deps.api.addr_validate(&recipient)?;
+    // Check amount sent matches amount in vesting payment
+    if checked_params.amount != must_pay(&info, &checked_params.denom.to_string())? {
+        // TODO better error message
+        return Err(ContractError::Unauthorized {});
+    }
 
-    // if start_time > end_time {
-    //     return Err(ContractError::InvalidStartTime {});
-    // }
-    // let block_time = env.block.time.seconds();
-    // if end_time <= block_time {
-    //     return Err(ContractError::InvalidEndTime {});
-    // }
-
-    let vesting_payment = VestingPayment {
-        recipient: recipient.clone(),
-        amount,
-        claimed_amount: Uint128::zero(),
-        denom,
-        vesting_schedule,
-        paused: false,
-        title,
-        description,
-    };
-
-    // Check vesting schedule
-    vesting_payment.assert_schedule_vests_amount(amount)?;
-
-    let id = VESTING_PAYMENT_SEQ.load(deps.storage)?;
-    let id = id + 1;
-    VESTING_PAYMENT_SEQ.save(deps.storage, &id)?;
-    VESTING_PAYMENTS.save(deps.storage, id, &vesting_payment)?;
+    // Create a new vesting payment
+    let vesting_payment = VestingPayment::new(deps, checked_params)?;
 
     Ok(Response::new()
         .add_attribute("method", "create_vesting_payment")
-        .add_attribute("vesting_payment_id", id.to_string())
-        .add_attribute("recipient", recipient))
+        .add_attribute("vesting_payment_id", vesting_payment.id.to_string())
+        .add_attribute("recipient", vesting_payment.recipient.to_string()))
 }
 
-pub fn execute_receive(
-    env: Env,
+pub fn execute_receive_cw20(
+    _env: Env,
     deps: DepsMut,
     info: MessageInfo,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    deps.api.addr_validate(&info.sender.clone().into_string())?;
     let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
-    // TODO check cw20 denom matches info.sender
-
-    // TODO actually check denom in params
-    let checked_denom =
-        UncheckedDenom::Cw20(info.sender.to_string()).into_checked(deps.as_ref())?;
 
     match msg {
-        ReceiveMsg::Create(msg) => execute_create_vesting_payment(env, deps, msg),
+        ReceiveMsg::Create(msg) => {
+            // Validate all vesting schedule, recipient address, and denom
+            let checked_params = msg.into_checked(deps.as_ref())?;
+
+            // Check amount sent matches amount in vesting payment
+            if checked_params.amount != receive_msg.amount {
+                // TODO better error message
+                return Err(ContractError::Unauthorized {});
+            }
+
+            // Check that the Cw20 specified in the denom *must be* matches sender
+            if info.sender.to_string() != checked_params.denom.to_string() {
+                // TODO better error message
+                return Err(ContractError::Unauthorized {});
+            }
+
+            // Create a new vesting payment
+            let vesting_payment = VestingPayment::new(deps, checked_params)?;
+
+            Ok(Response::new()
+                .add_attribute("method", "create_vesting_payment")
+                .add_attribute("vesting_payment_id", vesting_payment.id.to_string())
+                .add_attribute("recipient", vesting_payment.recipient.to_string()))
+        }
     }
 }
 

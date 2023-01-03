@@ -1,6 +1,7 @@
 use cosmwasm_std::{StdError, Uint128};
 use cw_denom::DenomError;
 use cw_ownable::OwnershipError;
+use cw_utils::PaymentError;
 use thiserror::Error;
 use wynd_utils::CurveError;
 
@@ -17,6 +18,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     Ownable(#[from] OwnershipError),
+
+    #[error("{0}")]
+    PaymentError(#[from] PaymentError),
 
     #[error("Not authorized to perform action")]
     Unauthorized {},

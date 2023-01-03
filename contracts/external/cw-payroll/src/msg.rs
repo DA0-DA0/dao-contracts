@@ -9,10 +9,12 @@ pub use cw_ownable::Ownership;
 
 use cw_ownable::cw_ownable;
 
+use crate::state::UncheckedVestingParams;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
-    pub create_new_vesting_schedule_params: Option<VestingParams>,
+    pub create_new_vesting_schedule_params: Option<UncheckedVestingParams>,
 }
 
 #[cw_ownable]
@@ -21,7 +23,7 @@ pub enum ExecuteMsg {
     /// Receive a cw20
     Receive(Cw20ReceiveMsg),
     /// Create a new vesting payment
-    Create(VestingParams),
+    Create(UncheckedVestingParams),
     /// Distribute unlocked vesting tokens
     Distribute { id: u64 },
     /// Pause the vesting contract
@@ -43,19 +45,7 @@ pub enum ExecuteMsg {
 // Receiver setup
 #[cw_serde]
 pub enum ReceiveMsg {
-    Create(VestingParams),
-}
-
-#[cw_serde]
-pub struct VestingParams {
-    pub recipient: String,
-    pub amount: Uint128,
-    pub denom: CheckedDenom,
-    pub vesting_schedule: Curve,
-    // pub start_time: u64,
-    // pub end_time: u64,
-    pub title: Option<String>,
-    pub description: Option<String>,
+    Create(UncheckedVestingParams),
 }
 
 // TODO get vesting_payments by recipient
