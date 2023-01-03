@@ -1,3 +1,5 @@
+use std::ops::Div;
+
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Deps, Env, Response, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
@@ -79,26 +81,18 @@ impl Stream {
         balance: Uint128,
         claimed_balance: Uint128,
     ) -> Result<(Uint128, Uint128), ContractError> {
-        // TODO rename? This is not strictly speaking block time
-        let block_time = std::cmp::min(block_time.seconds(), end_time);
-        // TODO NO UNWRAP OR DEFAULT, throw real errors
-        let duration: u64 = end_time.checked_sub(start_time).unwrap_or_default();
-        if duration > 0 {
-            let diff = block_time.checked_sub(start_time).unwrap_or_default();
-
-            let passed: u128 = diff
-                .checked_sub(paused_duration.unwrap_or_default())
-                .unwrap_or_default()
-                .into();
-
-            let rate_per_second = balance.checked_div(duration.into()).unwrap_or_default();
-
-            return Ok((
-                (Uint128::from(passed) * rate_per_second)
-                    .checked_sub(claimed_balance)
-                    .unwrap_or_default(),
+        let diff_end = std::cmp::min(block_time.seconds(), end_time);
+        let duration: u64 = end_time - start_time;
+        let paused_dur = paused_duration.unwrap_or_else(|| 0);
+        if duration > 0 && start_time < diff_end {
+            let diff = diff_end - start_time;
+            let passed: u128 = (diff - paused_dur).into();
+            let rate_per_second = balance.div(Uint128::from(duration));
+            let claim_info = (
+                (Uint128::from(passed) * rate_per_second) - claimed_balance,
                 rate_per_second,
-            ));
+            );
+            return Ok(claim_info);
         }
         Ok((Uint128::new(0), Uint128::new(0)))
     }
@@ -146,7 +140,7 @@ impl StreamIds {
     pub fn left(&self) -> &StreamId {
         &self.0 .0
     }
-   pub fn right(&self) -> &StreamId {
+    pub fn right(&self) -> &StreamId {
         &self.0 .1
     }
 }
