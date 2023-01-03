@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
-    StdResult, Storage, Uint128,
+    StdResult, Storage,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -13,7 +13,7 @@ use crate::error::ContractError;
 use crate::linking::*;
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
-    StreamParams, StreamResponse,
+    StreamResponse, UncheckedStreamData,
 };
 use crate::state::{Config, Stream, StreamId, CONFIG, STREAMS, STREAM_SEQ};
 
@@ -35,7 +35,7 @@ pub fn instantiate(
         .admin
         .map(|a| deps.api.addr_validate(&a))
         .transpose()?
-        .expect("Invalid owner address");
+        .unwrap_or(info.sender);
 
     let config = Config {
         admin: admin.clone(),
@@ -46,7 +46,7 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", admin))
+        .add_attribute("admin", admin))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -104,8 +104,10 @@ pub fn execute_pause_stream(
         .add_attribute("stream_id", id.to_string())
         .add_attribute("owner", stream.owner.to_string())
         .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
-        .add_attribute("link_id", stream.link_id.map_or(String::default(),|n|n.to_string())))
-
+        .add_attribute(
+            "link_id",
+            stream.link_id.map_or(String::from("not linked"), |n| n.to_string()),
+        ))
 }
 
 pub fn execute_remove_stream(
@@ -188,50 +190,10 @@ pub fn execute_resume_stream(
 pub fn execute_create_stream(
     env: Env,
     deps: DepsMut,
-    params: StreamParams,
+    params: UncheckedStreamData,
 ) -> Result<Response, ContractError> {
-    let StreamParams {
-        owner,
-        recipient,
-        balance,
-        denom,
-        start_time,
-        end_time,
-        title,
-        description,
-        is_detachable,
-    } = params;
-
-    let owner = deps.api.addr_validate(&owner)?;
-    let recipient = deps.api.addr_validate(&recipient)?;
-
-    if start_time > end_time {
-        return Err(ContractError::InvalidStartTime {});
-    }
-
-    let block_time = env.block.time.seconds();
-
-    if end_time <= block_time {
-        return Err(ContractError::InvalidEndTime {});
-    }
-
-    let stream = Stream {
-        owner: owner.clone(),
-        recipient: recipient.clone(),
-        balance,
-        claimed_balance: Uint128::zero(),
-        denom,
-        start_time,
-        end_time,
-        paused_time: None,
-        paused_duration: None,
-        paused: false,
-        title,
-        description,
-        link_id: None,
-        // TODO Should not be an option type
-        is_detachable: is_detachable.unwrap_or(true),
-    };
+    let stream_data = params.into_checked(env, deps.as_ref())?;
+    let stream: Stream = stream_data.into();
 
     let id = STREAM_SEQ.load(deps.storage)?;
     let id = id + 1;
@@ -241,10 +203,10 @@ pub fn execute_create_stream(
     Ok(Response::new()
         .add_attribute("method", "create_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("owner", owner)
-        .add_attribute("recipient", recipient)
-        .add_attribute("start_time", start_time.to_string())
-        .add_attribute("end_time", end_time.to_string()))
+        .add_attribute("owner", stream.owner.to_string())
+        .add_attribute("recipient", stream.recipient)
+        .add_attribute("start_time", stream.start_time.to_string())
+        .add_attribute("end_time", stream.end_time.to_string()))
 }
 
 pub fn execute_receive(
@@ -253,31 +215,30 @@ pub fn execute_receive(
     info: MessageInfo,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    deps.api.addr_validate(&info.sender.clone().into_string())?;
     let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
-    let checked_denom =
-        UncheckedDenom::Cw20(info.sender.to_string()).into_checked(deps.as_ref())?;
-
     // TODO should support all stream params
     match msg {
         ReceiveMsg::CreateStream {
             owner,
+            recipient,
+            balance,
             start_time,
             end_time,
-            recipient,
+            title,
+            description,
             is_detachable,
         } => execute_create_stream(
             env,
             deps,
-            StreamParams {
-                owner: owner.unwrap_or_else(|| receive_msg.sender.clone()),
+            UncheckedStreamData {
+                owner,
                 recipient,
-                balance: receive_msg.amount,
-                denom: checked_denom,
+                balance: balance.unwrap_or_else(|| receive_msg.amount),
+                denom: UncheckedDenom::Cw20(info.sender.to_string()),
                 start_time,
                 end_time,
-                title: None,
-                description: None,
+                title,
+                description,
                 is_detachable,
             },
         ),

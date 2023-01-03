@@ -92,11 +92,14 @@ fn test_execute_distribute() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -240,11 +243,14 @@ fn test_execute_pause_stream() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -299,11 +305,14 @@ fn test_invalid_start_time() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -404,11 +413,14 @@ fn test_execute_remove_stream() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(alice.to_string()),
+            owner: alice.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: false,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -450,11 +462,14 @@ fn test_execute_link_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient: recipient.clone(),
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: false,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -498,11 +513,14 @@ fn test_execute_link_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -542,11 +560,14 @@ fn test_execute_link_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient: recipient.clone(),
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -558,11 +579,14 @@ fn test_execute_link_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -599,11 +623,14 @@ fn test_execute_detach_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
-            recipient: recipient.clone(),
+            owner: info.sender.to_string(),
+            recipient:recipient.clone(),
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -615,11 +642,14 @@ fn test_execute_detach_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: None,
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -674,11 +704,14 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
-            recipient: recipient.clone(),
+            owner: info.sender.to_string(),
+            recipient:recipient.clone(),
             start_time,
             end_time,
-            is_detachable: Some(false),
+            is_detachable: false,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -690,11 +723,14 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
-            recipient: recipient.clone(),
+            owner: info.sender.to_string(),
+            recipient:recipient.clone(),
             start_time,
             end_time,
-            is_detachable: Some(false),
+            is_detachable: false,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -773,11 +809,14 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
-            recipient: recipient.clone(),
+            owner: info.sender.to_string(),
+            recipient:recipient.clone(),
             start_time,
             end_time,
-            is_detachable: Some(true),
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -789,11 +828,14 @@ fn test_execute_detach_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: Some(true),
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -840,11 +882,14 @@ fn test_execute_resume_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
-            recipient: recipient.clone(),
+            owner: info.sender.to_string(),
+            recipient:recipient.clone(),
             start_time,
             end_time,
-            is_detachable: Some(true),
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -856,11 +901,14 @@ fn test_execute_resume_stream_valid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient,
             start_time,
             end_time,
-            is_detachable: Some(true),
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -936,11 +984,14 @@ fn test_execute_resume_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
+            owner: info.sender.to_string(),
             recipient: recipient.clone(),
             start_time,
             end_time,
-            is_detachable: Some(true),
+            is_detachable: true,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };
@@ -952,11 +1003,14 @@ fn test_execute_resume_stream_invalid() {
         contract: cw_payroll_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::CreateStream {
-            owner: Some(info.sender.to_string()),
-            recipient: recipient.clone(),
+            owner: info.sender.to_string(),
+            recipient:recipient.clone(),
             start_time,
             end_time,
-            is_detachable: Some(false),
+            is_detachable: false,
+            balance: None,
+            title: None,
+            description: None,
         })
         .unwrap(),
     };

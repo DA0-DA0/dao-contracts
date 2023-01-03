@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw_denom::CheckedDenom;
+use cw_denom::{CheckedDenom, UncheckedDenom};
 
 use crate::state::{StreamId, StreamIds};
 
@@ -15,7 +15,7 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     // TODO be able to create steam with native token
     Create {
-        params: StreamParams,
+        params: UncheckedStreamData,
     },
     Distribute {
         id: StreamId, // Stream id
@@ -40,29 +40,40 @@ pub enum ExecuteMsg {
 // Receiver setup
 #[cw_serde]
 pub enum ReceiveMsg {
-    // TODO support all StreamParams or delete them
     CreateStream {
-        owner: Option<String>,
+        owner: String,
         recipient: String,
+        balance: Option<Uint128>,
         start_time: u64,
         end_time: u64,
-        // TODO just make this a bool
-        is_detachable: Option<bool>,
+        title: Option<String>,
+        description: Option<String>,
+        is_detachable: bool,
     },
 }
-
 #[cw_serde]
-pub struct StreamParams {
+pub struct UncheckedStreamData {
     pub owner: String,
     pub recipient: String,
+    pub balance: Uint128,
+    pub denom: UncheckedDenom,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub is_detachable: bool,
+}
+#[cw_serde]
+pub struct CheckedStreamData {
+    pub owner: Addr,
+    pub recipient: Addr,
     pub balance: Uint128,
     pub denom: CheckedDenom,
     pub start_time: u64,
     pub end_time: u64,
     pub title: Option<String>,
     pub description: Option<String>,
-    // TODO just make this a bool
-    pub is_detachable: Option<bool>,
+    pub is_detachable: bool,
 }
 
 #[cw_serde]

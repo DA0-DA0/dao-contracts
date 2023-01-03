@@ -1,9 +1,12 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Response, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Deps, Env, Response, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
-use crate::ContractError;
+use crate::{
+    msg::{CheckedStreamData, UncheckedStreamData},
+    ContractError,
+};
 use cw_denom::CheckedDenom;
 
 #[cw_serde]
@@ -37,6 +40,27 @@ pub struct Stream {
     /// A linked stream that detaches in the future will pause both streams.
     /// Each stream must then resume on their own, or be fully removed to re-link.
     pub is_detachable: bool,
+}
+impl From<CheckedStreamData> for Stream {
+    fn from(data: CheckedStreamData) -> Stream {
+        Stream {
+            owner: data.owner,
+            recipient: data.recipient,
+            balance: data.balance,
+            claimed_balance: Uint128::zero(),
+            denom: data.denom,
+            start_time: data.start_time,
+            end_time: data.end_time,
+            paused_time: None,
+            paused_duration: None,
+            paused: false,
+            title: data.title,
+            description: data.description,
+            link_id: None,
+            // TODO Should not be an option type
+            is_detachable: data.is_detachable,
+        }
+    }
 }
 
 impl Stream {
@@ -127,3 +151,33 @@ impl StreamIdsExtensions for StreamIds {
 
 pub const STREAM_SEQ: Item<u64> = Item::new("stream_seq");
 pub const STREAMS: Map<StreamId, Stream> = Map::new("stream");
+
+impl UncheckedStreamData {
+    pub fn into_checked(self, env: Env, deps: Deps) -> Result<CheckedStreamData, ContractError> {
+        let owner = deps.api.addr_validate(&self.owner)?;
+        let recipient = deps.api.addr_validate(&self.recipient)?;
+
+        if self.start_time >= self.end_time {
+            return Err(ContractError::InvalidStartTime {});
+        }
+
+        let block_time = env.block.time.seconds();
+
+        if self.end_time <= block_time {
+            return Err(ContractError::InvalidEndTime {});
+        }
+
+        Ok(CheckedStreamData {
+            owner,
+            recipient,
+            balance: self.balance,
+            denom: self.denom.into_checked(deps)?,
+            start_time: self.start_time,
+            end_time: self.end_time,
+            title: self.title,
+            description: self.description,
+            is_detachable: self.is_detachable,
+        })
+    }
+}
+
