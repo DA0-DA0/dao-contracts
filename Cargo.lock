@@ -675,6 +675,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test",
+ "cw-ownable",
  "cw-paginate 2.0.0-beta",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
@@ -684,6 +685,7 @@ dependencies = [
  "dao-testing",
  "serde",
  "thiserror",
+ "wynd-utils",
 ]
 
 [[package]]
@@ -3817,6 +3819,18 @@ name = "windows_x86_64_msvc"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
+
+[[package]]
+name = "wynd-utils"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "daa37b3fba808df599acc6f0d7523b465baf47a0b0361867c4f1635eb53f72aa"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+ "thiserror",
+]
 
 [[package]]
 name = "yaml-rust"

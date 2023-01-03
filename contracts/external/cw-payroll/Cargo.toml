@@ -17,6 +17,7 @@ library = []
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-denom = { workspace = true }
+cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw-paginate = { workspace = true }
 cw-utils = { workspace = true }
@@ -24,6 +25,7 @@ cw2 = { workspace = true }
 cw20 = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
+wynd-utils = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
