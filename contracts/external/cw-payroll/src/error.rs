@@ -22,35 +22,20 @@ pub enum ContractError {
     #[error("{0}")]
     PaymentError(#[from] PaymentError),
 
-    #[error("Not authorized to perform action")]
-    Unauthorized {},
+    #[error("Amount sent does not match vesting amount")]
+    AmountDoesNotMatch,
+
+    #[error("Cw20 contract does not match vesting denom")]
+    Cw20DoesNotMatch,
 
     #[error("Fully vested")]
-    FullyVested {},
+    FullyVested,
 
-    #[error("The start time is invalid. Start time must be before the end time and after the current block time")]
-    InvalidStartTime {},
-
-    #[error("The end time is invalid. End time must be before current block time")]
-    InvalidEndTime {},
-
-    #[error("No tokens have vested for this stream")]
+    #[error("No tokens have vested for this vesting payment")]
     NoFundsToClaim { claimed: Uint128 },
 
     #[error("Vesting Payment does not exist")]
     VestingPaymentNotFound { vesting_payment_id: u64 },
-
-    #[error("VestingcPayment recipient cannot be the stream owner")]
-    InvalidRecipient {},
-
-    #[error("Can not pause paused stream")]
-    AlreadyPaused {},
-
-    #[error("Vesting Payment is not paused for resume")]
-    NotPaused {},
-
-    #[error("Could not create bank transfer message")]
-    CouldNotCreateBankMessage {},
 
     #[error("The transfer will never become fully vested. Must hit 0 eventually")]
     NeverFullyVested,

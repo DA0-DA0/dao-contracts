@@ -11,7 +11,10 @@ use cw_utils::must_pay;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{UncheckedVestingParams, VestingPayment, VESTING_PAYMENTS, VESTING_PAYMENT_SEQ};
+use crate::state::{
+    UncheckedVestingParams, VestingPayment, VestingPaymentStatus, VESTING_PAYMENTS,
+    VESTING_PAYMENT_SEQ,
+};
 
 const CONTRACT_NAME: &str = "crates.io:cw-payroll";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -64,13 +67,15 @@ pub fn execute_cancel_vesting_payment(
     // Check sender is contract owner
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let vesting_payment = VESTING_PAYMENTS.may_load(deps.storage, id)?.ok_or(
-        ContractError::VestingPaymentNotFound {
+    let vesting_payment = VESTING_PAYMENTS.update(deps.storage, id, |vp| match vp {
+        Some(mut vp) => {
+            vp.status = VestingPaymentStatus::Canceled;
+            Ok(vp)
+        }
+        None => Err(ContractError::VestingPaymentNotFound {
             vesting_payment_id: id,
-        },
-    )?;
-
-    VESTING_PAYMENTS.remove(deps.storage, id);
+        }),
+    })?;
 
     // Transfer any remaining amount to the owner
     let transfer_to_contract_owner_msg = vesting_payment
@@ -96,8 +101,7 @@ pub fn execute_create_vesting_payment_native(
 
     // Check amount sent matches amount in vesting payment
     if checked_params.amount != must_pay(&info, &checked_params.denom.to_string())? {
-        // TODO better error message
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::AmountDoesNotMatch);
     }
 
     // Create a new vesting payment
@@ -124,14 +128,12 @@ pub fn execute_receive_cw20(
 
             // Check amount sent matches amount in vesting payment
             if checked_params.amount != receive_msg.amount {
-                // TODO better error message
-                return Err(ContractError::Unauthorized {});
+                return Err(ContractError::AmountDoesNotMatch);
             }
 
             // Check that the Cw20 specified in the denom *must be* matches sender
             if info.sender.to_string() != checked_params.denom.to_string() {
-                // TODO better error message
-                return Err(ContractError::Unauthorized {});
+                return Err(ContractError::Cw20DoesNotMatch);
             }
 
             // Create a new vesting payment
@@ -166,18 +168,21 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
     // this occurs when there is a curve defined, but it is now at 0 (eg. fully vested)
     // in this case, we can safely delete it (as it will remain 0 forever)
     if vesting_funds == Uint128::zero() {
-        // Contract is fully vested.
-        // TODO maybe update vesting payment status?
-        return Err(ContractError::FullyVested {});
+        // Contract is fully vested, no funds remain
+        return Err(ContractError::FullyVested);
     }
 
     // Update Vesting Payment with claimed amount
     VESTING_PAYMENTS.update(deps.storage, id, |v| -> Result<_, ContractError> {
         match v {
             Some(mut v) => {
-                // TODO if this becomes zero, update status to fully vested
+                // Update amounts
                 v.amount -= vested_amount;
                 v.claimed_amount += vested_amount;
+                // If the amount remaining in contract goes to zero, update status
+                if v.amount == Uint128::zero() {
+                    v.status = VestingPaymentStatus::FullyVested
+                }
                 Ok(v)
             }
             None => Err(ContractError::VestingPaymentNotFound {

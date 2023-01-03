@@ -71,7 +71,6 @@ pub enum VestingPaymentStatus {
     Active,
     Canceled,
     FullyVested,
-    Paused,
 }
 
 #[cw_serde]
