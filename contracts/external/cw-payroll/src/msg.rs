@@ -3,13 +3,19 @@ use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use cw_denom::CheckedDenom;
 use wynd_utils::Curve;
+// so that consumers don't need a cw_ownable dependency to consume
+// this contract's queries.
+pub use cw_ownable::Ownership;
+
+use cw_ownable::cw_ownable;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub admin: Option<String>,
+    pub owner: Option<String>,
     pub create_new_vesting_schedule_params: Option<VestingParams>,
 }
 
+#[cw_ownable]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Receive a cw20
@@ -56,43 +62,13 @@ pub struct VestingParams {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(ConfigResponse)]
-    Config {},
-    #[returns(VestingPaymentResponse)]
+    #[returns(crate::state::VestingPayment)]
     GetVestingPayment { id: u64 },
-    #[returns(ListVestingPaymentsResponse)]
+    #[returns(Vec<crate::state::VestingPayment>)]
     ListVestingPayments {
-        start: Option<u8>,
-        limit: Option<u8>,
+        start_after: Option<u64>,
+        limit: Option<u32>,
     },
-}
-
-#[cw_serde]
-pub struct ConfigResponse {
-    pub admin: String,
-}
-
-#[cw_serde]
-pub struct VestingPaymentResponse {
-    pub id: u64,
-    pub recipient: String,
-    pub amount: Uint128,
-    pub claimed_amount: Uint128,
-    pub denom: CheckedDenom,
-    pub vesting_schedule: Curve,
-    // pub start_time: u64,
-    // pub end_time: u64,
-    // pub paused_time: Option<u64>,
-    // pub paused_duration: Option<u64>,
-    /// Whether the payroll vesting_payment is currently paused
-    pub paused: bool,
-    /// Human readable title for this contract
-    pub title: Option<String>,
-    /// Human readable description for this payroll contract
-    pub description: Option<String>,
-}
-
-#[cw_serde]
-pub struct ListVestingPaymentsResponse {
-    pub vesting_payments: Vec<VestingPaymentResponse>,
+    #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
+    Ownership {},
 }

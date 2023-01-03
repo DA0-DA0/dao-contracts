@@ -1,5 +1,6 @@
-use cosmwasm_std::{Addr, StdError, Uint128};
+use cosmwasm_std::{StdError, Uint128};
 use cw_denom::DenomError;
+use cw_ownable::OwnershipError;
 use thiserror::Error;
 use wynd_utils::CurveError;
 
@@ -13,6 +14,9 @@ pub enum ContractError {
 
     #[error(transparent)]
     Denom(#[from] DenomError),
+
+    #[error(transparent)]
+    Ownable(#[from] OwnershipError),
 
     #[error("Not authorized to perform action")]
     Unauthorized {},

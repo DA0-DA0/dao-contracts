@@ -9,12 +9,6 @@ use cw_denom::CheckedDenom;
 use wynd_utils::Curve;
 
 #[cw_serde]
-pub struct Config {
-    pub admin: Addr,
-}
-pub const CONFIG: Item<Config> = Item::new("config");
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct VestingPayment {
     pub recipient: Addr,
     /// Vesting amount in Native and Cw20 tokens

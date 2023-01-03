@@ -2,20 +2,16 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
-    StdResult, Storage, Uint128,
+    StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
-use cw_storage_plus::Bound;
-use serde::de::Error;
+use cw_paginate::paginate_map_values;
 
 use crate::error::ContractError;
-use crate::msg::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, ListVestingPaymentsResponse, QueryMsg, ReceiveMsg,
-    VestingParams, VestingPaymentResponse,
-};
-use crate::state::{Config, VestingPayment, CONFIG, VESTING_PAYMENTS, VESTING_PAYMENT_SEQ};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, VestingParams};
+use crate::state::{VestingPayment, VESTING_PAYMENTS, VESTING_PAYMENT_SEQ};
 
 const CONTRACT_NAME: &str = "crates.io:cw-payroll";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -29,15 +25,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let admin = match msg.admin {
-        Some(ad) => deps.api.addr_validate(&ad)?,
-        None => info.sender,
-    };
-
-    let config = Config {
-        admin: admin.clone(),
-    };
-    CONFIG.save(deps.storage, &config)?;
+    cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
     VESTING_PAYMENT_SEQ.save(deps.storage, &0u64)?;
 
@@ -49,7 +37,7 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("admin", admin))
+        .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string())))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -73,6 +61,7 @@ pub fn execute(
         ExecuteMsg::Redelgate {} => unimplemented!(),
         ExecuteMsg::Undelegate {} => unimplemented!(),
         ExecuteMsg::WithdrawRewards {} => unimplemented!(),
+        ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
     }
 }
 
@@ -293,75 +282,27 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
         .add_message(transfer_msg))
 }
 
+pub fn execute_update_owner(
+    deps: DepsMut,
+    info: MessageInfo,
+    env: Env,
+    action: cw_ownable::Action,
+) -> Result<Response, ContractError> {
+    let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
+    Ok(Response::default().add_attributes(ownership.into_attributes()))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::GetVestingPayment { id } => to_binary(&query_vesting_payment(deps, id)?),
-        QueryMsg::ListVestingPayments { start, limit } => {
-            to_binary(&query_list_vesting_payments(deps, start, limit)?)
-        }
+        QueryMsg::GetVestingPayment { id } => to_binary(&VESTING_PAYMENTS.load(deps.storage, id)?),
+        QueryMsg::ListVestingPayments { start_after, limit } => to_binary(&paginate_map_values(
+            deps,
+            &VESTING_PAYMENTS,
+            start_after,
+            limit,
+            Order::Descending,
+        )?),
+        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
     }
-}
-
-fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse {
-        admin: config.admin.into(),
-    })
-}
-
-fn query_vesting_payment(deps: Deps, id: u64) -> StdResult<VestingPaymentResponse> {
-    let vesting_payment = VESTING_PAYMENTS.load(deps.storage, id)?;
-    Ok(VestingPaymentResponse {
-        id,
-        recipient: vesting_payment.recipient.into(),
-        amount: vesting_payment.amount,
-        claimed_amount: vesting_payment.claimed_amount,
-        denom: vesting_payment.denom,
-        vesting_schedule: vesting_payment.vesting_schedule,
-        // start_time: vesting_payment.start_time,
-        // end_time: vesting_payment.end_time,
-        title: vesting_payment.title,
-        description: vesting_payment.description,
-        // paused_time: vesting_payment.paused_time,
-        // paused_duration: vesting_payment.paused_duration,
-        paused: vesting_payment.paused,
-    })
-}
-
-fn query_list_vesting_payments(
-    deps: Deps,
-    start: Option<u8>,
-    limit: Option<u8>,
-) -> StdResult<ListVestingPaymentsResponse> {
-    let start = start.map(Bound::inclusive);
-    let limit = limit.unwrap_or(5);
-
-    let vesting_payments = VESTING_PAYMENTS
-        .range(deps.storage, start, None, Order::Ascending)
-        .take(limit.into())
-        .map(map_vesting_payment)
-        .collect::<StdResult<Vec<_>>>()?;
-    Ok(ListVestingPaymentsResponse { vesting_payments })
-}
-
-fn map_vesting_payment(
-    item: StdResult<(u64, VestingPayment)>,
-) -> StdResult<VestingPaymentResponse> {
-    item.map(|(id, vesting_payment)| VestingPaymentResponse {
-        id,
-        recipient: vesting_payment.recipient.to_string(),
-        amount: vesting_payment.amount,
-        claimed_amount: vesting_payment.claimed_amount,
-        denom: vesting_payment.denom,
-        vesting_schedule: vesting_payment.vesting_schedule,
-        // start_time: vesting_payment.start_time,
-        // end_time: vesting_payment.end_time,
-        title: vesting_payment.title,
-        description: vesting_payment.description,
-        // paused_time: vesting_payment.paused_time,
-        // paused_duration: vesting_payment.paused_duration,
-        paused: vesting_payment.paused,
-    })
 }

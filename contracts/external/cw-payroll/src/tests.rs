@@ -30,7 +30,7 @@ fn get_stream(app: &App, cw_payroll_addr: Addr, id: u64) -> VestingPayment {
         .unwrap()
 }
 
-fn setup_app_and_instantiate_contracts(admin: Option<String>) -> (App, Addr, Addr) {
+fn setup_app_and_instantiate_contracts(owner: Option<String>) -> (App, Addr, Addr) {
     let mut app = App::default();
 
     let cw20_code_id = app.store_code(cw20_base_contract());
@@ -79,7 +79,7 @@ fn setup_app_and_instantiate_contracts(admin: Option<String>) -> (App, Addr, Add
             cw_payroll_code_id,
             Addr::unchecked("ekez"),
             &InstantiateMsg {
-                admin,
+                owner,
                 create_new_vesting_schedule_params: None,
             },
             &[],
