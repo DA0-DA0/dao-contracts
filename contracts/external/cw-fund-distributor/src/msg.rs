@@ -5,6 +5,8 @@ use cosmwasm_std::{Addr, Uint128};
 pub struct InstantiateMsg {
     // To determine voting power
     pub voting_contract: String,
+    // period after which the funds can be claimed
+    pub funding_period: u64,
 }
 
 #[cw_serde]

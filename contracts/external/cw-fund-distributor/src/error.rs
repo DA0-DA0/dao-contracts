@@ -14,4 +14,10 @@ pub enum ContractError {
 
     #[error("Zero funds")]
     ZeroFunds {},
+
+    #[error("Cannot claim funds during the funding period")]
+    ClaimDuringFundingPeriod {},
+
+    #[error("Cannot fund the contract during the claim period")]
+    FundDuringClaimingPeriod {},
 }

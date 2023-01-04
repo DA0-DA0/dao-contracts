@@ -7,7 +7,7 @@ use cw20_stake::msg::ListStakersResponse;
 
 use crate::error::ContractError;
 use crate::msg::{CW20EntitlementResponse, CW20Response, DenomResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, NativeEntitlementResponse, QueryMsg, TotalPowerResponse, VotingContractResponse};
-use crate::state::{ADDR_RELATIVE_SHARE, CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT};
+use crate::state::{ADDR_RELATIVE_SHARE, CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT, FUNDING_PERIOD_END_HEIGHT};
 
 use dao_interface::voting;
 
@@ -23,8 +23,14 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // store the height
+    // store the height and funding period
     DISTRIBUTION_HEIGHT.save(deps.storage, &env.block.height)?;
+
+    let funding_final_height = msg.funding_period
+        .checked_add(env.block.height)
+        .unwrap();
+
+    FUNDING_PERIOD_END_HEIGHT.save(deps.storage, &funding_final_height)?;
 
     // validate the contract and save it
     let voting_contract = deps.api.addr_validate(&msg.voting_contract)?;
@@ -83,7 +89,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
@@ -92,27 +98,37 @@ pub fn execute(
             sender: _,
             amount,
             msg: _,
-        }) => execute_fund_cw20(deps, info.sender, amount),
-        ExecuteMsg::FundNative {} => execute_fund_native(deps, info),
+        }) => execute_fund_cw20(deps, env, info.sender, amount),
+        ExecuteMsg::FundNative {} => execute_fund_native(deps, env, info),
         ExecuteMsg::ClaimCW20 { tokens } => execute_claim_cw20s(
             deps,
+            env,
             info.sender,
             tokens,
         ),
         ExecuteMsg::ClaimNatives { denoms } => execute_claim_natives(
             deps,
+            env,
             info.sender,
             denoms,
         ),
-        ExecuteMsg::ClaimAll {} => execute_claim_all(deps, info.sender),
+        ExecuteMsg::ClaimAll {} => execute_claim_all(deps, env, info.sender),
     }
 }
 
 pub fn execute_fund_cw20(
     deps: DepsMut,
+    env: Env,
     token: Addr,
     amount: Uint128
 ) -> Result<Response, ContractError> {
+    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
+
+    // if current block indicates claiming period, throw
+    if env.block.height.gt(&funding_deadline) {
+        return Err(ContractError::FundDuringClaimingPeriod {});
+    }
+
     if amount.is_zero() {
         return Err(ContractError::ZeroFunds {});
     }
@@ -138,7 +154,17 @@ pub fn execute_fund_cw20(
     )
 }
 
-pub fn execute_fund_native(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn execute_fund_native(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
+    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
+    // if current block indicates claiming period, throw
+    if env.block.height.gt(&funding_deadline) {
+        return Err(ContractError::FundDuringClaimingPeriod {});
+    }
+
     let mut response = Response::default()
         .add_attribute("method", "fund_native");
 
@@ -179,9 +205,16 @@ fn get_entitlement(
 
 pub fn execute_claim_cw20s(
     deps: DepsMut,
+    env: Env,
     sender: Addr,
     token: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
+    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
+    // if current block indicates funding period, throw
+    if env.block.height.le(&funding_deadline) {
+        return Err(ContractError::ClaimDuringFundingPeriod {});
+    }
+
     let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
 
     let mut response = Response::default();
@@ -239,9 +272,16 @@ pub fn execute_claim_cw20s(
 
 pub fn execute_claim_natives(
     deps: DepsMut,
+    env: Env,
     sender: Addr,
     denoms: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
+    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
+    // if current block indicates funding period, throw
+    if env.block.height.le(&funding_deadline) {
+        return Err(ContractError::ClaimDuringFundingPeriod {});
+    }
+
     let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
 
     let mut response = Response::default();
@@ -298,7 +338,17 @@ pub fn execute_claim_natives(
     )
 }
 
-pub fn execute_claim_all(deps: DepsMut, sender: Addr) -> Result<Response, ContractError> {
+pub fn execute_claim_all(
+    deps: DepsMut,
+    env: Env,
+    sender: Addr,
+) -> Result<Response, ContractError> {
+    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
+    // if current block indicates funding period, throw
+    if env.block.height.le(&funding_deadline) {
+        return Err(ContractError::ClaimDuringFundingPeriod {});
+    }
+
     let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
 
     let cw20s: Vec<(Addr, Uint128)> = CW20_BALANCES.range(

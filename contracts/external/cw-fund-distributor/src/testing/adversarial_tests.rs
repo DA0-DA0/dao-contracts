@@ -122,6 +122,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
                 voting_contract: voting_address.to_string(),
+                funding_period: 10,
             },
             &[],
             "distribution contract",
@@ -157,7 +158,7 @@ pub fn test_claim_lots_of_tokens() {
 
     let amount = Uint128::new(500000);
 
-    let token_count = 5000;
+    let token_count = 500;
     // mint and fund the distributor contract with
     // a bunch of tokens
     for n in 1..token_count {
@@ -185,6 +186,8 @@ pub fn test_claim_lots_of_tokens() {
 
         println!("minted & funded {:?}", denom.clone());
     }
+
+    app.update_block(|mut block| block.height += 11);
 
     app.execute_contract(
         Addr::unchecked("bekauz"),

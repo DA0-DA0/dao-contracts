@@ -3,6 +3,8 @@ use cw_storage_plus::{Item, Map};
 
 // block height for distribution snapshot
 pub const DISTRIBUTION_HEIGHT: Item<u64> = Item::new("distribution_height");
+// period during which the contract can be funded
+pub const FUNDING_PERIOD_END_HEIGHT: Item<u64> = Item::new("funding_period");
 // voting contract to determine the voting power
 pub const VOTING_CONTRACT: Item<Addr> = Item::new("voting_contract");
 // total voting power at the distribution height
