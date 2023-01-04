@@ -106,7 +106,9 @@ pub fn execute_pause_stream(
         .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
         .add_attribute(
             "link_id",
-            stream.link_id.map_or(String::from("not linked"), |n| n.to_string()),
+            stream
+                .link_id
+                .map_or(String::from("not linked"), |n| n.to_string()),
         ))
 }
 
