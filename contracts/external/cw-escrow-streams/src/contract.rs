@@ -59,7 +59,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
         // TODO should be able to create and fund with a native token
-        ExecuteMsg::Create { .. } => unimplemented!(),
+        ExecuteMsg::Create { params } => execute_create(env, deps, info, params),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream { id } => execute_resume_stream(env, deps, info, id),
@@ -68,7 +68,20 @@ pub fn execute(
         ExecuteMsg::DetachStream { id } => execute_detach_stream(env, deps, &info, id),
     }
 }
-
+pub fn execute_create(
+    env: Env,
+    deps: DepsMut,
+    info: MessageInfo,
+    params: UncheckedStreamData,
+) -> Result<Response, ContractError> {
+    if let Some(coin) = info.funds.first() {
+        let mut data = params;
+        data.balance = coin.amount;
+        data.denom = UncheckedDenom::Native(coin.denom.clone());
+        return execute_create_stream(env, deps, data);
+    }
+    Err(ContractError::NoFundsAttached {})
+}
 pub fn execute_pause_stream(
     env: Env,
     deps: DepsMut,
@@ -218,7 +231,6 @@ pub fn execute_receive(
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
     let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
-    // TODO should support all stream params
     match msg {
         ReceiveMsg::CreateStream {
             owner,

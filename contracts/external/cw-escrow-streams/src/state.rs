@@ -1,7 +1,7 @@
 use std::ops::Div;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Deps, Env, Response, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, Deps, Env, Response, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +9,7 @@ use crate::{
     msg::{CheckedStreamData, UncheckedStreamData},
     ContractError,
 };
-use cw_denom::CheckedDenom;
+use cw_denom::{CheckedDenom, UncheckedDenom};
 
 #[cw_serde]
 pub struct Config {
@@ -177,3 +177,4 @@ impl UncheckedStreamData {
         })
     }
 }
+

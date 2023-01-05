@@ -30,6 +30,9 @@ pub enum ContractError {
     #[error("No tokens have vested for this stream")]
     NoFundsToClaim { claimed: Uint128 },
 
+    #[error("No funds attached")]
+    NoFundsAttached {},
+
     #[error("Stream does not exist")]
     StreamNotFound { stream_id: StreamId },
 
