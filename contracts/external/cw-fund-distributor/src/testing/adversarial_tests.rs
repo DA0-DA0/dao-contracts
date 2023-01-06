@@ -1,5 +1,5 @@
-use cosmwasm_std::{Addr, Coin, Empty, to_binary, Uint128};
-use cw20::Cw20Coin;
+use cosmwasm_std::{Addr, Binary, Coin, Empty, to_binary, Uint128};
+use cw20::{BalanceResponse, Cw20Coin};
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, next_block, SudoMsg};
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::msg::ExecuteMsg::ClaimAll;
@@ -139,7 +139,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
 }
 
 #[test]
-pub fn test_claim_lots_of_tokens() {
+pub fn test_claim_lots_of_native_tokens() {
     let BaseTest {
         mut app,
         distributor_address,
@@ -212,4 +212,118 @@ pub fn test_claim_lots_of_tokens() {
             .unwrap();
         assert_eq!(expected_balance, user_balance_after_claim.amount);
     }
+}
+
+#[test]
+pub fn test_claim_lots_of_cw20s() {
+    let BaseTest {
+        mut app,
+        distributor_address,
+        staking_address: _,
+        token_address: _,
+    } = setup_test(vec![
+        Cw20Coin {
+            address: "bekauz".to_string(),
+            amount: Uint128::new(10),
+        },
+        Cw20Coin {
+            address: "ekez".to_string(),
+            amount: Uint128::new(20),
+        }
+    ]);
+
+    let amount = Uint128::new(500000);
+
+    // mint and fund (spam) the distributor contract with
+    // a bunch of tokens
+    let cw20_addresses: Vec<Addr> = (1..1000)
+        .into_iter()
+        .map(|n| {
+            let name = FEE_DENOM.to_owned() + &n.to_string();
+            // mint a new coin
+            let cw20_addr = instantiate_cw20(
+                &mut app,
+                Addr::unchecked(CREATOR_ADDR),
+                vec![Cw20Coin {
+                    address: CREATOR_ADDR.to_string(),
+                    amount,
+                }],
+                name,
+                "shitcoin".to_string(),
+            );
+            // fund the distributor
+            app.execute_contract(
+                Addr::unchecked(CREATOR_ADDR),
+                cw20_addr.clone(),
+                &cw20::Cw20ExecuteMsg::Send {
+                    contract: distributor_address.to_string(),
+                    amount,
+                    msg: Binary::default(),
+                },
+                &[],
+            )
+            .unwrap();
+            cw20_addr
+        })
+        .collect();
+
+    app.update_block(|mut block| block.height += 11);
+
+    app.execute_contract(
+        Addr::unchecked("bekauz"),
+        distributor_address.clone(),
+        &ClaimAll {},
+        &[],
+    )
+    .unwrap();
+
+    let expected_balance = amount
+        .checked_multiply_ratio(
+            Uint128::new(10),
+            Uint128::new(30)
+        )
+        .unwrap();
+
+    cw20_addresses.into_iter()
+        .for_each(|addr| {
+            let user_balance_after_claim: BalanceResponse = app
+                .wrap()
+                .query_wasm_smart(
+                    addr,
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: "bekauz".to_string(),
+                    },
+                )
+                .unwrap();
+            assert_eq!(expected_balance, user_balance_after_claim.balance);
+        });
+
+}
+
+fn instantiate_cw20(
+    app: &mut App,
+    sender: Addr,
+    initial_balances: Vec<Cw20Coin>,
+    name: String,
+    symbol: String
+) -> Addr {
+    let cw20_id = app.store_code(cw20_contract());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name,
+        symbol,
+        decimals: 6,
+        initial_balances,
+        mint: None,
+        marketing: None,
+    };
+
+    app.instantiate_contract(
+        cw20_id,
+        sender,
+        &msg,
+        &[],
+        "cw20",
+        None
+    )
+    .unwrap()
 }
