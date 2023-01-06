@@ -6,22 +6,22 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, Binary, CheckedDenom, Addr, Cw20ReceiveMsg, StreamParams, QueryMsg, ConfigResponse, StreamResponse, ListStreamsResponse } from "./CwPayroll.types";
+import { InstantiateMsg, ExecuteMsg, Uint128, Binary, UncheckedDenom, Curve, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, CheckedDenom, Addr, Decimal, VestingPaymentStatus, VestingPayment, VestingPaymentRewards, ArrayOfVestingPayment, OwnershipForAddr } from "./CwPayroll.types";
 export interface CwPayrollReadOnlyInterface {
   contractAddress: string;
-  config: () => Promise<ConfigResponse>;
-  getStream: ({
+  getVestingPayment: ({
     id
   }: {
     id: number;
-  }) => Promise<StreamResponse>;
-  listStreams: ({
+  }) => Promise<VestingPayment>;
+  listVestingPayments: ({
     limit,
-    start
+    startAfter
   }: {
     limit?: number;
-    start?: number;
-  }) => Promise<ListStreamsResponse>;
+    startAfter?: number;
+  }) => Promise<ArrayOfVestingPayment>;
+  ownership: () => Promise<OwnershipForAddr>;
 }
 export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
   client: CosmWasmClient;
@@ -30,39 +30,39 @@ export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
-    this.config = this.config.bind(this);
-    this.getStream = this.getStream.bind(this);
-    this.listStreams = this.listStreams.bind(this);
+    this.getVestingPayment = this.getVestingPayment.bind(this);
+    this.listVestingPayments = this.listVestingPayments.bind(this);
+    this.ownership = this.ownership.bind(this);
   }
 
-  config = async (): Promise<ConfigResponse> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      config: {}
-    });
-  };
-  getStream = async ({
+  getVestingPayment = async ({
     id
   }: {
     id: number;
-  }): Promise<StreamResponse> => {
+  }): Promise<VestingPayment> => {
     return this.client.queryContractSmart(this.contractAddress, {
-      get_stream: {
+      get_vesting_payment: {
         id
       }
     });
   };
-  listStreams = async ({
+  listVestingPayments = async ({
     limit,
-    start
+    startAfter
   }: {
     limit?: number;
-    start?: number;
-  }): Promise<ListStreamsResponse> => {
+    startAfter?: number;
+  }): Promise<ArrayOfVestingPayment> => {
     return this.client.queryContractSmart(this.contractAddress, {
-      list_streams: {
+      list_vesting_payments: {
         limit,
-        start
+        start_after: startAfter
       }
+    });
+  };
+  ownership = async (): Promise<OwnershipForAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      ownership: {}
     });
   };
 }
@@ -79,33 +79,21 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   create: ({
-    balance,
+    amount,
     denom,
     description,
-    endTime,
     recipient,
-    startTime,
-    title
+    title,
+    vestingSchedule
   }: {
-    balance: Uint128;
-    denom: CheckedDenom;
+    amount: Uint128;
+    denom: UncheckedDenom;
     description?: string;
-    endTime: number;
     recipient: string;
-    startTime: number;
     title?: string;
+    vestingSchedule: Curve;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   distribute: ({
-    id
-  }: {
-    id: number;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  pause: ({
-    id
-  }: {
-    id: number;
-  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  resume: ({
     id
   }: {
     id: number;
@@ -115,10 +103,30 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
   }: {
     id: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  delegate: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  undelegate: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  redelgate: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  withdrawRewards: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  delegate: ({
+    amount,
+    validator,
+    vestingPaymentId
+  }: {
+    amount: Uint128;
+    validator: string;
+    vestingPaymentId: number;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  undelegate: ({
+    amount,
+    validator,
+    vestingPaymentId
+  }: {
+    amount: Uint128;
+    validator: string;
+    vestingPaymentId: number;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  withdrawDelegatorReward: ({
+    validator
+  }: {
+    validator: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollInterface {
   client: SigningCosmWasmClient;
@@ -133,13 +141,11 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     this.receive = this.receive.bind(this);
     this.create = this.create.bind(this);
     this.distribute = this.distribute.bind(this);
-    this.pause = this.pause.bind(this);
-    this.resume = this.resume.bind(this);
     this.cancel = this.cancel.bind(this);
     this.delegate = this.delegate.bind(this);
     this.undelegate = this.undelegate.bind(this);
-    this.redelgate = this.redelgate.bind(this);
-    this.withdrawRewards = this.withdrawRewards.bind(this);
+    this.withdrawDelegatorReward = this.withdrawDelegatorReward.bind(this);
+    this.updateOwnership = this.updateOwnership.bind(this);
   }
 
   receive = async ({
@@ -160,31 +166,28 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     }, fee, memo, funds);
   };
   create = async ({
-    balance,
+    amount,
     denom,
     description,
-    endTime,
     recipient,
-    startTime,
-    title
+    title,
+    vestingSchedule
   }: {
-    balance: Uint128;
-    denom: CheckedDenom;
+    amount: Uint128;
+    denom: UncheckedDenom;
     description?: string;
-    endTime: number;
     recipient: string;
-    startTime: number;
     title?: string;
+    vestingSchedule: Curve;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       create: {
-        balance,
+        amount,
         denom,
         description,
-        end_time: endTime,
         recipient,
-        start_time: startTime,
-        title
+        title,
+        vesting_schedule: vestingSchedule
       }
     }, fee, memo, funds);
   };
@@ -195,28 +198,6 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       distribute: {
-        id
-      }
-    }, fee, memo, funds);
-  };
-  pause = async ({
-    id
-  }: {
-    id: number;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      pause: {
-        id
-      }
-    }, fee, memo, funds);
-  };
-  resume = async ({
-    id
-  }: {
-    id: number;
-  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      resume: {
         id
       }
     }, fee, memo, funds);
@@ -232,24 +213,54 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
       }
     }, fee, memo, funds);
   };
-  delegate = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  delegate = async ({
+    amount,
+    validator,
+    vestingPaymentId
+  }: {
+    amount: Uint128;
+    validator: string;
+    vestingPaymentId: number;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      delegate: {}
+      delegate: {
+        amount,
+        validator,
+        vesting_payment_id: vestingPaymentId
+      }
     }, fee, memo, funds);
   };
-  undelegate = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  undelegate = async ({
+    amount,
+    validator,
+    vestingPaymentId
+  }: {
+    amount: Uint128;
+    validator: string;
+    vestingPaymentId: number;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      undelegate: {}
+      undelegate: {
+        amount,
+        validator,
+        vesting_payment_id: vestingPaymentId
+      }
     }, fee, memo, funds);
   };
-  redelgate = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  withdrawDelegatorReward = async ({
+    validator
+  }: {
+    validator: string;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      redelgate: {}
+      withdraw_delegator_reward: {
+        validator
+      }
     }, fee, memo, funds);
   };
-  withdrawRewards = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  updateOwnership = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      withdraw_rewards: {}
+      update_ownership: {}
     }, fee, memo, funds);
   };
 }

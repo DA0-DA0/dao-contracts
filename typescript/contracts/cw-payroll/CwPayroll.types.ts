@@ -5,22 +5,14 @@
 */
 
 export interface InstantiateMsg {
-  admin?: string | null;
+  owner?: string | null;
 }
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
-  create: StreamParams;
+  create: UncheckedVestingParams;
 } | {
   distribute: {
-    id: number;
-  };
-} | {
-  pause: {
-    id: number;
-  };
-} | {
-  resume: {
     id: number;
   };
 } | {
@@ -28,65 +20,120 @@ export type ExecuteMsg = {
     id: number;
   };
 } | {
-  delegate: {};
+  delegate: {
+    amount: Uint128;
+    validator: string;
+    vesting_payment_id: number;
+  };
 } | {
-  undelegate: {};
+  undelegate: {
+    amount: Uint128;
+    validator: string;
+    vesting_payment_id: number;
+  };
 } | {
-  redelgate: {};
+  withdraw_delegator_reward: {
+    validator: string;
+  };
 } | {
-  withdraw_rewards: {};
+  update_ownership: Action;
 };
 export type Uint128 = string;
 export type Binary = string;
+export type UncheckedDenom = {
+  native: string;
+} | {
+  cw20: string;
+};
+export type Curve = {
+  constant: {
+    y: Uint128;
+    [k: string]: unknown;
+  };
+} | {
+  saturating_linear: SaturatingLinear;
+} | {
+  piecewise_linear: PiecewiseLinear;
+};
+export type Action = {
+  transfer_ownership: {
+    expiry?: Expiration | null;
+    new_owner: string;
+  };
+} | "accept_ownership" | "renounce_ownership";
+export type Expiration = {
+  at_height: number;
+} | {
+  at_time: Timestamp;
+} | {
+  never: {};
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
+export interface Cw20ReceiveMsg {
+  amount: Uint128;
+  msg: Binary;
+  sender: string;
+}
+export interface UncheckedVestingParams {
+  amount: Uint128;
+  denom: UncheckedDenom;
+  description?: string | null;
+  recipient: string;
+  title?: string | null;
+  vesting_schedule: Curve;
+}
+export interface SaturatingLinear {
+  max_x: number;
+  max_y: Uint128;
+  min_x: number;
+  min_y: Uint128;
+  [k: string]: unknown;
+}
+export interface PiecewiseLinear {
+  steps: [number, Uint128][];
+  [k: string]: unknown;
+}
+export type QueryMsg = {
+  get_vesting_payment: {
+    id: number;
+  };
+} | {
+  list_vesting_payments: {
+    limit?: number | null;
+    start_after?: number | null;
+  };
+} | {
+  ownership: {};
+};
 export type CheckedDenom = {
   native: string;
 } | {
   cw20: Addr;
 };
 export type Addr = string;
-export interface Cw20ReceiveMsg {
+export type Decimal = string;
+export type VestingPaymentStatus = "active" | "canceled" | "fully_vested";
+export interface VestingPayment {
   amount: Uint128;
-  msg: Binary;
-  sender: string;
-}
-export interface StreamParams {
-  balance: Uint128;
+  claimed_amount: Uint128;
   denom: CheckedDenom;
   description?: string | null;
-  end_time: number;
-  recipient: string;
-  start_time: number;
-  title?: string | null;
-}
-export type QueryMsg = {
-  config: {};
-} | {
-  get_stream: {
-    id: number;
-  };
-} | {
-  list_streams: {
-    limit?: number | null;
-    start?: number | null;
-  };
-};
-export interface ConfigResponse {
-  admin: string;
-}
-export interface StreamResponse {
-  balance: Uint128;
-  claimed_balance: Uint128;
-  denom: CheckedDenom;
-  description?: string | null;
-  end_time: number;
   id: number;
-  paused: boolean;
-  paused_duration?: number | null;
-  paused_time?: number | null;
-  recipient: string;
-  start_time: number;
+  recipient: Addr;
+  rewards: VestingPaymentRewards;
+  staked_amount: Uint128;
+  status: VestingPaymentStatus;
   title?: string | null;
+  vesting_schedule: Curve;
 }
-export interface ListStreamsResponse {
-  streams: StreamResponse[];
+export interface VestingPaymentRewards {
+  paid_rewards_per_token: Decimal;
+  pending: Decimal;
+}
+export type ArrayOfVestingPayment = VestingPayment[];
+export interface OwnershipForAddr {
+  owner?: Addr | null;
+  pending_expiry?: Expiration | null;
+  pending_owner?: Addr | null;
 }
