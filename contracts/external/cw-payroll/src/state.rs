@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, Decimal, Deps, DepsMut, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use crate::ContractError;

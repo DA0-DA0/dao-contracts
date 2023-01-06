@@ -45,8 +45,6 @@ pub enum ExecuteMsg {
     /// This is translated to a [[MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50).
     /// `delegator_address` is automatically filled with the current contract's address.
     WithdrawDelegatorReward {
-        /// The ID for the vesting payment
-        vesting_payment_id: u64,
         /// The `validator_address` to claim rewards for
         validator: String,
     },

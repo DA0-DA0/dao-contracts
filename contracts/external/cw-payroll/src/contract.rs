@@ -63,10 +63,9 @@ pub fn execute(
             validator,
             amount,
         } => execute_undelegate(env, deps, info, vesting_payment_id, validator, amount),
-        ExecuteMsg::WithdrawDelegatorReward {
-            vesting_payment_id,
-            validator,
-        } => execute_withdraw_rewards(env, deps, info, vesting_payment_id, validator),
+        ExecuteMsg::WithdrawDelegatorReward { validator } => {
+            execute_withdraw_rewards(env, deps, info, validator)
+        }
     }
 }
 
@@ -146,21 +145,30 @@ pub fn execute_cancel_vesting_payment(
         }),
     })?;
 
-    // TODO when canceled, can only withdraw the unvested amount
+    // TODO unbond any staked funds...
 
-    // TODO unbond any staked funds
+    // Check if funds have vested
+    let vesting_funds = vesting_payment
+        .vesting_schedule
+        .value(env.block.time.seconds());
+    let vested_amount = vesting_payment.amount - vesting_funds;
 
-    // Transfer any remaining amount to the owner
-    let transfer_to_contract_owner_msg = vesting_payment
+    // Transfer any remaining unvested amount to the owner
+    let transfer_unvested_to_owner_msg = vesting_payment
         .denom
-        .get_transfer_to_message(&info.sender, vesting_payment.amount)?;
+        .get_transfer_to_message(&info.sender, vesting_payment.amount - vested_amount)?;
+
+    let transfer_vested_to_recipient_msg = vesting_payment
+        .denom
+        .get_transfer_to_message(&vesting_payment.recipient, vested_amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "remove_vesting_payment")
         .add_attribute("vesting_payment_id", id.to_string())
         .add_attribute("owner", info.sender)
         .add_attribute("removed_time", env.block.time.to_string())
-        .add_message(transfer_to_contract_owner_msg))
+        .add_message(transfer_unvested_to_owner_msg)
+        .add_message(transfer_vested_to_recipient_msg))
 }
 
 pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, ContractError> {
@@ -181,14 +189,6 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
             claimed: vesting_payment.claimed_amount,
         });
     }
-
-    // This occurs when there is a curve defined, but it is now at 0 (eg. fully vested)
-    // in this case, we can safely delete it (as it will remain 0 forever)
-    // TODO maybe just check if status is canceled?
-    // if vesting_funds == Uint128::zero() {
-    //     // Contract is fully vested, no funds remain
-    //     return Err(ContractError::FullyVested);
-    // }
 
     // Update Vesting Payment with claimed amount
     VESTING_PAYMENTS.update(deps.storage, id, |v| -> Result<_, ContractError> {
@@ -244,7 +244,12 @@ pub fn execute_delegate(
 ) -> Result<Response, ContractError> {
     let vesting_payment = VESTING_PAYMENTS.load(deps.storage, id)?;
 
-    // TODO check status?
+    // Check status isn't canceled
+    if vesting_payment.status == VestingPaymentStatus::Canceled {
+        return Err(ContractError::VestingPaymentCanceled {
+            vesting_payment_id: id,
+        });
+    }
 
     // Check sender is the recipient of the vesting payment
     if info.sender != vesting_payment.recipient {
@@ -267,6 +272,37 @@ pub fn execute_delegate(
         }
     };
 
+    // Update vesting payment with amount of staked rewards
+    VESTING_PAYMENTS.update(deps.storage, id, |v| -> Result<_, ContractError> {
+        match v {
+            Some(mut v) => {
+                // Check stake amount is not greater than vesting payment amount
+                if amount > v.amount {
+                    return Err(ContractError::NotEnoughFunds {});
+                }
+
+                // Check that amount has not already been staked
+                v.amount.checked_sub(v.staked_amount + amount)?;
+
+                // Update amounts
+                v.staked_amount += amount;
+                Ok(v)
+            }
+            None => Err(ContractError::VestingPaymentNotFound {
+                vesting_payment_id: id,
+            }),
+        }
+    })?;
+
+    // Save a record of staking this vesting payment amount to a validator
+    let previously_staked = STAKED_VESTING_CLAIMS.may_load(deps.storage, (&validator, id))?;
+    match previously_staked {
+        Some(staked_amount) => {
+            STAKED_VESTING_CLAIMS.save(deps.storage, (&validator, id), &(staked_amount + amount))
+        }
+        None => STAKED_VESTING_CLAIMS.save(deps.storage, (&validator, id), &amount),
+    }?;
+
     // If its a first delegation to a validator, we set validator rewards to 0
     let validator_rewards = VALIDATORS_REWARDS.may_load(deps.storage, &validator)?;
     match validator_rewards {
@@ -279,40 +315,11 @@ pub fn execute_delegate(
         }
     };
 
-    // TODO call increase_stake()?
-    // Update vesting payment with amount of staked rewards
-    VESTING_PAYMENTS.update(deps.storage, id, |v| -> Result<_, ContractError> {
-        match v {
-            Some(mut v) => {
-                // Check stake amount is not greater than vesting payment amount
-                if amount > v.amount {
-                    return Err(ContractError::NotEnoughFunds {});
-                }
-
-                // // TODO check amount hasn't already been staked
-                // if amount > (v.amount + v.staked_amount) {
-                //     return Err(ContractError::NotEnoughFunds {});
-                // }
-
-                // Update amounts
-                v.staked_amount += amount;
-                Ok(v)
-            }
-            None => Err(ContractError::VestingPaymentNotFound {
-                vesting_payment_id: id,
-            }),
-        }
-    })?;
-
     // Create message to delegate the underlying tokens
     let msg = StakingMsg::Delegate {
         validator: validator.clone(),
         amount: Coin { denom, amount },
     };
-
-    // TODO rename? Not sure we need this?
-    // TODO += amount
-    STAKED_VESTING_CLAIMS.save(deps.storage, (&validator, id), &amount)?;
 
     Ok(Response::new()
         .add_attribute("method", "delegate")
@@ -334,8 +341,6 @@ pub fn execute_undelegate(
     if info.sender != vesting_payment.recipient {
         return Err(ContractError::Unauthorized);
     }
-
-    // TODO check status?
 
     let delegations = STAKED_VESTING_CLAIMS
         .may_load(deps.storage, (&validator, id))?
@@ -370,12 +375,12 @@ pub fn execute_undelegate(
 
     // Create message to delegate the underlying tokens
     let msg = StakingMsg::Undelegate {
-        validator,
+        validator: validator.clone(),
         amount: Coin { denom, amount },
     };
 
-    // // TODO save updated amount?
-    // STAKED_VESTING_CLAIMS.save(deps.storage, (id, &validator), &amount)?;
+    // Update amount delegated to validator
+    STAKED_VESTING_CLAIMS.save(deps.storage, (&validator, id), &(delegations - amount))?;
 
     Ok(Response::default().add_message(msg))
 }
@@ -384,17 +389,8 @@ pub fn execute_withdraw_rewards(
     env: Env,
     deps: DepsMut,
     info: MessageInfo,
-    // TODO Not sure this is needed, as this is called for all delegations to one validator
-    id: u64,
     validator: String,
 ) -> Result<Response, ContractError> {
-    // // TODO maybe do this for convenience? Or not...
-    // let vesting_payment = VESTING_PAYMENTS.load(deps.storage, id)?;
-    // // Check sender is the recipient of the vesting payment
-    // if info.sender != vesting_payment.recipient {
-    //     return Err(ContractError::Unauthorized);
-    // }
-
     // Query fullDelegation to get the total rewards amount
     let delegation_query = deps
         .querier

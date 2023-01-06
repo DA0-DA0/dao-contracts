@@ -13,6 +13,9 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error(transparent)]
+    CheckedFromRatioError(#[from] CheckedFromRatioError),
+
     #[error("{0}")]
     Curve(#[from] CurveError),
 
@@ -20,13 +23,19 @@ pub enum ContractError {
     Denom(#[from] DenomError),
 
     #[error(transparent)]
+    DivideByZeroError(#[from] DivideByZeroError),
+
+    #[error(transparent)]
+    DecimalRangeExceeded(#[from] DecimalRangeExceeded),
+
+    #[error(transparent)]
     Ownable(#[from] OwnershipError),
 
     #[error("{0}")]
-    PaymentError(#[from] PaymentError),
+    OverflowErr(#[from] OverflowError),
 
     #[error("{0}")]
-    OverflowErr(#[from] OverflowError),
+    PaymentError(#[from] PaymentError),
 
     #[error("Amount sent does not match vesting amount")]
     AmountDoesNotMatch,
@@ -43,9 +52,6 @@ pub enum ContractError {
     #[error("Tokens for this vesting payment are not stakeable")]
     NotStakeable,
 
-    #[error("Vesting Payment does not exist")]
-    VestingPaymentNotFound { vesting_payment_id: u64 },
-
     #[error("The transfer will never become fully vested. Must hit 0 eventually")]
     NeverFullyVested,
 
@@ -54,6 +60,12 @@ pub enum ContractError {
 
     #[error("The transfer tries to vest more tokens than it sends")]
     VestsMoreThanSent,
+
+    #[error("Vesting Payment {vesting_payment_id} has been cancelled by contract owner")]
+    VestingPaymentCanceled { vesting_payment_id: u64 },
+
+    #[error("Vesting Payment does not exist")]
+    VestingPaymentNotFound { vesting_payment_id: u64 },
 
     #[error("Incorrect coin denom")]
     IncorrectDenom {},
@@ -72,13 +84,4 @@ pub enum ContractError {
 
     #[error("Rewards amount is 0")]
     ZeroRewardsToSend {},
-
-    #[error(transparent)]
-    DivideByZeroError(#[from] DivideByZeroError),
-
-    #[error(transparent)]
-    DecimalRangeExceeded(#[from] DecimalRangeExceeded),
-
-    #[error(transparent)]
-    CheckedFromRatioError(#[from] CheckedFromRatioError),
 }
