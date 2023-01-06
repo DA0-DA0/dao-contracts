@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Deps, DepsMut, Uint128};
+use cosmwasm_std::{ensure, Addr, Decimal, Deps, DepsMut, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use crate::ContractError;
@@ -40,6 +40,8 @@ impl UncheckedVestingParams {
             UncheckedDenom::Native(denom) => UncheckedDenom::Native(denom).into_checked(deps)?,
             UncheckedDenom::Cw20(addr) => UncheckedDenom::Cw20(addr).into_checked(deps)?,
         };
+
+        // TODO if title is included, validate title length (max 280 characters)
 
         Ok(CheckedVestingParams {
             recipient,
@@ -93,6 +95,10 @@ pub struct VestingPayment {
     pub description: Option<String>,
     /// The status of the vesting payment
     pub status: VestingPaymentStatus,
+    /// The amount of the vesting payment that has been staked
+    pub staked_amount: Uint128,
+    /// Info about staked vesting payment rewards
+    pub rewards: VestingPaymentRewards,
 }
 
 impl VestingPayment {
@@ -108,12 +114,17 @@ impl VestingPayment {
             id,
             status: VestingPaymentStatus::Active,
             claimed_amount: Uint128::zero(),
+            staked_amount: Uint128::zero(),
             recipient: checked_vesting_params.recipient,
             amount: checked_vesting_params.amount,
             denom: checked_vesting_params.denom,
             vesting_schedule: checked_vesting_params.vesting_schedule,
             title: checked_vesting_params.title,
             description: checked_vesting_params.description,
+            rewards: VestingPaymentRewards {
+                pending: Decimal::zero(),
+                paid_rewards_per_token: Decimal::zero(),
+            },
         };
 
         VESTING_PAYMENT_SEQ.save(deps.storage, &id)?;
@@ -121,10 +132,116 @@ impl VestingPayment {
 
         Ok(vesting_payment)
     }
+
+    // // TODO needed?
+    // pub fn increase_stake(&mut self, stake: Uint128) -> Result<(), ContractError> {
+    //     let new_stake = self.staked_amount + stake;
+    //     ensure!(
+    //         self.amount >= new_stake,
+    //         ContractError::NoFundsToDelegate {}
+    //     );
+    //     self.staked_amount = new_stake;
+    //     Ok(())
+    // }
+
+    // // TODO needed?
+    // pub fn decrease_stake(&mut self, stake: Uint128) -> Result<(), ContractError> {
+    //     self.staked_amount = self
+    //         .staked_amount
+    //         .checked_sub(stake)
+    //         .map_err(|_| ContractError::InsufficientDelegation {})?;
+    //     Ok(())
+    // }
+
+    pub fn calc_pending_rewards(
+        &mut self,
+        new_rewards_per_token: Decimal,
+        staked: Uint128,
+    ) -> Result<(), ContractError> {
+        // No staked amount, so no rewards
+        if staked.is_zero() {
+            self.rewards.paid_rewards_per_token = new_rewards_per_token;
+            return Ok(());
+        }
+
+        let rewards_per_token_to_pay = new_rewards_per_token - self.rewards.paid_rewards_per_token;
+
+        // We don't need to update anything, nothing to calculate
+        if rewards_per_token_to_pay.is_zero() {
+            return Ok(());
+        }
+
+        self.rewards.pending +=
+            rewards_per_token_to_pay.checked_mul(Decimal::from_atomics(staked, 0)?)?;
+
+        self.rewards.paid_rewards_per_token = new_rewards_per_token;
+
+        Ok(())
+    }
+
+    pub fn reset_pending_rewards(&mut self) {
+        self.rewards.pending -= self.rewards.pending.floor();
+    }
+
+    // TODO: Find a better way of doing this?
+    /// Turn pending decimal to u128 to send tokens
+    pub fn pending_to_u128(&self) -> Result<u128, ContractError> {
+        let decimal_fractional = Uint128::from(
+            10_u128
+                .checked_pow(self.rewards.pending.decimal_places())
+                .unwrap_or(1_000_000_000_000_000_000u128),
+        );
+        let full_num = self.rewards.pending.floor().atomics();
+        let to_send = full_num.checked_div(decimal_fractional)?;
+        Ok(to_send.u128())
+    }
 }
 
+/// The current vesting_payment ID
 pub const VESTING_PAYMENT_SEQ: Item<u64> = Item::new("vesting_payment_seq");
+/// A map of vesting payments (ID, VestingPayment)
 pub const VESTING_PAYMENTS: Map<u64, VestingPayment> = Map::new("vesting_payments");
+/// A map of staked vesting claims
+pub const STAKED_VESTING_CLAIMS: Map<(&str, u64), Uint128> = Map::new("staked_vesting_claims");
+/// A map that keeps track of withdrawn rewards for a particular validator
+pub const VALIDATORS_REWARDS: Map<&str, ValidatorRewards> = Map::new("validators_rewards");
+
+#[cw_serde]
+pub struct ValidatorRewards {
+    /// rewards_per_token, total of rewards to be paid per staked token.
+    pub rewards_per_token: Decimal,
+}
+
+impl Default for ValidatorRewards {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ValidatorRewards {
+    pub fn new() -> Self {
+        ValidatorRewards {
+            rewards_per_token: Decimal::zero(),
+        }
+    }
+
+    pub fn calc_rewards(
+        &mut self,
+        rewards: Uint128,
+        total_tokens: Uint128,
+    ) -> Result<(), ContractError> {
+        let rewards_dec = Decimal::checked_from_ratio(rewards, total_tokens)?;
+
+        self.rewards_per_token = rewards_dec.checked_add(self.rewards_per_token)?;
+        Ok(())
+    }
+}
+
+#[cw_serde]
+pub struct VestingPaymentRewards {
+    pub pending: Decimal,
+    pub paid_rewards_per_token: Decimal,
+}
 
 #[cfg(test)]
 mod tests {

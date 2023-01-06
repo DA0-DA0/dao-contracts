@@ -1,18 +1,25 @@
-use cosmwasm_std::{coins, to_binary, Addr, Empty, Uint128};
+use cosmwasm_std::testing::mock_env;
+use cosmwasm_std::{coins, to_binary, Addr, Decimal, Empty, Uint128, Validator};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw_denom::{CheckedDenom, UncheckedDenom};
-use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_multi_test::{
+    next_block, App, AppBuilder, BankSudo, Contract, ContractWrapper, Executor, StakingInfo,
+    StakingSudo, SudoMsg,
+};
 use dao_testing::contracts::cw20_base_contract;
 use wynd_utils::Curve;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{UncheckedVestingParams, VestingPayment, VestingPaymentStatus};
+use crate::state::{
+    UncheckedVestingParams, VestingPayment, VestingPaymentRewards, VestingPaymentStatus,
+};
 use crate::ContractError;
 
-const NATIVE_DENOM: &str = "ujuno";
 const ALICE: &str = "alice";
 const BOB: &str = "bob";
 const INITIAL_BALANCE: u128 = 10000;
+const NATIVE_DENOM: &str = "denom";
+const VALIDATOR: &str = "validator";
 
 fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -49,8 +56,43 @@ fn get_balance_native<T: Into<String>, U: Into<String>>(
     app.wrap().query_balance(address, denom).unwrap().amount
 }
 
+pub fn setup_app() -> App {
+    AppBuilder::new().build(|router, api, storage| {
+        let env = mock_env();
+
+        // Setup staking module for the correct mock data.
+        router
+            .staking
+            .setup(
+                storage,
+                StakingInfo {
+                    bonded_denom: NATIVE_DENOM.to_string(),
+                    unbonding_time: 1,
+                    apr: Decimal::percent(20),
+                },
+            )
+            .unwrap();
+
+        // Add mock validator
+        router
+            .staking
+            .add_validator(
+                api,
+                storage,
+                &env.block,
+                Validator {
+                    address: VALIDATOR.to_string(),
+                    commission: Decimal::zero(),
+                    max_commission: Decimal::one(),
+                    max_change_rate: Decimal::one(),
+                },
+            )
+            .unwrap();
+    })
+}
+
 fn setup_app_and_instantiate_contracts(owner: Option<String>) -> (App, Addr, Addr) {
-    let mut app = App::default();
+    let mut app = setup_app();
 
     let cw20_code_id = app.store_code(cw20_base_contract());
     let cw_payroll_code_id = app.store_code(cw_payroll_contract());
@@ -165,6 +207,11 @@ fn setup_test_case(
                     title: None,
                     description: None,
                     status: VestingPaymentStatus::Active,
+                    staked_amount: Uint128::zero(),
+                    rewards: VestingPaymentRewards {
+                        pending: Decimal::zero(),
+                        paid_rewards_per_token: Decimal::zero(),
+                    },
                 }
             );
 
@@ -202,6 +249,11 @@ fn setup_test_case(
                     title: None,
                     description: None,
                     status: VestingPaymentStatus::Active,
+                    staked_amount: Uint128::zero(),
+                    rewards: VestingPaymentRewards {
+                        pending: Decimal::zero(),
+                        paid_rewards_per_token: Decimal::zero(),
+                    },
                 }
             );
 
@@ -448,4 +500,136 @@ fn test_cancel_vesting() {
         get_balance_native(&app, BOB, NATIVE_DENOM),
         Uint128::new(10250)
     );
+}
+
+#[test]
+fn test_native_staking_happy_path() {
+    let (mut app, _, cw_payroll_addr) = setup_app_and_instantiate_contracts(None);
+
+    let amount = Uint128::new(1000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+
+    // Basic linear vesting schedule
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    let TestCase {
+        bob,
+        vesting_payment,
+        ..
+    } = setup_test_case(
+        &mut app,
+        cw_payroll_addr.clone(),
+        vesting_schedule.clone(),
+        amount,
+        unchecked_denom,
+    );
+
+    // Bob delegates his vesting tokens
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Delegate {
+            vesting_payment_id: 1,
+            validator: VALIDATOR.to_string(),
+            amount,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // // TODO should error, check error
+    // Distribute fails because tokens are locked
+    let error = app
+        .execute_contract(
+            bob.clone(),
+            cw_payroll_addr.clone(),
+            &ExecuteMsg::Distribute { id: 1 },
+            &[],
+        )
+        .unwrap_err();
+    // println!("{:?}", error);
+
+    // Advance the clock
+    app.update_block(|block| {
+        block.height += 10000;
+        block.time = block.time.plus_seconds(10000000);
+    });
+
+    // // The total of rewards across all vesting payments
+    // let rewards = app
+    //     .wrap()
+    //     .query_delegation(cw_payroll_addr.clone(), VALIDATOR.to_string())
+    //     .unwrap();
+    // println!("REWARDS {:?}", rewards);
+
+    // Call withdraw rewards
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::WithdrawDelegatorReward {
+            vesting_payment_id: 1,
+            validator: VALIDATOR.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Bob undelegates
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Undelegate {
+            vesting_payment_id: 1,
+            validator: VALIDATOR.to_string(),
+            amount,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Advance the clock
+    app.update_block(|block| {
+        block.height += 10000;
+        block.time = block.time.plus_seconds(10000000);
+    });
+
+    // Trigger unboding que to return tokens
+    app.sudo(SudoMsg::Staking(StakingSudo::ProcessQueue {}))
+        .unwrap();
+
+    // Bob distributes remaining funds
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Distribute { id: 1 },
+        &[],
+    )
+    .unwrap();
+
+    let vp = get_vesting_payment(&app, cw_payroll_addr.clone(), 1);
+    println!("{:?}", vp);
+
+    let contract_balance = app.wrap().query_all_balances(cw_payroll_addr.clone());
+    println!("BALANCE {:?}", contract_balance);
+
+    // Bob has claimed vested funds and staked funds
+    assert_eq!(
+        get_balance_native(&app, BOB, NATIVE_DENOM),
+        Uint128::new(11063)
+    );
+
+    // // TODO should include staked amount
+    // Check final amounts after distribution
+    // assert_eq!(
+    //     get_vesting_payment(&app, cw_payroll_addr.clone(), 1),
+    //     VestingPayment {
+    //         id: 1,
+    //         recipient: Addr::unchecked(BOB),
+    //         amount: Uint128::new(750),
+    //         claimed_amount: Uint128::new(250),
+    //         ..vesting_payment
+    //     }
+    // );
 }
