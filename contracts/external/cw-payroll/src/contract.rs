@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env,
+    from_binary, to_binary, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, DistributionMsg, Env,
     MessageInfo, Order, Response, StakingMsg, StdResult, Uint128,
 };
 use cw2::set_contract_version;
@@ -146,13 +146,16 @@ pub fn execute_cancel_vesting_payment(
     })?;
 
     // TODO unbond any staked funds...
+    // TODO get all validators
+    // let unbond_msg = StakingMsg::Delegate {
+    //     validator: validator.clone(),
+    //     amount: Coin { denom, amount },
+    // };
 
     // Check if funds have vested
-    let vesting_funds = vesting_payment
-        .vesting_schedule
-        .value(env.block.time.seconds());
-    let vested_amount = vesting_payment.amount - vesting_funds;
+    let vested_amount = vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
 
+    // TODO handle edge case where funds are staked...
     // Transfer any remaining unvested amount to the owner
     let transfer_unvested_to_owner_msg = vesting_payment
         .denom
@@ -178,10 +181,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
         },
     )?;
 
-    let vesting_funds = vesting_payment
-        .vesting_schedule
-        .value(env.block.time.seconds());
-    let vested_amount = vesting_payment.amount - vesting_funds;
+    let vested_amount = vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
     let staking_rewards = vesting_payment.pending_to_u128()?;
 
     if vested_amount == Uint128::zero() && staking_rewards == 0 {
@@ -197,6 +197,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
                 // Update amounts
                 v.amount -= vested_amount;
                 v.claimed_amount += vested_amount;
+                v.rewards.pending = Decimal::zero();
                 // If the amount remaining in contract goes to zero, update status
                 if v.amount == Uint128::zero() {
                     v.status = VestingPaymentStatus::FullyVested
@@ -216,6 +217,11 @@ pub fn execute_distribute(env: Env, deps: DepsMut, id: u64) -> Result<Response, 
         .get_transfer_to_message(&vesting_payment.recipient, total_payout)?;
 
     // TODO handle edge case where contract has been canceled while funds are staked
+    if vesting_payment.status == VestingPaymentStatus::Canceled {
+        return Err(ContractError::VestingPaymentCanceled {
+            vesting_payment_id: id,
+        });
+    }
 
     Ok(Response::new()
         .add_attribute("method", "distribute")
@@ -388,7 +394,7 @@ pub fn execute_undelegate(
 pub fn execute_withdraw_rewards(
     env: Env,
     deps: DepsMut,
-    info: MessageInfo,
+    _info: MessageInfo,
     validator: String,
 ) -> Result<Response, ContractError> {
     // Query fullDelegation to get the total rewards amount

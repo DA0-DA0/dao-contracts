@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, OverflowError, Timestamp, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use crate::ContractError;
@@ -133,25 +133,10 @@ impl VestingPayment {
         Ok(vesting_payment)
     }
 
-    // // TODO needed?
-    // pub fn increase_stake(&mut self, stake: Uint128) -> Result<(), ContractError> {
-    //     let new_stake = self.staked_amount + stake;
-    //     ensure!(
-    //         self.amount >= new_stake,
-    //         ContractError::NoFundsToDelegate {}
-    //     );
-    //     self.staked_amount = new_stake;
-    //     Ok(())
-    // }
-
-    // // TODO needed?
-    // pub fn decrease_stake(&mut self, stake: Uint128) -> Result<(), ContractError> {
-    //     self.staked_amount = self
-    //         .staked_amount
-    //         .checked_sub(stake)
-    //         .map_err(|_| ContractError::InsufficientDelegation {})?;
-    //     Ok(())
-    // }
+    pub fn get_vested_amount_by_seconds(&self, time: u64) -> Result<Uint128, OverflowError> {
+        let vesting_funds = self.vesting_schedule.value(time);
+        return self.amount.checked_sub(vesting_funds);
+    }
 
     pub fn calc_pending_rewards(
         &mut self,
