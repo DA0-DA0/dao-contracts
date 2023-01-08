@@ -146,6 +146,16 @@ pub fn execute_cancel_vesting_payment(
 
     let mut msgs: Vec<CosmosMsg> = vec![];
 
+    // Get total delegations and rewards across all validators
+    let total_delegations = STAKED_VESTING_BY_VALIDATOR
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|res| -> StdResult<Uint128> { Ok(res?.1) })
+        .sum::<StdResult<Uint128>>()?;
+    let validator_rewards = VALIDATORS_REWARDS
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|res| -> StdResult<Decimal> { Ok(res?.1.rewards_per_token) })
+        .sum::<StdResult<Decimal>>()?;
+
     let vesting_payment =
         VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
             // Check if contract status is active
@@ -159,6 +169,9 @@ pub fn execute_cancel_vesting_payment(
             } else {
                 vp.status = VestingPaymentStatus::CanceledAndUnbonding;
                 vp.canceled_at_time = Some(env.block.time.seconds());
+
+                // Update pending rewards
+                vp.calc_pending_rewards(validator_rewards, total_delegations)?;
             }
             Ok(vp)
         })?;
@@ -313,12 +326,15 @@ pub fn execute_distribute_unbonded(env: Env, deps: DepsMut) -> Result<Response, 
     }
 
     // Get owner's payout message
+    let unvested_amount = vesting_payment.amount.checked_sub(vested_amount)?;
     let owner = cw_ownable::get_ownership(deps.storage)?;
     if let Some(owner) = owner.owner {
-        let withdraw_unbonded_msg = vesting_payment
-            .denom
-            .get_transfer_to_message(&owner, vesting_payment.amount.checked_sub(vested_amount)?)?;
-        msgs.push(withdraw_unbonded_msg);
+        if unvested_amount != Uint128::zero() {
+            let withdraw_unbonded_msg = vesting_payment
+                .denom
+                .get_transfer_to_message(&owner, unvested_amount)?;
+            msgs.push(withdraw_unbonded_msg);
+        }
     }
 
     Ok(Response::new()
