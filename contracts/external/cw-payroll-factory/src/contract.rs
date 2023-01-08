@@ -1,10 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg, WasmMsg,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg, WasmMsg,
 };
 
 use cw2::set_contract_version;
+use cw_payroll::msg::InstantiateMsg as PayrollInstantiateMsg;
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
@@ -44,17 +45,17 @@ pub fn execute(
 }
 
 pub fn instantiate_contract(
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    instantiate_msg: Binary,
+    instantiate_msg: PayrollInstantiateMsg,
     code_id: u64,
     label: String,
 ) -> Result<Response, ContractError> {
-    // Instantiate the specified contract with factory as the admin.
+    // Instantiate the specified contract with owner as the admin.
     let instantiate = WasmMsg::Instantiate {
-        admin: Some(env.contract.address.to_string()),
+        admin: instantiate_msg.owner.clone(),
         code_id,
-        msg: instantiate_msg,
+        msg: to_binary(&instantiate_msg)?,
         funds: info.funds,
         label,
     };
@@ -84,15 +85,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         INSTANTIATE_CONTRACT_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg)?;
             let contract_addr = deps.api.addr_validate(&res.contract_address)?;
-            // Make the contract its own admin.
-            let msg = WasmMsg::UpdateAdmin {
-                contract_addr: contract_addr.to_string(),
-                admin: contract_addr.to_string(),
-            };
 
-            Ok(Response::default()
-                .add_attribute("new_payroll_contract", contract_addr)
-                .add_message(msg))
+            Ok(Response::default().add_attribute("new_payroll_contract", contract_addr))
         }
         _ => Err(ContractError::UnknownReplyID {}),
     }

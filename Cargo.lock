@@ -694,15 +694,16 @@ version = "2.0.0-beta"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cosmwasm-storage",
+ "cw-denom",
  "cw-multi-test",
+ "cw-paginate 2.0.0-beta",
+ "cw-payroll",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20-base 0.16.0",
- "dao-core",
- "dao-interface",
  "thiserror",
+ "wynd-utils",
 ]
 
 [[package]]
