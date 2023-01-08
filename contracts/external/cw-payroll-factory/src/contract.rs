@@ -67,7 +67,15 @@ pub fn instantiate_contract(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {}
+    match msg {
+        // QueryMsg::ListVestingPayments { start_after, limit } => to_binary(&paginate_map_values(
+        //      deps,
+        //     &VESTING_PAYMENTS,
+        //     start_after,
+        //     limit,
+        //     Order::Descending,
+        // )?),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
