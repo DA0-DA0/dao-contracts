@@ -166,9 +166,9 @@ impl VestingPayment {
         self.rewards.pending -= self.rewards.pending.floor();
     }
 
-    // TODO: Find a better way of doing this?
     /// Turn pending decimal to u128 to send tokens
-    pub fn pending_to_u128(&self) -> Result<u128, ContractError> {
+    pub fn get_pending_rewards(&self) -> Result<Uint128, ContractError> {
+        // TODO: Find a better way of doing this?
         let decimal_fractional = Uint128::from(
             10_u128
                 .checked_pow(self.rewards.pending.decimal_places())
@@ -176,15 +176,14 @@ impl VestingPayment {
         );
         let full_num = self.rewards.pending.floor().atomics();
         let to_send = full_num.checked_div(decimal_fractional)?;
-        Ok(to_send.u128())
+        Ok(to_send)
     }
 }
 
 /// A map of vesting payments (ID, VestingPayment)
 pub const VESTING_PAYMENT: Item<VestingPayment> = Item::new("vesting_payment");
 /// A map of staked vesting claims by validator
-pub const STAKED_VESTING_CLAIMS_BY_VALIDATOR: Map<&str, Uint128> =
-    Map::new("staked_vesting_claims_by_validator");
+pub const STAKED_VESTING_BY_VALIDATOR: Map<&str, Uint128> = Map::new("staked_vesting_by_validator");
 /// A map that keeps track of withdrawn rewards for a particular validator
 pub const VALIDATORS_REWARDS: Map<&str, ValidatorRewards> = Map::new("validators_rewards");
 

@@ -12,7 +12,7 @@ use cw_utils::{must_pay, nonpayable};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
 use crate::state::{
-    ValidatorRewards, VestingPayment, VestingPaymentStatus, STAKED_VESTING_CLAIMS_BY_VALIDATOR,
+    ValidatorRewards, VestingPayment, VestingPaymentStatus, STAKED_VESTING_BY_VALIDATOR,
     VALIDATORS_REWARDS, VESTING_PAYMENT,
 };
 
@@ -168,7 +168,7 @@ pub fn execute_cancel_vesting_payment(
         let denom = deps.querier.query_bonded_denom()?;
 
         // Unbond any staked funds
-        let mut undelegate_msgs = STAKED_VESTING_CLAIMS_BY_VALIDATOR
+        let mut undelegate_msgs = STAKED_VESTING_BY_VALIDATOR
             .range(deps.storage, None, None, Order::Ascending)
             .map(|svc| -> StdResult<CosmosMsg> {
                 let (validator, amount) = svc?;
@@ -189,7 +189,7 @@ pub fn execute_cancel_vesting_payment(
         // Check if funds have vested or there are staking rewards
         let vested_amount =
             vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
-        let staking_rewards = Uint128::new(vesting_payment.pending_to_u128()?);
+        let staking_rewards = vesting_payment.get_pending_rewards()?;
 
         // Transfer any remaining unvested amount to the owner
         let unvested = vesting_payment.amount.checked_sub(vested_amount)?;
@@ -233,10 +233,10 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
     }
 
     let vested_amount = vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
-    let staking_rewards = vesting_payment.pending_to_u128()?;
+    let staking_rewards = vesting_payment.get_pending_rewards()?;
 
     // Check there are funds to distribute
-    if vested_amount == Uint128::zero() && staking_rewards == 0 {
+    if vested_amount == Uint128::zero() && staking_rewards == Uint128::zero() {
         return Err(ContractError::NoFundsToClaim {
             claimed: vesting_payment.claimed_amount,
         });
@@ -259,7 +259,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
     let mut msgs: Vec<CosmosMsg> = vec![];
 
     // Get transfer message for payout
-    let total_payout = vested_amount + Uint128::new(staking_rewards);
+    let total_payout = vested_amount.checked_add(staking_rewards)?;
     if total_payout != Uint128::zero() {
         let transfer_msg = vesting_payment
             .denom
@@ -276,6 +276,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
 pub fn execute_distribute_unbonded(env: Env, deps: DepsMut) -> Result<Response, ContractError> {
     let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
 
+    // Check that the vesting contract has a canceled and unbonding status
     if vesting_payment.status != VestingPaymentStatus::CanceledAndUnbonding {
         return Err(ContractError::NotCanceledAndUnbonding);
     }
@@ -286,14 +287,7 @@ pub fn execute_distribute_unbonded(env: Env, deps: DepsMut) -> Result<Response, 
             .canceled_at_time
             .unwrap_or(env.block.time.seconds()),
     )?;
-    let staking_rewards = vesting_payment.pending_to_u128()?;
-
-    // Check there are funds to distribute
-    if vested_amount == Uint128::zero() && staking_rewards == 0 {
-        return Err(ContractError::NoFundsToClaim {
-            claimed: vesting_payment.claimed_amount,
-        });
-    }
+    let staking_rewards = vesting_payment.get_pending_rewards()?;
 
     // Update Vesting Payment with claimed amount
     VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
@@ -309,8 +303,8 @@ pub fn execute_distribute_unbonded(env: Env, deps: DepsMut) -> Result<Response, 
 
     let mut msgs: Vec<CosmosMsg> = vec![];
 
-    // Get transfer message for payout
-    let total_payout = vested_amount + Uint128::new(staking_rewards);
+    // Get transfer message for payout, any staking rewards go to recipient
+    let total_payout = vested_amount.checked_add(staking_rewards)?;
     if total_payout != Uint128::zero() {
         let transfer_msg = vesting_payment
             .denom
@@ -318,6 +312,7 @@ pub fn execute_distribute_unbonded(env: Env, deps: DepsMut) -> Result<Response, 
         msgs.push(transfer_msg);
     }
 
+    // Get owner's payout message
     let owner = cw_ownable::get_ownership(deps.storage)?;
     if let Some(owner) = owner.owner {
         let withdraw_unbonded_msg = vesting_payment
@@ -327,7 +322,7 @@ pub fn execute_distribute_unbonded(env: Env, deps: DepsMut) -> Result<Response, 
     }
 
     Ok(Response::new()
-        .add_attribute("method", "distribute")
+        .add_attribute("method", "distribute_unbonded_and_close")
         .add_attribute("vested_amount", vested_amount)
         .add_messages(msgs))
 }
@@ -396,25 +391,17 @@ pub fn execute_delegate(
     })?;
 
     // Save a record of staking this vesting payment amount to a validator
-    match STAKED_VESTING_CLAIMS_BY_VALIDATOR.may_load(deps.storage, &validator)? {
-        Some(staked_amount) => STAKED_VESTING_CLAIMS_BY_VALIDATOR.save(
-            deps.storage,
-            &validator,
-            &(staked_amount + amount),
-        ),
-        None => STAKED_VESTING_CLAIMS_BY_VALIDATOR.save(deps.storage, &validator, &amount),
+    match STAKED_VESTING_BY_VALIDATOR.may_load(deps.storage, &validator)? {
+        Some(staked_amount) => {
+            STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &(staked_amount + amount))
+        }
+        None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &amount),
     }?;
 
     // If its a first delegation to a validator, we set validator rewards to 0
-    match VALIDATORS_REWARDS.may_load(deps.storage, &validator)? {
-        Some(val_rewards) => val_rewards,
-        None => {
-            let val = ValidatorRewards::default();
-
-            VALIDATORS_REWARDS.save(deps.storage, &validator, &val)?;
-            val
-        }
-    };
+    if let None = VALIDATORS_REWARDS.may_load(deps.storage, &validator)? {
+        VALIDATORS_REWARDS.save(deps.storage, &validator, &ValidatorRewards::default())?;
+    }
 
     // Create message to delegate the underlying tokens
     let msg = StakingMsg::Delegate {
@@ -442,7 +429,7 @@ pub fn execute_undelegate(
         return Err(ContractError::Unauthorized);
     }
 
-    let delegations = STAKED_VESTING_CLAIMS_BY_VALIDATOR
+    let delegations = STAKED_VESTING_BY_VALIDATOR
         .may_load(deps.storage, &validator)?
         .ok_or(ContractError::NoDelegationsForValidator {})?;
 
@@ -472,7 +459,7 @@ pub fn execute_undelegate(
     };
 
     // Update amount delegated to validator
-    STAKED_VESTING_CLAIMS_BY_VALIDATOR.save(deps.storage, &validator, &(delegations - amount))?;
+    STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &(delegations - amount))?;
 
     Ok(Response::default().add_message(msg))
 }
@@ -482,7 +469,7 @@ pub fn execute_withdraw_rewards(
     deps: DepsMut,
     validator: String,
 ) -> Result<Response, ContractError> {
-    // Query fullDelegation to get the total rewards amount
+    // Query full delegation to get the total rewards amount
     let delegation_query = deps
         .querier
         .query_delegation(env.contract.address, validator.clone())?;
@@ -493,17 +480,18 @@ pub fn execute_withdraw_rewards(
         None => return Err(ContractError::NoDelegationsForValidator {}),
     };
 
-    let total_delegations = STAKED_VESTING_CLAIMS_BY_VALIDATOR
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|res| -> StdResult<Uint128> { Ok(res?.1) })
-        .sum::<StdResult<Uint128>>()?;
-
     // Check to make sure there are rewards
     if total_accumulated_rewards.is_empty() || total_accumulated_rewards[0].amount.is_zero() {
         return Err(ContractError::ZeroRewardsToSend {});
     }
 
     let total_accumulated_rewards = &total_accumulated_rewards[0];
+
+    // Get total delegations across all validators
+    let total_delegations = STAKED_VESTING_BY_VALIDATOR
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|res| -> StdResult<Uint128> { Ok(res?.1) })
+        .sum::<StdResult<Uint128>>()?;
 
     // Update rewards for this validator
     VALIDATORS_REWARDS.update(

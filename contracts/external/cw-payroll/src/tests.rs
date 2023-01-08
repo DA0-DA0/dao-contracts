@@ -749,9 +749,8 @@ fn test_cancel_vesting_staked_funds() {
         block.time = block.time.plus_seconds(15000);
     });
 
-    // // TODO handle canceled staking rewards
-
-    // Withdraw rewards can still be called afterwards
+    // // TODO figure out why contract fails if this is called before closing
+    // Call withdraw rewards before closing
     app.execute_contract(
         bob.clone(),
         cw_payroll_addr.clone(),
@@ -774,6 +773,15 @@ fn test_cancel_vesting_staked_funds() {
     // Owner DAO can't cancel twice
     app.execute_contract(owner, cw_payroll_addr.clone(), &ExecuteMsg::Cancel {}, &[])
         .unwrap_err();
+
+    // Bob tries to close before funds unbond
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::DistributeUnbondedAndClose {},
+        &[],
+    )
+    .unwrap_err();
 
     // Advance the clock
     app.update_block(|block| {
@@ -813,7 +821,7 @@ fn test_cancel_vesting_staked_funds() {
         get_balance_native(&app, BOB, NATIVE_DENOM),
         Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
     );
-    // Contract has zero funds
+    // Contract should have zero funds
     assert_eq!(
         get_balance_native(&app, cw_payroll_addr, NATIVE_DENOM),
         Uint128::zero()
