@@ -30,3 +30,12 @@ This contract allows for underlying native tokens to be staked.
 ### Limitations
 While this contract allows for delegating native tokens, it does not allow for voting. As such, be sure to pick validators you delegate to wisely when using this contract.
 
+## Cancelation
+This vesting contract supports optional cancelation. This is only possible if an `owner` is set upon contract instantiation, otherwise the vesting contract cannot be altered by either party.
+
+For example, if an employee has to leave a company for whatever reason, the company can vote to have the employee salary canceled.
+
+When a contract is canceled, funds that have vested up until that moment are paid out to the `recipient` and the rest are refunded to the contract `owner`.
+
+If funds are delegated when a contract is canceled, the delegated funds are immediately unbonded. After newly undelegated funds have finished the unbonding period, they can be withdraw by calling the `distribute_and_close` method to resolve.
+
