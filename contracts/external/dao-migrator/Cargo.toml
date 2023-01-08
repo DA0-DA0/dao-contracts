@@ -1,0 +1,33 @@
+[package]
+name        = "dao-migrator"
+version     = "2.0.0-beta"
+authors     = ["Art3mix <Art3mix@withoutdoing.com>"]
+edition     = "2021"
+repository  = "https://github.com/DA0-DA0/dao-contracts"
+description = "A DAO DAO migrator module for modules."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std     = { workspace = true, features = ["ibc3"] }
+cosmwasm-storage = { workspace = true }
+cosmwasm-schema  = { workspace = true }
+cw-storage-plus  = { workspace = true }
+cw-utils         = { workspace = true }
+thiserror        = { workspace = true }
+cw2              = { workspace = true }
+
+dao-core            = { workspace = true }
+dao-proposal-single = { workspace = true }
+dao-voting          = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-schema = { workspace = true }
+cw-multi-test   = { workspace = true }
