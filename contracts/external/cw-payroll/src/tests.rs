@@ -22,7 +22,7 @@ const OWNER: &str = "owner";
 const NATIVE_DENOM: &str = "denom";
 const VALIDATOR: &str = "validator";
 
-pub fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
+fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
