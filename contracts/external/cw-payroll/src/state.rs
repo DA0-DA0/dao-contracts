@@ -90,6 +90,8 @@ pub struct VestingPayment {
     pub amount: Uint128,
     /// Amount claimed so far
     pub claimed_amount: Uint128,
+    /// Canceled at time in seconds, only set if contract is canceled
+    pub canceled_at_time: Option<u64>,
     /// Vesting schedule
     pub vesting_schedule: Curve,
     /// The denom of a token (cw20 or native)
@@ -113,6 +115,7 @@ impl VestingPayment {
             status: VestingPaymentStatus::Active,
             claimed_amount: Uint128::zero(),
             staked_amount: Uint128::zero(),
+            canceled_at_time: None,
             recipient: checked_vesting_params.recipient,
             amount: checked_vesting_params.amount,
             denom: checked_vesting_params.denom,

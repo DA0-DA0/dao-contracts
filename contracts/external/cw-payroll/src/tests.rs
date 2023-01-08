@@ -330,6 +330,7 @@ fn test_happy_cw20_path() {
             amount: amount,
             claimed_amount: Uint128::zero(),
             denom: CheckedDenom::Cw20(Addr::unchecked(cw20_addr.clone())),
+            canceled_at_time: None,
             vesting_schedule: vesting_schedule.clone(),
             title: None,
             description: None,
@@ -428,6 +429,7 @@ fn test_happy_native_path() {
             recipient: Addr::unchecked(BOB),
             amount,
             claimed_amount: Uint128::zero(),
+            canceled_at_time: None,
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
             vesting_schedule: vesting_schedule.clone(),
             title: None,
@@ -695,5 +697,120 @@ fn test_native_staking_happy_path() {
             status: VestingPaymentStatus::FullyVested,
             ..vesting_payment
         }
+    );
+}
+
+#[test]
+fn test_cancel_vesting_staked_funds() {
+    let mut app = setup_app();
+
+    let amount = Uint128::new(1000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+
+    // Basic linear vesting schedule
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    let TestCase {
+        cw_payroll_addr,
+        owner,
+        recipient: bob,
+        ..
+    } = setup_test_case(
+        &mut app,
+        vesting_schedule.clone(),
+        amount,
+        unchecked_denom,
+        BOB,
+        Some(OWNER.to_string()),
+        &coins(amount.into(), NATIVE_DENOM),
+    );
+
+    // Bob delegates his vesting tokens
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Delegate {
+            validator: VALIDATOR.to_string(),
+            amount: Uint128::new(500),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Advance the clock
+    app.update_block(|block| {
+        block.time = block.time.plus_seconds(150);
+    });
+
+    // // TODO handle canceled staking rewards
+
+    // // Withdraw rewards can still be called afterwards
+    // app.execute_contract(
+    //     bob.clone(),
+    //     cw_payroll_addr.clone(),
+    //     &ExecuteMsg::WithdrawDelegatorReward {
+    //         validator: VALIDATOR.to_string(),
+    //     },
+    //     &[],
+    // )
+    // .unwrap();
+
+    // Owner DAO cancels vesting contract
+    app.execute_contract(
+        owner.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Cancel {},
+        &[],
+    )
+    .unwrap();
+
+    // Owner DAO can't cancel twice
+    app.execute_contract(owner, cw_payroll_addr.clone(), &ExecuteMsg::Cancel {}, &[])
+        .unwrap_err();
+
+    // Advance the clock
+    app.update_block(|block| {
+        block.height += 10000;
+        block.time = block.time.plus_seconds(10000000);
+    });
+
+    // Trigger unboding que to return tokens
+    app.sudo(SudoMsg::Staking(StakingSudo::ProcessQueue {}))
+        .unwrap();
+
+    // Bob tries normal distribute method but can't
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Distribute {},
+        &[],
+    )
+    .unwrap_err();
+
+    // Bob tries to close
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::DistributeUnbondedAndClose {},
+        &[],
+    )
+    .unwrap();
+
+    // Unvested funds have been returned to contract owner
+    assert_eq!(
+        get_balance_native(&app, "owner", NATIVE_DENOM),
+        Uint128::new(9750)
+    );
+    // Bob has gets the funds vest up until cancelation
+    assert_eq!(
+        get_balance_native(&app, BOB, NATIVE_DENOM),
+        Uint128::new(10250)
+    );
+    // Contract has zero funds
+    assert_eq!(
+        get_balance_native(&app, cw_payroll_addr, NATIVE_DENOM),
+        Uint128::zero()
     );
 }

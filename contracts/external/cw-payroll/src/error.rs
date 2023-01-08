@@ -46,14 +46,35 @@ pub enum ContractError {
     #[error("Cw20 contract does not match vesting denom")]
     Cw20DoesNotMatch,
 
-    #[error("Title must be less than 280 characters and not be an empty string")]
-    InvalidTitle,
-
     #[error("Fully vested")]
     FullyVested,
 
+    #[error("Incorrect coin denom")]
+    IncorrectDenom {},
+
+    #[error("Title must be less than 280 characters and not be an empty string")]
+    InvalidTitle,
+
+    #[error("Cannot undelegate more than you previously delegated")]
+    InsufficientDelegation {},
+
+    #[error("Only callable if vesting payment is active")]
+    NotActive,
+
+    #[error("Vesting payment does not have enough funds")]
+    NotEnoughFunds {},
+
+    #[error("Cannot undelegate or claim rewards from a validator that does not have delegations")]
+    NoDelegationsForValidator {},
+
     #[error("No tokens have vested for this vesting payment")]
     NoFundsToClaim { claimed: Uint128 },
+
+    #[error("Contract has run out of funds to delegate")]
+    NoFundsToDelegate {},
+
+    #[error("Only callable if contract has been canceled and is unbonding")]
+    NotCanceledAndUnbonding,
 
     #[error("Tokens for this vesting payment are not stakeable")]
     NotStakeable,
@@ -72,21 +93,6 @@ pub enum ContractError {
 
     #[error("Vesting Payment does not exist")]
     VestingPaymentNotFound,
-
-    #[error("Incorrect coin denom")]
-    IncorrectDenom {},
-
-    #[error("Cannot undelegate more than you previously delegated")]
-    InsufficientDelegation {},
-
-    #[error("Cannot undelegate or claim rewards from a validator that does not have delegations")]
-    NoDelegationsForValidator {},
-
-    #[error("Contract has run out of funds to delegate")]
-    NoFundsToDelegate {},
-
-    #[error("Vesting payment does not have enough funds")]
-    NotEnoughFunds {},
 
     #[error("Rewards amount is 0")]
     ZeroRewardsToSend {},
