@@ -354,12 +354,7 @@ fn test_happy_cw20_path() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(
-        err,
-        ContractError::NoFundsToClaim {
-            claimed: Uint128::zero()
-        }
-    );
+    assert_eq!(err, ContractError::NoFundsToClaim);
 
     // Advance the clock
     app.update_block(|block| {
@@ -458,12 +453,7 @@ fn test_happy_native_path() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(
-        err,
-        ContractError::NoFundsToClaim {
-            claimed: Uint128::zero()
-        }
-    );
+    assert_eq!(err, ContractError::NoFundsToClaim);
 
     // Advance the clock
     app.update_block(|block| {
@@ -746,7 +736,7 @@ fn test_cancel_vesting_staked_funds() {
     // Advance the clock
     app.update_block(|block| {
         block.height += 15000;
-        block.time = block.time.plus_seconds(30000);
+        block.time = block.time.plus_seconds(15000);
     });
 
     // Call withdraw rewards before closing
@@ -773,11 +763,11 @@ fn test_cancel_vesting_staked_funds() {
     app.execute_contract(owner, cw_payroll_addr.clone(), &ExecuteMsg::Cancel {}, &[])
         .unwrap_err();
 
-    // Bob tries to close before funds unbond
+    // Bob tries to distribute before funds unbond
     app.execute_contract(
         bob.clone(),
         cw_payroll_addr.clone(),
-        &ExecuteMsg::DistributeUnbondedAndClose {},
+        &ExecuteMsg::Distribute {},
         &[],
     )
     .unwrap_err();
@@ -799,27 +789,18 @@ fn test_cancel_vesting_staked_funds() {
         &ExecuteMsg::Distribute {},
         &[],
     )
-    .unwrap_err();
-
-    // Bob closes after waiting for unbonding period
-    app.execute_contract(
-        bob.clone(),
-        cw_payroll_addr.clone(),
-        &ExecuteMsg::DistributeUnbondedAndClose {},
-        &[],
-    )
     .unwrap();
 
-    // // Unvested funds have been returned to contract owner
-    // assert_eq!(
-    //     get_balance_native(&app, "owner", NATIVE_DENOM),
-    //     Uint128::new(INITIAL_BALANCE) - Uint128::new(250000000)
-    // );
-    // // Bob has gets the funds vest up until cancelation
-    // assert_eq!(
-    //     get_balance_native(&app, BOB, NATIVE_DENOM),
-    //     Uint128::new(INITIAL_BALANCE) + Uint128::new(250000000)
-    // );
+    // Unvested funds have been returned to contract owner
+    assert_eq!(
+        get_balance_native(&app, "owner", NATIVE_DENOM),
+        Uint128::new(INITIAL_BALANCE) - Uint128::new(25000000)
+    );
+    // Bob has gets the funds vest up until cancelation, plus staking rewards
+    assert_eq!(
+        get_balance_native(&app, BOB, NATIVE_DENOM),
+        Uint128::new(INITIAL_BALANCE) + Uint128::new(25009512)
+    );
     // Contract should have zero funds
     assert_eq!(
         get_balance_native(&app, cw_payroll_addr, NATIVE_DENOM),

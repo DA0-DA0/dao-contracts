@@ -1,6 +1,5 @@
 use cosmwasm_std::{
     CheckedFromRatioError, DecimalRangeExceeded, DivideByZeroError, OverflowError, StdError,
-    Uint128,
 };
 use cw_denom::DenomError;
 use cw_ownable::OwnershipError;
@@ -67,8 +66,8 @@ pub enum ContractError {
     #[error("Cannot undelegate or claim rewards from a validator that does not have delegations")]
     NoDelegationsForValidator {},
 
-    #[error("No tokens have vested for this vesting payment")]
-    NoFundsToClaim { claimed: Uint128 },
+    #[error("No tokens have vested at the moment")]
+    NoFundsToClaim,
 
     #[error("Contract has run out of funds to delegate")]
     NoFundsToDelegate {},

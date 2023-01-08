@@ -18,9 +18,6 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Distribute unlocked vesting tokens
     Distribute {},
-    /// Resolves contracts that are canceled whilst funds have been staked
-    /// Only callable after funds have unbonded
-    DistributeUnbondedAndClose {},
     /// Cancel vesting contract and return funds to owner (if configured)
     Cancel {},
     /// This is translated to a [MsgDelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L81-L90).

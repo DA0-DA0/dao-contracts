@@ -80,7 +80,6 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive_cw20(env, deps, info, msg),
         ExecuteMsg::Distribute {} => execute_distribute(env, deps),
-        ExecuteMsg::DistributeUnbondedAndClose {} => execute_distribute_unbonded(env, deps),
         ExecuteMsg::Cancel {} => execute_cancel_vesting_payment(env, deps, info),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
         ExecuteMsg::Delegate { validator, amount } => {
@@ -240,19 +239,23 @@ pub fn execute_cancel_vesting_payment(
 pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractError> {
     let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
 
-    // Check if canceled and unbonding
-    if vesting_payment.status == VestingPaymentStatus::CanceledAndUnbonding {
-        return Err(ContractError::VestingPaymentCanceled);
-    }
-
-    let vested_amount = vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
+    // Get vested amount based on stats
+    let vested_amount = match vesting_payment.status {
+        // If canceled and unbonding use canceled time
+        VestingPaymentStatus::CanceledAndUnbonding => vesting_payment
+            .get_vested_amount_by_seconds(
+                vesting_payment
+                    .canceled_at_time
+                    .unwrap_or(env.block.time.seconds()),
+            )?,
+        // Otherwise use current block time
+        _ => vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?,
+    };
     let staking_rewards = vesting_payment.get_pending_rewards()?;
 
     // Check there are funds to distribute
     if vested_amount == Uint128::zero() && staking_rewards == Uint128::zero() {
-        return Err(ContractError::NoFundsToClaim {
-            claimed: vesting_payment.claimed_amount,
-        });
+        return Err(ContractError::NoFundsToClaim);
     }
 
     // Update Vesting Payment with claimed amount
@@ -261,6 +264,12 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
         vp.amount -= vested_amount;
         vp.claimed_amount += vested_amount;
         vp.rewards.pending = Decimal::zero();
+
+        // Check if canceled and unbonding
+        if vp.status == VestingPaymentStatus::CanceledAndUnbonding {
+            // Set status to canceled as funds have unbonded if this executes
+            vp.status = VestingPaymentStatus::Canceled
+        }
 
         // If the amount remaining in contract goes to zero, update status
         if vp.amount == Uint128::zero() {
@@ -271,7 +280,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
 
     let mut msgs: Vec<CosmosMsg> = vec![];
 
-    // Get transfer message for payout
+    // Get transfer message for recipient payout
     let total_payout = vested_amount.checked_add(staking_rewards)?;
     if total_payout != Uint128::zero() {
         let transfer_msg = vesting_payment
@@ -280,65 +289,22 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
         msgs.push(transfer_msg);
     }
 
-    Ok(Response::new()
-        .add_attribute("method", "distribute")
-        .add_attribute("vested_amount", vested_amount)
-        .add_messages(msgs))
-}
-
-pub fn execute_distribute_unbonded(env: Env, deps: DepsMut) -> Result<Response, ContractError> {
-    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-    // Check that the vesting contract has a canceled and unbonding status
-    if vesting_payment.status != VestingPaymentStatus::CanceledAndUnbonding {
-        return Err(ContractError::NotCanceledAndUnbonding);
-    }
-
-    // Get the vested amount at the time the vesting contract was canceled
-    let vested_amount = vesting_payment.get_vested_amount_by_seconds(
-        vesting_payment
-            .canceled_at_time
-            .unwrap_or(env.block.time.seconds()),
-    )?;
-    let staking_rewards = vesting_payment.get_pending_rewards()?;
-
-    // Update Vesting Payment with claimed amount
-    VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
-        // Update amounts
-        vp.amount -= vested_amount;
-        vp.claimed_amount += vested_amount;
-        vp.rewards.pending = Decimal::zero();
-
-        // Set status to canceled
-        vp.status = VestingPaymentStatus::Canceled;
-        Ok(vp)
-    })?;
-
-    let mut msgs: Vec<CosmosMsg> = vec![];
-
-    // Get transfer message for payout, any staking rewards go to recipient
-    let total_payout = vested_amount.checked_add(staking_rewards)?;
-    if total_payout != Uint128::zero() {
-        let transfer_msg = vesting_payment
-            .denom
-            .get_transfer_to_message(&vesting_payment.recipient, total_payout)?;
-        msgs.push(transfer_msg);
-    }
-
-    // Get owner's payout message
-    let unvested_amount = vesting_payment.amount.checked_sub(vested_amount)?;
-    let owner = cw_ownable::get_ownership(deps.storage)?;
-    if let Some(owner) = owner.owner {
-        if unvested_amount != Uint128::zero() {
-            let withdraw_unbonded_msg = vesting_payment
-                .denom
-                .get_transfer_to_message(&owner, unvested_amount)?;
-            msgs.push(withdraw_unbonded_msg);
+    // Get owner's payout message in event of canceled and unbonding
+    if vesting_payment.status == VestingPaymentStatus::CanceledAndUnbonding {
+        let unvested_amount = vesting_payment.amount.checked_sub(vested_amount)?;
+        let owner = cw_ownable::get_ownership(deps.storage)?;
+        if let Some(owner) = owner.owner {
+            if unvested_amount != Uint128::zero() {
+                let withdraw_unbonded_msg = vesting_payment
+                    .denom
+                    .get_transfer_to_message(&owner, unvested_amount)?;
+                msgs.push(withdraw_unbonded_msg);
+            }
         }
     }
 
     Ok(Response::new()
-        .add_attribute("method", "distribute_unbonded_and_close")
+        .add_attribute("method", "distribute")
         .add_attribute("vested_amount", vested_amount)
         .add_messages(msgs))
 }
