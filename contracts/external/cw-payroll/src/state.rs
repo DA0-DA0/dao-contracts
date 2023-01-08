@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, Deps, DepsMut, OverflowError, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, OverflowError, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use crate::ContractError;
@@ -41,7 +41,12 @@ impl UncheckedVestingParams {
             UncheckedDenom::Cw20(addr) => UncheckedDenom::Cw20(addr).into_checked(deps)?,
         };
 
-        // TODO if title is included, validate title length (max 280 characters)
+        // If title is included, validate title length (max 280 characters)
+        if let Some(ref title) = self.title {
+            if title.len() > 280 || title.len() == 0 {
+                return Err(ContractError::InvalidTitle);
+            }
+        }
 
         Ok(CheckedVestingParams {
             recipient,
@@ -74,12 +79,11 @@ pub enum VestingPaymentStatus {
     Canceled,
     CanceledAndUnbonding,
     FullyVested,
+    Unfunded,
 }
 
 #[cw_serde]
 pub struct VestingPayment {
-    /// The ID of the vesting payment
-    pub id: u64,
     /// The recipient for the vesting payment
     pub recipient: Addr,
     /// Vesting amount in Native and Cw20 tokens
@@ -98,27 +102,17 @@ pub struct VestingPayment {
     pub status: VestingPaymentStatus,
     /// The amount of the vesting payment that has been staked
     pub staked_amount: Uint128,
-    /// The amount of a vesting payment currently unbonding
-    pub unbonding_amount: Uint128,
     /// Info about staked vesting payment rewards
     pub rewards: VestingPaymentRewards,
 }
 
 impl VestingPayment {
     /// Create a new VestingPayment from CheckedVestingParams
-    pub fn new(
-        deps: DepsMut,
-        checked_vesting_params: CheckedVestingParams,
-    ) -> Result<Self, ContractError> {
-        let mut id = VESTING_PAYMENT_SEQ.load(deps.storage)?;
-        id += 1;
-
+    pub fn new(checked_vesting_params: CheckedVestingParams) -> Result<Self, ContractError> {
         let vesting_payment = Self {
-            id,
             status: VestingPaymentStatus::Active,
             claimed_amount: Uint128::zero(),
             staked_amount: Uint128::zero(),
-            unbonding_amount: Uint128::zero(),
             recipient: checked_vesting_params.recipient,
             amount: checked_vesting_params.amount,
             denom: checked_vesting_params.denom,
@@ -130,9 +124,6 @@ impl VestingPayment {
                 paid_rewards_per_token: Decimal::zero(),
             },
         };
-
-        VESTING_PAYMENT_SEQ.save(deps.storage, &id)?;
-        VESTING_PAYMENTS.save(deps.storage, id, &vesting_payment)?;
 
         Ok(vesting_payment)
     }
@@ -186,12 +177,11 @@ impl VestingPayment {
     }
 }
 
-/// The current vesting_payment ID
-pub const VESTING_PAYMENT_SEQ: Item<u64> = Item::new("vesting_payment_seq");
 /// A map of vesting payments (ID, VestingPayment)
-pub const VESTING_PAYMENTS: Map<u64, VestingPayment> = Map::new("vesting_payments");
-/// A map of staked vesting claims
-pub const STAKED_VESTING_CLAIMS: Map<(&str, u64), Uint128> = Map::new("staked_vesting_claims");
+pub const VESTING_PAYMENT: Item<VestingPayment> = Item::new("vesting_payment");
+/// A map of staked vesting claims by validator
+pub const STAKED_VESTING_CLAIMS_BY_VALIDATOR: Map<&str, Uint128> =
+    Map::new("staked_vesting_claims_by_validator");
 /// A map that keeps track of withdrawn rewards for a particular validator
 pub const VALIDATORS_REWARDS: Map<&str, ValidatorRewards> = Map::new("validators_rewards");
 

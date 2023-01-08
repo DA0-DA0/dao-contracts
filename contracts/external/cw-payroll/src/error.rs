@@ -37,11 +37,17 @@ pub enum ContractError {
     #[error("{0}")]
     PaymentError(#[from] PaymentError),
 
+    #[error("Contract has already been funded")]
+    AlreadyFunded,
+
     #[error("Amount sent does not match vesting amount")]
     AmountDoesNotMatch,
 
     #[error("Cw20 contract does not match vesting denom")]
     Cw20DoesNotMatch,
+
+    #[error("Title must be less than 280 characters and not be an empty string")]
+    InvalidTitle,
 
     #[error("Fully vested")]
     FullyVested,
@@ -61,11 +67,11 @@ pub enum ContractError {
     #[error("The transfer tries to vest more tokens than it sends")]
     VestsMoreThanSent,
 
-    #[error("Vesting Payment {vesting_payment_id} has been cancelled by contract owner")]
-    VestingPaymentCanceled { vesting_payment_id: u64 },
+    #[error("Vesting Payment has been cancelled by contract owner")]
+    VestingPaymentCanceled,
 
     #[error("Vesting Payment does not exist")]
-    VestingPaymentNotFound { vesting_payment_id: u64 },
+    VestingPaymentNotFound,
 
     #[error("Incorrect coin denom")]
     IncorrectDenom {},
