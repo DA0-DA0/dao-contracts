@@ -17,7 +17,7 @@ use crate::ContractError;
 
 const ALICE: &str = "alice";
 const BOB: &str = "bob";
-const INITIAL_BALANCE: u128 = 10000;
+const INITIAL_BALANCE: u128 = 1000000000;
 const OWNER: &str = "owner";
 const NATIVE_DENOM: &str = "denom";
 const VALIDATOR: &str = "validator";
@@ -231,7 +231,7 @@ fn test_catch_imposter_cw20() {
     let mut app = setup_app();
     let (cw20_addr, cw20_code_id, _) = setup_contracts(&mut app);
 
-    let amount = Uint128::new(1000);
+    let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
 
     let start_time = app.block_info().time.plus_seconds(100).seconds();
@@ -297,7 +297,7 @@ fn test_catch_imposter_cw20() {
 fn test_happy_cw20_path() {
     let mut app = setup_app();
 
-    let amount = Uint128::new(1000);
+    let amount = Uint128::new(1000000);
     // cw20 is the first contract instantiated and will hve the address "contract0"
     let unchecked_denom = UncheckedDenom::Cw20("contract0".to_string());
 
@@ -380,8 +380,8 @@ fn test_happy_cw20_path() {
         get_vesting_payment(&app, cw_payroll_addr.clone()),
         VestingPayment {
             recipient: Addr::unchecked(BOB),
-            amount: Uint128::new(750),
-            claimed_amount: Uint128::new(250),
+            amount: Uint128::new(750000),
+            claimed_amount: Uint128::new(250000),
             ..vesting_payment
         }
     );
@@ -391,15 +391,19 @@ fn test_happy_cw20_path() {
         get_balance_cw20(&app, cw20_addr.clone(), OWNER),
         Uint128::new(INITIAL_BALANCE) - amount
     );
+
     // Bob has claimed vested funds and is up 250
-    assert_eq!(get_balance_cw20(&app, cw20_addr, BOB), Uint128::new(10250));
+    assert_eq!(
+        get_balance_cw20(&app, cw20_addr, BOB),
+        Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
+    );
 }
 
 #[test]
 fn test_happy_native_path() {
     let mut app = setup_app();
 
-    let amount = Uint128::new(1000);
+    let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
     // Basic linear vesting schedule
@@ -480,8 +484,8 @@ fn test_happy_native_path() {
         get_vesting_payment(&app, cw_payroll_addr.clone()),
         VestingPayment {
             recipient: Addr::unchecked(BOB),
-            amount: Uint128::new(750),
-            claimed_amount: Uint128::new(250),
+            amount: Uint128::new(750000),
+            claimed_amount: Uint128::new(250000),
             ..vesting_payment
         }
     );
@@ -494,7 +498,7 @@ fn test_happy_native_path() {
     // Bob has claimed vested funds and is up 250
     assert_eq!(
         get_balance_native(&app, BOB, NATIVE_DENOM),
-        Uint128::new(10250)
+        Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
     );
 }
 
@@ -502,7 +506,7 @@ fn test_happy_native_path() {
 fn test_cancel_vesting() {
     let mut app = setup_app();
 
-    let amount = Uint128::new(1000);
+    let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
     // Basic linear vesting schedule
@@ -559,12 +563,12 @@ fn test_cancel_vesting() {
     // Unvested funds have been returned to contract owner
     assert_eq!(
         get_balance_native(&app, "owner", NATIVE_DENOM),
-        Uint128::new(9750)
+        Uint128::new(INITIAL_BALANCE) - Uint128::new(250000)
     );
     // Bob has gets the funds vest up until cancelation
     assert_eq!(
         get_balance_native(&app, BOB, NATIVE_DENOM),
-        Uint128::new(10250)
+        Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
     );
 }
 
@@ -572,7 +576,7 @@ fn test_cancel_vesting() {
 fn test_native_staking_happy_path() {
     let mut app = setup_app();
 
-    let amount = Uint128::new(1000);
+    let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
     // Basic linear vesting schedule
@@ -680,7 +684,7 @@ fn test_native_staking_happy_path() {
     // Bob has claimed vested funds and staked funds
     assert_eq!(
         get_balance_native(&app, BOB, NATIVE_DENOM),
-        Uint128::new(11063)
+        Uint128::new(1001063419)
     );
 
     // Check vesting payment status after final distribution
@@ -689,10 +693,10 @@ fn test_native_staking_happy_path() {
         VestingPayment {
             recipient: Addr::unchecked(BOB),
             amount: Uint128::new(0),
-            claimed_amount: Uint128::new(1000),
+            claimed_amount: Uint128::new(1000000),
             rewards: VestingPaymentRewards {
                 pending: Decimal::zero(),
-                paid_rewards_per_token: Decimal::new(Uint128::new(63000000000000000))
+                paid_rewards_per_token: Decimal::new(Uint128::new(63419000000000000))
             },
             status: VestingPaymentStatus::FullyVested,
             ..vesting_payment
@@ -704,12 +708,12 @@ fn test_native_staking_happy_path() {
 fn test_cancel_vesting_staked_funds() {
     let mut app = setup_app();
 
-    let amount = Uint128::new(1000);
+    let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
     // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let start_time = app.block_info().time.plus_seconds(10000).seconds();
+    let end_time = app.block_info().time.plus_seconds(30000).seconds();
     let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
 
     let TestCase {
@@ -733,7 +737,7 @@ fn test_cancel_vesting_staked_funds() {
         cw_payroll_addr.clone(),
         &ExecuteMsg::Delegate {
             validator: VALIDATOR.to_string(),
-            amount: Uint128::new(500),
+            amount,
         },
         &[],
     )
@@ -741,21 +745,22 @@ fn test_cancel_vesting_staked_funds() {
 
     // Advance the clock
     app.update_block(|block| {
-        block.time = block.time.plus_seconds(150);
+        block.height += 1500;
+        block.time = block.time.plus_seconds(15000);
     });
 
     // // TODO handle canceled staking rewards
 
-    // // Withdraw rewards can still be called afterwards
-    // app.execute_contract(
-    //     bob.clone(),
-    //     cw_payroll_addr.clone(),
-    //     &ExecuteMsg::WithdrawDelegatorReward {
-    //         validator: VALIDATOR.to_string(),
-    //     },
-    //     &[],
-    // )
-    // .unwrap();
+    // Withdraw rewards can still be called afterwards
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::WithdrawDelegatorReward {
+            validator: VALIDATOR.to_string(),
+        },
+        &[],
+    )
+    .unwrap();
 
     // Owner DAO cancels vesting contract
     app.execute_contract(
@@ -773,7 +778,7 @@ fn test_cancel_vesting_staked_funds() {
     // Advance the clock
     app.update_block(|block| {
         block.height += 10000;
-        block.time = block.time.plus_seconds(10000000);
+        block.time = block.time.plus_seconds(100000);
     });
 
     // Trigger unboding que to return tokens
@@ -801,12 +806,12 @@ fn test_cancel_vesting_staked_funds() {
     // Unvested funds have been returned to contract owner
     assert_eq!(
         get_balance_native(&app, "owner", NATIVE_DENOM),
-        Uint128::new(9750)
+        Uint128::new(INITIAL_BALANCE) - Uint128::new(250000)
     );
     // Bob has gets the funds vest up until cancelation
     assert_eq!(
         get_balance_native(&app, BOB, NATIVE_DENOM),
-        Uint128::new(10250)
+        Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
     );
     // Contract has zero funds
     assert_eq!(
