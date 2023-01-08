@@ -37,5 +37,5 @@ For example, if an employee has to leave a company for whatever reason, the comp
 
 When a contract is canceled, funds that have vested up until that moment are paid out to the `recipient` and the rest are refunded to the contract `owner`.
 
-If funds are delegated when a contract is canceled, the delegated funds are immediately unbonded. After newly undelegated funds have finished the unbonding period, they can be withdraw by calling the `distribute_and_close` method to resolve.
+If funds are delegated when a contract is canceled, the delegated funds are immediately unbonded. After newly undelegated funds have finished the unbonding period, they can be withdraw by calling the `distribute` method to resolve.
 
