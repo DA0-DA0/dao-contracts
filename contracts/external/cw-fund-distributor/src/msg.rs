@@ -1,4 +1,4 @@
-use cosmwasm_schema::{cw_serde};
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
@@ -46,9 +46,7 @@ pub struct TotalPowerResponse {
 
 #[cw_serde]
 pub enum MigrateMsg {
-    RedistributeUnclaimedFunds {
-        distribution_height: u64,
-    }
+    RedistributeUnclaimedFunds { distribution_height: u64 },
 }
 
 #[cw_serde]
@@ -74,4 +72,3 @@ pub struct CW20EntitlementResponse {
     pub amount: Uint128,
     pub token_contract: Addr,
 }
-

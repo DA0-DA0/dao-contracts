@@ -1,8 +1,8 @@
-use cosmwasm_std::{Addr, Binary, Coin, Empty, to_binary, Uint128};
-use cw20::{BalanceResponse, Cw20Coin};
-use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, next_block, SudoMsg};
-use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::msg::ExecuteMsg::ClaimAll;
+use crate::msg::{ExecuteMsg, InstantiateMsg};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, Uint128};
+use cw20::{BalanceResponse, Cw20Coin};
+use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
 const CREATOR_ADDR: &str = "creator";
 const FEE_DENOM: &str = "ujuno";
@@ -10,8 +10,6 @@ const FEE_DENOM: &str = "ujuno";
 struct BaseTest {
     app: App,
     distributor_address: Addr,
-    staking_address: Addr,
-    token_address: Addr,
 }
 
 fn distributor_contract() -> Box<dyn Contract<Empty>> {
@@ -20,7 +18,7 @@ fn distributor_contract() -> Box<dyn Contract<Empty>> {
         crate::contract::instantiate,
         crate::contract::query,
     )
-        .with_migrate(crate::contract::migrate);
+    .with_migrate(crate::contract::migrate);
     Box::new(contract)
 }
 
@@ -39,7 +37,7 @@ fn staked_balances_voting_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_cw20_staked::contract::instantiate,
         dao_voting_cw20_staked::contract::query,
     )
-        .with_reply(dao_voting_cw20_staked::contract::reply);
+    .with_reply(dao_voting_cw20_staked::contract::reply);
     Box::new(contract)
 }
 
@@ -50,6 +48,27 @@ fn cw20_staking_contract() -> Box<dyn Contract<Empty>> {
         cw20_stake::contract::query,
     );
     Box::new(contract)
+}
+
+fn instantiate_cw20(
+    app: &mut App,
+    sender: Addr,
+    initial_balances: Vec<Cw20Coin>,
+    name: String,
+    symbol: String,
+) -> Addr {
+    let cw20_id = app.store_code(cw20_contract());
+    let msg = cw20_base::msg::InstantiateMsg {
+        name,
+        symbol,
+        decimals: 6,
+        initial_balances,
+        mint: None,
+        marketing: None,
+    };
+
+    app.instantiate_contract(cw20_id, sender, &msg, &[], "cw20", None)
+        .unwrap()
 }
 
 fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
@@ -111,7 +130,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             },
             &[],
         )
-            .unwrap();
+        .unwrap();
     }
 
     app.update_block(next_block);
@@ -133,18 +152,16 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
     BaseTest {
         app,
         distributor_address: distribution_contract,
-        staking_address: staking_contract,
-        token_address: token_contract,
     }
 }
 
+// This is to attempt to simulate a situation where
+// someone would spam a dao treasury with a lot of native tokens
 #[test]
 pub fn test_claim_lots_of_native_tokens() {
     let BaseTest {
         mut app,
         distributor_address,
-        staking_address: _,
-        token_address: _,
     } = setup_test(vec![
         Cw20Coin {
             address: "bekauz".to_string(),
@@ -153,17 +170,16 @@ pub fn test_claim_lots_of_native_tokens() {
         Cw20Coin {
             address: "ekez".to_string(),
             amount: Uint128::new(20),
-        }
+        },
     ]);
 
     let amount = Uint128::new(500000);
 
     let token_count = 500;
     // mint and fund the distributor contract with
-    // a bunch of tokens
+    // a bunch of native tokens
     for n in 1..token_count {
         let denom = FEE_DENOM.to_owned() + &n.to_string();
-
         app.sudo(SudoMsg::Bank(BankSudo::Mint {
             to_address: CREATOR_ADDR.to_string(),
             amount: vec![Coin {
@@ -183,8 +199,6 @@ pub fn test_claim_lots_of_native_tokens() {
             }],
         )
         .unwrap();
-
-        println!("minted & funded {:?}", denom.clone());
     }
 
     app.update_block(|mut block| block.height += 11);
@@ -197,15 +211,10 @@ pub fn test_claim_lots_of_native_tokens() {
     )
     .unwrap();
 
+    // assert that all the claims succeeded
     for n in 1..token_count {
         let denom = FEE_DENOM.to_owned() + &n.to_string();
-
-        let expected_balance = amount
-            .checked_multiply_ratio(
-                Uint128::new(10),
-                Uint128::new(30)
-            ).unwrap();
-
+        let expected_balance = Uint128::new(166666);
         let user_balance_after_claim = app
             .wrap()
             .query_balance("bekauz".to_string(), denom)
@@ -214,13 +223,14 @@ pub fn test_claim_lots_of_native_tokens() {
     }
 }
 
+// This is to attempt to simulate a situation where
+// the distributor contract gets funded with a lot
+// of cw20 tokens
 #[test]
 pub fn test_claim_lots_of_cw20s() {
     let BaseTest {
         mut app,
         distributor_address,
-        staking_address: _,
-        token_address: _,
     } = setup_test(vec![
         Cw20Coin {
             address: "bekauz".to_string(),
@@ -229,7 +239,7 @@ pub fn test_claim_lots_of_cw20s() {
         Cw20Coin {
             address: "ekez".to_string(),
             amount: Uint128::new(20),
-        }
+        },
     ]);
 
     let amount = Uint128::new(500000);
@@ -240,7 +250,6 @@ pub fn test_claim_lots_of_cw20s() {
         .into_iter()
         .map(|n| {
             let name = FEE_DENOM.to_owned() + &n.to_string();
-            // mint a new coin
             let cw20_addr = instantiate_cw20(
                 &mut app,
                 Addr::unchecked(CREATOR_ADDR),
@@ -251,7 +260,6 @@ pub fn test_claim_lots_of_cw20s() {
                 name,
                 "shitcoin".to_string(),
             );
-            // fund the distributor
             app.execute_contract(
                 Addr::unchecked(CREATOR_ADDR),
                 cw20_addr.clone(),
@@ -277,53 +285,19 @@ pub fn test_claim_lots_of_cw20s() {
     )
     .unwrap();
 
-    let expected_balance = amount
-        .checked_multiply_ratio(
-            Uint128::new(10),
-            Uint128::new(30)
-        )
-        .unwrap();
+    let expected_balance = Uint128::new(166666);
 
-    cw20_addresses.into_iter()
-        .for_each(|addr| {
-            let user_balance_after_claim: BalanceResponse = app
-                .wrap()
-                .query_wasm_smart(
-                    addr,
-                    &cw20::Cw20QueryMsg::Balance {
-                        address: "bekauz".to_string(),
-                    },
-                )
-                .unwrap();
-            assert_eq!(expected_balance, user_balance_after_claim.balance);
-        });
-
-}
-
-fn instantiate_cw20(
-    app: &mut App,
-    sender: Addr,
-    initial_balances: Vec<Cw20Coin>,
-    name: String,
-    symbol: String
-) -> Addr {
-    let cw20_id = app.store_code(cw20_contract());
-    let msg = cw20_base::msg::InstantiateMsg {
-        name,
-        symbol,
-        decimals: 6,
-        initial_balances,
-        mint: None,
-        marketing: None,
-    };
-
-    app.instantiate_contract(
-        cw20_id,
-        sender,
-        &msg,
-        &[],
-        "cw20",
-        None
-    )
-    .unwrap()
+    // assert that all the claims succeeded
+    cw20_addresses.into_iter().for_each(|addr| {
+        let user_balance_after_claim: BalanceResponse = app
+            .wrap()
+            .query_wasm_smart(
+                addr,
+                &cw20::Cw20QueryMsg::Balance {
+                    address: "bekauz".to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(expected_balance, user_balance_after_claim.balance);
+    });
 }
