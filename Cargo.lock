@@ -696,7 +696,6 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test",
- "cw-paginate 2.0.0-beta",
  "cw-payroll",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
