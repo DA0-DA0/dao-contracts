@@ -25,7 +25,7 @@ pub enum ContractError {
     #[error("Can not create an escrow for zero tokens")]
     ZeroTokens {},
 
-    #[error("Provied funds do not match promised funds")]
+    #[error("Provided funds do not match promised funds")]
     InvalidFunds {},
 
     #[error("Invalid amount. Expected ({expected}), got ({actual})")]

@@ -878,7 +878,7 @@
         "additionalProperties": false
       },
       "MultipleChoiceOptions": {
-        "description": "Represents unchecked multipl choice options",
+        "description": "Represents unchecked multiple choice options",
         "type": "object",
         "required": [
           "options"

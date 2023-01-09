@@ -101,10 +101,6 @@ pub fn execute_propose(
 
     // Prepare proposal submitted hooks msg to notify approver.  Make
     // a proposal on the approver DAO to approve this pre-proposal
-
-    // TODO(zeke): is this actually what we should be feeding to the
-    // proposal submitted hooks? this locks them into being an
-    // approver.
     let hooks_msgs =
         pre_propose_base
             .proposal_submitted_hooks
