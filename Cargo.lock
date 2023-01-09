@@ -1237,6 +1237,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-proposal-condorcet"
+version = "2.0.0-beta"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus 0.16.0",
+ "cw2 0.16.0",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-proposal-hook-counter"
 version = "2.0.1"
 dependencies = [
