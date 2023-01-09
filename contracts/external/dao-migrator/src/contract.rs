@@ -8,7 +8,7 @@ use cw2::set_contract_version;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::CodeIdPair,
+    state::{CodeIdPair, MigrationMsgs, MIGRATION_PARAMS},
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-migrator";
@@ -19,49 +19,71 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    MIGRATION_PARAMS.save(deps.storage, &msg.migration_params)?;
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::MigrateV1ToV2 {
-            migrate_stake_cw20_manager: _,
-        } => unimplemented!(),
+            migrate_stake_cw20_manager,
+        } => execute_migration_v1_v2(deps, info, migrate_stake_cw20_manager.unwrap_or(false)),
         ExecuteMsg::Conjunction { operands: _ } => unimplemented!(),
     }
 }
 
-fn execute_migration_v1_v2(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
-    // TODO: Probably should be dynamic?
+fn execute_migration_v1_v2(
+    deps: DepsMut,
+    info: MessageInfo,
+    _migrate_stake_cw20_manager: bool,
+) -> Result<Response, ContractError> {
+    let migration_params = MIGRATION_PARAMS.load(deps.storage)?;
     // TODO: Add params checks for the migrateMsg, to make sure we got the msg correctly.
     // List of matching code ids (TESTNET) and the migration msg of each one of them.
     let code_ids: Vec<CodeIdPair> = vec![
         CodeIdPair::new(
             453,
             3463,
-            dao_proposal_single::msg::MigrateMsg::FromV1 {
-                close_proposal_on_execution_failure: false,
-                pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
-            },
+            MigrationMsgs::DaoProposalSingle(dao_proposal_single::msg::MigrateMsg::FromV1 {
+                close_proposal_on_execution_failure: migration_params
+                    .close_proposal_on_execution_failure,
+                pre_propose_info: migration_params.pre_propose_info,
+            }),
         ), // cw-proposal-single -> dao_proposal_single
-           // CodeIdPair::new(452, 3457), // cw-core -> dao_core
-           // CodeIdPair::new(450, 3465), // cw4-voting -> dao_voting_cw4
-           // CodeIdPair::new(449, 3454), // cw20-stake -> cw20_stake
-           // CodeIdPair::new(451, 3468), // cw20-staked-balances-voting -> dao_voting_staking_denom_staked (TODO: correct?)
-           // CodeIdPair::new(77, 3471),  // cw20_base -> cw20_base
-           // CodeIdPair::new(78, 3472),  // cw4_group -> cw4_group
+        CodeIdPair::new(
+            452,
+            3457,
+            MigrationMsgs::DaoCore(dao_core::msg::MigrateMsg::FromV1 {
+                dao_uri: migration_params.dao_uri,
+            }),
+        ), // cw-core -> dao_core
+        CodeIdPair::new(
+            450,
+            3465,
+            MigrationMsgs::DaoVotingCw4(dao_voting_cw4::msg::MigrateMsg {}),
+        ), // cw4-voting -> dao_voting_cw4
+        CodeIdPair::new(
+            449,
+            3454,
+            MigrationMsgs::Cw20Stake(cw20_stake::msg::MigrateMsg::FromV1 {}),
+        ), // cw20-stake -> cw20_stake
+        CodeIdPair::new(
+            451,
+            3464,
+            MigrationMsgs::DaoVotingCw20Staked(dao_voting_cw20_staked::msg::MigrateMsg {}),
+        ), // cw20-staked-balances-voting -> dao-voting-cw20-staked
     ];
     let mut msgs: Vec<WasmMsg> = vec![];
-    let error: Option<ContractError> = None;
+    let mut error: Option<ContractError> = None;
 
     // We take all the modules of the DAO.
     let modules: Vec<dao_core::state::ProposalModule> = deps.querier.query_wasm_smart(
@@ -74,31 +96,48 @@ fn execute_migration_v1_v2(deps: DepsMut, info: MessageInfo) -> Result<Response,
 
     let success = modules.into_iter().all(|module| {
         // Get the code id of the module
-        // Return false if we don't get contract info, means something went wrong.
-        let code_id =
-            if let Ok(contract_info) = deps.querier.query_wasm_contract_info(module.address.clone()) {
-                contract_info.code_id
-            } else {
-                // TODO: return meaningful error
-                return false;
-            };
+        let code_id = if let Ok(contract_info) = deps
+            .querier
+            .query_wasm_contract_info(module.address.clone())
+        {
+            contract_info.code_id
+        } else {
+            // Return false if we don't get contract info, means something went wrong.
+            error = Some(ContractError::NoContractInfo {
+                prefix: module.prefix,
+                address: module.address.into(),
+            });
+            return false;
+        };
 
         //TODO: pretty sure theres a better way of doing the below checks and msg creation
-        // Make sure moduel code id is one of DAO DAOs code ids
-        if let Some(codePair) = code_ids.iter().find(|x| x.v1_code_id == code_id) {
+        // Make sure module code id is one of DAO DAOs code ids
+        if let Some(code_pair) = code_ids.iter().find(|x| x.v1_code_id == code_id) {
             // Code id is valid DAO DAO code id, lets create a migration msg
 
             msgs.push(WasmMsg::Migrate {
                 contract_addr: module.address.to_string(),
-                new_code_id: codePair.v2_code_id,
-                msg: to_binary(&codePair.migrate_msg).unwrap(),
+                new_code_id: code_pair.v2_code_id,
+                msg: to_binary(&code_pair.migrate_msg).unwrap(),
             })
         } else {
+            // Return false because we couldn't find the code id on our list.
+            error = Some(ContractError::CantMigrateModule {
+                prefix: module.prefix,
+                code_id,
+            });
             return false;
         }
 
         true
     });
+
+    if !success {
+        return Err(error.unwrap())
+    } else {
+        // We successfully verified all modules of the DAO, we can send migration msgs.
+    }
+
     // Get all DAO modules
     // 1. Loop over all modules of a DAO and get the code id
     // 2. Make sure all code ids, match to DAO DAOs code ids
@@ -121,7 +160,7 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> Result<Response, ContractError> {
     // let repl = TaggedReplyId::new(msg.id)?;
     // match repl {}
     Ok(Response::default())

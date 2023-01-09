@@ -1126,9 +1126,13 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "cw20-base 0.16.0",
+ "cw20-stake 2.0.0-beta",
  "dao-core",
  "dao-proposal-single",
  "dao-voting",
+ "dao-voting-cw20-staked",
+ "dao-voting-cw4",
  "thiserror",
 ]
 

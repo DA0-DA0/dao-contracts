@@ -1,8 +1,12 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::WasmMsg;
 
+use crate::state::MigrationParams;
+
 #[cw_serde]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub migration_params: MigrationParams
+}
 
 #[cw_serde]
 pub enum ExecuteMsg {

@@ -1,1 +1,1 @@
-pub(crate) const CREATOR_ADDR: &str = "creator";
+pub(crate) const _CREATOR_ADDR: &str = "creator";
