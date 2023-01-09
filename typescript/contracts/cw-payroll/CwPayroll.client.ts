@@ -47,7 +47,6 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   distribute: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  distributeUnbondedAndClose: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   cancel: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   delegate: ({
     amount,
@@ -82,7 +81,6 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     this.contractAddress = contractAddress;
     this.receive = this.receive.bind(this);
     this.distribute = this.distribute.bind(this);
-    this.distributeUnbondedAndClose = this.distributeUnbondedAndClose.bind(this);
     this.cancel = this.cancel.bind(this);
     this.delegate = this.delegate.bind(this);
     this.undelegate = this.undelegate.bind(this);
@@ -110,11 +108,6 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
   distribute = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       distribute: {}
-    }, fee, memo, funds);
-  };
-  distributeUnbondedAndClose = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
-    return await this.client.execute(this.sender, this.contractAddress, {
-      distribute_unbonded_and_close: {}
     }, fee, memo, funds);
   };
   cancel = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {

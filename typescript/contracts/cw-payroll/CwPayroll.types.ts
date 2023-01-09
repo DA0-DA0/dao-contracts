@@ -48,8 +48,6 @@ export type ExecuteMsg = {
 } | {
   distribute: {};
 } | {
-  distribute_unbonded_and_close: {};
-} | {
   cancel: {};
 } | {
   delegate: {
