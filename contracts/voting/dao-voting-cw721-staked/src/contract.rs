@@ -257,7 +257,14 @@ pub fn execute_update_config(
             config
                 .owner
                 .map(|a| a.to_string())
-                .unwrap_or_else(|| "None".to_string()),
+                .unwrap_or_else(|| "none".to_string()),
+        )
+        .add_attribute(
+            "unstaking_duration",
+            config
+                .unstaking_duration
+                .map(|d| d.to_string())
+                .unwrap_or_else(|| "none".to_string()),
         ))
 }
 
