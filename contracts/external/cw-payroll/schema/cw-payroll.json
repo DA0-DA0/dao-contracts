@@ -230,20 +230,6 @@
         "additionalProperties": false
       },
       {
-        "description": "Resolves contracts that are canceled whilst funds have been staked Only callable after funds have unbonded",
-        "type": "object",
-        "required": [
-          "distribute_unbonded_and_close"
-        ],
-        "properties": {
-          "distribute_unbonded_and_close": {
-            "type": "object",
-            "additionalProperties": false
-          }
-        },
-        "additionalProperties": false
-      },
-      {
         "description": "Cancel vesting contract and return funds to owner (if configured)",
         "type": "object",
         "required": [

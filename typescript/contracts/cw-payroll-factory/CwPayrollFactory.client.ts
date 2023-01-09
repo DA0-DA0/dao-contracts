@@ -6,9 +6,34 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Binary, QueryMsg, MigrateMsg } from "./CwPayrollFactory.types";
+import { InstantiateMsg, ExecuteMsg, Uint128, UncheckedDenom, Curve, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, MigrateMsg, Addr, ArrayOfAddr } from "./CwPayrollFactory.types";
 export interface CwPayrollFactoryReadOnlyInterface {
   contractAddress: string;
+  listVestingContracts: ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ArrayOfAddr>;
+  listVestingContractsByInstantiator: ({
+    instantiator,
+    limit,
+    startAfter
+  }: {
+    instantiator: string;
+    limit?: number;
+    startAfter?: string;
+  }) => Promise<ArrayOfAddr>;
+  listVestingContractsByRecipient: ({
+    limit,
+    recipient,
+    startAfter
+  }: {
+    limit?: number;
+    recipient: string;
+    startAfter?: string;
+  }) => Promise<ArrayOfAddr>;
 }
 export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInterface {
   client: CosmWasmClient;
@@ -17,8 +42,59 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
+    this.listVestingContracts = this.listVestingContracts.bind(this);
+    this.listVestingContractsByInstantiator = this.listVestingContractsByInstantiator.bind(this);
+    this.listVestingContractsByRecipient = this.listVestingContractsByRecipient.bind(this);
   }
 
+  listVestingContracts = async ({
+    limit,
+    startAfter
+  }: {
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ArrayOfAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_vesting_contracts: {
+        limit,
+        start_after: startAfter
+      }
+    });
+  };
+  listVestingContractsByInstantiator = async ({
+    instantiator,
+    limit,
+    startAfter
+  }: {
+    instantiator: string;
+    limit?: number;
+    startAfter?: string;
+  }): Promise<ArrayOfAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_vesting_contracts_by_instantiator: {
+        instantiator,
+        limit,
+        start_after: startAfter
+      }
+    });
+  };
+  listVestingContractsByRecipient = async ({
+    limit,
+    recipient,
+    startAfter
+  }: {
+    limit?: number;
+    recipient: string;
+    startAfter?: string;
+  }): Promise<ArrayOfAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_vesting_contracts_by_recipient: {
+        limit,
+        recipient,
+        start_after: startAfter
+      }
+    });
+  };
 }
 export interface CwPayrollFactoryInterface extends CwPayrollFactoryReadOnlyInterface {
   contractAddress: string;
@@ -29,7 +105,7 @@ export interface CwPayrollFactoryInterface extends CwPayrollFactoryReadOnlyInter
     label
   }: {
     codeId: number;
-    instantiateMsg: Binary;
+    instantiateMsg: InstantiateMsg;
     label: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
@@ -52,7 +128,7 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
     label
   }: {
     codeId: number;
-    instantiateMsg: Binary;
+    instantiateMsg: InstantiateMsg;
     label: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
