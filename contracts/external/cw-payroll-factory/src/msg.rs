@@ -21,12 +21,23 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    // #[returns(Vec<crate::state::VestingPayment>)]
-    // ListVestingContracts {
-    //     instantiator: Option<String>,
-    //     start_after: Option<u64>,
-    //     limit: Option<u32>,
-    // },
+    #[returns(Vec<::cosmwasm_std::Addr>)]
+    ListVestingContracts {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<::cosmwasm_std::Addr>)]
+    ListVestingContractsByInstantiator {
+        instantiator: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[returns(Vec<::cosmwasm_std::Addr>)]
+    ListVestingContractsByRecipient {
+        recipient: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]

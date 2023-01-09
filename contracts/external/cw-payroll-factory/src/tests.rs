@@ -10,7 +10,8 @@ use wynd_utils::Curve;
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg},
+    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg},
+    state::VestingContract,
 };
 
 const ALICE: &str = "alice";
@@ -110,7 +111,7 @@ pub fn test_instantiate_payroll_contract() {
     let res = app
         .execute_contract(
             Addr::unchecked(ALICE),
-            factory_addr,
+            factory_addr.clone(),
             &instantiate_payroll_msg,
             &coins(amount.into(), NATIVE_DENOM),
         )
@@ -126,7 +127,76 @@ pub fn test_instantiate_payroll_contract() {
         .wrap()
         .query_wasm_contract_info(&cw_payroll_addr)
         .unwrap();
-    assert_eq!(contract_info.admin, Some(ALICE.to_string()))
+    assert_eq!(contract_info.admin, Some(ALICE.to_string()));
+
+    // Test query list of contracts
+    let contracts: Vec<VestingContract> = app
+        .wrap()
+        .query_wasm_smart(
+            factory_addr.clone(),
+            &QueryMsg::ListVestingContracts {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(contracts.len(), 1);
+
+    // Test query by instantiator
+    let contracts: Vec<VestingContract> = app
+        .wrap()
+        .query_wasm_smart(
+            factory_addr.clone(),
+            &QueryMsg::ListVestingContractsByInstantiator {
+                instantiator: ALICE.to_string(),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(contracts.len(), 1);
+
+    // Test query by instantiator with no results
+    let contracts: Vec<VestingContract> = app
+        .wrap()
+        .query_wasm_smart(
+            factory_addr.clone(),
+            &QueryMsg::ListVestingContractsByInstantiator {
+                instantiator: BOB.to_string(),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(contracts.len(), 0);
+
+    // Test query by recipient
+    let contracts: Vec<VestingContract> = app
+        .wrap()
+        .query_wasm_smart(
+            factory_addr.clone(),
+            &QueryMsg::ListVestingContractsByRecipient {
+                recipient: BOB.to_string(),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(contracts.len(), 1);
+
+    // Test query by recipient no results
+    let contracts: Vec<VestingContract> = app
+        .wrap()
+        .query_wasm_smart(
+            factory_addr,
+            &QueryMsg::ListVestingContractsByRecipient {
+                recipient: ALICE.to_string(),
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(contracts.len(), 0);
 }
 
 #[test]
