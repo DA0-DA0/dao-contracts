@@ -36,10 +36,7 @@ impl UncheckedVestingParams {
         let recipient = deps.api.addr_validate(&self.recipient)?;
 
         // Check denom
-        let checked_denom = match self.denom {
-            UncheckedDenom::Native(denom) => UncheckedDenom::Native(denom).into_checked(deps)?,
-            UncheckedDenom::Cw20(addr) => UncheckedDenom::Cw20(addr).into_checked(deps)?,
-        };
+let checked_denom = self.denom.into_checked(deps)?;
 
         // If title is included, validate title length (max 280 characters)
         if let Some(ref title) = self.title {
