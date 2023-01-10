@@ -1,13 +1,42 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Decimal, StdError};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
     #[error("Unauthorized")]
     Unauthorized {},
-    // Add any other custom errors you like here.
-    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
+
+    #[error("Gauge with ID {0} does not exists")]
+    GaugeMissing(u64),
+
+    #[error("Voted for {0} times total voting power. Limit 1.0")]
+    TooMuchVotingWeight(Decimal),
+
+    #[error("User {0} has no voting power")]
+    NoVotingPower(String),
+
+    #[error("Option {option} already exists for gauge ID {gauge_id}")]
+    OptionAlreadyExists { option: String, gauge_id: u64 },
+
+    #[error("Option {option} has been judged as invalid by gauge adapter of gauge ID {gauge_id}")]
+    OptionInvalidByAdapter { option: String, gauge_id: u64 },
+
+    #[error("Option {option} does not exists for gauge ID {gauge_id}")]
+    OptionDoesNotExists { option: String, gauge_id: u64 },
+
+    #[error("Gauge ID {gauge_id} cannot execute because next_epoch is not yet reached: current {current_epoch}, next_epoch: {next_epoch}")]
+    EpochNotReached {
+        gauge_id: u64,
+        current_epoch: u64,
+        next_epoch: u64,
+    },
+
+    #[error("Gauge ID {0} cannot execute because it is stopped")]
+    GaugeStopped(u64),
+
+    #[error("Trying to remove vote that does not exists")]
+    CannotRemoveNonexistingVote {},
 }

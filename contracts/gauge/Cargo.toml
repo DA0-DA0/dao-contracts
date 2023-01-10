@@ -14,8 +14,9 @@ library = []
 [dependencies]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true }
-cosmwasm-storage = { workspace = true }
+cw-core-interface = { workspace = true }
 cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
 cw2 = { workspace = true }
 schemars = { workspace = true }
 serde = { workspace = true }
@@ -23,4 +24,11 @@ thiserror = { workspace = true }
 wynd-stake = { workspace = true }
 
 [dev-dependencies]
+anyhow = { workspace = true }
+cw-core = { workspace = true }
 cw-multi-test = { workspace = true }
+cw-proposal-single = { workspace = true }
+cw4 = { workspace = true }
+cw4-group = { workspace = true }
+cw4-voting = { workspace = true }
+voting = { workspace = true }
