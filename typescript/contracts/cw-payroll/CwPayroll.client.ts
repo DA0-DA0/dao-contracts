@@ -11,6 +11,7 @@ export interface CwPayrollReadOnlyInterface {
   contractAddress: string;
   info: () => Promise<VestingPayment>;
   ownership: () => Promise<OwnershipForAddr>;
+  vestedAmount: () => Promise<Uint128>;
 }
 export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
   client: CosmWasmClient;
@@ -21,6 +22,7 @@ export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
     this.contractAddress = contractAddress;
     this.info = this.info.bind(this);
     this.ownership = this.ownership.bind(this);
+    this.vestedAmount = this.vestedAmount.bind(this);
   }
 
   info = async (): Promise<VestingPayment> => {
@@ -31,6 +33,11 @@ export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
   ownership = async (): Promise<OwnershipForAddr> => {
     return this.client.queryContractSmart(this.contractAddress, {
       ownership: {}
+    });
+  };
+  vestedAmount = async (): Promise<Uint128> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      vested_amount: {}
     });
   };
 }
@@ -54,6 +61,15 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
   }: {
     amount: Uint128;
     validator: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  redelegate: ({
+    amount,
+    dstValidator,
+    srcValidator
+  }: {
+    amount: Uint128;
+    dstValidator: string;
+    srcValidator: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   undelegate: ({
     amount,
@@ -83,6 +99,7 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     this.distribute = this.distribute.bind(this);
     this.cancel = this.cancel.bind(this);
     this.delegate = this.delegate.bind(this);
+    this.redelegate = this.redelegate.bind(this);
     this.undelegate = this.undelegate.bind(this);
     this.withdrawDelegatorReward = this.withdrawDelegatorReward.bind(this);
     this.updateOwnership = this.updateOwnership.bind(this);
@@ -126,6 +143,23 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
       delegate: {
         amount,
         validator
+      }
+    }, fee, memo, funds);
+  };
+  redelegate = async ({
+    amount,
+    dstValidator,
+    srcValidator
+  }: {
+    amount: Uint128;
+    dstValidator: string;
+    srcValidator: string;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      redelegate: {
+        amount,
+        dst_validator: dstValidator,
+        src_validator: srcValidator
       }
     }, fee, memo, funds);
   };

@@ -55,6 +55,12 @@ export type ExecuteMsg = {
     validator: string;
   };
 } | {
+  redelegate: {
+    amount: Uint128;
+    dst_validator: string;
+    src_validator: string;
+  };
+} | {
   undelegate: {
     amount: Uint128;
     validator: string;
@@ -91,6 +97,8 @@ export type QueryMsg = {
   info: {};
 } | {
   ownership: {};
+} | {
+  vested_amount: {};
 };
 export type CheckedDenom = {
   native: string;

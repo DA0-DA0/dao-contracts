@@ -1,28 +1,26 @@
 # CW Payroll
 
-This contract enables the creation of native && cw20 token streams, which allows a cw20 payment to be vested continuously over time. This contract is forked off of [cw20-streams](https://github.com/CosmWasm/cw-tokens/tree/main/contracts/cw20-streams) to enable additional features required by DAOs for payroll. Key items being: Admin, configurations for vesting, allowing external parties to distribute & more.
+This contract enables the creation of native && cw20 token streams, which allows a payment to be vested continuously over time. 
+
+Key features include: 
+- Optional contract owner, with ability to cancel payments
+- Support for native and cw20 tokens
+- Allows for automated distribution via external parties
+- For payments in a chain governance token, the ability to stake and claim staking rewards
+- Complex configuration for vesting schedules powered by [wynd-utils](https://github.com/cosmorama/wynddao/tree/main/packages/utils)
 
 ## Instantiation
 
-To instantiate a new instance of this contract you must specify a contract owner.
+To instantiate a new instance of this contract you may specify a contract owner, as well as payment parameters.
 
-```sh
-junod tx wasm instantiate <code-id> '{"owner": "juno12xyz..."}'  --label "cw-payroll contract" --from <your-key> 
-```
-
-One `cw-payroll` contract can handle multiple vesting payments.
-
-## Creating a Native Token Vesting Payment
-
-Simply call the `create` contract method while sending the amount of native tokens needed.
 
 ## Creating a CW20 Vesting
-A stream can be created using the cw20 [Send / Receive](https://github.com/CosmWasm/cw-plus/blob/main/packages/cw20/README.md#receiver) flow. This involves triggering a Send message from the cw20 token contract, with a Receive callback that's sent to the token streaming contract.
+A cw20 vesting payment can be created using the cw20 [Send / Receive](https://github.com/CosmWasm/cw-plus/blob/main/packages/cw20/README.md#receiver) flow. This involves triggering a Send message from the cw20 token contract, with a Receive callback that's sent to the vesting contract.
 
 ## Distribute payments
-Streamed payments can be claimed continously at any point after the start time by triggering a Distribute message.
+Vesting payments can be claimed continously at any point after the start time by triggering a Distribute message.
 
-Anyone can call the distribute message, allowing for agens such as [Croncat](https://cron.cat/) to automatically trigger payouts.
+Anyone can call the distribute message, allowing for agents such as [Croncat](https://cron.cat/) to automatically trigger payouts.
 
 ## Staking native tokens
 This contract allows for underlying native tokens to be staked.
@@ -38,4 +36,3 @@ For example, if an employee has to leave a company for whatever reason, the comp
 When a contract is canceled, funds that have vested up until that moment are paid out to the `recipient` and the rest are refunded to the contract `owner`.
 
 If funds are delegated when a contract is canceled, the delegated funds are immediately unbonded. After newly undelegated funds have finished the unbonding period, they can be withdraw by calling the `distribute` method to resolve.
-
