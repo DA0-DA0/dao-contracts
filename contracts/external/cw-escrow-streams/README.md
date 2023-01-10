@@ -49,9 +49,11 @@ Linked streams are mirrored, so stopping one will stop the other stream, the sam
 ```sh
 link_params='{
   "link_stream": {
+    "ids":{
       "0": <left_id>,
       "1": <right_id>,
     }
+ }
 }';
-junod tx wasm execute <contract-address> "'{"link_stream": {"ids": "$link_params"}}'" --from <your-key> 
+junod tx wasm execute <contract-address> "'{"link_stream": "$link_params"}'" --from <your-key> 
 ```
