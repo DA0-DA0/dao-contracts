@@ -162,9 +162,10 @@ impl VestingPayment {
         Ok(())
     }
 
-    pub fn reset_pending_rewards(&mut self) {
-        self.rewards.pending -= self.rewards.pending.floor();
-    }
+    //// TODO Do we need this?
+    // pub fn reset_pending_rewards(&mut self) {
+    //     self.rewards.pending -= self.rewards.pending.floor();
+    // }
 
     /// Turn pending decimal to u128 to send tokens
     pub fn get_pending_rewards(&self) -> Result<Uint128, ContractError> {
@@ -226,14 +227,14 @@ pub struct VestingPaymentRewards {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::mock_env;
-    // // TODO some tests for piecewise curves
-    // use wynd_utils::PiecewiseLinear;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use wynd_utils::PiecewiseLinear;
 
     use super::*;
 
     #[test]
     fn test_catches_vests_more_than_sent() {
+        let deps = mock_dependencies();
         let amount = Uint128::new(10);
         let start = mock_env().block.time.seconds();
         let end = start + 10_000;
@@ -241,17 +242,18 @@ mod tests {
         let params = UncheckedVestingParams {
             recipient: "test".to_string(),
             amount,
-            denom: UncheckedDenom::Cw20("addr".to_string()),
+            denom: UncheckedDenom::Native("ujuno".to_string()),
             vesting_schedule,
             title: None,
             description: None,
         };
-        let err = params.assert_schedule_vests_amount().unwrap_err();
+        let err = params.into_checked(deps.as_ref()).unwrap_err();
         assert_eq!(err, ContractError::VestsMoreThanSent);
     }
 
     #[test]
     fn test_catches_never_fully_vesting() {
+        let deps = mock_dependencies();
         let amount = Uint128::new(11223344);
         let start = mock_env().block.time.seconds();
         let end = start + 10_000;
@@ -259,17 +261,18 @@ mod tests {
         let params = UncheckedVestingParams {
             recipient: "test".to_string(),
             amount,
-            denom: UncheckedDenom::Cw20("addr".to_string()),
+            denom: UncheckedDenom::Native("ujuno".to_string()),
             vesting_schedule,
             title: None,
             description: None,
         };
-        let err = params.assert_schedule_vests_amount().unwrap_err();
+        let err = params.into_checked(deps.as_ref()).unwrap_err();
         assert_eq!(err, ContractError::NeverFullyVested);
     }
 
     #[test]
     fn test_catches_non_decreasing_curve() {
+        let deps = mock_dependencies();
         let amount = Uint128::new(11223344);
         let start = mock_env().block.time.seconds();
         let end = start + 10_000;
@@ -277,30 +280,116 @@ mod tests {
         let params = UncheckedVestingParams {
             recipient: "test".to_string(),
             amount,
-            denom: UncheckedDenom::Cw20("addr".to_string()),
+            denom: UncheckedDenom::Native("ujuno".to_string()),
             vesting_schedule,
             title: None,
             description: None,
         };
-        let err = params.assert_schedule_vests_amount().unwrap_err();
+        let err = params.into_checked(deps.as_ref()).unwrap_err();
         assert_eq!(
             err,
             ContractError::Curve(wynd_utils::CurveError::MonotonicIncreasing)
         );
     }
 
-    // // TODO limit complexity for piecewise linear curves
-    // #[test]
-    // fn test_complex_vessting_schedule() {
-    //     let amount = Uint128::new(11223344);
-    //     let start = mock_env().block.time.seconds();
-    //     let complexity = 100;
-    //     let steps: Vec<_> = (0..complexity)
-    //         .map(|x| (start + x, amount - Uint128::from(x)))
-    //         .chain(std::iter::once((start + complexity, Uint128::new(0)))) // fully vest
-    //         .collect();
-    //     let schedule = Curve::PiecewiseLinear(PiecewiseLinear {
-    //         steps: steps.clone(),
-    //     });
-    // }
+    #[test]
+    fn test_valdiate_title() {
+        let deps = mock_dependencies();
+        let amount = Uint128::new(11223344);
+        let start = mock_env().block.time.seconds();
+        let end = start + 10_000;
+        let vesting_schedule = Curve::saturating_linear((start, amount.into()), (end, 0));
+
+        // Catch empty string title
+        let params = UncheckedVestingParams {
+            recipient: "test".to_string(),
+            amount,
+            denom: UncheckedDenom::Native("ujuno".to_string()),
+            vesting_schedule: vesting_schedule.clone(),
+            title: Some("".to_string()),
+            description: None,
+        };
+        let err = params.into_checked(deps.as_ref()).unwrap_err();
+        assert_eq!(err, ContractError::InvalidTitle);
+
+        // Catch long title
+        let params = UncheckedVestingParams {
+            recipient: "test".to_string(),
+            amount,
+            denom: UncheckedDenom::Native("ujuno".to_string()),
+            vesting_schedule,
+            title: Some(
+                "
+                58
+
+                If a country is governed with tolerance,
+                the people are comfortable and honest.
+                If a country is governed with repression,
+                the people are depressed and crafty.
+
+                When the will to power is in charge,
+                the higher the ideals, the lower the results.
+                Try to make people happy,
+                and you lay the groundwork for misery.
+                Try to make people moral,
+                and you lay the groundwork for vice.
+
+                Thus the Master is content
+                to serve as an example
+                and not to impose her will.
+                She is pointed, but doesn't pierce.
+                Straightforward, but supple.
+                Radiant, but easy on the eyes.
+
+                59
+
+                For governing a country well
+                there is nothing better than moderation.
+
+                The mark of a moderate man
+                is freedom from his own ideas.
+                Tolerant like the sky,
+                all-pervading like sunlight,
+                firm like a mountain,
+                supple like a tree in the wind,
+                he has no destination in view
+                and makes use of anything
+                life happens to bring his way.
+
+                Nothing is impossible for him.
+                Because he has let go,
+                he can care for the people's welfare
+                as a mother cares for her child.
+
+                (Text sourced from https://www.organism.earth/library/document/tao-te-ching)
+                "
+                .to_string(),
+            ),
+            description: None,
+        };
+        let err = params.into_checked(deps.as_ref()).unwrap_err();
+        assert_eq!(err, ContractError::InvalidTitle);
+    }
+
+    #[test]
+    fn test_validate_piecewise_vessting_schedule() {
+        let deps = mock_dependencies();
+        let amount = Uint128::new(11223344);
+        let start = mock_env().block.time.seconds();
+        let complexity = 100;
+        let steps: Vec<_> = (0..complexity)
+            .map(|x| (start + x, amount - Uint128::from(x)))
+            .chain(std::iter::once((start + complexity, Uint128::new(0)))) // fully vest
+            .collect();
+        let vesting_schedule = Curve::PiecewiseLinear(PiecewiseLinear { steps });
+        let params = UncheckedVestingParams {
+            recipient: "test".to_string(),
+            amount,
+            denom: UncheckedDenom::Native("ujuno".to_string()),
+            vesting_schedule,
+            title: None,
+            description: None,
+        };
+        params.into_checked(deps.as_ref()).unwrap();
+    }
 }

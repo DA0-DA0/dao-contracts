@@ -170,6 +170,7 @@ pub fn execute_cancel_vesting_payment(
                 vp.status = VestingPaymentStatus::Canceled;
             } else {
                 vp.status = VestingPaymentStatus::CanceledAndUnbonding;
+                // Set canceled at time for use when distributing unbonded funds
                 vp.canceled_at_time = Some(env.block.time.seconds());
 
                 // Update pending rewards
@@ -262,9 +263,11 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
 
     // Update Vesting Payment with claimed amount
     VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
-        // Update amounts
+        // Decrease vesting amount
         vp.amount -= vested_amount;
+        // Increase the claimed amount
         vp.claimed_amount += vested_amount;
+        // Set pending rewards to zero
         vp.rewards.pending = Decimal::zero();
 
         // Check if canceled and unbonding
@@ -308,6 +311,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
     Ok(Response::new()
         .add_attribute("method", "distribute")
         .add_attribute("vested_amount", vested_amount)
+        .add_attribute("staking_rewards", staking_rewards)
         .add_messages(msgs))
 }
 
@@ -376,9 +380,11 @@ pub fn execute_delegate(
 
     // Save a record of staking this vesting payment amount to a validator
     match STAKED_VESTING_BY_VALIDATOR.may_load(deps.storage, &validator)? {
+        // If already staked to this validator, increase staked amount
         Some(staked_amount) => {
             STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &(staked_amount + amount))
         }
+        // If not currently staked to this validator save a new record with staked amount
         None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &amount),
     }?;
 
@@ -449,11 +455,13 @@ pub fn execute_redelegate(
 
     // Load destination validator, increase amount
     match STAKED_VESTING_BY_VALIDATOR.may_load(deps.storage, &dst_validator)? {
+        // If already staked to this validator, increase staked amount
         Some(staked_amount) => STAKED_VESTING_BY_VALIDATOR.save(
             deps.storage,
             &src_validator,
             &(staked_amount + amount),
         ),
+        // If not currently staked to this validator save a new record with staked amount
         None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &dst_validator, &amount),
     }?;
 
@@ -489,10 +497,12 @@ pub fn execute_undelegate(
         return Err(ContractError::Unauthorized);
     }
 
+    // Load delegation for specified validator
     let delegations = STAKED_VESTING_BY_VALIDATOR
         .may_load(deps.storage, &validator)?
         .ok_or(ContractError::NoDelegationsForValidator {})?;
 
+    // Load rewards info for specified validator
     let validator_rewards = VALIDATORS_REWARDS.load(deps.storage, &validator)?;
 
     // Update vesting payment with amount of staked rewards
