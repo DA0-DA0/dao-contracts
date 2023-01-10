@@ -29,7 +29,13 @@ pub enum ExecuteMsg {
         /// The amount to delegate
         amount: Uint128,
     },
-    // TODO redelegate
+    /// This is translated to a [MsgBeginRedelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121).
+    /// `delegator_address` is automatically filled with the current contract's address.
+    Redelegate {
+        src_validator: String,
+        dst_validator: String,
+        amount: Uint128,
+    },
     /// This is translated to a [MsgUndelegate](https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/staking/v1beta1/tx.proto#L112-L121).
     /// `delegator_address` is automatically filled with the current contract's address.
     Undelegate {
@@ -53,12 +59,16 @@ pub enum ReceiveMsg {
     Fund {},
 }
 
-// TODO get vested amount
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
+    /// Returns info about the vesting payment
     #[returns(crate::state::VestingPayment)]
     Info {},
+    /// Returns info about the contract ownership, if set
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
+    /// Returns the amount of funds that have vested at the current block
+    #[returns(::cosmwasm_std::Uint128)]
+    VestedAmount {},
 }
