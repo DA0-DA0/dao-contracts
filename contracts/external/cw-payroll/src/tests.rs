@@ -171,7 +171,7 @@ fn setup_test_case(
     denom: UncheckedDenom,
     recipient: &str,
     owner: Option<String>,
-    funds: &Vec<Coin>,
+    funds: &[Coin],
 ) -> TestCase {
     let (cw20_addr, _, cw_payroll_code_id) = setup_contracts(app);
 
@@ -186,7 +186,7 @@ fn setup_test_case(
                     recipient: recipient.to_string(),
                     amount,
                     denom: denom.clone(),
-                    vesting_schedule: vesting_schedule.clone(),
+                    vesting_schedule,
                     title: None,
                     description: None,
                 },
@@ -212,9 +212,9 @@ fn setup_test_case(
             )
             .unwrap();
 
-            get_vesting_payment(&app, cw_payroll_addr.clone())
+            get_vesting_payment(app, cw_payroll_addr.clone())
         }
-        UncheckedDenom::Native(_) => get_vesting_payment(&app, cw_payroll_addr.clone()),
+        UncheckedDenom::Native(_) => get_vesting_payment(app, cw_payroll_addr.clone()),
     };
 
     TestCase {
@@ -243,12 +243,12 @@ fn test_catch_imposter_cw20() {
         cw_payroll_addr, ..
     } = setup_test_case(
         &mut app,
-        vesting_schedule.clone(),
+        vesting_schedule,
         amount,
         unchecked_denom,
         BOB,
         None,
-        &vec![],
+        &[],
     );
 
     // Create imposter cw20
@@ -283,7 +283,7 @@ fn test_catch_imposter_cw20() {
     let error: ContractError = app
         .execute_contract(
             Addr::unchecked(OWNER),
-            Addr::unchecked(cw20_imposter_addr.clone()),
+            Addr::unchecked(cw20_imposter_addr),
             &msg,
             &[],
         )
@@ -319,19 +319,19 @@ fn test_happy_cw20_path() {
         unchecked_denom,
         BOB,
         None,
-        &vec![],
+        &[],
     );
 
     // Check Vesting Payment was created correctly
     assert_eq!(
-        vesting_payment.clone(),
+        vesting_payment,
         VestingPayment {
             recipient: Addr::unchecked(BOB),
-            amount: amount,
+            amount,
             claimed_amount: Uint128::zero(),
             denom: CheckedDenom::Cw20(Addr::unchecked(cw20_addr.clone())),
             canceled_at_time: None,
-            vesting_schedule: vesting_schedule.clone(),
+            vesting_schedule,
             title: None,
             description: None,
             status: VestingPaymentStatus::Active,
@@ -372,7 +372,7 @@ fn test_happy_cw20_path() {
 
     // Check final amounts after distribution
     assert_eq!(
-        get_vesting_payment(&app, cw_payroll_addr.clone()),
+        get_vesting_payment(&app, cw_payroll_addr),
         VestingPayment {
             recipient: Addr::unchecked(BOB),
             amount: Uint128::new(750000),
@@ -423,14 +423,14 @@ fn test_happy_native_path() {
 
     // Check Vesting Payment was created correctly
     assert_eq!(
-        vesting_payment.clone(),
+        vesting_payment,
         VestingPayment {
             recipient: Addr::unchecked(BOB),
             amount,
             claimed_amount: Uint128::zero(),
             canceled_at_time: None,
             denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
-            vesting_schedule: vesting_schedule.clone(),
+            vesting_schedule,
             title: None,
             description: None,
             status: VestingPaymentStatus::Active,
@@ -471,7 +471,7 @@ fn test_happy_native_path() {
 
     // Check final amounts after distribution
     assert_eq!(
-        get_vesting_payment(&app, cw_payroll_addr.clone()),
+        get_vesting_payment(&app, cw_payroll_addr),
         VestingPayment {
             recipient: Addr::unchecked(BOB),
             amount: Uint128::new(750000),
@@ -513,7 +513,7 @@ fn test_cancel_vesting() {
         ..
     } = setup_test_case(
         &mut app,
-        vesting_schedule.clone(),
+        vesting_schedule,
         amount,
         unchecked_denom,
         BOB,
@@ -542,13 +542,8 @@ fn test_cancel_vesting() {
         .unwrap();
 
     // Bob tries to withdraw but can't
-    app.execute_contract(
-        bob.clone(),
-        cw_payroll_addr,
-        &ExecuteMsg::Distribute {},
-        &[],
-    )
-    .unwrap_err();
+    app.execute_contract(bob, cw_payroll_addr, &ExecuteMsg::Distribute {}, &[])
+        .unwrap_err();
 
     // Unvested funds have been returned to contract owner
     assert_eq!(
@@ -582,9 +577,9 @@ fn test_native_staking_happy_path() {
         ..
     } = setup_test_case(
         &mut app,
-        vesting_schedule.clone(),
+        vesting_schedule,
         amount,
-        unchecked_denom.clone(),
+        unchecked_denom,
         BOB,
         None,
         &coins(amount.into(), NATIVE_DENOM),
@@ -664,7 +659,7 @@ fn test_native_staking_happy_path() {
 
     // Bob distributes remaining funds
     app.execute_contract(
-        bob.clone(),
+        bob,
         cw_payroll_addr.clone(),
         &ExecuteMsg::Distribute {},
         &[],
@@ -679,7 +674,7 @@ fn test_native_staking_happy_path() {
 
     // Check vesting payment status after final distribution
     assert_eq!(
-        get_vesting_payment(&app, cw_payroll_addr.clone()),
+        get_vesting_payment(&app, cw_payroll_addr),
         VestingPayment {
             recipient: Addr::unchecked(BOB),
             amount: Uint128::new(0),
@@ -713,7 +708,7 @@ fn test_cancel_vesting_staked_funds() {
         ..
     } = setup_test_case(
         &mut app,
-        vesting_schedule.clone(),
+        vesting_schedule,
         amount,
         unchecked_denom,
         BOB,
@@ -784,7 +779,7 @@ fn test_cancel_vesting_staked_funds() {
 
     // Bob tries normal distribute method but can't
     app.execute_contract(
-        bob.clone(),
+        bob,
         cw_payroll_addr.clone(),
         &ExecuteMsg::Distribute {},
         &[],

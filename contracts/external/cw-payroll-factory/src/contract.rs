@@ -68,9 +68,11 @@ pub fn instantiate_contract(
 
     let msg = SubMsg::reply_on_success(instantiate, INSTANTIATE_CONTRACT_REPLY_ID);
 
-    let instantiator = deps
-        .api
-        .addr_validate(&instantiate_msg.owner.unwrap_or(info.sender.to_string()))?;
+    let instantiator = deps.api.addr_validate(
+        &instantiate_msg
+            .owner
+            .unwrap_or_else(|| info.sender.to_string()),
+    )?;
     let recipient = deps.api.addr_validate(&instantiate_msg.params.recipient)?;
 
     // Save tmp contract info for use in reply
@@ -91,8 +93,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             let res: Vec<VestingContract> = vesting_contracts()
                 .range(deps.storage, start, None, Order::Ascending)
                 .take(limit)
-                .map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
-                .flatten()
+                .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
             Ok(to_binary(&res)?)
@@ -114,8 +115,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .prefix(instantiator)
                 .range(deps.storage, start, None, Order::Ascending)
                 .take(limit)
-                .map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
-                .flatten()
+                .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
             Ok(to_binary(&res)?)
@@ -137,8 +137,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
                 .prefix(recipient)
                 .range(deps.storage, start, None, Order::Ascending)
                 .take(limit)
-                .map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
-                .flatten()
+                .flat_map(|vc| Ok::<VestingContract, ContractError>(vc?.1))
                 .collect();
 
             Ok(to_binary(&res)?)
@@ -158,11 +157,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             // Save vesting contract payment info
             vesting_contracts().save(
                 deps.storage,
-                contract_addr.as_str().clone(),
+                contract_addr.as_ref(),
                 &VestingContract {
                     owner: instantiator.to_string(),
                     recipient: recipient.to_string(),
-                    contract: contract_addr.clone().to_string(),
+                    contract: contract_addr.to_string(),
                 },
             )?;
 

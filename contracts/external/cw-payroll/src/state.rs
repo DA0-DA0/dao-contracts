@@ -43,7 +43,7 @@ impl UncheckedVestingParams {
 
         // If title is included, validate title length (max 280 characters)
         if let Some(ref title) = self.title {
-            if title.len() > 280 || title.len() == 0 {
+            if title.len() > 280 || title.is_empty() {
                 return Err(ContractError::InvalidTitle);
             }
         }
@@ -133,7 +133,7 @@ impl VestingPayment {
 
     pub fn get_vested_amount_by_seconds(&self, time: u64) -> Result<Uint128, OverflowError> {
         let vesting_funds = self.vesting_schedule.value(time);
-        return self.amount.checked_sub(vesting_funds);
+        self.amount.checked_sub(vesting_funds)
     }
 
     pub fn calc_pending_rewards(
