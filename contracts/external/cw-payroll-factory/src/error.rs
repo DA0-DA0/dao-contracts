@@ -1,11 +1,18 @@
 use cosmwasm_std::StdError;
-use cw_utils::ParseReplyError;
+use cw_ownable::OwnershipError;
+use cw_utils::{ParseReplyError, PaymentError};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    Ownable(#[from] OwnershipError),
+
+    #[error("{0}")]
+    PaymentError(#[from] PaymentError),
 
     #[error("Unauthorized")]
     Unauthorized {},

@@ -19,8 +19,10 @@ library = []
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-denom = { workspace = true }
+cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
+cw20 = { workspace = true }
 thiserror = { workspace = true }
 cw-payroll = { workspace = true, features = ["library"] }
 cw-utils = { workspace = true }
