@@ -21,6 +21,7 @@ const INITIAL_BALANCE: u128 = 1000000000;
 const OWNER: &str = "owner";
 const NATIVE_DENOM: &str = "denom";
 const VALIDATOR: &str = "validator";
+const VALIDATOR_TWO: &str = "validator2";
 
 fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -89,6 +90,22 @@ pub fn setup_app() -> App {
                 },
             )
             .unwrap();
+
+        // Add mock validator
+        router
+            .staking
+            .add_validator(
+                api,
+                storage,
+                &env.block,
+                Validator {
+                    address: VALIDATOR_TWO.to_string(),
+                    commission: Decimal::zero(),
+                    max_commission: Decimal::one(),
+                    max_change_rate: Decimal::one(),
+                },
+            )
+            .unwrap()
     });
 
     // Mint Alice and Bob native tokens
@@ -624,12 +641,32 @@ fn test_native_staking_happy_path() {
         block.time = block.time.plus_seconds(10000000);
     });
 
+    // Bob redelegates his vesting tokens
+    // Redelegating should auto-claim rewards
+    app.execute_contract(
+        bob.clone(),
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Redelegate {
+            src_validator: VALIDATOR.to_string(),
+            dst_validator: VALIDATOR_TWO.to_string(),
+            amount,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Advance the clock
+    app.update_block(|block| {
+        block.height += 10000;
+        block.time = block.time.plus_seconds(10000000);
+    });
+
     // Call withdraw rewards
     app.execute_contract(
         bob.clone(),
         cw_payroll_addr.clone(),
         &ExecuteMsg::WithdrawDelegatorReward {
-            validator: VALIDATOR.to_string(),
+            validator: VALIDATOR_TWO.to_string(),
         },
         &[],
     )
@@ -640,7 +677,7 @@ fn test_native_staking_happy_path() {
         bob.clone(),
         cw_payroll_addr.clone(),
         &ExecuteMsg::Undelegate {
-            validator: VALIDATOR.to_string(),
+            validator: VALIDATOR_TWO.to_string(),
             amount,
         },
         &[],
@@ -669,7 +706,7 @@ fn test_native_staking_happy_path() {
     // Bob has claimed vested funds and staked funds
     assert_eq!(
         get_balance_native(&app, BOB, NATIVE_DENOM),
-        Uint128::new(1001063419)
+        Uint128::new(1001126839)
     );
 
     // Check vesting payment status after final distribution
@@ -681,7 +718,7 @@ fn test_native_staking_happy_path() {
             claimed_amount: Uint128::new(1000000),
             rewards: VestingPaymentRewards {
                 pending: Decimal::zero(),
-                paid_rewards_per_token: Decimal::new(Uint128::new(63419000000000000))
+                paid_rewards_per_token: Decimal::new(Uint128::new(126839000000000000))
             },
             status: VestingPaymentStatus::FullyVested,
             ..vesting_payment

@@ -83,6 +83,11 @@ pub fn execute(
         ExecuteMsg::Delegate { validator, amount } => {
             execute_delegate(env, deps, info, validator, amount)
         }
+        ExecuteMsg::Redelegate {
+            src_validator,
+            dst_validator,
+            amount,
+        } => execute_redelegate(env, deps, info, src_validator, dst_validator, amount),
         ExecuteMsg::Undelegate { validator, amount } => {
             execute_undelegate(env, deps, info, validator, amount)
         }
@@ -391,6 +396,82 @@ pub fn execute_delegate(
     Ok(Response::new()
         .add_attribute("method", "delegate")
         .add_attribute("amount", amount.to_string())
+        .add_attribute("validator", validator)
+        .add_message(msg))
+}
+
+pub fn execute_redelegate(
+    _env: Env,
+    deps: DepsMut,
+    info: MessageInfo,
+    src_validator: String,
+    dst_validator: String,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    // Non-payable as this method redelegates funds in the contract
+    nonpayable(&info)?;
+
+    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
+
+    // Check status is active
+    if vesting_payment.status != VestingPaymentStatus::Active {
+        return Err(ContractError::NotActive);
+    }
+
+    // Check sender is the recipient of the vesting payment
+    if info.sender != vesting_payment.recipient {
+        return Err(ContractError::Unauthorized);
+    }
+
+    // Check vesting payment denom matches local denom
+    let denom = match vesting_payment.denom {
+        CheckedDenom::Cw20(_) => {
+            return Err(ContractError::NotStakeable);
+        }
+        CheckedDenom::Native(denom) => {
+            // Get local denom, ensure it matches the vesting denom
+            let local_denom = deps.querier.query_bonded_denom()?;
+            if local_denom != denom {
+                return Err(ContractError::NotStakeable);
+            } else {
+                denom
+            }
+        }
+    };
+
+    // Load source validator, subtract redelegated amount
+    let amount_staked_src = STAKED_VESTING_BY_VALIDATOR.load(deps.storage, &src_validator)?;
+    STAKED_VESTING_BY_VALIDATOR.save(
+        deps.storage,
+        &src_validator,
+        &(amount_staked_src - amount),
+    )?;
+
+    // Load destination validator, increase amount
+    match STAKED_VESTING_BY_VALIDATOR.may_load(deps.storage, &dst_validator)? {
+        Some(staked_amount) => STAKED_VESTING_BY_VALIDATOR.save(
+            deps.storage,
+            &src_validator,
+            &(staked_amount + amount),
+        ),
+        None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &dst_validator, &amount),
+    }?;
+
+    // If its a first delegation to a validator, we set validator rewards to 0
+    if (VALIDATORS_REWARDS.may_load(deps.storage, &dst_validator)?).is_none() {
+        VALIDATORS_REWARDS.save(deps.storage, &dst_validator, &ValidatorRewards::default())?;
+    }
+
+    // Create message to delegate the underlying tokens
+    let msg = StakingMsg::Redelegate {
+        src_validator,
+        dst_validator,
+        amount: Coin { denom, amount },
+    };
+
+    Ok(Response::new()
+        .add_attribute("method", "redelegate")
+        .add_attribute("amount", amount.to_string())
         .add_message(msg))
 }
 
@@ -491,9 +572,18 @@ pub fn execute_withdraw_rewards(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Info {} => to_binary(&VESTING_PAYMENT.load(deps.storage)?),
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::VestedAmount {} => {
+            let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
+
+            to_binary(
+                &vesting_payment
+                    .vesting_schedule
+                    .value(env.block.time.seconds()),
+            )
+        }
     }
 }
