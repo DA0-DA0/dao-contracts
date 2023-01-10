@@ -49,7 +49,7 @@
         ]
       },
       "initial_items": {
-        "description": "The items to instantiate this DAO with. Items are arbitrary key-value pairs who's contents are controlled by governance.\n\nIt is an error to provide two items with the same key.",
+        "description": "The items to instantiate this DAO with. Items are arbitrary key-value pairs whose contents are controlled by governance.\n\nIt is an error to provide two items with the same key.",
         "type": [
           "array",
           "null"
@@ -312,7 +312,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overriden. If the item does not exist a new item is added.",
+        "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overridden. If the item does not exist a new item is added.",
         "type": "object",
         "required": [
           "set_item"
@@ -961,7 +961,7 @@
         ]
       },
       "Empty": {
-        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
+        "description": "An empty struct that serves as a placeholder in different places, such as contracts that don't set a custom message.\n\nIt is designed to be expressable in correct JSON and JSON Schema but contains no meaningful data. Previously we used enums without cases, but those cannot be represented as valid JSON Schema (https://github.com/CosmWasm/cosmwasm/issues/451)",
         "type": "object"
       },
       "GovMsg": {
@@ -1023,7 +1023,7 @@
                     ]
                   },
                   "channel_id": {
-                    "description": "exisiting channel to send the tokens over",
+                    "description": "existing channel to send the tokens over",
                     "type": "string"
                   },
                   "timeout": {
@@ -1141,7 +1141,7 @@
             "minimum": 0.0
           },
           "revision": {
-            "description": "the version that the client is currently on (eg. after reseting the chain this could increment 1 as height drops to 0)",
+            "description": "the version that the client is currently on (eg. after resetting the chain this could increment 1 as height drops to 0)",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
@@ -1392,7 +1392,7 @@
                     }
                   },
                   "label": {
-                    "description": "A human-readbale label for the contract",
+                    "description": "A human-readable label for the contract",
                     "type": "string"
                   },
                   "msg": {
@@ -1409,7 +1409,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Migrates a given contracts to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
+            "description": "Migrates a given contract to use new wasm code. Passes a MigrateMsg to allow us to customize behavior.\n\nOnly the contract admin (as defined in wasmd), if any, is able to make this call.\n\nThis is translated to a [MsgMigrateContract](https://github.com/CosmWasm/wasmd/blob/v0.14.0/x/wasm/internal/types/tx.proto#L86-L96). `sender` is automatically filled with the current contract's address.",
             "type": "object",
             "required": [
               "migrate"
@@ -1668,7 +1668,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Lists all of the items associted with the contract. For example, given the items `{ \"group\": \"foo\", \"subdao\": \"bar\"}` this query would return `[(\"group\", \"foo\"), (\"subdao\", \"bar\")]`.",
+        "description": "Lists all of the items associated with the contract. For example, given the items `{ \"group\": \"foo\", \"subdao\": \"bar\"}` this query would return `[(\"group\", \"foo\"), (\"subdao\", \"bar\")]`.",
         "type": "object",
         "required": [
           "list_items"
