@@ -104,7 +104,6 @@ pub fn execute_pause_stream(
             Ok(stream)
         };
 
-    // TODO this is weird... needs comments at the very least
     // Pausing left stream right stream should also be paused
     let stream = pause_stream_local(id, deps.storage)?;
     if let Some(link_id) = stream.link_id {

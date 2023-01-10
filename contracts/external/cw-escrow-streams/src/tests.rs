@@ -95,8 +95,8 @@ fn test_create_stream() {
     let amount = Uint128::new(1000);
     let denom = "ujunox".to_string();
     let unchecked_denom = UncheckedDenom::Native(denom.clone());
-    let checked_denom = CheckedDenom::Native(denom.clone());
-    let info = mock_info("alice", &[]);
+    // let checked_denom = CheckedDenom::Native(denom.clone());
+    // let info = mock_info("alice", &[]);
 
     let recipient = Addr::unchecked("bob");
 
@@ -118,7 +118,7 @@ fn test_create_stream() {
     println!("creating stream");
     app.execute_contract(
         sender,
-        cw_payroll_addr.clone(),
+        cw_payroll_addr,
         &ExecuteMsg::Create { params },
         &[Coin::new(amount.u128(), denom)],
     )
