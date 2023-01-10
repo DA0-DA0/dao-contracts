@@ -32,7 +32,7 @@ pub(crate) struct LM {
     // cells.len = n * (n - 1) / 2
     //
     // which has a square root if you try and extract n from it.
-    n: usize,
+    pub n: usize,
 }
 
 impl<'a> M<'a> {
@@ -69,6 +69,13 @@ impl<'a> M<'a> {
 }
 
 impl LM {
+    pub fn new(n: usize) -> Self {
+        LM {
+            cells: vec![Cell::default(); n * (n - 1) / 2],
+            n,
+        }
+    }
+
     /// Gets the index in `self.cells` that corresponds to the index (x, y) in M.
     ///
     /// Invariant: x > y as otherwise the upper diagonal
@@ -80,7 +87,7 @@ impl LM {
         // the easiest way to conceptualize this is
         // geometrically. `y*n` is the area of the whole matrix up to
         // row `y`, and thus the start index of the row if
-        // `self.cells` was not diagonalized. `(y + 1) * y / 2` is the
+        // `self.cells` was not diagonalized [1]. `(y + 1) * y / 2` is the
         // area of the space that is not in the upper diagonal.
         //
         // whole_area - area_of_non_diagonal = area_of_diagonal
@@ -125,15 +132,24 @@ impl LM {
         }
     }
 
-    pub fn get_positive_row(&self) -> Option<usize> {
+    // this will need to be extended to return `(Option<usize>,
+    // smallest_margin)` so we can complete proposals early.
+    pub fn positive_row_and_margin(&self) -> Option<(usize, Uint128)> {
         let n = self.n;
         'rows: for row in 0..n {
+            let mut smallest_margin = Uint128::MAX;
             for col in 0..n {
-                if row != col && !self.get((col, row)).is_positive() {
-                    continue 'rows;
+                if row != col {
+                    if let Cell::Positive(p) = self.get((col, row)) {
+                        if p < smallest_margin {
+                            smallest_margin = p;
+                        }
+                    } else {
+                        continue 'rows;
+                    }
                 }
             }
-            return Some(row);
+            return Some((row, smallest_margin));
         }
         None
     }
@@ -264,8 +280,9 @@ mod test_lm {
             }
         }
 
-        let row = lm.get_positive_row();
-        assert_eq!(row, Some(2));
+        let (row, margin) = lm.positive_row_and_margin().unwrap();
+        assert_eq!(row, 2);
+        assert_eq!(margin, Uint128::one());
     }
 }
 

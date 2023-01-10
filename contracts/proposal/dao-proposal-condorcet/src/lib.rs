@@ -5,7 +5,9 @@ pub mod contract;
 mod error;
 mod m;
 pub mod msg;
+pub mod tally;
 #[cfg(test)]
 mod tests;
+pub mod vote;
 
 pub use crate::error::ContractError;

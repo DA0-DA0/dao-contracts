@@ -21,6 +21,7 @@ cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
+dao-voting = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

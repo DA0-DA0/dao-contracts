@@ -1245,6 +1245,7 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw2 0.16.0",
+ "dao-voting",
  "thiserror",
 ]
 
