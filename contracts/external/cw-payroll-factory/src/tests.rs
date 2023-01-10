@@ -99,7 +99,7 @@ pub fn test_instantiate_payroll_contract() {
                 recipient: BOB.to_string(),
                 amount: Uint128::new(1000000),
                 denom: unchecked_denom,
-                vesting_schedule: vesting_schedule.clone(),
+                vesting_schedule,
                 title: None,
                 description: None,
             },
@@ -125,7 +125,7 @@ pub fn test_instantiate_payroll_contract() {
     // Check that admin of contract is owner specified in Instantiation Message
     let contract_info = app
         .wrap()
-        .query_wasm_contract_info(&cw_payroll_addr)
+        .query_wasm_contract_info(cw_payroll_addr)
         .unwrap();
     assert_eq!(contract_info.admin, Some(ALICE.to_string()));
 

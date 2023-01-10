@@ -42,9 +42,7 @@ pub fn instantiate(
             }
 
             // Create a new vesting payment
-            let vesting_payment = VestingPayment::new(checked_params)?;
-
-            vesting_payment
+            VestingPayment::new(checked_params)?
         }
         UncheckedDenom::Cw20(_) => {
             // If configured for cw20, check no native funds included
@@ -115,7 +113,7 @@ pub fn execute_receive_cw20(
             }
 
             // Check that the Cw20 specified in the denom *must be* matches sender
-            if info.sender.to_string() != vesting_payment.denom.to_string() {
+            if info.sender != vesting_payment.denom.to_string() {
                 return Err(ContractError::Cw20DoesNotMatch);
             }
 
@@ -182,7 +180,7 @@ pub fn execute_cancel_vesting_payment(
         // Unbond any staked funds
         let mut undelegate_msgs = STAKED_VESTING_BY_VALIDATOR
             .range(deps.storage, None, None, Order::Ascending)
-            .map(|svc| -> StdResult<CosmosMsg> {
+            .flat_map(|svc| -> StdResult<CosmosMsg> {
                 let (validator, amount) = svc?;
                 Ok(CosmosMsg::Staking(StakingMsg::Undelegate {
                     validator,
@@ -192,7 +190,6 @@ pub fn execute_cancel_vesting_payment(
                     },
                 }))
             })
-            .flatten()
             .collect::<Vec<CosmosMsg>>();
 
         msgs.append(&mut undelegate_msgs);
@@ -246,7 +243,7 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
             .get_vested_amount_by_seconds(
                 vesting_payment
                     .canceled_at_time
-                    .unwrap_or(env.block.time.seconds()),
+                    .unwrap_or_else(|| env.block.time.seconds()),
             )?,
         // Otherwise use current block time
         _ => vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?,
@@ -326,7 +323,7 @@ pub fn execute_delegate(
     validator: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // Non-payable as this method stakes vested funds in the contract
+    // Non-payable as this method delegates funds in the contract
     nonpayable(&info)?;
 
     let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
@@ -381,7 +378,7 @@ pub fn execute_delegate(
     }?;
 
     // If its a first delegation to a validator, we set validator rewards to 0
-    if let None = VALIDATORS_REWARDS.may_load(deps.storage, &validator)? {
+    if (VALIDATORS_REWARDS.may_load(deps.storage, &validator)?).is_none() {
         VALIDATORS_REWARDS.save(deps.storage, &validator, &ValidatorRewards::default())?;
     }
 

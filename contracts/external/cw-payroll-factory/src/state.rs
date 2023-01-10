@@ -1,6 +1,6 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
-use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 
 /// Temporarily holds recipient and instantiator
 pub const TMP_CONTRACT_INFO: Item<(Addr, Addr)> = Item::new("tmp_contract_info");
