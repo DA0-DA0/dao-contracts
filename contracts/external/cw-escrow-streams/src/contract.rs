@@ -58,7 +58,6 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
-        // TODO should be able to create and fund with a native token
         ExecuteMsg::Create { params } => execute_create(env, deps, info, params),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),

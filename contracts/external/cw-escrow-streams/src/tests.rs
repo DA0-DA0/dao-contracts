@@ -1,14 +1,15 @@
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, UncheckedStreamData};
 use crate::state::{Stream, StreamId, StreamIds};
 use crate::ContractError;
 
 use cosmwasm_std::testing::mock_info;
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128};
+use cosmwasm_std::{coin, to_binary, Addr, Coin, Empty, Uint128};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use cw_denom::CheckedDenom;
+use cw_denom::{CheckedDenom, UncheckedDenom};
 
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 use dao_testing::contracts::cw20_base_contract;
+pub const NATIVE_DENOM: &str = "ujunox";
 
 fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -26,12 +27,26 @@ fn get_stream(app: &App, cw_payroll_addr: Addr, id: u64) -> Stream {
 }
 
 fn setup_app_and_instantiate_contracts(admin: Option<String>) -> (App, Addr, Addr) {
-    let mut app = App::default();
-
+    let mut app = AppBuilder::new().build(|router, _, storage| {
+        router
+            .bank
+            .init_balance(
+                storage,
+                &Addr::unchecked("alice"),
+                vec![coin(500_000, NATIVE_DENOM.to_string())],
+            )
+            .unwrap();
+        router
+            .bank
+            .init_balance(
+                storage,
+                &Addr::unchecked("bob"),
+                vec![coin(500_000, NATIVE_DENOM.to_string())],
+            )
+            .unwrap();
+    });
     let cw20_code_id = app.store_code(cw20_base_contract());
     let cw_payroll_code_id = app.store_code(cw_payroll_contract());
-
-    // TODO mint alice and bob native tokens as well
 
     let cw20_addr = app
         .instantiate_contract(
@@ -72,6 +87,64 @@ fn setup_app_and_instantiate_contracts(admin: Option<String>) -> (App, Addr, Add
         .unwrap();
 
     (app, cw20_addr, cw_payroll_addr)
+}
+
+#[test]
+fn test_create_stream() {
+    let (mut app, _cw20_addr, cw_payroll_addr) = setup_app_and_instantiate_contracts(None);
+    let amount = Uint128::new(1000);
+    let denom = "ujunox".to_string();
+    let unchecked_denom = UncheckedDenom::Native(denom.clone());
+    let checked_denom = CheckedDenom::Native(denom.clone());
+    let info = mock_info("alice", &[]);
+
+    let recipient = Addr::unchecked("bob");
+
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let sender = Addr::unchecked("alice");
+
+    let params = UncheckedStreamData {
+        owner: sender.to_string(),
+        recipient: recipient.to_string(),
+        balance: Uint128::new(0),
+        denom: unchecked_denom,
+        start_time,
+        end_time,
+        title: None,
+        description: None,
+        is_detachable: true,
+    };
+    println!("creating stream");
+    app.execute_contract(
+        sender,
+        cw_payroll_addr.clone(),
+        &ExecuteMsg::Create { params },
+        &[Coin::new(amount.u128(), denom)],
+    )
+    .unwrap();
+
+    // assert_eq!(
+    //     get_stream(&app, cw_payroll_addr, 1),
+    //     Stream {
+    //         owner: info.sender,
+    //         recipient: Addr::unchecked("bob"),
+    //         balance: Uint128::new(10),
+    //         claimed_balance: Uint128::new(0),
+    //         denom: checked_denom,
+    //         start_time,
+    //         end_time,
+    //         title: None,
+    //         description: None,
+    //         paused: false,
+    //         paused_time: None,
+    //         paused_duration: None,
+    //         link_id: None,
+    //         is_detachable: true,
+    //     }
+    // );
+
+    // TODO check bob and alice's balances
 }
 
 #[test]
