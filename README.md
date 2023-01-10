@@ -49,8 +49,8 @@ on the `v1.0.0` tag. An audit for the v2 contracts is forthcoming.
 | [dao-testing](packages/dao-testing)                   | Common testing functions and types for DAO modules.                                       |
 | [dao-vote-hooks](packages/dao-vote-hooks)             | Interface for managing and dispatching vote hooks.                                        |
 | [dao-voting](packages/dao-voting)                     | Types and associated methods for handling voting in a CosmWasm DAO.                       |
-| [cw-denom](packages/cw-denom)                         | Uitilities for working with cw20 and native denoms.                                       |
-| [cw-paginate](packages/cw-paginate)                   | Convienence methods for paginating keys and values in a CosmWasm `Map` or `SnapshotMap`.  |
+| [cw-denom](packages/cw-denom)                         | Utilities for working with cw20 and native denoms.                                       |
+| [cw-paginate](packages/cw-paginate)                   | Convenience methods for paginating keys and values in a CosmWasm `Map` or `SnapshotMap`.  |
 
 Packages have completed audits by
 [securityDAO](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
