@@ -49,7 +49,7 @@
         ]
       },
       "initial_items": {
-        "description": "The items to instantiate this DAO with. Items are arbitrary key-value pairs who's contents are controlled by governance.\n\nIt is an error to provide two items with the same key.",
+        "description": "The items to instantiate this DAO with. Items are arbitrary key-value pairs whose contents are controlled by governance.\n\nIt is an error to provide two items with the same key.",
         "type": [
           "array",
           "null"
@@ -312,7 +312,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overriden. If the item does not exist a new item is added.",
+        "description": "Adds an item to the governance contract's item map. If the item already exists the existing value is overridden. If the item does not exist a new item is added.",
         "type": "object",
         "required": [
           "set_item"

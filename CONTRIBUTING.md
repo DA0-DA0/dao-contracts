@@ -159,7 +159,7 @@ NEXT_PUBLIC_DAO_CONTRACT_ADDRESS=juno1zlmaky7753d2fneyhduwz0rn3u9ns8rse3tudhze8r
 NEXT_PUBLIC_V1_FACTORY_CONTRACT_ADDRESS=juno1pvrwmjuusn9wh34j7y520g8gumuy9xtl3gvprlljfdpwju3x7ucssml9ug
 ```
 
-This output can be directly copy and pased into a `.env` file in the
+This output can be directly copied and pasted into a `.env` file in the
 [DAO DAO UI](https://github.com/DA0-DA0/dao-dao-ui) for local
 development.
 

@@ -44,7 +44,7 @@ pub struct InstantiateMsg {
     pub proposal_modules_instantiate_info: Vec<ModuleInstantiateInfo>,
 
     /// The items to instantiate this DAO with. Items are arbitrary
-    /// key-value pairs who's contents are controlled by governance.
+    /// key-value pairs whose contents are controlled by governance.
     ///
     /// It is an error to provide two items with the same key.
     pub initial_items: Option<Vec<InitialItem>>,
@@ -74,7 +74,7 @@ pub enum ExecuteMsg {
     /// Removes an item from the governance contract's item map.
     RemoveItem { key: String },
     /// Adds an item to the governance contract's item map. If the
-    /// item already exists the existing value is overriden. If the
+    /// item already exists the existing value is overridden. If the
     /// item does not exist a new item is added.
     SetItem { key: String, value: String },
     /// Callable by the admin of the contract. If ADMIN is None the
