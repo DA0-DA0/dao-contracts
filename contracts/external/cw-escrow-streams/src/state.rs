@@ -9,7 +9,7 @@ use crate::{
     msg::{CheckedStreamData, UncheckedStreamData},
     ContractError,
 };
-use cw_denom::{CheckedDenom};
+use cw_denom::CheckedDenom;
 
 #[cw_serde]
 pub struct Config {
@@ -177,4 +177,3 @@ impl UncheckedStreamData {
         })
     }
 }
-
