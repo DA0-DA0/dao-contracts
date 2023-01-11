@@ -18,4 +18,10 @@ pub enum ContractError {
 
     #[error("Can't migrate module: {prefix}, code id is not recognized. code_id: {code_id}")]
     CantMigrateModule{prefix: String, code_id: u64},
+
+    #[error("unrecognised reply ID")]
+    UnrecognisedReplyId {},
+    
+    #[error("Test failed! New DAO state doesn't match the old DAO state.")]
+    TestFailed {},
 }

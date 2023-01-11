@@ -11,9 +11,14 @@ pub struct MigrationParams {
     pub dao_uri: Option<String>,
 }
 
+/// Data we use to test after migration (it is set before migration)
+#[cw_serde]
+pub struct TestState {}
+
 /// The current top level config for the module.  The "config" key was
 /// previously used to store configs for v1 DAOs.
 pub const MIGRATION_PARAMS: Item<MigrationParams> = Item::new("migration_params");
+pub const TEST_STATE: Item<TestState> = Item::new("test_state");
 
 #[cw_serde]
 #[serde(untagged)]

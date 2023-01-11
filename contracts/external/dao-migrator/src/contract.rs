@@ -1,18 +1,22 @@
+use std::env;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, WasmMsg,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
 
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{CodeIdPair, MigrationMsgs, MIGRATION_PARAMS},
+    state::{CodeIdPair, MigrationMsgs, TestState, MIGRATION_PARAMS, TEST_STATE},
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-migrator";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub(crate) const CONJUCTION_REPLY_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -29,25 +33,25 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::MigrateV1ToV2 {
             migrate_stake_cw20_manager,
-        } => execute_migration_v1_v2(deps, info, migrate_stake_cw20_manager.unwrap_or(false)),
-        ExecuteMsg::Conjunction { operands: _ } => unimplemented!(),
+        } => execute_migration_v1_v2(deps, env, info, migrate_stake_cw20_manager.unwrap_or(false)),
+        ExecuteMsg::Conjunction { operands } => Ok(Response::default().add_messages(operands)),
     }
 }
 
 fn execute_migration_v1_v2(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     _migrate_stake_cw20_manager: bool,
 ) -> Result<Response, ContractError> {
     let migration_params = MIGRATION_PARAMS.load(deps.storage)?;
-    // TODO: Add params checks for the migrateMsg, to make sure we got the msg correctly.
     // List of matching code ids (TESTNET) and the migration msg of each one of them.
     let code_ids: Vec<CodeIdPair> = vec![
         CodeIdPair::new(
@@ -133,25 +137,26 @@ fn execute_migration_v1_v2(
     });
 
     if !success {
-        return Err(error.unwrap())
+        return Err(error.unwrap());
     } else {
         // We successfully verified all modules of the DAO, we can send migration msgs.
+
+        // Do the state query, and save it in storage
+        let state = query_state(deps.as_ref())?;
+        TEST_STATE.save(deps.storage, &state)?;
+
+        // Create the conjuction msg.
+        let conjuction_msg = SubMsg::reply_on_success(
+            WasmMsg::Execute {
+                contract_addr: env.contract.address.to_string(),
+                msg: to_binary(&ExecuteMsg::Conjunction { operands: msgs })?,
+                funds: vec![],
+            },
+            CONJUCTION_REPLY_ID,
+        );
+
+        return Ok(Response::default().add_submessage(conjuction_msg));
     }
-
-    // Get all DAO modules
-    // 1. Loop over all modules of a DAO and get the code id
-    // 2. Make sure all code ids, match to DAO DAOs code ids
-    // 3. Fail if 1 module doesn't match code ids.
-    // While you do the loop, create migration msgs for later.
-
-    // After we successfully made sure we only have DAO DAO modules,
-    // we query the state of the DAO for check after migration.
-    // We save the old_state in this contract to use in reply.
-    // We call ourselves with `Conjunction` with all migration msgs.
-
-    // DONE, we continue in reply to the `Conjunction`
-
-    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -160,8 +165,32 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> Result<Response, ContractError> {
-    // let repl = TaggedReplyId::new(msg.id)?;
-    // match repl {}
-    Ok(Response::default())
+pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+    match reply.id {
+        CONJUCTION_REPLY_ID => {
+            let old_state = TEST_STATE.load(deps.storage)?;
+            test_state(deps.as_ref(), old_state)?;
+
+            Ok(Response::default())
+        }
+        _ => Err(ContractError::UnrecognisedReplyId {}),
+    }
+}
+
+fn query_state(_deps: Deps) -> Result<TestState, ContractError> {
+    // TODO: Do state queries
+    // let voting_power = deps.querier.query_wasm_smart(contract_addr, msg)?;
+
+    // TODO: save the query data into our struct and return the state
+    Ok(TestState {})
+}
+
+fn test_state(deps: Deps, old_state: TestState) -> Result<(), ContractError> {
+    let new_state = query_state(deps)?;
+
+    if new_state == old_state {
+        Ok(())
+    } else {
+        Err(ContractError::TestFailed {})
+    }
 }
