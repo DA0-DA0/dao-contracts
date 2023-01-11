@@ -45,7 +45,7 @@ pub fn instantiate(
             // If the native denom matches the bonded denom, set withdraw address
             // to the recipient so that any staking rewards go to the recipient
             let local_denom = deps.querier.query_bonded_denom()?;
-            if local_denom == denom.to_string() {
+            if local_denom == *denom {
                 msgs.push(CosmosMsg::Distribution(
                     DistributionMsg::SetWithdrawAddress {
                         address: checked_params.recipient.to_string(),
@@ -180,6 +180,27 @@ pub fn execute_cancel_vesting_payment(
             Ok(vp)
         })?;
 
+    // In no funds are staked, we distibute contract funds
+    // Check if funds have vested or there are staking rewards
+    let vested_amount = vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
+
+    // Transfer any vested amount to the original recipient
+    if vested_amount != Uint128::zero() {
+        let transfer_vested_to_recipient_msg = vesting_payment
+            .denom
+            .get_transfer_to_message(&vesting_payment.recipient, vested_amount)?;
+        msgs.push(transfer_vested_to_recipient_msg);
+    }
+
+    // Transfer any remaining unvested amount to the owner
+    let unvested = vesting_payment.amount.checked_sub(vested_amount)?;
+    if unvested != Uint128::zero() {
+        let transfer_unvested_to_owner_msg = vesting_payment
+            .denom
+            .get_transfer_to_message(&info.sender, unvested)?;
+        msgs.push(transfer_unvested_to_owner_msg);
+    }
+
     // Handle edge case if funds are staked at the time of cancelation
     if vesting_payment.status == VestingPaymentStatus::CanceledAndUnbonding {
         let denom = deps.querier.query_bonded_denom()?;
@@ -200,28 +221,6 @@ pub fn execute_cancel_vesting_payment(
             .collect::<Vec<CosmosMsg>>();
 
         msgs.append(&mut undelegate_msgs);
-    } else {
-        // In no funds are staked, we distibute contract funds
-        // Check if funds have vested or there are staking rewards
-        let vested_amount =
-            vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
-
-        // Transfer any remaining unvested amount to the owner
-        let unvested = vesting_payment.amount.checked_sub(vested_amount)?;
-        if unvested != Uint128::zero() {
-            let transfer_unvested_to_owner_msg = vesting_payment
-                .denom
-                .get_transfer_to_message(&info.sender, unvested)?;
-            msgs.push(transfer_unvested_to_owner_msg);
-        }
-
-        // Transfer any vested amount to the original recipient
-        if vested_amount != Uint128::zero() {
-            let transfer_vested_to_recipient_msg = vesting_payment
-                .denom
-                .get_transfer_to_message(&vesting_payment.recipient, vested_amount)?;
-            msgs.push(transfer_vested_to_recipient_msg);
-        }
     }
 
     Ok(Response::new()
@@ -234,7 +233,6 @@ pub fn execute_cancel_vesting_payment(
 pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractError> {
     let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
 
-    // TODO only distribute active or canceled and unbonding
     // Get vested amount based on vesting payment status
     let vested_amount = match vesting_payment.status {
         // If canceled and unbonding use canceled time
@@ -335,7 +333,6 @@ pub fn execute_delegate(
         return Err(ContractError::Unauthorized);
     }
 
-    // TODO abstract into vesting_payment struct
     // Check vesting payment denom matches local denom
     let denom = match vesting_payment.denom {
         CheckedDenom::Cw20(_) => {
@@ -415,7 +412,6 @@ pub fn execute_redelegate(
         return Err(ContractError::Unauthorized);
     }
 
-    // TODO abstract into vesting_payment struct
     // Check vesting payment denom matches local denom
     let denom = match vesting_payment.denom {
         CheckedDenom::Cw20(_) => {
