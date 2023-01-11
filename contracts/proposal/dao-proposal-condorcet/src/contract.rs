@@ -30,7 +30,13 @@ pub fn execute(
     _info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
-    match msg {}
+    match msg {
+        ExecuteMsg::Propose { choices: _ } => todo!(),
+        ExecuteMsg::Vote {
+            proposal_id: _,
+            vote: _,
+        } => todo!(),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

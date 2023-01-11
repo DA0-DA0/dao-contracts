@@ -1,17 +1,11 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{StdResult, Storage, Uint128};
-use cw_storage_plus::Item;
+use cosmwasm_std::Uint128;
 
 use crate::cell::Cell;
 
-/// Singleton for loading and saving M matrixes.
-pub(crate) struct M<'a> {
-    lm: Item<'a, LM>,
-}
-
-/// (L)oaded M
+/// M
 ///
-/// A matrix for which M[x, y] == -M[y, x].
+/// A NxN matrix for which M[x, y] == -M[y, x].
 ///
 /// Indicies may be incremented or decremented. When index (x, y) is
 /// incremented, index (y, x) is decremented with the reverse applying
@@ -21,13 +15,13 @@ pub(crate) struct M<'a> {
 /// or decremented.
 ///
 /// The contents of the matrix are not avaliable, though consumers may
-/// call `get_positive_row` to get the index, starting at zero,
-/// of the first row with only positive, non-zero values. By
-/// construction, there will only ever be one such row.
+/// call `get_positive_col` to get the index, starting at zero,
+/// of the first column with only positive, non-zero values. By
+/// construction, there will only ever be one such column.
 #[cw_serde]
-pub(crate) struct LM {
+pub(crate) struct M {
     cells: Vec<Cell>,
-    // we store `n` instead of re-computing on use as:
+    // the n in NxN. stored instead of re-computing on use as:
     //
     // cells.len = n * (n - 1) / 2
     //
@@ -35,42 +29,18 @@ pub(crate) struct LM {
     pub n: usize,
 }
 
-impl<'a> M<'a> {
-    pub const fn new(key: &'a str) -> Self {
-        Self { lm: Item::new(key) }
-    }
-
-    pub fn init(&self, storage: &mut dyn Storage, n: usize) -> StdResult<()> {
-        // example 4x4 M:
-        //
-        //  \  1  2  3
-        // -1  \  4  5
-        // -2 -4  \  6
-        // -3 -5 -6  \
-        //
-        // `cells` stores all the values in the upper diagonal of
-        // M. there are `N-1 + N-2 .. + 1` or `N (N-1) / 2` cells.
-        self.save(
-            storage,
-            LM {
-                cells: vec![Cell::default(); n * (n - 1) / 2],
-                n,
-            },
-        )
-    }
-
-    pub fn load(&self, storage: &dyn Storage) -> StdResult<LM> {
-        self.lm.load(storage)
-    }
-
-    pub fn save(&self, storage: &mut dyn Storage, lm: LM) -> StdResult<()> {
-        self.lm.save(storage, &lm)
-    }
-}
-
-impl LM {
+impl M {
     pub fn new(n: usize) -> Self {
-        LM {
+        M {
+            // example 4x4 M:
+            //
+            //  \  1  2  3
+            // -1  \  4  5
+            // -2 -4  \  6
+            // -3 -5 -6  \
+            //
+            // `cells` stores all the values in the upper diagonal of
+            // M. there are `N-1 + N-2 .. + 1` or `N (N-1) / 2` cells.
             cells: vec![Cell::default(); n * (n - 1) / 2],
             n,
         }
@@ -132,39 +102,30 @@ impl LM {
         }
     }
 
-    // this will need to be extended to return `(Option<usize>,
-    // smallest_margin)` so we can complete proposals early.
-    pub fn positive_row_and_margin(&self) -> Option<(usize, Uint128)> {
+    pub fn positive_col_and_margin(&self) -> Option<(usize, Uint128)> {
         let n = self.n;
-        'rows: for row in 0..n {
+        'cols: for col in 0..n {
             let mut smallest_margin = Uint128::MAX;
-            for col in 0..n {
+            for row in 0..n {
                 if row != col {
                     if let Cell::Positive(p) = self.get((col, row)) {
                         if p < smallest_margin {
                             smallest_margin = p;
                         }
                     } else {
-                        continue 'rows;
+                        continue 'cols;
                     }
                 }
             }
-            return Some((row, smallest_margin));
+            return Some((col, smallest_margin));
         }
         None
     }
 }
 
 #[cfg(test)]
-mod test_lm {
+pub(crate) mod test {
     use super::*;
-
-    fn new_lm(n: usize) -> LM {
-        LM {
-            cells: vec![Cell::default(); n * (n - 1) / 2],
-            n,
-        }
-    }
 
     // prints out the LM in it's full matrix form. looks something
     // like this:
@@ -180,7 +141,7 @@ mod test_lm {
     //   0 -1  0  0  0  0  0  \
     // ```
     #[allow(dead_code)]
-    fn debug_lm(lm: &LM) {
+    pub(crate) fn debug_lm(lm: &M) {
         for row in 0..lm.n {
             for col in 0..lm.n {
                 if row == col {
@@ -197,6 +158,18 @@ mod test_lm {
             eprintln!("")
         }
     }
+}
+
+#[cfg(test)]
+mod test_lm {
+    use super::*;
+
+    fn new_lm(n: usize) -> M {
+        M {
+            cells: vec![Cell::default(); n * (n - 1) / 2],
+            n,
+        }
+    }
 
     #[test]
     fn test_internal_representation() {
@@ -207,8 +180,6 @@ mod test_lm {
         lm.increment((2, 1), Uint128::new(4));
         lm.increment((3, 1), Uint128::new(5));
         lm.increment((3, 2), Uint128::new(6));
-
-        debug_lm(&lm);
 
         assert_eq!(
             lm.cells,
@@ -261,7 +232,6 @@ mod test_lm {
         for x in 0..n {
             for y in 0..n {
                 if y > x {
-                    assert!(lm.get((x, y)).is_positive());
                     assert_eq!(lm.get((x, y)), Cell::Positive(Uint128::one()));
                     assert_eq!(lm.get((y, x)), Cell::Negative(Uint128::one()));
                 }
@@ -270,34 +240,18 @@ mod test_lm {
     }
 
     #[test]
-    fn test_first_positive() {
+    fn test_first_positive_col() {
         let n = 8;
         let mut lm = new_lm(n);
 
-        for x in 0..n {
-            if x != 2 {
-                lm.increment((x, 2), Uint128::one())
+        for y in 0..n {
+            if y != 2 {
+                lm.increment((2, y), Uint128::one())
             }
         }
 
-        let (row, margin) = lm.positive_row_and_margin().unwrap();
+        let (row, margin) = lm.positive_col_and_margin().unwrap();
         assert_eq!(row, 2);
         assert_eq!(margin, Uint128::one());
-    }
-}
-
-#[cfg(test)]
-mod test_m {
-    use cosmwasm_std::testing::mock_dependencies;
-
-    use super::*;
-
-    #[test]
-    fn test_m() {
-        let mut deps = mock_dependencies();
-        let m = M::new("m");
-        m.init(deps.as_mut().storage, 10).unwrap();
-        let lm = m.load(deps.as_ref().storage).unwrap();
-        m.save(deps.as_mut().storage, lm).unwrap();
     }
 }
