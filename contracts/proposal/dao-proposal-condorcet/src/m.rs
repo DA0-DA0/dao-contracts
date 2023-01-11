@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Uint128, Uint256};
 
 use crate::cell::Cell;
 
@@ -15,9 +15,9 @@ use crate::cell::Cell;
 /// or decremented.
 ///
 /// The contents of the matrix are not avaliable, though consumers may
-/// call `get_positive_col` to get the index, starting at zero,
-/// of the first column with only positive, non-zero values. By
-/// construction, there will only ever be one such column.
+/// call the `stats` method which returns information about the first
+/// positive column, or the column closest to containing all positive
+/// values.
 #[cw_serde]
 pub(crate) struct M {
     cells: Vec<Cell>,
@@ -27,6 +27,28 @@ pub(crate) struct M {
     //
     // which has a square root if you try and extract n from it.
     pub n: usize,
+}
+
+pub(crate) enum Stats {
+    PositiveColumn {
+        /// Index of the column that is positive.
+        col: usize,
+        /// Smallest value in the column's distance from zero.
+        min_margin: Uint128,
+    },
+    NoPositiveColumn {
+        /// Smallest number required to flip a column positive. For
+        /// example, given a column with values `[-1, 0, 1]`, the
+        /// distance from positivity would be `3` as to become
+        /// positive one would need to add two to index zero and one
+        /// to index one, yielding `[1, 1, 1]`.
+        ///
+        /// This type needs to be larger than a u128 because `-2^128`
+        /// is `2^128 + 1` away from being positive.
+        min_col_distance_from_positivity: Uint256,
+        /// The most negative value in the least negative column.
+        max_negative_in_min_col: Uint128,
+    },
 }
 
 impl M {
@@ -102,24 +124,44 @@ impl M {
         }
     }
 
-    pub fn positive_col_and_margin(&self) -> Option<(usize, Uint128)> {
+    pub fn stats(&self) -> Stats {
         let n = self.n;
-        'cols: for col in 0..n {
-            let mut smallest_margin = Uint128::MAX;
+        let mut min_col_distance_from_positivity = Uint256::MAX;
+        let mut max_negative_in_min_col = Uint128::MAX;
+        for col in 0..n {
+            let mut distance_from_positivity = Uint256::zero();
+            let mut min_margin = Uint128::MAX;
+            let mut max_negative = Uint128::MAX;
             for row in 0..n {
                 if row != col {
-                    if let Cell::Positive(p) = self.get((col, row)) {
-                        if p < smallest_margin {
-                            smallest_margin = p;
+                    match self.get((col, row)) {
+                        Cell::Positive(p) => {
+                            if p < min_margin {
+                                min_margin = p
+                            }
                         }
-                    } else {
-                        continue 'cols;
+                        Cell::Negative(n) => {
+                            if n > max_negative {
+                                max_negative = n;
+                            }
+                            distance_from_positivity += Uint256::from(n) + Uint256::one();
+                        }
+                        Cell::Zero => distance_from_positivity += Uint256::one(),
                     }
                 }
             }
-            return Some((col, smallest_margin));
+            if distance_from_positivity.is_zero() {
+                return Stats::PositiveColumn { col, min_margin };
+            }
+            if distance_from_positivity < min_col_distance_from_positivity {
+                min_col_distance_from_positivity = distance_from_positivity;
+                max_negative_in_min_col = max_negative;
+            }
         }
-        None
+        Stats::NoPositiveColumn {
+            min_col_distance_from_positivity,
+            max_negative_in_min_col,
+        }
     }
 }
 
@@ -164,7 +206,7 @@ pub(crate) mod test {
 mod test_lm {
     use super::*;
 
-    fn new_lm(n: usize) -> M {
+    fn new_m(n: usize) -> M {
         M {
             cells: vec![Cell::default(); n * (n - 1) / 2],
             n,
@@ -173,16 +215,16 @@ mod test_lm {
 
     #[test]
     fn test_internal_representation() {
-        let mut lm = new_lm(4);
-        lm.increment((1, 0), Uint128::new(1));
-        lm.increment((2, 0), Uint128::new(2));
-        lm.increment((3, 0), Uint128::new(3));
-        lm.increment((2, 1), Uint128::new(4));
-        lm.increment((3, 1), Uint128::new(5));
-        lm.increment((3, 2), Uint128::new(6));
+        let mut m = new_m(4);
+        m.increment((1, 0), Uint128::new(1));
+        m.increment((2, 0), Uint128::new(2));
+        m.increment((3, 0), Uint128::new(3));
+        m.increment((2, 1), Uint128::new(4));
+        m.increment((3, 1), Uint128::new(5));
+        m.increment((3, 2), Uint128::new(6));
 
         assert_eq!(
-            lm.cells,
+            m.cells,
             (1..7)
                 .map(|i| Cell::Positive(Uint128::new(i)))
                 .collect::<Vec<Cell>>()
@@ -192,22 +234,22 @@ mod test_lm {
     #[test]
     fn test_index() {
         let n = 3;
-        let lm = new_lm(n);
+        let m = new_m(n);
 
-        let i = lm.index((1, 0));
+        let i = m.index((1, 0));
         assert_eq!(i, 0);
     }
 
     #[test]
     fn test_create() {
         let n = 10;
-        let lm = new_lm(n);
+        let m = new_m(n);
 
         // we now expect this to be a 10 / 10 square.
         for x in 0..n {
             for y in 0..n {
                 if x != y {
-                    let c = lm.get((x, y));
+                    let c = m.get((x, y));
                     assert!(matches!(c, Cell::Zero))
                 }
             }
@@ -219,12 +261,12 @@ mod test_lm {
         // decrement all values for which y < x. all values for which
         // y > x should become positive.
         let n = 11;
-        let mut lm = new_lm(n);
+        let mut m = new_m(n);
 
         for x in 0..n {
             for y in 0..n {
                 if y < x {
-                    lm.increment((y, x), Uint128::one())
+                    m.increment((y, x), Uint128::one())
                 }
             }
         }
@@ -232,26 +274,65 @@ mod test_lm {
         for x in 0..n {
             for y in 0..n {
                 if y > x {
-                    assert_eq!(lm.get((x, y)), Cell::Positive(Uint128::one()));
-                    assert_eq!(lm.get((y, x)), Cell::Negative(Uint128::one()));
+                    assert_eq!(m.get((x, y)), Cell::Positive(Uint128::one()));
+                    assert_eq!(m.get((y, x)), Cell::Negative(Uint128::one()));
                 }
             }
         }
     }
 
     #[test]
-    fn test_first_positive_col() {
+    fn test_stats_positive_column() {
         let n = 8;
-        let mut lm = new_lm(n);
+        let mut m = new_m(n);
 
         for y in 0..n {
             if y != 2 {
-                lm.increment((2, y), Uint128::one())
+                m.increment((2, y), Uint128::one())
             }
         }
 
-        let (row, margin) = lm.positive_col_and_margin().unwrap();
-        assert_eq!(row, 2);
-        assert_eq!(margin, Uint128::one());
+        match m.stats() {
+            Stats::PositiveColumn { col, min_margin } => {
+                assert_eq!((col, min_margin), (2, Uint128::one()))
+            }
+            Stats::NoPositiveColumn { .. } => panic!("expected a positive column"),
+        }
+    }
+
+    #[test]
+    fn test_stats_no_positive_column() {
+        let n = 8;
+        let mut m = new_m(n);
+
+        match m.stats() {
+            Stats::PositiveColumn { .. } => panic!("expected no positive columns"),
+            Stats::NoPositiveColumn {
+                min_col_distance_from_positivity: min_distance_from_positivity,
+            } => assert_eq!(min_distance_from_positivity, Uint256::from((n - 1) as u32)),
+        }
+
+        for i in 1..n {
+            m.decrement((i - 1, i), Uint128::new(2));
+        }
+
+        // last row here has no negative value and a distance from
+        // positivity of n - 2.
+        //
+        //  \  2  0  0  0  0  0  0
+        // -2  \  2  0  0  0  0  0
+        //  0 -2  \  2  0  0  0  0
+        //  0  0 -2  \  2  0  0  0
+        //  0  0  0 -2  \  2  0  0
+        //  0  0  0  0 -2  \  2  0
+        //  0  0  0  0  0 -2  \  2
+        //  0  0  0  0  0  0 -2  \
+
+        match m.stats() {
+            Stats::PositiveColumn { .. } => panic!("expected no positive columns"),
+            Stats::NoPositiveColumn {
+                min_col_distance_from_positivity: min_distance_from_positivity,
+            } => assert_eq!(min_distance_from_positivity, Uint256::from((n - 2) as u32)),
+        }
     }
 }

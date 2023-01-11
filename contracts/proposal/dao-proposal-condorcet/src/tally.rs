@@ -1,7 +1,10 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Uint128;
 
-use crate::{m::M, vote::Vote};
+use crate::{
+    m::{Stats, M},
+    vote::Vote,
+};
 
 /// Stores the state of a ranked choice election by wrapping a `M`
 /// matrix and maintaining:
@@ -17,15 +20,18 @@ use crate::{m::M, vote::Vote};
 #[cw_serde]
 pub struct Tally {
     m: M,
-    power_outstanding: Uint128,
 
-    /// Contains the current winner. Always up to date as it is
-    /// updated on vote.
+    /// Amount of voting power that has yet to vote in this tally.
+    pub power_outstanding: Uint128,
+
+    /// The current winner. Always up to date and updated on vote.
     pub winner: Winner,
 }
 
 #[cw_serde]
+#[derive(Copy)]
 pub enum Winner {
+    Never,
     None,
     Some(u32),
     Undisputed(u32),
@@ -60,15 +66,27 @@ impl Tally {
     }
 
     fn winner(&self) -> Winner {
-        match self.m.positive_col_and_margin() {
-            Some((col, margin)) => {
-                if margin > self.power_outstanding {
+        match self.m.stats() {
+            Stats::PositiveColumn { col, min_margin } => {
+                if min_margin > self.power_outstanding {
                     Winner::Undisputed(col as u32)
                 } else {
                     Winner::Some(col as u32)
                 }
             }
-            None => Winner::None,
+            Stats::NoPositiveColumn {
+                min_col_distance_from_positivity,
+                max_negative_in_min_col,
+            } => {
+                if min_col_distance_from_positivity
+                    > self.power_outstanding.full_mul((self.m.n - 1) as u32)
+                    || max_negative_in_min_col >= self.power_outstanding
+                {
+                    Winner::Never
+                } else {
+                    Winner::None
+                }
+            }
         }
     }
 }
@@ -146,8 +164,6 @@ mod tests {
             Uint128::one(),
         );
 
-        // crate::m::test::debug_lm(&tally.m);
-
         // sequence of ballots cast:
         //
         // 0 > 2 > 1
@@ -166,6 +182,6 @@ mod tests {
         // ```
         //
         // the "condorcet paradox" 0 > 2, 2 > 1, 0 !> 1.
-        assert_eq!(tally.winner(), Winner::None)
+        assert_eq!(tally.winner(), Winner::Never)
     }
 }

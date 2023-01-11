@@ -36,6 +36,7 @@ pub fn execute(
             proposal_id: _,
             vote: _,
         } => todo!(),
+        ExecuteMsg::Execute { proposal_id: _ } => todo!(),
     }
 }
 
