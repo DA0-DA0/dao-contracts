@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, UncheckedDenom, Curve, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, MigrateMsg, Addr, ArrayOfAddr } from "./CwPayrollFactory.types";
+import { InstantiateMsg, ExecuteMsg, Uint128, Binary, UncheckedDenom, Curve, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, MigrateMsg, Addr, ArrayOfAddr, OwnershipForAddr } from "./CwPayrollFactory.types";
 export interface CwPayrollFactoryReadOnlyInterface {
   contractAddress: string;
   listVestingContracts: ({
@@ -15,6 +15,13 @@ export interface CwPayrollFactoryReadOnlyInterface {
   }: {
     limit?: number;
     startAfter?: string;
+  }) => Promise<ArrayOfAddr>;
+  listVestingContractsReverse: ({
+    limit,
+    startBefore
+  }: {
+    limit?: number;
+    startBefore?: string;
   }) => Promise<ArrayOfAddr>;
   listVestingContractsByInstantiator: ({
     instantiator,
@@ -25,6 +32,15 @@ export interface CwPayrollFactoryReadOnlyInterface {
     limit?: number;
     startAfter?: string;
   }) => Promise<ArrayOfAddr>;
+  listVestingContractsByInstantiatorReverse: ({
+    instantiator,
+    limit,
+    startBefore
+  }: {
+    instantiator: string;
+    limit?: number;
+    startBefore?: string;
+  }) => Promise<ArrayOfAddr>;
   listVestingContractsByRecipient: ({
     limit,
     recipient,
@@ -34,6 +50,16 @@ export interface CwPayrollFactoryReadOnlyInterface {
     recipient: string;
     startAfter?: string;
   }) => Promise<ArrayOfAddr>;
+  listVestingContractsByRecipientReverse: ({
+    limit,
+    recipient,
+    startBefore
+  }: {
+    limit?: number;
+    recipient: string;
+    startBefore?: string;
+  }) => Promise<ArrayOfAddr>;
+  ownership: () => Promise<OwnershipForAddr>;
 }
 export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInterface {
   client: CosmWasmClient;
@@ -43,8 +69,12 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
     this.client = client;
     this.contractAddress = contractAddress;
     this.listVestingContracts = this.listVestingContracts.bind(this);
+    this.listVestingContractsReverse = this.listVestingContractsReverse.bind(this);
     this.listVestingContractsByInstantiator = this.listVestingContractsByInstantiator.bind(this);
+    this.listVestingContractsByInstantiatorReverse = this.listVestingContractsByInstantiatorReverse.bind(this);
     this.listVestingContractsByRecipient = this.listVestingContractsByRecipient.bind(this);
+    this.listVestingContractsByRecipientReverse = this.listVestingContractsByRecipientReverse.bind(this);
+    this.ownership = this.ownership.bind(this);
   }
 
   listVestingContracts = async ({
@@ -58,6 +88,20 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
       list_vesting_contracts: {
         limit,
         start_after: startAfter
+      }
+    });
+  };
+  listVestingContractsReverse = async ({
+    limit,
+    startBefore
+  }: {
+    limit?: number;
+    startBefore?: string;
+  }): Promise<ArrayOfAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_vesting_contracts_reverse: {
+        limit,
+        start_before: startBefore
       }
     });
   };
@@ -78,6 +122,23 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
       }
     });
   };
+  listVestingContractsByInstantiatorReverse = async ({
+    instantiator,
+    limit,
+    startBefore
+  }: {
+    instantiator: string;
+    limit?: number;
+    startBefore?: string;
+  }): Promise<ArrayOfAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_vesting_contracts_by_instantiator_reverse: {
+        instantiator,
+        limit,
+        start_before: startBefore
+      }
+    });
+  };
   listVestingContractsByRecipient = async ({
     limit,
     recipient,
@@ -95,10 +156,41 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
       }
     });
   };
+  listVestingContractsByRecipientReverse = async ({
+    limit,
+    recipient,
+    startBefore
+  }: {
+    limit?: number;
+    recipient: string;
+    startBefore?: string;
+  }): Promise<ArrayOfAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      list_vesting_contracts_by_recipient_reverse: {
+        limit,
+        recipient,
+        start_before: startBefore
+      }
+    });
+  };
+  ownership = async (): Promise<OwnershipForAddr> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      ownership: {}
+    });
+  };
 }
 export interface CwPayrollFactoryInterface extends CwPayrollFactoryReadOnlyInterface {
   contractAddress: string;
   sender: string;
+  receive: ({
+    amount,
+    msg,
+    sender
+  }: {
+    amount: Uint128;
+    msg: Binary;
+    sender: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   instantiatePayrollContract: ({
     codeId,
     instantiateMsg,
@@ -108,6 +200,7 @@ export interface CwPayrollFactoryInterface extends CwPayrollFactoryReadOnlyInter
     instantiateMsg: InstantiateMsg;
     label: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implements CwPayrollFactoryInterface {
   client: SigningCosmWasmClient;
@@ -119,9 +212,28 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
     this.client = client;
     this.sender = sender;
     this.contractAddress = contractAddress;
+    this.receive = this.receive.bind(this);
     this.instantiatePayrollContract = this.instantiatePayrollContract.bind(this);
+    this.updateOwnership = this.updateOwnership.bind(this);
   }
 
+  receive = async ({
+    amount,
+    msg,
+    sender
+  }: {
+    amount: Uint128;
+    msg: Binary;
+    sender: string;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      receive: {
+        amount,
+        msg,
+        sender
+      }
+    }, fee, memo, funds);
+  };
   instantiatePayrollContract = async ({
     codeId,
     instantiateMsg,
@@ -137,6 +249,11 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
         instantiate_msg: instantiateMsg,
         label
       }
+    }, fee, memo, funds);
+  };
+  updateOwnership = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_ownership: {}
     }, fee, memo, funds);
   };
 }

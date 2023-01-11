@@ -66,6 +66,10 @@ export type ExecuteMsg = {
     validator: string;
   };
 } | {
+  set_withdraw_address: {
+    address: string;
+  };
+} | {
   withdraw_delegator_reward: {
     validator: string;
   };
@@ -106,7 +110,6 @@ export type CheckedDenom = {
   cw20: Addr;
 };
 export type Addr = string;
-export type Decimal = string;
 export type VestingPaymentStatus = "active" | "canceled" | "canceled_and_unbonding" | "fully_vested" | "unfunded";
 export interface VestingPayment {
   amount: Uint128;
@@ -115,15 +118,10 @@ export interface VestingPayment {
   denom: CheckedDenom;
   description?: string | null;
   recipient: Addr;
-  rewards: VestingPaymentRewards;
   staked_amount: Uint128;
   status: VestingPaymentStatus;
   title?: string | null;
   vesting_schedule: Curve;
-}
-export interface VestingPaymentRewards {
-  paid_rewards_per_token: Decimal;
-  pending: Decimal;
 }
 export interface OwnershipForAddr {
   owner?: Addr | null;

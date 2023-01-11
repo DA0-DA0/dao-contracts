@@ -9,13 +9,18 @@ export interface InstantiateMsg {
   params: UncheckedVestingParams;
 }
 export type ExecuteMsg = {
+  receive: Cw20ReceiveMsg;
+} | {
   instantiate_payroll_contract: {
     code_id: number;
     instantiate_msg: InstantiateMsg;
     label: string;
   };
+} | {
+  update_ownership: Action;
 };
 export type Uint128 = string;
+export type Binary = string;
 export type UncheckedDenom = {
   native: string;
 } | {
@@ -31,6 +36,26 @@ export type Curve = {
 } | {
   piecewise_linear: PiecewiseLinear;
 };
+export type Action = {
+  transfer_ownership: {
+    expiry?: Expiration | null;
+    new_owner: string;
+  };
+} | "accept_ownership" | "renounce_ownership";
+export type Expiration = {
+  at_height: number;
+} | {
+  at_time: Timestamp;
+} | {
+  never: {};
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
+export interface Cw20ReceiveMsg {
+  amount: Uint128;
+  msg: Binary;
+  sender: string;
+}
 export interface UncheckedVestingParams {
   amount: Uint128;
   denom: UncheckedDenom;
@@ -56,10 +81,21 @@ export type QueryMsg = {
     start_after?: string | null;
   };
 } | {
+  list_vesting_contracts_reverse: {
+    limit?: number | null;
+    start_before?: string | null;
+  };
+} | {
   list_vesting_contracts_by_instantiator: {
     instantiator: string;
     limit?: number | null;
     start_after?: string | null;
+  };
+} | {
+  list_vesting_contracts_by_instantiator_reverse: {
+    instantiator: string;
+    limit?: number | null;
+    start_before?: string | null;
   };
 } | {
   list_vesting_contracts_by_recipient: {
@@ -67,7 +103,20 @@ export type QueryMsg = {
     recipient: string;
     start_after?: string | null;
   };
+} | {
+  list_vesting_contracts_by_recipient_reverse: {
+    limit?: number | null;
+    recipient: string;
+    start_before?: string | null;
+  };
+} | {
+  ownership: {};
 };
 export interface MigrateMsg {}
 export type Addr = string;
 export type ArrayOfAddr = Addr[];
+export interface OwnershipForAddr {
+  owner?: Addr | null;
+  pending_expiry?: Expiration | null;
+  pending_owner?: Addr | null;
+}
