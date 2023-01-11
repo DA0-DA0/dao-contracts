@@ -1,11 +1,8 @@
+use std::borrow::{Borrow};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo,
-    Order, Response, StdError, StdResult, Uint128, WasmMsg,
-};
+use cosmwasm_std::{to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg, Storage};
 use cw2::set_contract_version;
-use cw20_stake::msg::ListStakersResponse;
 use std::collections::HashMap;
 
 use crate::error::ContractError;
@@ -14,8 +11,8 @@ use crate::msg::{
     NativeEntitlementResponse, QueryMsg, TotalPowerResponse, VotingContractResponse,
 };
 use crate::state::{
-    ADDR_RELATIVE_SHARE, CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT,
-    FUNDING_PERIOD_END_HEIGHT, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT,
+    CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT,
+    FUNDING_PERIOD_EXPIRATION, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT,
 };
 
 use dao_interface::voting;
@@ -32,50 +29,31 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    // store the height and funding period
-    DISTRIBUTION_HEIGHT.save(deps.storage, &env.block.height)?;
+    // store the height
+    DISTRIBUTION_HEIGHT.save(
+        deps.storage,
+        &env.block.height,
+    )?;
 
-    let funding_final_height = msg.funding_period.checked_add(env.block.height).unwrap();
-    FUNDING_PERIOD_END_HEIGHT.save(deps.storage, &funding_final_height)?;
+    // get the funding expiration and store it
+    let funding_expiration_height = msg.funding_period.after(&env.block);
+    FUNDING_PERIOD_EXPIRATION.save(deps.storage, &funding_expiration_height)?;
 
     // validate the contract and save it
     let voting_contract = deps.api.addr_validate(&msg.voting_contract)?;
     VOTING_CONTRACT.save(deps.storage, &voting_contract)?;
 
-    // validate the total power and store it
     let total_power: voting::TotalPowerAtHeightResponse = deps.querier.query_wasm_smart(
         voting_contract.clone(),
         &voting::Query::TotalPowerAtHeight {
             height: Some(env.block.height),
         },
     )?;
+    // validate the total power and store it
     if total_power.power.is_zero() {
         return Err(ContractError::ZeroVotingPower {});
     }
     TOTAL_POWER.save(deps.storage, &total_power.power)?;
-
-    // get the staking contract address wrapped by the voting contract
-    let staking_contract_addr: Addr = deps.querier.query_wasm_smart(
-        voting_contract.clone(),
-        &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
-    )?;
-    // query it for stakers and save their balance to total power ratios
-    let stakers_response: ListStakersResponse = deps.querier.query_wasm_smart(
-        staking_contract_addr.clone(),
-        &cw20_stake::msg::QueryMsg::ListStakers {
-            start_after: None,
-            limit: None,
-        },
-    )?;
-    stakers_response.stakers.into_iter().for_each(|resp| {
-        ADDR_RELATIVE_SHARE
-            .save(
-                deps.storage,
-                Addr::unchecked(resp.address),
-                &Decimal::from_ratio(resp.balance, total_power.power),
-            )
-            .unwrap();
-    });
 
     Ok(Response::default()
         .add_attribute("distribution_height", env.block.height.to_string())
@@ -111,21 +89,21 @@ pub fn execute_fund_cw20(
     token: Addr,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
-
+    let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
     // if current block indicates claiming period, return an error
-    if env.block.height.gt(&funding_deadline) {
+    if funding_deadline.is_expired(&env.block) {
         return Err(ContractError::FundDuringClaimingPeriod {});
     }
 
-    let balance = CW20_BALANCES.load(deps.storage, token.clone());
+    let balance = CW20_BALANCES.may_load(deps.storage, token.clone())?;
+
     match balance {
-        Ok(old_amount) => CW20_BALANCES.save(
+        Some(old_amount) => CW20_BALANCES.save(
             deps.storage,
             token.clone(),
             &old_amount.checked_add(amount).unwrap(),
         )?,
-        Err(_) => CW20_BALANCES.save(deps.storage, token.clone(), &amount)?,
+        None => CW20_BALANCES.save(deps.storage, token.clone(), &amount)?,
     }
 
     Ok(Response::default()
@@ -139,9 +117,9 @@ pub fn execute_fund_native(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    // if current block indicates claiming period, throw
-    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
-    if env.block.height.gt(&funding_deadline) {
+    let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
+    // if current block indicates claiming period, return an error
+    if funding_deadline.is_expired(&env.block) {
         return Err(ContractError::FundDuringClaimingPeriod {});
     }
 
@@ -151,13 +129,18 @@ pub fn execute_fund_native(
         .into_iter()
         .filter(|coin| coin.amount > Uint128::zero())
         .map(|coin| {
-            match NATIVE_BALANCES.load(deps.storage, coin.denom.clone()) {
-                Ok(old_amount) => NATIVE_BALANCES.save(
+            let balance = NATIVE_BALANCES.may_load(
+                deps.storage,
+                coin.denom.clone()
+            )
+            .unwrap_or_default();
+            match balance {
+                Some(old_amount) => NATIVE_BALANCES.save(
                     deps.storage,
                     coin.denom.clone(),
                     &old_amount.checked_add(coin.amount).unwrap(),
                 ),
-                Err(_) => NATIVE_BALANCES.save(deps.storage, coin.denom.clone(), &coin.amount),
+                None => NATIVE_BALANCES.save(deps.storage, coin.denom.clone(), &coin.amount),
             }
             .unwrap();
             (coin.denom, coin.amount.to_string())
@@ -180,19 +163,41 @@ fn get_entitlement(
         .unwrap()
 }
 
+fn get_relative_share(deps: &Deps, sender: Addr) -> Decimal {
+    let voting_contract = VOTING_CONTRACT.load(deps.storage).unwrap();
+    let dist_height = DISTRIBUTION_HEIGHT.load(deps.storage).unwrap();
+    let total_power = TOTAL_POWER.load(deps.storage).unwrap();
+
+    // find the voting power of sender at distributor instantiation
+    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
+        voting_contract,
+        &voting::Query::VotingPowerAtHeight {
+            address: sender.to_string(),
+            height: Some(dist_height),
+        },
+    )
+    .unwrap();
+    // return senders share
+    Decimal::from_ratio(
+        voting_power.power,
+        total_power
+    )
+}
+
 pub fn execute_claim_cw20s(
     deps: DepsMut,
     env: Env,
     sender: Addr,
     token: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    // if current block indicates funding period, throw
-    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
-    if env.block.height.le(&funding_deadline) {
+    let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
+    // if current block indicates funding period, return an error
+    if !funding_deadline.is_expired(&env.block) {
         return Err(ContractError::ClaimDuringFundingPeriod {});
     }
 
-    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
+    let relative_share = get_relative_share(deps.as_ref().borrow(), sender.clone());
+
     let mut response = Response::default();
 
     if let Some(tokens) = token {
@@ -260,13 +265,13 @@ pub fn execute_claim_natives(
     sender: Addr,
     denoms: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
-    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
-    // if current block indicates funding period, throw
-    if env.block.height.le(&funding_deadline) {
+    let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
+    // if current block indicates funding period, return an error
+    if !funding_deadline.is_expired(&env.block) {
         return Err(ContractError::ClaimDuringFundingPeriod {});
     }
 
-    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
+    let relative_share = get_relative_share(deps.as_ref().borrow(), sender.clone());
 
     let mut response = Response::default();
 
@@ -320,13 +325,12 @@ pub fn execute_claim_natives(
 }
 
 pub fn execute_claim_all(deps: DepsMut, env: Env, sender: Addr) -> Result<Response, ContractError> {
-    let funding_deadline = FUNDING_PERIOD_END_HEIGHT.load(deps.storage)?;
+    let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
     // if current block indicates funding period, throw
-    if env.block.height.le(&funding_deadline) {
+    if !funding_deadline.is_expired(&env.block) {
         return Err(ContractError::ClaimDuringFundingPeriod {});
     }
-
-    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, sender.clone())?;
+    let relative_share = get_relative_share(deps.as_ref().borrow(), sender.clone());
 
     let cw20s: Vec<(Addr, Uint128)> = CW20_BALANCES
         .range(deps.storage, None, None, Order::Descending)
@@ -478,11 +482,12 @@ pub fn query_cw20_tokens(deps: Deps) -> StdResult<Binary> {
     to_binary(&cw20_responses)
 }
 
-pub fn query_native_entitlement(deps: Deps, sender: String, denom: String) -> StdResult<Binary> {
+pub fn query_native_entitlement(deps: Deps, sender: Addr, denom: String) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
     let prev_claim = NATIVE_CLAIMS.load(deps.storage, (address, denom.clone()))?;
     let total_bal = NATIVE_BALANCES.load(deps.storage, denom.clone())?;
+    let relative_share = get_relative_share(&deps, sender.clone());
+
     let entitlement = get_entitlement(total_bal, relative_share, prev_claim);
 
     to_binary(&NativeEntitlementResponse {
@@ -491,12 +496,12 @@ pub fn query_native_entitlement(deps: Deps, sender: String, denom: String) -> St
     })
 }
 
-pub fn query_cw20_entitlement(deps: Deps, sender: String, token: String) -> StdResult<Binary> {
+pub fn query_cw20_entitlement(deps: Deps, sender: Addr, token: String) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
     let token = Addr::unchecked(token);
     let prev_claim = CW20_CLAIMS.load(deps.storage, (address, token.clone()))?;
     let total_bal = CW20_BALANCES.load(deps.storage, token.clone())?;
+    let relative_share = get_relative_share(&deps, sender.clone());
     let entitlement = get_entitlement(total_bal, relative_share, prev_claim);
 
     to_binary(&CW20EntitlementResponse {
@@ -507,7 +512,7 @@ pub fn query_cw20_entitlement(deps: Deps, sender: String, token: String) -> StdR
 
 pub fn query_native_entitlements(deps: Deps, sender: Addr) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
+    let relative_share = get_relative_share(&deps, sender.clone());
 
     let entitlements: Vec<NativeEntitlementResponse> = NATIVE_BALANCES
         .range(deps.storage, None, None, Order::Ascending)
@@ -529,7 +534,7 @@ pub fn query_native_entitlements(deps: Deps, sender: Addr) -> StdResult<Binary> 
 
 pub fn query_cw20_entitlements(deps: Deps, sender: Addr) -> StdResult<Binary> {
     let address = deps.api.addr_validate(&sender.to_string())?;
-    let relative_share = ADDR_RELATIVE_SHARE.load(deps.storage, address.clone())?;
+    let relative_share = get_relative_share(&deps, sender.clone());
 
     let entitlements: Vec<CW20EntitlementResponse> = CW20_BALANCES
         .range(deps.storage, None, None, Order::Ascending)
@@ -554,17 +559,20 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
     match msg {
         MigrateMsg::RedistributeUnclaimedFunds {
             distribution_height,
-        } => execute_redistribute_unclaimed_funds(deps, &distribution_height),
+        } => execute_redistribute_unclaimed_funds(deps, distribution_height),
     }
 }
 
 // only cw_admin can call this
 fn execute_redistribute_unclaimed_funds(
     deps: DepsMut,
-    distribution_height: &u64,
+    distribution_height: u64,
 ) -> Result<Response, ContractError> {
     // update the distribution height
-    DISTRIBUTION_HEIGHT.save(deps.storage, &distribution_height)?;
+    DISTRIBUTION_HEIGHT.save(
+        deps.storage,
+        &distribution_height
+    )?;
 
     // get performed claims of cw20 and native tokens
     let performed_cw20_claims: HashMap<(Addr, Addr), Uint128> = CW20_CLAIMS

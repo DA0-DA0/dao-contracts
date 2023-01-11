@@ -1,12 +1,13 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
+use cw_utils::Duration;
 
 #[cw_serde]
 pub struct InstantiateMsg {
     // To determine voting power
     pub voting_contract: String,
-    // period after which the funds can be claimed
-    pub funding_period: u64,
+    // period (in blocks) after which the funds can be claimed
+    pub funding_period: Duration,
 }
 
 #[cw_serde]
@@ -24,8 +25,8 @@ pub enum QueryMsg {
     VotingContract {},
     NativeDenoms {},
     CW20Tokens {},
-    NativeEntitlement { sender: String, denom: String },
-    CW20Entitlement { sender: String, token: String },
+    NativeEntitlement { sender: Addr, denom: String },
+    CW20Entitlement { sender: Addr, token: String },
     NativeEntitlements { sender: Addr },
     CW20Entitlements { sender: Addr },
 }

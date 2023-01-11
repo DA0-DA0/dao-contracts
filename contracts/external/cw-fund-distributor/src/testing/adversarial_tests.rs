@@ -3,6 +3,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg};
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, Uint128};
 use cw20::{BalanceResponse, Cw20Coin};
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_utils::Duration;
 
 const CREATOR_ADDR: &str = "creator";
 const FEE_DENOM: &str = "ujuno";
@@ -141,7 +142,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
                 voting_contract: voting_address.to_string(),
-                funding_period: 10,
+                funding_period: Duration::Height(10),
             },
             &[],
             "distribution contract",

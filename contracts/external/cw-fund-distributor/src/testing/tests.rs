@@ -7,6 +7,7 @@ use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Execut
 use crate::msg::ExecuteMsg::{ClaimAll, ClaimCW20, ClaimNatives};
 use crate::msg::QueryMsg::TotalPower;
 use cosmwasm_std::StdError::GenericErr;
+use cw_utils::Duration;
 
 const CREATOR_ADDR: &str = "creator";
 const FEE_DENOM: &str = "ujuno";
@@ -125,7 +126,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
                 voting_contract: voting_address.to_string(),
-                funding_period: 10,
+                funding_period: Duration::Height(10),
             },
             &[],
             "distribution contract",
@@ -240,7 +241,7 @@ fn test_instantiate_fails_given_invalid_voting_contract_address() {
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
                 voting_contract: "invalid address".to_string(),
-                funding_period: 10,
+                funding_period: Duration::Height(10),
             },
             &[],
             "distribution contract",
@@ -302,7 +303,7 @@ fn test_instantiate_fails_zero_voting_power() {
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
                 voting_contract: voting_address.to_string(),
-                funding_period: 10,
+                funding_period: Duration::Height(10),
             },
             &[],
             "distribution contract",
