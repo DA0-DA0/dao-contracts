@@ -1,4 +1,4 @@
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde};
 use cosmwasm_std::{Addr, Uint128};
 use cw_utils::Duration;
 
@@ -25,10 +25,24 @@ pub enum QueryMsg {
     VotingContract {},
     NativeDenoms {},
     CW20Tokens {},
-    NativeEntitlement { sender: Addr, denom: String },
-    CW20Entitlement { sender: Addr, token: String },
-    NativeEntitlements { sender: Addr },
-    CW20Entitlements { sender: Addr },
+    NativeEntitlement {
+        sender: Addr,
+        denom: String,
+    },
+    CW20Entitlement {
+        sender: Addr,
+        token: String,
+    },
+    NativeEntitlements {
+        sender: Addr,
+        start_at: Option<String>,
+        limit: Option<u32>,
+    },
+    CW20Entitlements {
+        sender: Addr,
+        start_at: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[cw_serde]

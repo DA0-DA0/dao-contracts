@@ -20,4 +20,7 @@ pub enum ContractError {
 
     #[error("Cannot fund the contract during the claim period")]
     FundDuringClaimingPeriod {},
+
+    #[error("List of specified tokens to claim is empty")]
+    EmptyClaim {},
 }

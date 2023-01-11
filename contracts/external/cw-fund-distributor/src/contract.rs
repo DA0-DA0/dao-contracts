@@ -1,19 +1,22 @@
-use std::borrow::{Borrow};
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg, Storage};
-use cw2::set_contract_version;
-use std::collections::HashMap;
-
 use crate::error::ContractError;
 use crate::msg::{
     CW20EntitlementResponse, CW20Response, DenomResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
     NativeEntitlementResponse, QueryMsg, TotalPowerResponse, VotingContractResponse,
 };
 use crate::state::{
-    CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT,
-    FUNDING_PERIOD_EXPIRATION, NATIVE_BALANCES, NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT,
+    CW20_BALANCES, CW20_CLAIMS, DISTRIBUTION_HEIGHT, FUNDING_PERIOD_EXPIRATION, NATIVE_BALANCES,
+    NATIVE_CLAIMS, TOTAL_POWER, VOTING_CONTRACT,
 };
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+use cosmwasm_std::{
+    to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo,
+    Order, Response, StdError, StdResult, Uint128, WasmMsg,
+};
+use cw2::set_contract_version;
+use cw_paginate::{paginate_map};
+use std::borrow::Borrow;
+use std::collections::HashMap;
 
 use dao_interface::voting;
 
@@ -30,10 +33,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // store the height
-    DISTRIBUTION_HEIGHT.save(
-        deps.storage,
-        &env.block.height,
-    )?;
+    DISTRIBUTION_HEIGHT.save(deps.storage, &env.block.height)?;
 
     // get the funding expiration and store it
     let funding_expiration_height = msg.funding_period.after(&env.block);
@@ -129,11 +129,9 @@ pub fn execute_fund_native(
         .into_iter()
         .filter(|coin| coin.amount > Uint128::zero())
         .map(|coin| {
-            let balance = NATIVE_BALANCES.may_load(
-                deps.storage,
-                coin.denom.clone()
-            )
-            .unwrap_or_default();
+            let balance = NATIVE_BALANCES
+                .may_load(deps.storage, coin.denom.clone())
+                .unwrap_or_default();
             match balance {
                 Some(old_amount) => NATIVE_BALANCES.save(
                     deps.storage,
@@ -169,26 +167,25 @@ fn get_relative_share(deps: &Deps, sender: Addr) -> Decimal {
     let total_power = TOTAL_POWER.load(deps.storage).unwrap();
 
     // find the voting power of sender at distributor instantiation
-    let voting_power: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
-        voting_contract,
-        &voting::Query::VotingPowerAtHeight {
-            address: sender.to_string(),
-            height: Some(dist_height),
-        },
-    )
-    .unwrap();
+    let voting_power: voting::VotingPowerAtHeightResponse = deps
+        .querier
+        .query_wasm_smart(
+            voting_contract,
+            &voting::Query::VotingPowerAtHeight {
+                address: sender.to_string(),
+                height: Some(dist_height),
+            },
+        )
+        .unwrap();
     // return senders share
-    Decimal::from_ratio(
-        voting_power.power,
-        total_power
-    )
+    Decimal::from_ratio(voting_power.power, total_power)
 }
 
 pub fn execute_claim_cw20s(
     deps: DepsMut,
     env: Env,
     sender: Addr,
-    token: Option<Vec<String>>,
+    token_vec: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
     // if current block indicates funding period, return an error
@@ -200,63 +197,66 @@ pub fn execute_claim_cw20s(
 
     let mut response = Response::default();
 
-    if let Some(tokens) = token {
-        let messages: Vec<WasmMsg> = tokens
-            .into_iter()
-            .map(|addr| {
-                // get the balance of distributor at instantiation
-                let bal = CW20_BALANCES
-                    .load(deps.storage, Addr::unchecked(addr.clone()))
-                    .unwrap();
-                // check for any previous claims
-                let previous_claim = CW20_CLAIMS
-                    .load(
-                        deps.storage,
-                        (sender.clone(), Addr::unchecked(addr.clone())),
-                    )
-                    .unwrap_or_default();
+    match token_vec {
+        Some(tokens) => {
+            let messages: Vec<WasmMsg> = tokens
+                .into_iter()
+                .map(|addr| {
+                    // get the balance of distributor at instantiation
+                    let bal = CW20_BALANCES
+                        .load(deps.storage, Addr::unchecked(addr.clone()))
+                        .unwrap();
+                    // check for any previous claims
+                    let previous_claim = CW20_CLAIMS
+                        .load(
+                            deps.storage,
+                            (sender.clone(), Addr::unchecked(addr.clone())),
+                        )
+                        .unwrap_or_default();
 
-                // get % share of sender and subtract any previous claims
-                let entitlement = get_entitlement(bal, relative_share, previous_claim);
+                    // get % share of sender and subtract any previous claims
+                    let entitlement = get_entitlement(bal, relative_share, previous_claim);
 
-                // reflect the new total claim amount
-                CW20_CLAIMS
-                    .update(
-                        deps.storage,
-                        (sender.clone(), Addr::unchecked(addr.clone())),
-                        |claim| {
-                            claim
-                                .unwrap_or_default()
-                                .checked_add(entitlement)
-                                .map_err(StdError::overflow)
+                    // reflect the new total claim amount
+                    CW20_CLAIMS
+                        .update(
+                            deps.storage,
+                            (sender.clone(), Addr::unchecked(addr.clone())),
+                            |claim| {
+                                claim
+                                    .unwrap_or_default()
+                                    .checked_add(entitlement)
+                                    .map_err(StdError::overflow)
+                            },
+                        )
+                        .unwrap();
+
+                    // add the transfer message
+                    (
+                        WasmMsg::Execute {
+                            contract_addr: addr,
+                            msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                                recipient: sender.to_string(),
+                                amount: entitlement,
+                            })
+                            .unwrap(),
+                            funds: vec![],
                         },
+                        entitlement,
                     )
-                    .unwrap();
-
-                // add the transfer message
-                (
-                    WasmMsg::Execute {
-                        contract_addr: addr,
-                        msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                            recipient: sender.to_string(),
-                            amount: entitlement,
-                        })
-                        .unwrap(),
-                        funds: vec![],
-                    },
-                    entitlement,
-                )
-            })
-            // filter out zero entitlement messages
-            .filter(|(_, entitlement)| !entitlement.is_zero())
-            .map(|(msg, _)| msg)
-            .collect();
-        response = response.add_messages(messages);
+                })
+                // filter out zero entitlement messages
+                .filter(|(_, entitlement)| !entitlement.is_zero())
+                .map(|(msg, _)| msg)
+                .collect();
+            response = response.add_messages(messages);
+        }
+        None => return Err(ContractError::EmptyClaim {}),
     }
 
     Ok(response
         .add_attribute("method", "claim_cw20s")
-        .add_attribute("sender", sender.clone()))
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_claim_natives(
@@ -321,7 +321,7 @@ pub fn execute_claim_natives(
 
     Ok(response
         .add_attribute("method", "claim_natives")
-        .add_attribute("sender", sender.clone()))
+        .add_attribute("sender", sender))
 }
 
 pub fn execute_claim_all(deps: DepsMut, env: Env, sender: Addr) -> Result<Response, ContractError> {
@@ -343,8 +343,7 @@ pub fn execute_claim_all(deps: DepsMut, env: Env, sender: Addr) -> Result<Respon
         .collect();
 
     // collect transfer messages and update store
-    let cw20_transfer_msgs: Vec<WasmMsg> = cw20s
-        .into_iter()
+    let cw20_transfer_msgs: Vec<WasmMsg> = cw20s.into_iter()
         .map(|(addr, amount)| {
             let previous_claim = CW20_CLAIMS
                 .load(deps.storage, (sender.clone(), addr.clone()))
@@ -435,8 +434,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             query_native_entitlement(deps, sender, denom)
         }
         QueryMsg::CW20Entitlement { sender, token } => query_cw20_entitlement(deps, sender, token),
-        QueryMsg::NativeEntitlements { sender } => query_native_entitlements(deps, sender),
-        QueryMsg::CW20Entitlements { sender } => query_cw20_entitlements(deps, sender),
+        QueryMsg::NativeEntitlements {
+            sender,
+            start_at,
+            limit,
+        } => query_native_entitlements(deps, sender, start_at, limit),
+        QueryMsg::CW20Entitlements {
+            sender,
+            start_at,
+            limit,
+        } => query_cw20_entitlements(deps, sender, start_at, limit),
     }
 }
 
@@ -483,10 +490,10 @@ pub fn query_cw20_tokens(deps: Deps) -> StdResult<Binary> {
 }
 
 pub fn query_native_entitlement(deps: Deps, sender: Addr, denom: String) -> StdResult<Binary> {
-    let address = deps.api.addr_validate(&sender.to_string())?;
+    let address = deps.api.addr_validate(sender.as_ref())?;
     let prev_claim = NATIVE_CLAIMS.load(deps.storage, (address, denom.clone()))?;
     let total_bal = NATIVE_BALANCES.load(deps.storage, denom.clone())?;
-    let relative_share = get_relative_share(&deps, sender.clone());
+    let relative_share = get_relative_share(&deps, sender);
 
     let entitlement = get_entitlement(total_bal, relative_share, prev_claim);
 
@@ -497,11 +504,11 @@ pub fn query_native_entitlement(deps: Deps, sender: Addr, denom: String) -> StdR
 }
 
 pub fn query_cw20_entitlement(deps: Deps, sender: Addr, token: String) -> StdResult<Binary> {
-    let address = deps.api.addr_validate(&sender.to_string())?;
+    let address = deps.api.addr_validate(sender.as_ref())?;
     let token = Addr::unchecked(token);
     let prev_claim = CW20_CLAIMS.load(deps.storage, (address, token.clone()))?;
     let total_bal = CW20_BALANCES.load(deps.storage, token.clone())?;
-    let relative_share = get_relative_share(&deps, sender.clone());
+    let relative_share = get_relative_share(&deps, sender);
     let entitlement = get_entitlement(total_bal, relative_share, prev_claim);
 
     to_binary(&CW20EntitlementResponse {
@@ -510,14 +517,18 @@ pub fn query_cw20_entitlement(deps: Deps, sender: Addr, token: String) -> StdRes
     })
 }
 
-pub fn query_native_entitlements(deps: Deps, sender: Addr) -> StdResult<Binary> {
-    let address = deps.api.addr_validate(&sender.to_string())?;
-    let relative_share = get_relative_share(&deps, sender.clone());
+pub fn query_native_entitlements(
+    deps: Deps,
+    sender: Addr,
+    start_at: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let address = deps.api.addr_validate(sender.as_ref())?;
+    let relative_share = get_relative_share(&deps, sender);
+    let natives = paginate_map(deps, &NATIVE_BALANCES, start_at, limit, Order::Descending)?;
 
-    let entitlements: Vec<NativeEntitlementResponse> = NATIVE_BALANCES
-        .range(deps.storage, None, None, Order::Ascending)
+    let entitlements: Vec<NativeEntitlementResponse> = natives
         .into_iter()
-        .map(|item| item.unwrap())
         .map(|(denom, amount)| {
             let prev_claim = NATIVE_CLAIMS
                 .load(deps.storage, (address.clone(), denom.clone()))
@@ -532,14 +543,19 @@ pub fn query_native_entitlements(deps: Deps, sender: Addr) -> StdResult<Binary> 
     to_binary(&entitlements)
 }
 
-pub fn query_cw20_entitlements(deps: Deps, sender: Addr) -> StdResult<Binary> {
-    let address = deps.api.addr_validate(&sender.to_string())?;
-    let relative_share = get_relative_share(&deps, sender.clone());
+pub fn query_cw20_entitlements(
+    deps: Deps,
+    sender: Addr,
+    start_at: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<Binary> {
+    let address = deps.api.addr_validate(sender.as_ref())?;
+    let relative_share = get_relative_share(&deps, sender);
+    let start_at = start_at.map(|h| deps.api.addr_validate(&h)).transpose()?;
+    let cw20s = paginate_map(deps, &CW20_BALANCES, start_at, limit, Order::Descending)?;
 
-    let entitlements: Vec<CW20EntitlementResponse> = CW20_BALANCES
-        .range(deps.storage, None, None, Order::Ascending)
+    let entitlements: Vec<CW20EntitlementResponse> = cw20s
         .into_iter()
-        .map(|item| item.unwrap())
         .map(|(token, amount)| {
             let prev_claim = CW20_CLAIMS
                 .load(deps.storage, (address.clone(), token.clone()))
@@ -569,10 +585,7 @@ fn execute_redistribute_unclaimed_funds(
     distribution_height: u64,
 ) -> Result<Response, ContractError> {
     // update the distribution height
-    DISTRIBUTION_HEIGHT.save(
-        deps.storage,
-        &distribution_height
-    )?;
+    DISTRIBUTION_HEIGHT.save(deps.storage, &distribution_height)?;
 
     // get performed claims of cw20 and native tokens
     let performed_cw20_claims: HashMap<(Addr, Addr), Uint128> = CW20_CLAIMS
