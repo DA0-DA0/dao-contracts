@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { Uint128, UncheckedDenom, Curve, InstantiateMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, ExecuteMsg, Binary, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, QueryMsg, CheckedDenom, Addr, Decimal, VestingPaymentStatus, VestingPayment, VestingPaymentRewards, OwnershipForAddr } from "./CwPayroll.types";
+import { Uint128, UncheckedDenom, Curve, InstantiateMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, ExecuteMsg, Binary, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, QueryMsg, CheckedDenom, Addr, VestingPaymentStatus, VestingPayment, OwnershipForAddr } from "./CwPayroll.types";
 export interface CwPayrollReadOnlyInterface {
   contractAddress: string;
   info: () => Promise<VestingPayment>;
@@ -78,6 +78,11 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
     amount: Uint128;
     validator: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  setWithdrawAddress: ({
+    address
+  }: {
+    address: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   withdrawDelegatorReward: ({
     validator
   }: {
@@ -101,6 +106,7 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
     this.delegate = this.delegate.bind(this);
     this.redelegate = this.redelegate.bind(this);
     this.undelegate = this.undelegate.bind(this);
+    this.setWithdrawAddress = this.setWithdrawAddress.bind(this);
     this.withdrawDelegatorReward = this.withdrawDelegatorReward.bind(this);
     this.updateOwnership = this.updateOwnership.bind(this);
   }
@@ -174,6 +180,17 @@ export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollIn
       undelegate: {
         amount,
         validator
+      }
+    }, fee, memo, funds);
+  };
+  setWithdrawAddress = async ({
+    address
+  }: {
+    address: string;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      set_withdraw_address: {
+        address
       }
     }, fee, memo, funds);
   };

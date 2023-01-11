@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, DistributionMsg, Env,
+    from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env,
     MessageInfo, Order, Response, StakingMsg, StdResult, Uint128,
 };
 use cw2::set_contract_version;
@@ -12,8 +12,7 @@ use cw_utils::{must_pay, nonpayable};
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
 use crate::state::{
-    ValidatorRewards, VestingPayment, VestingPaymentStatus, STAKED_VESTING_BY_VALIDATOR,
-    VALIDATORS_REWARDS, VESTING_PAYMENT,
+    VestingPayment, VestingPaymentStatus, STAKED_VESTING_BY_VALIDATOR, VESTING_PAYMENT,
 };
 
 const CONTRACT_NAME: &str = "crates.io:cw-payroll";
@@ -30,15 +29,28 @@ pub fn instantiate(
 
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
+    let mut msgs: Vec<CosmosMsg> = vec![];
+
     // Check all params and create vesting payment with status based on denom
     let vp = match msg.params.denom {
-        UncheckedDenom::Native(_) => {
+        UncheckedDenom::Native(ref denom) => {
             // Validate all vesting payment params
-            let checked_params = msg.params.into_checked(deps.as_ref())?;
+            let checked_params = msg.clone().params.into_checked(deps.as_ref())?;
 
             // Check amount sent matches amount in vesting payment
             if checked_params.amount != must_pay(&info, &checked_params.denom.to_string())? {
                 return Err(ContractError::AmountDoesNotMatch);
+            }
+
+            // If the native denom matches the bonded denom, set withdraw address
+            // to the recipient so that any staking rewards go to the recipient
+            let local_denom = deps.querier.query_bonded_denom()?;
+            if local_denom == denom.to_string() {
+                msgs.push(CosmosMsg::Distribution(
+                    DistributionMsg::SetWithdrawAddress {
+                        address: checked_params.recipient.to_string(),
+                    },
+                ))
             }
 
             // Create a new vesting payment
@@ -65,7 +77,8 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string())))
+        .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
+        .add_messages(msgs))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -91,9 +104,10 @@ pub fn execute(
         ExecuteMsg::Undelegate { validator, amount } => {
             execute_undelegate(env, deps, info, validator, amount)
         }
-        ExecuteMsg::WithdrawDelegatorReward { validator } => {
-            execute_withdraw_rewards(env, deps, validator)
+        ExecuteMsg::SetWithdrawAddress { address } => {
+            execute_set_withdraw_address(deps, info, address)
         }
+        ExecuteMsg::WithdrawDelegatorReward { validator } => execute_withdraw_rewards(validator),
     }
 }
 
@@ -148,16 +162,6 @@ pub fn execute_cancel_vesting_payment(
 
     let mut msgs: Vec<CosmosMsg> = vec![];
 
-    // Get total delegations and rewards across all validators
-    let total_delegations = STAKED_VESTING_BY_VALIDATOR
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|res| -> StdResult<Uint128> { Ok(res?.1) })
-        .sum::<StdResult<Uint128>>()?;
-    let validator_rewards = VALIDATORS_REWARDS
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|res| -> StdResult<Decimal> { Ok(res?.1.rewards_per_token) })
-        .sum::<StdResult<Decimal>>()?;
-
     let vesting_payment =
         VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
             // Check if contract status is active
@@ -172,9 +176,6 @@ pub fn execute_cancel_vesting_payment(
                 vp.status = VestingPaymentStatus::CanceledAndUnbonding;
                 // Set canceled at time for use when distributing unbonded funds
                 vp.canceled_at_time = Some(env.block.time.seconds());
-
-                // Update pending rewards
-                vp.calc_pending_rewards(validator_rewards, total_delegations)?;
             }
             Ok(vp)
         })?;
@@ -204,7 +205,6 @@ pub fn execute_cancel_vesting_payment(
         // Check if funds have vested or there are staking rewards
         let vested_amount =
             vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
-        let staking_rewards = vesting_payment.get_pending_rewards()?;
 
         // Transfer any remaining unvested amount to the owner
         let unvested = vesting_payment.amount.checked_sub(vested_amount)?;
@@ -222,14 +222,6 @@ pub fn execute_cancel_vesting_payment(
                 .get_transfer_to_message(&vesting_payment.recipient, vested_amount)?;
             msgs.push(transfer_vested_to_recipient_msg);
         }
-
-        // Transfer any pending rewards to original recipient
-        if staking_rewards != Uint128::zero() {
-            let transfer_rewards_to_recipient_msg = vesting_payment
-                .denom
-                .get_transfer_to_message(&vesting_payment.recipient, staking_rewards)?;
-            msgs.push(transfer_rewards_to_recipient_msg);
-        }
     }
 
     Ok(Response::new()
@@ -242,7 +234,8 @@ pub fn execute_cancel_vesting_payment(
 pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractError> {
     let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
 
-    // Get vested amount based on stats
+    // TODO only distribute active or canceled and unbonding
+    // Get vested amount based on vesting payment status
     let vested_amount = match vesting_payment.status {
         // If canceled and unbonding use canceled time
         VestingPaymentStatus::CanceledAndUnbonding => vesting_payment
@@ -254,21 +247,18 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
         // Otherwise use current block time
         _ => vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?,
     };
-    let staking_rewards = vesting_payment.get_pending_rewards()?;
 
     // Check there are funds to distribute
-    if vested_amount == Uint128::zero() && staking_rewards == Uint128::zero() {
+    if vested_amount == Uint128::zero() {
         return Err(ContractError::NoFundsToClaim);
     }
 
-    // Update Vesting Payment with claimed amount
+    // Update Vesting Payment with claimed amount and the correct status
     VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
         // Decrease vesting amount
-        vp.amount -= vested_amount;
+        vp.amount = vp.amount.checked_sub(vested_amount)?;
         // Increase the claimed amount
-        vp.claimed_amount += vested_amount;
-        // Set pending rewards to zero
-        vp.rewards.pending = Decimal::zero();
+        vp.claimed_amount = vp.claimed_amount.checked_add(vested_amount)?;
 
         // Check if canceled and unbonding
         if vp.status == VestingPaymentStatus::CanceledAndUnbonding {
@@ -286,11 +276,10 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
     let mut msgs: Vec<CosmosMsg> = vec![];
 
     // Get transfer message for recipient payout
-    let total_payout = vested_amount.checked_add(staking_rewards)?;
-    if total_payout != Uint128::zero() {
+    if vested_amount != Uint128::zero() {
         let transfer_msg = vesting_payment
             .denom
-            .get_transfer_to_message(&vesting_payment.recipient, total_payout)?;
+            .get_transfer_to_message(&vesting_payment.recipient, vested_amount)?;
         msgs.push(transfer_msg);
     }
 
@@ -311,7 +300,6 @@ pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractE
     Ok(Response::new()
         .add_attribute("method", "distribute")
         .add_attribute("vested_amount", vested_amount)
-        .add_attribute("staking_rewards", staking_rewards)
         .add_messages(msgs))
 }
 
@@ -347,6 +335,7 @@ pub fn execute_delegate(
         return Err(ContractError::Unauthorized);
     }
 
+    // TODO abstract into vesting_payment struct
     // Check vesting payment denom matches local denom
     let denom = match vesting_payment.denom {
         CheckedDenom::Cw20(_) => {
@@ -374,24 +363,21 @@ pub fn execute_delegate(
         vp.amount.checked_sub(vp.staked_amount + amount)?;
 
         // Update amounts
-        vp.staked_amount += amount;
+        vp.staked_amount += vp.staked_amount.checked_add(amount)?;
         Ok(vp)
     })?;
 
     // Save a record of staking this vesting payment amount to a validator
     match STAKED_VESTING_BY_VALIDATOR.may_load(deps.storage, &validator)? {
         // If already staked to this validator, increase staked amount
-        Some(staked_amount) => {
-            STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &(staked_amount + amount))
-        }
+        Some(staked_amount) => STAKED_VESTING_BY_VALIDATOR.save(
+            deps.storage,
+            &validator,
+            &staked_amount.checked_add(amount)?,
+        ),
         // If not currently staked to this validator save a new record with staked amount
         None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &amount),
     }?;
-
-    // If its a first delegation to a validator, we set validator rewards to 0
-    if (VALIDATORS_REWARDS.may_load(deps.storage, &validator)?).is_none() {
-        VALIDATORS_REWARDS.save(deps.storage, &validator, &ValidatorRewards::default())?;
-    }
 
     // Create message to delegate the underlying tokens
     let msg = StakingMsg::Delegate {
@@ -429,6 +415,7 @@ pub fn execute_redelegate(
         return Err(ContractError::Unauthorized);
     }
 
+    // TODO abstract into vesting_payment struct
     // Check vesting payment denom matches local denom
     let denom = match vesting_payment.denom {
         CheckedDenom::Cw20(_) => {
@@ -450,7 +437,7 @@ pub fn execute_redelegate(
     STAKED_VESTING_BY_VALIDATOR.save(
         deps.storage,
         &src_validator,
-        &(amount_staked_src - amount),
+        &amount_staked_src.checked_sub(amount)?,
     )?;
 
     // Load destination validator, increase amount
@@ -459,16 +446,11 @@ pub fn execute_redelegate(
         Some(staked_amount) => STAKED_VESTING_BY_VALIDATOR.save(
             deps.storage,
             &src_validator,
-            &(staked_amount + amount),
+            &staked_amount.checked_add(amount)?,
         ),
         // If not currently staked to this validator save a new record with staked amount
         None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &dst_validator, &amount),
     }?;
-
-    // If its a first delegation to a validator, we set validator rewards to 0
-    if (VALIDATORS_REWARDS.may_load(deps.storage, &dst_validator)?).is_none() {
-        VALIDATORS_REWARDS.save(deps.storage, &dst_validator, &ValidatorRewards::default())?;
-    }
 
     // Create message to delegate the underlying tokens
     let msg = StakingMsg::Redelegate {
@@ -497,14 +479,6 @@ pub fn execute_undelegate(
         return Err(ContractError::Unauthorized);
     }
 
-    // Load delegation for specified validator
-    let delegations = STAKED_VESTING_BY_VALIDATOR
-        .may_load(deps.storage, &validator)?
-        .ok_or(ContractError::NoDelegationsForValidator {})?;
-
-    // Load rewards info for specified validator
-    let validator_rewards = VALIDATORS_REWARDS.load(deps.storage, &validator)?;
-
     // Update vesting payment with amount of staked rewards
     VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
         // Check unstake amount is not greater than vesting payment amount
@@ -512,11 +486,8 @@ pub fn execute_undelegate(
             return Err(ContractError::NotEnoughFunds {});
         }
 
-        // Update pending rewards
-        vp.calc_pending_rewards(validator_rewards.rewards_per_token, delegations)?;
-
         // Update amounts
-        vp.staked_amount -= amount;
+        vp.staked_amount = vp.staked_amount.checked_sub(amount)?;
         Ok(vp)
     })?;
 
@@ -529,52 +500,35 @@ pub fn execute_undelegate(
     };
 
     // Update amount delegated to validator
-    STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &(delegations - amount))?;
+    STAKED_VESTING_BY_VALIDATOR.update(deps.storage, &validator, |staked_amount| {
+        match staked_amount {
+            Some(staked_amount) => Ok(staked_amount.checked_sub(amount)?),
+            None => Err(ContractError::NoDelegationsForValidator {}),
+        }
+    })?;
 
     Ok(Response::default().add_message(msg))
 }
 
-pub fn execute_withdraw_rewards(
-    env: Env,
+pub fn execute_set_withdraw_address(
     deps: DepsMut,
-    validator: String,
+    info: MessageInfo,
+    address: String,
 ) -> Result<Response, ContractError> {
-    // Query full delegation to get the total rewards amount
-    let delegation_query = deps
-        .querier
-        .query_delegation(env.contract.address, validator.clone())?;
+    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
 
-    // Total rewards we have from this validator
-    let total_accumulated_rewards = &match delegation_query {
-        Some(delegation) => delegation.accumulated_rewards,
-        None => return Err(ContractError::NoDelegationsForValidator {}),
-    };
-
-    // Check to make sure there are rewards
-    if total_accumulated_rewards.is_empty() || total_accumulated_rewards[0].amount.is_zero() {
-        return Err(ContractError::ZeroRewardsToSend {});
+    // Check sender is the recipient of the vesting payment
+    if info.sender != vesting_payment.recipient {
+        return Err(ContractError::Unauthorized);
     }
 
-    let total_accumulated_rewards = &total_accumulated_rewards[0];
+    // Set withdraw address
+    let msg = DistributionMsg::SetWithdrawAddress { address };
 
-    // Get total delegations across all validators
-    let total_delegations = STAKED_VESTING_BY_VALIDATOR
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|res| -> StdResult<Uint128> { Ok(res?.1) })
-        .sum::<StdResult<Uint128>>()?;
+    Ok(Response::default().add_message(msg))
+}
 
-    // Update rewards for this validator
-    VALIDATORS_REWARDS.update(
-        deps.storage,
-        &validator,
-        |rewards: Option<ValidatorRewards>| -> Result<_, ContractError> {
-            let mut validator_rewards = rewards.unwrap();
-
-            validator_rewards.calc_rewards(total_accumulated_rewards.amount, total_delegations)?;
-            Ok(validator_rewards)
-        },
-    )?;
-
+pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractError> {
     // Withdraw rewards from validator
     let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
 
