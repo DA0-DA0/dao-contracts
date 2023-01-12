@@ -1,15 +1,18 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
+use cw_utils::Duration;
 use dao_voting::threshold::PercentageThreshold;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    quorum: PercentageThreshold,
+    pub quorum: PercentageThreshold,
+    pub voting_period: Duration,
+    pub min_voting_period: Option<Duration>,
 }
 
 #[cw_serde]
 pub struct Choice {
-    msgs: Vec<CosmosMsg<Empty>>,
+    pub msgs: Vec<CosmosMsg<Empty>>,
 }
 
 #[cw_serde]
@@ -22,6 +25,3 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {}
-
-#[cw_serde]
-pub struct MigrateMsg {}

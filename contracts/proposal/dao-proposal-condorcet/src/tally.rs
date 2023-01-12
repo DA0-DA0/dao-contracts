@@ -46,6 +46,10 @@ impl Tally {
         }
     }
 
+    pub fn candidates(&self) -> u32 {
+        self.m.n as u32
+    }
+
     /// Records a vote in the tally.
     ///
     ///  - `vote` a list of candidates sorted in order from most to
