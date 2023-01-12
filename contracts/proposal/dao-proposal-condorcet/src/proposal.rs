@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{BlockInfo, Uint128};
 use cw_utils::Expiration;
-use dao_voting::{status::Status, threshold::PercentageThreshold, voting::does_vote_count_pass};
+use dao_voting::{threshold::PercentageThreshold, voting::does_vote_count_pass};
 
 use crate::{
     msg::Choice,
@@ -18,8 +18,25 @@ pub struct Proposal {
     pub quorum: PercentageThreshold,
     pub expiration: Expiration,
 
-    pub start_height: u64,
     pub total_power: Uint128,
+}
+
+#[cw_serde]
+#[derive(Copy)]
+pub enum Status {
+    /// The proposal is open for voting.
+    Open,
+    /// The proposal has been rejected.
+    Rejected,
+    /// The proposal has passed.
+    Passed { winner: usize },
+    /// The proposal has been passed and executed.
+    Executed,
+    /// The proposal has failed or expired and has been closed. A
+    /// proposal deposit refund has been issued if applicable.
+    Closed,
+    /// The proposal's execution failed.
+    ExecutionFailed,
 }
 
 // there also exists some unchecked proposal type that is passed in
@@ -29,7 +46,7 @@ pub struct Proposal {
 fn status(block: &BlockInfo, proposal: &Proposal, tally: &Tally) -> Status {
     match proposal.last_status {
         Status::Rejected
-        | Status::Passed
+        | Status::Passed { .. }
         | Status::Executed
         | Status::Closed
         | Status::ExecutionFailed => proposal.last_status,
@@ -54,16 +71,16 @@ fn status(block: &BlockInfo, proposal: &Proposal, tally: &Tally) -> Status {
                             Status::Open
                         }
                     }
-                    Winner::Some(_) => {
+                    Winner::Some(winner) => {
                         if expired && quorum {
-                            Status::Passed
+                            Status::Passed { winner }
                         } else {
                             Status::Open
                         }
                     }
-                    Winner::Undisputed(_) => {
+                    Winner::Undisputed(winner) => {
                         if quorum {
-                            Status::Passed
+                            Status::Passed { winner }
                         } else {
                             Status::Open
                         }
@@ -80,7 +97,6 @@ impl Proposal {
         choices: Vec<Choice>,
         quorum: PercentageThreshold,
         expiration: Expiration,
-        start_height: u64,
         total_power: Uint128,
     ) -> Self {
         Self {
@@ -89,7 +105,6 @@ impl Proposal {
             choices,
             quorum,
             expiration,
-            start_height,
             total_power,
         }
     }
@@ -101,6 +116,10 @@ impl Proposal {
 
     pub fn set_executed(&mut self) {
         self.last_status = Status::Executed;
+    }
+
+    pub fn set_closed(&mut self) {
+        self.last_status = Status::Closed;
     }
 
     pub fn status(&self, block: &BlockInfo, tally: &Tally) -> Status {

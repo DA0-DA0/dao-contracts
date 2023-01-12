@@ -20,4 +20,7 @@ pub enum ContractError {
 
     #[error("only proposals that are in the passed state may be executed")]
     Unexecutable {},
+
+    #[error("only rejected proposals may be closed")]
+    Unclosable {},
 }

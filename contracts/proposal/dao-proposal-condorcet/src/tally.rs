@@ -21,9 +21,10 @@ use crate::{
 pub struct Tally {
     m: M,
 
+    /// The block height that this tally began at.
+    pub start_height: u64,
     /// Amount of voting power that has yet to vote in this tally.
     pub power_outstanding: Uint128,
-
     /// The current winner. Always up to date and updated on vote.
     pub winner: Winner,
 }
@@ -33,21 +34,28 @@ pub struct Tally {
 pub enum Winner {
     Never,
     None,
-    Some(u32),
-    Undisputed(u32),
+    Some(usize),
+    Undisputed(usize),
 }
 
 impl Tally {
-    pub fn new(candidates: u32, total_power: Uint128) -> Self {
-        Self {
+    pub fn new(candidates: usize, total_power: Uint128, start_height: u64) -> Self {
+        let mut tally = Self {
             m: M::new(candidates as usize),
             power_outstanding: total_power,
             winner: Winner::None,
-        }
+            start_height,
+        };
+        // compute even though this will always be Winner::None so
+        // that creating a tally has the same compute cost of adding a
+        // vote which is needed so that gas(proposal_creation) >=
+        // gas(vote).
+        tally.winner = tally.winner();
+        tally
     }
 
-    pub fn candidates(&self) -> u32 {
-        self.m.n as u32
+    pub fn candidates(&self) -> usize {
+        self.m.n
     }
 
     /// Records a vote in the tally.
@@ -70,122 +78,23 @@ impl Tally {
     }
 
     fn winner(&self) -> Winner {
-        match self.m.stats() {
+        match self.m.stats(self.power_outstanding) {
             Stats::PositiveColumn { col, min_margin } => {
                 if min_margin > self.power_outstanding {
-                    Winner::Undisputed(col as u32)
+                    Winner::Undisputed(col)
                 } else {
-                    Winner::Some(col as u32)
+                    Winner::Some(col)
                 }
             }
             Stats::NoPositiveColumn {
-                min_col_distance_from_positivity,
-                max_negative_in_min_col,
+                no_winnable_columns,
             } => {
-                if min_col_distance_from_positivity
-                    > self.power_outstanding.full_mul((self.m.n - 1) as u32)
-                    || max_negative_in_min_col >= self.power_outstanding
-                {
+                if no_winnable_columns {
                     Winner::Never
                 } else {
                     Winner::None
                 }
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_pair_election() {
-        let candidates = 2;
-        let mut tally = Tally::new(candidates, Uint128::new(3));
-
-        tally.add_vote(Vote::new(vec![0, 1], candidates).unwrap(), Uint128::one());
-        tally.add_vote(Vote::new(vec![1, 0], candidates).unwrap(), Uint128::one());
-        tally.add_vote(Vote::new(vec![1, 0], candidates).unwrap(), Uint128::one());
-
-        let winner = tally.winner();
-        assert_eq!(winner, Winner::Undisputed(1));
-    }
-
-    #[test]
-    fn test_triplet_election() {
-        let candidates = 3;
-        let mut tally = Tally::new(candidates, Uint128::new(3));
-
-        tally.add_vote(
-            Vote::new(vec![0, 1, 2], candidates).unwrap(),
-            Uint128::one(),
-        );
-
-        let winner = tally.winner();
-        assert_eq!(winner, Winner::Some(0));
-
-        tally.add_vote(
-            Vote::new(vec![0, 2, 1], candidates).unwrap(),
-            Uint128::one(),
-        );
-        tally.add_vote(
-            Vote::new(vec![2, 0, 1], candidates).unwrap(),
-            Uint128::one(),
-        );
-
-        let winner = tally.winner();
-        assert_eq!(winner, Winner::Undisputed(0));
-    }
-
-    #[test]
-    fn test_condorcet_paradox() {
-        let candidates = 3;
-        let mut tally = Tally::new(candidates, Uint128::new(6));
-
-        tally.add_vote(
-            Vote::new(vec![0, 2, 1], candidates).unwrap(),
-            Uint128::one(),
-        );
-        tally.add_vote(
-            Vote::new(vec![1, 0, 2], candidates).unwrap(),
-            Uint128::one(),
-        );
-        tally.add_vote(
-            Vote::new(vec![2, 1, 0], candidates).unwrap(),
-            Uint128::one(),
-        );
-        tally.add_vote(
-            Vote::new(vec![1, 0, 2], candidates).unwrap(),
-            Uint128::one(),
-        );
-        tally.add_vote(
-            Vote::new(vec![0, 2, 1], candidates).unwrap(),
-            Uint128::one(),
-        );
-        tally.add_vote(
-            Vote::new(vec![2, 0, 1], candidates).unwrap(),
-            Uint128::one(),
-        );
-
-        // sequence of ballots cast:
-        //
-        // 0 > 2 > 1
-        // 1 > 0 > 2
-        // 2 > 1 > 0
-        // 1 > 0 > 2
-        // 0 > 2 > 1
-        // 2 > 0 > 1
-        //
-        // produces a M matrix:
-        //
-        // ```
-        //   \  0 -2
-        //   0  \  2
-        //   2 -2  \
-        // ```
-        //
-        // the "condorcet paradox" 0 > 2, 2 > 1, 0 !> 1.
-        assert_eq!(tally.winner(), Winner::Never)
     }
 }

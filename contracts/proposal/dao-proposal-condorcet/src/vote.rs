@@ -7,16 +7,16 @@ use thiserror::Error;
 pub struct Vote(Vec<u32>);
 
 impl Vote {
-    pub(crate) fn new(vote: Vec<u32>, candidates: u32) -> Result<Self, VoteError> {
+    pub(crate) fn new(vote: Vec<u32>, candidates: usize) -> Result<Self, VoteError> {
         if vote.len() != candidates as usize {
             return Err(VoteError::LenMissmatch {
                 got: vote.len() as u32,
-                expected: candidates,
+                expected: candidates as u32,
             });
         }
         let mut seen = vec![];
         for v in vote {
-            if v >= candidates {
+            if v as usize >= candidates {
                 return Err(VoteError::InvalidCandidate { candidate: v });
             }
             if seen.contains(&v) {

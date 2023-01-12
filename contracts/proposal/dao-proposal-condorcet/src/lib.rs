@@ -9,8 +9,10 @@ pub mod msg;
 pub mod proposal;
 pub mod state;
 pub mod tally;
+
 #[cfg(test)]
-mod tests;
+mod testing;
+
 pub mod vote;
 
 pub use crate::error::ContractError;

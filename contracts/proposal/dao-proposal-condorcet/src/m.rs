@@ -37,17 +37,11 @@ pub(crate) enum Stats {
         min_margin: Uint128,
     },
     NoPositiveColumn {
-        /// Smallest number required to flip a column positive. For
-        /// example, given a column with values `[-1, 0, 1]`, the
-        /// distance from positivity would be `3` as to become
-        /// positive one would need to add two to index zero and one
-        /// to index one, yielding `[1, 1, 1]`.
+        /// False if there exists a column where:
         ///
-        /// This type needs to be larger than a u128 because `-2^128`
-        /// is `2^128 + 1` away from being positive.
-        min_col_distance_from_positivity: Uint256,
-        /// The most negative value in the least negative column.
-        max_negative_in_min_col: Uint128,
+        /// distance_from_positivity(col) <= power_outstanding * (N-1)
+        /// && max_negative_magnitude(col) < power_outstanding
+        no_winnable_columns: bool,
     },
 }
 
@@ -95,7 +89,7 @@ impl M {
         row + offset
     }
 
-    fn get(&self, (x, y): (usize, usize)) -> Cell {
+    pub(crate) fn get(&self, (x, y): (usize, usize)) -> Cell {
         if x < y {
             self.get((y, x)).invert()
         } else {
@@ -124,14 +118,17 @@ impl M {
         }
     }
 
-    pub fn stats(&self) -> Stats {
+    /// Computes statistics about M which are used to determine if a
+    /// proposal has passed or may be rejected early.
+    ///
+    /// https://github.com/DA0-DA0/dao-contracts/wiki/Proofs-of-early-rejection-cases-for-Condorcet-proposals
+    pub fn stats(&self, power_outstanding: Uint128) -> Stats {
         let n = self.n;
-        let mut min_col_distance_from_positivity = Uint256::MAX;
-        let mut max_negative_in_min_col = Uint128::MAX;
+        let mut no_winnable_columns = true;
         for col in 0..n {
             let mut distance_from_positivity = Uint256::zero();
             let mut min_margin = Uint128::MAX;
-            let mut max_negative = Uint128::MAX;
+            let mut max_negative = Uint128::zero();
             for row in 0..n {
                 if row != col {
                     match self.get((col, row)) {
@@ -153,14 +150,17 @@ impl M {
             if distance_from_positivity.is_zero() {
                 return Stats::PositiveColumn { col, min_margin };
             }
-            if distance_from_positivity < min_col_distance_from_positivity {
-                min_col_distance_from_positivity = distance_from_positivity;
-                max_negative_in_min_col = max_negative;
+
+            if distance_from_positivity <= power_outstanding.full_mul((self.n - 1) as u64) {
+                // claim_a = false
+                if max_negative < power_outstanding {
+                    // claim_b = false =>
+                    no_winnable_columns = false
+                }
             }
         }
         Stats::NoPositiveColumn {
-            min_col_distance_from_positivity,
-            max_negative_in_min_col,
+            no_winnable_columns,
         }
     }
 }
@@ -292,7 +292,7 @@ mod test_lm {
             }
         }
 
-        match m.stats() {
+        match m.stats(Uint128::zero()) {
             Stats::PositiveColumn { col, min_margin } => {
                 assert_eq!((col, min_margin), (2, Uint128::one()))
             }
@@ -305,11 +305,17 @@ mod test_lm {
         let n = 8;
         let mut m = new_m(n);
 
-        match m.stats() {
+        match m.stats(Uint128::new(n as u128)) {
             Stats::PositiveColumn { .. } => panic!("expected no positive columns"),
             Stats::NoPositiveColumn {
-                min_col_distance_from_positivity: min_distance_from_positivity,
-            } => assert_eq!(min_distance_from_positivity, Uint256::from((n - 1) as u32)),
+                no_winnable_columns,
+            } => {
+                // false because there exists a row that may be
+                // flipped with N voting power remaining, and the
+                // largest negative in that row is less than the power
+                // outstanding.
+                assert_eq!(no_winnable_columns, false)
+            }
         }
 
         for i in 1..n {
@@ -328,11 +334,45 @@ mod test_lm {
         //  0  0  0  0  0 -2  \  2
         //  0  0  0  0  0  0 -2  \
 
-        match m.stats() {
+        match m.stats(Uint128::new((n - 3) as u128)) {
             Stats::PositiveColumn { .. } => panic!("expected no positive columns"),
             Stats::NoPositiveColumn {
-                min_col_distance_from_positivity: min_distance_from_positivity,
-            } => assert_eq!(min_distance_from_positivity, Uint256::from((n - 2) as u32)),
+                no_winnable_columns,
+            } => {
+                // last column can be flipped.
+                assert_eq!(no_winnable_columns, false)
+            }
+        }
+
+        m.decrement((n - 1, n - 3), Uint128::new(1));
+
+        //  \  2  0  0  0  0  0  0
+        // -2  \  2  0  0  0  0  0
+        //  0 -2  \  2  0  0  0  0
+        //  0  0 -2  \  2  0  0  0
+        //  0  0  0 -2  \  2  0  0
+        //  0  0  0  0 -2  \  2 -1
+        //  0  0  0  0  0 -2  \  2
+        //  0  0  0  0  0  1 -2  \
+
+        match m.stats(Uint128::new(7)) {
+            Stats::PositiveColumn { .. } => panic!("expected no positive columns"),
+            Stats::NoPositiveColumn {
+                no_winnable_columns,
+            } => {
+                // there is enough voting power to flip columns n-1 and n-2.
+                assert_eq!(no_winnable_columns, false)
+            }
+        }
+
+        match m.stats(Uint128::new(1)) {
+            Stats::PositiveColumn { .. } => panic!("expected no positive columns"),
+            Stats::NoPositiveColumn {
+                no_winnable_columns,
+            } => {
+                // there is not enough voting power to flip any columns.
+                assert_eq!(no_winnable_columns, true)
+            }
         }
     }
 }

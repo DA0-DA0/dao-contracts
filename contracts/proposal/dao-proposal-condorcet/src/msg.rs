@@ -20,6 +20,7 @@ pub enum ExecuteMsg {
     Propose { choices: Vec<Choice> },
     Vote { proposal_id: u32, vote: Vec<u32> },
     Execute { proposal_id: u32 },
+    Close { proposal_id: u32 },
 }
 
 #[cw_serde]
