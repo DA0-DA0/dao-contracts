@@ -23,6 +23,7 @@ cw2 = { workspace = true }
 cw-utils = { workspace = true }
 
 dao-voting = { workspace = true }
+dao-core = { workspace = true }
 
 thiserror = { workspace = true }
 

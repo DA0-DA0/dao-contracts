@@ -121,6 +121,9 @@ impl M {
     /// Computes statistics about M which are used to determine if a
     /// proposal has passed or may be rejected early.
     ///
+    /// Code comments refer to this proof of conditions for early
+    /// rejection:
+    ///
     /// https://github.com/DA0-DA0/dao-contracts/wiki/Proofs-of-early-rejection-cases-for-Condorcet-proposals
     pub fn stats(&self, power_outstanding: Uint128) -> Stats {
         let n = self.n;
@@ -151,10 +154,11 @@ impl M {
                 return Stats::PositiveColumn { col, min_margin };
             }
 
+            // a column is winnable if both claim A and B are false (see proof)
             if distance_from_positivity <= power_outstanding.full_mul((self.n - 1) as u64) {
-                // claim_a = false
+                // ^ claim_a = false
                 if max_negative < power_outstanding {
-                    // claim_b = false =>
+                    // ^ claim_b = false
                     no_winnable_columns = false
                 }
             }

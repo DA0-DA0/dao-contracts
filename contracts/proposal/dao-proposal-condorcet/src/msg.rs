@@ -8,6 +8,7 @@ pub struct InstantiateMsg {
     pub quorum: PercentageThreshold,
     pub voting_period: Duration,
     pub min_voting_period: Option<Duration>,
+    pub close_proposals_on_execution_failure: bool,
 }
 
 #[cw_serde]

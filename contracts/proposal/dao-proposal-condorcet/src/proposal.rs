@@ -1,9 +1,13 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{BlockInfo, Uint128};
+use cosmwasm_std::{to_binary, Addr, BlockInfo, StdResult, SubMsg, Uint128, WasmMsg};
 use cw_utils::Expiration;
-use dao_voting::{threshold::PercentageThreshold, voting::does_vote_count_pass};
+use dao_voting::{
+    reply::mask_proposal_execution_proposal_id, threshold::PercentageThreshold,
+    voting::does_vote_count_pass,
+};
 
 use crate::{
+    config::Config,
     msg::Choice,
     tally::{Tally, Winner},
 };
@@ -12,13 +16,20 @@ use crate::{
 pub struct Proposal {
     last_status: Status,
 
+    quorum: PercentageThreshold,
+    expiration: Expiration,
+    min_voting_period: Option<Expiration>,
+
+    /// This module differs from other modules in that this is set
+    /// per-proposal instead of globally. The reason being that there
+    /// is no need to apply this retroactively as no versions of this
+    /// module lack this feature.
+    close_on_execution_failure: bool,
+
+    total_power: Uint128,
+
     pub id: u32,
     pub choices: Vec<Choice>,
-
-    pub quorum: PercentageThreshold,
-    pub expiration: Expiration,
-
-    pub total_power: Uint128,
 }
 
 #[cw_serde]
@@ -39,10 +50,6 @@ pub enum Status {
     ExecutionFailed,
 }
 
-// there also exists some unchecked proposal type that is passed in
-// with ExecuteMsg::Propose. fields like total_power can be filled in
-// during the transformation to checked form.
-
 fn status(block: &BlockInfo, proposal: &Proposal, tally: &Tally) -> Status {
     match proposal.last_status {
         Status::Rejected
@@ -51,6 +58,13 @@ fn status(block: &BlockInfo, proposal: &Proposal, tally: &Tally) -> Status {
         | Status::Closed
         | Status::ExecutionFailed => proposal.last_status,
         Status::Open => {
+            if proposal
+                .min_voting_period
+                .map_or(false, |min| !min.is_expired(block))
+            {
+                return Status::Open;
+            }
+
             let winner = tally.winner;
             let expired = proposal.expiration.is_expired(block);
             let quorum = does_vote_count_pass(
@@ -93,18 +107,22 @@ fn status(block: &BlockInfo, proposal: &Proposal, tally: &Tally) -> Status {
 
 impl Proposal {
     pub fn new(
+        block: &BlockInfo,
+        config: &Config,
         id: u32,
         choices: Vec<Choice>,
-        quorum: PercentageThreshold,
-        expiration: Expiration,
         total_power: Uint128,
     ) -> Self {
         Self {
             last_status: Status::Open,
+
+            expiration: config.voting_period.after(block),
+            min_voting_period: config.min_voting_period.map(|m| m.after(block)),
+            quorum: config.quorum,
+            close_on_execution_failure: config.close_proposals_on_execution_failure,
+
             id,
             choices,
-            quorum,
-            expiration,
             total_power,
         }
     }
@@ -114,15 +132,34 @@ impl Proposal {
         self.last_status
     }
 
-    pub fn set_executed(&mut self) {
-        self.last_status = Status::Executed;
+    pub fn status(&self, block: &BlockInfo, tally: &Tally) -> Status {
+        status(block, self, tally)
     }
 
     pub fn set_closed(&mut self) {
         self.last_status = Status::Closed;
     }
 
-    pub fn status(&self, block: &BlockInfo, tally: &Tally) -> Status {
-        status(block, self, tally)
+    /// Sets the proposal's status to executed and returns a
+    /// submessage to be executed.
+    pub fn set_executed(&mut self, dao: Addr, winner: usize) -> StdResult<SubMsg> {
+        self.last_status = Status::Executed;
+
+        let msgs = self.choices[winner].msgs.clone();
+        let core_exec = WasmMsg::Execute {
+            contract_addr: dao.into_string(),
+            msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
+            funds: vec![],
+        };
+        Ok(if self.close_on_execution_failure {
+            let masked_id = mask_proposal_execution_proposal_id(self.id as u64);
+            SubMsg::reply_on_error(core_exec, masked_id)
+        } else {
+            SubMsg::new(core_exec)
+        })
+    }
+
+    pub fn set_execution_failed(&mut self) {
+        self.last_status = Status::ExecutionFailed;
     }
 }

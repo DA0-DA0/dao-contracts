@@ -1246,6 +1246,7 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "dao-core",
  "dao-voting",
  "thiserror",
 ]

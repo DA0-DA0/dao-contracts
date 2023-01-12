@@ -1,8 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult};
 
 use cw2::set_contract_version;
+use dao_voting::reply::TaggedReplyId;
 use dao_voting::threshold::validate_quorum;
 use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period};
 
@@ -35,12 +36,13 @@ pub fn instantiate(
         deps.storage,
         &Config {
             quorum: msg.quorum,
+            close_proposals_on_execution_failure: msg.close_proposals_on_execution_failure,
             voting_period,
             min_voting_period,
         },
     )?;
 
-    Ok(Response::new()
+    Ok(Response::default()
         .add_attribute("method", "instantiate")
         .add_attribute("creator", info.sender))
 }
@@ -52,11 +54,11 @@ pub fn instantiate(
 // ```
 //
 // that being true, you will never be able to create a proposal that
-// can not also be voted on and executed.
+// can not be voted on and executed inside gas limits.
 //
 // in terms of storage costs:
 //
-// propose: proposal_load + proposal_store + tally_load + tally_store
+// propose: proposal_load + proposal_store + tally_load + tally_store + config_load
 // execute: proposal_load + proposal_store + tally_load
 // vote:    tally_load + tally_store
 //
@@ -109,13 +111,12 @@ fn execute_propose(
     let config = CONFIG.load(deps.storage)?;
 
     let id = next_proposal_id(deps.storage)?;
-    let expiration = config.voting_period.after(&env.block);
     let total_power = get_total_power(deps.as_ref(), dao.clone(), None)?;
 
     let tally = Tally::new(choices.len(), total_power, env.block.height);
     TALLYS.save(deps.storage, id, &tally)?;
 
-    let mut proposal = Proposal::new(id, choices, config.quorum, expiration, total_power);
+    let mut proposal = Proposal::new(&env.block, &config, id, choices, total_power);
     proposal.update_status(&env.block, &tally);
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
@@ -155,10 +156,11 @@ fn execute_execute(
     proposal_id: u32,
 ) -> Result<Response, ContractError> {
     let tally = TALLYS.load(deps.storage, proposal_id)?;
+    let dao = DAO.load(deps.storage)?;
     let sender_power = get_voting_power(
         deps.as_ref(),
         info.sender,
-        DAO.load(deps.storage)?,
+        dao.clone(),
         Some(tally.start_height),
     )?;
     if sender_power.is_zero() {
@@ -168,12 +170,12 @@ fn execute_execute(
     let proposal = PROPOSALS.load(deps.storage, proposal_id)?;
     if let Status::Passed { winner } = proposal.status(&env.block, &tally) {
         let mut proposal = proposal;
-        proposal.set_executed();
+        let msgs = proposal.set_executed(dao, winner)?;
         PROPOSALS.save(deps.storage, proposal_id, &proposal)?;
 
         Ok(Response::default()
             .add_attribute("method", "execute")
-            .add_messages(proposal.choices.swap_remove(winner as usize).msgs))
+            .add_submessage(msgs))
     } else {
         Err(ContractError::Unexecutable {})
     }
@@ -196,4 +198,19 @@ fn execute_close(deps: DepsMut, env: Env, proposal_id: u32) -> Result<Response, 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {}
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    let repl = TaggedReplyId::new(msg.id)?;
+    match repl {
+        TaggedReplyId::FailedProposalExecution(proposal_id) => {
+            let mut proposal = PROPOSALS.load(deps.storage, proposal_id as u32)?;
+            proposal.set_execution_failed();
+            PROPOSALS.save(deps.storage, proposal_id as u32, &proposal)?;
+            Ok(Response::default()
+                .add_attribute("proposal_execution_failed", proposal_id.to_string()))
+        }
+        _ => unimplemented!("pre-propose and hooks not yet supported"),
+    }
 }
