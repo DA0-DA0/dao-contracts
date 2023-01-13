@@ -140,17 +140,22 @@ impl M {
                                 min_margin = p
                             }
                         }
-                        Cell::Negative(n) => {
-                            if n > max_negative {
-                                max_negative = n;
+                        Cell::Negative(v) => {
+                            if v > max_negative {
+                                max_negative = v;
                             }
-                            distance_from_positivity += Uint256::from(n) + Uint256::one();
+                            distance_from_positivity += Uint256::from(v) + Uint256::one();
                         }
                         Cell::Zero => distance_from_positivity += Uint256::one(),
                     }
                 }
             }
             if distance_from_positivity.is_zero() {
+                // there is only ever one positive column, as the
+                // symmetry of this matrix means that if there is a
+                // positive column there is also a row with negative
+                // values in every column except that one. so, we can
+                // return early here.
                 return Stats::PositiveColumn { col, min_margin };
             }
 
