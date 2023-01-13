@@ -16,13 +16,11 @@ use crate::{
 pub struct Proposal {
     last_status: Status,
 
+    pub proposer: Addr,
+
     pub quorum: PercentageThreshold,
     pub min_voting_period: Option<Expiration>,
 
-    /// This module differs from other modules in that this is set
-    /// per-proposal instead of globally. The reason being that there
-    /// is no need to apply this retroactively as no versions of this
-    /// module lack this feature.
     pub close_on_execution_failure: bool,
     pub total_power: Uint128,
 
@@ -48,11 +46,6 @@ pub enum Status {
     ExecutionFailed,
 }
 
-/// If you are reading this response the way that data is split up
-/// here likely seems nonsensable. For relatively esoteric gas limit
-/// releated reasons we split the state needed to cast a vote out from
-/// the state needed to do everything else with proposals. `tally`
-/// here contains state needed to cast a vote.
 #[cw_serde]
 pub struct ProposalResponse {
     pub proposal: Proposal,
@@ -118,6 +111,7 @@ impl Proposal {
     pub(crate) fn new(
         block: &BlockInfo,
         config: &Config,
+        proposer: Addr,
         id: u32,
         choices: Vec<Choice>,
         total_power: Uint128,
@@ -130,6 +124,7 @@ impl Proposal {
             close_on_execution_failure: config.close_proposals_on_execution_failure,
 
             id,
+            proposer,
             choices,
             total_power,
         }

@@ -91,7 +91,7 @@ pub fn execute(
         ExecuteMsg::Propose { choices } => execute_propose(deps, env, info, choices),
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
-        ExecuteMsg::Close { proposal_id } => execute_close(deps, env, proposal_id),
+        ExecuteMsg::Close { proposal_id } => execute_close(deps, env, info, proposal_id),
 
         ExecuteMsg::SetConfig(config) => execute_set_config(deps, info, config),
     }
@@ -104,7 +104,7 @@ fn execute_propose(
     choices: Vec<Choice>,
 ) -> Result<Response, ContractError> {
     let dao = DAO.load(deps.storage)?;
-    let sender_voting_power = get_voting_power(deps.as_ref(), info.sender, &dao, None)?;
+    let sender_voting_power = get_voting_power(deps.as_ref(), info.sender.clone(), &dao, None)?;
     if sender_voting_power.is_zero() {
         return Err(ContractError::ZeroVotingPower {});
     }
@@ -130,11 +130,14 @@ fn execute_propose(
     );
     TALLYS.save(deps.storage, id, &tally)?;
 
-    let mut proposal = Proposal::new(&env.block, &config, id, choices, total_power);
+    let mut proposal = Proposal::new(&env.block, &config, info.sender, id, choices, total_power);
     proposal.update_status(&env.block, &tally);
     PROPOSALS.save(deps.storage, id, &proposal)?;
 
-    Ok(Response::default().add_attribute("method", "propose"))
+    Ok(Response::default()
+        .add_attribute("method", "propose")
+        .add_attribute("proposal_id", proposal.id.to_string())
+        .add_attribute("proposer", proposal.proposer))
 }
 
 fn execute_vote(
@@ -159,13 +162,17 @@ fn execute_vote(
         Err(ContractError::Expired {})
     } else {
         let vote = Vote::new(vote, tally.candidates())?;
-        VOTES.save(deps.storage, (proposal_id, info.sender), &vote)?;
+        VOTES.save(deps.storage, (proposal_id, info.sender.clone()), &vote)?;
 
         let mut tally = tally;
         tally.add_vote(vote, sender_power);
         TALLYS.save(deps.storage, proposal_id, &tally)?;
 
-        Ok(Response::default().add_attribute("method", "vote"))
+        Ok(Response::default()
+            .add_attribute("method", "vote")
+            .add_attribute("proposal_id", proposal_id.to_string())
+            .add_attribute("voter", info.sender)
+            .add_attribute("power", sender_power))
     }
 }
 
@@ -177,8 +184,12 @@ fn execute_execute(
 ) -> Result<Response, ContractError> {
     let tally = TALLYS.load(deps.storage, proposal_id)?;
     let dao = DAO.load(deps.storage)?;
-    let sender_power =
-        get_voting_power(deps.as_ref(), info.sender, &dao, Some(tally.start_height))?;
+    let sender_power = get_voting_power(
+        deps.as_ref(),
+        info.sender.clone(),
+        &dao,
+        Some(tally.start_height),
+    )?;
     if sender_power.is_zero() {
         return Err(ContractError::ZeroVotingPower {});
     }
@@ -190,20 +201,30 @@ fn execute_execute(
 
         Ok(Response::default()
             .add_attribute("method", "execute")
+            .add_attribute("proposal_id", proposal_id.to_string())
+            .add_attribute("executor", info.sender)
             .add_submessage(msgs))
     } else {
         Err(ContractError::Unexecutable {})
     }
 }
 
-fn execute_close(deps: DepsMut, env: Env, proposal_id: u32) -> Result<Response, ContractError> {
+fn execute_close(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    proposal_id: u32,
+) -> Result<Response, ContractError> {
     let tally = TALLYS.load(deps.storage, proposal_id)?;
     let mut proposal = PROPOSALS.load(deps.storage, proposal_id)?;
     if let Status::Rejected = proposal.update_status(&env.block, &tally) {
         proposal.set_closed();
         PROPOSALS.save(deps.storage, proposal_id, &proposal)?;
 
-        Ok(Response::default().add_attribute("method", "close"))
+        Ok(Response::default()
+            .add_attribute("method", "close")
+            .add_attribute("proposal_id", proposal_id.to_string())
+            .add_attribute("closer", info.sender))
     } else {
         Err(ContractError::Unclosable {})
     }
@@ -218,7 +239,9 @@ fn execute_set_config(
         Err(ContractError::NotDao {})
     } else {
         CONFIG.save(deps.storage, &config.into_checked()?)?;
-        Ok(Response::default().add_attribute("method", "update_config"))
+        Ok(Response::default()
+            .add_attribute("method", "update_config")
+            .add_attribute("updater", info.sender))
     }
 }
 

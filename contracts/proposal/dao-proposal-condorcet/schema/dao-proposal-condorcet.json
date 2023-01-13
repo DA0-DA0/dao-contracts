@@ -1294,7 +1294,6 @@
     "proposal": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ProposalResponse",
-      "description": "If you are reading this response the way that data is split up here likely seems nonsensable. For relatively esoteric gas limit releated reasons we split the state needed to cast a vote out from the state needed to do everything else with proposals. `tally` here contains state needed to cast a vote.",
       "type": "object",
       "required": [
         "proposal",
@@ -1310,6 +1309,10 @@
       },
       "additionalProperties": false,
       "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
         "BankMsg": {
           "description": "The message types of the bank module.\n\nSee https://github.com/cosmos/cosmos-sdk/blob/v0.40.0/proto/cosmos/bank/v1beta1/tx.proto",
           "oneOf": [
@@ -1853,7 +1856,7 @@
             },
             "n": {
               "type": "integer",
-              "format": "uint",
+              "format": "uint32",
               "minimum": 0.0
             }
           },
@@ -1898,6 +1901,7 @@
             "close_on_execution_failure",
             "id",
             "last_status",
+            "proposer",
             "quorum",
             "total_power"
           ],
@@ -1909,7 +1913,6 @@
               }
             },
             "close_on_execution_failure": {
-              "description": "This module differs from other modules in that this is set per-proposal instead of globally. The reason being that there is no need to apply this retroactively as no versions of this module lack this feature.",
               "type": "boolean"
             },
             "id": {
@@ -1929,6 +1932,9 @@
                   "type": "null"
                 }
               ]
+            },
+            "proposer": {
+              "$ref": "#/definitions/Addr"
             },
             "quorum": {
               "$ref": "#/definitions/PercentageThreshold"
@@ -2054,7 +2060,7 @@
                   "properties": {
                     "winner": {
                       "type": "integer",
-                      "format": "uint",
+                      "format": "uint32",
                       "minimum": 0.0
                     }
                   },
@@ -2350,7 +2356,7 @@
               "properties": {
                 "some": {
                   "type": "integer",
-                  "format": "uint",
+                  "format": "uint32",
                   "minimum": 0.0
                 }
               },
@@ -2364,7 +2370,7 @@
               "properties": {
                 "undisputed": {
                   "type": "integer",
-                  "format": "uint",
+                  "format": "uint32",
                   "minimum": 0.0
                 }
               },

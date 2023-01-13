@@ -259,6 +259,7 @@ export interface Proposal {
   id: number;
   last_status: Status;
   min_voting_period?: Expiration | null;
+  proposer: Addr;
   quorum: PercentageThreshold;
   total_power: Uint128;
 }
