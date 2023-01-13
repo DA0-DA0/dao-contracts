@@ -195,73 +195,6 @@ fn setup_test_case(
 }
 
 #[test]
-fn test_catch_imposter_cw20() {
-    let mut app = setup_app();
-    let (cw20_addr, cw20_code_id, _) = setup_contracts(&mut app);
-
-    let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
-
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
-    // Instantiate cw-payroll
-    let TestCase {
-        cw_payroll_addr, ..
-    } = setup_test_case(
-        &mut app,
-        vesting_schedule,
-        amount,
-        unchecked_denom,
-        BOB,
-        None,
-        &[],
-    );
-
-    // Create imposter cw20
-    let cw20_imposter_addr = app
-        .instantiate_contract(
-            cw20_code_id,
-            Addr::unchecked(OWNER),
-            &cw20_base::msg::InstantiateMsg {
-                name: "cw20 token".to_string(),
-                symbol: "cwtwenty".to_string(),
-                decimals: 6,
-                initial_balances: vec![Cw20Coin {
-                    address: OWNER.to_string(),
-                    amount: Uint128::new(INITIAL_BALANCE),
-                }],
-                mint: None,
-                marketing: None,
-            },
-            &[],
-            "cw20-base",
-            None,
-        )
-        .unwrap();
-
-    let msg = Cw20ExecuteMsg::Send {
-        contract: cw_payroll_addr.to_string(),
-        amount,
-        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
-    };
-
-    // Errors that cw20 does not match what was expected
-    let error: ContractError = app
-        .execute_contract(
-            Addr::unchecked(OWNER),
-            Addr::unchecked(cw20_imposter_addr),
-            &msg,
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(error, ContractError::Cw20DoesNotMatch);
-}
-
-#[test]
 fn test_happy_cw20_path() {
     let mut app = setup_app();
 
@@ -359,6 +292,118 @@ fn test_happy_cw20_path() {
 }
 
 #[test]
+fn test_catch_imposter_cw20() {
+    let mut app = setup_app();
+    let (cw20_addr, cw20_code_id, _) = setup_contracts(&mut app);
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
+
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    // Instantiate cw-payroll
+    let TestCase {
+        cw_payroll_addr, ..
+    } = setup_test_case(
+        &mut app,
+        vesting_schedule,
+        amount,
+        unchecked_denom,
+        BOB,
+        None,
+        &[],
+    );
+
+    // Create imposter cw20
+    let cw20_imposter_addr = app
+        .instantiate_contract(
+            cw20_code_id,
+            Addr::unchecked(OWNER),
+            &cw20_base::msg::InstantiateMsg {
+                name: "cw20 token".to_string(),
+                symbol: "cwtwenty".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: OWNER.to_string(),
+                    amount: Uint128::new(INITIAL_BALANCE),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "cw20-base",
+            None,
+        )
+        .unwrap();
+
+    let msg = Cw20ExecuteMsg::Send {
+        contract: cw_payroll_addr.to_string(),
+        amount,
+        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+    };
+
+    // Errors that cw20 does not match what was expected
+    let error: ContractError = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            Addr::unchecked(cw20_imposter_addr),
+            &msg,
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(error, ContractError::Cw20DoesNotMatch);
+}
+
+#[test]
+fn test_catch_incorrect_cw20_funding_amount() {
+    let mut app = setup_app();
+    let (cw20_addr, _, _) = setup_contracts(&mut app);
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
+
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    // Instantiate cw-payroll
+    let TestCase {
+        cw_payroll_addr, ..
+    } = setup_test_case(
+        &mut app,
+        vesting_schedule,
+        amount,
+        unchecked_denom,
+        BOB,
+        None,
+        &[],
+    );
+
+    let msg = Cw20ExecuteMsg::Send {
+        contract: cw_payroll_addr.to_string(),
+        amount: Uint128::new(100),
+        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+    };
+
+    // Errors that cw20 does not match what was expected
+    let error: ContractError = app
+        .execute_contract(
+            Addr::unchecked(OWNER),
+            Addr::unchecked(cw20_addr),
+            &msg,
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(error, ContractError::AmountDoesNotMatch);
+}
+
+#[test]
 fn test_happy_native_path() {
     let mut app = setup_app();
 
@@ -450,6 +495,48 @@ fn test_happy_native_path() {
         get_balance_native(&app, BOB, NATIVE_DENOM),
         Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
     );
+}
+
+#[test]
+fn test_incorrect_native_funding_amount() {
+    let mut app = setup_app();
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+
+    // Basic linear vesting schedule
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    let alice = Addr::unchecked(ALICE);
+
+    let (_, _, cw_payroll_code_id) = setup_contracts(&mut app);
+
+    // Instantiate cw-payroll contract errors with incorrect amount
+    let error: ContractError = app
+        .instantiate_contract(
+            cw_payroll_code_id,
+            alice.clone(),
+            &InstantiateMsg {
+                owner: Some(alice.to_string()),
+                params: UncheckedVestingParams {
+                    recipient: BOB.to_string(),
+                    amount,
+                    denom: unchecked_denom,
+                    vesting_schedule,
+                    title: None,
+                    description: None,
+                },
+            },
+            &coins(100, NATIVE_DENOM),
+            "cw-payroll",
+            None,
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(error, ContractError::AmountDoesNotMatch)
 }
 
 #[test]
