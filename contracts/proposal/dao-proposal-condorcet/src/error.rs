@@ -25,4 +25,7 @@ pub enum ContractError {
 
     #[error("only rejected proposals may be closed")]
     Unclosable {},
+
+    #[error("only the DAO my perform this action")]
+    NotDao {},
 }

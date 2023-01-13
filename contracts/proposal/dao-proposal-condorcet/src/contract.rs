@@ -4,10 +4,9 @@ use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, Std
 
 use cw2::set_contract_version;
 use dao_voting::reply::TaggedReplyId;
-use dao_voting::threshold::validate_quorum;
-use dao_voting::voting::{get_total_power, get_voting_power, validate_voting_period};
+use dao_voting::voting::{get_total_power, get_voting_power};
 
-use crate::config::Config;
+use crate::config::UncheckedConfig;
 use crate::error::ContractError;
 use crate::msg::{Choice, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::proposal::{Proposal, Status};
@@ -27,20 +26,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    validate_quorum(&msg.quorum)?;
-    let (min_voting_period, voting_period) =
-        validate_voting_period(msg.min_voting_period, msg.voting_period)?;
-
     DAO.save(deps.storage, &info.sender)?;
-    CONFIG.save(
-        deps.storage,
-        &Config {
-            quorum: msg.quorum,
-            close_proposals_on_execution_failure: msg.close_proposals_on_execution_failure,
-            voting_period,
-            min_voting_period,
-        },
-    )?;
+    CONFIG.save(deps.storage, &msg.into_checked()?)?;
 
     Ok(Response::default()
         .add_attribute("method", "instantiate")
@@ -93,6 +80,8 @@ pub fn execute(
         ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, proposal_id),
+
+        ExecuteMsg::SetConfig(config) => execute_set_config(deps, info, config),
     }
 }
 
@@ -192,6 +181,19 @@ fn execute_close(deps: DepsMut, env: Env, proposal_id: u32) -> Result<Response, 
         Ok(Response::default().add_attribute("method", "close"))
     } else {
         Err(ContractError::Unclosable {})
+    }
+}
+
+fn execute_set_config(
+    deps: DepsMut,
+    info: MessageInfo,
+    config: UncheckedConfig,
+) -> Result<Response, ContractError> {
+    if info.sender != DAO.load(deps.storage)? {
+        Err(ContractError::NotDao {})
+    } else {
+        CONFIG.save(deps.storage, &config.into_checked()?)?;
+        Ok(Response::default().add_attribute("method", "update_config"))
     }
 }
 

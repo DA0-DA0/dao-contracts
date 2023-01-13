@@ -106,7 +106,7 @@ fn status(block: &BlockInfo, proposal: &Proposal, tally: &Tally) -> Status {
 }
 
 impl Proposal {
-    pub fn new(
+    pub(crate) fn new(
         block: &BlockInfo,
         config: &Config,
         id: u32,
@@ -127,7 +127,7 @@ impl Proposal {
         }
     }
 
-    pub fn update_status(&mut self, block: &BlockInfo, tally: &Tally) -> Status {
+    pub(crate) fn update_status(&mut self, block: &BlockInfo, tally: &Tally) -> Status {
         self.last_status = status(block, &self, tally);
         self.last_status
     }
@@ -136,13 +136,17 @@ impl Proposal {
         status(block, self, tally)
     }
 
-    pub fn set_closed(&mut self) {
+    pub(crate) fn set_closed(&mut self) {
+        debug_assert_eq!(self.last_status, Status::Rejected);
+
         self.last_status = Status::Closed;
     }
 
     /// Sets the proposal's status to executed and returns a
     /// submessage to be executed.
-    pub fn set_executed(&mut self, dao: Addr, winner: usize) -> StdResult<SubMsg> {
+    pub(crate) fn set_executed(&mut self, dao: Addr, winner: usize) -> StdResult<SubMsg> {
+        debug_assert_eq!(self.last_status, Status::Passed { winner });
+
         self.last_status = Status::Executed;
 
         let msgs = self.choices[winner].msgs.clone();
@@ -159,7 +163,9 @@ impl Proposal {
         })
     }
 
-    pub fn set_execution_failed(&mut self) {
+    pub(crate) fn set_execution_failed(&mut self) {
+        debug_assert_eq!(self.last_status, Status::Executed);
+
         self.last_status = Status::ExecutionFailed;
     }
 }
