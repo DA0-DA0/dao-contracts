@@ -1,5 +1,3 @@
-#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
-
 mod cell;
 pub mod config;
 pub mod contract;
