@@ -23,10 +23,19 @@ cw2 = { workspace = true }
 cw-utils = { workspace = true }
 
 dao-voting = { workspace = true }
-dao-core = { workspace = true }
+dao-macros = { workspace = true }
+dao-interface = { workspace = true }
+
+dao-core = { workspace = true, features = ["library"] }
 
 thiserror = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
+dao-testing = { workspace = true }
+
+dao-voting-cw4 = { workspace = true }
+cw4-group = { workspace = true }
+cw4 = { workspace = true }
+anyhow = { workspace = true }

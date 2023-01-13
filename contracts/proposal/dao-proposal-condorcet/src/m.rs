@@ -201,7 +201,7 @@ pub(crate) mod test {
                     }
                 }
             }
-            eprintln!("")
+            eprintln!()
         }
     }
 }
@@ -318,7 +318,7 @@ mod test_lm {
                 // flipped with N voting power remaining, and the
                 // largest negative in that row is less than the power
                 // outstanding.
-                assert_eq!(no_winnable_columns, false)
+                assert!(!no_winnable_columns)
             }
         }
 
@@ -344,7 +344,7 @@ mod test_lm {
                 no_winnable_columns,
             } => {
                 // last column can be flipped.
-                assert_eq!(no_winnable_columns, false)
+                assert!(!no_winnable_columns)
             }
         }
 
@@ -365,7 +365,7 @@ mod test_lm {
                 no_winnable_columns,
             } => {
                 // there is enough voting power to flip columns n-1 and n-2.
-                assert_eq!(no_winnable_columns, false)
+                assert!(!no_winnable_columns)
             }
         }
 
@@ -375,7 +375,7 @@ mod test_lm {
                 no_winnable_columns,
             } => {
                 // there is not enough voting power to flip any columns.
-                assert_eq!(no_winnable_columns, true)
+                assert!(no_winnable_columns)
             }
         }
     }

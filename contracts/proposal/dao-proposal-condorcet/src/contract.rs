@@ -1,6 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult};
+use cosmwasm_std::{
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult,
+};
 
 use cw2::set_contract_version;
 use dao_voting::reply::TaggedReplyId;
@@ -9,7 +11,7 @@ use dao_voting::voting::{get_total_power, get_voting_power};
 use crate::config::UncheckedConfig;
 use crate::error::ContractError;
 use crate::msg::{Choice, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::proposal::{Proposal, Status};
+use crate::proposal::{Proposal, ProposalResponse, Status};
 use crate::state::{next_proposal_id, CONFIG, DAO, PROPOSALS, TALLYS, VOTES};
 use crate::tally::Tally;
 use crate::vote::Vote;
@@ -223,8 +225,20 @@ fn execute_set_config(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {}
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    match msg {
+        QueryMsg::Proposal { id } => {
+            let proposal = PROPOSALS.load(deps.storage, id)?;
+            let tally = TALLYS.load(deps.storage, id)?;
+            to_binary(&ProposalResponse { proposal, tally })
+        }
+        QueryMsg::Config {} => to_binary(&CONFIG.load(deps.storage)?),
+        QueryMsg::NextProposalId {} => to_binary(&next_proposal_id(deps.storage)?),
+        QueryMsg::Dao {} => to_binary(&DAO.load(deps.storage)?),
+        QueryMsg::Info {} => to_binary(&dao_interface::voting::InfoResponse {
+            info: cw2::get_contract_version(deps.storage)?,
+        }),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

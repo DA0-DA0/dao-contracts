@@ -62,6 +62,7 @@ cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
 dao-core = { path = "./contracts/dao-core" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single" }
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple" }
+dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet" }
 dao-pre-propose-single = { path = "./contracts/pre-propose/dao-pre-propose-single" }
 dao-pre-propose-multiple = { path = "./contracts/pre-propose/dao-pre-propose-multiple" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single" }

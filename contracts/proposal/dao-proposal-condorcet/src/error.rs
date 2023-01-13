@@ -1,4 +1,3 @@
-use cosmwasm_schema::schemars::_serde_json::error;
 use cosmwasm_std::StdError;
 use dao_voting::{error::VotingError, reply::error::TagError, threshold::ThresholdError};
 use thiserror::Error;

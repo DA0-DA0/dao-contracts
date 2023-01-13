@@ -32,12 +32,12 @@ pub struct ProposalModule {
     /// The URL prefix of this proposal module as derived from the module ID.
     /// Prefixes are mapped to letters, e.g. 0 is 'A', and 26 is 'AA'.
     pub prefix: String,
-    /// The status of the proposal module, e.g. 'Active' or 'Disabled.'
+    /// The status of the proposal module, e.g. 'Enabled' or 'Disabled.'
     pub status: ProposalModuleStatus,
 }
 
-#[cw_serde]
 /// The status of a proposal module.
+#[cw_serde]
 pub enum ProposalModuleStatus {
     Enabled,
     Disabled,

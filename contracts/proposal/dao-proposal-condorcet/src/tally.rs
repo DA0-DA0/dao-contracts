@@ -49,7 +49,7 @@ impl Tally {
         expiration: Expiration,
     ) -> Self {
         let mut tally = Self {
-            m: M::new(candidates as usize),
+            m: M::new(candidates),
             power_outstanding: total_power,
             winner: Winner::None,
             start_height,

@@ -1240,14 +1240,21 @@ dependencies = [
 name = "dao-proposal-condorcet"
 version = "2.0.0-beta"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "cw4",
+ "cw4-group",
  "dao-core",
+ "dao-interface",
+ "dao-macros",
+ "dao-testing",
  "dao-voting",
+ "dao-voting-cw4",
  "thiserror",
 ]
 
@@ -1401,6 +1408,7 @@ dependencies = [
  "dao-interface",
  "dao-pre-propose-multiple",
  "dao-pre-propose-single",
+ "dao-proposal-condorcet",
  "dao-proposal-single",
  "dao-voting",
  "dao-voting-cw20-balance",

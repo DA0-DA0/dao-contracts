@@ -1989,7 +1989,7 @@
               "type": "string"
             },
             "status": {
-              "description": "The status of the proposal module, e.g. 'Active' or 'Disabled.'",
+              "description": "The status of the proposal module, e.g. 'Enabled' or 'Disabled.'",
               "allOf": [
                 {
                   "$ref": "#/definitions/ProposalModuleStatus"
@@ -2413,7 +2413,7 @@
               "type": "string"
             },
             "status": {
-              "description": "The status of the proposal module, e.g. 'Active' or 'Disabled.'",
+              "description": "The status of the proposal module, e.g. 'Enabled' or 'Disabled.'",
               "allOf": [
                 {
                   "$ref": "#/definitions/ProposalModuleStatus"
@@ -2693,7 +2693,7 @@
               "type": "string"
             },
             "status": {
-              "description": "The status of the proposal module, e.g. 'Active' or 'Disabled.'",
+              "description": "The status of the proposal module, e.g. 'Enabled' or 'Disabled.'",
               "allOf": [
                 {
                   "$ref": "#/definitions/ProposalModuleStatus"

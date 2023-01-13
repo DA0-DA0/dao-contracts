@@ -21,6 +21,7 @@ pub(crate) enum Cell {
     Negative(Uint128),
 }
 
+#[allow(clippy::comparison_chain)]
 impl Cell {
     pub fn increment(self, amount: Uint128) -> Self {
         match self {

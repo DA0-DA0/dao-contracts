@@ -8,7 +8,7 @@ pub struct Vote(Vec<u32>);
 
 impl Vote {
     pub(crate) fn new(vote: Vec<u32>, candidates: usize) -> Result<Self, VoteError> {
-        if vote.len() != candidates as usize {
+        if vote.len() != candidates {
             return Err(VoteError::LenMissmatch {
                 got: vote.len() as u32,
                 expected: candidates as u32,

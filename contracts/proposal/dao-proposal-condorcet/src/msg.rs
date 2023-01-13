@@ -1,6 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 
+use dao_macros::proposal_module_query;
+
 use crate::config::UncheckedConfig;
 
 pub type InstantiateMsg = UncheckedConfig;
@@ -19,6 +21,12 @@ pub enum ExecuteMsg {
     SetConfig(UncheckedConfig),
 }
 
+#[proposal_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}
+pub enum QueryMsg {
+    #[returns(crate::proposal::ProposalResponse)]
+    Proposal { id: u32 },
+    #[returns(crate::config::Config)]
+    Config {},
+}
