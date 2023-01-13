@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, Binary, CheckedDenom, Addr, Cw20ReceiveMsg, StreamParams, QueryMsg, ConfigResponse, StreamResponse, ListStreamsResponse } from "./CwEscrowStreams.types";
+import { InstantiateMsg, ExecuteMsg, Uint128, Binary, UncheckedDenom, StreamIds, Cw20ReceiveMsg, UncheckedStreamData, QueryMsg, ConfigResponse, CheckedDenom, Addr, StreamResponse, ListStreamsResponse } from "./CwEscrowStreams.types";
 export interface CwEscrowStreamsReadOnlyInterface {
   contractAddress: string;
   getConfig: () => Promise<ConfigResponse>;
@@ -81,7 +81,7 @@ export interface CwEscrowStreamsInterface extends CwEscrowStreamsReadOnlyInterfa
   create: ({
     params
   }: {
-    params: StreamParams;
+    params: UncheckedStreamData;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   distribute: ({
     id
@@ -96,7 +96,7 @@ export interface CwEscrowStreamsInterface extends CwEscrowStreamsReadOnlyInterfa
   linkStream: ({
     ids
   }: {
-    ids: number[];
+    ids: StreamIds;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   detachStream: ({
     id
@@ -154,7 +154,7 @@ export class CwEscrowStreamsClient extends CwEscrowStreamsQueryClient implements
   create = async ({
     params
   }: {
-    params: StreamParams;
+    params: UncheckedStreamData;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       create: {
@@ -187,7 +187,7 @@ export class CwEscrowStreamsClient extends CwEscrowStreamsQueryClient implements
   linkStream = async ({
     ids
   }: {
-    ids: number[];
+    ids: StreamIds;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       link_stream: {

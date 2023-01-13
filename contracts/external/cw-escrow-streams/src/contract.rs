@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdError,
-    StdResult, Storage, Uint128,
+    StdResult, Storage,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -13,7 +13,7 @@ use crate::error::ContractError;
 use crate::linking::*;
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, ListStreamsResponse, QueryMsg, ReceiveMsg,
-    StreamParams, StreamResponse,
+    StreamResponse, UncheckedStreamData,
 };
 use crate::state::{Config, Stream, StreamId, CONFIG, STREAMS, STREAM_SEQ};
 
@@ -31,10 +31,11 @@ pub fn instantiate(
 
     // TODO what is the point of this admin? It doesn't do anything.
     // Delete if it doesn't do anything
-    let admin = match msg.admin {
-        Some(ad) => deps.api.addr_validate(&ad)?,
-        None => info.sender,
-    };
+    let admin = msg
+        .admin
+        .map(|a| deps.api.addr_validate(&a))
+        .transpose()?
+        .unwrap_or(info.sender);
 
     let config = Config {
         admin: admin.clone(),
@@ -57,8 +58,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(env, deps, info, msg),
-        // TODO should be able to create and fund with a native token
-        ExecuteMsg::Create { .. } => unimplemented!(),
+        ExecuteMsg::Create { params } => execute_create(env, deps, info, params),
         ExecuteMsg::Distribute { id } => execute_distribute(env, deps, id),
         ExecuteMsg::PauseStream { id } => execute_pause_stream(env, deps, info, id),
         ExecuteMsg::ResumeStream { id } => execute_resume_stream(env, deps, info, id),
@@ -67,7 +67,20 @@ pub fn execute(
         ExecuteMsg::DetachStream { id } => execute_detach_stream(env, deps, &info, id),
     }
 }
-
+pub fn execute_create(
+    env: Env,
+    deps: DepsMut,
+    info: MessageInfo,
+    params: UncheckedStreamData,
+) -> Result<Response, ContractError> {
+    if let Some(coin) = info.funds.first() {
+        let mut data = params;
+        data.balance = coin.amount;
+        data.denom = UncheckedDenom::Native(coin.denom.clone());
+        return execute_create_stream(env, deps, data);
+    }
+    Err(ContractError::NoFundsAttached {})
+}
 pub fn execute_pause_stream(
     env: Env,
     deps: DepsMut,
@@ -79,7 +92,7 @@ pub fn execute_pause_stream(
             let mut stream = STREAMS
                 .may_load(storage, stream_id)?
                 .ok_or(ContractError::StreamNotFound { stream_id: id })?;
-            if stream.admin != info.sender {
+            if stream.owner != info.sender {
                 return Err(ContractError::Unauthorized {});
             }
             if stream.paused {
@@ -91,18 +104,23 @@ pub fn execute_pause_stream(
             Ok(stream)
         };
 
-    // TODO this is weird... needs comments at the very least
+    // Pausing left stream right stream should also be paused
     let stream = pause_stream_local(id, deps.storage)?;
     if let Some(link_id) = stream.link_id {
         pause_stream_local(link_id, deps.storage)?;
     }
-
     Ok(Response::new()
         .add_attribute("method", "pause_stream")
         .add_attribute("paused", stream.paused.to_string())
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender)
-        .add_attribute("paused_time", stream.paused_time.unwrap().to_string()))
+        .add_attribute("owner", stream.owner.to_string())
+        .add_attribute("paused_time", stream.paused_time.unwrap().to_string())
+        .add_attribute(
+            "link_id",
+            stream
+                .link_id
+                .map_or(String::from("not linked"), |n| n.to_string()),
+        ))
 }
 
 pub fn execute_remove_stream(
@@ -115,7 +133,7 @@ pub fn execute_remove_stream(
     let stream = STREAMS
         .may_load(deps.storage, id)?
         .ok_or(ContractError::StreamNotFound { stream_id: id })?;
-    if stream.admin != info.sender {
+    if stream.owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -127,12 +145,12 @@ pub fn execute_remove_stream(
     // Transfer any remaining balance to the owner
     let transfer_to_admin_msg = stream
         .denom
-        .get_transfer_to_message(&stream.admin, stream.balance)?;
+        .get_transfer_to_message(&stream.owner, stream.balance)?;
 
     Ok(Response::new()
         .add_attribute("method", "remove_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender)
+        .add_attribute("owner", info.sender)
         .add_attribute("removed_time", env.block.time.to_string())
         .add_message(transfer_to_admin_msg))
 }
@@ -148,7 +166,7 @@ pub fn execute_resume_stream(
             let mut stream = STREAMS
                 .may_load(storage, stream_id)?
                 .ok_or(ContractError::StreamNotFound { stream_id: id })?;
-            if stream.admin != info.sender {
+            if stream.owner != info.sender {
                 return Err(ContractError::Unauthorized {});
             }
             if !stream.paused {
@@ -170,7 +188,7 @@ pub fn execute_resume_stream(
     let response = Response::new()
         .add_attribute("method", "resume_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", info.sender)
+        .add_attribute("owner", info.sender)
         .add_attribute("rate_per_second", rate_per_second)
         .add_attribute("resume_time", env.block.time.to_string())
         .add_attribute(
@@ -185,50 +203,10 @@ pub fn execute_resume_stream(
 pub fn execute_create_stream(
     env: Env,
     deps: DepsMut,
-    params: StreamParams,
+    params: UncheckedStreamData,
 ) -> Result<Response, ContractError> {
-    let StreamParams {
-        admin,
-        recipient,
-        balance,
-        denom,
-        start_time,
-        end_time,
-        title,
-        description,
-        is_detachable,
-    } = params;
-
-    let admin = deps.api.addr_validate(&admin)?;
-    let recipient = deps.api.addr_validate(&recipient)?;
-
-    if start_time > end_time {
-        return Err(ContractError::InvalidStartTime {});
-    }
-
-    let block_time = env.block.time.seconds();
-
-    if end_time <= block_time {
-        return Err(ContractError::InvalidEndTime {});
-    }
-
-    let stream = Stream {
-        admin: admin.clone(),
-        recipient: recipient.clone(),
-        balance,
-        claimed_balance: Uint128::zero(),
-        denom,
-        start_time,
-        end_time,
-        paused_time: None,
-        paused_duration: None,
-        paused: false,
-        title,
-        description,
-        link_id: None,
-        // TODO Should not be an option type
-        is_detachable: is_detachable.unwrap_or(true),
-    };
+    let stream_data = params.into_checked(env, deps.as_ref())?;
+    let stream: Stream = stream_data.into();
 
     let id = STREAM_SEQ.load(deps.storage)?;
     let id = id + 1;
@@ -238,10 +216,10 @@ pub fn execute_create_stream(
     Ok(Response::new()
         .add_attribute("method", "create_stream")
         .add_attribute("stream_id", id.to_string())
-        .add_attribute("admin", admin)
-        .add_attribute("recipient", recipient)
-        .add_attribute("start_time", start_time.to_string())
-        .add_attribute("end_time", end_time.to_string()))
+        .add_attribute("owner", stream.owner.to_string())
+        .add_attribute("recipient", stream.recipient)
+        .add_attribute("start_time", stream.start_time.to_string())
+        .add_attribute("end_time", stream.end_time.to_string()))
 }
 
 pub fn execute_receive(
@@ -250,31 +228,29 @@ pub fn execute_receive(
     info: MessageInfo,
     receive_msg: Cw20ReceiveMsg,
 ) -> Result<Response, ContractError> {
-    deps.api.addr_validate(&info.sender.clone().into_string())?;
     let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
-    let checked_denom =
-        UncheckedDenom::Cw20(info.sender.to_string()).into_checked(deps.as_ref())?;
-
-    // TODO should support all stream params
     match msg {
         ReceiveMsg::CreateStream {
-            admin,
+            owner,
+            recipient,
+            balance,
             start_time,
             end_time,
-            recipient,
+            title,
+            description,
             is_detachable,
         } => execute_create_stream(
             env,
             deps,
-            StreamParams {
-                admin: admin.unwrap_or_else(|| receive_msg.sender.clone()),
+            UncheckedStreamData {
+                owner,
                 recipient,
-                balance: receive_msg.amount,
-                denom: checked_denom,
+                balance: balance.unwrap_or(receive_msg.amount),
+                denom: UncheckedDenom::Cw20(info.sender.to_string()),
                 start_time,
                 end_time,
-                title: None,
-                description: None,
+                title,
+                description,
                 is_detachable,
             },
         ),
@@ -343,7 +319,7 @@ fn query_stream(deps: Deps, id: u64) -> StdResult<StreamResponse> {
     let stream = STREAMS.load(deps.storage, id)?;
     Ok(StreamResponse {
         id,
-        admin: stream.admin.into(),
+        owner: stream.owner.into(),
         recipient: stream.recipient.into(),
         balance: stream.balance,
         claimed_balance: stream.claimed_balance,
@@ -379,7 +355,7 @@ fn query_list_streams(
 fn map_stream(item: StdResult<(u64, Stream)>) -> StdResult<StreamResponse> {
     item.map(|(id, stream)| StreamResponse {
         id,
-        admin: stream.admin.to_string(),
+        owner: stream.owner.to_string(),
         recipient: stream.recipient.to_string(),
         balance: stream.balance,
         claimed_balance: stream.claimed_balance,
