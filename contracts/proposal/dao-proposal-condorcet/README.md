@@ -1,17 +1,24 @@
 This is a DAO DAO proposal module which implements The Condorcet
-Method
+Method.
 
 https://www.princeton.edu/~cuff/voting/theory.html
 
-It differs from `dao-proposal-single` and `dao-proposal-multiple` in
-that it does not:
+This module lacks many basic features. For example, proposals and
+choices do not have human readable names and descriptions. For this
+first version, the goal is to build a correct, secure, and gas
+efficent voting system that may be audited, not to build a proposal
+module that is ready for use with humans and a frontend.
+
+To this end, this module differs from `dao-proposal-single` and
+`dao-proposal-multiple` in that it does not:
 
 1. support revoting,
 2. integrate with pre-propose modules, nor
 3. support proposal and vote hooks
 
-> But even these three rules  
-> needn’t be followed; what works reliably  
+The implementation is described below.
+
+> what works reliably  
 > is to know the raw silk,  
 > hold the uncut wood.  
 > Need little,  
@@ -21,7 +28,6 @@ that it does not:
 
 - [Tao Te Ching (Ursula Le Guin transaltion)](https://github.com/lovingawareness/tao-te-ching/blob/master/Ursula%20K%20Le%20Guin.md)
 
-The implementation is described below.
 
 # Gas Efficent Ranked Choice Voting
 
