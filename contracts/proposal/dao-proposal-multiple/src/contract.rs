@@ -192,7 +192,7 @@ pub fn execute_propose(
     let checked_multiple_choice_options = options.into_checked()?.options;
 
     let expiration = config.max_voting_period.after(&env.block);
-    let total_power = get_total_power(deps.as_ref(), config.dao, None)?;
+    let total_power = get_total_power(deps.as_ref(), &config.dao, None)?;
 
     let proposal = {
         // Limit mutability to this block.
@@ -282,7 +282,7 @@ pub fn execute_vote(
     let vote_power = get_voting_power(
         deps.as_ref(),
         info.sender.clone(),
-        config.dao,
+        &config.dao,
         Some(prop.start_height),
     )?;
     if vote_power.is_zero() {
@@ -365,7 +365,7 @@ pub fn execute_execute(
         let power = get_voting_power(
             deps.as_ref(),
             info.sender.clone(),
-            config.dao.clone(),
+            &config.dao,
             Some(prop.start_height),
         )?;
         if power.is_zero() {

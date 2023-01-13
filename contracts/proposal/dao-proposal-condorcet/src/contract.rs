@@ -47,7 +47,7 @@ pub fn instantiate(
 //
 // propose: proposal_load + proposal_store + tally_load + tally_store + config_load
 // execute: proposal_load + proposal_store + tally_load
-// vote:    tally_load + tally_store
+// vote:    proposal_load +                  tally_load + tally_store
 //
 // so we're good there.
 //
@@ -92,7 +92,7 @@ fn execute_propose(
     choices: Vec<Choice>,
 ) -> Result<Response, ContractError> {
     let dao = DAO.load(deps.storage)?;
-    let sender_voting_power = get_voting_power(deps.as_ref(), info.sender, dao.clone(), None)?;
+    let sender_voting_power = get_voting_power(deps.as_ref(), info.sender, &dao, None)?;
     if sender_voting_power.is_zero() {
         return Err(ContractError::ZeroVotingPower {});
     }
@@ -100,7 +100,7 @@ fn execute_propose(
     let config = CONFIG.load(deps.storage)?;
 
     let id = next_proposal_id(deps.storage)?;
-    let total_power = get_total_power(deps.as_ref(), dao.clone(), None)?;
+    let total_power = get_total_power(deps.as_ref(), &dao, None)?;
 
     let tally = Tally::new(choices.len(), total_power, env.block.height);
     TALLYS.save(deps.storage, id, &tally)?;
@@ -122,7 +122,7 @@ fn execute_vote(
     let sender_power = get_voting_power(
         deps.as_ref(),
         info.sender,
-        DAO.load(deps.storage)?,
+        &DAO.load(deps.storage)?,
         Some(tally.start_height),
     )?;
     if sender_power.is_zero() {
@@ -146,12 +146,8 @@ fn execute_execute(
 ) -> Result<Response, ContractError> {
     let tally = TALLYS.load(deps.storage, proposal_id)?;
     let dao = DAO.load(deps.storage)?;
-    let sender_power = get_voting_power(
-        deps.as_ref(),
-        info.sender,
-        dao.clone(),
-        Some(tally.start_height),
-    )?;
+    let sender_power =
+        get_voting_power(deps.as_ref(), info.sender, &dao, Some(tally.start_height))?;
     if sender_power.is_zero() {
         return Err(ContractError::ZeroVotingPower {});
     }
