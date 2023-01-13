@@ -112,6 +112,14 @@ fn execute_propose(
     let id = next_proposal_id(deps.storage)?;
     let total_power = get_total_power(deps.as_ref(), &dao, None)?;
 
+    if choices.is_empty() {
+        return Err(ContractError::ZeroChoices {});
+    }
+
+    let none_of_the_above = Choice { msgs: vec![] };
+    let mut choices = choices;
+    choices.push(none_of_the_above);
+
     let tally = Tally::new(
         choices.len(),
         total_power,

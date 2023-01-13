@@ -1,3 +1,4 @@
+use cosmwasm_schema::schemars::_serde_json::error;
 use cosmwasm_std::StdError;
 use dao_voting::{error::VotingError, reply::error::TagError, threshold::ThresholdError};
 use thiserror::Error;
@@ -34,4 +35,7 @@ pub enum ContractError {
 
     #[error("only non-expired proposals may be voted on")]
     Expired {},
+
+    #[error("must specify at least one choice for proposal")]
+    ZeroChoices {},
 }
