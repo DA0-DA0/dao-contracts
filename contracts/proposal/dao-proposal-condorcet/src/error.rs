@@ -28,4 +28,10 @@ pub enum ContractError {
 
     #[error("only the DAO my perform this action")]
     NotDao {},
+
+    #[error("already voted")]
+    AlreadyVoted {},
+
+    #[error("only non-expired proposals may be voted on")]
+    Expired {},
 }

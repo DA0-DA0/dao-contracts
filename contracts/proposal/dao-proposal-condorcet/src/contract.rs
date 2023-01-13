@@ -10,7 +10,7 @@ use crate::config::UncheckedConfig;
 use crate::error::ContractError;
 use crate::msg::{Choice, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::proposal::{Proposal, Status};
-use crate::state::{next_proposal_id, CONFIG, DAO, PROPOSALS, TALLYS};
+use crate::state::{next_proposal_id, CONFIG, DAO, PROPOSALS, TALLYS, VOTES};
 use crate::tally::Tally;
 use crate::vote::Vote;
 
@@ -34,7 +34,8 @@ pub fn instantiate(
         .add_attribute("creator", info.sender))
 }
 
-// the key to this contract being gas efficent [1] is that
+// the key to this contract being gas efficent [1] is that the cost of
+// voting does not increase with the number of votes cast, and that
 //
 // ```
 // gas(vote) <= gas(propose) && gas(execute) <= gas(propose)
@@ -47,9 +48,18 @@ pub fn instantiate(
 //
 // propose: proposal_load + proposal_store + tally_load + tally_store + config_load
 // execute: proposal_load + proposal_store + tally_load
-// vote:    proposal_load +                  tally_load + tally_store
+// vote:                                     tally_load + tally_store               + vote_load + vote_store
 //
-// so we're good there.
+// so we are good so long as:
+//
+// `vote_load + vote_store <= proposal_load + proposal_store + config_load`
+//
+// this is true so long as a vote is smaller than a proposal in
+// storage which is true because proposals store `choices =
+// Vec<Vec<CosmosMsg>>`, `choices.len() = vote.len()`, vote is a
+// `Vec<u32>`, even an empty vec must contain it's length which is a
+// usize, so `sizeof(Vec<u32>) <= sizeof(Vec<usize>) <=
+// sizeof(Vec<Vec<CosmosMsg>) => sizeof(vote) <= sizeof(proposal)`.
 //
 // in terms of other costs:
 //
@@ -77,7 +87,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Propose { choices } => execute_propose(deps, env, info, choices),
-        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, info, proposal_id, vote),
+        ExecuteMsg::Vote { proposal_id, vote } => execute_vote(deps, env, info, proposal_id, vote),
         ExecuteMsg::Execute { proposal_id } => execute_execute(deps, env, info, proposal_id),
         ExecuteMsg::Close { proposal_id } => execute_close(deps, env, proposal_id),
 
@@ -102,7 +112,12 @@ fn execute_propose(
     let id = next_proposal_id(deps.storage)?;
     let total_power = get_total_power(deps.as_ref(), &dao, None)?;
 
-    let tally = Tally::new(choices.len(), total_power, env.block.height);
+    let tally = Tally::new(
+        choices.len(),
+        total_power,
+        env.block.height,
+        config.voting_period.after(&env.block),
+    );
     TALLYS.save(deps.storage, id, &tally)?;
 
     let mut proposal = Proposal::new(&env.block, &config, id, choices, total_power);
@@ -114,6 +129,7 @@ fn execute_propose(
 
 fn execute_vote(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     proposal_id: u32,
     vote: Vec<u32>,
@@ -121,14 +137,19 @@ fn execute_vote(
     let tally = TALLYS.load(deps.storage, proposal_id)?;
     let sender_power = get_voting_power(
         deps.as_ref(),
-        info.sender,
+        info.sender.clone(),
         &DAO.load(deps.storage)?,
         Some(tally.start_height),
     )?;
     if sender_power.is_zero() {
         Err(ContractError::ZeroVotingPower {})
+    } else if VOTES.has(deps.storage, (proposal_id, info.sender.clone())) {
+        Err(ContractError::AlreadyVoted {})
+    } else if tally.expired(&env.block) {
+        Err(ContractError::Expired {})
     } else {
         let vote = Vote::new(vote, tally.candidates())?;
+        VOTES.save(deps.storage, (proposal_id, info.sender), &vote)?;
 
         let mut tally = tally;
         tally.add_vote(vote, sender_power);

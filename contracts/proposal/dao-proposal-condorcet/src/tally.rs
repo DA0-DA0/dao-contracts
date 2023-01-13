@@ -1,5 +1,6 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{BlockInfo, Uint128};
+use cw_utils::Expiration;
 
 use crate::{
     m::{Stats, M},
@@ -21,6 +22,8 @@ use crate::{
 pub struct Tally {
     m: M,
 
+    /// When this tally will stop accepting votes.
+    pub expiration: Expiration,
     /// The block height that this tally began at.
     pub start_height: u64,
     /// Amount of voting power that has yet to vote in this tally.
@@ -39,12 +42,18 @@ pub enum Winner {
 }
 
 impl Tally {
-    pub fn new(candidates: usize, total_power: Uint128, start_height: u64) -> Self {
+    pub fn new(
+        candidates: usize,
+        total_power: Uint128,
+        start_height: u64,
+        expiration: Expiration,
+    ) -> Self {
         let mut tally = Self {
             m: M::new(candidates as usize),
             power_outstanding: total_power,
             winner: Winner::None,
             start_height,
+            expiration,
         };
         // compute even though this will always be Winner::None so
         // that creating a tally has the same compute cost of adding a
@@ -58,11 +67,20 @@ impl Tally {
         self.m.n
     }
 
-    /// Records a vote in the tally.
+    pub fn expired(&self, block: &BlockInfo) -> bool {
+        self.expiration.is_expired(block)
+    }
+
+    /// Records a vote in the tally. The tally must not be expired.
     ///
     ///  - `vote` a list of candidates sorted in order from most to
     ///    least favored
     ///  - `power` the voting power of the voter
+    ///
+    /// Invariants:
+    ///
+    /// - Voter has not already voted.
+    /// - Tally is not expired.
     pub fn add_vote(&mut self, vote: Vote, power: Uint128) {
         for (index, preference) in vote.iter().enumerate() {
             // an interesting property of the symetry of M is that in

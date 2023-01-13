@@ -1,4 +1,5 @@
 use cosmwasm_std::Uint128;
+use cw_utils::Expiration;
 
 use crate::{
     tally::{Tally, Winner},
@@ -8,7 +9,7 @@ use crate::{
 #[test]
 fn test_pair_election() {
     let candidates = 2;
-    let mut tally = Tally::new(candidates, Uint128::new(3), 0);
+    let mut tally = Tally::new(candidates, Uint128::new(3), 0, Expiration::Never {});
 
     tally.add_vote(Vote::new(vec![0, 1], candidates).unwrap(), Uint128::one());
     tally.add_vote(Vote::new(vec![1, 0], candidates).unwrap(), Uint128::one());
@@ -20,7 +21,7 @@ fn test_pair_election() {
 #[test]
 fn test_triplet_election() {
     let candidates = 3;
-    let mut tally = Tally::new(candidates, Uint128::new(3), 0);
+    let mut tally = Tally::new(candidates, Uint128::new(3), 0, Expiration::Never {});
 
     tally.add_vote(
         Vote::new(vec![0, 1, 2], candidates).unwrap(),
@@ -44,7 +45,7 @@ fn test_triplet_election() {
 #[test]
 fn test_condorcet_paradox() {
     let candidates = 3;
-    let mut tally = Tally::new(candidates, Uint128::new(6), 0);
+    let mut tally = Tally::new(candidates, Uint128::new(6), 0, Expiration::Never {});
 
     tally.add_vote(
         Vote::new(vec![0, 2, 1], candidates).unwrap(),
@@ -95,7 +96,7 @@ fn test_condorcet_paradox() {
 #[test]
 fn test_tally_overflow() {
     let candidates = 6;
-    let mut tally = Tally::new(candidates, Uint128::MAX, 0);
+    let mut tally = Tally::new(candidates, Uint128::MAX, 0, Expiration::Never {});
 
     tally.add_vote(
         Vote::new(vec![1, 2, 3, 4, 5, 0], candidates).unwrap(),
@@ -116,7 +117,7 @@ fn test_tally_overflow() {
 #[test]
 fn test_winner_none() {
     let candidates = 6;
-    let mut tally = Tally::new(candidates, Uint128::new(9), 0);
+    let mut tally = Tally::new(candidates, Uint128::new(9), 0, Expiration::Never {});
 
     tally.add_vote(
         Vote::new(vec![1, 2, 3, 4, 5, 0], candidates).unwrap(),

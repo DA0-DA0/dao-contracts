@@ -17,7 +17,6 @@ pub struct Proposal {
     last_status: Status,
 
     quorum: PercentageThreshold,
-    expiration: Expiration,
     min_voting_period: Option<Expiration>,
 
     /// This module differs from other modules in that this is set
@@ -66,7 +65,7 @@ fn status(block: &BlockInfo, proposal: &Proposal, tally: &Tally) -> Status {
             }
 
             let winner = tally.winner;
-            let expired = proposal.expiration.is_expired(block);
+            let expired = tally.expiration.is_expired(block);
             let quorum = does_vote_count_pass(
                 proposal.total_power - tally.power_outstanding,
                 proposal.total_power,
@@ -116,7 +115,6 @@ impl Proposal {
         Self {
             last_status: Status::Open,
 
-            expiration: config.voting_period.after(block),
             min_voting_period: config.min_voting_period.map(|m| m.after(block)),
             quorum: config.quorum,
             close_on_execution_failure: config.close_proposals_on_execution_failure,
