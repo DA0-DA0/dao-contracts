@@ -30,7 +30,7 @@ pub enum ContractError {
     NotDao {},
 
     #[error("already voted")]
-    AlreadyVoted {},
+    Voted {},
 
     #[error("only non-expired proposals may be voted on")]
     Expired {},

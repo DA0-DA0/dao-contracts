@@ -26,13 +26,13 @@ pub(crate) struct M {
     // cells.len = n * (n - 1) / 2
     //
     // which has a square root if you try and extract n from it.
-    pub n: usize,
+    pub n: u32,
 }
 
 pub(crate) enum Stats {
     PositiveColumn {
         /// Index of the column that is positive.
-        col: usize,
+        col: u32,
         /// Smallest value in the column's distance from zero.
         min_margin: Uint128,
     },
@@ -46,7 +46,7 @@ pub(crate) enum Stats {
 }
 
 impl M {
-    pub fn new(n: usize) -> Self {
+    pub fn new(n: u32) -> Self {
         M {
             // example 4x4 M:
             //
@@ -57,7 +57,7 @@ impl M {
             //
             // `cells` stores all the values in the upper diagonal of
             // M. there are `N-1 + N-2 .. + 1` or `N (N-1) / 2` cells.
-            cells: vec![Cell::default(); n * (n - 1) / 2],
+            cells: vec![Cell::default(); (n * (n - 1) / 2) as usize],
             n,
         }
     }
@@ -66,7 +66,7 @@ impl M {
     ///
     /// Invariant: x > y as otherwise the upper diagonal
     /// (`self.cells`) will not contain an entry for the index.
-    fn index(&self, (x, y): (usize, usize)) -> usize {
+    fn index(&self, (x, y): (u32, u32)) -> u32 {
         let n = self.n;
         // the start of the row in `self.cells`.
         //
@@ -89,31 +89,31 @@ impl M {
         row + offset
     }
 
-    pub(crate) fn get(&self, (x, y): (usize, usize)) -> Cell {
+    pub(crate) fn get(&self, (x, y): (u32, u32)) -> Cell {
         if x < y {
             self.get((y, x)).invert()
         } else {
-            let i = self.index((x, y));
+            let i = self.index((x, y)) as usize;
             self.cells[i]
         }
     }
 
-    pub fn increment(&mut self, (x, y): (usize, usize), amount: Uint128) {
+    pub fn increment(&mut self, (x, y): (u32, u32), amount: Uint128) {
         debug_assert!(x != y);
         if x < y {
             self.decrement((y, x), amount)
         } else {
-            let i = self.index((x, y));
+            let i = self.index((x, y)) as usize;
             self.cells[i] = self.cells[i].increment(amount)
         }
     }
 
-    pub fn decrement(&mut self, (x, y): (usize, usize), amount: Uint128) {
+    pub fn decrement(&mut self, (x, y): (u32, u32), amount: Uint128) {
         debug_assert!(x != y);
         if x < y {
             self.increment((y, x), amount)
         } else {
-            let i = self.index((x, y));
+            let i = self.index((x, y)) as usize;
             self.cells[i] = self.cells[i].decrement(amount)
         }
     }
@@ -210,9 +210,9 @@ pub(crate) mod test {
 mod test_lm {
     use super::*;
 
-    fn new_m(n: usize) -> M {
+    fn new_m(n: u32) -> M {
         M {
-            cells: vec![Cell::default(); n * (n - 1) / 2],
+            cells: vec![Cell::default(); (n * (n - 1) / 2) as usize],
             n,
         }
     }

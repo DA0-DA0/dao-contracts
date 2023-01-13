@@ -37,13 +37,13 @@ pub struct Tally {
 pub enum Winner {
     Never,
     None,
-    Some(usize),
-    Undisputed(usize),
+    Some(u32),
+    Undisputed(u32),
 }
 
 impl Tally {
     pub fn new(
-        candidates: usize,
+        candidates: u32,
         total_power: Uint128,
         start_height: u64,
         expiration: Expiration,
@@ -63,7 +63,7 @@ impl Tally {
         tally
     }
 
-    pub fn candidates(&self) -> usize {
+    pub fn candidates(&self) -> u32 {
         self.m.n
     }
 
@@ -87,8 +87,7 @@ impl Tally {
             // recording all the defeats, we also record all of the
             // victories.
             for defeat in 0..index {
-                self.m
-                    .decrement((*preference as usize, vote[defeat] as usize), power)
+                self.m.decrement((*preference, vote[defeat]), power)
             }
         }
         self.power_outstanding -= power;

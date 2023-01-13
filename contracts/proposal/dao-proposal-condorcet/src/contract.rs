@@ -123,7 +123,7 @@ fn execute_propose(
     choices.push(none_of_the_above);
 
     let tally = Tally::new(
-        choices.len(),
+        choices.len() as u32,
         total_power,
         env.block.height,
         config.voting_period.after(&env.block),
@@ -154,7 +154,7 @@ fn execute_vote(
     if sender_power.is_zero() {
         Err(ContractError::ZeroVotingPower {})
     } else if VOTES.has(deps.storage, (proposal_id, info.sender.clone())) {
-        Err(ContractError::AlreadyVoted {})
+        Err(ContractError::Voted {})
     } else if tally.expired(&env.block) {
         Err(ContractError::Expired {})
     } else {
@@ -183,9 +183,8 @@ fn execute_execute(
         return Err(ContractError::ZeroVotingPower {});
     }
 
-    let proposal = PROPOSALS.load(deps.storage, proposal_id)?;
-    if let Status::Passed { winner } = proposal.status(&env.block, &tally) {
-        let mut proposal = proposal;
+    let mut proposal = PROPOSALS.load(deps.storage, proposal_id)?;
+    if let Status::Passed { winner } = proposal.update_status(&env.block, &tally) {
         let msgs = proposal.set_executed(dao, winner)?;
         PROPOSALS.save(deps.storage, proposal_id, &proposal)?;
 
@@ -199,9 +198,8 @@ fn execute_execute(
 
 fn execute_close(deps: DepsMut, env: Env, proposal_id: u32) -> Result<Response, ContractError> {
     let tally = TALLYS.load(deps.storage, proposal_id)?;
-    let proposal = PROPOSALS.load(deps.storage, proposal_id)?;
-    if let Status::Rejected = proposal.status(&env.block, &tally) {
-        let mut proposal = proposal;
+    let mut proposal = PROPOSALS.load(deps.storage, proposal_id)?;
+    if let Status::Rejected = proposal.update_status(&env.block, &tally) {
         proposal.set_closed();
         PROPOSALS.save(deps.storage, proposal_id, &proposal)?;
 
@@ -225,11 +223,12 @@ fn execute_set_config(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Proposal { id } => {
-            let proposal = PROPOSALS.load(deps.storage, id)?;
+            let mut proposal = PROPOSALS.load(deps.storage, id)?;
             let tally = TALLYS.load(deps.storage, id)?;
+            proposal.update_status(&env.block, &tally);
             to_binary(&ProposalResponse { proposal, tally })
         }
         QueryMsg::Config {} => to_binary(&CONFIG.load(deps.storage)?),

@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal};
+use cosmwasm_std::{coins, to_binary, Addr, BankMsg, CosmosMsg, Decimal};
 use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::{voting::InfoResponse, Admin, ModuleInstantiateInfo};
@@ -11,19 +11,21 @@ use crate::{
     config::{Config, UncheckedConfig},
     contract::{CONTRACT_NAME, CONTRACT_VERSION},
     msg::{Choice, ExecuteMsg, InstantiateMsg, QueryMsg},
-    proposal::ProposalResponse,
+    proposal::{ProposalResponse, Status},
+    tally::Winner,
 };
 
 pub(crate) struct Suite {
     app: App,
-    condorcet: Addr,
-    core: Addr,
-
-    pub sender: Addr,
+    sender: Addr,
+    pub condorcet: Addr,
+    pub core: Addr,
 }
 
 pub(crate) struct SuiteBuilder {
     pub instantiate: InstantiateMsg,
+    with_proposal: Option<u32>,
+    with_voters: Vec<(String, u64)>,
 }
 
 impl Default for SuiteBuilder {
@@ -35,17 +37,37 @@ impl Default for SuiteBuilder {
                 min_voting_period: Some(Duration::Time(60 * 60 * 24)),
                 close_proposals_on_execution_failure: true,
             },
+            with_proposal: None,
+            with_voters: vec![("sender".to_string(), 10)],
         }
     }
 }
 
 impl SuiteBuilder {
+    #[allow(clippy::field_reassign_with_default)]
     pub fn with_config(instantiate: UncheckedConfig) -> Self {
-        Self { instantiate }
+        let mut b = Self::default();
+        b.instantiate = instantiate;
+        b
+    }
+
+    pub fn with_proposal(mut self, candidates: u32) -> Self {
+        self.with_proposal = Some(candidates);
+        self
+    }
+
+    pub fn with_voters(mut self, voters: &[(&str, u64)]) -> Self {
+        self.with_voters = voters.iter().map(|(a, p)| (a.to_string(), *p)).collect();
+        self
     }
 
     pub fn build(self) -> Suite {
-        let sender = Addr::unchecked("sender");
+        let initial_members: Vec<_> = self
+            .with_voters
+            .into_iter()
+            .map(|(addr, weight)| cw4::Member { addr, weight })
+            .collect();
+        let sender = Addr::unchecked(&initial_members[0].addr);
 
         let mut app = App::default();
         let condorcet_id = app.store_code(proposal_condorcet_contract());
@@ -64,10 +86,7 @@ impl SuiteBuilder {
                 code_id: cw4_voting_id,
                 msg: to_binary(&dao_voting_cw4::msg::InstantiateMsg {
                     cw4_group_code_id: cw4_id,
-                    initial_members: vec![cw4::Member {
-                        addr: sender.to_string(),
-                        weight: 10,
-                    }],
+                    initial_members,
                 })
                 .unwrap(),
                 admin: Some(Admin::CoreModule {}),
@@ -106,17 +125,31 @@ impl SuiteBuilder {
 
         app.update_block(next_block);
 
-        let suite = Suite {
+        let mut suite = Suite {
             app,
             sender,
             condorcet,
             core,
         };
 
-        let dao = suite.query_dao();
-        assert_eq!(dao, suite.core);
         let next_id = suite.query_next_proposal_id();
         assert_eq!(next_id, 1);
+
+        if let Some(candidates) = self.with_proposal {
+            suite
+                .propose(
+                    &suite.sender(),
+                    (0..candidates)
+                        .map(|_| vec![unimportant_message()])
+                        .collect(),
+                )
+                .unwrap();
+            let next_id = suite.query_next_proposal_id();
+            assert_eq!(next_id, 2);
+        }
+
+        let dao = suite.query_dao();
+        assert_eq!(dao, suite.core);
         let info = suite.query_info();
         assert_eq!(info.info.version, CONTRACT_VERSION);
         assert_eq!(info.info.contract, CONTRACT_NAME);
@@ -128,6 +161,25 @@ impl SuiteBuilder {
 impl Suite {
     pub fn block_height(&self) -> u64 {
         self.app.block_info().height
+    }
+
+    pub fn a_day_passes(&mut self) {
+        self.app
+            .update_block(|b| b.time = b.time.plus_seconds(60 * 60 * 24))
+    }
+
+    pub fn a_week_passes(&mut self) {
+        self.a_day_passes();
+        self.a_day_passes();
+        self.a_day_passes();
+        self.a_day_passes();
+        self.a_day_passes();
+        self.a_day_passes();
+        self.a_day_passes();
+    }
+
+    pub fn sender(&self) -> Addr {
+        self.sender.clone()
     }
 }
 
@@ -145,6 +197,11 @@ impl Suite {
             .wrap()
             .query_wasm_smart(&self.condorcet, &QueryMsg::Proposal { id })
             .unwrap()
+    }
+
+    pub fn query_winner_and_status(&self, id: u32) -> (Winner, Status) {
+        let q = self.query_proposal(id);
+        (q.tally.winner, q.proposal.last_status())
     }
 
     pub fn query_next_proposal_id(&self) -> u32 {
@@ -187,4 +244,50 @@ impl Suite {
         )?;
         Ok(id)
     }
+
+    pub fn vote<S: Into<String>>(
+        &mut self,
+        sender: S,
+        proposal_id: u32,
+        vote: Vec<u32>,
+    ) -> anyhow::Result<()> {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender),
+                self.condorcet.clone(),
+                &ExecuteMsg::Vote { proposal_id, vote },
+                &[],
+            )
+            .map(|_| ())
+    }
+
+    pub fn execute<S: Into<String>>(&mut self, sender: S, proposal_id: u32) -> anyhow::Result<()> {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender),
+                self.condorcet.clone(),
+                &ExecuteMsg::Execute { proposal_id },
+                &[],
+            )
+            .map(|_| ())
+    }
+
+    pub fn close<S: Into<String>>(&mut self, sender: S, proposal_id: u32) -> anyhow::Result<()> {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender),
+                self.condorcet.clone(),
+                &ExecuteMsg::Close { proposal_id },
+                &[],
+            )
+            .map(|_| ())
+    }
+}
+
+pub fn unimportant_message() -> CosmosMsg {
+    BankMsg::Send {
+        to_address: "someone".to_string(),
+        amount: coins(10, "something"),
+    }
+    .into()
 }

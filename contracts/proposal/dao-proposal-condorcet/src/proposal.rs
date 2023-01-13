@@ -38,7 +38,7 @@ pub enum Status {
     /// The proposal has been rejected.
     Rejected,
     /// The proposal has passed.
-    Passed { winner: usize },
+    Passed { winner: u32 },
     /// The proposal has been passed and executed.
     Executed,
     /// The proposal has failed or expired and has been closed. A
@@ -144,6 +144,12 @@ impl Proposal {
         status(block, self, tally)
     }
 
+    // To test that status is updated before responding to queries.
+    #[cfg(test)]
+    pub fn last_status(&self) -> Status {
+        self.last_status
+    }
+
     pub(crate) fn set_closed(&mut self) {
         debug_assert_eq!(self.last_status, Status::Rejected);
 
@@ -152,12 +158,12 @@ impl Proposal {
 
     /// Sets the proposal's status to executed and returns a
     /// submessage to be executed.
-    pub(crate) fn set_executed(&mut self, dao: Addr, winner: usize) -> StdResult<SubMsg> {
+    pub(crate) fn set_executed(&mut self, dao: Addr, winner: u32) -> StdResult<SubMsg> {
         debug_assert_eq!(self.last_status, Status::Passed { winner });
 
         self.last_status = Status::Executed;
 
-        let msgs = self.choices[winner].msgs.clone();
+        let msgs = self.choices[winner as usize].msgs.clone();
         let core_exec = WasmMsg::Execute {
             contract_addr: dao.into_string(),
             msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
