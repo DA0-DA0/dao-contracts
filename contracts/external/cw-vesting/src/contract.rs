@@ -318,19 +318,19 @@ pub fn execute_delegate(
     validator: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // Non-payable as this method delegates funds in the contract
-    nonpayable(&info)?;
-
     let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-    // Check status is active
-    if vesting_payment.status != VestingPaymentStatus::Active {
-        return Err(ContractError::NotActive);
-    }
 
     // Check sender is the recipient of the vesting payment
     if info.sender != vesting_payment.recipient {
         return Err(ContractError::Unauthorized);
+    }
+
+    // Non-payable as this method delegates funds in the contract
+    nonpayable(&info)?;
+
+    // Check status is active
+    if vesting_payment.status != VestingPaymentStatus::Active {
+        return Err(ContractError::NotActive);
     }
 
     // Check vesting payment denom matches local denom
@@ -397,19 +397,23 @@ pub fn execute_redelegate(
     dst_validator: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // Non-payable as this method redelegates funds in the contract
-    nonpayable(&info)?;
-
     let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-    // Check status is active
-    if vesting_payment.status != VestingPaymentStatus::Active {
-        return Err(ContractError::NotActive);
-    }
 
     // Check sender is the recipient of the vesting payment
     if info.sender != vesting_payment.recipient {
         return Err(ContractError::Unauthorized);
+    }
+
+    // Non-payable as this method redelegates funds in the contract
+    nonpayable(&info)?;
+
+    if src_validator == dst_validator {
+        return Err(ContractError::SameValidator);
+    }
+
+    // Check status is active
+    if vesting_payment.status != VestingPaymentStatus::Active {
+        return Err(ContractError::NotActive);
     }
 
     // Check vesting payment denom matches local denom
@@ -429,7 +433,10 @@ pub fn execute_redelegate(
     };
 
     // Load source validator, subtract redelegated amount
-    let amount_staked_src = STAKED_VESTING_BY_VALIDATOR.load(deps.storage, &src_validator)?;
+    let amount_staked_src = STAKED_VESTING_BY_VALIDATOR
+        .load(deps.storage, &src_validator)
+        .map_err(|_| ContractError::NoDelegationsForValidator {})?;
+
     STAKED_VESTING_BY_VALIDATOR.save(
         deps.storage,
         &src_validator,

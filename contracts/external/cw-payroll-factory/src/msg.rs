@@ -11,11 +11,10 @@ pub struct InstantiateMsg {
 #[cw_ownable]
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Receive a cw20
+    /// Instantiates a new vesting contract that is funded by a cw20 token.
     Receive(Cw20ReceiveMsg),
-    /// Instantiates the target contract with the provided instantiate message and code id and
-    /// updates the contract's admin to be itself.
-    InstantiatePayrollContract {
+    /// Instantiates a new vesting contract that is funded by a native token.
+    InstantiateNativePayrollContract {
         instantiate_msg: PayrollInstantiateMsg,
         code_id: u64,
         label: String,
