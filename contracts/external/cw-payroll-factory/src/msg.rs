@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
 use cw_ownable::cw_ownable;
-use cw_payroll::msg::InstantiateMsg as PayrollInstantiateMsg;
+use cw_vesting::msg::InstantiateMsg as PayrollInstantiateMsg;
 
 #[cw_serde]
 pub struct InstantiateMsg {

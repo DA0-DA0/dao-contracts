@@ -15,7 +15,7 @@ use crate::state::{
     VestingPayment, VestingPaymentStatus, STAKED_VESTING_BY_VALIDATOR, VESTING_PAYMENT,
 };
 
-const CONTRACT_NAME: &str = "crates.io:cw-payroll";
+const CONTRACT_NAME: &str = "crates.io:cw-vesting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

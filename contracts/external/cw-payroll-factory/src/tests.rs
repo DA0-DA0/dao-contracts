@@ -6,7 +6,7 @@ use cosmwasm_std::{
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
-use cw_payroll::{
+use cw_vesting::{
     msg::{InstantiateMsg as PayrollInstantiateMsg, QueryMsg as PayrollQueryMsg},
     state::{UncheckedVestingParams, VestingPayment, VestingPaymentStatus},
 };
@@ -43,11 +43,11 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
+pub fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        cw_payroll::contract::execute,
-        cw_payroll::contract::instantiate,
-        cw_payroll::contract::query,
+        cw_vesting::contract::execute,
+        cw_vesting::contract::instantiate,
+        cw_vesting::contract::query,
     );
     Box::new(contract)
 }
@@ -56,7 +56,7 @@ pub fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
 pub fn test_instantiate_native_payroll_contract() {
     let mut app = App::default();
     let code_id = app.store_code(factory_contract());
-    let cw_payroll_code_id = app.store_code(cw_payroll_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
 
     // Instantiate factory with only Alice allowed to instantiate payroll contracts
     let instantiate = InstantiateMsg {
@@ -109,7 +109,7 @@ pub fn test_instantiate_native_payroll_contract() {
                 description: None,
             },
         },
-        code_id: cw_payroll_code_id,
+        code_id: cw_vesting_code_id,
         label: "Payroll".to_string(),
     };
 
@@ -138,12 +138,12 @@ pub fn test_instantiate_native_payroll_contract() {
     // Get the payroll address from the instantiate event
     let instantiate_event = &res.events[2];
     assert_eq!(instantiate_event.ty, "instantiate");
-    let cw_payroll_addr = instantiate_event.attributes[0].value.clone();
+    let cw_vesting_addr = instantiate_event.attributes[0].value.clone();
 
     // Check that admin of contract is owner specified in Instantiation Message
     let contract_info = app
         .wrap()
-        .query_wasm_contract_info(cw_payroll_addr)
+        .query_wasm_contract_info(cw_vesting_addr)
         .unwrap();
     assert_eq!(contract_info.admin, Some(ALICE.to_string()));
 
@@ -222,7 +222,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
     let mut app = App::default();
     let code_id = app.store_code(factory_contract());
     let cw20_code_id = app.store_code(cw20_contract());
-    let cw_payroll_code_id = app.store_code(cw_payroll_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
 
     // Instantiate cw20 contract with balances for Alice
     let cw20_addr = app
@@ -294,7 +294,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
         factory_addr.clone(),
         &ExecuteMsg::InstantiatePayrollContract {
             instantiate_msg: instantiate_payroll_msg.clone(),
-            code_id: cw_payroll_code_id,
+            code_id: cw_vesting_code_id,
             label: "Payroll".to_string(),
         },
         &coins(amount.into(), NATIVE_DENOM),
@@ -310,7 +310,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
                 amount: instantiate_payroll_msg.params.amount,
                 msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
-                    code_id: cw_payroll_code_id,
+                    code_id: cw_vesting_code_id,
                     label: "Payroll".to_string(),
                 })
                 .unwrap(),
@@ -322,12 +322,12 @@ pub fn test_instantiate_cw20_payroll_contract() {
     // Get the payroll address from the instantiate event
     let instantiate_event = &res.events[4];
     assert_eq!(instantiate_event.ty, "instantiate");
-    let cw_payroll_addr = instantiate_event.attributes[0].value.clone();
+    let cw_vesting_addr = instantiate_event.attributes[0].value.clone();
 
     // Check that admin of contract is owner specified in Instantiation Message
     let contract_info = app
         .wrap()
-        .query_wasm_contract_info(cw_payroll_addr.clone())
+        .query_wasm_contract_info(cw_vesting_addr.clone())
         .unwrap();
     assert_eq!(contract_info.admin, Some(ALICE.to_string()));
 
@@ -348,7 +348,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
     // Check that the vesting payment contract is active
     let vp: VestingPayment = app
         .wrap()
-        .query_wasm_smart(cw_payroll_addr, &PayrollQueryMsg::Info {})
+        .query_wasm_smart(cw_vesting_addr, &PayrollQueryMsg::Info {})
         .unwrap();
     assert_eq!(vp.status, VestingPaymentStatus::Active);
 }

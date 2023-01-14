@@ -9,15 +9,15 @@ use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
 use cw20::Cw20ReceiveMsg;
 use cw_denom::CheckedDenom;
-use cw_payroll::{
+use cw_storage_plus::Bound;
+use cw_utils::{nonpayable, parse_reply_instantiate_data};
+use cw_vesting::{
     msg::{
         InstantiateMsg as PayrollInstantiateMsg, QueryMsg as PayrollQueryMsg,
         ReceiveMsg as PayrollReceiveMsg,
     },
     state::VestingPayment,
 };
-use cw_storage_plus::Bound;
-use cw_utils::{nonpayable, parse_reply_instantiate_data};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg};
@@ -128,7 +128,7 @@ pub fn instantiate_contract(
     let msg = SubMsg::reply_on_success(instantiate, INSTANTIATE_CONTRACT_REPLY_ID);
 
     Ok(Response::default()
-        .add_attribute("action", "instantiate_cw_payroll")
+        .add_attribute("action", "instantiate_cw_vesting")
         .add_submessage(msg))
 }
 
