@@ -959,6 +959,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw20-staked-balance-voting"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core-interface",
+ "cw-core-macros",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20 0.13.4",
+ "cw20-base 0.13.4",
+ "cw20-stake 0.2.6",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "cw3"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1122,18 +1142,23 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
+ "cw-core",
  "cw-multi-test",
+ "cw-proposal-single",
  "cw-storage-plus 0.16.0",
+ "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 2.0.0-beta",
+ "cw20-staked-balance-voting",
  "dao-core",
  "dao-proposal-single",
  "dao-voting",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
  "thiserror",
+ "voting",
 ]
 
 [[package]]

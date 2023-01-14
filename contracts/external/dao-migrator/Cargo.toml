@@ -24,13 +24,19 @@ cw-utils         = { workspace = true }
 thiserror        = { workspace = true }
 cw2              = { workspace = true }
 
-dao-voting             = { workspace = true }
 dao-core               = { workspace = true }
+dao-voting             = { workspace = true }
 dao-proposal-single    = { workspace = true }
 dao-voting-cw4         = { workspace = true }
 cw20-stake             = { workspace = true }
 dao-voting-cw20-staked = { workspace = true }
 cw20-base              = { workspace = true }
+
+cw-utils-v1                   = { workspace = true }
+voting-v1                     = { workspace = true }
+cw-core-v1                    = { workspace = true }
+cw-proposal-single-v1         = { workspace = true }
+cw20-staked-balance-voting-v1 = { workspace = true }
 
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }

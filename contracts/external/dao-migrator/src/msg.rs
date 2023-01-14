@@ -1,8 +1,10 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::WasmMsg;
 
-use crate::state::MigrationParams;
+use crate::types::MigrationParams;
 
+// TODO: Maybe we can unwrap `MigrationParams`, and include it in initMsg directly, 
+// and just save the whole init msg into storage?
 #[cw_serde]
 pub struct InstantiateMsg {
     pub migration_params: MigrationParams
@@ -14,13 +16,7 @@ pub enum ExecuteMsg {
     /// checking state before and after to smoke test the migration's
     /// success. This module will remove itself on this message's
     /// completion regardless of the migration's success.
-    MigrateV1ToV2 {
-        /// Rather or not to migrate the stake_cw20 contract and its
-        /// manager. If this is not set to true and a stake_cw20
-        /// contract is detected in the DAO's configuration the
-        /// migration will be aborted.
-        migrate_stake_cw20_manager: Option<bool>,
-    },
+    MigrateV1ToV2 {},
     /// Callable only by this contract.
     ///
     /// In submessage terms, say a message that results in an error
