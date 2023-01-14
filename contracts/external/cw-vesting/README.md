@@ -13,7 +13,7 @@ Key features include:
 
 To instantiate a new instance of this contract you may specify a contract owner, as well as payment parameters.
 
-`cw-payroll-factory` can be used if wish to instantiate many `cw-payroll` contracts and query them.
+`cw-payroll-factory` can be used if wish to instantiate many `cw-vesting` contracts and query them.
 
 ## Creating a CW20 Vesting
 A cw20 vesting payment can be created using the cw20 [Send / Receive](https://github.com/CosmWasm/cw-plus/blob/main/packages/cw20/README.md#receiver) flow. This involves triggering a Send message from the cw20 token contract, with a Receive callback that's sent to the vesting contract.

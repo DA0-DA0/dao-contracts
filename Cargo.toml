@@ -64,7 +64,7 @@ cw-ownable = { git = "https://github.com/steak-enjoyers/cw-plus-plus", rev = "50
 
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory" }
-cw-payroll = { path = "./contracts/external/cw-payroll" }
+cw-vesting = { path = "./contracts/external/cw-vesting" }
 dao-core = { path = "./contracts/dao-core" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "*" }
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "*" }

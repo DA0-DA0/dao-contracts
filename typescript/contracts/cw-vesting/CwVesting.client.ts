@@ -6,14 +6,14 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { Uint128, UncheckedDenom, Curve, InstantiateMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, ExecuteMsg, Binary, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, QueryMsg, CheckedDenom, Addr, VestingPaymentStatus, VestingPayment, OwnershipForAddr } from "./CwPayroll.types";
-export interface CwPayrollReadOnlyInterface {
+import { Uint128, UncheckedDenom, Curve, InstantiateMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, ExecuteMsg, Binary, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, QueryMsg, CheckedDenom, Addr, VestingPaymentStatus, VestingPayment, OwnershipForAddr } from "./CwVesting.types";
+export interface CwVestingReadOnlyInterface {
   contractAddress: string;
   info: () => Promise<VestingPayment>;
   ownership: () => Promise<OwnershipForAddr>;
   vestedAmount: () => Promise<Uint128>;
 }
-export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
+export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
   client: CosmWasmClient;
   contractAddress: string;
 
@@ -41,7 +41,7 @@ export class CwPayrollQueryClient implements CwPayrollReadOnlyInterface {
     });
   };
 }
-export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
+export interface CwVestingInterface extends CwVestingReadOnlyInterface {
   contractAddress: string;
   sender: string;
   receive: ({
@@ -90,7 +90,7 @@ export interface CwPayrollInterface extends CwPayrollReadOnlyInterface {
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
-export class CwPayrollClient extends CwPayrollQueryClient implements CwPayrollInterface {
+export class CwVestingClient extends CwVestingQueryClient implements CwVestingInterface {
   client: SigningCosmWasmClient;
   sender: string;
   contractAddress: string;

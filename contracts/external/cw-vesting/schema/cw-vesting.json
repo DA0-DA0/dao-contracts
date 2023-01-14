@@ -1,5 +1,5 @@
 {
-  "contract_name": "cw-payroll",
+  "contract_name": "cw-vesting",
   "contract_version": "0.0.1",
   "idl_version": "1.0.0",
   "instantiate": {

@@ -668,27 +668,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw-payroll"
-version = "0.0.1"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-denom",
- "cw-multi-test",
- "cw-ownable",
- "cw-paginate 2.0.1",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw20 0.16.0",
- "cw20-base 0.16.0",
- "dao-testing",
- "serde",
- "thiserror",
- "wynd-utils",
-]
-
-[[package]]
 name = "cw-payroll-factory"
 version = "2.0.0-beta"
 dependencies = [
@@ -697,9 +676,9 @@ dependencies = [
  "cw-denom",
  "cw-multi-test",
  "cw-ownable",
- "cw-payroll",
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
+ "cw-vesting",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
@@ -819,6 +798,27 @@ dependencies = [
  "semver",
  "serde",
  "thiserror",
+]
+
+[[package]]
+name = "cw-vesting"
+version = "0.0.1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-paginate 2.0.1",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw20-base 0.16.0",
+ "dao-testing",
+ "serde",
+ "thiserror",
+ "wynd-utils",
 ]
 
 [[package]]

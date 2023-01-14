@@ -21,7 +21,7 @@ const NATIVE_DENOM: &str = "ujuno";
 const VALIDATOR: &str = "validator";
 const VALIDATOR_TWO: &str = "validator2";
 
-fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
+fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -30,9 +30,9 @@ fn cw_payroll_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn get_vesting_payment(app: &App, cw_payroll_addr: Addr) -> VestingPayment {
+fn get_vesting_payment(app: &App, cw_vesting_addr: Addr) -> VestingPayment {
     app.wrap()
-        .query_wasm_smart(cw_payroll_addr, &QueryMsg::Info {})
+        .query_wasm_smart(cw_vesting_addr, &QueryMsg::Info {})
         .unwrap()
 }
 
@@ -87,7 +87,7 @@ pub fn setup_app() -> App {
 
 pub fn setup_contracts(app: &mut App) -> (Addr, u64, u64) {
     let cw20_code_id = app.store_code(cw20_base_contract());
-    let cw_payroll_code_id = app.store_code(cw_payroll_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
 
     // Instantiate cw20 contract with balances for Alice and Bob
     let cw20_addr = app
@@ -121,12 +121,12 @@ pub fn setup_contracts(app: &mut App) -> (Addr, u64, u64) {
         )
         .unwrap();
 
-    (cw20_addr, cw20_code_id, cw_payroll_code_id)
+    (cw20_addr, cw20_code_id, cw_vesting_code_id)
 }
 
 struct TestCase {
     cw20_addr: Addr,
-    cw_payroll_addr: Addr,
+    cw_vesting_addr: Addr,
     owner: Addr,
     recipient: Addr,
     vesting_payment: VestingPayment,
@@ -141,12 +141,12 @@ fn setup_test_case(
     owner: Option<String>,
     funds: &[Coin],
 ) -> TestCase {
-    let (cw20_addr, _, cw_payroll_code_id) = setup_contracts(app);
+    let (cw20_addr, _, cw_vesting_code_id) = setup_contracts(app);
 
-    // Instantiate cw-payroll contract
-    let cw_payroll_addr = app
+    // Instantiate cw-vesting contract
+    let cw_vesting_addr = app
         .instantiate_contract(
-            cw_payroll_code_id,
+            cw_vesting_code_id,
             Addr::unchecked(OWNER),
             &InstantiateMsg {
                 owner,
@@ -160,7 +160,7 @@ fn setup_test_case(
                 },
             },
             funds,
-            "cw-payroll",
+            "cw-vesting",
             None,
         )
         .unwrap();
@@ -168,7 +168,7 @@ fn setup_test_case(
     let vesting_payment = match denom {
         UncheckedDenom::Cw20(ref cw20_addr) => {
             let msg = Cw20ExecuteMsg::Send {
-                contract: cw_payroll_addr.to_string(),
+                contract: cw_vesting_addr.to_string(),
                 amount,
                 msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
             };
@@ -180,14 +180,14 @@ fn setup_test_case(
             )
             .unwrap();
 
-            get_vesting_payment(app, cw_payroll_addr.clone())
+            get_vesting_payment(app, cw_vesting_addr.clone())
         }
-        UncheckedDenom::Native(_) => get_vesting_payment(app, cw_payroll_addr.clone()),
+        UncheckedDenom::Native(_) => get_vesting_payment(app, cw_vesting_addr.clone()),
     };
 
     TestCase {
         cw20_addr,
-        cw_payroll_addr,
+        cw_vesting_addr,
         owner: Addr::unchecked(OWNER),
         recipient: Addr::unchecked(recipient),
         vesting_payment,
@@ -209,7 +209,7 @@ fn test_happy_cw20_path() {
 
     let TestCase {
         cw20_addr,
-        cw_payroll_addr,
+        cw_vesting_addr,
         recipient: bob,
         vesting_payment,
         ..
@@ -244,7 +244,7 @@ fn test_happy_cw20_path() {
     let err: ContractError = app
         .execute_contract(
             bob.clone(),
-            cw_payroll_addr.clone(),
+            cw_vesting_addr.clone(),
             &ExecuteMsg::Distribute {},
             &[],
         )
@@ -261,7 +261,7 @@ fn test_happy_cw20_path() {
     // VestingPayment has started so tokens have vested
     app.execute_contract(
         bob,
-        cw_payroll_addr.clone(),
+        cw_vesting_addr.clone(),
         &ExecuteMsg::Distribute {},
         &[],
     )
@@ -269,7 +269,7 @@ fn test_happy_cw20_path() {
 
     // Check final amounts after distribution
     assert_eq!(
-        get_vesting_payment(&app, cw_payroll_addr),
+        get_vesting_payment(&app, cw_vesting_addr),
         VestingPayment {
             recipient: Addr::unchecked(BOB),
             amount: Uint128::new(750000),
@@ -303,9 +303,9 @@ fn test_catch_imposter_cw20() {
     let end_time = app.block_info().time.plus_seconds(300).seconds();
     let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
 
-    // Instantiate cw-payroll
+    // Instantiate cw-vesting
     let TestCase {
-        cw_payroll_addr, ..
+        cw_vesting_addr, ..
     } = setup_test_case(
         &mut app,
         vesting_schedule,
@@ -339,7 +339,7 @@ fn test_catch_imposter_cw20() {
         .unwrap();
 
     let msg = Cw20ExecuteMsg::Send {
-        contract: cw_payroll_addr.to_string(),
+        contract: cw_vesting_addr.to_string(),
         amount,
         msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
     };
@@ -370,9 +370,9 @@ fn test_catch_incorrect_cw20_funding_amount() {
     let end_time = app.block_info().time.plus_seconds(300).seconds();
     let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
 
-    // Instantiate cw-payroll
+    // Instantiate cw-vesting
     let TestCase {
-        cw_payroll_addr, ..
+        cw_vesting_addr, ..
     } = setup_test_case(
         &mut app,
         vesting_schedule,
@@ -384,7 +384,7 @@ fn test_catch_incorrect_cw20_funding_amount() {
     );
 
     let msg = Cw20ExecuteMsg::Send {
-        contract: cw_payroll_addr.to_string(),
+        contract: cw_vesting_addr.to_string(),
         amount: Uint128::new(100),
         msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
     };
@@ -416,7 +416,7 @@ fn test_happy_native_path() {
     let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
 
     let TestCase {
-        cw_payroll_addr,
+        cw_vesting_addr,
         recipient: bob,
         vesting_payment,
         ..
@@ -451,7 +451,7 @@ fn test_happy_native_path() {
     let err: ContractError = app
         .execute_contract(
             bob.clone(),
-            cw_payroll_addr.clone(),
+            cw_vesting_addr.clone(),
             &ExecuteMsg::Distribute {},
             &[],
         )
@@ -468,7 +468,7 @@ fn test_happy_native_path() {
     // VestingPayment has started so tokens have vested
     app.execute_contract(
         bob,
-        cw_payroll_addr.clone(),
+        cw_vesting_addr.clone(),
         &ExecuteMsg::Distribute {},
         &[],
     )
@@ -476,7 +476,7 @@ fn test_happy_native_path() {
 
     // Check final amounts after distribution
     assert_eq!(
-        get_vesting_payment(&app, cw_payroll_addr),
+        get_vesting_payment(&app, cw_vesting_addr),
         VestingPayment {
             recipient: Addr::unchecked(BOB),
             amount: Uint128::new(750000),
@@ -511,12 +511,12 @@ fn test_incorrect_native_funding_amount() {
 
     let alice = Addr::unchecked(ALICE);
 
-    let (_, _, cw_payroll_code_id) = setup_contracts(&mut app);
+    let (_, _, cw_vesting_code_id) = setup_contracts(&mut app);
 
-    // Instantiate cw-payroll contract errors with incorrect amount
+    // Instantiate cw-vesting contract errors with incorrect amount
     let error: ContractError = app
         .instantiate_contract(
-            cw_payroll_code_id,
+            cw_vesting_code_id,
             alice.clone(),
             &InstantiateMsg {
                 owner: Some(alice.to_string()),
@@ -530,7 +530,7 @@ fn test_incorrect_native_funding_amount() {
                 },
             },
             &coins(100, NATIVE_DENOM),
-            "cw-payroll",
+            "cw-vesting",
             None,
         )
         .unwrap_err()
@@ -554,7 +554,7 @@ fn test_cancel_vesting() {
     let alice = Addr::unchecked(ALICE);
 
     let TestCase {
-        cw_payroll_addr,
+        cw_vesting_addr,
         owner,
         recipient: bob,
         ..
@@ -570,7 +570,7 @@ fn test_cancel_vesting() {
 
     // Non-owner can't cancel
     let err: ContractError = app
-        .execute_contract(alice, cw_payroll_addr.clone(), &ExecuteMsg::Cancel {}, &[])
+        .execute_contract(alice, cw_vesting_addr.clone(), &ExecuteMsg::Cancel {}, &[])
         .unwrap_err()
         .downcast()
         .unwrap();
@@ -585,11 +585,11 @@ fn test_cancel_vesting() {
     });
 
     // Owner DAO cancels vesting contract
-    app.execute_contract(owner, cw_payroll_addr.clone(), &ExecuteMsg::Cancel {}, &[])
+    app.execute_contract(owner, cw_vesting_addr.clone(), &ExecuteMsg::Cancel {}, &[])
         .unwrap();
 
     // Bob tries to withdraw but can't
-    app.execute_contract(bob, cw_payroll_addr, &ExecuteMsg::Distribute {}, &[])
+    app.execute_contract(bob, cw_vesting_addr, &ExecuteMsg::Distribute {}, &[])
         .unwrap_err();
 
     // Unvested funds have been returned to contract owner
