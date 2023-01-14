@@ -16,7 +16,8 @@ use crate::{
     utils::state_queries::{
         query_core_dump_state_v1, query_core_dump_state_v2, query_core_items_v1,
         query_core_items_v2, query_proposal_count_v1, query_proposal_count_v2, query_proposal_v1,
-        query_proposal_v2, query_total_voting_power_v1, query_total_voting_power_v2, query_single_voting_power_v2, query_single_voting_power_v1,
+        query_proposal_v2, query_single_voting_power_v1, query_single_voting_power_v2,
+        query_total_voting_power_v1, query_total_voting_power_v2,
     },
 };
 
@@ -191,12 +192,16 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
             let modules_addrs = MODULES_ADDRS.load(deps.storage)?;
             test_state(deps.as_ref(), old_state, modules_addrs)?;
 
-            Ok(Response::default())
+            Ok(Response::default()
+                .add_attribute("action", "migrate")
+                .add_attribute("status", "success"))
         }
         _ => Err(ContractError::UnrecognisedReplyId),
     }
 }
 
+// TODO: Refactor to match queries based on passed version? or leave it like that? 
+// We can pass the version we want to query to a single function and let the function handle the right call to make.
 fn query_state_v1(deps: Deps, module_addrs: ModulesAddrs) -> Result<TestState, ContractError> {
     // Queries needs to do
     // 1. `query_dump_state` - query dao-core (`DumpState`)to get the `proposal_modules`, `voting_module`, and `total_proposal_module_count`
