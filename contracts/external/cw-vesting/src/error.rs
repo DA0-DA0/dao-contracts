@@ -48,9 +48,6 @@ pub enum ContractError {
     #[error("Fully vested")]
     FullyVested,
 
-    #[error("Incorrect coin denom")]
-    IncorrectDenom {},
-
     #[error("Title must be less than 280 characters and not be an empty string")]
     InvalidTitle,
 
@@ -59,6 +56,9 @@ pub enum ContractError {
 
     #[error("Only callable if vesting payment is active")]
     NotActive,
+
+    #[error("Must redelegate to a different validator")]
+    SameValidator,
 
     #[error("Vesting payment does not have enough funds")]
     NotEnoughFunds {},
@@ -95,4 +95,7 @@ pub enum ContractError {
 
     #[error("Rewards amount is 0")]
     ZeroRewardsToSend {},
+
+    #[error("Validator is not delegated to")]
+    ValidatorNotDelegatedTo {},
 }

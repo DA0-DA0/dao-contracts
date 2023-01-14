@@ -97,7 +97,7 @@ pub fn test_instantiate_native_payroll_contract() {
     let end_time = app.block_info().time.plus_seconds(300).seconds();
     let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
 
-    let instantiate_payroll_msg = ExecuteMsg::InstantiatePayrollContract {
+    let instantiate_payroll_msg = ExecuteMsg::InstantiateNativePayrollContract {
         instantiate_msg: PayrollInstantiateMsg {
             owner: Some(ALICE.to_string()),
             params: UncheckedVestingParams {
@@ -292,7 +292,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
     app.execute_contract(
         Addr::unchecked(ALICE),
         factory_addr.clone(),
-        &ExecuteMsg::InstantiatePayrollContract {
+        &ExecuteMsg::InstantiateNativePayrollContract {
             instantiate_msg: instantiate_payroll_msg.clone(),
             code_id: cw_vesting_code_id,
             label: "Payroll".to_string(),

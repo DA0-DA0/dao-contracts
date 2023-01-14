@@ -53,7 +53,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive_cw20(env, deps, info, msg),
-        ExecuteMsg::InstantiatePayrollContract {
+        ExecuteMsg::InstantiateNativePayrollContract {
             instantiate_msg,
             code_id,
             label,
