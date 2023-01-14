@@ -4,10 +4,10 @@
 * and run the @cosmwasm/ts-codegen generate command to regenerate this file.
 */
 
-import * as _8 from "./DaoPreProposeApprovalSingle.types";
-import * as _9 from "./DaoPreProposeApprovalSingle.client";
+import * as _10 from "./DaoPreProposeApprovalSingle.types";
+import * as _11 from "./DaoPreProposeApprovalSingle.client";
 export namespace contracts {
-  export const DaoPreProposeApprovalSingle = { ..._8,
-    ..._9
+  export const DaoPreProposeApprovalSingle = { ..._10,
+    ..._11
   };
 }

@@ -40,6 +40,16 @@ pub fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+pub fn proposal_condorcet_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_proposal_condorcet::contract::execute,
+        dao_proposal_condorcet::contract::instantiate,
+        dao_proposal_condorcet::contract::query,
+    )
+    .with_reply(dao_proposal_condorcet::contract::reply);
+    Box::new(contract)
+}
+
 pub fn proposal_single_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         dao_proposal_single::contract::execute,

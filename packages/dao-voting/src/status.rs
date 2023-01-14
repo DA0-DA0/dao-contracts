@@ -2,7 +2,6 @@ use cosmwasm_schema::cw_serde;
 
 #[cw_serde]
 #[derive(Copy)]
-#[repr(u8)]
 pub enum Status {
     /// The proposal is open for voting.
     Open,
