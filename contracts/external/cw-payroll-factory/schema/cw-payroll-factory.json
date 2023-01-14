@@ -21,7 +21,7 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Receive a cw20",
+        "description": "Instantiates a new vesting contract that is funded by a cw20 token.",
         "type": "object",
         "required": [
           "receive"
@@ -34,13 +34,13 @@
         "additionalProperties": false
       },
       {
-        "description": "Instantiates the target contract with the provided instantiate message and code id and updates the contract's admin to be itself.",
+        "description": "Instantiates a new vesting contract that is funded by a native token.",
         "type": "object",
         "required": [
-          "instantiate_payroll_contract"
+          "instantiate_native_payroll_contract"
         ],
         "properties": {
-          "instantiate_payroll_contract": {
+          "instantiate_native_payroll_contract": {
             "type": "object",
             "required": [
               "code_id",
