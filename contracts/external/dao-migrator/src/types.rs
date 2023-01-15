@@ -4,6 +4,24 @@ use dao_core::state::ProposalModule;
 
 use crate::ContractError;
 
+#[derive(Copy, Clone)]
+pub enum V1CodeIds {
+    Core = 452,
+    ProposalSingle = 453,
+    Cw4Voting = 450,
+    Cw20Stake = 449,
+    Cw20StakedBalancesVoting = 451,
+}
+
+#[derive(Copy, Clone)]
+pub enum V2CodeIds {
+    Core = 3457,
+    ProposalSingle = 3463,
+    Cw4Voting = 3465,
+    Cw20Stake = 3454,
+    Cw20StakedBalancesVoting = 3464,
+}
+
 /// The params we need to provide for migration msgs
 #[cw_serde]
 pub struct MigrationParams {
@@ -34,15 +52,15 @@ pub enum MigrationMsgs {
 /// Module data we need for migrations and tests.
 pub struct CodeIdPair {
     /// The code id used in V1 module
-    pub v1_code_id: u64,
+    pub v1_code_id: V1CodeIds,
     /// The new code id used in V2
-    pub v2_code_id: u64,
+    pub v2_code_id: V2CodeIds,
     /// The migration msg of the module
     pub migrate_msg: MigrationMsgs,
 }
 
 impl CodeIdPair {
-    pub fn new(v1_code_id: u64, v2_code_id: u64, migrate_msg: MigrationMsgs) -> CodeIdPair {
+    pub fn new(v1_code_id: V1CodeIds, v2_code_id: V2CodeIds, migrate_msg: MigrationMsgs) -> CodeIdPair {
         CodeIdPair {
             v1_code_id,
             v2_code_id,

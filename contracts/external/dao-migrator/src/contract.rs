@@ -3,16 +3,19 @@ use std::env;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
-    WasmMsg,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, Response,
+    StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
+use dao_interface::ModuleInstantiateCallback;
 
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{MIGRATION_PARAMS, MODULES_ADDRS, TEST_STATE},
-    types::{CodeIdPair, MigrationMsgs, ModulesAddrs, TestState},
+    state::{MODULES_ADDRS, TEST_STATE},
+    types::{
+        CodeIdPair, MigrationMsgs, MigrationParams, ModulesAddrs, TestState, V1CodeIds, V2CodeIds,
+    },
     utils::state_queries::{
         query_core_dump_state_v1, query_core_dump_state_v2, query_core_items_v1,
         query_core_items_v2, query_proposal_count_v1, query_proposal_count_v2, query_proposal_v1,
@@ -29,13 +32,22 @@ pub(crate) const CONJUCTION_REPLY_ID: u64 = 1;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    MIGRATION_PARAMS.save(deps.storage, &msg.migration_params)?;
-    Ok(Response::default())
+    Ok(
+        Response::default().set_data(to_binary(&ModuleInstantiateCallback {
+            msgs: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: env.contract.address.to_string(),
+                msg: to_binary(&ExecuteMsg::MigrateV1ToV2 {
+                    params: msg.migration_params,
+                })?,
+                funds: vec![],
+            })],
+        })?),
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -46,7 +58,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::MigrateV1ToV2 {} => execute_migration_v1_v2(deps, env, info),
+        ExecuteMsg::MigrateV1ToV2 { params } => execute_migration_v1_v2(deps, env, info, params),
         ExecuteMsg::Conjunction { operands } => Ok(Response::default().add_messages(operands)),
     }
 }
@@ -55,13 +67,20 @@ fn execute_migration_v1_v2(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    migration_params: MigrationParams,
 ) -> Result<Response, ContractError> {
-    let migration_params = MIGRATION_PARAMS.load(deps.storage)?;
     // List of matching code ids (TESTNET) and the migration msg of each one of them.
     let code_ids: Vec<CodeIdPair> = vec![
         CodeIdPair::new(
-            453,
-            3463,
+            V1CodeIds::Core,
+            V2CodeIds::Core,
+            MigrationMsgs::DaoCore(dao_core::msg::MigrateMsg::FromV1 {
+                dao_uri: migration_params.dao_uri,
+            }),
+        ), // cw-core -> dao_core
+        CodeIdPair::new(
+            V1CodeIds::ProposalSingle,
+            V2CodeIds::ProposalSingle,
             MigrationMsgs::DaoProposalSingle(dao_proposal_single::msg::MigrateMsg::FromV1 {
                 close_proposal_on_execution_failure: migration_params
                     .close_proposal_on_execution_failure,
@@ -69,25 +88,18 @@ fn execute_migration_v1_v2(
             }),
         ), // cw-proposal-single -> dao_proposal_single
         CodeIdPair::new(
-            452,
-            3457,
-            MigrationMsgs::DaoCore(dao_core::msg::MigrateMsg::FromV1 {
-                dao_uri: migration_params.dao_uri,
-            }),
-        ), // cw-core -> dao_core
-        CodeIdPair::new(
-            450,
-            3465,
+            V1CodeIds::Cw4Voting,
+            V2CodeIds::Cw4Voting,
             MigrationMsgs::DaoVotingCw4(dao_voting_cw4::msg::MigrateMsg {}),
         ), // cw4-voting -> dao_voting_cw4
         CodeIdPair::new(
-            449,
-            3454,
+            V1CodeIds::Cw20Stake,
+            V2CodeIds::Cw20Stake,
             MigrationMsgs::Cw20Stake(cw20_stake::msg::MigrateMsg::FromV1 {}),
         ), // cw20-stake -> cw20_stake
         CodeIdPair::new(
-            451,
-            3464,
+            V1CodeIds::Cw20StakedBalancesVoting,
+            V2CodeIds::Cw20StakedBalancesVoting,
             MigrationMsgs::DaoVotingCw20Staked(dao_voting_cw20_staked::msg::MigrateMsg {}),
         ), // cw20-staked-balances-voting -> dao-voting-cw20-staked
     ];
@@ -119,12 +131,15 @@ fn execute_migration_v1_v2(
 
         //TODO: pretty sure theres a better way of doing the below checks and msg creation
         // Make sure module code id is one of DAO DAOs code ids
-        if let Some(code_pair) = code_ids.iter().find(|x| x.v1_code_id == code_id) {
+        if let Some(code_pair) = code_ids
+            .iter()
+            .find(|x| x.v1_code_id.clone() as u64 == code_id)
+        {
             // Code id is valid DAO DAO code id, lets create a migration msg
 
             msgs.push(WasmMsg::Migrate {
                 contract_addr: module.to_string(),
-                new_code_id: code_pair.v2_code_id,
+                new_code_id: code_pair.v2_code_id as u64,
                 msg: to_binary(&code_pair.migrate_msg).unwrap(),
             });
 
@@ -200,7 +215,7 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
     }
 }
 
-// TODO: Refactor to match queries based on passed version? or leave it like that? 
+// TODO: Refactor to match queries based on passed version? or leave it like that?
 // We can pass the version we want to query to a single function and let the function handle the right call to make.
 fn query_state_v1(deps: Deps, module_addrs: ModulesAddrs) -> Result<TestState, ContractError> {
     // Queries needs to do

@@ -23,6 +23,8 @@ cw-storage-plus  = { workspace = true }
 cw-utils         = { workspace = true }
 thiserror        = { workspace = true }
 cw2              = { workspace = true }
+cw20             = { workspace = true }
+dao-interface    = { workspace = true }
 
 dao-core               = { workspace = true }
 dao-voting             = { workspace = true }
@@ -41,3 +43,4 @@ cw20-staked-balance-voting-v1 = { workspace = true }
 [dev-dependencies]
 cosmwasm-schema = { workspace = true }
 cw-multi-test   = { workspace = true }
+dao-testing     = { workspace = true }

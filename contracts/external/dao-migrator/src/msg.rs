@@ -3,11 +3,11 @@ use cosmwasm_std::WasmMsg;
 
 use crate::types::MigrationParams;
 
-// TODO: Maybe we can unwrap `MigrationParams`, and include it in initMsg directly, 
-// and just save the whole init msg into storage?
+// TODO: Maybe we can unwrap `MigrationParams`, and include it in initMsg directly,
+// and just save the whole init msg into storage? seems unneeded to add extra layer
 #[cw_serde]
 pub struct InstantiateMsg {
-    pub migration_params: MigrationParams
+    pub migration_params: MigrationParams,
 }
 
 #[cw_serde]
@@ -16,7 +16,7 @@ pub enum ExecuteMsg {
     /// checking state before and after to smoke test the migration's
     /// success. This module will remove itself on this message's
     /// completion regardless of the migration's success.
-    MigrateV1ToV2 {},
+    MigrateV1ToV2 { params: MigrationParams },
     /// Callable only by this contract.
     ///
     /// In submessage terms, say a message that results in an error
@@ -31,4 +31,4 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
-pub enum QueryMsg {}    
+pub enum QueryMsg {}

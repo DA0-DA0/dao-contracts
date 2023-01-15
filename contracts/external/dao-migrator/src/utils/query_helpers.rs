@@ -1,6 +1,10 @@
 use cosmwasm_std::StdResult;
 use cw_utils::Expiration;
-use dao_voting::{threshold::{PercentageThreshold, Threshold}, status::Status, voting::Votes};
+use dao_voting::{
+    status::Status,
+    threshold::{PercentageThreshold, Threshold},
+    voting::Votes,
+};
 
 pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<String> {
     dividend += 1;
@@ -26,7 +30,9 @@ pub(crate) fn v1_expiration_to_v2(v1: cw_utils_v1::Expiration) -> Expiration {
     }
 }
 
-pub(crate) fn v1_percentage_threshold_to_v2(v1: voting_v1::PercentageThreshold) -> PercentageThreshold {
+pub(crate) fn v1_percentage_threshold_to_v2(
+    v1: voting_v1::PercentageThreshold,
+) -> PercentageThreshold {
     match v1 {
         voting_v1::PercentageThreshold::Majority {} => PercentageThreshold::Majority {},
         voting_v1::PercentageThreshold::Percent(p) => PercentageThreshold::Percent(p),

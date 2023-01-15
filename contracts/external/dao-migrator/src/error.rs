@@ -14,23 +14,23 @@ pub enum ContractError {
     Unauthorized,
 
     #[error("Error querying ContractInfo at address: {address}")]
-    NoContractInfo{address: String},
+    NoContractInfo { address: String },
 
     #[error("Can't migrate module, code id is not recognized. code_id: {code_id}")]
-    CantMigrateModule{code_id: u64},
+    CantMigrateModule { code_id: u64 },
 
     #[error("unrecognised reply ID")]
     UnrecognisedReplyId,
-    
+
     #[error("Test failed! New DAO state doesn't match the old DAO state.")]
     TestFailed,
-    
+
     #[error("Failed to confirm migration of cw20_stake")]
     DontMigrateCw20,
-    
+
     #[error("Failed to verify DAO core module address")]
     DaoCoreNotFound,
-    
+
     #[error("Failed to verify any DAO proposal single module address")]
     DaoProposalSingleNotFound,
 }
