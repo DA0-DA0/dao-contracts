@@ -11,7 +11,7 @@ export interface InstantiateMsg {
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
-  instantiate_payroll_contract: {
+  instantiate_native_payroll_contract: {
     code_id: number;
     instantiate_msg: InstantiateMsg;
     label: string;

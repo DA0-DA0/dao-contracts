@@ -191,7 +191,7 @@ export interface CwPayrollFactoryInterface extends CwPayrollFactoryReadOnlyInter
     msg: Binary;
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  instantiatePayrollContract: ({
+  instantiateNativePayrollContract: ({
     codeId,
     instantiateMsg,
     label
@@ -213,7 +213,7 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
     this.sender = sender;
     this.contractAddress = contractAddress;
     this.receive = this.receive.bind(this);
-    this.instantiatePayrollContract = this.instantiatePayrollContract.bind(this);
+    this.instantiateNativePayrollContract = this.instantiateNativePayrollContract.bind(this);
     this.updateOwnership = this.updateOwnership.bind(this);
   }
 
@@ -234,7 +234,7 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
       }
     }, fee, memo, funds);
   };
-  instantiatePayrollContract = async ({
+  instantiateNativePayrollContract = async ({
     codeId,
     instantiateMsg,
     label
@@ -244,7 +244,7 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
     label: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      instantiate_payroll_contract: {
+      instantiate_native_payroll_contract: {
         code_id: codeId,
         instantiate_msg: instantiateMsg,
         label
