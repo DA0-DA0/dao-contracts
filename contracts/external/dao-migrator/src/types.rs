@@ -89,13 +89,12 @@ impl ModulesAddrs {
             .iter()
             .find_map(|x| {
                 if let Err(err) = deps.api.addr_validate(x.as_ref()) {
-                    Some(Err(err))
+                    Some(Err(ContractError::StdError(err)))
                 } else {
                     None
                 }
             })
-            .unwrap_or(Ok(()))?;
-        Ok(())
+            .unwrap_or(Ok(()))    
     }
 }
 

@@ -104,7 +104,7 @@ fn execute_migration_v1_v2(
     v1_code_ids: V1CodeIds,
     v2_code_ids: V2CodeIds,
 ) -> Result<Response, ContractError> {
-    // List of matching code ids (TESTNET) and the migration msg of each one of them.
+    // List of code ids pairs we got and the migration msg of each one of them.
     let proposal_pair = CodeIdPair::new(
         v1_code_ids.proposal_single,
         v2_code_ids.proposal_single,
@@ -136,7 +136,9 @@ fn execute_migration_v1_v2(
     let mut proposal_error: Option<ContractError> = None;
     let mut modules_addrs = ModulesAddrs::default();
 
+    // --------------------
     // verify voting module
+    // --------------------
     let voting_module: Addr = deps.querier.query_wasm_smart(
         info.sender.clone(),
         &dao_core::msg::QueryMsg::VotingModule {},
@@ -204,6 +206,9 @@ fn execute_migration_v1_v2(
         return Err(ContractError::VotingModuleNotFound);
     }
 
+    // -----------------------
+    // verify proposal modules
+    // -----------------------
     // We take all the proposal modules of the DAO.
     let proposal_modules: Vec<ProposalModule> = deps.querier.query_wasm_smart(
         info.sender,
@@ -232,8 +237,8 @@ fn execute_migration_v1_v2(
             return false;
         };
 
+        // check if Code id is valid DAO DAO code id
         if proposal_code_id == proposal_pair.v1_code_id {
-            // Code id is valid DAO DAO code id, lets create a migration msg
             msgs.push(WasmMsg::Migrate {
                 contract_addr: module.address.to_string(),
                 new_code_id: proposal_pair.v2_code_id,
@@ -286,9 +291,8 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
     match reply.id {
         V1_V2_REPLY_ID => {
-            let old_state = TEST_STATE.load(deps.storage)?;
-            let modules_addrs = MODULES_ADDRS.load(deps.storage)?;
-            test_state(deps.as_ref(), old_state, modules_addrs)?;
+            // This is called after we got all the migrations successfully
+            test_state(deps.as_ref())?;
 
             Ok(Response::default()
                 .add_attribute("action", "migrate")
@@ -362,11 +366,9 @@ fn query_state_v2(deps: Deps, module_addrs: ModulesAddrs) -> Result<TestState, C
     })
 }
 
-fn test_state(
-    deps: Deps,
-    old_state: TestState,
-    modules_addrs: ModulesAddrs,
-) -> Result<(), ContractError> {
+fn test_state(deps: Deps) -> Result<(), ContractError> {
+    let old_state = TEST_STATE.load(deps.storage)?;
+    let modules_addrs = MODULES_ADDRS.load(deps.storage)?;
     let new_state = query_state_v2(deps, modules_addrs)?;
 
     if new_state == old_state {
