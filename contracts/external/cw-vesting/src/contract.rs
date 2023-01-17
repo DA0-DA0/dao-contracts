@@ -35,10 +35,10 @@ pub fn instantiate(
     let vp = match msg.params.denom {
         UncheckedDenom::Native(ref denom) => {
             // Validate all vesting payment params
-            let checked_params = msg.clone().params.into_checked(deps.as_ref())?;
+            let checked_params = msg.params.clone().into_checked(deps.as_ref())?;
 
             // Check amount sent matches amount in vesting payment
-            if checked_params.amount != must_pay(&info, &checked_params.denom.to_string())? {
+            if checked_params.amount != must_pay(&info, denom)? {
                 return Err(ContractError::AmountDoesNotMatch);
             }
 
@@ -132,7 +132,7 @@ pub fn execute_receive_cw20(
             }
 
             // Check that the Cw20 specified in the denom *must be* matches sender
-            if info.sender != vesting_payment.denom.to_string() {
+            if !vesting_payment.denom.is_cw20(&info.sender) {
                 return Err(ContractError::Cw20DoesNotMatch);
             }
 

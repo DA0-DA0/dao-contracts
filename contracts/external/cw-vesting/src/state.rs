@@ -9,10 +9,10 @@ use wynd_utils::Curve;
 
 #[cw_serde]
 pub struct UncheckedVestingParams {
-    pub recipient: String,
-    pub amount: Uint128,
-    pub denom: UncheckedDenom,
-    pub vesting_schedule: Curve,
+    pub recipient: String,       // address
+    pub amount: Uint128,         // non-zero
+    pub denom: UncheckedDenom,   // valid
+    pub vesting_schedule: Curve, // high == amount && low == 0
     pub title: Option<String>,
     pub description: Option<String>,
 }
@@ -29,6 +29,10 @@ pub struct CheckedVestingParams {
 
 impl UncheckedVestingParams {
     pub fn into_checked(self, deps: Deps) -> Result<CheckedVestingParams, ContractError> {
+        if self.amount.is_zero() {
+            return Err(ContractError::NothingToVest);
+        }
+
         // Check vesting schedule
         self.assert_schedule_vests_amount()?;
 
@@ -60,12 +64,13 @@ impl UncheckedVestingParams {
     pub fn assert_schedule_vests_amount(&self) -> Result<(), ContractError> {
         self.vesting_schedule.validate_monotonic_decreasing()?;
         let (low, high) = self.vesting_schedule.range();
-        if low != 0 {
-            Err(ContractError::NeverFullyVested)
-        } else if high > self.amount.u128() {
-            Err(ContractError::VestsMoreThanSent)
-        } else {
+        if low == 0 && high == self.amount.u128() {
             Ok(())
+        } else if low != 0 {
+            Err(ContractError::NeverFullyVested)
+        } else {
+            // high != amount
+            Err(ContractError::VestsDifferently)
         }
     }
 }
@@ -156,7 +161,7 @@ mod tests {
             description: None,
         };
         let err = params.into_checked(deps.as_ref()).unwrap_err();
-        assert_eq!(err, ContractError::VestsMoreThanSent);
+        assert_eq!(err, ContractError::VestsDifferently);
     }
 
     #[test]

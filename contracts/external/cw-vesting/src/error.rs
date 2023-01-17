@@ -84,8 +84,11 @@ pub enum ContractError {
     #[error("This account is unauthorized to perform the transaction")]
     Unauthorized,
 
-    #[error("The transfer tries to vest more tokens than it sends")]
-    VestsMoreThanSent,
+    #[error("The transfer tries to vest a different amount of tokens than it sends")]
+    VestsDifferently,
+
+    #[error("Nothing to vest, amount is zero")]
+    NothingToVest,
 
     #[error("Vesting Payment has been cancelled by contract owner")]
     VestingPaymentCanceled,
