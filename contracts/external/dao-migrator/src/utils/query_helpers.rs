@@ -1,26 +1,9 @@
-use cosmwasm_std::StdResult;
 use cw_utils::Expiration;
 use dao_voting::{
     status::Status,
     threshold::{PercentageThreshold, Threshold},
     voting::Votes,
 };
-
-pub(crate) fn derive_proposal_module_prefix(mut dividend: usize) -> StdResult<String> {
-    dividend += 1;
-    // Pre-allocate string
-    let mut prefix = String::with_capacity(10);
-    loop {
-        let remainder = (dividend - 1) % 26;
-        dividend = (dividend - remainder) / 26;
-        let remainder_str = std::str::from_utf8(&[(remainder + 65) as u8])?.to_owned();
-        prefix.push_str(&remainder_str);
-        if dividend == 0 {
-            break;
-        }
-    }
-    Ok(prefix.chars().rev().collect())
-}
 
 pub(crate) fn v1_expiration_to_v2(v1: cw_utils_v1::Expiration) -> Expiration {
     match v1 {

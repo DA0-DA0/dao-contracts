@@ -28,8 +28,8 @@ pub enum ContractError {
     #[error("Failed to confirm migration of cw20_stake")]
     DontMigrateCw20,
 
-    #[error("Failed to verify DAO core module address")]
-    DaoCoreNotFound,
+    #[error("Failed to verify DAO voting module address")]
+    VotingModuleNotFound,
 
     #[error("Failed to verify any DAO proposal single module address")]
     DaoProposalSingleNotFound,

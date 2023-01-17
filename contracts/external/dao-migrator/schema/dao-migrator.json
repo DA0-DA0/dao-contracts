@@ -1,5 +1,5 @@
 {
-  "contract_name": "dao-proposal-single",
+  "contract_name": "dao-migrator",
   "contract_version": "2.0.0-beta",
   "idl_version": "1.0.0",
   "instantiate": {

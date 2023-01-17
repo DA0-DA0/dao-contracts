@@ -1,20 +1,36 @@
 use cosmwasm_std::{to_binary, Addr, Uint128, WasmMsg};
 use cw20::Cw20Coin;
-use cw_multi_test::{next_block, App, Executor};
+use cw_multi_test::{next_block, App, AppResponse, Executor};
+use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_testing::contracts::{
+    dao_core_contract, dao_voting_cw4_contract, proposal_single_contract,
+};
 
-use super::helpers::{InitDaoDataV1, SENDER_ADDR};
+use crate::{
+    testing::helpers::dao_voting_cw20_staked_contract,
+    types::{MigrationParams, V1CodeIds, V2CodeIds},
+};
+
+use super::helpers::{migrator_contract, InitDaoDataV1, SENDER_ADDR};
 
 /// Instantiate a basic DAO with proposal and voting modules.
-pub fn init_dao_v1(mut app: App, data: Option<InitDaoDataV1>) -> (Addr, Addr, Addr, Addr, Addr) {
-    let data = data.unwrap_or(InitDaoDataV1::default());
+pub fn init_dao_v1(mut app: App, data: Option<InitDaoDataV1>) -> (App, Addr, Addr, V1CodeIds) {
+    let data = data.unwrap_or_default();
     let sender = Addr::unchecked(SENDER_ADDR);
 
-    // Store codes
-    let proposal_code = app.store_code(data.proposal_code);
+    // Store v1 codes
     let core_code = app.store_code(data.core_code);
+    let proposal_code = app.store_code(data.proposal_code);
     let cw20_code = app.store_code(data.cw20_code);
     let cw20_stake_code = app.store_code(data.cw20_stake_code);
-    let voting_code = app.store_code(data.voting_code);
+    let cw20_voting_code = app.store_code(data.cw20_voting_code);
+
+    let v1_code_ids = V1CodeIds {
+        proposal_single: proposal_code,
+        cw4_voting: 9999,
+        cw20_stake: cw20_stake_code,
+        cw20_staked_balances_voting: cw20_voting_code,
+    };
 
     let initial_balances = vec![Cw20Coin {
         address: SENDER_ADDR.to_string(),
@@ -33,7 +49,7 @@ pub fn init_dao_v1(mut app: App, data: Option<InitDaoDataV1>) -> (Addr, Addr, Ad
                 automatically_add_cw20s: false,
                 automatically_add_cw721s: true,
                 voting_module_instantiate_info: cw_core_v1::msg::ModuleInstantiateInfo {
-                    code_id: voting_code,
+                    code_id: cw20_voting_code,
                     msg: to_binary(&dao_voting_cw20_staked::msg::InstantiateMsg {
                         active_threshold: None,
                         token_info: dao_voting_cw20_staked::msg::TokenInfo::New {
@@ -129,7 +145,7 @@ pub fn init_dao_v1(mut app: App, data: Option<InitDaoDataV1>) -> (Addr, Addr, Ad
         sender.clone(),
         token_addr.clone(),
         &cw20::Cw20ExecuteMsg::Send {
-            contract: staking_addr.clone().into_string(),
+            contract: staking_addr.to_string(),
             amount: Uint128::new(1),
             msg: to_binary(&cw20_stake::msg::ReceiveMsg::Stake {}).unwrap(),
         },
@@ -175,7 +191,7 @@ pub fn init_dao_v1(mut app: App, data: Option<InitDaoDataV1>) -> (Addr, Addr, Ad
     .unwrap();
 
     app.execute_contract(
-        sender.clone(),
+        sender,
         proposal_addr.clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 1 },
         &[],
@@ -195,17 +211,94 @@ pub fn init_dao_v1(mut app: App, data: Option<InitDaoDataV1>) -> (Addr, Addr, Ad
     assert_eq!(
         tokens,
         vec![cw_core_v1::query::Cw20BalanceResponse {
-            addr: token_addr.clone(),
+            addr: token_addr,
             balance: Uint128::new(100),
         }]
     );
 
-    (
-        core_addr,
+    (app, core_addr, proposal_addr, v1_code_ids)
+}
+
+fn execute_migration(
+    mut app: App,
+    core_addr: Addr,
+    proposal_addr: Addr,
+    v1_code_ids: V1CodeIds,
+) -> Result<AppResponse, anyhow::Error> {
+    let sender = Addr::unchecked(SENDER_ADDR);
+    let migrator_code_id = app.store_code(migrator_contract());
+    let v2_core_code_id = app.store_code(dao_core_contract());
+    let v2_proposal_code = app.store_code(proposal_single_contract());
+    let v2_cw4_voting = app.store_code(dao_voting_cw4_contract());
+    let v2_cw20_voting = app.store_code(dao_voting_cw20_staked_contract());
+
+    println!("contract id: {:?}", v2_proposal_code);
+    let v2_code_ids = V2CodeIds {
+        proposal_single: v2_proposal_code,
+        cw4_voting: v2_cw4_voting,
+        cw20_stake: v1_code_ids.cw20_stake,
+        cw20_staked_balances_voting: v2_cw20_voting,
+    };
+
+    app.execute_contract(
+        sender.clone(),
+        proposal_addr.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
+            title: "t2".to_string(),
+            description: "d2".to_string(),
+            msgs: vec![
+                WasmMsg::Migrate {
+                    contract_addr: core_addr.to_string(),
+                    new_code_id: v2_core_code_id,
+                    msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
+                }
+                .into(),
+                WasmMsg::Execute {
+                    contract_addr: core_addr.to_string(),
+                    msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateProposalModules {
+                        to_add: vec![ModuleInstantiateInfo {
+                            code_id: migrator_code_id,
+                            msg: to_binary(&crate::msg::InstantiateMsg {
+                                sub_daos: None,
+                                migration_params: MigrationParams {
+                                    migrate_stake_cw20_manager: Some(true),
+                                    close_proposal_on_execution_failure: true,
+                                    pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                                },
+                                v1_code_ids,
+                                v2_code_ids,
+                            })
+                            .unwrap(),
+                            admin: Some(Admin::CoreModule {}),
+                            label: "migrator".to_string(),
+                        }],
+                        to_disable: vec![],
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into(),
+            ],
+        },
+        &[],
+    ).unwrap();
+
+    app.execute_contract(
+        sender.clone(),
+        proposal_addr.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
+            proposal_id: 2,
+            vote: voting_v1::Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        sender,
         proposal_addr,
-        voting_addr,
-        token_addr,
-        staking_addr,
+        &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 2 },
+        &[],
     )
 }
 
@@ -216,5 +309,8 @@ fn test_migration_v1_v2() {
     // ----
     // instantiate a v1 DAO
     // ----
-    let (core_addr, proposal_addr, voting_addr, token_addr, staking_addr) = init_dao_v1(app, None);
+    let (app, core_addr, proposal_addr, v1_code_ids) = init_dao_v1(app, None);
+
+    let res = execute_migration(app, core_addr, proposal_addr, v1_code_ids).unwrap();
+    println!("{:?}", res)
 }
