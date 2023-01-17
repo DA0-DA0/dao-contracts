@@ -12,9 +12,12 @@ export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
   instantiate_native_payroll_contract: {
-    code_id: number;
     instantiate_msg: InstantiateMsg;
     label: string;
+  };
+} | {
+  update_code_id: {
+    vesting_code_id: number;
   };
 } | {
   update_ownership: Action;
@@ -111,8 +114,9 @@ export type QueryMsg = {
   };
 } | {
   ownership: {};
+} | {
+  code_id: {};
 };
-export interface MigrateMsg {}
 export type Addr = string;
 export type ArrayOfAddr = Addr[];
 export interface OwnershipForAddr {

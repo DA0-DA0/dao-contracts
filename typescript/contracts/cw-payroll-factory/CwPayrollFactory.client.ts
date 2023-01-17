@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, Binary, UncheckedDenom, Curve, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, MigrateMsg, Addr, ArrayOfAddr, OwnershipForAddr } from "./CwPayrollFactory.types";
+import { InstantiateMsg, ExecuteMsg, Uint128, Binary, UncheckedDenom, Curve, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, Addr, ArrayOfAddr, OwnershipForAddr } from "./CwPayrollFactory.types";
 export interface CwPayrollFactoryReadOnlyInterface {
   contractAddress: string;
   listVestingContracts: ({
@@ -60,6 +60,7 @@ export interface CwPayrollFactoryReadOnlyInterface {
     startBefore?: string;
   }) => Promise<ArrayOfAddr>;
   ownership: () => Promise<OwnershipForAddr>;
+  codeId: () => Promise<Uint64>;
 }
 export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInterface {
   client: CosmWasmClient;
@@ -75,6 +76,7 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
     this.listVestingContractsByRecipient = this.listVestingContractsByRecipient.bind(this);
     this.listVestingContractsByRecipientReverse = this.listVestingContractsByRecipientReverse.bind(this);
     this.ownership = this.ownership.bind(this);
+    this.codeId = this.codeId.bind(this);
   }
 
   listVestingContracts = async ({
@@ -178,6 +180,11 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
       ownership: {}
     });
   };
+  codeId = async (): Promise<Uint64> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      code_id: {}
+    });
+  };
 }
 export interface CwPayrollFactoryInterface extends CwPayrollFactoryReadOnlyInterface {
   contractAddress: string;
@@ -192,13 +199,16 @@ export interface CwPayrollFactoryInterface extends CwPayrollFactoryReadOnlyInter
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   instantiateNativePayrollContract: ({
-    codeId,
     instantiateMsg,
     label
   }: {
-    codeId: number;
     instantiateMsg: InstantiateMsg;
     label: string;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  updateCodeId: ({
+    vestingCodeId
+  }: {
+    vestingCodeId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
@@ -214,6 +224,7 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
     this.contractAddress = contractAddress;
     this.receive = this.receive.bind(this);
     this.instantiateNativePayrollContract = this.instantiateNativePayrollContract.bind(this);
+    this.updateCodeId = this.updateCodeId.bind(this);
     this.updateOwnership = this.updateOwnership.bind(this);
   }
 
@@ -235,19 +246,27 @@ export class CwPayrollFactoryClient extends CwPayrollFactoryQueryClient implemen
     }, fee, memo, funds);
   };
   instantiateNativePayrollContract = async ({
-    codeId,
     instantiateMsg,
     label
   }: {
-    codeId: number;
     instantiateMsg: InstantiateMsg;
     label: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       instantiate_native_payroll_contract: {
-        code_id: codeId,
         instantiate_msg: instantiateMsg,
         label
+      }
+    }, fee, memo, funds);
+  };
+  updateCodeId = async ({
+    vestingCodeId
+  }: {
+    vestingCodeId: number;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_code_id: {
+        vesting_code_id: vestingCodeId
       }
     }, fee, memo, funds);
   };

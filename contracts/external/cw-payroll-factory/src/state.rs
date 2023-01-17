@@ -4,6 +4,7 @@ use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 
 /// Temporarily holds the address of the instantiator for use in submessages
 pub const TMP_INSTANTIATOR_INFO: Item<Addr> = Item::new("tmp_instantiator_info");
+pub const VESTING_CODE_ID: Item<u64> = Item::new("pci");
 
 #[cw_serde]
 pub struct VestingContract {

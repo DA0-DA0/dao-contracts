@@ -6,12 +6,20 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "InstantiateMsg",
     "type": "object",
+    "required": [
+      "vesting_code_id"
+    ],
     "properties": {
       "owner": {
         "type": [
           "string",
           "null"
         ]
+      },
+      "vesting_code_id": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       }
     },
     "additionalProperties": false
@@ -43,21 +51,39 @@
           "instantiate_native_payroll_contract": {
             "type": "object",
             "required": [
-              "code_id",
               "instantiate_msg",
               "label"
             ],
             "properties": {
-              "code_id": {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
               "instantiate_msg": {
                 "$ref": "#/definitions/InstantiateMsg"
               },
               "label": {
                 "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Callable only by the current owner. Updates the code ID used while instantiating vesting contracts.",
+        "type": "object",
+        "required": [
+          "update_code_id"
+        ],
+        "properties": {
+          "update_code_id": {
+            "type": "object",
+            "required": [
+              "vesting_code_id"
+            ],
+            "properties": {
+              "vesting_code_id": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               }
             },
             "additionalProperties": false
@@ -630,17 +656,33 @@
           }
         },
         "additionalProperties": false
+      },
+      {
+        "description": "Returns the code ID currently being used to instantiate vesting contracts.",
+        "type": "object",
+        "required": [
+          "code_id"
+        ],
+        "properties": {
+          "code_id": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       }
     ]
   },
-  "migrate": {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "MigrateMsg",
-    "type": "object",
-    "additionalProperties": false
-  },
+  "migrate": null,
   "sudo": null,
   "responses": {
+    "code_id": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "uint64",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "list_vesting_contracts": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Array_of_Addr",

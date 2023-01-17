@@ -21,8 +21,8 @@ use cw_vesting::{
 };
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{vesting_contracts, VestingContract, TMP_INSTANTIATOR_INFO};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
+use crate::state::{vesting_contracts, VestingContract, TMP_INSTANTIATOR_INFO, VESTING_CODE_ID};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-payroll-factory";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -38,8 +38,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
-
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    VESTING_CODE_ID.save(deps.storage, &msg.vesting_code_id)?;
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("creator", info.sender))
@@ -56,12 +56,12 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => execute_receive_cw20(env, deps, info, msg),
         ExecuteMsg::InstantiateNativePayrollContract {
             instantiate_msg,
-            code_id,
             label,
-        } => {
-            execute_instantiate_native_payroll_contract(deps, info, instantiate_msg, code_id, label)
-        }
+        } => execute_instantiate_native_payroll_contract(deps, info, instantiate_msg, label),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
+        ExecuteMsg::UpdateCodeId { vesting_code_id } => {
+            execute_update_code_id(deps, info, vesting_code_id)
+        }
     }
 }
 
@@ -83,9 +83,8 @@ pub fn execute_receive_cw20(
     match msg {
         ReceiveMsg::InstantiatePayrollContract {
             instantiate_msg,
-            code_id,
             label,
-        } => instantiate_contract(deps, sender, None, instantiate_msg, code_id, label),
+        } => instantiate_contract(deps, sender, None, instantiate_msg, label),
     }
 }
 
@@ -93,20 +92,12 @@ pub fn execute_instantiate_native_payroll_contract(
     deps: DepsMut,
     info: MessageInfo,
     instantiate_msg: PayrollInstantiateMsg,
-    code_id: u64,
     label: String,
 ) -> Result<Response, ContractError> {
     // Save instantiator info for use in reply
     TMP_INSTANTIATOR_INFO.save(deps.storage, &info.sender)?;
 
-    instantiate_contract(
-        deps,
-        info.sender,
-        Some(info.funds),
-        instantiate_msg,
-        code_id,
-        label,
-    )
+    instantiate_contract(deps, info.sender, Some(info.funds), instantiate_msg, label)
 }
 
 /// `sender` here refers to the initiator of the vesting, not the
@@ -118,7 +109,6 @@ pub fn instantiate_contract(
     sender: Addr,
     funds: Option<Vec<Coin>>,
     instantiate_msg: PayrollInstantiateMsg,
-    code_id: u64,
     label: String,
 ) -> Result<Response, ContractError> {
     // Check sender is contract owner if set
@@ -140,6 +130,8 @@ pub fn instantiate_contract(
             expected: ownership.owner.map(|a| a.into_string()),
         });
     }
+
+    let code_id = VESTING_CODE_ID.load(deps.storage)?;
 
     // Instantiate the specified contract with owner as the admin.
     let instantiate = WasmMsg::Instantiate {
@@ -165,6 +157,18 @@ pub fn execute_update_owner(
 ) -> Result<Response, ContractError> {
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::default().add_attributes(ownership.into_attributes()))
+}
+
+pub fn execute_update_code_id(
+    deps: DepsMut,
+    info: MessageInfo,
+    vesting_code_id: u64,
+) -> Result<Response, ContractError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    VESTING_CODE_ID.save(deps.storage, &vesting_code_id)?;
+    Ok(Response::default()
+        .add_attribute("action", "update_code_id")
+        .add_attribute("vesting_code_id", vesting_code_id.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -286,6 +290,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             Ok(to_binary(&res)?)
         }
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
+        QueryMsg::CodeId {} => to_binary(&VESTING_CODE_ID.load(deps.storage)?),
     }
 }
 
@@ -340,11 +345,4 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
         }
         _ => Err(ContractError::UnknownReplyID {}),
     }
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
-    // Set contract to version to latest
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    Ok(Response::default())
 }

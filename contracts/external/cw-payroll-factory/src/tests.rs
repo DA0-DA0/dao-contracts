@@ -1,11 +1,8 @@
-use cosmwasm_std::{
-    coins,
-    testing::{mock_dependencies, mock_env},
-    to_binary, Addr, Empty, Uint128,
-};
+use cosmwasm_std::{coins, to_binary, Addr, Empty, Uint128};
 use cw20::{Cw20Coin, Cw20ExecuteMsg};
 use cw_denom::UncheckedDenom;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_ownable::OwnershipError;
 use cw_vesting::{
     msg::{InstantiateMsg as PayrollInstantiateMsg, QueryMsg as PayrollQueryMsg},
     state::{UncheckedVestingParams, VestingPayment, VestingPaymentStatus},
@@ -13,8 +10,7 @@ use cw_vesting::{
 use wynd_utils::Curve;
 
 use crate::{
-    contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, ReceiveMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg},
     state::VestingContract,
     ContractError,
 };
@@ -61,6 +57,7 @@ pub fn test_instantiate_native_payroll_contract() {
     // Instantiate factory with only Alice allowed to instantiate payroll contracts
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
+        vesting_code_id: cw_vesting_code_id,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -109,7 +106,6 @@ pub fn test_instantiate_native_payroll_contract() {
                 description: None,
             },
         },
-        code_id: cw_vesting_code_id,
         label: "Payroll".to_string(),
     };
 
@@ -248,6 +244,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
 
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
+        vesting_code_id: cw_vesting_code_id,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -295,7 +292,6 @@ pub fn test_instantiate_cw20_payroll_contract() {
         factory_addr.clone(),
         &ExecuteMsg::InstantiateNativePayrollContract {
             instantiate_msg: instantiate_payroll_msg.clone(),
-            code_id: cw_vesting_code_id,
             label: "Payroll".to_string(),
         },
         &coins(amount.into(), NATIVE_DENOM),
@@ -311,7 +307,6 @@ pub fn test_instantiate_cw20_payroll_contract() {
                 amount: instantiate_payroll_msg.params.amount,
                 msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
-                    code_id: cw_vesting_code_id,
                     label: "Payroll".to_string(),
                 })
                 .unwrap(),
@@ -355,16 +350,6 @@ pub fn test_instantiate_cw20_payroll_contract() {
 }
 
 #[test]
-pub fn test_migrate_update_version() {
-    let mut deps = mock_dependencies();
-    cw2::set_contract_version(&mut deps.storage, "my-contract", "old-version").unwrap();
-    migrate(deps.as_mut(), mock_env(), MigrateMsg {}).unwrap();
-    let version = cw2::get_contract_version(&deps.storage).unwrap();
-    assert_eq!(version.version, CONTRACT_VERSION);
-    assert_eq!(version.contract, CONTRACT_NAME);
-}
-
-#[test]
 fn test_instantiate_wrong_ownership_native() {
     let mut app = App::default();
     let code_id = app.store_code(factory_contract());
@@ -374,6 +359,7 @@ fn test_instantiate_wrong_ownership_native() {
     // is alice or none and the sender is alice.
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
+        vesting_code_id: cw_vesting_code_id,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -404,7 +390,6 @@ fn test_instantiate_wrong_ownership_native() {
                         description: None,
                     },
                 },
-                code_id: cw_vesting_code_id,
                 label: "vesting".to_string(),
             },
             &[],
@@ -434,7 +419,6 @@ fn test_instantiate_wrong_ownership_native() {
                         description: None,
                     },
                 },
-                code_id: cw_vesting_code_id,
                 label: "vesting".to_string(),
             },
             &[],
@@ -483,6 +467,7 @@ fn test_instantiate_wrong_owner_cw20() {
 
     let instantiate = InstantiateMsg {
         owner: Some(ALICE.to_string()),
+        vesting_code_id: cw_vesting_code_id,
     };
     let factory_addr = app
         .instantiate_contract(
@@ -524,7 +509,6 @@ fn test_instantiate_wrong_owner_cw20() {
                 amount: instantiate_payroll_msg.params.amount,
                 msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
-                    code_id: cw_vesting_code_id,
                     label: "Payroll".to_string(),
                 })
                 .unwrap(),
@@ -541,4 +525,101 @@ fn test_instantiate_wrong_owner_cw20() {
             expected: Some(ALICE.to_string())
         }
     )
+}
+
+#[test]
+fn test_update_vesting_code_id() {
+    let mut app = App::default();
+    let code_id = app.store_code(factory_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
+    let cw_vesting_code_two = app.store_code(cw_vesting_contract());
+
+    // Instantiate factory with only Alice allowed to instantiate payroll contracts
+    let instantiate = InstantiateMsg {
+        owner: Some(ALICE.to_string()),
+        vesting_code_id: cw_vesting_code_id,
+    };
+    let factory_addr = app
+        .instantiate_contract(
+            code_id,
+            Addr::unchecked("CREATOR"),
+            &instantiate,
+            &[],
+            "cw-admin-factory",
+            None,
+        )
+        .unwrap();
+
+    // Update the code ID to a new one.
+    app.execute_contract(
+        Addr::unchecked(ALICE),
+        factory_addr.clone(),
+        &ExecuteMsg::UpdateCodeId {
+            vesting_code_id: cw_vesting_code_two,
+        },
+        &[],
+    )
+    .unwrap();
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(BOB),
+            factory_addr.clone(),
+            &ExecuteMsg::UpdateCodeId {
+                vesting_code_id: cw_vesting_code_two,
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::Ownable(OwnershipError::NotOwner));
+
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ALICE.to_string(),
+            amount: coins(INITIAL_BALANCE, NATIVE_DENOM),
+        }
+    }))
+    .unwrap();
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    let instantiate_payroll_msg = ExecuteMsg::InstantiateNativePayrollContract {
+        instantiate_msg: PayrollInstantiateMsg {
+            owner: Some(ALICE.to_string()),
+            params: UncheckedVestingParams {
+                recipient: BOB.to_string(),
+                amount: Uint128::new(1000000),
+                denom: unchecked_denom,
+                vesting_schedule,
+                title: None,
+                description: None,
+            },
+        },
+        label: "Payroll".to_string(),
+    };
+
+    let res = app
+        .execute_contract(
+            Addr::unchecked(ALICE),
+            factory_addr,
+            &instantiate_payroll_msg,
+            &coins(amount.into(), NATIVE_DENOM),
+        )
+        .unwrap();
+
+    // Check that the contract was instantiated using the new code ID.
+    let instantiate_event = &res.events[2];
+    assert_eq!(instantiate_event.ty, "instantiate");
+    let cw_vesting_addr = instantiate_event.attributes[0].value.clone();
+    let info = app
+        .wrap()
+        .query_wasm_contract_info(cw_vesting_addr)
+        .unwrap();
+    assert_eq!(info.code_id, cw_vesting_code_two);
 }

@@ -6,6 +6,7 @@ use cw_vesting::msg::InstantiateMsg as PayrollInstantiateMsg;
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
+    pub vesting_code_id: u64,
 }
 
 #[cw_ownable]
@@ -16,9 +17,12 @@ pub enum ExecuteMsg {
     /// Instantiates a new vesting contract that is funded by a native token.
     InstantiateNativePayrollContract {
         instantiate_msg: PayrollInstantiateMsg,
-        code_id: u64,
         label: String,
     },
+
+    /// Callable only by the current owner. Updates the code ID used
+    /// while instantiating vesting contracts.
+    UpdateCodeId { vesting_code_id: u64 },
 }
 
 // Receiver setup
@@ -27,7 +31,6 @@ pub enum ReceiveMsg {
     /// Funds a vesting contract with a cw20 token
     InstantiatePayrollContract {
         instantiate_msg: PayrollInstantiateMsg,
-        code_id: u64,
         label: String,
     },
 }
@@ -78,7 +81,8 @@ pub enum QueryMsg {
     /// Returns info about the contract ownership, if set
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
-}
 
-#[cw_serde]
-pub struct MigrateMsg {}
+    /// Returns the code ID currently being used to instantiate vesting contracts.
+    #[returns(::std::primitive::u64)]
+    CodeId {},
+}
