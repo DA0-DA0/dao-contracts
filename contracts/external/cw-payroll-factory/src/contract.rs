@@ -4,6 +4,7 @@ use cosmwasm_std::{
     from_binary, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Order, Reply,
     Response, StdResult, SubMsg, WasmMsg,
 };
+use cosmwasm_std::{Addr, Coin};
 
 use cw2::set_contract_version;
 use cw20::Cw20ExecuteMsg;
@@ -84,7 +85,7 @@ pub fn execute_receive_cw20(
             instantiate_msg,
             code_id,
             label,
-        } => instantiate_contract(deps, info, instantiate_msg, code_id, label),
+        } => instantiate_contract(deps, sender, None, instantiate_msg, code_id, label),
     }
 }
 
@@ -98,22 +99,46 @@ pub fn execute_instantiate_native_payroll_contract(
     // Save instantiator info for use in reply
     TMP_INSTANTIATOR_INFO.save(deps.storage, &info.sender)?;
 
-    instantiate_contract(deps, info, instantiate_msg, code_id, label)
+    instantiate_contract(
+        deps,
+        info.sender,
+        Some(info.funds),
+        instantiate_msg,
+        code_id,
+        label,
+    )
 }
 
+/// `sender` here refers to the initiator of the vesting, not the
+/// literal sender of the message. Practically speaking, this means
+/// that it should be set to the sender of the cw20's being vested,
+/// and not the cw20 contract when dealing with non-native vesting.
 pub fn instantiate_contract(
     deps: DepsMut,
-    info: MessageInfo,
+    sender: Addr,
+    funds: Option<Vec<Coin>>,
     instantiate_msg: PayrollInstantiateMsg,
     code_id: u64,
     label: String,
 ) -> Result<Response, ContractError> {
     // Check sender is contract owner if set
     let ownership = cw_ownable::get_ownership(deps.storage)?;
-    if let Some(owner) = ownership.owner {
-        if info.sender != owner {
-            return Err(ContractError::Unauthorized {});
-        }
+    if ownership
+        .owner
+        .as_ref()
+        .map_or(false, |owner| *owner != sender)
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+    // No owner is always allowed. If an owner is specified, it must
+    // exactly match the owner of the contract.
+    if instantiate_msg.owner.as_deref().map_or(false, |i| {
+        ownership.owner.as_ref().map_or(true, |o| o.as_str() != i)
+    }) {
+        return Err(ContractError::OwnerMissmatch {
+            actual: instantiate_msg.owner,
+            expected: ownership.owner.map(|a| a.into_string()),
+        });
     }
 
     // Instantiate the specified contract with owner as the admin.
@@ -121,7 +146,7 @@ pub fn instantiate_contract(
         admin: instantiate_msg.owner.clone(),
         code_id,
         msg: to_binary(&instantiate_msg)?,
-        funds: info.funds,
+        funds: funds.unwrap_or_default(),
         label,
     };
 

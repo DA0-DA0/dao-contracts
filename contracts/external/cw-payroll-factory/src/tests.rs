@@ -246,8 +246,9 @@ pub fn test_instantiate_cw20_payroll_contract() {
         )
         .unwrap();
 
-    // Instantiate factory contract with no owner specified
-    let instantiate = InstantiateMsg { owner: None };
+    let instantiate = InstantiateMsg {
+        owner: Some(ALICE.to_string()),
+    };
     let factory_addr = app
         .instantiate_contract(
             code_id,
@@ -361,4 +362,183 @@ pub fn test_migrate_update_version() {
     let version = cw2::get_contract_version(&deps.storage).unwrap();
     assert_eq!(version.version, CONTRACT_VERSION);
     assert_eq!(version.contract, CONTRACT_NAME);
+}
+
+#[test]
+fn test_instantiate_wrong_ownership_native() {
+    let mut app = App::default();
+    let code_id = app.store_code(factory_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
+
+    // Alice is the owner. Contracts are only allowed if their owner
+    // is alice or none and the sender is alice.
+    let instantiate = InstantiateMsg {
+        owner: Some(ALICE.to_string()),
+    };
+    let factory_addr = app
+        .instantiate_contract(
+            code_id,
+            Addr::unchecked("CREATOR"),
+            &instantiate,
+            &[],
+            "cw-admin-factory",
+            None,
+        )
+        .unwrap();
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            factory_addr.clone(),
+            &ExecuteMsg::InstantiateNativePayrollContract {
+                instantiate_msg: PayrollInstantiateMsg {
+                    owner: Some(ALICE.to_string()),
+                    params: UncheckedVestingParams {
+                        recipient: BOB.to_string(),
+                        amount: Uint128::new(10),
+                        denom: UncheckedDenom::Native("tbucks".to_string()),
+                        vesting_schedule: Curve::Constant {
+                            y: Uint128::new(10),
+                        },
+                        title: None,
+                        description: None,
+                    },
+                },
+                code_id: cw_vesting_code_id,
+                label: "vesting".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // Can't instantiate if you are not the owner.
+    assert_eq!(err, ContractError::Unauthorized {});
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ALICE),
+            factory_addr,
+            &ExecuteMsg::InstantiateNativePayrollContract {
+                instantiate_msg: PayrollInstantiateMsg {
+                    owner: Some("ekez".to_string()),
+                    params: UncheckedVestingParams {
+                        recipient: BOB.to_string(),
+                        amount: Uint128::new(10),
+                        denom: UncheckedDenom::Native("tbucks".to_string()),
+                        vesting_schedule: Curve::Constant {
+                            y: Uint128::new(10),
+                        },
+                        title: None,
+                        description: None,
+                    },
+                },
+                code_id: cw_vesting_code_id,
+                label: "vesting".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // Can't instantiate with an owner who is not the factory owner.
+    assert_eq!(
+        err,
+        ContractError::OwnerMissmatch {
+            actual: Some("ekez".to_string()),
+            expected: Some(ALICE.to_string())
+        }
+    );
+}
+
+#[test]
+fn test_instantiate_wrong_owner_cw20() {
+    let mut app = App::default();
+    let code_id = app.store_code(factory_contract());
+    let cw20_code_id = app.store_code(cw20_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
+
+    let cw20_addr = app
+        .instantiate_contract(
+            cw20_code_id,
+            Addr::unchecked(ALICE),
+            &cw20_base::msg::InstantiateMsg {
+                name: "cw20 token".to_string(),
+                symbol: "cwtwenty".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: ALICE.to_string(),
+                    amount: Uint128::new(INITIAL_BALANCE),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "cw20-base",
+            None,
+        )
+        .unwrap();
+
+    let instantiate = InstantiateMsg {
+        owner: Some(ALICE.to_string()),
+    };
+    let factory_addr = app
+        .instantiate_contract(
+            code_id,
+            Addr::unchecked("CREATOR"),
+            &instantiate,
+            &[],
+            "cw-admin-factory",
+            None,
+        )
+        .unwrap();
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
+
+    // Basic linear vesting schedule
+    let start_time = app.block_info().time.plus_seconds(100).seconds();
+    let end_time = app.block_info().time.plus_seconds(300).seconds();
+    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+
+    let instantiate_payroll_msg = PayrollInstantiateMsg {
+        owner: Some(BOB.to_string()),
+        params: UncheckedVestingParams {
+            recipient: BOB.to_string(),
+            amount: Uint128::new(1000000),
+            denom: unchecked_denom,
+            vesting_schedule,
+            title: None,
+            description: None,
+        },
+    };
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ALICE),
+            cw20_addr,
+            &Cw20ExecuteMsg::Send {
+                contract: factory_addr.to_string(),
+                amount: instantiate_payroll_msg.params.amount,
+                msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
+                    instantiate_msg: instantiate_payroll_msg,
+                    code_id: cw_vesting_code_id,
+                    label: "Payroll".to_string(),
+                })
+                .unwrap(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::OwnerMissmatch {
+            actual: Some(BOB.to_string()),
+            expected: Some(ALICE.to_string())
+        }
+    )
 }
