@@ -9,10 +9,7 @@ use crate::state::{
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo,
-    Order, Response, StdError, StdResult, Uint128, WasmMsg,
-};
+use cosmwasm_std::{to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg};
 use cw2::set_contract_version;
 use cw_paginate::{paginate_map};
 use std::borrow::Borrow;
@@ -33,7 +30,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     // store the height
-    DISTRIBUTION_HEIGHT.save(deps.storage, &env.block.height)?;
+    DISTRIBUTION_HEIGHT.save(deps.storage, &msg.distribution_height)?;
 
     // get the funding expiration and store it
     let funding_expiration_height = msg.funding_period.after(&env.block);
@@ -147,7 +144,8 @@ pub fn execute_fund_native(
 
     Ok(Response::default()
         .add_attribute("method", "fund_native")
-        .add_attributes(attributes))
+        .add_attributes(attributes)
+    )
 }
 
 fn get_entitlement(

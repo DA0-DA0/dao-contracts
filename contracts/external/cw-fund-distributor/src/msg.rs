@@ -8,6 +8,8 @@ pub struct InstantiateMsg {
     pub voting_contract: String,
     // period after which the funds can be claimed
     pub funding_period: Duration,
+    // snapshot for evaluating the voting power
+    pub distribution_height: u64,
 }
 
 #[cw_serde]

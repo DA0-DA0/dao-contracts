@@ -127,6 +127,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             &InstantiateMsg {
                 voting_contract: voting_address.to_string(),
                 funding_period: Duration::Height(10),
+                distribution_height: app.block_info().height,
             },
             &[],
             "distribution contract",
@@ -242,6 +243,7 @@ fn test_instantiate_fails_given_invalid_voting_contract_address() {
             &InstantiateMsg {
                 voting_contract: "invalid address".to_string(),
                 funding_period: Duration::Height(10),
+                distribution_height: app.block_info().height,
             },
             &[],
             "distribution contract",
@@ -304,6 +306,7 @@ fn test_instantiate_fails_zero_voting_power() {
             &InstantiateMsg {
                 voting_contract: voting_address.to_string(),
                 funding_period: Duration::Height(10),
+                distribution_height: app.block_info().height,
             },
             &[],
             "distribution contract",

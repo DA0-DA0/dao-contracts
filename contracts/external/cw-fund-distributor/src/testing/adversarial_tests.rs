@@ -143,6 +143,7 @@ fn setup_test(initial_balances: Vec<Cw20Coin>) -> BaseTest {
             &InstantiateMsg {
                 voting_contract: voting_address.to_string(),
                 funding_period: Duration::Height(10),
+                distribution_height: app.block_info().height,
             },
             &[],
             "distribution contract",
