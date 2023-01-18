@@ -21,6 +21,7 @@ pub enum ExecuteMsg {
     /// success. This module will remove itself on this message's
     /// completion regardless of the migration's success.
     MigrateV1ToV2 {
+        sub_daos: Option<Vec<SubDao>>,
         params: MigrationParams,
         v1_code_ids: V1CodeIds,
         v2_code_ids: V2CodeIds,

@@ -1139,10 +1139,12 @@ dependencies = [
 name = "dao-migrator"
 version = "2.0.0-beta"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-core",
+ "cw-core-interface",
  "cw-multi-test",
  "cw-proposal-single",
  "cw-storage-plus 0.16.0",
@@ -1151,6 +1153,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
+ "cw20-stake 0.2.6",
  "cw20-stake 2.0.0-beta",
  "cw20-staked-balance-voting",
  "dao-core",

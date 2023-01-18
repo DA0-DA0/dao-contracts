@@ -7,13 +7,13 @@ use cosmwasm_std::{
     StdResult, SubMsg, WasmMsg,
 };
 use cw2::set_contract_version;
-use dao_core::state::ProposalModule;
+use dao_core::{query::SubDao, state::ProposalModule};
 use dao_interface::ModuleInstantiateCallback;
 
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{MODULES_ADDRS, TEST_STATE},
+    state::{CORE_ADDR, MODULES_ADDRS, TEST_STATE},
     types::{
         CodeIdPair, MigrationMsgs, MigrationParams, ModulesAddrs, TestState, V1CodeIds, V2CodeIds,
     },
@@ -37,46 +37,23 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    let mut msgs: Vec<CosmosMsg> = vec![WasmMsg::Execute {
-        contract_addr: info.sender.to_string(),
-        msg: to_binary(&ExecuteMsg::MigrateV1ToV2 {
-            params: msg.migration_params,
-            v1_code_ids: msg.v1_code_ids,
-            v2_code_ids: msg.v2_code_ids,
-        })?,
-        funds: vec![],
-    }
-    .into()];
+    CORE_ADDR.save(deps.storage, &info.sender.to_string())?;
 
-    // Add sub daos to core
-    if let Some(to_add) = msg.sub_daos {
-        msgs.push(
-            WasmMsg::Execute {
+    Ok(
+        Response::default().set_data(to_binary(&ModuleInstantiateCallback {
+            msgs: vec![WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateSubDaos {
-                    to_add,
-                    to_remove: vec![],
+                msg: to_binary(&ExecuteMsg::MigrateV1ToV2 {
+                    sub_daos: msg.sub_daos,
+                    params: msg.migration_params,
+                    v1_code_ids: msg.v1_code_ids,
+                    v2_code_ids: msg.v2_code_ids,
                 })?,
                 funds: vec![],
             }
-            .into(),
-        )
-    };
-
-    // FINALLY remove the migrator from the core
-    msgs.push(
-        WasmMsg::Execute {
-            contract_addr: info.sender.to_string(),
-            msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateProposalModules {
-                to_add: vec![],
-                to_disable: vec![env.contract.address.to_string()],
-            })?,
-            funds: vec![],
-        }
-        .into(),
-    );
-
-    Ok(Response::default().set_data(to_binary(&ModuleInstantiateCallback { msgs })?))
+            .into()],
+        })?),
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -88,10 +65,11 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::MigrateV1ToV2 {
+            sub_daos,
             params,
             v1_code_ids,
             v2_code_ids,
-        } => execute_migration_v1_v2(deps, env, info, params, v1_code_ids, v2_code_ids),
+        } => execute_migration_v1_v2(deps, env, info, sub_daos, params, v1_code_ids, v2_code_ids),
         ExecuteMsg::Conjunction { operands } => Ok(Response::default().add_messages(operands)),
     }
 }
@@ -100,6 +78,7 @@ fn execute_migration_v1_v2(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    sub_daos: Option<Vec<SubDao>>,
     migration_params: MigrationParams,
     v1_code_ids: V1CodeIds,
     v2_code_ids: V2CodeIds,
@@ -132,7 +111,7 @@ fn execute_migration_v1_v2(
         MigrationMsgs::Cw20Stake(cw20_stake::msg::MigrateMsg::FromV1 {}),
     ); // cw20-stake -> cw20_stake
 
-    let mut msgs: Vec<WasmMsg> = vec![];
+    let mut msgs: Vec<CosmosMsg> = vec![];
     let mut proposal_error: Option<ContractError> = None;
     let mut modules_addrs = ModulesAddrs::default();
 
@@ -158,11 +137,14 @@ fn execute_migration_v1_v2(
         .into_iter()
         .find(|x| x.v1_code_id == voting_code_id)
     {
-        msgs.push(WasmMsg::Migrate {
-            contract_addr: voting_module.to_string(),
-            new_code_id: voting_pair.v2_code_id,
-            msg: to_binary(&voting_pair.migrate_msg).unwrap(),
-        });
+        msgs.push(
+            WasmMsg::Migrate {
+                contract_addr: voting_module.to_string(),
+                new_code_id: voting_pair.v2_code_id,
+                msg: to_binary(&voting_pair.migrate_msg).unwrap(),
+            }
+            .into(),
+        );
         modules_addrs.voting = Some(voting_module.to_string());
 
         // If voting module is staked cw20, we check that they confirmed migration
@@ -196,11 +178,14 @@ fn execute_migration_v1_v2(
                 });
             }
 
-            msgs.push(WasmMsg::Migrate {
-                contract_addr: cw20_staked_addr.to_string(),
-                new_code_id: staking_pair.v2_code_id,
-                msg: to_binary(&staking_pair.migrate_msg).unwrap(),
-            });
+            msgs.push(
+                WasmMsg::Migrate {
+                    contract_addr: cw20_staked_addr.to_string(),
+                    new_code_id: staking_pair.v2_code_id,
+                    msg: to_binary(&staking_pair.migrate_msg).unwrap(),
+                }
+                .into(),
+            );
         }
     } else {
         return Err(ContractError::VotingModuleNotFound);
@@ -211,7 +196,7 @@ fn execute_migration_v1_v2(
     // -----------------------
     // We take all the proposal modules of the DAO.
     let proposal_modules: Vec<ProposalModule> = deps.querier.query_wasm_smart(
-        info.sender,
+        info.sender.clone(),
         &dao_core::msg::QueryMsg::ProposalModules {
             start_after: None,
             limit: None,
@@ -239,11 +224,14 @@ fn execute_migration_v1_v2(
 
         // check if Code id is valid DAO DAO code id
         if proposal_code_id == proposal_pair.v1_code_id {
-            msgs.push(WasmMsg::Migrate {
-                contract_addr: module.address.to_string(),
-                new_code_id: proposal_pair.v2_code_id,
-                msg: to_binary(&proposal_pair.migrate_msg).unwrap(),
-            });
+            msgs.push(
+                WasmMsg::Migrate {
+                    contract_addr: module.address.to_string(),
+                    new_code_id: proposal_pair.v2_code_id,
+                    msg: to_binary(&proposal_pair.migrate_msg).unwrap(),
+                }
+                .into(),
+            );
             modules_addrs.proposals.push(module.address.to_string());
         } else {
             // Return false because we couldn't find the code id on our list.
@@ -268,17 +256,32 @@ fn execute_migration_v1_v2(
         let state = query_state_v1(deps.as_ref(), modules_addrs)?;
         TEST_STATE.save(deps.storage, &state)?;
 
-        // Create the conjuction msg.
-        let conjuction_msg = SubMsg::reply_on_success(
+        // Add sub daos to core
+        if let Some(to_add) = sub_daos {
+            msgs.push(
+                WasmMsg::Execute {
+                    contract_addr: info.sender.to_string(),
+                    msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateSubDaos {
+                        to_add,
+                        to_remove: vec![],
+                    })?,
+                    funds: vec![],
+                }
+                .into(),
+            )
+        };
+
+        // Create the ExecuteProposalHook msg.
+        let proposal_hook_msg = SubMsg::reply_on_success(
             WasmMsg::Execute {
-                contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::Conjunction { operands: msgs })?,
+                contract_addr: info.sender.to_string(),
+                msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook { msgs })?,
                 funds: vec![],
             },
             V1_V2_REPLY_ID,
         );
 
-        Ok(Response::default().add_submessage(conjuction_msg))
+        Ok(Response::default().add_submessage(proposal_hook_msg))
     }
 }
 
@@ -288,13 +291,34 @@ pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, ContractError> {
     match reply.id {
         V1_V2_REPLY_ID => {
+            let core_addr = CORE_ADDR.load(deps.storage)?;
             // This is called after we got all the migrations successfully
             test_state(deps.as_ref())?;
 
+            // FINALLY remove the migrator from the core
+            // Reason we do it now, is because we first need to test the state
+            // and only then delete our module if everything worked out.
+            let remove_msg = WasmMsg::Execute {
+                contract_addr: core_addr.clone(),
+                msg: to_binary(&dao_core::msg::ExecuteMsg::ExecuteProposalHook {
+                    msgs: vec![WasmMsg::Execute {
+                        contract_addr: core_addr,
+                        msg: to_binary(&dao_core::msg::ExecuteMsg::UpdateProposalModules {
+                            to_add: vec![],
+                            to_disable: vec![env.contract.address.to_string()],
+                        })?,
+                        funds: vec![],
+                    }
+                    .into()],
+                })?,
+                funds: vec![],
+            };
+
             Ok(Response::default()
+                .add_message(remove_msg)
                 .add_attribute("action", "migrate")
                 .add_attribute("status", "success"))
         }

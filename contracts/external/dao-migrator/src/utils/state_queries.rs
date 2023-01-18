@@ -171,7 +171,7 @@ pub fn query_proposal_v2(
     let proposals = proposals_addrs
         .into_iter()
         .map(|proposal_addr| {
-            let proposal: dao_proposal_single::proposal::SingleChoiceProposal = deps
+            let proposals: dao_proposal_single::query::ProposalListResponse = deps
                 .querier
                 .query_wasm_smart(
                     proposal_addr,
@@ -181,6 +181,8 @@ pub fn query_proposal_v2(
                     },
                 )
                 .unwrap();
+
+            let proposal = proposals.proposals.first().unwrap().proposal.clone();
 
             if last_proposal.is_none() {
                 last_proposal = Some(SingleProposalData {

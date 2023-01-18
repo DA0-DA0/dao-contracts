@@ -7,7 +7,7 @@ use dao_testing::contracts::{
 };
 
 use crate::{
-    testing::helpers::dao_voting_cw20_staked_contract,
+    testing::helpers::{dao_voting_cw20_staked_contract, v2_cw20_stake_contract},
     types::{MigrationParams, V1CodeIds, V2CodeIds},
 };
 
@@ -231,12 +231,13 @@ fn execute_migration(
     let v2_proposal_code = app.store_code(proposal_single_contract());
     let v2_cw4_voting = app.store_code(dao_voting_cw4_contract());
     let v2_cw20_voting = app.store_code(dao_voting_cw20_staked_contract());
+    let v2_cw20_stake = app.store_code(v2_cw20_stake_contract());
 
     println!("contract id: {:?}", v2_proposal_code);
     let v2_code_ids = V2CodeIds {
         proposal_single: v2_proposal_code,
         cw4_voting: v2_cw4_voting,
-        cw20_stake: v1_code_ids.cw20_stake,
+        cw20_stake: v2_cw20_stake,
         cw20_staked_balances_voting: v2_cw20_voting,
     };
 
