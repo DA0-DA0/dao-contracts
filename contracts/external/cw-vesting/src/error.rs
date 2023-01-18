@@ -90,6 +90,9 @@ pub enum ContractError {
     #[error("Nothing to vest, amount is zero")]
     NothingToVest,
 
+    #[error("Cannot stake more than what is vesting")]
+    StakingMoreThanVesting,
+
     #[error("Vesting Payment has been cancelled by contract owner")]
     VestingPaymentCanceled,
 

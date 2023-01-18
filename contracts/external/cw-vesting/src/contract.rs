@@ -357,7 +357,7 @@ pub fn execute_delegate(
         }
 
         if vp.amount < vp.staked_amount + amount {
-            Err(ContractError::StakingMoreThanVesting {})
+            return Err(ContractError::StakingMoreThanVesting);
         }
 
         // Update amounts
