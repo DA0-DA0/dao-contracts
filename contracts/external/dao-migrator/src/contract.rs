@@ -70,7 +70,6 @@ pub fn execute(
             v1_code_ids,
             v2_code_ids,
         } => execute_migration_v1_v2(deps, env, info, sub_daos, params, v1_code_ids, v2_code_ids),
-        ExecuteMsg::Conjunction { operands } => Ok(Response::default().add_messages(operands)),
     }
 }
 
