@@ -6,7 +6,7 @@ at a given block height.
 
 Possible use cases may involve:
 - Dissolving a DAO and distributing its treasury to members prior to shutting down
-- Paying out dividends to DAO members
+- Distributing funds among DAO members
 - Funding subDAOs
 
 ## Funding Period

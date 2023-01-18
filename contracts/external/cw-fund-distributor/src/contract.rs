@@ -185,143 +185,139 @@ pub fn execute_claim_cw20s(
     deps: DepsMut,
     env: Env,
     sender: Addr,
-    token_vec: Option<Vec<String>>,
+    tokens: Vec<String>,
 ) -> Result<Response, ContractError> {
     let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
     // if current block indicates funding period, return an error
     if !funding_deadline.is_expired(&env.block) {
         return Err(ContractError::ClaimDuringFundingPeriod {});
     }
+    if tokens.is_empty() {
+        return Err(ContractError::EmptyClaim {});
+    }
 
     let relative_share = get_relative_share(deps.as_ref().borrow(), sender.clone());
 
-    let mut response = Response::default();
+    let messages: Vec<WasmMsg> = tokens
+        .into_iter()
+        .map(|addr| {
+            // get the balance of distributor at instantiation
+            let bal = CW20_BALANCES
+                .load(deps.storage, Addr::unchecked(addr.clone()))
+                .unwrap();
+            // check for any previous claims
+            let previous_claim = CW20_CLAIMS
+                .load(
+                    deps.storage,
+                    (sender.clone(), Addr::unchecked(addr.clone())),
+                )
+                .unwrap_or_default();
 
-    match token_vec {
-        Some(tokens) => {
-            let messages: Vec<WasmMsg> = tokens
-                .into_iter()
-                .map(|addr| {
-                    // get the balance of distributor at instantiation
-                    let bal = CW20_BALANCES
-                        .load(deps.storage, Addr::unchecked(addr.clone()))
-                        .unwrap();
-                    // check for any previous claims
-                    let previous_claim = CW20_CLAIMS
-                        .load(
-                            deps.storage,
-                            (sender.clone(), Addr::unchecked(addr.clone())),
-                        )
-                        .unwrap_or_default();
+            // get % share of sender and subtract any previous claims
+            let entitlement = get_entitlement(bal, relative_share, previous_claim);
 
-                    // get % share of sender and subtract any previous claims
-                    let entitlement = get_entitlement(bal, relative_share, previous_claim);
+            // reflect the new total claim amount
+            CW20_CLAIMS
+                .update(
+                    deps.storage,
+                    (sender.clone(), Addr::unchecked(addr.clone())),
+                    |claim| {
+                        claim
+                            .unwrap_or_default()
+                            .checked_add(entitlement)
+                            .map_err(StdError::overflow)
+                    },
+                )
+                .unwrap();
 
-                    // reflect the new total claim amount
-                    CW20_CLAIMS
-                        .update(
-                            deps.storage,
-                            (sender.clone(), Addr::unchecked(addr.clone())),
-                            |claim| {
-                                claim
-                                    .unwrap_or_default()
-                                    .checked_add(entitlement)
-                                    .map_err(StdError::overflow)
-                            },
-                        )
-                        .unwrap();
+            // add the transfer message
+            (
+                WasmMsg::Execute {
+                    contract_addr: addr,
+                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                        recipient: sender.to_string(),
+                        amount: entitlement,
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                },
+                entitlement,
+            )
+        })
+        // filter out zero entitlement messages
+        .filter(|(_, entitlement)| !entitlement.is_zero())
+        .map(|(msg, _)| msg)
+        .collect();
 
-                    // add the transfer message
-                    (
-                        WasmMsg::Execute {
-                            contract_addr: addr,
-                            msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                                recipient: sender.to_string(),
-                                amount: entitlement,
-                            })
-                            .unwrap(),
-                            funds: vec![],
-                        },
-                        entitlement,
-                    )
-                })
-                // filter out zero entitlement messages
-                .filter(|(_, entitlement)| !entitlement.is_zero())
-                .map(|(msg, _)| msg)
-                .collect();
-            response = response.add_messages(messages);
-        }
-        None => return Err(ContractError::EmptyClaim {}),
-    }
-
-    Ok(response
+    Ok(Response::default()
         .add_attribute("method", "claim_cw20s")
-        .add_attribute("sender", sender))
+        .add_attribute("sender", sender)
+        .add_messages(messages)
+    )
 }
 
 pub fn execute_claim_natives(
     deps: DepsMut,
     env: Env,
     sender: Addr,
-    denoms: Option<Vec<String>>,
+    denoms: Vec<String>,
 ) -> Result<Response, ContractError> {
     let funding_deadline = FUNDING_PERIOD_EXPIRATION.load(deps.storage)?;
     // if current block indicates funding period, return an error
     if !funding_deadline.is_expired(&env.block) {
         return Err(ContractError::ClaimDuringFundingPeriod {});
     }
+    if denoms.is_empty() {
+        return Err(ContractError::EmptyClaim {});
+    }
 
     let relative_share = get_relative_share(deps.as_ref().borrow(), sender.clone());
 
-    let mut response = Response::default();
+    let messages: Vec<_> = denoms
+        .into_iter()
+        .map(|addr| {
+            // get the balance of distributor at instantiation
+            let bal = NATIVE_BALANCES.load(deps.storage, addr.clone()).unwrap();
 
-    if let Some(denom_list) = denoms {
-        let messages: Vec<_> = denom_list
-            .into_iter()
-            .map(|addr| {
-                // get the balance of distributor at instantiation
-                let bal = NATIVE_BALANCES.load(deps.storage, addr.clone()).unwrap();
+            // check for any previous claims
+            let previous_claim = NATIVE_CLAIMS
+                .load(deps.storage, (sender.clone(), addr.clone()))
+                .unwrap_or_default();
 
-                // check for any previous claims
-                let previous_claim = NATIVE_CLAIMS
-                    .load(deps.storage, (sender.clone(), addr.clone()))
-                    .unwrap_or_default();
+            // get % share of sender and subtract any previous claims
+            let entitlement = get_entitlement(bal, relative_share, previous_claim);
 
-                // get % share of sender and subtract any previous claims
-                let entitlement = get_entitlement(bal, relative_share, previous_claim);
+            // reflect the new total claim amount
+            NATIVE_CLAIMS
+                .update(deps.storage, (sender.clone(), addr.clone()), |claim| {
+                    claim
+                        .unwrap_or_default()
+                        .checked_add(entitlement)
+                        .map_err(StdError::overflow)
+                })
+                .unwrap();
 
-                // reflect the new total claim amount
-                NATIVE_CLAIMS
-                    .update(deps.storage, (sender.clone(), addr.clone()), |claim| {
-                        claim
-                            .unwrap_or_default()
-                            .checked_add(entitlement)
-                            .map_err(StdError::overflow)
-                    })
-                    .unwrap();
+            // collect the transfer messages
+            (
+                BankMsg::Send {
+                    to_address: sender.to_string(),
+                    amount: vec![Coin {
+                        denom: addr,
+                        amount: entitlement,
+                    }],
+                },
+                entitlement,
+            )
+        })
+        // filter out zero entitlement messages
+        .filter(|(_, entitlement)| !entitlement.is_zero())
+        .map(|(msg, _)| msg)
+        .collect();
 
-                // collect the transfer messages
-                (
-                    BankMsg::Send {
-                        to_address: sender.to_string(),
-                        amount: vec![Coin {
-                            denom: addr,
-                            amount: entitlement,
-                        }],
-                    },
-                    entitlement,
-                )
-            })
-            // filter out zero entitlement messages
-            .filter(|(_, entitlement)| !entitlement.is_zero())
-            .map(|(msg, _)| msg)
-            .collect();
-        response = response.add_messages(messages);
-    }
-
-    Ok(response
+    Ok(Response::default()
         .add_attribute("method", "claim_natives")
-        .add_attribute("sender", sender))
+        .add_attribute("sender", sender)
+        .add_messages(messages))
 }
 
 pub fn execute_claim_all(deps: DepsMut, env: Env, sender: Addr) -> Result<Response, ContractError> {

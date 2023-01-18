@@ -6,7 +6,7 @@ use cw_utils::Duration;
 pub struct InstantiateMsg {
     // To determine voting power
     pub voting_contract: String,
-    // period (in blocks) after which the funds can be claimed
+    // period after which the funds can be claimed
     pub funding_period: Duration,
 }
 
@@ -14,8 +14,8 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Receive(cw20::Cw20ReceiveMsg),
     FundNative {},
-    ClaimCW20 { tokens: Option<Vec<String>> },
-    ClaimNatives { denoms: Option<Vec<String>> },
+    ClaimCW20 { tokens: Vec<String> },
+    ClaimNatives { denoms: Vec<String> },
     ClaimAll {},
 }
 

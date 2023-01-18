@@ -621,7 +621,7 @@ pub fn test_claim_cw20() {
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimCW20 {
-            tokens: Some(vec![token_address.to_string()]),
+            tokens: vec![token_address.to_string()],
         },
         &[],
     )
@@ -690,7 +690,7 @@ pub fn test_claim_cw20_twice() {
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimCW20 {
-            tokens: Some(vec![token_address.to_string()]),
+            tokens: vec![token_address.to_string()],
         },
         &[],
     )
@@ -700,7 +700,7 @@ pub fn test_claim_cw20_twice() {
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimCW20 {
-            tokens: Some(vec![token_address.to_string()]),
+            tokens: vec![token_address.to_string()],
         },
         &[],
     )
@@ -758,7 +758,7 @@ pub fn test_claim_cw20s_empty_list() {
         .execute_contract(
             Addr::unchecked("bekauz"),
             distributor_address,
-            &ClaimCW20 { tokens: None },
+            &ClaimCW20 { tokens: vec![] },
             &[],
         )
         .unwrap_err()
@@ -803,7 +803,7 @@ pub fn test_claim_natives_twice() {
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimNatives {
-            denoms: Some(vec![FEE_DENOM.to_string()]),
+            denoms: vec![FEE_DENOM.to_string()],
         },
         &[],
     )
@@ -812,7 +812,7 @@ pub fn test_claim_natives_twice() {
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimNatives {
-            denoms: Some(vec![FEE_DENOM.to_string()]),
+            denoms: vec![FEE_DENOM.to_string()],
         },
         &[],
     )
@@ -866,7 +866,7 @@ pub fn test_claim_natives() {
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimNatives {
-            denoms: Some(vec![FEE_DENOM.to_string()]),
+            denoms: vec![FEE_DENOM.to_string()],
         },
         &[],
     )
@@ -996,15 +996,19 @@ pub fn test_claim_empty_list_of_denoms() {
 
     app.update_block(|mut block| block.height += 11);
 
-    app.execute_contract(
+    let err: ContractError = app.execute_contract(
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimNatives {
-            denoms: Some(vec![]),
+            denoms: vec![],
         },
         &[],
     )
+    .unwrap_err()
+    .downcast()
     .unwrap();
+
+    assert!(matches!(err, ContractError::EmptyClaim {}));
 
     let user_balance_after_claim = query_native_balance(&mut app, Addr::unchecked("bekauz"));
     assert_eq!(Uint128::zero(), user_balance_after_claim.amount);
@@ -1049,7 +1053,7 @@ pub fn test_redistribute_unclaimed_funds() {
         Addr::unchecked("bekauz"),
         distributor_address.clone(),
         &ClaimNatives {
-            denoms: Some(vec![FEE_DENOM.to_string()]),
+            denoms: vec![FEE_DENOM.to_string()],
         },
         &[],
     )
@@ -1097,7 +1101,7 @@ pub fn test_redistribute_unclaimed_funds() {
         Addr::unchecked("bekauz"),
         distributor_address,
         &ClaimNatives {
-            denoms: Some(vec![FEE_DENOM.to_string()]),
+            denoms: vec![FEE_DENOM.to_string()],
         },
         &[],
     )
@@ -1196,7 +1200,7 @@ pub fn test_claim_cw20_during_funding_period() {
             Addr::unchecked("bekauz"),
             distributor_address.clone(),
             &ClaimCW20 {
-                tokens: Some(vec![token_address.to_string()]),
+                tokens: vec![token_address.to_string()],
             },
             &[],
         )
@@ -1242,7 +1246,7 @@ pub fn test_claim_natives_during_funding_period() {
             Addr::unchecked("bekauz"),
             distributor_address.clone(),
             &ClaimNatives {
-                denoms: Some(vec![FEE_DENOM.to_string()]),
+                denoms: vec![FEE_DENOM.to_string()],
             },
             &[],
         )
@@ -1283,7 +1287,7 @@ pub fn test_claim_all_during_funding_period() {
             Addr::unchecked("bekauz"),
             distributor_address,
             &ClaimNatives {
-                denoms: Some(vec![FEE_DENOM.to_string()]),
+                denoms: vec![FEE_DENOM.to_string()],
             },
             &[],
         )
