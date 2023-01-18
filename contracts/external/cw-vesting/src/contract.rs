@@ -356,11 +356,12 @@ pub fn execute_delegate(
             return Err(ContractError::NotEnoughFunds {});
         }
 
-        // Check that amount has not already been staked
-        vp.amount.checked_sub(vp.staked_amount + amount)?;
+        if vp.amount < vp.staked_amount + amount {
+            Err(ContractError::StakingMoreThanVesting {})
+        }
 
         // Update amounts
-        vp.staked_amount += vp.staked_amount.checked_add(amount)?;
+        vp.staked_amount = vp.staked_amount.checked_add(amount)?;
         Ok(vp)
     })?;
 
