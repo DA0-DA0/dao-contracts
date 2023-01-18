@@ -94,7 +94,7 @@ impl ModulesAddrs {
                     None
                 }
             })
-            .unwrap_or(Ok(()))    
+            .unwrap_or(Ok(()))
     }
 }
 

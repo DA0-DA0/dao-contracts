@@ -1,8 +1,8 @@
 use cosmwasm_std::Empty;
 use cw_multi_test::{Contract, ContractWrapper};
 use dao_testing::contracts::{
-    cw20_base_contract, cw20_staked_balances_voting_contract,
-    v1_dao_core_contract, v1_proposal_single_contract,
+    cw20_base_contract, cw20_staked_balances_voting_contract, v1_dao_core_contract,
+    v1_proposal_single_contract,
 };
 
 pub(crate) const SENDER_ADDR: &str = "creator";
