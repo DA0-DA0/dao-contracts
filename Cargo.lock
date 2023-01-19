@@ -583,7 +583,7 @@ dependencies = [
 
 [[package]]
 name = "cw-denom"
-version = "2.0.1"
+version = "2.0.2"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
