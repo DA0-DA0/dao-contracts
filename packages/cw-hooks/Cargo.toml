@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A package for managing a set of hooks which can be accessed by their index."
+documentation = "https://docs.rs/cw-hooks"
 license = { workspace = true }
 
 [dependencies]

@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["ekez ekez@withoutdoing.com"]
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "Types and methods for CosmWasm DAO voting."
+documentation = "https://docs.rs/dao-voting"
 license = { workspace = true }
 
 [dependencies]

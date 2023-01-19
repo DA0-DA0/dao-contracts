@@ -5,6 +5,7 @@ edition = "2021"
 authors = ["ekez ekez@withoutdoing.com"]
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A package for paginating cosmwasm maps."
+documentation = "https://docs.rs/cw-paginate"
 license = { workspace = true }
 
 [dependencies]
