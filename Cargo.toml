@@ -13,7 +13,7 @@ members = [
 exclude = ["ci/configs/"]
 
 [workspace.package]
-license = "BSD-3"
+license = "BSD-3-Clause"
 
 [profile.release.package.stake-cw20-external-rewards]
 codegen-units = 1
