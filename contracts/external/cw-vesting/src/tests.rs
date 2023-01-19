@@ -498,6 +498,28 @@ fn test_happy_native_path() {
 }
 
 #[test]
+#[should_panic(expected = "The transfer will never become fully vested. Must hit 0 eventually")]
+fn test_constant_vesting_curve_fails() {
+    let mut app = setup_app();
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+
+    let vesting_schedule = Curve::Constant { y: amount };
+
+    // Fails because constant curve never fully vests
+    let TestCase { .. } = setup_test_case(
+        &mut app,
+        vesting_schedule.clone(),
+        amount,
+        unchecked_denom,
+        BOB,
+        None,
+        &coins(amount.into(), NATIVE_DENOM),
+    );
+}
+
+#[test]
 fn test_incorrect_native_funding_amount() {
     let mut app = setup_app();
 
