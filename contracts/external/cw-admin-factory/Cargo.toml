@@ -5,6 +5,7 @@ authors = ["blue-note"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A CosmWasm factory contract for instantiating a contract as its own admin."
+license = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
