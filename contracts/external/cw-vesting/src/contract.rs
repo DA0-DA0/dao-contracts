@@ -466,6 +466,7 @@ pub fn execute_redelegate(
     Ok(Response::new()
         .add_attribute("method", "redelegate")
         .add_attribute("amount", amount.to_string())
+        .add_attribute("validator", dst_validator)
         .add_message(msg))
 }
 
