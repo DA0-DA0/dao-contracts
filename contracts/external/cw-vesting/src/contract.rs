@@ -529,7 +529,11 @@ pub fn execute_set_withdraw_address(
     // Set withdraw address
     let msg = DistributionMsg::SetWithdrawAddress { address };
 
-    Ok(Response::default().add_message(msg))
+    Ok(Response::default()
+            .add_attribute("method", "set_withdraw_address")
+            .add_attribute("address", address)
+            .add_message(msg)
+        )
 }
 
 pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractError> {
