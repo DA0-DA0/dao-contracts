@@ -5,6 +5,7 @@ authors = ["ekez <ekez@withoutdoing.com>"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO proposal module for single choice (yes / no) voting."
+license = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
