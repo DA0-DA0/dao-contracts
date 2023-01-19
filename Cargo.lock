@@ -802,7 +802,7 @@ dependencies = [
 
 [[package]]
 name = "cw-vesting"
-version = "0.0.1"
+version = "2.0.1"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

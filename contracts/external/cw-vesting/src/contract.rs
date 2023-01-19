@@ -356,7 +356,7 @@ pub fn execute_delegate(
             return Err(ContractError::NotEnoughFunds {});
         }
 
-        if vp.amount < vp.staked_amount + amount {
+        if vp.amount < vp.staked_amount.checked_add(amount)? {
             return Err(ContractError::StakingMoreThanVesting);
         }
 
@@ -458,15 +458,16 @@ pub fn execute_redelegate(
 
     // Create message to delegate the underlying tokens
     let msg = StakingMsg::Redelegate {
-        src_validator,
-        dst_validator,
+        src_validator: src_validator.clone(),
+        dst_validator: dst_validator.clone(),
         amount: Coin { denom, amount },
     };
 
     Ok(Response::new()
         .add_attribute("method", "redelegate")
         .add_attribute("amount", amount.to_string())
-        .add_attribute("validator", dst_validator)
+        .add_attribute("src_validator", src_validator)
+        .add_attribute("dst_validator", dst_validator)
         .add_message(msg))
 }
 
@@ -528,13 +529,14 @@ pub fn execute_set_withdraw_address(
     }
 
     // Set withdraw address
-    let msg = DistributionMsg::SetWithdrawAddress { address };
+    let msg = DistributionMsg::SetWithdrawAddress {
+        address: address.clone(),
+    };
 
     Ok(Response::default()
-            .add_attribute("method", "set_withdraw_address")
-            .add_attribute("address", address)
-            .add_message(msg)
-        )
+        .add_attribute("method", "set_withdraw_address")
+        .add_attribute("address", address)
+        .add_message(msg))
 }
 
 pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractError> {

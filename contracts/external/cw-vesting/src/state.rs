@@ -133,7 +133,7 @@ impl VestingPayment {
     }
 }
 
-/// A map of vesting payments (ID, VestingPayment)
+/// Holds information about the vesting payment
 pub const VESTING_PAYMENT: Item<VestingPayment> = Item::new("vesting_payment");
 /// A map of staked vesting claims by validator
 pub const STAKED_VESTING_BY_VALIDATOR: Map<&str, Uint128> = Map::new("staked_vesting_by_validator");

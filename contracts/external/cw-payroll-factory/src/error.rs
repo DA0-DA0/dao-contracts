@@ -26,6 +26,6 @@ pub enum ContractError {
     #[error("{0}")]
     ParseReplyError(#[from] ParseReplyError),
 
-    #[error("An unknown reply ID was received.")]
-    UnknownReplyID {},
+    #[error("Got a submessage reply with unknown id: {id}")]
+    UnknownReplyId { id: u64 },
 }

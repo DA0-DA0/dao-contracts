@@ -343,6 +343,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 .add_attribute("new_payroll_contract", contract_addr)
                 .add_messages(msgs))
         }
-        _ => Err(ContractError::UnknownReplyID {}),
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }
 }

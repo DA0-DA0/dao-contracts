@@ -1,8 +1,8 @@
 [package]
 name = "cw-vesting"
-version = "0.0.1"
-authors = ["Vernon Johnson <vtj2105@columbia.edu>", "tjtc <meow@cron.cat>", "Jake Hartnell <jake@no-reply.com>"]
-edition = "2018"
+version = "2.0.1"
+authors = ["Jake Hartnell", "ekez <ekez@withoutdoing.com>", "blue-note"]
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
