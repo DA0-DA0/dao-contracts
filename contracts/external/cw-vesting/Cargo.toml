@@ -1,0 +1,33 @@
+[package]
+name = "cw-vesting"
+version = "2.0.1"
+authors = ["Jake Hartnell", "ekez <ekez@withoutdoing.com>", "blue-note"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true, features = ["staking"] }
+cosmwasm-schema = { workspace = true }
+cw-denom = { workspace = true }
+cw-ownable = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-paginate = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw20 = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+wynd-utils = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+cw20-base = { workspace = true }
+dao-testing = { workspace = true }

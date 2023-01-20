@@ -1,11 +1,10 @@
 [package]
-name ="cw-admin-factory"
-version = "2.0.1"
-authors = ["Jake Hartnell", "blue-note", "ekez <ekez@withoutdoing.com>"]
+name ="cw-payroll-factory"
+version = "2.0.0-beta"
+authors = ["Jake Hartnell"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
-description = "A CosmWasm factory contract for instantiating a contract as its own admin."
-license = { workspace = true }
+description = "A CosmWasm factory contract for instantiating a payroll contract."
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -18,16 +17,17 @@ library = []
 
 [dependencies]
 cosmwasm-std = { workspace = true }
-cosmwasm-storage = { workspace = true }
 cosmwasm-schema = { workspace = true }
+cw-denom = { workspace = true }
+cw-ownable = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
+cw20 = { workspace = true }
 thiserror = { workspace = true }
+cw-vesting = { workspace = true, features = ["library"] }
 cw-utils = { workspace = true }
 
 [dev-dependencies]
-cosmwasm-schema = { workspace = true }
 cw-multi-test = { workspace = true }
-dao-core = { workspace = true, features = ["library"] }
-dao-interface = { workspace = true }
 cw20-base = { workspace = true, features = ["library"] }
+wynd-utils = { workspace = true }
