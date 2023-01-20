@@ -824,8 +824,7 @@ pub fn test_claim_natives_twice() {
     let expected_balance = Uint128::new(166666);
     let user_balance_after_claim = query_native_balance(&mut app, Addr::unchecked("bekauz"));
 
-    let distributor_balance_after_claim =
-        query_native_balance(&mut app, distributor_address);
+    let distributor_balance_after_claim = query_native_balance(&mut app, distributor_address);
 
     // assert only a single claim has occurred on both
     // user and distributor level
@@ -882,8 +881,7 @@ pub fn test_claim_natives() {
     assert_eq!(expected_balance, user_balance_after_claim.amount);
 
     // assert funds have been deducted from distributor
-    let distributor_balance_after_claim =
-        query_native_balance(&mut app, distributor_address);
+    let distributor_balance_after_claim = query_native_balance(&mut app, distributor_address);
     assert_eq!(
         amount - expected_balance,
         distributor_balance_after_claim.amount
@@ -999,17 +997,16 @@ pub fn test_claim_empty_list_of_denoms() {
 
     app.update_block(|mut block| block.height += 11);
 
-    let err: ContractError = app.execute_contract(
-        Addr::unchecked("bekauz"),
-        distributor_address.clone(),
-        &ClaimNatives {
-            denoms: vec![],
-        },
-        &[],
-    )
-    .unwrap_err()
-    .downcast()
-    .unwrap();
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("bekauz"),
+            distributor_address.clone(),
+            &ClaimNatives { denoms: vec![] },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
 
     assert!(matches!(err, ContractError::EmptyClaim {}));
 
@@ -1017,8 +1014,7 @@ pub fn test_claim_empty_list_of_denoms() {
     assert_eq!(Uint128::zero(), user_balance_after_claim.amount);
 
     // assert no funds have been deducted from distributor
-    let distributor_balance_after_claim =
-        query_native_balance(&mut app, distributor_address);
+    let distributor_balance_after_claim = query_native_balance(&mut app, distributor_address);
     assert_eq!(amount, distributor_balance_after_claim.amount);
 }
 

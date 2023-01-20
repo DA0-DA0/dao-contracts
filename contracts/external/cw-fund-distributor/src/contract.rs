@@ -9,9 +9,12 @@ use crate::state::{
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Order, Response, StdError, StdResult, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo,
+    Order, Response, StdError, StdResult, Uint128, WasmMsg,
+};
 use cw2::set_contract_version;
-use cw_paginate::{paginate_map};
+use cw_paginate::paginate_map;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 
@@ -121,31 +124,28 @@ pub fn execute_fund_native(
     }
 
     // collect a list of successful funding kv pairs
-    let attributes: Vec<(String, String)> = info
-        .funds
-        .into_iter()
-        .filter(|coin| coin.amount > Uint128::zero())
-        .map(|coin| {
+    let mut attributes: Vec<(String, String)> = Vec::new();
+    for coin in info.funds {
+        if coin.amount > Uint128::zero() {
             let balance = NATIVE_BALANCES
                 .may_load(deps.storage, coin.denom.clone())
                 .unwrap_or_default();
-            match balance {
-                Some(old_amount) => NATIVE_BALANCES.save(
-                    deps.storage,
-                    coin.denom.clone(),
-                    &old_amount.checked_add(coin.amount).unwrap(),
-                ),
-                None => NATIVE_BALANCES.save(deps.storage, coin.denom.clone(), &coin.amount),
-            }
-            .unwrap();
-            (coin.denom, coin.amount.to_string())
-        })
-        .collect();
+
+            let new_amount = coin.amount;
+            // add any previous balances
+            if let Some(previous_amount) = balance {
+                new_amount
+                    .checked_add(previous_amount)
+                    .map_err(|e| ContractError::Std(StdError::from(e)))?;
+            };
+            NATIVE_BALANCES.save(deps.storage, coin.denom.clone(), &new_amount)?;
+            attributes.push((coin.denom, new_amount.to_string()));
+        }
+    }
 
     Ok(Response::default()
         .add_attribute("method", "fund_native")
-        .add_attributes(attributes)
-    )
+        .add_attributes(attributes))
 }
 
 fn get_entitlement(
@@ -250,8 +250,7 @@ pub fn execute_claim_cw20s(
     Ok(Response::default()
         .add_attribute("method", "claim_cw20s")
         .add_attribute("sender", sender)
-        .add_messages(messages)
-    )
+        .add_messages(messages))
 }
 
 pub fn execute_claim_natives(
@@ -337,7 +336,8 @@ pub fn execute_claim_all(deps: DepsMut, env: Env, sender: Addr) -> Result<Respon
         .collect();
 
     // collect transfer messages and update store
-    let cw20_transfer_msgs: Vec<WasmMsg> = cw20s.into_iter()
+    let cw20_transfer_msgs: Vec<WasmMsg> = cw20s
+        .into_iter()
         .map(|(addr, amount)| {
             let previous_claim = CW20_CLAIMS
                 .load(deps.storage, (sender.clone(), addr.clone()))
