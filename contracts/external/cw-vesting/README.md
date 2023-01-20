@@ -1,4 +1,4 @@
-# CW Payroll
+# CW Vesting
 
 This contract enables the creation of native && cw20 token streams, which allows a payment to be vested continuously over time. 
 
