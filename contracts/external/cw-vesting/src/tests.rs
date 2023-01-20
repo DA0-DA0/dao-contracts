@@ -510,7 +510,7 @@ fn test_constant_vesting_curve_fails() {
     // Fails because constant curve never fully vests
     let TestCase { .. } = setup_test_case(
         &mut app,
-        vesting_schedule.clone(),
+        vesting_schedule,
         amount,
         unchecked_denom,
         BOB,
