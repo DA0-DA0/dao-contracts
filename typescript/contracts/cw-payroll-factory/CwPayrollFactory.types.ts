@@ -117,8 +117,13 @@ export type QueryMsg = {
 } | {
   code_id: {};
 };
+export type ArrayOfVestingContract = VestingContract[];
+export interface VestingContract {
+  contract: string;
+  instantiator: string;
+  recipient: string;
+}
 export type Addr = string;
-export type ArrayOfAddr = Addr[];
 export interface OwnershipForAddr {
   owner?: Addr | null;
   pending_expiry?: Expiration | null;
