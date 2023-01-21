@@ -3,6 +3,8 @@ use cw20::Cw20ReceiveMsg;
 use cw_ownable::cw_ownable;
 use cw_vesting::msg::InstantiateMsg as PayrollInstantiateMsg;
 
+use crate::state::VestingContract;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
@@ -39,40 +41,40 @@ pub enum ReceiveMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Returns list of all vesting payment contracts
-    #[returns(Vec<::cosmwasm_std::Addr>)]
+    #[returns(Vec<VestingContract>)]
     ListVestingContracts {
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Returns list of all vesting payment contracts in reverse
-    #[returns(Vec<::cosmwasm_std::Addr>)]
+    #[returns(Vec<VestingContract>)]
     ListVestingContractsReverse {
         start_before: Option<String>,
         limit: Option<u32>,
     },
     /// Returns list of all vesting payment contracts by who instantiated them
-    #[returns(Vec<::cosmwasm_std::Addr>)]
+    #[returns(Vec<VestingContract>)]
     ListVestingContractsByInstantiator {
         instantiator: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Returns list of all vesting payment contracts by who instantiated them in reverse
-    #[returns(Vec<::cosmwasm_std::Addr>)]
+    #[returns(Vec<VestingContract>)]
     ListVestingContractsByInstantiatorReverse {
         instantiator: String,
         start_before: Option<String>,
         limit: Option<u32>,
     },
     /// Returns list of all vesting payment contracts by recipient
-    #[returns(Vec<::cosmwasm_std::Addr>)]
+    #[returns(Vec<VestingContract>)]
     ListVestingContractsByRecipient {
         recipient: String,
         start_after: Option<String>,
         limit: Option<u32>,
     },
     /// Returns list of all vesting payment contracts by recipient in reverse
-    #[returns(Vec<::cosmwasm_std::Addr>)]
+    #[returns(Vec<VestingContract>)]
     ListVestingContractsByRecipientReverse {
         recipient: String,
         start_before: Option<String>,

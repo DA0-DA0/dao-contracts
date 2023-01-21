@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { InstantiateMsg, ExecuteMsg, Uint128, Binary, UncheckedDenom, Curve, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, Addr, ArrayOfAddr, OwnershipForAddr } from "./CwPayrollFactory.types";
+import { InstantiateMsg, ExecuteMsg, Uint128, Binary, UncheckedDenom, Curve, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, QueryMsg, ArrayOfVestingContract, VestingContract, Addr, OwnershipForAddr } from "./CwPayrollFactory.types";
 export interface CwPayrollFactoryReadOnlyInterface {
   contractAddress: string;
   listVestingContracts: ({
@@ -15,14 +15,14 @@ export interface CwPayrollFactoryReadOnlyInterface {
   }: {
     limit?: number;
     startAfter?: string;
-  }) => Promise<ArrayOfAddr>;
+  }) => Promise<ArrayOfVestingContract>;
   listVestingContractsReverse: ({
     limit,
     startBefore
   }: {
     limit?: number;
     startBefore?: string;
-  }) => Promise<ArrayOfAddr>;
+  }) => Promise<ArrayOfVestingContract>;
   listVestingContractsByInstantiator: ({
     instantiator,
     limit,
@@ -31,7 +31,7 @@ export interface CwPayrollFactoryReadOnlyInterface {
     instantiator: string;
     limit?: number;
     startAfter?: string;
-  }) => Promise<ArrayOfAddr>;
+  }) => Promise<ArrayOfVestingContract>;
   listVestingContractsByInstantiatorReverse: ({
     instantiator,
     limit,
@@ -40,7 +40,7 @@ export interface CwPayrollFactoryReadOnlyInterface {
     instantiator: string;
     limit?: number;
     startBefore?: string;
-  }) => Promise<ArrayOfAddr>;
+  }) => Promise<ArrayOfVestingContract>;
   listVestingContractsByRecipient: ({
     limit,
     recipient,
@@ -49,7 +49,7 @@ export interface CwPayrollFactoryReadOnlyInterface {
     limit?: number;
     recipient: string;
     startAfter?: string;
-  }) => Promise<ArrayOfAddr>;
+  }) => Promise<ArrayOfVestingContract>;
   listVestingContractsByRecipientReverse: ({
     limit,
     recipient,
@@ -58,7 +58,7 @@ export interface CwPayrollFactoryReadOnlyInterface {
     limit?: number;
     recipient: string;
     startBefore?: string;
-  }) => Promise<ArrayOfAddr>;
+  }) => Promise<ArrayOfVestingContract>;
   ownership: () => Promise<OwnershipForAddr>;
   codeId: () => Promise<Uint64>;
 }
@@ -85,7 +85,7 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
   }: {
     limit?: number;
     startAfter?: string;
-  }): Promise<ArrayOfAddr> => {
+  }): Promise<ArrayOfVestingContract> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_vesting_contracts: {
         limit,
@@ -99,7 +99,7 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
   }: {
     limit?: number;
     startBefore?: string;
-  }): Promise<ArrayOfAddr> => {
+  }): Promise<ArrayOfVestingContract> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_vesting_contracts_reverse: {
         limit,
@@ -115,7 +115,7 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
     instantiator: string;
     limit?: number;
     startAfter?: string;
-  }): Promise<ArrayOfAddr> => {
+  }): Promise<ArrayOfVestingContract> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_vesting_contracts_by_instantiator: {
         instantiator,
@@ -132,7 +132,7 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
     instantiator: string;
     limit?: number;
     startBefore?: string;
-  }): Promise<ArrayOfAddr> => {
+  }): Promise<ArrayOfVestingContract> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_vesting_contracts_by_instantiator_reverse: {
         instantiator,
@@ -149,7 +149,7 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
     limit?: number;
     recipient: string;
     startAfter?: string;
-  }): Promise<ArrayOfAddr> => {
+  }): Promise<ArrayOfVestingContract> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_vesting_contracts_by_recipient: {
         limit,
@@ -166,7 +166,7 @@ export class CwPayrollFactoryQueryClient implements CwPayrollFactoryReadOnlyInte
     limit?: number;
     recipient: string;
     startBefore?: string;
-  }): Promise<ArrayOfAddr> => {
+  }): Promise<ArrayOfVestingContract> => {
     return this.client.queryContractSmart(this.contractAddress, {
       list_vesting_contracts_by_recipient_reverse: {
         limit,
