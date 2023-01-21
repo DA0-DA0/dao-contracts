@@ -207,7 +207,7 @@ pub fn test_claim_lots_of_native_tokens() {
 
     app.execute_contract(
         Addr::unchecked("bekauz"),
-        distributor_address.clone(),
+        distributor_address,
         &ClaimAll {},
         &[],
     )
@@ -249,7 +249,6 @@ pub fn test_claim_lots_of_cw20s() {
     // mint and fund (spam) the distributor contract with
     // a bunch of tokens
     let cw20_addresses: Vec<Addr> = (1..1000)
-        .into_iter()
         .map(|n| {
             let name = FEE_DENOM.to_owned() + &n.to_string();
             let cw20_addr = instantiate_cw20(
@@ -281,7 +280,7 @@ pub fn test_claim_lots_of_cw20s() {
 
     app.execute_contract(
         Addr::unchecked("bekauz"),
-        distributor_address.clone(),
+        distributor_address,
         &ClaimAll {},
         &[],
     )

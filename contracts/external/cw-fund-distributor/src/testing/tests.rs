@@ -284,7 +284,7 @@ fn test_instantiate_fails_zero_voting_power() {
                     name: "DAO DAO".to_string(),
                     symbol: "DAO".to_string(),
                     decimals: 6,
-                    initial_balances: initial_balances,
+                    initial_balances,
                     marketing: None,
                     staking_code_id: stake_cw20_id,
                     unstaking_duration: None,
