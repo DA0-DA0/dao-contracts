@@ -90,7 +90,7 @@ pub enum MultipleChoiceOptionType {
     Standard,
 }
 
-/// Represents unchecked multipl choice options
+/// Represents unchecked multiple choice options
 #[cw_serde]
 pub struct MultipleChoiceOptions {
     pub options: Vec<MultipleChoiceOption>,

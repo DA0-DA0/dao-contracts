@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-pre-propose-multiple",
-  "contract_version": "2.0.0-beta",
+  "contract_version": "2.0.1",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -878,7 +878,7 @@
         "additionalProperties": false
       },
       "MultipleChoiceOptions": {
-        "description": "Represents unchecked multipl choice options",
+        "description": "Represents unchecked multiple choice options",
         "type": "object",
         "required": [
           "options"

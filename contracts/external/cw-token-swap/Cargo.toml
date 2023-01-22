@@ -1,10 +1,11 @@
 [package]
 name = "cw-token-swap"
-version = "2.0.0-beta"
+version = "2.0.1"
 authors = ["ekez <ekez@withoutdoing.com>"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A CosmWasm contract for swapping native and cw20 assets."
+license = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

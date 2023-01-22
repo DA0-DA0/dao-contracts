@@ -1,8 +1,9 @@
 [package]
 name = "cw20-stake-external-rewards"
-version = "2.0.0-beta"
+version = "2.0.1"
 authors = ["Ben2x4 <Ben2x4@tutanota.com>", "ekez <ekez@withoutdoing.com>"]
 edition = "2018"
+license = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

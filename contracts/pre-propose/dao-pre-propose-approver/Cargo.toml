@@ -1,10 +1,11 @@
 [package]
 name = "dao-pre-propose-approver"
-version = "2.0.0-beta"
+version = "2.0.1"
 authors = ["ekez <ekez@withoutdoing.com>", "Jake Hartnell <no-reply@no-reply.com>"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO pre-propose module for automatically making approval proposals for dao-pre-propose-approval-single."
+license = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

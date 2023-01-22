@@ -9,17 +9,17 @@ For an overview of our contract design, see [our
 wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 
 | Audited contracts (tag: v1.0.0)                                                | Description                                            |
-|:-------------------------------------------------------------------------------|:-------------------------------------------------------|
+| :----------------------------------------------------------------------------- | :----------------------------------------------------- |
 | [dao-core](contracts/dao-core)                                                 | The core module for a DAO DAO DAO.                     |
 | [dao-proposal-single](contracts/proposal/dao-proposal-single)                  | A proposal module for single choice (yes / no) voting. |
 | [dao-voting-cw20-staked](contracts/voting/dao-voting-cw20-staked)              | A voting power module for staked governance tokens.    |
 | [dao-voting-cw4](contracts/voting/dao-voting-cw4)                              | A voting power module for multisig-style voting.       |
 | [cw20-stake](contracts/staking/cw20-stake)                                     | A contract for staking cw20 tokens.                    |
-| [cw20-stake-external-rewards](contracts/staking/cw20-stake-external-rewards)   | A contract for providing external stakinig rewards.    |
+| [cw20-stake-external-rewards](contracts/staking/cw20-stake-external-rewards)   | A contract for providing external staking rewards.     |
 | [cw20-stake-reward-distributor](contracts/staking/cw20-stake-external-rewards) | A contract for distributing rewards via stake-cw20.    |
 
 | Unaudited contracts                                                                      | Description                                                                            |
-|:-----------------------------------------------------------------------------------------|:---------------------------------------------------------------------------------------|
+| :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
 | [dao-proposal-multiple](contracts/proposal/dao-proposal-multiple)                        | A proposal module for multiple choice proposals.                                       |
 | [dao-voting-cw721-staked](contracts/voting/dao-voting-cw721-staked)                      | A voting module based on staked NFTs                                                   |
 | [dao-pre-propose-single](contracts/pre-propose/dao-pre-propose-single)                   | A pre-propose module for single choice proposals.                                      |
@@ -39,9 +39,9 @@ on the `v1.0.0` tag. An audit for the v2 contracts is forthcoming.
 ## Packages
 
 | Package                                               | Description                                                                               |
-|:------------------------------------------------------|:------------------------------------------------------------------------------------------|
+| :---------------------------------------------------- | :---------------------------------------------------------------------------------------- |
 | [cw721-controllers](packages/cw721-controllers)       | Manages claims for the [cw721 staking contract](contracts/voting/dao-voting-cw721-staked) |
-| [cw-hooks](packages/cw-hooks)                       | Shared hooks functionality.                                                               |
+| [cw-hooks](packages/cw-hooks)                         | Shared hooks functionality.                                                               |
 | [dao-interface](packages/dao-interface)               | Provides types and interfaces for interacting with DAO modules.                           |
 | [dao-macros](packages/dao-macros)                     | A collection of macros to derive DAO module interfaces on message enums.                  |
 | [dao-pre-propose-base](packages/dao-pre-propose-base) | Base package used to implement pre-propose modules.                                       |
@@ -49,8 +49,8 @@ on the `v1.0.0` tag. An audit for the v2 contracts is forthcoming.
 | [dao-testing](packages/dao-testing)                   | Common testing functions and types for DAO modules.                                       |
 | [dao-vote-hooks](packages/dao-vote-hooks)             | Interface for managing and dispatching vote hooks.                                        |
 | [dao-voting](packages/dao-voting)                     | Types and associated methods for handling voting in a CosmWasm DAO.                       |
-| [cw-denom](packages/cw-denom)                         | Uitilities for working with cw20 and native denoms.                                       |
-| [cw-paginate](packages/cw-paginate)                   | Convienence methods for paginating keys and values in a CosmWasm `Map` or `SnapshotMap`.  |
+| [cw-denom](packages/cw-denom)                         | Utilities for working with cw20 and native denoms.                                        |
+| [cw-paginate](packages/cw-paginate)                   | Convenience methods for paginating keys and values in a CosmWasm `Map` or `SnapshotMap`.  |
 
 Packages have completed audits by
 [securityDAO](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)

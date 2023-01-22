@@ -196,7 +196,7 @@ pub fn execute_propose(
 
     let expiration = config.max_voting_period.after(&env.block);
 
-    let total_power = get_total_power(deps.as_ref(), config.dao, Some(env.block.height))?;
+    let total_power = get_total_power(deps.as_ref(), &config.dao, Some(env.block.height))?;
 
     let proposal = {
         // Limit mutability to this block.
@@ -270,7 +270,7 @@ pub fn execute_execute(
         let power = get_voting_power(
             deps.as_ref(),
             info.sender.clone(),
-            config.dao.clone(),
+            &config.dao,
             Some(prop.start_height),
         )?;
         if power.is_zero() {
@@ -378,7 +378,7 @@ pub fn execute_vote(
     let vote_power = get_voting_power(
         deps.as_ref(),
         info.sender.clone(),
-        config.dao,
+        &config.dao,
         Some(prop.start_height),
     )?;
     if vote_power.is_zero() {
@@ -976,6 +976,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 &ProposalCreationPolicy::Module { addr: module },
             )?;
 
+            // per the cosmwasm docs, we shouldn't have to forward
+            // data like this, yet here we are and it does not work if
+            // we do not.
+            //
+            // <https://github.com/CosmWasm/cosmwasm/blob/main/SEMANTICS.md#handling-the-reply>
             match res.data {
                 Some(data) => Ok(Response::new()
                     .add_attribute("update_pre_propose_module", res.contract_address)

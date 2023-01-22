@@ -239,7 +239,7 @@ impl std::fmt::Display for Vote {
 pub fn get_voting_power(
     deps: Deps,
     address: Addr,
-    dao: Addr,
+    dao: &Addr,
     height: Option<u64>,
 ) -> StdResult<Uint128> {
     let response: voting::VotingPowerAtHeightResponse = deps.querier.query_wasm_smart(
@@ -253,7 +253,7 @@ pub fn get_voting_power(
 }
 
 /// A height of None will query for the current block height.
-pub fn get_total_power(deps: Deps, dao: Addr, height: Option<u64>) -> StdResult<Uint128> {
+pub fn get_total_power(deps: Deps, dao: &Addr, height: Option<u64>) -> StdResult<Uint128> {
     let response: voting::TotalPowerAtHeightResponse = deps
         .querier
         .query_wasm_smart(dao, &voting::Query::TotalPowerAtHeight { height })?;

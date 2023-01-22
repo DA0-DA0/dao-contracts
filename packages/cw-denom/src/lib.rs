@@ -78,6 +78,44 @@ impl UncheckedDenom {
 }
 
 impl CheckedDenom {
+    /// Is the `CheckedDenom` this cw20?
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use cosmwasm_std::{Addr, coin};
+    /// use cw_denom::CheckedDenom;
+    ///
+    /// let cw20 = Addr::unchecked("fleesp");
+    /// assert!(CheckedDenom::Cw20(Addr::unchecked("fleesp")).is_cw20(&cw20));
+    /// assert!(!CheckedDenom::Native("fleesp".to_string()).is_cw20(&cw20));
+    /// ```
+    pub fn is_cw20(&self, cw20: &Addr) -> bool {
+        match self {
+            CheckedDenom::Native(_) => false,
+            CheckedDenom::Cw20(a) => a == cw20,
+        }
+    }
+
+    /// Is the `CheckedDenom` this native denom?
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use cosmwasm_std::{Addr, coin};
+    /// use cw_denom::CheckedDenom;
+    ///
+    /// let coin = coin(10, "floob");
+    /// assert!(CheckedDenom::Native("floob".to_string()).is_native(&coin.denom));
+    /// assert!(!CheckedDenom::Cw20(Addr::unchecked("floob")).is_native(&coin.denom));
+    /// ```
+    pub fn is_native(&self, denom: &str) -> bool {
+        match self {
+            CheckedDenom::Native(n) => n == denom,
+            CheckedDenom::Cw20(_) => false,
+        }
+    }
+
     /// Queries WHO's balance for the denomination.
     pub fn query_balance<C: CustomQuery>(
         &self,

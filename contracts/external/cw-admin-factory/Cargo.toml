@@ -1,10 +1,11 @@
 [package]
 name ="cw-admin-factory"
-version = "2.0.0-beta"
-authors = ["blue-note"]
+version = "2.0.1"
+authors = ["Jake Hartnell", "blue-note", "ekez <ekez@withoutdoing.com>"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A CosmWasm factory contract for instantiating a contract as its own admin."
+license = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
