@@ -1,6 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Deps, Uint128};
-use dao_core::state::ProposalModule;
+use cosmwasm_std::{Addr, Uint128};
 
 use crate::ContractError;
 
@@ -68,58 +67,36 @@ impl CodeIdPair {
 #[cw_serde]
 #[derive(Default)]
 pub struct ModulesAddrs {
-    pub voting: Option<String>,
-    pub proposals: Vec<String>,
+    pub voting: Option<Addr>,
+    pub proposals: Vec<Addr>,
 }
 
 impl ModulesAddrs {
-    pub fn verify(&self, deps: Deps) -> Result<(), ContractError> {
+    pub fn verify(&self) -> Result<(), ContractError> {
         if self.voting.is_none() {
             return Err(ContractError::VotingModuleNotFound);
         }
 
-        deps.api.addr_validate(self.voting.as_ref().unwrap())?;
-
         if self.proposals.is_empty() {
             return Err(ContractError::DaoProposalSingleNotFound);
         }
-
-        // Verify proposal vec are addresses
-        self.proposals
-            .iter()
-            .find_map(|x| {
-                if let Err(err) = deps.api.addr_validate(x.as_ref()) {
-                    Some(Err(ContractError::StdError(err)))
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(Ok(()))
+        Ok(())
     }
 }
 
 // Test helper types
-
-/// Data we use to test after migration (it is set before migration)
 
 pub struct SingleProposalData {
     pub proposer: Addr,
     pub start_height: u64,
 }
 
+/// Data we use to test after migration (it is set before migration)
 #[cw_serde]
 pub struct TestState {
-    // pub core_dump_state: TestCoreDumpState,
-    // pub core_items: Vec<(String, String)>,
     pub proposal_counts: Vec<u64>,
     pub proposals: Vec<dao_proposal_single::proposal::SingleChoiceProposal>,
     pub total_voting_power: Uint128,
+    /// This is the voting power of the proposer of the sample proposal
     pub single_voting_power: Uint128,
-}
-
-#[cw_serde]
-pub struct TestCoreDumpState {
-    pub proposal_modules: Vec<ProposalModule>,
-    pub voting_module: Addr,
-    pub total_proposal_module_count: u32,
 }

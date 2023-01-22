@@ -220,12 +220,14 @@ pub fn init_dao_v1(mut app: App, data: Option<InitDaoDataV1>) -> (App, Addr, Add
 }
 
 pub fn execute_migration(
-    mut app: App,
-    core_addr: Addr,
-    proposal_addr: Addr,
+    app: &mut App,
+    core_addr: &str,
+    proposal_addr: &str,
     v1_code_ids: V1CodeIds,
 ) -> Result<AppResponse, anyhow::Error> {
     let sender = Addr::unchecked(SENDER_ADDR);
+    let core_addr = Addr::unchecked(core_addr);
+    let proposal_addr = Addr::unchecked(proposal_addr);
     let migrator_code_id = app.store_code(migrator_contract());
     let v2_core_code_id = app.store_code(dao_core_contract());
     let v2_proposal_code = app.store_code(proposal_single_contract());
@@ -233,7 +235,6 @@ pub fn execute_migration(
     let v2_cw20_voting = app.store_code(dao_voting_cw20_staked_contract());
     let v2_cw20_stake = app.store_code(v2_cw20_stake_contract());
 
-    println!("contract id: {:?}", v2_proposal_code);
     let v2_code_ids = V2CodeIds {
         proposal_single: v2_proposal_code,
         cw4_voting: v2_cw4_voting,
@@ -260,7 +261,7 @@ pub fn execute_migration(
                         to_add: vec![ModuleInstantiateInfo {
                             code_id: migrator_code_id,
                             msg: to_binary(&crate::msg::InstantiateMsg {
-                                sub_daos: None,
+                                sub_daos: vec![],
                                 migration_params: MigrationParams {
                                     migrate_stake_cw20_manager: Some(true),
                                     close_proposal_on_execution_failure: true,
@@ -284,11 +285,23 @@ pub fn execute_migration(
         &[],
     ).unwrap();
 
+    let perposals: cw_proposal_single_v1::query::ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_addr.clone(),
+            &cw_proposal_single_v1::msg::QueryMsg::ReverseProposals {
+                start_before: None,
+                limit: Some(1),
+            },
+        )
+        .unwrap();
+    let proposal_id = perposals.proposals.first().unwrap().id;
+
     app.execute_contract(
         sender.clone(),
         proposal_addr.clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
-            proposal_id: 2,
+            proposal_id,
             vote: voting_v1::Vote::Yes,
         },
         &[],
@@ -298,7 +311,7 @@ pub fn execute_migration(
     app.execute_contract(
         sender,
         proposal_addr,
-        &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 2 },
+        &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
 }

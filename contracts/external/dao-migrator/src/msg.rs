@@ -4,26 +4,16 @@ use dao_core::query::SubDao;
 use crate::types::{MigrationParams, V1CodeIds, V2CodeIds};
 
 #[cw_serde]
-pub struct InstantiateMsg {
+pub struct MigrateV1ToV2 {
+    pub sub_daos: Vec<SubDao>,
     pub migration_params: MigrationParams,
-    pub sub_daos: Option<Vec<SubDao>>,
     pub v1_code_ids: V1CodeIds,
     pub v2_code_ids: V2CodeIds,
 }
 
-#[cw_serde]
-pub enum ExecuteMsg {
-    /// Detects the current DAO configuration and performs a migration
-    /// checking state before and after to smoke test the migration's
-    /// success. This module will remove itself on this message's
-    /// completion regardless of the migration's success.
-    MigrateV1ToV2 {
-        sub_daos: Option<Vec<SubDao>>,
-        params: MigrationParams,
-        v1_code_ids: V1CodeIds,
-        v2_code_ids: V2CodeIds,
-    },
-}
+pub type InstantiateMsg = MigrateV1ToV2;
+
+pub type ExecuteMsg = MigrateV1ToV2;
 
 #[cw_serde]
 #[derive(QueryResponses)]

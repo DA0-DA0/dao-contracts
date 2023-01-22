@@ -2,7 +2,7 @@ use cosmwasm_std::StdError;
 use cw_utils::ParseReplyError;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error(transparent)]
     StdError(#[from] StdError),
@@ -33,4 +33,7 @@ pub enum ContractError {
 
     #[error("Failed to verify any DAO proposal single module address")]
     DaoProposalSingleNotFound,
+
+    #[error("Failed to verify proposal in {module_addr}")]
+    NoProposalsOnModule { module_addr: String },
 }
