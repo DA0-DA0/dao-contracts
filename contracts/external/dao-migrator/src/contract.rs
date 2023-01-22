@@ -149,7 +149,7 @@ fn execute_migration_v1_v2(
         // If voting module is staked cw20, we check that they confirmed migration
         // and migrate the cw20_staked module
         if let MigrationMsgs::DaoVotingCw20Staked(_) = voting_pair.migrate_msg {
-            if !migration_params.migrate_stake_cw20_manager.unwrap() {
+            if !migration_params.migrate_stake_cw20_manager.unwrap_or_default() {
                 return Err(ContractError::DontMigrateCw20);
             }
 
