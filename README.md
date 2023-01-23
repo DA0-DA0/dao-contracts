@@ -29,6 +29,8 @@ wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 | [dao-pre-propose-approval-single](contracts/pre-propose/dao-pre-propose-approval-single) | A pre-propose module for implementing an approval flow.                                |
 | [dao-pre-propose-approver](contracts/pre-propose/dao-pre-propose-approver)               | A pre-propose module for automatically creating proposals that need to be approved.    |
 | [cw-token-swap](contracts/external/cw-token-swap)                                        | An escrow contract for swapping tokens between DAOs.                                   |
+| [cw-vesting](contracts/external/cw-vesting)                                              | A vesting payment contract.                                                            |
+| [cw-payroll-factory](contracts/external/cw-payroll-factory)                              | A factory contract for `cw-vesting`.                                                   |
 
 Audited contracts have completed audits by
 [securityDAO](https://github.com/securityDAO/audits/blob/7bb8e4910baaea89fddfc025591658f44adbc27c/cosmwasm/dao-contracts/v0.3%20DAO%20DAO%20audit.pdf)
