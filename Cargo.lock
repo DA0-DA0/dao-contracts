@@ -1065,6 +1065,18 @@ dependencies = [
 
 [[package]]
 name = "cw4"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0acc3549d5ce11c6901b3a676f2e2628684722197054d97cd0101ea174ed5cbd"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.13.4",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw4"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86a93c2764ddb44038b948d9a9a8aadc9f92f5ef3e61249af2fad16091e43412"
@@ -1074,6 +1086,23 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw4-group"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6c95c89153e7831c8306c8eba40a3daa76f9c7b8f5179dd0b8628aca168ec7a"
+dependencies = [
+ "cosmwasm-std",
+ "cw-controllers 0.13.4",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw4 0.13.4",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -1088,7 +1117,26 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw4",
+ "cw4 0.16.0",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw4-voting"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core-interface",
+ "cw-core-macros",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw4 0.13.4",
+ "cw4-group 0.13.4",
  "schemars",
  "serde",
  "thiserror",
@@ -1211,11 +1259,14 @@ dependencies = [
  "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "cw20 0.13.4",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 0.2.6",
  "cw20-stake 2.0.1",
  "cw20-staked-balance-voting",
+ "cw4 0.13.4",
+ "cw4-voting",
  "dao-core",
  "dao-interface",
  "dao-proposal-single",
@@ -1241,7 +1292,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw4-group",
+ "cw4-group 0.16.0",
  "dao-core",
  "dao-interface",
  "dao-pre-propose-base",
@@ -1267,7 +1318,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw4-group",
+ "cw4-group 0.16.0",
  "dao-core",
  "dao-interface",
  "dao-pre-propose-approval-single",
@@ -1311,7 +1362,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw4-group",
+ "cw4-group 0.16.0",
  "dao-core",
  "dao-interface",
  "dao-pre-propose-base",
@@ -1336,7 +1387,7 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw4-group",
+ "cw4-group 0.16.0",
  "dao-core",
  "dao-interface",
  "dao-pre-propose-base",
@@ -1359,8 +1410,8 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw4",
- "cw4-group",
+ "cw4 0.16.0",
+ "cw4-group 0.16.0",
  "dao-core",
  "dao-interface",
  "dao-macros",
@@ -1420,8 +1471,8 @@ dependencies = [
  "cw20-base 0.16.0",
  "cw20-stake 2.0.1",
  "cw3 0.16.0",
- "cw4",
- "cw4-group",
+ "cw4 0.16.0",
+ "cw4-group 0.16.0",
  "cw721-base",
  "dao-core",
  "dao-interface",
@@ -1462,8 +1513,8 @@ dependencies = [
  "cw20-base 0.16.0",
  "cw20-stake 2.0.1",
  "cw3 0.16.0",
- "cw4",
- "cw4-group",
+ "cw4 0.16.0",
+ "cw4-group 0.16.0",
  "cw721-base",
  "dao-core",
  "dao-interface",
@@ -1513,8 +1564,8 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 2.0.1",
- "cw4",
- "cw4-group",
+ "cw4 0.16.0",
+ "cw4-group 0.16.0",
  "cw721-base",
  "dao-core",
  "dao-interface",
@@ -1605,8 +1656,8 @@ dependencies = [
  "cw-storage-plus 0.16.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw4",
- "cw4-group",
+ "cw4 0.16.0",
+ "cw4-group 0.16.0",
  "dao-interface",
  "dao-macros",
  "thiserror",
