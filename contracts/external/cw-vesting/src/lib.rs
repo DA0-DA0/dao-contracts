@@ -4,6 +4,7 @@ pub mod contract;
 mod error;
 pub mod msg;
 pub mod state;
+pub mod vesting;
 
 pub use crate::error::ContractError;
 
@@ -12,3 +13,6 @@ pub use cw_ownable::Ownership;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod vesting_tests;
