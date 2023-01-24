@@ -27,11 +27,8 @@ fn test_execute_migration() {
 
     execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap();
 
-    let test_state_v2 = query_state_v2(
-        &mut app,
-        module_addrs.proposal.clone(),
-        module_addrs.voting.clone(),
-    );
+    let test_state_v2 =
+        query_state_v2(&mut app, module_addrs.proposal.clone(), module_addrs.voting);
 
     assert_eq!(test_state_v1, test_state_v2);
 }

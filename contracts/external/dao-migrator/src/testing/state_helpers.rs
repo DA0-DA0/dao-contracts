@@ -27,7 +27,7 @@ pub fn query_state_v1(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> 
     let proposal = app
         .wrap()
         .query_wasm_smart::<cw_proposal_single_v1::query::ProposalListResponse>(
-            proposal_addr.clone(),
+            proposal_addr,
             &cw_proposal_single_v1::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
@@ -99,7 +99,7 @@ pub fn query_state_v2(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> 
     let proposal = app
         .wrap()
         .query_wasm_smart::<dao_proposal_single::query::ProposalListResponse>(
-            proposal_addr.clone(),
+            proposal_addr,
             &dao_proposal_single::msg::QueryMsg::ListProposals {
                 start_after: None,
                 limit: None,
