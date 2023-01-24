@@ -13,7 +13,11 @@ use super::{
 fn test_execute_migration() {
     let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(VotingType::Cw20);
 
+    //TODO: get state before migration
+    
     execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap();
+
+    //TODO: Get state after migration and compare
 }
 
 #[test]
@@ -99,16 +103,17 @@ fn test_dont_migrate_cw20() {
 #[test]
 fn test_sub_daos() {
     let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(VotingType::Cw20);
+    let sub_dao = SubDao {
+        addr: "sub_dao_1".to_string(),
+        charter: None,
+    };
 
     execute_migration(
         app.borrow_mut(),
         &module_addrs,
         v1_code_ids,
         Some(ExecuteParams {
-            sub_daos: Some(vec![SubDao {
-                addr: "sub_dao_1".to_string(),
-                charter: None,
-            }]),
+            sub_daos: Some(vec![sub_dao.clone()]),
             migrate_cw20: Some(true),
         }),
     )
@@ -125,12 +130,5 @@ fn test_sub_daos() {
         )
         .unwrap();
 
-    assert_eq!(sub_daos.len(), 1);
-    assert_eq!(
-        sub_daos,
-        vec![SubDao {
-            addr: "sub_dao_1".to_string(),
-            charter: None,
-        }]
-    );
+    assert_eq!(sub_daos, vec![sub_dao]);
 }

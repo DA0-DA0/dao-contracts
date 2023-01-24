@@ -73,13 +73,13 @@ pub fn get_v2_code_ids(app: &mut App) -> (CodeIds, V2CodeIds) {
         cw4_voting: app.store_code(dao_voting_cw4_contract()),
     };
 
-    let v1_code_ids = V2CodeIds {
+    let v2_code_ids = V2CodeIds {
         proposal_single: code_ids.proposal_single,
         cw4_voting: code_ids.cw4_voting,
         cw20_stake: code_ids.cw20_stake,
         cw20_staked_balances_voting: code_ids.cw20_voting,
     };
-    (code_ids, v1_code_ids)
+    (code_ids, v2_code_ids)
 }
 
 pub fn get_cw20_init_msg(code_ids: CodeIds) -> cw20_staked_balance_voting_v1::msg::InstantiateMsg {
@@ -135,23 +135,21 @@ pub fn get_module_addrs(app: &mut App, core_addr: Addr) -> ModuleAddrs {
         .query_wasm_smart(&core_addr, &cw_core_v1::msg::QueryMsg::VotingModule {})
         .unwrap();
 
-    let staking_addr = app.wrap().query_wasm_smart(
-        &voting_addr,
-        &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
-    );
-    let staking_addr: Option<Addr> = match staking_addr {
-        Ok(a) => Some(a),
-        Err(_) => None,
-    };
+    let staking_addr: Option<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            &voting_addr,
+            &dao_voting_cw20_staked::msg::QueryMsg::StakingContract {},
+        )
+        .ok();
 
-    let token_addr = app.wrap().query_wasm_smart(
-        &voting_addr,
-        &dao_voting_cw20_staked::msg::QueryMsg::TokenContract {},
-    );
-    let token_addr: Option<Addr> = match token_addr {
-        Ok(a) => Some(a),
-        Err(_) => None,
-    };
+    let token_addr: Option<Addr> = app
+        .wrap()
+        .query_wasm_smart(
+            &voting_addr,
+            &dao_voting_cw20_staked::msg::QueryMsg::TokenContract {},
+        )
+        .ok();
 
     ModuleAddrs {
         core: core_addr,

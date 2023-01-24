@@ -6,8 +6,6 @@ use super::query_helpers::{
     v1_expiration_to_v2, v1_status_to_v2, v1_threshold_to_v2, v1_votes_to_v2,
 };
 
-// TODO: we do several loops over proposal addrs, if V1 only have 1 proposal module, then its fine.
-// but if we gonna have 2 or more, we better run over the vec once, and get the data from that loop.
 pub fn query_proposal_count_v1(deps: Deps, proposals_addrs: Vec<Addr>) -> StdResult<Vec<u64>> {
     proposals_addrs
         .into_iter()
