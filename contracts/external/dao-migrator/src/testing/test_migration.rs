@@ -2,22 +2,38 @@ use std::borrow::BorrowMut;
 
 use dao_core::query::SubDao;
 
-use crate::{testing::helpers::ExecuteParams, ContractError};
+use crate::{
+    testing::{helpers::ExecuteParams, state_helpers::query_state_v2},
+    ContractError,
+};
 
 use super::{
     helpers::VotingType,
     setup::{execute_migration, setup_dao_v1},
+    state_helpers::query_state_v1,
 };
 
 #[test]
 fn test_execute_migration() {
     let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(VotingType::Cw20);
 
-    //TODO: get state before migration
-    
+    let mut test_state_v1 = query_state_v1(
+        &mut app,
+        module_addrs.proposal.clone(),
+        module_addrs.voting.clone(),
+    );
+    //NOTE: We add 1 to count because we create a new proposal in execute_migration
+    test_state_v1.proposal_count += 1;
+
     execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap();
 
-    //TODO: Get state after migration and compare
+    let test_state_v2 = query_state_v2(
+        &mut app,
+        module_addrs.proposal.clone(),
+        module_addrs.voting.clone(),
+    );
+
+    assert_eq!(test_state_v1, test_state_v2);
 }
 
 #[test]
