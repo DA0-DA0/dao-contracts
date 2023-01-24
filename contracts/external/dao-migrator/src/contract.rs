@@ -83,6 +83,10 @@ fn execute_migration_v1_v2(
     v1_code_ids: V1CodeIds,
     v2_code_ids: V2CodeIds,
 ) -> Result<Response, ContractError> {
+    if info.sender != CORE_ADDR.load(deps.storage)? {
+        return Err(ContractError::Unauthorized {});
+    }
+
     // List of code ids pairs we got and the migration msg of each one of them.
     let proposal_pair = CodeIdPair::new(
         v1_code_ids.proposal_single,

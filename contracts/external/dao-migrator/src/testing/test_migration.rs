@@ -1,36 +1,70 @@
 use std::borrow::BorrowMut;
 
-use dao_core::query::SubDao;
+use dao_core::{query::SubDao, state::ProposalModuleStatus};
 
 use crate::{
-    testing::{helpers::ExecuteParams, state_helpers::query_state_v2},
+    testing::{
+        helpers::ExecuteParams,
+        helpers::VotingType,
+        setup::{execute_migration, setup_dao_v1},
+        state_helpers::{
+            query_state_v1_cw20, query_state_v1_cw4, query_state_v2_cw20, query_state_v2_cw4,
+        },
+    },
     ContractError,
 };
 
-use super::{
-    helpers::VotingType,
-    setup::{execute_migration, setup_dao_v1},
-    state_helpers::query_state_v1,
-};
+pub fn basic_test(voting_type: VotingType) {
+    let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(voting_type.clone());
 
-#[test]
-fn test_execute_migration() {
-    let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(VotingType::Cw20);
-
-    let mut test_state_v1 = query_state_v1(
-        &mut app,
-        module_addrs.proposal.clone(),
-        module_addrs.voting.clone(),
-    );
+    let mut test_state_v1 = match voting_type {
+        VotingType::Cw4 => query_state_v1_cw4(
+            &mut app,
+            module_addrs.proposal.clone(),
+            module_addrs.voting.clone(),
+        ),
+        VotingType::Cw20 => query_state_v1_cw20(
+            &mut app,
+            module_addrs.proposal.clone(),
+            module_addrs.voting.clone(),
+        ),
+    };
     //NOTE: We add 1 to count because we create a new proposal in execute_migration
     test_state_v1.proposal_count += 1;
 
     execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap();
 
-    let test_state_v2 =
-        query_state_v2(&mut app, module_addrs.proposal.clone(), module_addrs.voting);
+    let test_state_v2 = match voting_type {
+        VotingType::Cw4 => {
+            query_state_v2_cw4(&mut app, module_addrs.proposal.clone(), module_addrs.voting)
+        }
+        VotingType::Cw20 => {
+            query_state_v2_cw20(&mut app, module_addrs.proposal.clone(), module_addrs.voting)
+        }
+    };
 
     assert_eq!(test_state_v1, test_state_v2);
+
+    let modules: Vec<dao_core::state::ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            module_addrs.core,
+            &dao_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(modules.len(), 2);
+    assert_eq!(modules[0].address, module_addrs.proposal);
+    assert_eq!(modules[1].status, ProposalModuleStatus::Disabled);
+}
+
+#[test]
+fn test_execute_migration() {
+    basic_test(VotingType::Cw20);
+
+    basic_test(VotingType::Cw4);
 }
 
 #[test]

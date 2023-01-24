@@ -13,7 +13,10 @@ pub struct TestState {
     pub single_power: Uint128,
 }
 
-pub fn query_state_v1(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> TestState {
+pub fn query_proposal_v1(
+    app: &mut App,
+    proposal_addr: Addr,
+) -> (u64, dao_proposal_single::proposal::SingleChoiceProposal) {
     // proposal count
     let proposal_count: u64 = app
         .wrap()
@@ -37,6 +40,7 @@ pub fn query_state_v1(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> 
         .proposals[0]
         .clone()
         .proposal;
+
     let proposal = dao_proposal_single::proposal::SingleChoiceProposal {
         title: proposal.title,
         description: proposal.description,
@@ -51,6 +55,43 @@ pub fn query_state_v1(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> 
         votes: v1_votes_to_v2(proposal.votes),
         allow_revoting: proposal.allow_revoting,
     };
+
+    (proposal_count, proposal)
+}
+
+pub fn query_proposal_v2(
+    app: &mut App,
+    proposal_addr: Addr,
+) -> (u64, dao_proposal_single::proposal::SingleChoiceProposal) {
+    // proposal count
+    let proposal_count: u64 = app
+        .wrap()
+        .query_wasm_smart(
+            proposal_addr.clone(),
+            &dao_proposal_single::msg::QueryMsg::ProposalCount {},
+        )
+        .unwrap();
+
+    // query proposal
+    let proposal = app
+        .wrap()
+        .query_wasm_smart::<dao_proposal_single::query::ProposalListResponse>(
+            proposal_addr,
+            &dao_proposal_single::msg::QueryMsg::ListProposals {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap()
+        .proposals[0]
+        .clone()
+        .proposal;
+
+    (proposal_count, proposal)
+}
+
+pub fn query_state_v1_cw20(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> TestState {
+    let (proposal_count, proposal) = query_proposal_v1(app, proposal_addr);
 
     // query total voting power
     let total_power = app
@@ -85,30 +126,8 @@ pub fn query_state_v1(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> 
     }
 }
 
-pub fn query_state_v2(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> TestState {
-    // proposal count
-    let proposal_count: u64 = app
-        .wrap()
-        .query_wasm_smart(
-            proposal_addr.clone(),
-            &dao_proposal_single::msg::QueryMsg::ProposalCount {},
-        )
-        .unwrap();
-
-    // query proposal
-    let proposal = app
-        .wrap()
-        .query_wasm_smart::<dao_proposal_single::query::ProposalListResponse>(
-            proposal_addr,
-            &dao_proposal_single::msg::QueryMsg::ListProposals {
-                start_after: None,
-                limit: None,
-            },
-        )
-        .unwrap()
-        .proposals[0]
-        .clone()
-        .proposal;
+pub fn query_state_v2_cw20(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> TestState {
+    let (proposal_count, proposal) = query_proposal_v2(app, proposal_addr);
 
     // query total voting power
     let total_power = app
@@ -128,6 +147,78 @@ pub fn query_state_v2(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> 
         .query_wasm_smart::<dao_interface::voting::VotingPowerAtHeightResponse>(
             voting_addr,
             &dao_voting_cw20_staked::msg::QueryMsg::VotingPowerAtHeight {
+                address: proposal.proposer.to_string(),
+                height: Some(proposal.start_height),
+            },
+        )
+        .unwrap()
+        .power;
+
+    TestState {
+        proposal_count,
+        proposal,
+        total_power,
+        single_power,
+    }
+}
+
+pub fn query_state_v1_cw4(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> TestState {
+    let (proposal_count, proposal) = query_proposal_v1(app, proposal_addr);
+
+    // query total voting power
+    let total_power = app
+        .wrap()
+        .query_wasm_smart::<cw_core_interface_v1::voting::TotalPowerAtHeightResponse>(
+            voting_addr.clone(),
+            &cw4_voting_v1::msg::QueryMsg::TotalPowerAtHeight {
+                height: Some(proposal.start_height),
+            },
+        )
+        .unwrap()
+        .power;
+
+    // query single voting power
+    let single_power = app
+        .wrap()
+        .query_wasm_smart::<cw_core_interface_v1::voting::VotingPowerAtHeightResponse>(
+            voting_addr,
+            &cw4_voting_v1::msg::QueryMsg::VotingPowerAtHeight {
+                address: proposal.proposer.to_string(),
+                height: Some(proposal.start_height),
+            },
+        )
+        .unwrap()
+        .power;
+
+    TestState {
+        proposal_count,
+        proposal,
+        total_power,
+        single_power,
+    }
+}
+
+pub fn query_state_v2_cw4(app: &mut App, proposal_addr: Addr, voting_addr: Addr) -> TestState {
+    let (proposal_count, proposal) = query_proposal_v2(app, proposal_addr);
+
+    // query total voting power
+    let total_power = app
+        .wrap()
+        .query_wasm_smart::<dao_interface::voting::TotalPowerAtHeightResponse>(
+            voting_addr.clone(),
+            &dao_voting_cw4::msg::QueryMsg::TotalPowerAtHeight {
+                height: Some(proposal.start_height),
+            },
+        )
+        .unwrap()
+        .power;
+
+    // query single voting power
+    let single_power = app
+        .wrap()
+        .query_wasm_smart::<dao_interface::voting::VotingPowerAtHeightResponse>(
+            voting_addr,
+            &dao_voting_cw4::msg::QueryMsg::VotingPowerAtHeight {
                 address: proposal.proposer.to_string(),
                 height: Some(proposal.start_height),
             },

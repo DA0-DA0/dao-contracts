@@ -3,8 +3,7 @@ use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_core::query::SubDao;
 use dao_testing::contracts::{
     cw20_base_contract, cw20_staked_balances_voting_contract, cw4_group_contract,
-    dao_core_contract, dao_voting_cw4_contract, proposal_single_contract, v1_dao_core_contract,
-    v1_proposal_single_contract,
+    dao_core_contract, proposal_single_contract, v1_dao_core_contract, v1_proposal_single_contract,
 };
 
 use crate::types::{V1CodeIds, V2CodeIds};
@@ -160,6 +159,29 @@ pub fn get_module_addrs(app: &mut App, core_addr: Addr) -> ModuleAddrs {
     }
 }
 
+pub fn set_dummy_proposal(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
+    app.execute_contract(
+        sender,
+        addrs.proposal.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
+            title: "t".to_string(),
+            description: "d".to_string(),
+            msgs: vec![WasmMsg::Execute {
+                contract_addr: addrs.core.to_string(),
+                msg: to_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
+                    to_add: vec![],
+                    to_remove: vec![],
+                })
+                .unwrap(),
+                funds: vec![],
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+}
+
 pub fn set_cw20_to_dao(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
     let token_addr = addrs.token.unwrap();
     let staking_addr = addrs.staking.unwrap();
@@ -288,5 +310,16 @@ pub fn v1_cw4_voting_contract() -> Box<dyn Contract<Empty>> {
         cw4_voting_v1::contract::query,
     )
     .with_reply(cw4_voting_v1::contract::reply);
+    Box::new(contract)
+}
+
+pub fn dao_voting_cw4_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_voting_cw4::contract::execute,
+        dao_voting_cw4::contract::instantiate,
+        dao_voting_cw4::contract::query,
+    )
+    .with_reply(dao_voting_cw4::contract::reply)
+    .with_migrate(dao_voting_cw4::contract::migrate);
     Box::new(contract)
 }

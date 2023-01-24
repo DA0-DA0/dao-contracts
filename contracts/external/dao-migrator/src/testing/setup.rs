@@ -11,7 +11,7 @@ use crate::{
 
 use super::helpers::{
     get_cw20_init_msg, get_cw4_init_msg, get_v1_code_ids, get_v2_code_ids, migrator_contract,
-    set_cw20_to_dao, ExecuteParams, ModuleAddrs, VotingType, SENDER_ADDR,
+    set_cw20_to_dao, set_dummy_proposal, ExecuteParams, ModuleAddrs, VotingType, SENDER_ADDR,
 };
 
 pub fn init_v1(app: &mut App, sender: Addr, voting_type: VotingType) -> (Addr, V1CodeIds) {
@@ -96,7 +96,7 @@ pub fn setup_dao_v1(voting_type: VotingType) -> (App, ModuleAddrs, V1CodeIds) {
     let module_addrs = get_module_addrs(app.borrow_mut(), core_addr);
 
     match voting_type {
-        VotingType::Cw4 => (),
+        VotingType::Cw4 => set_dummy_proposal(app.borrow_mut(), sender, module_addrs.clone()),
         VotingType::Cw20 => set_cw20_to_dao(app.borrow_mut(), sender, module_addrs.clone()),
     };
 
