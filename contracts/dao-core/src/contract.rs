@@ -2,14 +2,14 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Reply, Response, StdError, StdResult, SubMsg,
+    Reply, Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
 use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
-use dao_interface::{voting, ModuleInstantiateCallback, ModuleInstantiateInfo};
+use dao_interface::{voting, Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InitialItem, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -844,11 +844,11 @@ pub fn query_proposal_module_count(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     match msg {
-        MigrateMsg::FromV1 { dao_uri } => {
+        MigrateMsg::FromV1 { dao_uri, params } => {
             // `CONTRACT_VERSION` here is from the data section of the
             // blob we are migrating to. `version` is from storage. If
             // the version in storage matches the version in the blob
@@ -897,7 +897,27 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 },
             )?;
 
-            Ok(Response::default())
+            let response = if let Some(migrate_params) = params {
+                let msg = WasmMsg::Execute {
+                    contract_addr: env.contract.address.to_string(),
+                    msg: to_binary(&ExecuteMsg::UpdateProposalModules {
+                        to_add: vec![ModuleInstantiateInfo {
+                            code_id: migrate_params.migrator_code_id,
+                            msg: to_binary(&migrate_params.params).unwrap(),
+                            admin: Some(Admin::CoreModule {}),
+                            label: "migrator".to_string(),
+                        }],
+                        to_disable: vec![],
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                };
+                Response::default().add_message(msg)
+            } else {
+                Response::default()
+            };
+
+            Ok(response)
         }
         MigrateMsg::FromCompatible {} => Ok(Response::default()),
     }

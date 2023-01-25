@@ -127,7 +127,7 @@ pub fn execute_migration(
                 WasmMsg::Migrate {
                     contract_addr: module_addrs.core.to_string(),
                     new_code_id: new_code_ids.core,
-                    msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
+                    msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 { dao_uri: None, params: None }).unwrap(),
                 }
                 .into(),
                 WasmMsg::Execute {
@@ -189,4 +189,120 @@ pub fn execute_migration(
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
+}
+
+pub fn execute_migration_from_core(
+    app: &mut App,
+    module_addrs: &ModuleAddrs,
+    v1_code_ids: V1CodeIds,
+    params: Option<ExecuteParams>,
+) -> Result<AppResponse, anyhow::Error> {
+    let sender = Addr::unchecked(SENDER_ADDR);
+    let migrator_code_id = app.store_code(migrator_contract());
+    let (new_code_ids, v2_code_ids) = get_v2_code_ids(app);
+    let params = params.unwrap_or_else(|| ExecuteParams {
+        sub_daos: Some(vec![]),
+        migrate_cw20: Some(true),
+    });
+
+    app.execute_contract(
+        sender.clone(),
+        module_addrs.proposal.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
+            title: "t2".to_string(),
+            description: "d2".to_string(),
+            msgs: vec![WasmMsg::Migrate {
+                contract_addr: module_addrs.core.to_string(),
+                new_code_id: new_code_ids.core,
+                msg:
+                    to_binary(&dao_core::msg::MigrateMsg::FromV1 {
+                        dao_uri: None,
+                        params: Some(dao_core::msg::MigrateParams {
+                            migrator_code_id,
+                            params: dao_core::msg::MigrateV1ToV2 {
+                                sub_daos: params.sub_daos.unwrap(),
+                                migration_params: dao_core::msg::MigrationModuleParams {
+                                    migrate_stake_cw20_manager: params.migrate_cw20,
+                                    close_proposal_on_execution_failure: true,
+                                    pre_propose_info:
+                                        dao_core::msg::PreProposeInfo::AnyoneMayPropose {},
+                                },
+                                v1_code_ids: v1_code_ids.to(),
+                                v2_code_ids: v2_code_ids.to(),
+                            },
+                        }.into()),
+                    })
+                    .unwrap(),
+            }
+            .into()],
+        },
+        &[],
+    )
+    .unwrap();
+
+    let perposals: cw_proposal_single_v1::query::ProposalListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            module_addrs.proposal.clone(),
+            &cw_proposal_single_v1::msg::QueryMsg::ReverseProposals {
+                start_before: None,
+                limit: Some(1),
+            },
+        )
+        .unwrap();
+    let proposal_id = perposals.proposals.first().unwrap().id;
+
+    app.execute_contract(
+        sender.clone(),
+        module_addrs.proposal.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
+            proposal_id,
+            vote: voting_v1::Vote::Yes,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        sender,
+        module_addrs.proposal.clone(),
+        &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id },
+        &[],
+    )
+}
+
+// Verify Box == !Box?
+#[test]
+fn test_boxed() {
+    let b = dao_core::msg::MigrateParams {
+        migrator_code_id: 56,
+        params: dao_core::msg::MigrateV1ToV2 {
+            sub_daos: vec![],
+            migration_params: dao_core::msg::MigrationModuleParams {
+                migrate_stake_cw20_manager: Some(true),
+                close_proposal_on_execution_failure: true,
+                pre_propose_info:
+                    dao_core::msg::PreProposeInfo::AnyoneMayPropose {},
+            },
+            v1_code_ids: dao_core::msg::V1CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
+            v2_code_ids: dao_core::msg::V2CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
+        },
+    };
+
+    let a = Box::from(dao_core::msg::MigrateParams {
+        migrator_code_id: 56,
+        params: dao_core::msg::MigrateV1ToV2 {
+            sub_daos: vec![],
+            migration_params: dao_core::msg::MigrationModuleParams {
+                migrate_stake_cw20_manager: Some(true),
+                close_proposal_on_execution_failure: true,
+                pre_propose_info:
+                    dao_core::msg::PreProposeInfo::AnyoneMayPropose {},
+            },
+            v1_code_ids: dao_core::msg::V1CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
+            v2_code_ids: dao_core::msg::V2CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
+        },
+    });
+
+    assert_eq!(to_binary(&b), to_binary(&a));
 }

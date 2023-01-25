@@ -6,7 +6,7 @@ use crate::{
     testing::{
         helpers::ExecuteParams,
         helpers::VotingType,
-        setup::{execute_migration, setup_dao_v1},
+        setup::{execute_migration, execute_migration_from_core, setup_dao_v1},
         state_helpers::{
             query_state_v1_cw20, query_state_v1_cw4, query_state_v2_cw20, query_state_v2_cw4,
         },
@@ -14,7 +14,7 @@ use crate::{
     ContractError,
 };
 
-pub fn basic_test(voting_type: VotingType) {
+pub fn basic_test(voting_type: VotingType, from_core: bool) {
     let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(voting_type.clone());
 
     let mut test_state_v1 = match voting_type {
@@ -32,7 +32,12 @@ pub fn basic_test(voting_type: VotingType) {
     //NOTE: We add 1 to count because we create a new proposal in execute_migration
     test_state_v1.proposal_count += 1;
 
-    execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap();
+    match from_core {
+        true => {
+            execute_migration_from_core(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap()
+        }
+        false => execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap(),
+    };
 
     let test_state_v2 = match voting_type {
         VotingType::Cw4 => {
@@ -62,9 +67,13 @@ pub fn basic_test(voting_type: VotingType) {
 
 #[test]
 fn test_execute_migration() {
-    basic_test(VotingType::Cw20);
+    // Test basic migrator (not called from core)
+    basic_test(VotingType::Cw20, false);
+    basic_test(VotingType::Cw4, false);
 
-    basic_test(VotingType::Cw4);
+    // Test basic migrator (called from core)
+    basic_test(VotingType::Cw20, true);
+    basic_test(VotingType::Cw4, true);
 }
 
 #[test]

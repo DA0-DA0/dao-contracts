@@ -11,12 +11,34 @@ pub struct V1CodeIds {
     pub cw20_staked_balances_voting: u64,
 }
 
+impl V1CodeIds {
+    pub fn to(self) -> dao_core::msg::V1CodeIds {
+        dao_core::msg::V1CodeIds {
+            proposal_single: self.proposal_single,
+            cw4_voting: self.cw4_voting,
+            cw20_stake: self.cw20_stake,
+            cw20_staked_balances_voting: self.cw20_staked_balances_voting,
+        }
+    }
+}
+
 #[cw_serde]
 pub struct V2CodeIds {
     pub proposal_single: u64,
     pub cw4_voting: u64,
     pub cw20_stake: u64,
     pub cw20_staked_balances_voting: u64,
+}
+
+impl V2CodeIds {
+    pub fn to(self) -> dao_core::msg::V2CodeIds {
+        dao_core::msg::V2CodeIds {
+            proposal_single: self.proposal_single,
+            cw4_voting: self.cw4_voting,
+            cw20_stake: self.cw20_stake,
+            cw20_staked_balances_voting: self.cw20_staked_balances_voting,
+        }
+    }
 }
 
 /// The params we need to provide for migration msgs
