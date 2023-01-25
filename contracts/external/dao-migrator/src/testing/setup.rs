@@ -217,20 +217,20 @@ pub fn execute_migration_from_core(
                 msg:
                     to_binary(&dao_core::msg::MigrateMsg::FromV1 {
                         dao_uri: None,
-                        params: Some(dao_core::msg::MigrateParams {
+                        params: Some(dao_core::migrate_msg::MigrateParams {
                             migrator_code_id,
-                            params: dao_core::msg::MigrateV1ToV2 {
+                            params: dao_core::migrate_msg::MigrateV1ToV2 {
                                 sub_daos: params.sub_daos.unwrap(),
-                                migration_params: dao_core::msg::MigrationModuleParams {
+                                migration_params: dao_core::migrate_msg::MigrationModuleParams {
                                     migrate_stake_cw20_manager: params.migrate_cw20,
                                     close_proposal_on_execution_failure: true,
                                     pre_propose_info:
-                                        dao_core::msg::PreProposeInfo::AnyoneMayPropose {},
+                                        dao_core::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
                                 },
                                 v1_code_ids: v1_code_ids.to(),
                                 v2_code_ids: v2_code_ids.to(),
                             },
-                        }.into()),
+                        }),
                     })
                     .unwrap(),
             }
@@ -269,40 +269,4 @@ pub fn execute_migration_from_core(
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
-}
-
-// Verify Box == !Box?
-#[test]
-fn test_boxed() {
-    let b = dao_core::msg::MigrateParams {
-        migrator_code_id: 56,
-        params: dao_core::msg::MigrateV1ToV2 {
-            sub_daos: vec![],
-            migration_params: dao_core::msg::MigrationModuleParams {
-                migrate_stake_cw20_manager: Some(true),
-                close_proposal_on_execution_failure: true,
-                pre_propose_info:
-                    dao_core::msg::PreProposeInfo::AnyoneMayPropose {},
-            },
-            v1_code_ids: dao_core::msg::V1CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
-            v2_code_ids: dao_core::msg::V2CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
-        },
-    };
-
-    let a = Box::from(dao_core::msg::MigrateParams {
-        migrator_code_id: 56,
-        params: dao_core::msg::MigrateV1ToV2 {
-            sub_daos: vec![],
-            migration_params: dao_core::msg::MigrationModuleParams {
-                migrate_stake_cw20_manager: Some(true),
-                close_proposal_on_execution_failure: true,
-                pre_propose_info:
-                    dao_core::msg::PreProposeInfo::AnyoneMayPropose {},
-            },
-            v1_code_ids: dao_core::msg::V1CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
-            v2_code_ids: dao_core::msg::V2CodeIds{ proposal_single: 44, cw4_voting: 55, cw20_stake: 66, cw20_staked_balances_voting: 77 },
-        },
-    });
-
-    assert_eq!(to_binary(&b), to_binary(&a));
 }
