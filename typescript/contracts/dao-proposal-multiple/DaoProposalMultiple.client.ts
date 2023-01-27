@@ -202,9 +202,11 @@ export interface DaoProposalMultipleInterface extends DaoProposalMultipleReadOnl
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   vote: ({
     proposalId,
+    rationale,
     vote
   }: {
     proposalId: number;
+    rationale?: string;
     vote: MultipleChoiceVote;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   execute: ({
@@ -233,6 +235,13 @@ export interface DaoProposalMultipleInterface extends DaoProposalMultipleReadOnl
     minVotingPeriod?: Duration;
     onlyMembersExecute: boolean;
     votingStrategy: VotingStrategy;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  updateRationale: ({
+    proposalId,
+    rationale
+  }: {
+    proposalId: number;
+    rationale?: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updatePreProposeInfo: ({
     info
@@ -275,6 +284,7 @@ export class DaoProposalMultipleClient extends DaoProposalMultipleQueryClient im
     this.execute = this.execute.bind(this);
     this.close = this.close.bind(this);
     this.updateConfig = this.updateConfig.bind(this);
+    this.updateRationale = this.updateRationale.bind(this);
     this.updatePreProposeInfo = this.updatePreProposeInfo.bind(this);
     this.addProposalHook = this.addProposalHook.bind(this);
     this.removeProposalHook = this.removeProposalHook.bind(this);
@@ -304,14 +314,17 @@ export class DaoProposalMultipleClient extends DaoProposalMultipleQueryClient im
   };
   vote = async ({
     proposalId,
+    rationale,
     vote
   }: {
     proposalId: number;
+    rationale?: string;
     vote: MultipleChoiceVote;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       vote: {
         proposal_id: proposalId,
+        rationale,
         vote
       }
     }, fee, memo, funds);
@@ -364,6 +377,20 @@ export class DaoProposalMultipleClient extends DaoProposalMultipleQueryClient im
         min_voting_period: minVotingPeriod,
         only_members_execute: onlyMembersExecute,
         voting_strategy: votingStrategy
+      }
+    }, fee, memo, funds);
+  };
+  updateRationale = async ({
+    proposalId,
+    rationale
+  }: {
+    proposalId: number;
+    rationale?: string;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      update_rationale: {
+        proposal_id: proposalId,
+        rationale
       }
     }, fee, memo, funds);
   };

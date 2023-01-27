@@ -63,6 +63,10 @@ pub enum ExecuteMsg {
         proposal_id: u64,
         /// The senders position on the proposal.
         vote: MultipleChoiceVote,
+        /// An optional rationale for why this vote was cast. This can
+        /// be updated, set, or removed later by the address casting
+        /// the vote.
+        rationale: Option<String>,
     },
     /// Causes the messages associated with a passed proposal to be
     /// executed by the DAO.
@@ -112,6 +116,12 @@ pub enum ExecuteMsg {
         /// remain open until the DAO's treasury was large enough for it to be
         /// executed.
         close_proposal_on_execution_failure: bool,
+    },
+    /// Updates the sender's rationale for their vote on the specified
+    /// proposal. Errors if no vote vote has been cast.
+    UpdateRationale {
+        proposal_id: u64,
+        rationale: Option<String>,
     },
     /// Update's the proposal creation policy used for this
     /// module. Only the DAO may call this method.

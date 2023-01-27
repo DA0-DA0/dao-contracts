@@ -233,6 +233,7 @@ where
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: position,
+                rationale: None,
             },
             &[],
         );
@@ -273,6 +274,7 @@ where
                             // expected voting power.
                             _ => weight,
                         },
+                        rationale: None,
                     }),
                 };
                 assert_eq!(vote, expected)

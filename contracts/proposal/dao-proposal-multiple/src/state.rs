@@ -45,21 +45,22 @@ pub struct Config {
     pub close_proposal_on_execution_failure: bool,
 }
 
-// we cast a ballot with our chosen vote and a given weight
-// stored under the key that voted
+// Each ballot stores a chosen vote and corresponding voting power and rationale.
 #[cw_serde]
 pub struct Ballot {
     /// The amount of voting power behind the vote.
     pub power: Uint128,
     /// The position.
     pub vote: MultipleChoiceVote,
+    /// An optional rationale for why this vote was cast.
+    pub rationale: Option<String>,
 }
 
 /// The current top level config for the module.
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const PROPOSAL_COUNT: Item<u64> = Item::new("proposal_count");
 pub const PROPOSALS: Map<u64, MultipleChoiceProposal> = Map::new("proposals");
-pub const BALLOTS: Map<(u64, Addr), Ballot> = Map::new("ballots");
+pub const BALLOTS: Map<(u64, &Addr), Ballot> = Map::new("ballots");
 /// Consumers of proposal state change hooks.
 pub const PROPOSAL_HOOKS: Hooks = Hooks::new("proposal_hooks");
 /// Consumers of vote hooks.
