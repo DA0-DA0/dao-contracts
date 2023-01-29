@@ -16,7 +16,7 @@ wiki](https://github.com/DA0-DA0/dao-contracts/wiki/DAO-DAO-Contracts-Design).
 | [dao-voting-cw4](contracts/voting/dao-voting-cw4)                              | A voting power module for multisig-style voting.       |
 | [cw20-stake](contracts/staking/cw20-stake)                                     | A contract for staking cw20 tokens.                    |
 | [cw20-stake-external-rewards](contracts/staking/cw20-stake-external-rewards)   | A contract for providing external staking rewards.     |
-| [cw20-stake-reward-distributor](contracts/staking/cw20-stake-external-rewards) | A contract for distributing rewards via stake-cw20.    |
+| [cw20-stake-reward-distributor](contracts/staking/cw20-stake-reward-distributor) | A contract for distributing rewards via stake-cw20.    |
 
 | Unaudited contracts                                                                      | Description                                                                            |
 | :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
