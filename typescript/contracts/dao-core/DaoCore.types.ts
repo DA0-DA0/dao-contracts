@@ -342,10 +342,45 @@ export type QueryMsg = {
 export type MigrateMsg = {
   from_v1: {
     dao_uri?: string | null;
+    params?: MigrateParams | null;
   };
 } | {
   from_compatible: {};
 };
+export type PreProposeInfo = {
+  anyone_may_propose: {};
+} | {
+  module_may_propose: {
+    info: ModuleInstantiateInfo;
+  };
+};
+export interface MigrateParams {
+  migrator_code_id: number;
+  params: MigrateV1ToV2;
+}
+export interface MigrateV1ToV2 {
+  migration_params: MigrationModuleParams;
+  sub_daos: SubDao[];
+  v1_code_ids: V1CodeIds;
+  v2_code_ids: V2CodeIds;
+}
+export interface MigrationModuleParams {
+  close_proposal_on_execution_failure: boolean;
+  migrate_stake_cw20_manager?: boolean | null;
+  pre_propose_info: PreProposeInfo;
+}
+export interface V1CodeIds {
+  cw20_stake: number;
+  cw20_staked_balances_voting: number;
+  cw4_voting: number;
+  proposal_single: number;
+}
+export interface V2CodeIds {
+  cw20_stake: number;
+  cw20_staked_balances_voting: number;
+  cw4_voting: number;
+  proposal_single: number;
+}
 export type Addr = string;
 export type ProposalModuleStatus = "enabled" | "disabled";
 export type ArrayOfProposalModule = ProposalModule[];

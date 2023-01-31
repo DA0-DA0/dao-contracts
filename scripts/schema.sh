@@ -10,7 +10,7 @@ START_DIR=$(pwd)
 echo "generating schema for dao-core"
 cd contracts/dao-core
 cargo run --example schema > /dev/null
-
+rm -rf ./schema/raw
 cd "$START_DIR"
 
 for f in ./contracts/voting/*
@@ -19,6 +19,7 @@ do
   cd "$f"
   CMD="cargo run --example schema"
   eval $CMD > /dev/null
+  rm -rf ./schema/raw
   cd "$START_DIR"
 done
 
@@ -28,6 +29,7 @@ do
   cd "$f"
   CMD="cargo run --example schema"
   eval $CMD > /dev/null
+  rm -rf ./schema/raw
   cd "$START_DIR"
 done
 
@@ -37,6 +39,7 @@ do
   cd "$f"
   CMD="cargo run --example schema"
   eval $CMD > /dev/null
+  rm -rf ./schema/raw
   cd "$START_DIR"
 done
 
@@ -46,6 +49,7 @@ do
   cd "$f"
   CMD="cargo run --example schema"
   eval $CMD > /dev/null
+  rm -rf ./schema/raw
   cd "$START_DIR"
 done
 
@@ -55,5 +59,6 @@ do
   cd "$f"
   CMD="cargo run --example schema"
   eval $CMD > /dev/null
+  rm -rf ./schema/raw
   cd "$START_DIR"
 done
