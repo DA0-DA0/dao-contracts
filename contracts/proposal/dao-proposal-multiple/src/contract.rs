@@ -896,7 +896,13 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 &ProposalCreationPolicy::Module { addr: module },
             )?;
 
-            Ok(Response::new().add_attribute("update_pre_propose_module", res.contract_address))
+            match res.data {
+                Some(data) => Ok(Response::new()
+                    .add_attribute("update_pre_propose_module", res.contract_address)
+                    .set_data(data)),
+                None => Ok(Response::new()
+                    .add_attribute("update_pre_propose_module", res.contract_address)),
+            }
         }
         TaggedReplyId::FailedPreProposeModuleHook => {
             let addr = match CREATION_POLICY.load(deps.storage)? {
