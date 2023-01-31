@@ -299,8 +299,8 @@ mod tests {
             "1abc".to_string(),                        // Starts with non alphabetic character.
             "abc~d".to_string(),                       // Contains invalid character.
             "".to_string(),                            // Too short, also empty.
-            "🥵abc".to_string(),                     // Weird unicode start.
-            "ab:12🥵a".to_string(),                  // Weird unocide in non-head position.
+            "🥵abc".to_string(),                       // Weird unicode start.
+            "ab:12🥵a".to_string(),                    // Weird unocide in non-head position.
             "ab,cd".to_string(),                       // Comma is not a valid seperator.
         ];
 
