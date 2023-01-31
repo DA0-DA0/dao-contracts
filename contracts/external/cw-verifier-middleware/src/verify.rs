@@ -5,7 +5,7 @@ use crate::{error::ContractError, msg::ExecuteMsg};
 
 pub fn execute_wrap(msg: Message) -> Result<Response, ContractError>{
     // 1. verify signature
-    secp256k1::verify(&msg.signature, &msg.payload, &msg.public_key)?;
+    // secp256k1::verify(&msg.signature, &msg.payload, &msg.public_key)?;
 
     return Ok(Response::default())
 }
