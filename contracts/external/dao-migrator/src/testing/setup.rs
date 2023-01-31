@@ -214,25 +214,24 @@ pub fn execute_migration_from_core(
             msgs: vec![WasmMsg::Migrate {
                 contract_addr: module_addrs.core.to_string(),
                 new_code_id: new_code_ids.core,
-                msg:
-                    to_binary(&dao_core::msg::MigrateMsg::FromV1 {
-                        dao_uri: None,
-                        params: Some(dao_core::migrate_msg::MigrateParams {
-                            migrator_code_id,
-                            params: dao_core::migrate_msg::MigrateV1ToV2 {
-                                sub_daos: params.sub_daos.unwrap(),
-                                migration_params: dao_core::migrate_msg::MigrationModuleParams {
-                                    migrate_stake_cw20_manager: params.migrate_cw20,
-                                    close_proposal_on_execution_failure: true,
-                                    pre_propose_info:
-                                        dao_core::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
-                                },
-                                v1_code_ids: v1_code_ids.to(),
-                                v2_code_ids: v2_code_ids.to(),
+                msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 {
+                    dao_uri: None,
+                    params: Some(dao_core::migrate_msg::MigrateParams {
+                        migrator_code_id,
+                        params: dao_core::migrate_msg::MigrateV1ToV2 {
+                            sub_daos: params.sub_daos.unwrap(),
+                            migration_params: dao_core::migrate_msg::MigrationModuleParams {
+                                migrate_stake_cw20_manager: params.migrate_cw20,
+                                close_proposal_on_execution_failure: true,
+                                pre_propose_info:
+                                    dao_core::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
                             },
-                        }),
-                    })
-                    .unwrap(),
+                            v1_code_ids: v1_code_ids.to(),
+                            v2_code_ids: v2_code_ids.to(),
+                        },
+                    }),
+                })
+                .unwrap(),
             }
             .into()],
         },

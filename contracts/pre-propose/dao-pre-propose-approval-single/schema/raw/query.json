@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Gets the proposal module that this pre propose module is associated with. Returns `Addr`.",
+      "type": "object",
+      "required": [
+        "proposal_module"
+      ],
+      "properties": {
+        "proposal_module": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the DAO (cw-dao-core) module this contract is associated with. Returns `Addr`.",
+      "type": "object",
+      "required": [
+        "dao"
+      ],
+      "properties": {
+        "dao": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the module's configuration.",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Gets the deposit info for the proposal identified by PROPOSAL_ID.",
+      "type": "object",
+      "required": [
+        "deposit_info"
+      ],
+      "properties": {
+        "deposit_info": {
+          "type": "object",
+          "required": [
+            "proposal_id"
+          ],
+          "properties": {
+            "proposal_id": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns list of proposal submitted hooks.",
+      "type": "object",
+      "required": [
+        "proposal_submitted_hooks"
+      ],
+      "properties": {
+        "proposal_submitted_hooks": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Extension for queries. The default implementation will do nothing if queried for will return `Binary::default()`.",
+      "type": "object",
+      "required": [
+        "query_extension"
+      ],
+      "properties": {
+        "query_extension": {
+          "type": "object",
+          "required": [
+            "msg"
+          ],
+          "properties": {
+            "msg": {
+              "$ref": "#/definitions/QueryExt"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ],
+  "definitions": {
+    "QueryExt": {
+      "oneOf": [
+        {
+          "description": "List the approver address",
+          "type": "object",
+          "required": [
+            "approver"
+          ],
+          "properties": {
+            "approver": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "A pending proposal",
+          "type": "object",
+          "required": [
+            "pending_proposal"
+          ],
+          "properties": {
+            "pending_proposal": {
+              "type": "object",
+              "required": [
+                "id"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "List of proposals awaiting approval",
+          "type": "object",
+          "required": [
+            "pending_proposals"
+          ],
+          "properties": {
+            "pending_proposals": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "start_after": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "reverse_pending_proposals"
+          ],
+          "properties": {
+            "reverse_pending_proposals": {
+              "type": "object",
+              "properties": {
+                "limit": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint32",
+                  "minimum": 0.0
+                },
+                "start_before": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    }
+  }
+}

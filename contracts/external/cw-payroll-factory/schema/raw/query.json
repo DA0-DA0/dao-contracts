@@ -1,0 +1,238 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Returns list of all vesting payment contracts",
+      "type": "object",
+      "required": [
+        "list_vesting_contracts"
+      ],
+      "properties": {
+        "list_vesting_contracts": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns list of all vesting payment contracts in reverse",
+      "type": "object",
+      "required": [
+        "list_vesting_contracts_reverse"
+      ],
+      "properties": {
+        "list_vesting_contracts_reverse": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns list of all vesting payment contracts by who instantiated them",
+      "type": "object",
+      "required": [
+        "list_vesting_contracts_by_instantiator"
+      ],
+      "properties": {
+        "list_vesting_contracts_by_instantiator": {
+          "type": "object",
+          "required": [
+            "instantiator"
+          ],
+          "properties": {
+            "instantiator": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns list of all vesting payment contracts by who instantiated them in reverse",
+      "type": "object",
+      "required": [
+        "list_vesting_contracts_by_instantiator_reverse"
+      ],
+      "properties": {
+        "list_vesting_contracts_by_instantiator_reverse": {
+          "type": "object",
+          "required": [
+            "instantiator"
+          ],
+          "properties": {
+            "instantiator": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns list of all vesting payment contracts by recipient",
+      "type": "object",
+      "required": [
+        "list_vesting_contracts_by_recipient"
+      ],
+      "properties": {
+        "list_vesting_contracts_by_recipient": {
+          "type": "object",
+          "required": [
+            "recipient"
+          ],
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "recipient": {
+              "type": "string"
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns list of all vesting payment contracts by recipient in reverse",
+      "type": "object",
+      "required": [
+        "list_vesting_contracts_by_recipient_reverse"
+      ],
+      "properties": {
+        "list_vesting_contracts_by_recipient_reverse": {
+          "type": "object",
+          "required": [
+            "recipient"
+          ],
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "recipient": {
+              "type": "string"
+            },
+            "start_before": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns info about the contract ownership, if set",
+      "type": "object",
+      "required": [
+        "ownership"
+      ],
+      "properties": {
+        "ownership": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the code ID currently being used to instantiate vesting contracts.",
+      "type": "object",
+      "required": [
+        "code_id"
+      ],
+      "properties": {
+        "code_id": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

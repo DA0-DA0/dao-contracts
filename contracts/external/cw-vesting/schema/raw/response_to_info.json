@@ -1,0 +1,250 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VestingPayment",
+  "type": "object",
+  "required": [
+    "amount",
+    "claimed_amount",
+    "denom",
+    "recipient",
+    "staked_amount",
+    "status",
+    "vesting_schedule"
+  ],
+  "properties": {
+    "amount": {
+      "description": "Vesting amount in Native and Cw20 tokens",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
+    "canceled_at_time": {
+      "description": "Canceled at time in seconds, only set if contract is canceled",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "claimed_amount": {
+      "description": "Amount claimed so far",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
+    "denom": {
+      "description": "The denom of a token (cw20 or native)",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CheckedDenom"
+        }
+      ]
+    },
+    "description": {
+      "description": "Description of the payroll item, a more in depth description of how to meet the payroll conditions",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "recipient": {
+      "description": "The recipient for the vesting payment",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        }
+      ]
+    },
+    "staked_amount": {
+      "description": "The amount of the vesting payment that has been staked",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
+    "status": {
+      "description": "The status of the vesting payment",
+      "allOf": [
+        {
+          "$ref": "#/definitions/VestingPaymentStatus"
+        }
+      ]
+    },
+    "title": {
+      "description": "Title of the payroll item, for example for a bug bounty \"Fix issue in contract.rs\"",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "vesting_schedule": {
+      "description": "Vesting schedule",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Curve"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
+    "CheckedDenom": {
+      "description": "A denom that has been checked to point to a valid asset. This enum should never be constructed literally and should always be built by calling `into_checked` on an `UncheckedDenom` instance.",
+      "oneOf": [
+        {
+          "description": "A native (bank module) asset.",
+          "type": "object",
+          "required": [
+            "native"
+          ],
+          "properties": {
+            "native": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "A cw20 asset.",
+          "type": "object",
+          "required": [
+            "cw20"
+          ],
+          "properties": {
+            "cw20": {
+              "$ref": "#/definitions/Addr"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Curve": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "constant"
+          ],
+          "properties": {
+            "constant": {
+              "type": "object",
+              "required": [
+                "y"
+              ],
+              "properties": {
+                "y": {
+                  "$ref": "#/definitions/Uint128"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "saturating_linear"
+          ],
+          "properties": {
+            "saturating_linear": {
+              "$ref": "#/definitions/SaturatingLinear"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "piecewise_linear"
+          ],
+          "properties": {
+            "piecewise_linear": {
+              "$ref": "#/definitions/PiecewiseLinear"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "PiecewiseLinear": {
+      "description": "This is a generalization of SaturatingLinear, steps must be arranged with increasing time (u64). Any point before first step gets the first value, after last step the last value. Otherwise, it is a linear interpolation between the two closest points. Vec of length 1 -> Constant Vec of length 2 -> SaturatingLinear",
+      "type": "object",
+      "required": [
+        "steps"
+      ],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": [
+              {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              {
+                "$ref": "#/definitions/Uint128"
+              }
+            ],
+            "maxItems": 2,
+            "minItems": 2
+          }
+        }
+      }
+    },
+    "SaturatingLinear": {
+      "description": "min_y for all x <= min_x, max_y for all x >= max_x, linear in between",
+      "type": "object",
+      "required": [
+        "max_x",
+        "max_y",
+        "min_x",
+        "min_y"
+      ],
+      "properties": {
+        "max_x": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "max_y": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "min_x": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_y": {
+          "$ref": "#/definitions/Uint128"
+        }
+      }
+    },
+    "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "type": "string"
+    },
+    "VestingPaymentStatus": {
+      "type": "string",
+      "enum": [
+        "active",
+        "canceled",
+        "canceled_and_unbonding",
+        "fully_vested",
+        "unfunded"
+      ]
+    }
+  }
+}

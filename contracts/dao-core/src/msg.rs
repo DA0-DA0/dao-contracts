@@ -1,5 +1,5 @@
-use crate::{query::SubDao, migrate_msg::MigrateParams};
 use crate::state::Config;
+use crate::{migrate_msg::MigrateParams, query::SubDao};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;

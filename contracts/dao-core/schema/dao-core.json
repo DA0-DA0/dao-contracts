@@ -986,7 +986,12 @@
                     "minimum": 0.0
                   },
                   "vote": {
-                    "$ref": "#/definitions/VoteOption"
+                    "description": "The vote option.\n\nThis should be called \"option\" for consistency with Cosmos SDK. Sorry for that. See <https://github.com/CosmWasm/cosmwasm/issues/1571>.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/VoteOption"
+                      }
+                    ]
                   }
                 }
               }
@@ -1359,7 +1364,7 @@
             "additionalProperties": false
           },
           {
-            "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.16.0-alpha1/x/wasm/internal/types/tx.proto#L47-L61). `sender` is automatically filled with the current contract's address.",
+            "description": "Instantiates a new contracts from previously uploaded Wasm code.\n\nThe contract address is non-predictable. But it is guaranteed that when emitting the same Instantiate message multiple times, multiple instances on different addresses will be generated. See also Instantiate2.\n\nThis is translated to a [MsgInstantiateContract](https://github.com/CosmWasm/wasmd/blob/v0.29.2/proto/cosmwasm/wasm/v1/tx.proto#L53-L71). `sender` is automatically filled with the current contract's address.",
             "type": "object",
             "required": [
               "instantiate"
@@ -1931,6 +1936,16 @@
                   "string",
                   "null"
                 ]
+              },
+              "params": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/MigrateParams"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -1951,7 +1966,288 @@
         },
         "additionalProperties": false
       }
-    ]
+    ],
+    "definitions": {
+      "Admin": {
+        "description": "Information about the CosmWasm level admin of a contract. Used in conjunction with `ModuleInstantiateInfo` to instantiate modules.",
+        "oneOf": [
+          {
+            "description": "Set the admin to a specified address.",
+            "type": "object",
+            "required": [
+              "address"
+            ],
+            "properties": {
+              "address": {
+                "type": "object",
+                "required": [
+                  "addr"
+                ],
+                "properties": {
+                  "addr": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Sets the admin as the core module address.",
+            "type": "object",
+            "required": [
+              "core_module"
+            ],
+            "properties": {
+              "core_module": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Binary": {
+        "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>. See also <https://github.com/CosmWasm/cosmwasm/blob/main/docs/MESSAGE_TYPES.md>.",
+        "type": "string"
+      },
+      "MigrateParams": {
+        "type": "object",
+        "required": [
+          "migrator_code_id",
+          "params"
+        ],
+        "properties": {
+          "migrator_code_id": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "params": {
+            "$ref": "#/definitions/MigrateV1ToV2"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MigrateV1ToV2": {
+        "type": "object",
+        "required": [
+          "migration_params",
+          "sub_daos",
+          "v1_code_ids",
+          "v2_code_ids"
+        ],
+        "properties": {
+          "migration_params": {
+            "$ref": "#/definitions/MigrationModuleParams"
+          },
+          "sub_daos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/SubDao"
+            }
+          },
+          "v1_code_ids": {
+            "$ref": "#/definitions/V1CodeIds"
+          },
+          "v2_code_ids": {
+            "$ref": "#/definitions/V2CodeIds"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MigrationModuleParams": {
+        "description": "The params we need to provide for migration msgs",
+        "type": "object",
+        "required": [
+          "close_proposal_on_execution_failure",
+          "pre_propose_info"
+        ],
+        "properties": {
+          "close_proposal_on_execution_failure": {
+            "type": "boolean"
+          },
+          "migrate_stake_cw20_manager": {
+            "description": "Rather or not to migrate the stake_cw20 contract and its manager. If this is not set to true and a stake_cw20 contract is detected in the DAO's configuration the migration will be aborted.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "pre_propose_info": {
+            "$ref": "#/definitions/PreProposeInfo"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ModuleInstantiateInfo": {
+        "description": "Information needed to instantiate a module.",
+        "type": "object",
+        "required": [
+          "code_id",
+          "label",
+          "msg"
+        ],
+        "properties": {
+          "admin": {
+            "description": "CosmWasm level admin of the instantiated contract. See: <https://docs.cosmwasm.com/docs/1.0/smart-contracts/migration>",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Admin"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code_id": {
+            "description": "Code ID of the contract to be instantiated.",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "label": {
+            "description": "Label for the instantiated contract.",
+            "type": "string"
+          },
+          "msg": {
+            "description": "Instantiate message to be used to create the contract.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Binary"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PreProposeInfo": {
+        "oneOf": [
+          {
+            "description": "Anyone may create a proposal free of charge.",
+            "type": "object",
+            "required": [
+              "anyone_may_propose"
+            ],
+            "properties": {
+              "anyone_may_propose": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "The module specified in INFO has exclusive rights to proposal creation.",
+            "type": "object",
+            "required": [
+              "module_may_propose"
+            ],
+            "properties": {
+              "module_may_propose": {
+                "type": "object",
+                "required": [
+                  "info"
+                ],
+                "properties": {
+                  "info": {
+                    "$ref": "#/definitions/ModuleInstantiateInfo"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "SubDao": {
+        "type": "object",
+        "required": [
+          "addr"
+        ],
+        "properties": {
+          "addr": {
+            "description": "The contract address of the SubDAO",
+            "type": "string"
+          },
+          "charter": {
+            "description": "The purpose/constitution for the SubDAO",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "V1CodeIds": {
+        "type": "object",
+        "required": [
+          "cw20_stake",
+          "cw20_staked_balances_voting",
+          "cw4_voting",
+          "proposal_single"
+        ],
+        "properties": {
+          "cw20_stake": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "cw20_staked_balances_voting": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "cw4_voting": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "proposal_single": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "V2CodeIds": {
+        "type": "object",
+        "required": [
+          "cw20_stake",
+          "cw20_staked_balances_voting",
+          "cw4_voting",
+          "proposal_single"
+        ],
+        "properties": {
+          "cw20_stake": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "cw20_staked_balances_voting": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "cw4_voting": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "proposal_single": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      }
+    }
   },
   "sudo": null,
   "responses": {
