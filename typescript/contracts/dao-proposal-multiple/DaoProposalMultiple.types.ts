@@ -60,6 +60,7 @@ export type ExecuteMsg = {
 } | {
   vote: {
     proposal_id: number;
+    rationale?: string | null;
     vote: MultipleChoiceVote;
   };
 } | {
@@ -79,6 +80,11 @@ export type ExecuteMsg = {
     min_voting_period?: Duration | null;
     only_members_execute: boolean;
     voting_strategy: VotingStrategy;
+  };
+} | {
+  update_rationale: {
+    proposal_id: number;
+    rationale?: string | null;
   };
 } | {
   update_pre_propose_info: {
@@ -326,6 +332,7 @@ export interface VoteResponse {
 }
 export interface VoteInfo {
   power: Uint128;
+  rationale?: string | null;
   vote: MultipleChoiceVote;
   voter: Addr;
 }

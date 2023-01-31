@@ -294,14 +294,22 @@ mod tests {
     #[test]
     fn test_validate_native_denom_invalid() {
         let invalids = [
-            "ab".to_string(),                          // Too short.
-            (0..129).map(|_| "a").collect::<String>(), // Too long.
-            "1abc".to_string(),                        // Starts with non alphabetic character.
-            "abc~d".to_string(),                       // Contains invalid character.
-            "".to_string(),                            // Too short, also empty.
-            "🥵abc".to_string(),                       // Weird unicode start.
-            "ab:12🥵a".to_string(),                    // Weird unocide in non-head position.
-            "ab,cd".to_string(),                       // Comma is not a valid seperator.
+            // Too short.
+            "ab".to_string(),
+            // Too long.
+            (0..129).map(|_| "a").collect::<String>(),
+            // Starts with non alphabetic character.
+            "1abc".to_string(),
+            // Contains invalid character.
+            "abc~d".to_string(),
+            // Too short, also empty.
+            "".to_string(),
+            // Weird unicode start.
+            "🥵abc".to_string(),
+            // Weird unocide in non-head position.
+            "ab:12🥵a".to_string(),
+            // Comma is not a valid seperator.
+            "ab,cd".to_string(),
         ];
 
         for invalid in invalids {

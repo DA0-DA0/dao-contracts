@@ -116,7 +116,11 @@ fn test_execute_proposal_rejected_closed() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         proposal_module.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
@@ -125,7 +129,11 @@ fn test_execute_proposal_rejected_closed() {
     app.execute_contract(
         Addr::unchecked(ALTERNATIVE_ADDR),
         proposal_module.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
@@ -194,14 +202,22 @@ fn test_execute_proposal_more_than_once() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         proposal_module.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
     app.execute_contract(
         Addr::unchecked(ALTERNATIVE_ADDR),
         proposal_module.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
@@ -327,7 +343,11 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         proposal_module.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
@@ -346,7 +366,11 @@ pub fn test_allow_voting_after_proposal_execution_pre_expiration_cw20() {
     app.execute_contract(
         Addr::unchecked(ALTERNATIVE_ADDR),
         proposal_module.clone(),
-        &ExecuteMsg::Vote { proposal_id, vote },
+        &ExecuteMsg::Vote {
+            proposal_id,
+            vote,
+            rationale: None,
+        },
         &[],
     )
     .unwrap();
