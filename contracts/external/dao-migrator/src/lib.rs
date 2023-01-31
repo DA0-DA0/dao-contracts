@@ -2,12 +2,12 @@
 
 pub mod contract;
 mod error;
-pub mod migrate_msg;
 pub mod msg;
-pub mod query;
 pub mod state;
+pub mod types;
+pub mod utils;
 
 #[cfg(test)]
-mod tests;
+mod testing;
 
 pub use crate::error::ContractError;

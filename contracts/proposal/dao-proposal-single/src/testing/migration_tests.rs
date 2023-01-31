@@ -318,6 +318,7 @@ fn test_v1_v2_full_migration() {
                     new_code_id: v2_core_code,
                     msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 {
                         dao_uri: Some("dao-uri".to_string()),
+                        params: None,
                     })
                     .unwrap(),
                 }

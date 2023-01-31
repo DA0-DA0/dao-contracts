@@ -2701,7 +2701,11 @@ fn test_migrate_from_beta() {
         CosmosMsg::Wasm(WasmMsg::Migrate {
             contract_addr: core_addr.to_string(),
             new_code_id: core_id,
-            msg: to_binary(&MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
+            msg: to_binary(&MigrateMsg::FromV1 {
+                dao_uri: None,
+                params: None,
+            })
+            .unwrap(),
         }),
     )
     .unwrap();
@@ -2726,7 +2730,11 @@ fn test_migrate_from_beta() {
             CosmosMsg::Wasm(WasmMsg::Migrate {
                 contract_addr: core_addr.to_string(),
                 new_code_id: core_id,
-                msg: to_binary(&MigrateMsg::FromV1 { dao_uri: None }).unwrap(),
+                msg: to_binary(&MigrateMsg::FromV1 {
+                    dao_uri: None,
+                    params: None,
+                })
+                .unwrap(),
             }),
         )
         .unwrap_err()
@@ -2741,6 +2749,7 @@ fn test_migrate_mock() {
     let dao_uri: String = "/dao/uri".to_string();
     let msg = MigrateMsg::FromV1 {
         dao_uri: Some(dao_uri.clone()),
+        params: None,
     };
     let env = mock_env();
 

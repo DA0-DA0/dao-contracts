@@ -1,5 +1,5 @@
-use crate::query::SubDao;
 use crate::state::Config;
+use crate::{migrate_msg::MigrateParams, query::SubDao};
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 use cw_utils::Duration;
@@ -229,8 +229,12 @@ pub enum QueryMsg {
     TotalPowerAtHeight { height: Option<u64> },
 }
 
+#[allow(clippy::large_enum_variant)]
 #[cw_serde]
 pub enum MigrateMsg {
-    FromV1 { dao_uri: Option<String> },
+    FromV1 {
+        dao_uri: Option<String>,
+        params: Option<MigrateParams>,
+    },
     FromCompatible {},
 }

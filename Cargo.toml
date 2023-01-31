@@ -100,3 +100,5 @@ cw-utils-v1 = {package = "cw-utils", version = "0.13"}
 cw20-stake-reward-distributor-v1 = { package = "stake-cw20-reward-distributor", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw20-stake-external-rewards-v1 = { package = "stake-cw20-external-rewards", version = "0.2.6", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw20-stake-v1 = { package = "cw20-stake", version = "0.2.6", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw20-staked-balance-voting-v1 = { package = "cw20-staked-balance-voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
