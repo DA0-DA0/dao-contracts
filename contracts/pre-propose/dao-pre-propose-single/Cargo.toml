@@ -1,6 +1,6 @@
 [package]
 name = "dao-pre-propose-single"
-version = "2.0.1"
+version = "2.0.2"
 authors = ["ekez <zekemedley@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"

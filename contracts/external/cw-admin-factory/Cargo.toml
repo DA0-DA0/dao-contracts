@@ -1,6 +1,6 @@
 [package]
 name ="cw-admin-factory"
-version = "2.0.1"
+version = "2.0.2"
 authors = ["Jake Hartnell", "blue-note", "ekez <ekez@withoutdoing.com>"]
 edition = "2021"
 repository = "https://github.com/DA0-DA0/dao-contracts"

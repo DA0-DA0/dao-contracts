@@ -1,6 +1,6 @@
 [package]
 name = "cw20-stake-reward-distributor"
-version = "2.0.1"
+version = "2.0.2"
 edition = "2018"
 authors = ["Vernon Johnson <vtj2105@columbia.edu>, ekez <ekez@withoutdoing.com>"]
 license = { workspace = true }
