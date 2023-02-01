@@ -1,0 +1,11 @@
+[package]
+name = "cw-wormhole"
+version = "0.1.0"
+edition = "2021"
+authors = ["ekez <ekez@withoutdoing.com>"]
+description = "A CosmWasm map that allows incrementing and decrementing values from the past."
+
+[dependencies]
+cosmwasm-std = "1.1"
+cw-storage-plus = "1"
+serde = "1.0"
