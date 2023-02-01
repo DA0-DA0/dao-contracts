@@ -1,6 +1,6 @@
 [package]
 name = "dao-voting-cw20-balance"
-version = "2.0.1"
+version = "2.0.2"
 authors = ["ekez <ekez@withoutdoing.com>"]
 edition = "2021"
 
