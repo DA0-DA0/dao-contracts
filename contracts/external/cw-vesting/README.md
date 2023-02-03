@@ -5,7 +5,7 @@ This contract enables the creation of native && cw20 token streams, which allows
 Key features include: 
 - Optional contract owner, with ability to cancel payments
 - Support for native and cw20 tokens
-- Allows for automated distribution via external parties or tools like [Croncat](https://cron.cat/)
+- Allows for automated distribution via external parties or tools like [CronCat](https://cron.cat/)
 - For payments in a chain governance token, the ability to stake and claim staking rewards
 - Complex configuration for vesting schedules powered by [wynd-utils](https://github.com/cosmorama/wynddao/tree/main/packages/utils)
 
@@ -19,7 +19,7 @@ To instantiate a new instance of this contract you may specify a contract owner,
 
 The `owner` of a contract is optional. Contracts without owners are not able to be canceled. The owner can be set to the DAO making the payment or a neutral third party.
 
-The `params` object holds details of the vesting payment parameters. These will be validated upon instantiation. `recipient` represents the account that will be receiving the funds. `amount` represents the amount of the funds to be vested (in micro units). `denom` represents the denomination of the token to be vested and supports either `native` or `cw20`. `vesting_schedule` takes a curve from [wynd-utils](https://github.com/cosmorama/wynddao/tree/main/packages/utils) and validates it to make sure it fully vests (more on this in the next section). `title` and `description` are both optional metadata useful for book keeping.
+The `params` object holds details of the vesting payment parameters. These will be validated upon instantiation. `recipient` represents the account that will be receiving the funds. `amount` represents the amount of the funds to be vested (in micro units). `denom` represents the denomination of the token to be vested and supports either `native` or `cw20`. `vesting_schedule` takes a curve from [wynd-utils](https://github.com/cosmorama/wynddao/tree/main/packages/utils) and validates it to make sure it fully vests (more on this in the next section). `title` and `description` are both optional metadata useful for bookkeeping.
 
 An example `cw-vesting` instantiation message could look like this:
 ```sh
@@ -80,7 +80,7 @@ A 1 month vesting schedule of 100 $JUNO stating on January 1st 2023 and ending o
 
 Piecsewise Curves can be used to create more complicated vesting schedules. For example, let's say we have a schedule that vests 50% over 1 month and the remaining 50% over 1 year. We can implement this complex schedule with a Piecewise Linear curve.
 
-Piecewise Linear curves take a `steps` parameter which is a list of tuples `(x, y)`. Again, `x` represents time in UNIX seconds and `y` represents the amount. Note the last step has `y` at zero as as the `vesting_schedule` needs to fully vest in order to be valid. Time needs to go up, amount unvested needs to go down.
+Piecewise Linear curves take a `steps` parameter which is a list of tuples `(x, y)`. Again, `x` represents time in UNIX seconds and `y` represents the amount. Note the last step has `y` at zero as the `vesting_schedule` needs to fully vest in order to be valid. Time needs to go up, amount unvested needs to go down.
 
 A curve where 50% vests the first month starting January 1st 2023, and the remaining 50% vests over the next year. For 100 Juno.
 
@@ -108,9 +108,9 @@ If vesting native tokens, you need to include the exact amount in native funds t
 A cw20 vesting payment can be created using the cw20 [Send / Receive](https://github.com/CosmWasm/cw-plus/blob/main/packages/cw20/README.md#receiver) flow. This involves triggering a Send message from the cw20 token contract, with a Receive callback that's sent to the vesting contract.
 
 ## Distribute payments
-Vesting payments can be claimed continously at any point after the start time by triggering a Distribute message.
+Vesting payments can be claimed continuously at any point after the start time by triggering a Distribute message.
 
-*Anyone* can call the distribute message, allowing for agents such as [Croncat](https://cron.cat/) to automatically trigger payouts.
+*Anyone* can call the distribute message, allowing for agents such as [CronCat](https://cron.cat/) to automatically trigger payouts.
 
 ## Staking native tokens
 This contract allows for underlying native tokens to be staked if they match the staking token of the native chain (i.e. $JUNO on [Juno Network](https://junonetwork.io)).
@@ -120,20 +120,20 @@ This contract allows for underlying native tokens to be staked if they match the
 #### Limitations
 While this contract allows for delegating native tokens, it does not allow for voting. As such, be sure to pick validators you delegate to wisely when using this contract.
 
-## Cancelation
-This vesting contract supports optional cancelation. For example, if an employee has to leave a company for whatever reason, the company can vote to have the employee salary canceled.
+## Cancellation
+This vesting contract supports optional cancellation. For example, if an employee has to leave a company for whatever reason, the company can vote to have the employee salary canceled.
  
 This is only possible if an `owner` address is set upon contract instantiation, otherwise the vesting contract cannot be altered by either party.
 
 When a contract is canceled, funds that have vested up until that moment are paid out to the `recipient` and the rest are refunded to the contract `owner`.
 
-If funds are delegated when a contract is canceled, the delegated funds are immediately unbonded. After newly undelegated funds have finished the unbonding period, they can be withdraw by calling the `distribute` method to resolve.
+If funds are delegated when a contract is canceled, the delegated funds are immediately unbonded. After newly undelegated funds have finished the unbonding period, they can be withdrawn by calling the `distribute` method to resolve.
 
 ## Stable coin support
 
-This contract can be used with stable coins such as $USDC. It does not yet support auto swapping to stables, however this feature can be enabled with other contracts or tools like [Croncat](https://cron.cat/).
+This contract can be used with stable coins such as $USDC. It does not yet support auto swapping to stables, however this feature can be enabled with other contracts or tools like [CronCat](https://cron.cat/).
 
-DAOs always have an option of swapping to stables before creating a vesting contract ensuring no price slippage. For example, a proposal to pay someone 50% $USDC could could contain three messages:
+DAOs always have an option of swapping to stables before creating a vesting contract ensuring no price slippage. For example, a proposal to pay someone 50% $USDC could contain three messages:
 1. Swap 50% of grant tokens for $USDC
 2. Instantiate a vesting contract for the $USDC
 3. Instantiate a vesting contract for the native DAO token
