@@ -1,5 +1,5 @@
 
-use cosmwasm_std::{StdError, OverflowError};
+use cosmwasm_std::{StdError, OverflowError, VerificationError};
 use thiserror::Error;
 use secp256k1::Error as SecpError;
 
@@ -9,16 +9,16 @@ pub enum ContractError {
     Std(#[from] StdError),
 
     #[error("{0}")]
-    OverflowError(#[from] OverflowError),
-
-    #[error("{0}")]
-    Secp256k1Error(#[from] SecpError),
+    VerificationError(#[from] VerificationError),
 
     #[error("Invalid nonce")]
     InvalidNonce,
 
     #[error("Message expiration has passed")]
     MessageExpired,
+
+    #[error("Message signature is invalid")]
+    SignatureInvalid,
 }
 
 
