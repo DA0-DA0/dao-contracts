@@ -1,5 +1,2 @@
 
 
-pub struct ExecuteMsg {
-    
-}
