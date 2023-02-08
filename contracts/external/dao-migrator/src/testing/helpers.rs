@@ -29,7 +29,7 @@ pub struct ExecuteParams {
 #[derive(Clone)]
 pub struct ModuleAddrs {
     pub core: Addr,
-    pub proposal: Addr,
+    pub proposals: Vec<Addr>,
     pub voting: Addr,
     pub staking: Option<Addr>,
     pub token: Option<Addr>,
@@ -114,9 +114,8 @@ pub fn get_cw4_init_msg(code_ids: CodeIds) -> cw4_voting_v1::msg::InstantiateMsg
 
 pub fn get_module_addrs(app: &mut App, core_addr: Addr) -> ModuleAddrs {
     // Get modules addrs
-    let proposal_addr = {
-        let modules: Vec<Addr> = app
-            .wrap()
+    let proposal_addrs: Vec<Addr> = {
+        app.wrap()
             .query_wasm_smart(
                 &core_addr,
                 &cw_core_v1::msg::QueryMsg::ProposalModules {
@@ -124,9 +123,7 @@ pub fn get_module_addrs(app: &mut App, core_addr: Addr) -> ModuleAddrs {
                     limit: None,
                 },
             )
-            .unwrap();
-        assert!(modules.len() == 1);
-        modules.into_iter().next().unwrap()
+            .unwrap()
     };
 
     let voting_addr: Addr = app
@@ -152,22 +149,22 @@ pub fn get_module_addrs(app: &mut App, core_addr: Addr) -> ModuleAddrs {
 
     ModuleAddrs {
         core: core_addr,
-        proposal: proposal_addr,
+        proposals: proposal_addrs,
         staking: staking_addr,
         voting: voting_addr,
         token: token_addr,
     }
 }
 
-pub fn set_dummy_proposal(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
+pub fn set_dummy_proposal(app: &mut App, sender: Addr, core_addr: Addr, proposal_addr: Addr) {
     app.execute_contract(
         sender,
-        addrs.proposal.clone(),
+        proposal_addr,
         &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
             title: "t".to_string(),
             description: "d".to_string(),
             msgs: vec![WasmMsg::Execute {
-                contract_addr: addrs.core.to_string(),
+                contract_addr: core_addr.to_string(),
                 msg: to_binary(&cw_core_v1::msg::ExecuteMsg::UpdateCw20List {
                     to_add: vec![],
                     to_remove: vec![],
@@ -206,7 +203,7 @@ pub fn set_cw20_to_dao(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
 
     app.execute_contract(
         sender.clone(),
-        addrs.proposal.clone(),
+        addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
             title: "t".to_string(),
             description: "d".to_string(),
@@ -227,7 +224,7 @@ pub fn set_cw20_to_dao(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
 
     app.execute_contract(
         sender.clone(),
-        addrs.proposal.clone(),
+        addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
             proposal_id: 1,
             vote: voting_v1::Vote::Yes,
@@ -238,7 +235,7 @@ pub fn set_cw20_to_dao(app: &mut App, sender: Addr, addrs: ModuleAddrs) {
 
     app.execute_contract(
         sender,
-        addrs.proposal.clone(),
+        addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id: 1 },
         &[],
     )

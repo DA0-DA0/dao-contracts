@@ -43,6 +43,12 @@ impl V2CodeIds {
 
 /// The params we need to provide for migration msgs
 #[cw_serde]
+pub struct ProposalParams {
+    pub close_proposal_on_execution_failure: bool,
+    pub pre_propose_info: dao_voting::pre_propose::PreProposeInfo,
+}
+
+#[cw_serde]
 pub struct MigrationParams {
     // General
     /// Rather or not to migrate the stake_cw20 contract and its
@@ -51,8 +57,7 @@ pub struct MigrationParams {
     /// migration will be aborted.
     pub migrate_stake_cw20_manager: Option<bool>,
     // dao_proposal_single
-    pub close_proposal_on_execution_failure: bool,
-    pub pre_propose_info: dao_voting::pre_propose::PreProposeInfo,
+    pub proposal_params: Vec<ProposalParams>,
 }
 
 /// Wrapper enum that helps us to hold different types of migration msgs
