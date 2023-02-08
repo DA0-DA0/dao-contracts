@@ -11,6 +11,7 @@ use cw_utils::{must_pay, nonpayable};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
+use crate::query_unbonding::query_unbonding_duration_seconds;
 use crate::state::PAYMENT;
 use crate::vesting::{Status, VestInit};
 
@@ -334,7 +335,8 @@ pub fn execute_undelegate(
         }
     };
 
-    PAYMENT.undelegate(deps.storage, deps.querier, &env.block.time, amount)?;
+    let ubs = query_unbonding_duration_seconds(deps.querier)?;
+    PAYMENT.undelegate(deps.storage, &env.block.time, amount, ubs)?;
 
     let denom = deps.querier.query_bonded_denom()?;
 
