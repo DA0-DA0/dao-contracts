@@ -19,7 +19,6 @@ use cw_storage_plus::{Bound, KeyDeserialize, Map, PrimaryKey};
 /// this, and further runtime analysis see [this
 /// essay](https://gist.github.com/0xekez/15fab6436ed593cbd59f0bdf7ecf1f61).
 ///
-///
 /// # Example
 ///
 /// ```

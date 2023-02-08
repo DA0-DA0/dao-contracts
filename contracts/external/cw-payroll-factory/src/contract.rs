@@ -12,13 +12,11 @@ use cw20::Cw20ReceiveMsg;
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Bound;
 use cw_utils::{nonpayable, parse_reply_instantiate_data};
-use cw_vesting::{
-    msg::{
-        InstantiateMsg as PayrollInstantiateMsg, QueryMsg as PayrollQueryMsg,
-        ReceiveMsg as PayrollReceiveMsg,
-    },
-    state::VestingPayment,
+use cw_vesting::msg::{
+    InstantiateMsg as PayrollInstantiateMsg, QueryMsg as PayrollQueryMsg,
+    ReceiveMsg as PayrollReceiveMsg,
 };
+use cw_vesting::vesting::Vest;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
@@ -302,9 +300,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             let contract_addr = deps.api.addr_validate(&res.contract_address)?;
 
             // Query new vesting payment contract for info
-            let vesting_payment: VestingPayment = deps
+            let vest: Vest = deps
                 .querier
-                .query_wasm_smart(contract_addr.clone(), &PayrollQueryMsg::Info {})?;
+                .query_wasm_smart(contract_addr.clone(), &PayrollQueryMsg::Vest {})?;
 
             let instantiator = TMP_INSTANTIATOR_INFO.load(deps.storage)?;
 
@@ -314,7 +312,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                 contract_addr.as_ref(),
                 &VestingContract {
                     instantiator: instantiator.to_string(),
-                    recipient: vesting_payment.recipient.to_string(),
+                    recipient: vest.recipient.to_string(),
                     contract: contract_addr.to_string(),
                 },
             )?;
@@ -323,15 +321,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             TMP_INSTANTIATOR_INFO.remove(deps.storage);
 
             // If cw20, fire off fund message!
-            let msgs: Vec<CosmosMsg> = match vesting_payment.denom {
+            let msgs: Vec<CosmosMsg> = match vest.denom {
                 CheckedDenom::Native(_) => vec![],
-                CheckedDenom::Cw20(denom) => {
+                CheckedDenom::Cw20(ref denom) => {
                     // Send transaction to fund contract
                     vec![CosmosMsg::Wasm(WasmMsg::Execute {
                         contract_addr: denom.to_string(),
                         msg: to_binary(&Cw20ExecuteMsg::Send {
                             contract: contract_addr.to_string(),
-                            amount: vesting_payment.amount,
+                            amount: vest.total(),
                             msg: to_binary(&PayrollReceiveMsg::Fund {})?,
                         })?,
                         funds: vec![],
