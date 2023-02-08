@@ -6,12 +6,11 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { Uint128, UncheckedDenom, Curve, InstantiateMsg, UncheckedVestingParams, SaturatingLinear, PiecewiseLinear, ExecuteMsg, Binary, Action, Expiration, Timestamp, Uint64, Cw20ReceiveMsg, QueryMsg, CheckedDenom, Addr, VestingPaymentStatus, VestingPayment, OwnershipForAddr } from "./CwVesting.types";
+import { UncheckedDenom, Schedule, Uint128, Timestamp, Uint64, InstantiateMsg, ExecuteMsg, Binary, Action, Expiration, Cw20ReceiveMsg, QueryMsg, Addr, OwnershipForAddr, CheckedDenom, Status, Curve, Vest, SaturatingLinear, PiecewiseLinear } from "./CwVesting.types";
 export interface CwVestingReadOnlyInterface {
   contractAddress: string;
-  info: () => Promise<VestingPayment>;
   ownership: () => Promise<OwnershipForAddr>;
-  vestedAmount: () => Promise<Uint128>;
+  vest: () => Promise<Vest>;
 }
 export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
   client: CosmWasmClient;
@@ -20,24 +19,18 @@ export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
   constructor(client: CosmWasmClient, contractAddress: string) {
     this.client = client;
     this.contractAddress = contractAddress;
-    this.info = this.info.bind(this);
     this.ownership = this.ownership.bind(this);
-    this.vestedAmount = this.vestedAmount.bind(this);
+    this.vest = this.vest.bind(this);
   }
 
-  info = async (): Promise<VestingPayment> => {
-    return this.client.queryContractSmart(this.contractAddress, {
-      info: {}
-    });
-  };
   ownership = async (): Promise<OwnershipForAddr> => {
     return this.client.queryContractSmart(this.contractAddress, {
       ownership: {}
     });
   };
-  vestedAmount = async (): Promise<Uint128> => {
+  vest = async (): Promise<Vest> => {
     return this.client.queryContractSmart(this.contractAddress, {
-      vested_amount: {}
+      vest: {}
     });
   };
 }
@@ -53,7 +46,11 @@ export interface CwVestingInterface extends CwVestingReadOnlyInterface {
     msg: Binary;
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  distribute: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  distribute: ({
+    amount
+  }: {
+    amount?: Uint128;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   cancel: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   delegate: ({
     amount,
@@ -88,6 +85,11 @@ export interface CwVestingInterface extends CwVestingReadOnlyInterface {
   }: {
     validator: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  withdrawCanceledPayment: ({
+    amount
+  }: {
+    amount?: Uint128;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   updateOwnership: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class CwVestingClient extends CwVestingQueryClient implements CwVestingInterface {
@@ -108,6 +110,7 @@ export class CwVestingClient extends CwVestingQueryClient implements CwVestingIn
     this.undelegate = this.undelegate.bind(this);
     this.setWithdrawAddress = this.setWithdrawAddress.bind(this);
     this.withdrawDelegatorReward = this.withdrawDelegatorReward.bind(this);
+    this.withdrawCanceledPayment = this.withdrawCanceledPayment.bind(this);
     this.updateOwnership = this.updateOwnership.bind(this);
   }
 
@@ -128,9 +131,15 @@ export class CwVestingClient extends CwVestingQueryClient implements CwVestingIn
       }
     }, fee, memo, funds);
   };
-  distribute = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  distribute = async ({
+    amount
+  }: {
+    amount?: Uint128;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      distribute: {}
+      distribute: {
+        amount
+      }
     }, fee, memo, funds);
   };
   cancel = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
@@ -202,6 +211,17 @@ export class CwVestingClient extends CwVestingQueryClient implements CwVestingIn
     return await this.client.execute(this.sender, this.contractAddress, {
       withdraw_delegator_reward: {
         validator
+      }
+    }, fee, memo, funds);
+  };
+  withdrawCanceledPayment = async ({
+    amount
+  }: {
+    amount?: Uint128;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      withdraw_canceled_payment: {
+        amount
       }
     }, fee, memo, funds);
   };

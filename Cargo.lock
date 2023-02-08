@@ -85,9 +85,9 @@ checksum = "d468802bab17cbc0cc575e9b053f41e72aa36bfa6b7f55e3529ffa43161b97fa"
 
 [[package]]
 name = "axum"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5694b64066a2459918d8074c2ce0d5a88f409431994c2356617c8ae0c4721fc"
+checksum = "3114e77b361ec716aa429ae5c04243abe00cf7548e870b9370affcc5c491a7d0"
 dependencies = [
  "async-trait",
  "axum-core",
@@ -334,7 +334,19 @@ checksum = "673d31bd830c0772d78545de20d975129b6ab2f7db4e4e9313c3b8777d319194"
 dependencies = [
  "prost 0.11.6",
  "prost-types",
- "tendermint-proto",
+ "tendermint-proto 0.26.0",
+ "tonic",
+]
+
+[[package]]
+name = "cosmos-sdk-proto"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4776e787b24d9568dd61d3237eeb4eb321d622fb881b858c7b82806420e87d4"
+dependencies = [
+ "prost 0.11.6",
+ "prost-types",
+ "tendermint-proto 0.27.0",
  "tonic",
 ]
 
@@ -345,7 +357,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fa07096219b1817432b8f1e47c22e928c64bbfd231fc08f0a98f0e7ddd602b7"
 dependencies = [
  "bip32",
- "cosmos-sdk-proto",
+ "cosmos-sdk-proto 0.15.0",
  "ecdsa",
  "eyre",
  "getrandom",
@@ -502,7 +514,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20-base 0.16.0",
@@ -602,7 +614,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-paginate 2.0.3",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -620,7 +632,7 @@ version = "2.0.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "thiserror",
 ]
 
@@ -632,7 +644,7 @@ checksum = "c2eb84554bbfa6b66736abcd6a9bfdf237ee0ecb83910f746dff7f799093c80a"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
- "cw-storage-plus 1.0.1",
+ "cw-storage-plus 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw-utils 1.0.1",
  "derivative",
  "itertools",
@@ -651,7 +663,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-ownable-derive",
- "cw-storage-plus 1.0.1",
+ "cw-storage-plus 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw-utils 1.0.1",
  "thiserror",
 ]
@@ -684,7 +696,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "serde",
 ]
 
@@ -697,7 +709,7 @@ dependencies = [
  "cw-denom",
  "cw-multi-test",
  "cw-ownable",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw-vesting",
  "cw2 0.16.0",
@@ -765,13 +777,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-storage-plus"
+version = "1.0.1"
+source = "git+https://github.com/DA0-DA0/cw-storage-plus.git#284b3ffb16f02145a89ba687443c5c440b0c3303"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw-token-swap"
 version = "2.0.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -825,14 +847,16 @@ dependencies = [
 name = "cw-vesting"
 version = "2.0.3"
 dependencies = [
+ "cosmos-sdk-proto 0.16.0",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test",
  "cw-ownable",
  "cw-paginate 2.0.3",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
+ "cw-wormhole",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
@@ -846,8 +870,9 @@ dependencies = [
 name = "cw-wormhole"
 version = "0.1.0"
 dependencies = [
+ "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 1.0.1",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "serde",
 ]
 
@@ -884,7 +909,7 @@ checksum = "8fb70cee2cf0b4a8ff7253e6bc6647107905e8eb37208f87d54f67810faa62f8"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 1.0.1",
+ "cw-storage-plus 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "schemars",
  "serde",
 ]
@@ -978,7 +1003,7 @@ dependencies = [
  "cw-multi-test",
  "cw-ownable",
  "cw-paginate 2.0.3",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -999,7 +1024,7 @@ dependencies = [
  "cw-controllers 0.16.0",
  "cw-multi-test",
  "cw-ownable",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.13.4",
@@ -1018,7 +1043,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-multi-test",
  "cw-ownable",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1200,7 +1225,7 @@ version = "2.0.3"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "thiserror",
 ]
@@ -1214,7 +1239,7 @@ dependencies = [
  "cw-core",
  "cw-multi-test",
  "cw-paginate 2.0.3",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1264,7 +1289,7 @@ dependencies = [
  "cw-core-interface",
  "cw-multi-test",
  "cw-proposal-single",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1296,7 +1321,7 @@ dependencies = [
  "cw-denom",
  "cw-multi-test",
  "cw-paginate 2.0.3",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1322,7 +1347,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-denom",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1349,7 +1374,7 @@ dependencies = [
  "cw-denom",
  "cw-hooks",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "dao-interface",
@@ -1416,7 +1441,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw4 0.16.0",
@@ -1438,7 +1463,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-hooks",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1473,7 +1498,7 @@ dependencies = [
  "cw-denom",
  "cw-hooks",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1514,7 +1539,7 @@ dependencies = [
  "cw-hooks",
  "cw-multi-test",
  "cw-proposal-single",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
@@ -1551,7 +1576,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw2 0.16.0",
  "dao-interface",
  "dao-macros",
@@ -1609,7 +1634,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw20 0.16.0",
  "dao-core",
@@ -1625,7 +1650,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1643,7 +1668,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
@@ -1662,7 +1687,7 @@ dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
  "cw-multi-test",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw4 0.16.0",
@@ -1682,7 +1707,7 @@ dependencies = [
  "cw-controllers 0.16.0",
  "cw-multi-test",
  "cw-paginate 2.0.3",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw721 0.16.0",
@@ -1705,7 +1730,7 @@ dependencies = [
  "cw-controllers 0.16.0",
  "cw-multi-test",
  "cw-paginate 2.0.3",
- "cw-storage-plus 0.16.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "dao-interface",
@@ -3266,7 +3291,7 @@ dependencies = [
  "signature",
  "subtle",
  "subtle-encoding",
- "tendermint-proto",
+ "tendermint-proto 0.26.0",
  "time",
  "zeroize",
 ]
@@ -3304,6 +3329,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "tendermint-proto"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5895470f28c530f8ae8c4071bf8190304ce00bd131d25e81730453124a3375c"
+dependencies = [
+ "bytes",
+ "flex-error",
+ "num-derive",
+ "num-traits",
+ "prost 0.11.6",
+ "prost-types",
+ "serde",
+ "serde_bytes",
+ "subtle-encoding",
+ "time",
+]
+
+[[package]]
 name = "tendermint-rpc"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3327,7 +3370,7 @@ dependencies = [
  "subtle-encoding",
  "tendermint",
  "tendermint-config",
- "tendermint-proto",
+ "tendermint-proto 0.26.0",
  "thiserror",
  "time",
  "tokio",

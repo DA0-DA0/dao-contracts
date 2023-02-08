@@ -2,18 +2,17 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env,
-    MessageInfo, Order, Response, StakingMsg, StdResult, Uint128,
+    MessageInfo, Response, StakingMsg, StdResult, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
-use cw_denom::{CheckedDenom, UncheckedDenom};
+use cw_denom::CheckedDenom;
 use cw_utils::{must_pay, nonpayable};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{
-    VestingPayment, VestingPaymentStatus, STAKED_VESTING_BY_VALIDATOR, VESTING_PAYMENT,
-};
+use crate::state::PAYMENT;
+use crate::vesting::{Status, VestInit};
 
 const CONTRACT_NAME: &str = "crates.io:cw-vesting";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -21,64 +20,65 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
     cw_ownable::initialize_owner(deps.storage, deps.api, msg.owner.as_deref())?;
 
-    let mut msgs: Vec<CosmosMsg> = vec![];
+    let denom = msg.denom.into_checked(deps.as_ref())?;
+    let recipient = deps.api.addr_validate(&msg.recipient)?;
+    let start_time = msg.start_time.unwrap_or(env.block.time);
+    let vest = PAYMENT.initialize(
+        deps.storage,
+        VestInit {
+            total: msg.total,
+            schedule: msg.schedule,
+            start_time,
+            duration_seconds: msg.duration_seconds,
+            denom,
+            recipient,
+            title: msg.title,
+            description: msg.description,
+        },
+    )?;
 
-    // Check all params and create vesting payment with status based on denom
-    let vp = match msg.params.denom {
-        UncheckedDenom::Native(ref denom) => {
-            // Validate all vesting payment params
-            let checked_params = msg.params.clone().into_checked(deps.as_ref())?;
-
-            // Check amount sent matches amount in vesting payment
-            if checked_params.amount != must_pay(&info, denom)? {
-                return Err(ContractError::AmountDoesNotMatch);
+    let resp = match vest.denom {
+        CheckedDenom::Native(ref denom) => {
+            let sent = must_pay(&info, denom)?;
+            if vest.total() != sent {
+                return Err(ContractError::WrongFundAmount {
+                    sent,
+                    expected: vest.total(),
+                });
             }
+            PAYMENT.set_funded(deps.storage)?;
 
-            // If the native denom matches the bonded denom, set withdraw address
-            // to the recipient so that any staking rewards go to the recipient
-            let local_denom = deps.querier.query_bonded_denom()?;
-            if local_denom == *denom {
-                msgs.push(CosmosMsg::Distribution(
+            // If the payment denomination is the same as the native
+            // denomination, set the staking rewards receiver to the
+            // payment receiver so that when they stake vested tokens
+            // they receive the rewards.
+            if denom.as_str() == deps.querier.query_bonded_denom()? {
+                Some(CosmosMsg::Distribution(
                     DistributionMsg::SetWithdrawAddress {
-                        address: checked_params.recipient.to_string(),
+                        address: vest.recipient.to_string(),
                     },
                 ))
+            } else {
+                None
             }
-
-            // Create a new vesting payment
-            VestingPayment::new(checked_params)?
         }
-        UncheckedDenom::Cw20(_) => {
-            // If configured for cw20, check no native funds included
-            nonpayable(&info)?;
-
-            // Validate all vesting payment params
-            let checked_params = msg.params.into_checked(deps.as_ref())?;
-
-            // Create new vesting payment
-            let mut vesting_payment = VestingPayment::new(checked_params)?;
-
-            // Set status to unfunded
-            vesting_payment.status = VestingPaymentStatus::Unfunded;
-
-            vesting_payment
+        CheckedDenom::Cw20(_) => {
+            nonpayable(&info)?; // Funding happens in ExecuteMsg::Receive.
+            None
         }
     };
-
-    VESTING_PAYMENT.save(deps.storage, &vp)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
         .add_attribute("owner", msg.owner.unwrap_or_else(|| "None".to_string()))
-        .add_messages(msgs))
+        .add_messages(resp))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -90,7 +90,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive_cw20(env, deps, info, msg),
-        ExecuteMsg::Distribute {} => execute_distribute(env, deps),
+        ExecuteMsg::Distribute { amount } => execute_distribute(env, deps, amount),
         ExecuteMsg::Cancel {} => execute_cancel_vesting_payment(env, deps, info),
         ExecuteMsg::UpdateOwnership(action) => execute_update_owner(deps, info, env, action),
         ExecuteMsg::Delegate { validator, amount } => {
@@ -108,6 +108,9 @@ pub fn execute(
             execute_set_withdraw_address(deps, info, address)
         }
         ExecuteMsg::WithdrawDelegatorReward { validator } => execute_withdraw_rewards(validator),
+        ExecuteMsg::WithdrawCanceledPayment { amount } => {
+            execute_withdraw_canceled(deps, env, info, amount)
+        }
     }
 }
 
@@ -124,30 +127,28 @@ pub fn execute_receive_cw20(
 
     match msg {
         ReceiveMsg::Fund {} => {
-            let mut vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
+            let vest = PAYMENT.get_vest(deps.storage)?;
 
-            // Check amount sent matches amount in vesting payment
-            if vesting_payment.amount != receive_msg.amount {
-                return Err(ContractError::AmountDoesNotMatch);
-            }
+            if vest.total() != receive_msg.amount {
+                return Err(ContractError::WrongFundAmount {
+                    sent: receive_msg.amount,
+                    expected: vest.total(),
+                });
+            } // correct amount
 
-            // Check that the Cw20 specified in the denom *must be* matches sender
-            if !vesting_payment.denom.is_cw20(&info.sender) {
-                return Err(ContractError::Cw20DoesNotMatch);
-            }
+            if !vest.denom.is_cw20(&info.sender) {
+                return Err(ContractError::WrongCw20);
+            } // correct denom
 
-            // Check status is Unfunded to prevent funding twice
-            if vesting_payment.status != VestingPaymentStatus::Unfunded {
-                return Err(ContractError::AlreadyFunded);
-            }
+            if vest.status != Status::Unfunded {
+                return Err(ContractError::Funded {});
+            } // correct status
 
-            // Update vesting payment status
-            vesting_payment.status = VestingPaymentStatus::Active;
-            VESTING_PAYMENT.save(deps.storage, &vesting_payment)?;
+            PAYMENT.set_funded(deps.storage)?;
 
             Ok(Response::new()
                 .add_attribute("method", "fund_cw20_vesting_payment")
-                .add_attribute("recipient", vesting_payment.recipient.to_string()))
+                .add_attribute("receiver", vest.recipient.to_string()))
         }
     }
 }
@@ -157,71 +158,9 @@ pub fn execute_cancel_vesting_payment(
     deps: DepsMut,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    // Check sender is contract owner
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let mut msgs: Vec<CosmosMsg> = vec![];
-
-    let vesting_payment =
-        VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
-            // Check if contract status is active
-            if vp.status != VestingPaymentStatus::Active {
-                return Err(ContractError::NotActive);
-            }
-
-            // Set status based on whether any funds are staked
-            if vp.staked_amount == Uint128::zero() {
-                vp.status = VestingPaymentStatus::Canceled;
-            } else {
-                vp.status = VestingPaymentStatus::CanceledAndUnbonding;
-                // Set canceled at time for use when distributing unbonded funds
-                vp.canceled_at_time = Some(env.block.time.seconds());
-            }
-            Ok(vp)
-        })?;
-
-    // In no funds are staked, we distibute contract funds
-    // Check if funds have vested or there are staking rewards
-    let vested_amount = vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?;
-
-    // Transfer any vested amount to the original recipient
-    if vested_amount != Uint128::zero() {
-        let transfer_vested_to_recipient_msg = vesting_payment
-            .denom
-            .get_transfer_to_message(&vesting_payment.recipient, vested_amount)?;
-        msgs.push(transfer_vested_to_recipient_msg);
-    }
-
-    // Transfer any remaining unvested amount to the owner
-    let unvested = vesting_payment.amount.checked_sub(vested_amount)?;
-    if unvested != Uint128::zero() {
-        let transfer_unvested_to_owner_msg = vesting_payment
-            .denom
-            .get_transfer_to_message(&info.sender, unvested)?;
-        msgs.push(transfer_unvested_to_owner_msg);
-    }
-
-    // Handle edge case if funds are staked at the time of cancelation
-    if vesting_payment.status == VestingPaymentStatus::CanceledAndUnbonding {
-        let denom = deps.querier.query_bonded_denom()?;
-
-        // Unbond any staked funds
-        let mut undelegate_msgs = STAKED_VESTING_BY_VALIDATOR
-            .range(deps.storage, None, None, Order::Ascending)
-            .flat_map(|svc| -> StdResult<CosmosMsg> {
-                let (validator, amount) = svc?;
-                Ok(CosmosMsg::Staking(StakingMsg::Undelegate {
-                    validator,
-                    amount: Coin {
-                        denom: denom.clone(),
-                        amount,
-                    },
-                }))
-            })
-            .collect::<Vec<CosmosMsg>>();
-
-        msgs.append(&mut undelegate_msgs);
-    }
+    let msgs = PAYMENT.cancel(deps.storage, &env, &info.sender)?;
 
     Ok(Response::new()
         .add_attribute("method", "remove_vesting_payment")
@@ -230,75 +169,30 @@ pub fn execute_cancel_vesting_payment(
         .add_messages(msgs))
 }
 
-pub fn execute_distribute(env: Env, deps: DepsMut) -> Result<Response, ContractError> {
-    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-    // Get vested amount based on vesting payment status
-    let vested_amount = match vesting_payment.status {
-        // If canceled and unbonding use canceled time
-        VestingPaymentStatus::CanceledAndUnbonding => vesting_payment
-            .get_vested_amount_by_seconds(
-                vesting_payment
-                    .canceled_at_time
-                    .unwrap_or_else(|| env.block.time.seconds()),
-            )?,
-        // Otherwise use current block time
-        _ => vesting_payment.get_vested_amount_by_seconds(env.block.time.seconds())?,
-    };
-
-    // Check there are funds to distribute
-    if vested_amount == Uint128::zero() {
-        return Err(ContractError::NoFundsToClaim);
-    }
-
-    // Update Vesting Payment with claimed amount and the correct status
-    VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
-        // Decrease vesting amount
-        vp.amount = vp.amount.checked_sub(vested_amount)?;
-        // Increase the claimed amount
-        vp.claimed_amount = vp.claimed_amount.checked_add(vested_amount)?;
-
-        // Check if canceled and unbonding
-        if vp.status == VestingPaymentStatus::CanceledAndUnbonding {
-            // Set status to canceled as funds have unbonded if this executes
-            vp.status = VestingPaymentStatus::Canceled
-        }
-
-        // If the amount remaining in contract goes to zero, update status
-        if vp.amount == Uint128::zero() {
-            vp.status = VestingPaymentStatus::FullyVested
-        }
-        Ok(vp)
-    })?;
-
-    let mut msgs: Vec<CosmosMsg> = vec![];
-
-    // Get transfer message for recipient payout
-    if vested_amount != Uint128::zero() {
-        let transfer_msg = vesting_payment
-            .denom
-            .get_transfer_to_message(&vesting_payment.recipient, vested_amount)?;
-        msgs.push(transfer_msg);
-    }
-
-    // Get owner's payout message in event of canceled and unbonding
-    if vesting_payment.status == VestingPaymentStatus::CanceledAndUnbonding {
-        let unvested_amount = vesting_payment.amount.checked_sub(vested_amount)?;
-        let owner = cw_ownable::get_ownership(deps.storage)?;
-        if let Some(owner) = owner.owner {
-            if unvested_amount != Uint128::zero() {
-                let withdraw_unbonded_msg = vesting_payment
-                    .denom
-                    .get_transfer_to_message(&owner, unvested_amount)?;
-                msgs.push(withdraw_unbonded_msg);
-            }
-        }
-    }
+pub fn execute_distribute(
+    env: Env,
+    deps: DepsMut,
+    request: Option<Uint128>,
+) -> Result<Response, ContractError> {
+    let msg = PAYMENT.distribute(deps.storage, &env.block.time, request)?;
 
     Ok(Response::new()
         .add_attribute("method", "distribute")
-        .add_attribute("vested_amount", vested_amount)
-        .add_messages(msgs))
+        .add_message(msg))
+}
+
+pub fn execute_withdraw_canceled(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Option<Uint128>,
+) -> Result<Response, ContractError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let msg = PAYMENT.withdraw_canceled(deps.storage, &env.block.time, amount, &info.sender)?;
+
+    Ok(Response::new()
+        .add_attribute("method", "withdraw_canceled")
+        .add_message(msg))
 }
 
 pub fn execute_update_owner(
@@ -312,34 +206,31 @@ pub fn execute_update_owner(
 }
 
 pub fn execute_delegate(
-    _env: Env,
+    env: Env,
     deps: DepsMut,
     info: MessageInfo,
     validator: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-    // Check sender is the recipient of the vesting payment
-    if info.sender != vesting_payment.recipient {
-        return Err(ContractError::Unauthorized);
-    }
-
-    // Non-payable as this method delegates funds in the contract
     nonpayable(&info)?;
 
-    // Check status is active
-    if vesting_payment.status != VestingPaymentStatus::Active {
-        return Err(ContractError::NotActive);
+    let vest = PAYMENT.get_vest(deps.storage)?;
+
+    match vest.status {
+        Status::Unfunded => return Err(ContractError::NotFunded {}),
+        Status::Funded => {
+            if info.sender != vest.recipient {
+                return Err(ContractError::NotReceiver);
+            }
+        }
+        Status::Canceled { .. } => return Err(ContractError::Cancelled),
     }
 
-    // Check vesting payment denom matches local denom
-    let denom = match vesting_payment.denom {
+    let denom = match vest.denom {
         CheckedDenom::Cw20(_) => {
             return Err(ContractError::NotStakeable);
         }
         CheckedDenom::Native(denom) => {
-            // Get local denom, ensure it matches the vesting denom
             let local_denom = deps.querier.query_bonded_denom()?;
             if local_denom != denom {
                 return Err(ContractError::NotStakeable);
@@ -349,35 +240,8 @@ pub fn execute_delegate(
         }
     };
 
-    // Update vesting payment with amount of staked rewards
-    VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
-        // Check stake amount is not greater than vesting payment amount
-        if amount > vp.amount {
-            return Err(ContractError::NotEnoughFunds {});
-        }
+    PAYMENT.delegate(deps.storage, &env.block.time, amount)?;
 
-        if vp.amount < vp.staked_amount.checked_add(amount)? {
-            return Err(ContractError::StakingMoreThanVesting);
-        }
-
-        // Update amounts
-        vp.staked_amount = vp.staked_amount.checked_add(amount)?;
-        Ok(vp)
-    })?;
-
-    // Save a record of staking this vesting payment amount to a validator
-    match STAKED_VESTING_BY_VALIDATOR.may_load(deps.storage, &validator)? {
-        // If already staked to this validator, increase staked amount
-        Some(staked_amount) => STAKED_VESTING_BY_VALIDATOR.save(
-            deps.storage,
-            &validator,
-            &staked_amount.checked_add(amount)?,
-        ),
-        // If not currently staked to this validator save a new record with staked amount
-        None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &validator, &amount),
-    }?;
-
-    // Create message to delegate the underlying tokens
     let msg = StakingMsg::Delegate {
         validator: validator.clone(),
         amount: Coin { denom, amount },
@@ -398,32 +262,25 @@ pub fn execute_redelegate(
     dst_validator: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-    // Check sender is the recipient of the vesting payment
-    if info.sender != vesting_payment.recipient {
-        return Err(ContractError::Unauthorized);
-    }
-
-    // Non-payable as this method redelegates funds in the contract
     nonpayable(&info)?;
 
-    if src_validator == dst_validator {
-        return Err(ContractError::SameValidator);
+    let vest = PAYMENT.get_vest(deps.storage)?;
+
+    match vest.status {
+        Status::Unfunded => return Err(ContractError::NotFunded {}),
+        Status::Funded => {
+            if info.sender != vest.recipient {
+                return Err(ContractError::NotReceiver);
+            }
+        }
+        Status::Canceled { .. } => cw_ownable::assert_owner(deps.storage, &info.sender)?,
     }
 
-    // Check status is active
-    if vesting_payment.status != VestingPaymentStatus::Active {
-        return Err(ContractError::NotActive);
-    }
-
-    // Check vesting payment denom matches local denom
-    let denom = match vesting_payment.denom {
+    let denom = match vest.denom {
         CheckedDenom::Cw20(_) => {
             return Err(ContractError::NotStakeable);
         }
         CheckedDenom::Native(denom) => {
-            // Get local denom, ensure it matches the vesting denom
             let local_denom = deps.querier.query_bonded_denom()?;
             if local_denom != denom {
                 return Err(ContractError::NotStakeable);
@@ -433,30 +290,6 @@ pub fn execute_redelegate(
         }
     };
 
-    // Load source validator, subtract redelegated amount
-    let amount_staked_src = STAKED_VESTING_BY_VALIDATOR
-        .load(deps.storage, &src_validator)
-        .map_err(|_| ContractError::NoDelegationsForValidator {})?;
-
-    STAKED_VESTING_BY_VALIDATOR.save(
-        deps.storage,
-        &src_validator,
-        &amount_staked_src.checked_sub(amount)?,
-    )?;
-
-    // Load destination validator, increase amount
-    match STAKED_VESTING_BY_VALIDATOR.may_load(deps.storage, &dst_validator)? {
-        // If already staked to this validator, increase staked amount
-        Some(staked_amount) => STAKED_VESTING_BY_VALIDATOR.save(
-            deps.storage,
-            &src_validator,
-            &staked_amount.checked_add(amount)?,
-        ),
-        // If not currently staked to this validator save a new record with staked amount
-        None => STAKED_VESTING_BY_VALIDATOR.save(deps.storage, &dst_validator, &amount),
-    }?;
-
-    // Create message to delegate the underlying tokens
     let msg = StakingMsg::Redelegate {
         src_validator: src_validator.clone(),
         dst_validator: dst_validator.clone(),
@@ -472,46 +305,43 @@ pub fn execute_redelegate(
 }
 
 pub fn execute_undelegate(
-    _env: Env,
+    env: Env,
     deps: DepsMut,
     info: MessageInfo,
     validator: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
+    nonpayable(&info)?;
 
-    // Check sender is the recipient of the vesting payment
-    if info.sender != vesting_payment.recipient {
-        return Err(ContractError::Unauthorized);
-    }
+    let vest = PAYMENT.get_vest(deps.storage)?;
 
-    // Update vesting payment with amount of staked rewards
-    VESTING_PAYMENT.update(deps.storage, |mut vp| -> Result<_, ContractError> {
-        // Check unstake amount is not greater than vesting payment amount
-        if amount > vp.staked_amount {
-            return Err(ContractError::NotEnoughFunds {});
+    match vest.status {
+        Status::Unfunded => return Err(ContractError::NotFunded {}),
+        Status::Funded => {
+            if info.sender != vest.recipient {
+                return Err(ContractError::NotReceiver);
+            }
         }
+        // while canceled either the owner or the receiver may
+        // undelegate so long as they have funds to be settled.
+        Status::Canceled { owner_withdrawable } => {
+            if vest.vested(&env.block.time) != vest.claimed && info.sender == vest.recipient {
+            } else if !owner_withdrawable.is_zero() {
+                cw_ownable::assert_owner(deps.storage, &info.sender)?;
+            } else {
+                return Err(ContractError::Cancelled {});
+            }
+        }
+    };
 
-        // Update amounts
-        vp.staked_amount = vp.staked_amount.checked_sub(amount)?;
-        Ok(vp)
-    })?;
+    PAYMENT.undelegate(deps.storage, deps.querier, &env.block.time, amount)?;
 
     let denom = deps.querier.query_bonded_denom()?;
 
-    // Create message to delegate the underlying tokens
     let msg = StakingMsg::Undelegate {
-        validator: validator.clone(),
+        validator,
         amount: Coin { denom, amount },
     };
-
-    // Update amount delegated to validator
-    STAKED_VESTING_BY_VALIDATOR.update(deps.storage, &validator, |staked_amount| {
-        match staked_amount {
-            Some(staked_amount) => Ok(staked_amount.checked_sub(amount)?),
-            None => Err(ContractError::NoDelegationsForValidator {}),
-        }
-    })?;
 
     Ok(Response::default().add_message(msg))
 }
@@ -521,14 +351,18 @@ pub fn execute_set_withdraw_address(
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
-    let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-    // Check sender is the recipient of the vesting payment
-    if info.sender != vesting_payment.recipient {
-        return Err(ContractError::Unauthorized);
+    let vest = PAYMENT.get_vest(deps.storage)?;
+    match vest.status {
+        Status::Unfunded | Status::Funded => {
+            if info.sender != vest.recipient {
+                return Err(ContractError::NotReceiver);
+            }
+        }
+        // In the cancelled state the owner is receiving staking
+        // rewards and may update the withdraw address.
+        Status::Canceled { .. } => cw_ownable::assert_owner(deps.storage, &info.sender)?,
     }
 
-    // Set withdraw address
     let msg = DistributionMsg::SetWithdrawAddress {
         address: address.clone(),
     };
@@ -540,25 +374,15 @@ pub fn execute_set_withdraw_address(
 }
 
 pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractError> {
-    // Withdraw rewards from validator
     let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
 
     Ok(Response::default().add_message(withdraw_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Info {} => to_binary(&VESTING_PAYMENT.load(deps.storage)?),
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::VestedAmount {} => {
-            let vesting_payment = VESTING_PAYMENT.load(deps.storage)?;
-
-            to_binary(
-                &vesting_payment
-                    .vesting_schedule
-                    .value(env.block.time.seconds()),
-            )
-        }
+        QueryMsg::Vest {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
     }
 }
