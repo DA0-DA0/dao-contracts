@@ -9,11 +9,12 @@
     "required": [
       "denom",
       "description",
-      "duration_seconds",
       "recipient",
       "schedule",
       "title",
-      "total"
+      "total",
+      "unbonding_duration_seconds",
+      "vesting_duration_seconds"
     ],
     "properties": {
       "denom": {
@@ -21,11 +22,6 @@
       },
       "description": {
         "type": "string"
-      },
-      "duration_seconds": {
-        "type": "integer",
-        "format": "uint64",
-        "minimum": 0.0
       },
       "owner": {
         "type": [
@@ -55,6 +51,17 @@
       },
       "total": {
         "$ref": "#/definitions/Uint128"
+      },
+      "unbonding_duration_seconds": {
+        "description": "The unbonding duration for the chain this contract is deployed on. Smart contracts do not have access to this data so it must be provided by the caller.\n\nThis value being too high will cause this contract to hold funds for longer than needed, this value being too low will reduce the quality of error messages and require additional external calculations with correct values to withdraw avaliable funds from the contract.",
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "vesting_duration_seconds": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       }
     },
     "additionalProperties": false,
