@@ -23,7 +23,7 @@ use std::panic;
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     proposal::MultipleChoiceProposal,
-    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse},
+    query::{ProposalListResponse, ProposalResponse, VoteInfo, VoteListResponse, VoteResponse},
     state::Config,
     testing::{
         do_votes::do_test_votes_cw20_balances,
@@ -371,6 +371,7 @@ fn test_no_early_pass_with_min_duration() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -480,6 +481,7 @@ fn test_propose_with_messages() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -645,6 +647,7 @@ fn test_min_duration_same_as_proposal_duration() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -661,6 +664,7 @@ fn test_min_duration_same_as_proposal_duration() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 2 },
+            rationale: None,
         },
         &[],
     )
@@ -1057,6 +1061,7 @@ fn test_native_proposal_deposit() {
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: MultipleChoiceVote { option_id: 1 },
+                rationale: None,
             },
             &[],
         );
@@ -1244,11 +1249,13 @@ fn test_query_list_votes() {
             voter: Addr::unchecked("blue"),
             vote: MultipleChoiceVote { option_id: 0 },
             power: Uint128::new(10),
+            rationale: None,
         },
         VoteInfo {
             voter: Addr::unchecked("note"),
             vote: MultipleChoiceVote { option_id: 1 },
             power: Uint128::new(20),
+            rationale: None,
         },
     ];
 
@@ -1319,6 +1326,7 @@ fn test_cant_vote_executed_or_closed() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -1357,6 +1365,7 @@ fn test_cant_vote_executed_or_closed() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -1519,6 +1528,7 @@ fn test_cant_vote_not_registered() {
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: MultipleChoiceVote { option_id: 0 },
+                rationale: None,
             },
             &[],
         )
@@ -1597,6 +1607,7 @@ fn test_cant_execute_not_member() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -1686,6 +1697,7 @@ fn test_cant_execute_not_member_when_proposal_created() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -2107,6 +2119,7 @@ fn test_execute_expired_proposal() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3011,6 +3024,7 @@ fn test_revoting() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3023,6 +3037,7 @@ fn test_revoting() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 1 },
+            rationale: None,
         },
         &[],
     )
@@ -3054,6 +3069,7 @@ fn test_revoting() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3162,6 +3178,7 @@ fn test_allow_revoting_config_changes() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3172,6 +3189,7 @@ fn test_allow_revoting_config_changes() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 1 },
+            rationale: None,
         },
         &[],
     )
@@ -3197,6 +3215,7 @@ fn test_allow_revoting_config_changes() {
         &ExecuteMsg::Vote {
             proposal_id: 2,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3209,6 +3228,7 @@ fn test_allow_revoting_config_changes() {
             &ExecuteMsg::Vote {
                 proposal_id: 2,
                 vote: MultipleChoiceVote { option_id: 1 },
+                rationale: None,
             },
             &[],
         )
@@ -3287,6 +3307,7 @@ fn test_revoting_same_vote_twice() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3300,6 +3321,7 @@ fn test_revoting_same_vote_twice() {
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: MultipleChoiceVote { option_id: 0 },
+                rationale: None,
             },
             &[],
         )
@@ -3379,6 +3401,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3391,6 +3414,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 1 },
+            rationale: None,
         },
         &[],
     )
@@ -3422,6 +3446,7 @@ fn test_invalid_revote_does_not_invalidate_initial_vote() {
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: MultipleChoiceVote { option_id: 99 },
+                rationale: None,
             },
             &[],
         )
@@ -3601,6 +3626,7 @@ fn test_close_failed_proposal() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3674,6 +3700,7 @@ fn test_close_failed_proposal() {
             &ExecuteMsg::Vote {
                 proposal_id: 2,
                 vote: MultipleChoiceVote { option_id: 0 },
+                rationale: None,
             },
             &[],
         )
@@ -3710,6 +3737,7 @@ fn test_close_failed_proposal() {
         &ExecuteMsg::Vote {
             proposal_id: 3,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3876,6 +3904,7 @@ fn test_no_double_refund_on_execute_fail_and_close() {
         &ExecuteMsg::Vote {
             proposal_id: 1,
             vote: MultipleChoiceVote { option_id: 0 },
+            rationale: None,
         },
         &[],
     )
@@ -3996,6 +4025,7 @@ pub fn test_not_allow_voting_on_expired_proposal() {
             &ExecuteMsg::Vote {
                 proposal_id: 1,
                 vote: MultipleChoiceVote { option_id: 0 },
+                rationale: None,
             },
             &[],
         )
@@ -4080,4 +4110,383 @@ fn test_next_proposal_id() {
         .query_wasm_smart(&proposal_module, &QueryMsg::NextProposalId {})
         .unwrap();
     assert_eq!(next_proposal_id, 2);
+}
+
+#[test]
+fn test_vote_with_rationale() {
+    let mut app = App::default();
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: false,
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "blue".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "elub".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let gov_state: dao_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod = governance_modules.into_iter().next().unwrap().address;
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title 1".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title 2".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod.clone(),
+        &ExecuteMsg::Propose {
+            title: "A proposal".to_string(),
+            description: "A simple proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: Some("I think this is a good idea".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Query rationale
+    let vote_resp: VoteResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod,
+            &QueryMsg::GetVote {
+                proposal_id: 1,
+                voter: "blue".to_string(),
+            },
+        )
+        .unwrap();
+
+    let vote = vote_resp.vote.unwrap();
+    assert_eq!(vote.vote.option_id, 0);
+    assert_eq!(
+        vote.rationale,
+        Some("I think this is a good idea".to_string())
+    );
+}
+
+#[test]
+fn test_revote_with_rationale() {
+    let mut app = App::default();
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: true, // Enable revoting
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "blue".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "elub".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let gov_state: dao_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod = governance_modules.into_iter().next().unwrap().address;
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title 1".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title 2".to_string(),
+        },
+    ];
+
+    let mc_options = MultipleChoiceOptions { options };
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod.clone(),
+        &ExecuteMsg::Propose {
+            title: "A proposal".to_string(),
+            description: "A simple proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: Some("I think this is a good idea".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Query rationale
+    let vote_resp: VoteResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::GetVote {
+                proposal_id: 1,
+                voter: "blue".to_string(),
+            },
+        )
+        .unwrap();
+
+    let vote = vote_resp.vote.unwrap();
+    assert_eq!(vote.vote.option_id, 0);
+    assert_eq!(
+        vote.rationale,
+        Some("I think this is a good idea".to_string())
+    );
+
+    // Revote with rationale
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 1 },
+            rationale: Some("Nah".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Query rationale and ensure it changed
+    let vote_resp: VoteResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::GetVote {
+                proposal_id: 1,
+                voter: "blue".to_string(),
+            },
+        )
+        .unwrap();
+
+    let vote = vote_resp.vote.unwrap();
+    assert_eq!(vote.vote.option_id, 1);
+    assert_eq!(vote.rationale, Some("Nah".to_string()));
+
+    // Revote without rationale
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 2 },
+            rationale: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Query rationale and ensure it changed
+    let vote_resp: VoteResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod,
+            &QueryMsg::GetVote {
+                proposal_id: 1,
+                voter: "blue".to_string(),
+            },
+        )
+        .unwrap();
+
+    let vote = vote_resp.vote.unwrap();
+    assert_eq!(vote.vote.option_id, 2);
+    assert_eq!(vote.rationale, None);
+}
+
+#[test]
+fn test_update_rationale() {
+    let mut app = App::default();
+    let core_addr = instantiate_with_staked_balances_governance(
+        &mut app,
+        InstantiateMsg {
+            min_voting_period: None,
+            max_voting_period: Duration::Height(6),
+            only_members_execute: false,
+            allow_revoting: true, // Enable revoting
+            voting_strategy: VotingStrategy::SingleChoice {
+                quorum: PercentageThreshold::Majority {},
+            },
+            close_proposal_on_execution_failure: false,
+            pre_propose_info: PreProposeInfo::AnyoneMayPropose {},
+        },
+        Some(vec![
+            Cw20Coin {
+                address: "blue".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+            Cw20Coin {
+                address: "elub".to_string(),
+                amount: Uint128::new(100_000_000),
+            },
+        ]),
+    );
+
+    let gov_state: dao_core::query::DumpStateResponse = app
+        .wrap()
+        .query_wasm_smart(core_addr, &dao_core::msg::QueryMsg::DumpState {})
+        .unwrap();
+    let governance_modules = gov_state.proposal_modules;
+
+    assert_eq!(governance_modules.len(), 1);
+    let govmod = governance_modules.into_iter().next().unwrap().address;
+
+    let options = vec![
+        MultipleChoiceOption {
+            description: "multiple choice option 1".to_string(),
+            msgs: vec![],
+            title: "title 1".to_string(),
+        },
+        MultipleChoiceOption {
+            description: "multiple choice option 2".to_string(),
+            msgs: vec![],
+            title: "title 2".to_string(),
+        },
+    ];
+
+    // Propose something
+    let mc_options = MultipleChoiceOptions { options };
+    app.execute_contract(
+        Addr::unchecked(CREATOR_ADDR),
+        govmod.clone(),
+        &ExecuteMsg::Propose {
+            title: "A proposal".to_string(),
+            description: "A simple proposal".to_string(),
+            choices: mc_options,
+            proposer: None,
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Vote with rationale
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::Vote {
+            proposal_id: 1,
+            vote: MultipleChoiceVote { option_id: 0 },
+            rationale: Some("I think this is a good idea".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Query rationale
+    let vote_resp: VoteResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod.clone(),
+            &QueryMsg::GetVote {
+                proposal_id: 1,
+                voter: "blue".to_string(),
+            },
+        )
+        .unwrap();
+
+    let vote = vote_resp.vote.unwrap();
+    assert_eq!(vote.vote.option_id, 0);
+    assert_eq!(
+        vote.rationale,
+        Some("I think this is a good idea".to_string())
+    );
+
+    // Update rationale
+    app.execute_contract(
+        Addr::unchecked("blue"),
+        govmod.clone(),
+        &ExecuteMsg::UpdateRationale {
+            proposal_id: 1,
+            rationale: Some("This may be a good idea, but I'm not sure. YOLO".to_string()),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Query rationale
+    let vote_resp: VoteResponse = app
+        .wrap()
+        .query_wasm_smart(
+            govmod,
+            &QueryMsg::GetVote {
+                proposal_id: 1,
+                voter: "blue".to_string(),
+            },
+        )
+        .unwrap();
+
+    let vote = vote_resp.vote.unwrap();
+    assert_eq!(vote.vote.option_id, 0);
+    assert_eq!(
+        vote.rationale,
+        Some("This may be a good idea, but I'm not sure. YOLO".to_string())
+    );
 }

@@ -310,6 +310,7 @@ fn vote(
         &cpm::msg::ExecuteMsg::Vote {
             proposal_id: id,
             vote: position,
+            rationale: None,
         },
         &[],
     )

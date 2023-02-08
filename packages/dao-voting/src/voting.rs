@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, Deps, StdError, StdResult, Uint128, Uint256};
+use cosmwasm_std::{Addr, Decimal, Deps, StdResult, Uint128, Uint256};
 use cw_utils::Duration;
 use dao_interface::voting;
 
@@ -27,52 +27,6 @@ pub enum Vote {
     /// Marks participation but does not count towards the ratio of
     /// support / opposed.
     Abstain,
-}
-
-#[cw_serde]
-pub struct MultipleChoiceVote {
-    // A vote indicates which option the user has selected.
-    pub option_id: u32,
-}
-
-impl std::fmt::Display for MultipleChoiceVote {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.option_id)
-    }
-}
-
-#[cw_serde]
-pub struct MultipleChoiceVotes {
-    // Vote counts is a vector of integers indicating the vote weight for each option
-    // (the index corresponds to the option).
-    pub vote_weights: Vec<Uint128>,
-}
-
-impl MultipleChoiceVotes {
-    /// Sum of all vote weights
-    pub fn total(&self) -> Uint128 {
-        self.vote_weights.iter().sum()
-    }
-
-    pub fn add_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) -> StdResult<()> {
-        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
-            .checked_add(weight)
-            .map_err(StdError::overflow)?;
-        Ok(())
-    }
-
-    pub fn remove_vote(&mut self, vote: MultipleChoiceVote, weight: Uint128) -> StdResult<()> {
-        self.vote_weights[vote.option_id as usize] = self.vote_weights[vote.option_id as usize]
-            .checked_sub(weight)
-            .map_err(StdError::overflow)?;
-        Ok(())
-    }
-
-    pub fn zero(num_choices: usize) -> Self {
-        Self {
-            vote_weights: vec![Uint128::zero(); num_choices],
-        }
-    }
 }
 
 pub enum VoteCmp {
@@ -496,35 +450,5 @@ mod test {
             Uint128::new(0),
             Decimal::percent(0)
         ))
-    }
-
-    #[test]
-    fn test_display_multiple_choice_vote() {
-        let vote = MultipleChoiceVote { option_id: 0 };
-        assert_eq!("0", format!("{vote}"))
-    }
-
-    #[test]
-    fn test_multiple_choice_votes() {
-        let mut votes = MultipleChoiceVotes {
-            vote_weights: vec![Uint128::new(10), Uint128::new(100)],
-        };
-        let total = votes.total();
-        assert_eq!(total, Uint128::new(110));
-
-        votes
-            .add_vote(MultipleChoiceVote { option_id: 0 }, Uint128::new(10))
-            .unwrap();
-        let total = votes.total();
-        assert_eq!(total, Uint128::new(120));
-
-        votes
-            .remove_vote(MultipleChoiceVote { option_id: 0 }, Uint128::new(20))
-            .unwrap();
-        votes
-            .remove_vote(MultipleChoiceVote { option_id: 1 }, Uint128::new(100))
-            .unwrap();
-
-        assert_eq!(votes, MultipleChoiceVotes::zero(2))
     }
 }

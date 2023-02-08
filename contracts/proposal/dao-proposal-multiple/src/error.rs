@@ -29,7 +29,7 @@ pub enum ContractError {
     #[error("Suggested proposal expiration is larger than the maximum proposal duration")]
     InvalidExpiration {},
 
-    #[error("Proposal ({id}) is expired")]
+    #[error("No such proposal ({id})")]
     NoSuchProposal { id: u64 },
 
     #[error("Proposal is ({size}) bytes, must be <= ({max}) bytes")]
@@ -40,6 +40,9 @@ pub enum ContractError {
 
     #[error("Not registered to vote (no voting power) at time of proposal creation.")]
     NotRegistered {},
+
+    #[error("No vote exists for proposal ({id}) and voter ({voter})")]
+    NoSuchVote { id: u64, voter: String },
 
     #[error("Already voted. This proposal does not support revoting.")]
     AlreadyVoted {},
