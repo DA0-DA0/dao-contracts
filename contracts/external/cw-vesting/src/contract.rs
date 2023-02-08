@@ -386,5 +386,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Vest {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
+        QueryMsg::UnbondingDurationSeconds {} => {
+            to_binary(&query_unbonding_duration_seconds(deps.querier)?)
+        }
     }
 }

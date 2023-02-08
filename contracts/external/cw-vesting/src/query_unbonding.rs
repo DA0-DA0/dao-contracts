@@ -1,11 +1,7 @@
 use cosmos_sdk_proto::{cosmos::staking::v1beta1 as staking_proto, prost::Message};
-use cosmwasm_std::{to_vec, Binary, Empty, QuerierWrapper, QueryRequest, StdError};
+use cosmwasm_std::{to_vec, Binary, Empty, QuerierWrapper, QueryRequest, StdError, StdResult};
 
-use crate::ContractError;
-
-pub(crate) fn query_unbonding_duration_seconds(
-    querier: QuerierWrapper,
-) -> Result<u64, ContractError> {
+pub(crate) fn query_unbonding_duration_seconds(querier: QuerierWrapper) -> StdResult<u64> {
     let resp = querier
         .raw_query(&to_vec(&QueryRequest::<Empty>::Stargate {
             path: "custom/cosmos_sdk.x.staking.v1.Query/Params".to_string(),

@@ -10,6 +10,7 @@ pub mod vesting;
 pub use crate::error::ContractError;
 
 // so consumers don't need a cw_ownable dependency to use this contract's queries.
+pub use cw_denom::{CheckedDenom, UncheckedDenom};
 pub use cw_ownable::Ownership;
 
 #[cfg(test)]
