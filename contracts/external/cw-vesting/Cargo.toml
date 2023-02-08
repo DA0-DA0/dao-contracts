@@ -14,7 +14,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmos-sdk-proto = { version = "0.16" }
+cosmos-sdk-proto = { version = "0.16", default-features = false }
 cosmwasm-schema = { workspace = true }
 cosmwasm-std = { workspace = true, features = ["staking"] }
 cw-denom = { workspace = true }
