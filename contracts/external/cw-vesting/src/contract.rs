@@ -161,7 +161,7 @@ pub fn execute_cancel_vesting_payment(
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let msgs = PAYMENT.cancel(deps.storage, &env, &info.sender)?;
+    let msgs = PAYMENT.cancel(deps.storage, &env.block.time, &info.sender)?;
 
     Ok(Response::new()
         .add_attribute("method", "remove_vesting_payment")

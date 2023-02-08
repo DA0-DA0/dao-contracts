@@ -1,7 +1,4 @@
-use cosmwasm_std::{
-    testing::{mock_dependencies, mock_env},
-    Addr, Timestamp, Uint128,
-};
+use cosmwasm_std::{testing::mock_dependencies, Addr, Timestamp, Uint128};
 use cw_denom::CheckedDenom;
 use wynd_utils::CurveError;
 
@@ -203,10 +200,8 @@ fn test_complex_close() {
     assert_eq!(vest.claimed, Uint128::new(10));
     assert_eq!(vest.vested(&time), Uint128::new(50));
 
-    let mut env = mock_env();
-    env.block.time = time;
     payment
-        .cancel(storage, &env, &Addr::unchecked("owner"))
+        .cancel(storage, &time, &Addr::unchecked("owner"))
         .unwrap();
 
     let vest = payment.get_vest(storage).unwrap();
