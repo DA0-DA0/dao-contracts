@@ -365,8 +365,11 @@ export interface MigrateV1ToV2 {
   v2_code_ids: V2CodeIds;
 }
 export interface MigrationModuleParams {
-  close_proposal_on_execution_failure: boolean;
   migrate_stake_cw20_manager?: boolean | null;
+  proposal_params: ProposalParams[];
+}
+export interface ProposalParams {
+  close_proposal_on_execution_failure: boolean;
   pre_propose_info: PreProposeInfo;
 }
 export interface V1CodeIds {
