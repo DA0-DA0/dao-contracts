@@ -1,10 +1,13 @@
-use cosmwasm_std::{testing::mock_dependencies, Addr, Timestamp, Uint128};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    Addr, Timestamp, Uint128,
+};
 use cw_denom::CheckedDenom;
 use wynd_utils::CurveError;
 
 use crate::{
     error::ContractError,
-    vesting::{Payment, Schedule, Vest, VestInit},
+    vesting::{Payment, Schedule, Status, Vest, VestInit},
 };
 
 impl Default for VestInit {
@@ -28,11 +31,11 @@ fn test_distribute_not_funded() {
     let payment = Payment::new("vesting", "staking");
 
     payment.initialize(storage, VestInit::default()).unwrap();
+    payment.set_funded(storage).unwrap();
 
-    let err = payment
-        .distribute(storage, &Timestamp::default(), None)
-        .unwrap_err();
-    assert_eq!(err, ContractError::NotFunded {});
+    payment
+        .distribute(storage, &Timestamp::default().plus_seconds(10), None)
+        .unwrap();
 }
 
 #[test]
@@ -153,5 +156,99 @@ fn test_vesting_validation() {
             min: Uint128::zero(),
             max: Uint128::new(2)
         })
+    );
+}
+
+// owner and vestee. vestee has vested 50 tokens out of 100. 10 are
+// claimed, 15 liquid, and 75 staked. owner then cancels the vest.
+//
+// the 15 liquid tokens should then all be sent to the vestee as the
+// contract prioritises making them whole first. the vestee is now
+// owed 25 tokens, and the owner 50.
+//
+// now the owner triggers an unbonding of 50 tokens. once they unbond,
+// the vestee uses those tokens to make themselves whole. the owner
+// may withdraw 25 tokens at this point, and later unbond the
+// remaining 25 tokens and make themselves whole.
+#[test]
+fn test_complex_close() {
+    let storage = &mut mock_dependencies().storage;
+    let mut time = Timestamp::default();
+
+    let init = VestInit {
+        total: Uint128::new(100),
+        schedule: Schedule::SaturatingLinear,
+        start_time: time,
+        duration_seconds: 100,
+        denom: CheckedDenom::Native("ujuno".to_string()),
+        recipient: Addr::unchecked("recv"),
+        title: "t".to_string(),
+        description: "d".to_string(),
+    };
+    let payment = Payment::new("vesting", "staking");
+
+    payment.initialize(storage, init).unwrap();
+    payment.set_funded(storage).unwrap();
+
+    time = time.plus_seconds(50);
+
+    payment
+        .distribute(storage, &time, Some(Uint128::new(10)))
+        .unwrap();
+
+    payment.delegate(storage, &time, Uint128::new(75)).unwrap();
+
+    let vest = payment.get_vest(storage).unwrap();
+    assert_eq!(vest.claimed, Uint128::new(10));
+    assert_eq!(vest.vested(&time), Uint128::new(50));
+
+    let mut env = mock_env();
+    env.block.time = time;
+    payment
+        .cancel(storage, &env, &Addr::unchecked("owner"))
+        .unwrap();
+
+    let vest = payment.get_vest(storage).unwrap();
+    assert_eq!(
+        vest.status,
+        Status::Canceled {
+            owner_withdrawable: Uint128::new(50)
+        }
+    );
+    assert_eq!(vest.vested(&time) - vest.claimed, Uint128::new(25));
+
+    payment
+        .undelegate(storage, &time, Uint128::new(50), 25)
+        .unwrap();
+    time = time.plus_seconds(25);
+
+    payment.distribute(storage, &time, None).unwrap();
+    payment
+        .withdraw_canceled(storage, &time, None, &Addr::unchecked("owner"))
+        .unwrap();
+
+    let vest = payment.get_vest(storage).unwrap();
+    assert_eq!(vest.claimed, Uint128::new(50));
+    assert_eq!(vest.total(), Uint128::new(50));
+    assert_eq!(
+        vest.status,
+        Status::Canceled {
+            owner_withdrawable: Uint128::new(25)
+        }
+    );
+
+    payment
+        .undelegate(storage, &time, Uint128::new(25), 25)
+        .unwrap();
+    time = time.plus_seconds(25);
+    payment
+        .withdraw_canceled(storage, &time, None, &Addr::unchecked("owner"))
+        .unwrap();
+    let vest = payment.get_vest(storage).unwrap();
+    assert_eq!(
+        vest.status,
+        Status::Canceled {
+            owner_withdrawable: Uint128::zero()
+        }
     );
 }
