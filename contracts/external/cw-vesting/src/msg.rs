@@ -128,4 +128,6 @@ pub enum QueryMsg {
     Ownership {},
     #[returns(crate::vesting::Vest)]
     Vest {},
+    #[returns(u64)]
+    UnbondingDurationSeconds {},
 }
