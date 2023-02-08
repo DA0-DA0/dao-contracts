@@ -1,15 +1,13 @@
 use std::cmp::min;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    to_binary, Addr, CosmosMsg, Env, StdResult, Storage, Timestamp, Uint128, WasmMsg,
-};
+use cosmwasm_std::{Addr, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128};
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Item;
 use cw_wormhole::Wormhole;
 use wynd_utils::Curve;
 
-use crate::{error::ContractError, msg::ExecuteMsg};
+use crate::error::ContractError;
 
 pub struct Payment<'a> {
     vesting: Item<'a, Vest>,
@@ -172,10 +170,9 @@ impl<'a> Payment<'a> {
     pub fn cancel(
         &self,
         storage: &mut dyn Storage,
-        env: &Env,
+        t: &Timestamp,
         owner: &Addr,
     ) -> Result<Vec<CosmosMsg>, ContractError> {
-        let t = &env.block.time;
         let mut vesting = self.vesting.load(storage)?;
         if matches!(vesting.status, Status::Canceled { .. }) {
             Err(ContractError::Cancelled {})
@@ -203,12 +200,8 @@ impl<'a> Payment<'a> {
             self.vesting.save(storage, &vesting)?;
 
             // owner receives staking rewards
-            let mut msgs = vec![WasmMsg::Execute {
-                contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::SetWithdrawAddress {
-                    address: owner.to_string(),
-                })?,
-                funds: vec![],
+            let mut msgs = vec![DistributionMsg::SetWithdrawAddress {
+                address: owner.to_string(),
             }
             .into()];
 
