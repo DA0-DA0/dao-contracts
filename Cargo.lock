@@ -2312,6 +2312,7 @@ dependencies = [
  "cosm-orc",
  "cosmwasm-std",
  "cw-utils 0.16.0",
+ "cw-vesting",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 2.0.2",
