@@ -10,6 +10,7 @@ use crate::{
     vesting::{Payment, Schedule, Status, Vest, VestInit},
 };
 
+#[cfg(test)]
 impl Default for VestInit {
     fn default() -> Self {
         VestInit {

@@ -130,7 +130,8 @@ impl Default for InstantiateMsg {
             denom: UncheckedDenom::Cw20("contract0".to_string()),
             schedule: Schedule::SaturatingLinear,
             start_time: None,
-            duration_seconds: 604800, // one week
+            vesting_duration_seconds: 604800,    // one week
+            unbonding_duration_seconds: 2592000, // 30 days
         }
     }
 }

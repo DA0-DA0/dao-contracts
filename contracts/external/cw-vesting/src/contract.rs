@@ -11,8 +11,7 @@ use cw_utils::{must_pay, nonpayable};
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::query_unbonding::query_unbonding_duration_seconds;
-use crate::state::PAYMENT;
+use crate::state::{PAYMENT, UNBONDING_DURATION_SECONDS};
 use crate::vesting::{Status, VestInit};
 
 const CONTRACT_NAME: &str = "crates.io:cw-vesting";
@@ -37,13 +36,14 @@ pub fn instantiate(
             total: msg.total,
             schedule: msg.schedule,
             start_time,
-            duration_seconds: msg.duration_seconds,
+            duration_seconds: msg.vesting_duration_seconds,
             denom,
             recipient,
             title: msg.title,
             description: msg.description,
         },
     )?;
+    UNBONDING_DURATION_SECONDS.save(deps.storage, &msg.unbonding_duration_seconds)?;
 
     let resp = match vest.denom {
         CheckedDenom::Native(ref denom) => {
@@ -335,7 +335,7 @@ pub fn execute_undelegate(
         }
     };
 
-    let ubs = query_unbonding_duration_seconds(deps.querier)?;
+    let ubs = UNBONDING_DURATION_SECONDS.load(deps.storage)?;
     PAYMENT.undelegate(deps.storage, &env.block.time, amount, ubs)?;
 
     let denom = deps.querier.query_bonded_denom()?;
@@ -386,8 +386,5 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Vest {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
-        QueryMsg::UnbondingDurationSeconds {} => {
-            to_binary(&query_unbonding_duration_seconds(deps.querier)?)
-        }
     }
 }
