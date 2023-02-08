@@ -5,9 +5,8 @@ use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg}
 use cw_ownable::OwnershipError;
 use cw_vesting::{
     msg::{InstantiateMsg as PayrollInstantiateMsg, QueryMsg as PayrollQueryMsg},
-    state::{UncheckedVestingParams, VestingPayment, VestingPaymentStatus},
+    vesting::{Schedule, Status, Vest},
 };
-use wynd_utils::Curve;
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg},
@@ -89,22 +88,17 @@ pub fn test_instantiate_native_payroll_contract() {
     let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
-    // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
     let instantiate_payroll_msg = ExecuteMsg::InstantiateNativePayrollContract {
         instantiate_msg: PayrollInstantiateMsg {
             owner: Some(ALICE.to_string()),
-            params: UncheckedVestingParams {
-                recipient: BOB.to_string(),
-                amount: Uint128::new(1000000),
-                denom: unchecked_denom,
-                vesting_schedule,
-                title: None,
-                description: None,
-            },
+            recipient: BOB.to_string(),
+            title: "title".to_string(),
+            description: "desc".to_string(),
+            total: amount,
+            denom: unchecked_denom,
+            schedule: Schedule::SaturatingLinear,
+            duration_seconds: 200,
+            start_time: None,
         },
         label: "Payroll".to_string(),
     };
@@ -269,21 +263,16 @@ pub fn test_instantiate_cw20_payroll_contract() {
     let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
 
-    // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
     let instantiate_payroll_msg = PayrollInstantiateMsg {
         owner: Some(ALICE.to_string()),
-        params: UncheckedVestingParams {
-            recipient: BOB.to_string(),
-            amount: Uint128::new(1000000),
-            denom: unchecked_denom,
-            vesting_schedule,
-            title: None,
-            description: None,
-        },
+        recipient: BOB.to_string(),
+        title: "title".to_string(),
+        description: "desc".to_string(),
+        total: amount,
+        denom: unchecked_denom,
+        schedule: Schedule::SaturatingLinear,
+        duration_seconds: 200,
+        start_time: None,
     };
 
     // Attempting to call InstantiatePayrollContract directly with cw20 fails
@@ -304,7 +293,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
             cw20_addr,
             &Cw20ExecuteMsg::Send {
                 contract: factory_addr.to_string(),
-                amount: instantiate_payroll_msg.params.amount,
+                amount: instantiate_payroll_msg.total,
                 msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
                     label: "Payroll".to_string(),
@@ -342,11 +331,11 @@ pub fn test_instantiate_cw20_payroll_contract() {
     assert_eq!(contracts.len(), 1);
 
     // Check that the vesting payment contract is active
-    let vp: VestingPayment = app
+    let vp: Vest = app
         .wrap()
-        .query_wasm_smart(cw_vesting_addr, &PayrollQueryMsg::Info {})
+        .query_wasm_smart(cw_vesting_addr, &PayrollQueryMsg::Vest {})
         .unwrap();
-    assert_eq!(vp.status, VestingPaymentStatus::Active);
+    assert_eq!(vp.status, Status::Funded);
 }
 
 #[test]
@@ -354,6 +343,24 @@ fn test_instantiate_wrong_ownership_native() {
     let mut app = App::default();
     let code_id = app.store_code(factory_contract());
     let cw_vesting_code_id = app.store_code(cw_vesting_contract());
+
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
+
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: "ekez".to_string(),
+            amount: coins(amount.u128() * 2, NATIVE_DENOM),
+        }
+    }))
+    .unwrap();
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ALICE.to_string(),
+            amount: coins(amount.u128() * 2, NATIVE_DENOM),
+        }
+    }))
+    .unwrap();
 
     // Alice is the owner. Contracts are only allowed if their owner
     // is alice or none and the sender is alice.
@@ -374,54 +381,23 @@ fn test_instantiate_wrong_ownership_native() {
 
     let err: ContractError = app
         .execute_contract(
-            Addr::unchecked("ekez"),
+            Addr::unchecked(ALICE),
             factory_addr.clone(),
             &ExecuteMsg::InstantiateNativePayrollContract {
                 instantiate_msg: PayrollInstantiateMsg {
-                    owner: Some(ALICE.to_string()),
-                    params: UncheckedVestingParams {
-                        recipient: BOB.to_string(),
-                        amount: Uint128::new(10),
-                        denom: UncheckedDenom::Native("tbucks".to_string()),
-                        vesting_schedule: Curve::Constant {
-                            y: Uint128::new(10),
-                        },
-                        title: None,
-                        description: None,
-                    },
-                },
-                label: "vesting".to_string(),
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-
-    // Can't instantiate if you are not the owner.
-    assert_eq!(err, ContractError::Unauthorized {});
-
-    let err: ContractError = app
-        .execute_contract(
-            Addr::unchecked(ALICE),
-            factory_addr,
-            &ExecuteMsg::InstantiateNativePayrollContract {
-                instantiate_msg: PayrollInstantiateMsg {
                     owner: Some("ekez".to_string()),
-                    params: UncheckedVestingParams {
-                        recipient: BOB.to_string(),
-                        amount: Uint128::new(10),
-                        denom: UncheckedDenom::Native("tbucks".to_string()),
-                        vesting_schedule: Curve::Constant {
-                            y: Uint128::new(10),
-                        },
-                        title: None,
-                        description: None,
-                    },
+                    recipient: BOB.to_string(),
+                    title: "title".to_string(),
+                    description: "desc".to_string(),
+                    total: amount,
+                    denom: unchecked_denom.clone(),
+                    schedule: Schedule::SaturatingLinear,
+                    duration_seconds: 200,
+                    start_time: None,
                 },
                 label: "vesting".to_string(),
             },
-            &[],
+            &coins(amount.u128(), NATIVE_DENOM),
         )
         .unwrap_err()
         .downcast()
@@ -435,6 +411,33 @@ fn test_instantiate_wrong_ownership_native() {
             expected: Some(ALICE.to_string())
         }
     );
+
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked("ekez"),
+            factory_addr,
+            &ExecuteMsg::InstantiateNativePayrollContract {
+                instantiate_msg: PayrollInstantiateMsg {
+                    owner: Some(ALICE.to_string()),
+                    recipient: BOB.to_string(),
+                    title: "title".to_string(),
+                    description: "desc".to_string(),
+                    total: amount,
+                    denom: unchecked_denom,
+                    schedule: Schedule::SaturatingLinear,
+                    duration_seconds: 200,
+                    start_time: None,
+                },
+                label: "vesting".to_string(),
+            },
+            &coins(amount.u128(), NATIVE_DENOM),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+
+    // Can't instantiate if you are not the owner.
+    assert_eq!(err, ContractError::Unauthorized {});
 }
 
 #[test]
@@ -483,21 +486,16 @@ fn test_instantiate_wrong_owner_cw20() {
     let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
 
-    // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
     let instantiate_payroll_msg = PayrollInstantiateMsg {
         owner: Some(BOB.to_string()),
-        params: UncheckedVestingParams {
-            recipient: BOB.to_string(),
-            amount: Uint128::new(1000000),
-            denom: unchecked_denom,
-            vesting_schedule,
-            title: None,
-            description: None,
-        },
+        recipient: BOB.to_string(),
+        title: "title".to_string(),
+        description: "desc".to_string(),
+        total: amount,
+        denom: unchecked_denom,
+        schedule: Schedule::SaturatingLinear,
+        duration_seconds: 200,
+        start_time: None,
     };
 
     let err: ContractError = app
@@ -506,7 +504,7 @@ fn test_instantiate_wrong_owner_cw20() {
             cw20_addr,
             &Cw20ExecuteMsg::Send {
                 contract: factory_addr.to_string(),
-                amount: instantiate_payroll_msg.params.amount,
+                amount: instantiate_payroll_msg.total,
                 msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
                     instantiate_msg: instantiate_payroll_msg,
                     label: "Payroll".to_string(),
@@ -585,21 +583,18 @@ fn test_update_vesting_code_id() {
 
     let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
 
     let instantiate_payroll_msg = ExecuteMsg::InstantiateNativePayrollContract {
         instantiate_msg: PayrollInstantiateMsg {
             owner: Some(ALICE.to_string()),
-            params: UncheckedVestingParams {
-                recipient: BOB.to_string(),
-                amount: Uint128::new(1000000),
-                denom: unchecked_denom,
-                vesting_schedule,
-                title: None,
-                description: None,
-            },
+            recipient: BOB.to_string(),
+            title: "title".to_string(),
+            description: "desc".to_string(),
+            total: amount,
+            denom: unchecked_denom,
+            schedule: Schedule::SaturatingLinear,
+            duration_seconds: 200,
+            start_time: None,
         },
         label: "Payroll".to_string(),
     };
