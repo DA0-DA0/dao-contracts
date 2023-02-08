@@ -97,7 +97,8 @@ pub fn test_instantiate_native_payroll_contract() {
             total: amount,
             denom: unchecked_denom,
             schedule: Schedule::SaturatingLinear,
-            duration_seconds: 200,
+            vesting_duration_seconds: 200,
+            unbonding_duration_seconds: 2592000, // 30 days
             start_time: None,
         },
         label: "Payroll".to_string(),
@@ -271,7 +272,8 @@ pub fn test_instantiate_cw20_payroll_contract() {
         total: amount,
         denom: unchecked_denom,
         schedule: Schedule::SaturatingLinear,
-        duration_seconds: 200,
+        vesting_duration_seconds: 200,
+        unbonding_duration_seconds: 2592000, // 30 days
         start_time: None,
     };
 
@@ -392,7 +394,8 @@ fn test_instantiate_wrong_ownership_native() {
                     total: amount,
                     denom: unchecked_denom.clone(),
                     schedule: Schedule::SaturatingLinear,
-                    duration_seconds: 200,
+                    vesting_duration_seconds: 200,
+                    unbonding_duration_seconds: 2592000, // 30 days
                     start_time: None,
                 },
                 label: "vesting".to_string(),
@@ -425,7 +428,8 @@ fn test_instantiate_wrong_ownership_native() {
                     total: amount,
                     denom: unchecked_denom,
                     schedule: Schedule::SaturatingLinear,
-                    duration_seconds: 200,
+                    vesting_duration_seconds: 200,
+                    unbonding_duration_seconds: 2592000, // 30 days
                     start_time: None,
                 },
                 label: "vesting".to_string(),
@@ -494,7 +498,8 @@ fn test_instantiate_wrong_owner_cw20() {
         total: amount,
         denom: unchecked_denom,
         schedule: Schedule::SaturatingLinear,
-        duration_seconds: 200,
+        vesting_duration_seconds: 200,
+        unbonding_duration_seconds: 2592000, // 30 days
         start_time: None,
     };
 
@@ -593,7 +598,8 @@ fn test_update_vesting_code_id() {
             total: amount,
             denom: unchecked_denom,
             schedule: Schedule::SaturatingLinear,
-            duration_seconds: 200,
+            vesting_duration_seconds: 200,
+            unbonding_duration_seconds: 2592000, // 30 days
             start_time: None,
         },
         label: "Payroll".to_string(),

@@ -21,7 +21,18 @@ pub struct InstantiateMsg {
     /// The time to start vesting, or None to start vesting when the
     /// contract is instantiated.
     pub start_time: Option<Timestamp>,
-    pub duration_seconds: u64,
+    pub vesting_duration_seconds: u64,
+
+    /// The unbonding duration for the chain this contract is deployed
+    /// on. Smart contracts do not have access to this data so it must
+    /// be provided by the caller.
+    ///
+    /// This value being too high will cause this contract to hold
+    /// funds for longer than needed, this value being too low will
+    /// reduce the quality of error messages and require additional
+    /// external calculations with correct values to withdraw
+    /// avaliable funds from the contract.
+    pub unbonding_duration_seconds: u64,
 }
 
 #[cw_ownable]
@@ -128,6 +139,4 @@ pub enum QueryMsg {
     Ownership {},
     #[returns(crate::vesting::Vest)]
     Vest {},
-    #[returns(u64)]
-    UnbondingDurationSeconds {},
 }

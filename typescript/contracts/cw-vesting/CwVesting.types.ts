@@ -18,13 +18,14 @@ export type Uint64 = string;
 export interface InstantiateMsg {
   denom: UncheckedDenom;
   description: string;
-  duration_seconds: number;
   owner?: string | null;
   recipient: string;
   schedule: Schedule;
   start_time?: Timestamp | null;
   title: string;
   total: Uint128;
+  unbonding_duration_seconds: number;
+  vesting_duration_seconds: number;
 }
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;

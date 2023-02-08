@@ -1,10 +1,7 @@
 use std::str::FromStr;
 
 use cosm_orc::orchestrator::{Coin, Denom};
-use cw_vesting::{
-    msg::{InstantiateMsg, QueryMsg},
-    vesting::Schedule,
-};
+use cw_vesting::{msg::InstantiateMsg, vesting::Schedule};
 
 use cosmwasm_std::Uint128;
 use test_context::test_context;
@@ -17,7 +14,7 @@ const CONTRACT_NAME: &str = "cw_vesting";
 #[test_context(Chain)]
 #[test]
 #[ignore]
-fn query_unbonding_duration(chain: &mut Chain) {
+fn test_cw_vesting_instantaite(chain: &mut Chain) {
     let user_addr = chain.users["user1"].account.address.clone();
     let user_key = chain.users["user1"].key.clone();
 
@@ -38,7 +35,8 @@ fn query_unbonding_duration(chain: &mut Chain) {
 
                 schedule: Schedule::SaturatingLinear,
                 start_time: None,
-                duration_seconds: 10,
+                vesting_duration_seconds: 10,
+                unbonding_duration_seconds: 2592000,
             },
             &user_key,
             None,
@@ -49,10 +47,13 @@ fn query_unbonding_duration(chain: &mut Chain) {
         )
         .unwrap();
 
-    chain
-        .orc
-        .query(CONTRACT_NAME, &QueryMsg::UnbondingDurationSeconds {})
-        .unwrap_err()
-        .to_string()
-        .contains("Unsupported query type: Stargate queries are disabled");
+    // if we were to query the unbonding duration from a smart
+    // contract, we'd get an error like this:
+    //
+    // chain
+    //     .orc
+    //     .query(CONTRACT_NAME, &QueryMsg::UnbondingDurationSeconds {})
+    //     .unwrap_err()
+    //     .to_string()
+    //     .contains("Unsupported query type: Stargate queries are disabled");
 }
