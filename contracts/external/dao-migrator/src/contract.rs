@@ -88,15 +88,21 @@ fn execute_migration_v1_v2(
     }
 
     // List of code ids pairs we got and the migration msg of each one of them.
-    let proposal_pair = CodeIdPair::new(
-        v1_code_ids.proposal_single,
-        v2_code_ids.proposal_single,
-        MigrationMsgs::DaoProposalSingle(dao_proposal_single::msg::MigrateMsg::FromV1 {
-            close_proposal_on_execution_failure: migration_params
-                .close_proposal_on_execution_failure,
-            pre_propose_info: migration_params.pre_propose_info,
-        }),
-    ); // cw-proposal-single -> dao_proposal_single
+    let proposal_pairs: Vec<CodeIdPair> = migration_params
+        .proposal_params
+        .iter()
+        .map(|proposal_params| {
+            CodeIdPair::new(
+                v1_code_ids.proposal_single,
+                v2_code_ids.proposal_single,
+                MigrationMsgs::DaoProposalSingle(dao_proposal_single::msg::MigrateMsg::FromV1 {
+                    close_proposal_on_execution_failure: proposal_params
+                        .close_proposal_on_execution_failure,
+                    pre_propose_info: proposal_params.pre_propose_info.clone(),
+                }),
+            )
+        })
+        .collect(); // cw-proposal-single -> dao_proposal_single
     let voting_pairs: Vec<CodeIdPair> = vec![
         CodeIdPair::new(
             v1_code_ids.cw4_voting,
@@ -209,11 +215,15 @@ fn execute_migration_v1_v2(
         },
     )?;
 
+    // We add 1 because migration module is added last, and we skip it.
+    if proposal_modules.len() != (proposal_pairs.len() + 1) {
+        return Err(ContractError::MigrationParamsNotEqualProposalModulesLength);
+    }
+
     // Loop over proposals and verify that they are valid DAO DAO modules
     // and set them to be migrated.
-    proposal_modules
-        .into_iter()
-        .try_for_each(|module| -> Result<(), ContractError> {
+    proposal_modules.into_iter().enumerate().try_for_each(
+        |(proposal_index, module)| -> Result<(), ContractError> {
             // Instead of doing 2 loops, just ignore our module, we don't care about the vec after this.
             if module.address == env.contract.address {
                 return Ok(());
@@ -233,12 +243,12 @@ fn execute_migration_v1_v2(
             }?;
 
             // check if Code id is valid DAO DAO code id
-            if proposal_code_id == proposal_pair.v1_code_id {
+            if proposal_code_id == proposal_pairs[proposal_index].v1_code_id {
                 msgs.push(
                     WasmMsg::Migrate {
                         contract_addr: module.address.to_string(),
-                        new_code_id: proposal_pair.v2_code_id,
-                        msg: to_binary(&proposal_pair.migrate_msg).unwrap(),
+                        new_code_id: proposal_pairs[proposal_index].v2_code_id,
+                        msg: to_binary(&proposal_pairs[proposal_index].migrate_msg).unwrap(),
                     }
                     .into(),
                 );
@@ -252,7 +262,8 @@ fn execute_migration_v1_v2(
             }?;
 
             Ok(())
-        })?;
+        },
+    )?;
 
     // We successfully verified all modules of the DAO, we can send migration msgs.
 

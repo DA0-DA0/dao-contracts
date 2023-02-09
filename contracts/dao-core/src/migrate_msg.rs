@@ -40,6 +40,12 @@ pub struct V2CodeIds {
 
 /// The params we need to provide for migration msgs
 #[cw_serde]
+pub struct ProposalParams {
+    pub close_proposal_on_execution_failure: bool,
+    pub pre_propose_info: PreProposeInfo,
+}
+
+#[cw_serde]
 pub struct MigrationModuleParams {
     // General
     /// Rather or not to migrate the stake_cw20 contract and its
@@ -48,8 +54,7 @@ pub struct MigrationModuleParams {
     /// migration will be aborted.
     pub migrate_stake_cw20_manager: Option<bool>,
     // dao_proposal_single
-    pub close_proposal_on_execution_failure: bool,
-    pub pre_propose_info: PreProposeInfo,
+    pub proposal_params: Vec<ProposalParams>,
 }
 
 #[cw_serde]
