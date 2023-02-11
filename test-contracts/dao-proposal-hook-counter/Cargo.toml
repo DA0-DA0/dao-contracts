@@ -1,6 +1,6 @@
 [package]
 name = "dao-proposal-hook-counter"
-version = "2.0.2"
+version = "2.0.3"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2021"
 
