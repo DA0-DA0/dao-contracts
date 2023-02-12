@@ -16,7 +16,7 @@ struct CommonTest {
     cw721: String,
 }
 
-fn instantiate_cw721_base(chain: &mut Chain, key: &SigningKey, minter: &str) -> String {
+pub fn instantiate_cw721_base(chain: &mut Chain, key: &SigningKey, minter: &str) -> String {
     chain
         .orc
         .instantiate(
@@ -64,7 +64,13 @@ fn setup_test(
     CommonTest { module, cw721 }
 }
 
-fn send_nft(chain: &mut Chain, sender: &SigningKey, receiver: &str, token_id: &str, msg: Binary) {
+pub fn send_nft(
+    chain: &mut Chain,
+    sender: &SigningKey,
+    receiver: &str,
+    token_id: &str,
+    msg: Binary,
+) {
     chain
         .orc
         .execute(
@@ -81,7 +87,7 @@ fn send_nft(chain: &mut Chain, sender: &SigningKey, receiver: &str, token_id: &s
         .unwrap();
 }
 
-fn mint_nft(chain: &mut Chain, sender: &SigningKey, receiver: &str, token_id: &str) {
+pub fn mint_nft(chain: &mut Chain, sender: &SigningKey, receiver: &str, token_id: &str) {
     chain
         .orc
         .execute(
@@ -99,7 +105,7 @@ fn mint_nft(chain: &mut Chain, sender: &SigningKey, receiver: &str, token_id: &s
         .unwrap();
 }
 
-fn unstake_nfts(chain: &mut Chain, sender: &SigningKey, token_ids: &[&str]) {
+pub fn unstake_nfts(chain: &mut Chain, sender: &SigningKey, token_ids: &[&str]) {
     chain
         .orc
         .execute(
@@ -114,7 +120,7 @@ fn unstake_nfts(chain: &mut Chain, sender: &SigningKey, token_ids: &[&str]) {
         .unwrap();
 }
 
-fn claim_nfts(chain: &mut Chain, sender: &SigningKey) {
+pub fn claim_nfts(chain: &mut Chain, sender: &SigningKey) {
     chain
         .orc
         .execute(
@@ -127,7 +133,7 @@ fn claim_nfts(chain: &mut Chain, sender: &SigningKey) {
         .unwrap();
 }
 
-fn query_voting_power(chain: &Chain, addr: &str, height: Option<u64>) -> Uint128 {
+pub fn query_voting_power(chain: &Chain, addr: &str, height: Option<u64>) -> Uint128 {
     let res = chain
         .orc
         .query(
@@ -142,7 +148,7 @@ fn query_voting_power(chain: &Chain, addr: &str, height: Option<u64>) -> Uint128
     data.power
 }
 
-fn mint_and_stake_nft(
+pub fn mint_and_stake_nft(
     chain: &mut Chain,
     sender_key: &SigningKey,
     sender: &str,
