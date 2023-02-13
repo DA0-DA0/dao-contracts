@@ -117,6 +117,24 @@ impl<'a> Payment<'a> {
         }
     }
 
+    /// gets the current number tokens that may be distributed to the
+    /// vestee.
+    pub fn distributable(
+        &self,
+        storage: &dyn Storage,
+        vesting: &Vest,
+        t: &Timestamp,
+    ) -> StdResult<Uint128> {
+        let staked = self
+            .staking
+            .load(storage, (), t.seconds())?
+            .unwrap_or_default();
+
+        let liquid = self.liquid(&vesting, staked);
+        let claimable = vesting.vested(t) - vesting.claimed;
+        Ok(min(liquid, claimable))
+    }
+
     /// distributes vested tokens. if a specific amount is
     /// `request`ed, that amount will be distributed, otherwise all
     /// tokens currently avaliable for distribution will be
@@ -129,21 +147,18 @@ impl<'a> Payment<'a> {
     ) -> Result<CosmosMsg, ContractError> {
         let vesting = self.vesting.load(storage)?;
 
-        let staked = self
-            .staking
-            .load(storage, (), t.seconds())?
-            .unwrap_or_default();
-
-        let liquid = self.liquid(&vesting, staked);
-        let claimable = min(liquid, vesting.vested(t) - vesting.claimed);
-        let request = request.unwrap_or(claimable);
+        let distributable = self.distributable(storage, &vesting, t)?;
+        let request = request.unwrap_or(distributable);
 
         let mut vesting = vesting;
         vesting.claimed += request;
         self.vesting.save(storage, &vesting)?;
 
-        if request > claimable || request.is_zero() {
-            Err(ContractError::InvalidWithdrawal { request, claimable })
+        if request > distributable || request.is_zero() {
+            Err(ContractError::InvalidWithdrawal {
+                request,
+                claimable: distributable,
+            })
         } else {
             Ok(vesting
                 .denom

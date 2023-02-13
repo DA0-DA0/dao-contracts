@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env,
-    MessageInfo, Response, StakingMsg, StdResult, Uint128,
+    MessageInfo, Response, StakingMsg, StdResult, Timestamp, Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -382,9 +382,17 @@ pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractE
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Vest {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
+        QueryMsg::Distributable { t } => to_binary(
+            &PAYMENT.distributable(
+                deps.storage,
+                &PAYMENT.get_vest(deps.storage)?,
+                &t.map(|t| Timestamp::from_seconds(t))
+                    .unwrap_or(env.block.time),
+            )?,
+        ),
     }
 }

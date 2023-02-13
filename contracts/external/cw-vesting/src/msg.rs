@@ -139,4 +139,14 @@ pub enum QueryMsg {
     Ownership {},
     #[returns(crate::vesting::Vest)]
     Vest {},
+    /// Returns the number of tokens currently claimable by the
+    /// vestee. This is the minimum of the number of unstaked tokens
+    /// in the contract, and the number of tokens that have been
+    /// vested at time t.
+    #[returns(::cosmwasm_std::Uint128)]
+    Distributable {
+        /// The time, as a unix timestamp in seconds, or none to use
+        /// the current time.
+        t: Option<u64>,
+    },
 }
