@@ -108,7 +108,7 @@ pub fn execute(
             execute_undelegate(env, deps, info, validator, amount)
         }
         ExecuteMsg::SetWithdrawAddress { address } => {
-            execute_set_withdraw_address(deps, info, address)
+            execute_set_withdraw_address(deps, env, info, address)
         }
         ExecuteMsg::WithdrawDelegatorReward { validator } => execute_withdraw_rewards(validator),
         ExecuteMsg::WithdrawCanceledPayment { amount } => {
@@ -371,6 +371,7 @@ pub fn execute_undelegate(
 
 pub fn execute_set_withdraw_address(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     address: String,
 ) -> Result<Response, ContractError> {
@@ -384,6 +385,10 @@ pub fn execute_set_withdraw_address(
         // In the cancelled state the owner is receiving staking
         // rewards and may update the withdraw address.
         Status::Canceled { .. } => cw_ownable::assert_owner(deps.storage, &info.sender)?,
+    }
+
+    if address == env.contract.address {
+        return Err(ContractError::SelfWithdraw);
     }
 
     let msg = DistributionMsg::SetWithdrawAddress {

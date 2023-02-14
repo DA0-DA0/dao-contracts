@@ -1,6 +1,7 @@
 use cosmwasm_std::Uint128;
+use cw_ownable::OwnershipError;
 
-use crate::ContractError;
+use crate::{vesting::Status, ContractError};
 
 use super::{is_error, suite::SuiteBuilder};
 
@@ -141,4 +142,49 @@ fn test_cancel_can_not_settle_receiver() {
         owner,
         suite.total - suite.total.multiply_ratio(1u128, 7u128) + expected_staking_rewards
     );
+}
+
+#[test]
+fn test_set_withdraw_address_permissions() {
+    let mut suite = SuiteBuilder::default().build();
+
+    // delegate all but ten tokens (in terms of non-micro
+    // denominations).
+    suite.delegate(Uint128::new(90_000_000)).unwrap();
+
+    suite.a_day_passes();
+
+    // owner may not update withdraw address if vesting is not canceled.
+    let res =
+        suite.set_withdraw_address(suite.owner.clone().unwrap().to_string().as_str(), "random");
+    is_error!(res, ContractError::NotReceiver.to_string().as_str());
+
+    // non-owner can not cancel.
+    let res = suite.cancel("random");
+    is_error!(
+        res,
+        ContractError::Ownable(OwnershipError::NotOwner)
+            .to_string()
+            .as_str()
+    );
+
+    suite.cancel(suite.owner.clone().unwrap()).unwrap();
+
+    let res = suite.set_withdraw_address(suite.owner.clone().unwrap(), suite.vesting.clone());
+    is_error!(res, ContractError::SelfWithdraw.to_string().as_str());
+}
+
+/// Canceling a completed vest is fine.
+#[test]
+fn test_cancel_completed_vest() {
+    let mut suite = SuiteBuilder::default().build();
+    suite.a_week_passes();
+    suite.distribute("random", None).unwrap();
+    suite.cancel(suite.owner.clone().unwrap()).unwrap();
+    assert_eq!(
+        suite.query_vest().status,
+        Status::Canceled {
+            owner_withdrawable: Uint128::zero()
+        }
+    )
 }

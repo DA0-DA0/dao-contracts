@@ -1,14 +1,16 @@
-use cosmwasm_std::testing::mock_env;
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{coins, to_binary, Addr, Coin, Decimal, Empty, Uint128, Validator};
-use cw20::{Cw20Coin, Cw20ExecuteMsg};
-use cw_denom::UncheckedDenom;
+use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw_denom::{CheckedDenom, UncheckedDenom};
 use cw_multi_test::{
     App, AppBuilder, BankSudo, Contract, ContractWrapper, Executor, StakingInfo, SudoMsg,
 };
 use dao_testing::contracts::cw20_base_contract;
 
+use crate::contract::execute_receive_cw20;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::vesting::{Schedule, Status, Vest};
+use crate::state::PAYMENT;
+use crate::vesting::{Schedule, Status, Vest, VestInit};
 use crate::ContractError;
 
 const ALICE: &str = "alice";
@@ -558,4 +560,100 @@ fn test_incorrect_native_funding_amount() {
             expected: Uint128::new(TOTAL_VEST)
         }
     )
+}
+
+/// should reject funding if the token is wrong, or the token amount is wrong.
+#[test]
+fn test_execution_rejection_recv() {
+    let env = mock_env;
+    let info = |sender| mock_info(sender, &[]);
+    let mut deps = mock_dependencies();
+
+    PAYMENT
+        .initialize(
+            deps.as_mut().storage,
+            VestInit {
+                total: Uint128::new(100),
+                schedule: Schedule::SaturatingLinear,
+                start_time: env().block.time,
+                duration_seconds: 60 * 60 * 24 * 7,
+                denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
+                recipient: Addr::unchecked("recipient"),
+                title: "title".to_string(),
+                description: "description".to_string(),
+            },
+        )
+        .unwrap();
+    let mut deps = deps.as_mut();
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some("owner")).unwrap();
+
+    let err = execute_receive_cw20(
+        env(),
+        deps.branch(),
+        info("notcw20"),
+        Cw20ReceiveMsg {
+            sender: "random".to_string(),
+            amount: Uint128::new(100),
+            msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+        },
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::WrongCw20);
+
+    let err = execute_receive_cw20(
+        env(),
+        deps.branch(),
+        info("cw20"),
+        Cw20ReceiveMsg {
+            sender: "random".to_string(),
+            amount: Uint128::new(101),
+            msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
+        },
+    )
+    .unwrap_err();
+    assert_eq!(
+        err,
+        ContractError::WrongFundAmount {
+            sent: Uint128::new(101),
+            expected: Uint128::new(100)
+        }
+    );
+}
+
+/// Should report zero distributable tokens when the contract is
+/// unfunded.
+#[test]
+fn test_illiquid_when_unfunfed() {
+    let env = mock_env;
+    let mut deps = mock_dependencies();
+
+    PAYMENT
+        .initialize(
+            deps.as_mut().storage,
+            VestInit {
+                total: Uint128::new(100),
+                schedule: Schedule::SaturatingLinear,
+                start_time: env().block.time,
+                duration_seconds: 60 * 60 * 24 * 7,
+                denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
+                recipient: Addr::unchecked("recipient"),
+                title: "title".to_string(),
+                description: "description".to_string(),
+            },
+        )
+        .unwrap();
+    let deps = deps.as_mut();
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some("owner")).unwrap();
+
+    // nothing is liquid in the unfunded state.
+    assert_eq!(
+        PAYMENT
+            .distributable(
+                deps.storage,
+                &PAYMENT.get_vest(deps.storage).unwrap(),
+                env().block.time
+            )
+            .unwrap(),
+        Uint128::zero()
+    );
 }

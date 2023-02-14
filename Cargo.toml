@@ -52,7 +52,7 @@ cw721-base = "0.16"
 proc-macro2 = "1.0"
 quote = "1.0"
 rand = "0.8"
-serde = "1.0"
+serde = { version = "1.0", default-features = false, features = ["derive"]}
 syn = { version = "1.0", features = ["derive"] }
 thiserror = { version = "1.0.30" }
 wynd-utils = "0.4.1"

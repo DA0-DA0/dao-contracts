@@ -55,6 +55,9 @@ pub enum ContractError {
     #[error("can't redelegate from a validator with no delegation")]
     InvalidRedelegate,
 
+    #[error("can't set wihtdraw address to vesting contract")]
+    SelfWithdraw,
+
     #[error("can't redelegate funds that are not immediately redelegatable. max: ({max})")]
     NonImmediateRedelegate { max: Uint128 },
 
