@@ -1,6 +1,6 @@
 [package]
 name = "cw-vesting"
-version = "2.0.2"
+version = "2.0.3"
 authors = ["Jake Hartnell", "ekez <ekez@withoutdoing.com>", "blue-note"]
 edition = "2021"
 

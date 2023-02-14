@@ -14,18 +14,20 @@ use crate::{
     ContractError,
 };
 
+use super::setup::setup_dao_v1_multiple_proposals;
+
 pub fn basic_test(voting_type: VotingType, from_core: bool) {
     let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(voting_type.clone());
 
     let mut test_state_v1 = match voting_type {
         VotingType::Cw4 => query_state_v1_cw4(
             &mut app,
-            module_addrs.proposal.clone(),
+            module_addrs.proposals[0].clone(),
             module_addrs.voting.clone(),
         ),
         VotingType::Cw20 => query_state_v1_cw20(
             &mut app,
-            module_addrs.proposal.clone(),
+            module_addrs.proposals[0].clone(),
             module_addrs.voting.clone(),
         ),
     };
@@ -34,18 +36,25 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
 
     match from_core {
         true => {
-            execute_migration_from_core(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap()
+            execute_migration_from_core(app.borrow_mut(), &module_addrs, v1_code_ids, None, false)
+                .unwrap()
         }
-        false => execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap(),
+        false => {
+            execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, false).unwrap()
+        }
     };
 
     let test_state_v2 = match voting_type {
-        VotingType::Cw4 => {
-            query_state_v2_cw4(&mut app, module_addrs.proposal.clone(), module_addrs.voting)
-        }
-        VotingType::Cw20 => {
-            query_state_v2_cw20(&mut app, module_addrs.proposal.clone(), module_addrs.voting)
-        }
+        VotingType::Cw4 => query_state_v2_cw4(
+            &mut app,
+            module_addrs.proposals[0].clone(),
+            module_addrs.voting,
+        ),
+        VotingType::Cw20 => query_state_v2_cw20(
+            &mut app,
+            module_addrs.proposals[0].clone(),
+            module_addrs.voting,
+        ),
     };
 
     assert_eq!(test_state_v1, test_state_v2);
@@ -61,7 +70,7 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
         )
         .unwrap();
     assert_eq!(modules.len(), 2);
-    assert_eq!(modules[0].address, module_addrs.proposal);
+    assert_eq!(modules[0].address, module_addrs.proposals[0]);
     assert_eq!(modules[1].status, ProposalModuleStatus::Disabled);
 }
 
@@ -77,11 +86,61 @@ fn test_execute_migration() {
 }
 
 #[test]
+fn test_multiple_proposal_modules() {
+    let (mut app, module_addrs, v1_code_ids) = setup_dao_v1_multiple_proposals();
+
+    let mut test_state_v1 = query_state_v1_cw20(
+        &mut app,
+        module_addrs.proposals[0].clone(),
+        module_addrs.voting.clone(),
+    );
+    //NOTE: We add 1 to count because we create a new proposal in execute_migration
+    test_state_v1.proposal_count += 1;
+
+    execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, true).unwrap();
+
+    let test_state_v2 = query_state_v2_cw20(
+        &mut app,
+        module_addrs.proposals[0].clone(),
+        module_addrs.voting,
+    );
+
+    assert_eq!(test_state_v1, test_state_v2);
+}
+
+#[test]
+fn test_multiple_proposal_modules_failing() {
+    // Test single proposal with multiple proposal params.
+    let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(VotingType::Cw20);
+
+    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, true)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::MigrationParamsNotEqualProposalModulesLength
+    );
+
+    // Test multiple proposals with single proposal params.
+    let (mut app, module_addrs, v1_code_ids) = setup_dao_v1_multiple_proposals();
+
+    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, false)
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::MigrationParamsNotEqualProposalModulesLength
+    );
+}
+
+#[test]
 fn test_wrong_code_id() {
     let (mut app, module_addrs, mut v1_code_ids) = setup_dao_v1(VotingType::Cw20);
     let old_v1_code_ids = v1_code_ids.clone();
     v1_code_ids.proposal_single = 555;
-    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None)
+    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, false)
         .unwrap_err()
         .downcast::<ContractError>()
         .unwrap();
@@ -95,7 +154,7 @@ fn test_wrong_code_id() {
     let (mut app, module_addrs, mut v1_code_ids) = setup_dao_v1(VotingType::Cw20);
     let old_v1_code_ids = v1_code_ids.clone();
     v1_code_ids.cw20_stake = 555;
-    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None)
+    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, false)
         .unwrap_err()
         .downcast::<ContractError>()
         .unwrap();
@@ -108,7 +167,7 @@ fn test_wrong_code_id() {
 
     let (mut app, module_addrs, mut v1_code_ids) = setup_dao_v1(VotingType::Cw20);
     v1_code_ids.cw20_staked_balances_voting = 555;
-    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None)
+    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, false)
         .unwrap_err()
         .downcast::<ContractError>()
         .unwrap();
@@ -116,7 +175,7 @@ fn test_wrong_code_id() {
 
     let (mut app, module_addrs, mut v1_code_ids) = setup_dao_v1(VotingType::Cw4);
     v1_code_ids.cw4_voting = 555;
-    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None)
+    let err = execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None, false)
         .unwrap_err()
         .downcast::<ContractError>()
         .unwrap();
@@ -135,6 +194,7 @@ fn test_dont_migrate_cw20() {
             sub_daos: Some(vec![]),
             migrate_cw20: None,
         }),
+        false,
     )
     .unwrap_err()
     .downcast::<ContractError>()
@@ -149,6 +209,7 @@ fn test_dont_migrate_cw20() {
             sub_daos: Some(vec![]),
             migrate_cw20: Some(false),
         }),
+        false,
     )
     .unwrap_err()
     .downcast::<ContractError>()
@@ -172,6 +233,7 @@ fn test_sub_daos() {
             sub_daos: Some(vec![sub_dao.clone()]),
             migrate_cw20: Some(true),
         }),
+        false,
     )
     .unwrap();
 

@@ -6,7 +6,7 @@ use dao_interface::{Admin, ModuleInstantiateInfo};
 
 use crate::{
     testing::helpers::get_module_addrs,
-    types::{MigrationParams, V1CodeIds},
+    types::{MigrationParams, ProposalParams, V1CodeIds},
 };
 
 use super::helpers::{
@@ -87,6 +87,101 @@ pub fn init_v1(app: &mut App, sender: Addr, voting_type: VotingType) -> (Addr, V
     (core_addr, v1_code_ids)
 }
 
+pub fn init_v1_with_multiple_proposals(
+    app: &mut App,
+    sender: Addr,
+    voting_type: VotingType,
+) -> (Addr, V1CodeIds) {
+    let (code_ids, v1_code_ids) = get_v1_code_ids(app);
+
+    let (voting_code_id, msg) = match voting_type {
+        VotingType::Cw4 => (
+            code_ids.cw4_voting,
+            to_binary(&get_cw4_init_msg(code_ids.clone())).unwrap(),
+        ),
+        VotingType::Cw20 => (
+            code_ids.cw20_voting,
+            to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
+        ),
+    };
+
+    let core_addr = app
+        .instantiate_contract(
+            code_ids.core,
+            sender.clone(),
+            &cw_core_v1::msg::InstantiateMsg {
+                admin: Some(SENDER_ADDR.to_string()),
+                name: "n".to_string(),
+                description: "d".to_string(),
+                image_url: Some("i".to_string()),
+                automatically_add_cw20s: false,
+                automatically_add_cw721s: true,
+                voting_module_instantiate_info: cw_core_v1::msg::ModuleInstantiateInfo {
+                    code_id: voting_code_id,
+                    msg,
+                    admin: cw_core_v1::msg::Admin::CoreContract {},
+                    label: "voting".to_string(),
+                },
+                proposal_modules_instantiate_info: vec![
+                    cw_core_v1::msg::ModuleInstantiateInfo {
+                        code_id: code_ids.proposal_single,
+                        msg: to_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                            threshold: voting_v1::Threshold::AbsolutePercentage {
+                                percentage: voting_v1::PercentageThreshold::Majority {},
+                            },
+                            max_voting_period: cw_utils_v1::Duration::Height(6),
+                            min_voting_period: None,
+                            only_members_execute: false,
+                            allow_revoting: false,
+                            deposit_info: None,
+                        })
+                        .unwrap(),
+                        admin: cw_core_v1::msg::Admin::CoreContract {},
+                        label: "proposal".to_string(),
+                    },
+                    cw_core_v1::msg::ModuleInstantiateInfo {
+                        code_id: code_ids.proposal_single,
+                        msg: to_binary(&cw_proposal_single_v1::msg::InstantiateMsg {
+                            threshold: voting_v1::Threshold::AbsolutePercentage {
+                                percentage: voting_v1::PercentageThreshold::Majority {},
+                            },
+                            max_voting_period: cw_utils_v1::Duration::Height(6),
+                            min_voting_period: None,
+                            only_members_execute: false,
+                            allow_revoting: false,
+                            deposit_info: None,
+                        })
+                        .unwrap(),
+                        admin: cw_core_v1::msg::Admin::CoreContract {},
+                        label: "proposal".to_string(),
+                    },
+                ],
+                initial_items: Some(vec![cw_core_v1::msg::InitialItem {
+                    key: "key".to_string(),
+                    value: "value".to_string(),
+                }]),
+            },
+            &[],
+            "core",
+            Some(sender.to_string()),
+        )
+        .unwrap();
+
+    app.update_block(next_block);
+
+    app.execute(
+        sender,
+        WasmMsg::UpdateAdmin {
+            contract_addr: core_addr.to_string(),
+            admin: core_addr.to_string(),
+        }
+        .into(),
+    )
+    .unwrap();
+
+    (core_addr, v1_code_ids)
+}
+
 /// Instantiate a basic DAO with proposal and voting modules.
 pub fn setup_dao_v1(voting_type: VotingType) -> (App, ModuleAddrs, V1CodeIds) {
     let mut app = App::default();
@@ -96,9 +191,34 @@ pub fn setup_dao_v1(voting_type: VotingType) -> (App, ModuleAddrs, V1CodeIds) {
     let module_addrs = get_module_addrs(app.borrow_mut(), core_addr);
 
     match voting_type {
-        VotingType::Cw4 => set_dummy_proposal(app.borrow_mut(), sender, module_addrs.clone()),
+        VotingType::Cw4 => set_dummy_proposal(
+            app.borrow_mut(),
+            sender,
+            module_addrs.core.clone(),
+            module_addrs.proposals[0].clone(),
+        ),
         VotingType::Cw20 => set_cw20_to_dao(app.borrow_mut(), sender, module_addrs.clone()),
     };
+
+    (app, module_addrs, v1_code_ids)
+}
+
+/// Instantiate a basic DAO with 2 proposal modules.
+pub fn setup_dao_v1_multiple_proposals() -> (App, ModuleAddrs, V1CodeIds) {
+    let mut app = App::default();
+    let sender = Addr::unchecked(SENDER_ADDR);
+
+    let (core_addr, v1_code_ids) =
+        init_v1_with_multiple_proposals(app.borrow_mut(), sender.clone(), VotingType::Cw20);
+    let module_addrs = get_module_addrs(app.borrow_mut(), core_addr);
+
+    set_cw20_to_dao(app.borrow_mut(), sender.clone(), module_addrs.clone());
+    set_dummy_proposal(
+        app.borrow_mut(),
+        sender,
+        module_addrs.core.clone(),
+        module_addrs.proposals[1].clone(),
+    );
 
     (app, module_addrs, v1_code_ids)
 }
@@ -108,6 +228,7 @@ pub fn execute_migration(
     module_addrs: &ModuleAddrs,
     v1_code_ids: V1CodeIds,
     params: Option<ExecuteParams>,
+    multiple_proposals: bool,
 ) -> Result<AppResponse, anyhow::Error> {
     let sender = Addr::unchecked(SENDER_ADDR);
     let migrator_code_id = app.store_code(migrator_contract());
@@ -116,10 +237,21 @@ pub fn execute_migration(
         sub_daos: Some(vec![]),
         migrate_cw20: Some(true),
     });
+    let mut proposal_params = vec![ProposalParams {
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+    }];
+
+    if multiple_proposals {
+        proposal_params.push(ProposalParams {
+            close_proposal_on_execution_failure: true,
+            pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+        })
+    }
 
     app.execute_contract(
         sender.clone(),
-        module_addrs.proposal.clone(),
+        module_addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
             title: "t2".to_string(),
             description: "d2".to_string(),
@@ -127,7 +259,11 @@ pub fn execute_migration(
                 WasmMsg::Migrate {
                     contract_addr: module_addrs.core.to_string(),
                     new_code_id: new_code_ids.core,
-                    msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 { dao_uri: None, params: None }).unwrap(),
+                    msg: to_binary(&dao_core::msg::MigrateMsg::FromV1 {
+                        dao_uri: None,
+                        params: None,
+                    })
+                    .unwrap(),
                 }
                 .into(),
                 WasmMsg::Execute {
@@ -139,8 +275,7 @@ pub fn execute_migration(
                                 sub_daos: params.sub_daos.unwrap(),
                                 migration_params: MigrationParams {
                                     migrate_stake_cw20_manager: params.migrate_cw20,
-                                    close_proposal_on_execution_failure: true,
-                                    pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                                    proposal_params,
                                 },
                                 v1_code_ids,
                                 v2_code_ids,
@@ -158,12 +293,13 @@ pub fn execute_migration(
             ],
         },
         &[],
-    ).unwrap();
+    )
+    .unwrap();
 
     let perposals: cw_proposal_single_v1::query::ProposalListResponse = app
         .wrap()
         .query_wasm_smart(
-            module_addrs.proposal.clone(),
+            module_addrs.proposals[0].clone(),
             &cw_proposal_single_v1::msg::QueryMsg::ReverseProposals {
                 start_before: None,
                 limit: Some(1),
@@ -174,7 +310,7 @@ pub fn execute_migration(
 
     app.execute_contract(
         sender.clone(),
-        module_addrs.proposal.clone(),
+        module_addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
             proposal_id,
             vote: voting_v1::Vote::Yes,
@@ -185,7 +321,7 @@ pub fn execute_migration(
 
     app.execute_contract(
         sender,
-        module_addrs.proposal.clone(),
+        module_addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )
@@ -196,6 +332,7 @@ pub fn execute_migration_from_core(
     module_addrs: &ModuleAddrs,
     v1_code_ids: V1CodeIds,
     params: Option<ExecuteParams>,
+    multiple_proposals: bool,
 ) -> Result<AppResponse, anyhow::Error> {
     let sender = Addr::unchecked(SENDER_ADDR);
     let migrator_code_id = app.store_code(migrator_contract());
@@ -204,10 +341,21 @@ pub fn execute_migration_from_core(
         sub_daos: Some(vec![]),
         migrate_cw20: Some(true),
     });
+    let mut proposal_params = vec![dao_core::migrate_msg::ProposalParams {
+        close_proposal_on_execution_failure: true,
+        pre_propose_info: dao_core::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
+    }];
+
+    if multiple_proposals {
+        proposal_params.push(dao_core::migrate_msg::ProposalParams {
+            close_proposal_on_execution_failure: true,
+            pre_propose_info: dao_core::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
+        })
+    }
 
     app.execute_contract(
         sender.clone(),
-        module_addrs.proposal.clone(),
+        module_addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Propose {
             title: "t2".to_string(),
             description: "d2".to_string(),
@@ -222,9 +370,7 @@ pub fn execute_migration_from_core(
                             sub_daos: params.sub_daos.unwrap(),
                             migration_params: dao_core::migrate_msg::MigrationModuleParams {
                                 migrate_stake_cw20_manager: params.migrate_cw20,
-                                close_proposal_on_execution_failure: true,
-                                pre_propose_info:
-                                    dao_core::migrate_msg::PreProposeInfo::AnyoneMayPropose {},
+                                proposal_params,
                             },
                             v1_code_ids: v1_code_ids.to(),
                             v2_code_ids: v2_code_ids.to(),
@@ -242,7 +388,7 @@ pub fn execute_migration_from_core(
     let perposals: cw_proposal_single_v1::query::ProposalListResponse = app
         .wrap()
         .query_wasm_smart(
-            module_addrs.proposal.clone(),
+            module_addrs.proposals[0].clone(),
             &cw_proposal_single_v1::msg::QueryMsg::ReverseProposals {
                 start_before: None,
                 limit: Some(1),
@@ -253,7 +399,7 @@ pub fn execute_migration_from_core(
 
     app.execute_contract(
         sender.clone(),
-        module_addrs.proposal.clone(),
+        module_addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Vote {
             proposal_id,
             vote: voting_v1::Vote::Yes,
@@ -264,7 +410,7 @@ pub fn execute_migration_from_core(
 
     app.execute_contract(
         sender,
-        module_addrs.proposal.clone(),
+        module_addrs.proposals[0].clone(),
         &cw_proposal_single_v1::msg::ExecuteMsg::Execute { proposal_id },
         &[],
     )

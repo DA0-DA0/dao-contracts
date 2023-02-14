@@ -1,6 +1,6 @@
 {
   "contract_name": "dao-core",
-  "contract_version": "2.0.2",
+  "contract_version": "2.0.3",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -2060,16 +2060,11 @@
         "additionalProperties": false
       },
       "MigrationModuleParams": {
-        "description": "The params we need to provide for migration msgs",
         "type": "object",
         "required": [
-          "close_proposal_on_execution_failure",
-          "pre_propose_info"
+          "proposal_params"
         ],
         "properties": {
-          "close_proposal_on_execution_failure": {
-            "type": "boolean"
-          },
           "migrate_stake_cw20_manager": {
             "description": "Rather or not to migrate the stake_cw20 contract and its manager. If this is not set to true and a stake_cw20 contract is detected in the DAO's configuration the migration will be aborted.",
             "type": [
@@ -2077,8 +2072,11 @@
               "null"
             ]
           },
-          "pre_propose_info": {
-            "$ref": "#/definitions/PreProposeInfo"
+          "proposal_params": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/ProposalParams"
+            }
           }
         },
         "additionalProperties": false
@@ -2163,6 +2161,23 @@
             "additionalProperties": false
           }
         ]
+      },
+      "ProposalParams": {
+        "description": "The params we need to provide for migration msgs",
+        "type": "object",
+        "required": [
+          "close_proposal_on_execution_failure",
+          "pre_propose_info"
+        ],
+        "properties": {
+          "close_proposal_on_execution_failure": {
+            "type": "boolean"
+          },
+          "pre_propose_info": {
+            "$ref": "#/definitions/PreProposeInfo"
+          }
+        },
+        "additionalProperties": false
       },
       "SubDao": {
         "type": "object",
