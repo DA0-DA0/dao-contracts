@@ -199,6 +199,23 @@ impl Suite {
             .map(|_| ())
     }
 
+    pub fn set_withdraw_address<S: Into<String>>(
+        &mut self,
+        sender: S,
+        receiver: S,
+    ) -> anyhow::Result<()> {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender),
+                self.vesting.clone(),
+                &ExecuteMsg::SetWithdrawAddress {
+                    address: receiver.into(),
+                },
+                &[],
+            )
+            .map(|_| ())
+    }
+
     pub fn process_unbonds(&mut self) {
         self.app.sudo(StakingSudo::ProcessQueue {}.into()).unwrap();
     }
@@ -206,21 +223,20 @@ impl Suite {
 
 // query
 impl Suite {
-    pub fn query_receiver_vesting_token_balance(&self) -> Uint128 {
-        let vest: Vest = self
-            .app
+    pub fn query_vest(&self) -> Vest {
+        self.app
             .wrap()
             .query_wasm_smart(&self.vesting, &QueryMsg::Vest {})
-            .unwrap();
+            .unwrap()
+    }
+
+    pub fn query_receiver_vesting_token_balance(&self) -> Uint128 {
+        let vest = self.query_vest();
         self.query_vesting_token_balance(vest.recipient)
     }
 
     pub fn query_vesting_token_balance<S: Into<String>>(&self, who: S) -> Uint128 {
-        let vest: Vest = self
-            .app
-            .wrap()
-            .query_wasm_smart(&self.vesting, &QueryMsg::Vest {})
-            .unwrap();
+        let vest = self.query_vest();
         vest.denom
             .query_balance(&self.app.wrap(), &Addr::unchecked(who.into()))
             .unwrap()

@@ -32,8 +32,9 @@ pub enum Status {
     Unfunded,
     Funded,
     Canceled {
-        /// Number of tokens the owner may withdraw, having canceled
-        /// the vesting agreement.
+        /// owner_withdrawable(t). This is monotonicly decreasing and
+        /// will be zero once the owner has completed withdrawing
+        /// their funds.
         owner_withdrawable: Uint128,
     },
 }
@@ -91,7 +92,8 @@ impl<'a> Payment<'a> {
     /// calculates the number of liquid tokens avaliable.
     fn liquid(&self, vesting: &Vest, staked: Uint128) -> Uint128 {
         match vesting.status {
-            Status::Unfunded | Status::Funded => vesting.total() - vesting.claimed - staked,
+            Status::Unfunded => Uint128::zero(),
+            Status::Funded => vesting.total() - vesting.claimed - staked,
             Status::Canceled { owner_withdrawable } => {
                 // on cancelation, all liquid funds are settled and
                 // vesting.total() is set to the amount that has
