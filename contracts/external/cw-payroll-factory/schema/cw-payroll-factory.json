@@ -294,12 +294,14 @@
       "Schedule": {
         "oneOf": [
           {
+            "description": "Vests linearally from `0` to `total`.",
             "type": "string",
             "enum": [
               "saturating_linear"
             ]
           },
           {
+            "description": "Vests by linearally interpolating between the provided (timestamp, amount) points. The first amount must be zero and the last `total`.",
             "type": "object",
             "required": [
               "peacewise_linear"

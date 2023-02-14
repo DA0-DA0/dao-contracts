@@ -1,8 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Coin, CosmosMsg, Deps, DepsMut, DistributionMsg, Env,
-    MessageInfo, Response, StakingMsg, StdResult, Timestamp, Uint128,
+    from_binary, to_binary, Binary, Coin, CosmosMsg, DelegationResponse, Deps, DepsMut,
+    DistributionMsg, Env, MessageInfo, Response, StakingMsg, StakingQuery, StdResult, Timestamp,
+    Uint128,
 };
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
@@ -142,7 +143,7 @@ pub fn execute_receive_cw20(
             } // correct denom
 
             if vest.status != Status::Unfunded {
-                return Err(ContractError::Funded {});
+                return Err(ContractError::Funded);
             } // correct status
 
             PAYMENT.set_funded(deps.storage)?;
@@ -161,7 +162,7 @@ pub fn execute_cancel_vesting_payment(
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
-    let msgs = PAYMENT.cancel(deps.storage, &env.block.time, &info.sender)?;
+    let msgs = PAYMENT.cancel(deps.storage, env.block.time, &info.sender)?;
 
     Ok(Response::new()
         .add_attribute("method", "remove_vesting_payment")
@@ -175,7 +176,7 @@ pub fn execute_distribute(
     deps: DepsMut,
     request: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    let msg = PAYMENT.distribute(deps.storage, &env.block.time, request)?;
+    let msg = PAYMENT.distribute(deps.storage, env.block.time, request)?;
 
     Ok(Response::new()
         .add_attribute("method", "distribute")
@@ -189,7 +190,7 @@ pub fn execute_withdraw_canceled(
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
-    let msg = PAYMENT.withdraw_canceled(deps.storage, &env.block.time, amount, &info.sender)?;
+    let msg = PAYMENT.withdraw_canceled(deps.storage, env.block.time, amount, &info.sender)?;
 
     Ok(Response::new()
         .add_attribute("method", "withdraw_canceled")
@@ -218,7 +219,7 @@ pub fn execute_delegate(
     let vest = PAYMENT.get_vest(deps.storage)?;
 
     match vest.status {
-        Status::Unfunded => return Err(ContractError::NotFunded {}),
+        Status::Unfunded => return Err(ContractError::NotFunded),
         Status::Funded => {
             if info.sender != vest.recipient {
                 return Err(ContractError::NotReceiver);
@@ -227,21 +228,17 @@ pub fn execute_delegate(
         Status::Canceled { .. } => return Err(ContractError::Cancelled),
     }
 
-    let denom = match vest.denom {
-        CheckedDenom::Cw20(_) => {
-            return Err(ContractError::NotStakeable);
-        }
-        CheckedDenom::Native(denom) => {
-            let local_denom = deps.querier.query_bonded_denom()?;
-            if local_denom != denom {
-                return Err(ContractError::NotStakeable);
-            } else {
-                denom
-            }
-        }
-    };
+    let denom = deps.querier.query_bonded_denom()?;
+    if !vest.denom.is_native(&denom) {
+        return Err(ContractError::NotStakeable);
+    }
 
-    PAYMENT.delegate(deps.storage, &env.block.time, amount)?;
+    PAYMENT.on_delegate(
+        deps.storage,
+        env.block.time,
+        deps.api.addr_validate(&validator)?,
+        amount,
+    )?;
 
     let msg = StakingMsg::Delegate {
         validator: validator.clone(),
@@ -256,7 +253,7 @@ pub fn execute_delegate(
 }
 
 pub fn execute_redelegate(
-    _env: Env,
+    env: Env,
     deps: DepsMut,
     info: MessageInfo,
     src_validator: String,
@@ -268,28 +265,42 @@ pub fn execute_redelegate(
     let vest = PAYMENT.get_vest(deps.storage)?;
 
     match vest.status {
-        Status::Unfunded => return Err(ContractError::NotFunded {}),
+        Status::Unfunded => return Err(ContractError::NotFunded),
         Status::Funded => {
             if info.sender != vest.recipient {
                 return Err(ContractError::NotReceiver);
             }
         }
-        Status::Canceled { .. } => cw_ownable::assert_owner(deps.storage, &info.sender)?,
+        Status::Canceled { .. } => return Err(ContractError::Cancelled),
     }
 
-    let denom = match vest.denom {
-        CheckedDenom::Cw20(_) => {
-            return Err(ContractError::NotStakeable);
+    let denom = deps.querier.query_bonded_denom()?;
+    if !vest.denom.is_native(&denom) {
+        return Err(ContractError::NotStakeable);
+    }
+
+    let resp: DelegationResponse = deps.querier.query(
+        &StakingQuery::Delegation {
+            delegator: info.sender.to_string(),
+            validator: src_validator.clone(),
         }
-        CheckedDenom::Native(denom) => {
-            let local_denom = deps.querier.query_bonded_denom()?;
-            if local_denom != denom {
-                return Err(ContractError::NotStakeable);
-            } else {
-                denom
-            }
-        }
-    };
+        .into(),
+    )?;
+
+    let delegation = resp.delegation.ok_or(ContractError::InvalidRedelegate)?;
+    if delegation.can_redelegate.amount < amount {
+        return Err(ContractError::NonImmediateRedelegate {
+            max: delegation.can_redelegate.amount,
+        });
+    }
+
+    PAYMENT.on_redelegate(
+        deps.storage,
+        env.block.time,
+        deps.api.addr_validate(&src_validator)?,
+        deps.api.addr_validate(&dst_validator)?,
+        amount,
+    )?;
 
     let msg = StakingMsg::Redelegate {
         src_validator: src_validator.clone(),
@@ -317,26 +328,27 @@ pub fn execute_undelegate(
     let vest = PAYMENT.get_vest(deps.storage)?;
 
     match vest.status {
-        Status::Unfunded => return Err(ContractError::NotFunded {}),
+        Status::Unfunded => return Err(ContractError::NotFunded),
         Status::Funded => {
             if info.sender != vest.recipient {
                 return Err(ContractError::NotReceiver);
             }
         }
-        // while canceled either the owner or the receiver may
-        // undelegate so long as they have funds to be settled.
-        Status::Canceled { owner_withdrawable } => {
-            if vest.vested(&env.block.time) != vest.claimed && info.sender == vest.recipient {
-            } else if !owner_withdrawable.is_zero() {
-                cw_ownable::assert_owner(deps.storage, &info.sender)?;
-            } else {
-                return Err(ContractError::Cancelled {});
-            }
-        }
+        // anyone can undelegate while the contract is in the canceled
+        // state. this is to prevent us from neededing to undelegate
+        // all at once when the contract is canceled which could be a
+        // DOS vector if the veste staked to 50+ validators.
+        Status::Canceled { .. } => (),
     };
 
     let ubs = UNBONDING_DURATION_SECONDS.load(deps.storage)?;
-    PAYMENT.undelegate(deps.storage, &env.block.time, amount, ubs)?;
+    PAYMENT.on_undelegate(
+        deps.storage,
+        env.block.time,
+        deps.api.addr_validate(&validator)?,
+        amount,
+        ubs,
+    )?;
 
     let denom = deps.querier.query_bonded_denom()?;
 
@@ -386,13 +398,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         QueryMsg::Vest {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
-        QueryMsg::Distributable { t } => to_binary(
-            &PAYMENT.distributable(
-                deps.storage,
-                &PAYMENT.get_vest(deps.storage)?,
-                &t.map(|t| Timestamp::from_seconds(t))
-                    .unwrap_or(env.block.time),
-            )?,
-        ),
+        QueryMsg::Distributable { t } => to_binary(&PAYMENT.distributable(
+            deps.storage,
+            &PAYMENT.get_vest(deps.storage)?,
+            t.map(Timestamp::from_seconds).unwrap_or(env.block.time),
+        )?),
     }
 }

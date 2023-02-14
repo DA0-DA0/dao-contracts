@@ -24,29 +24,30 @@ impl Default for VestInit {
 }
 
 #[test]
-fn test_distribute_not_funded() {
+fn test_distribute_funded() {
     let storage = &mut mock_dependencies().storage;
-    let payment = Payment::new("vesting", "staking");
+    let payment = Payment::new("vesting", "staked", "validator", "cardinality");
 
     payment.initialize(storage, VestInit::default()).unwrap();
     payment.set_funded(storage).unwrap();
 
     payment
-        .distribute(storage, &Timestamp::default().plus_seconds(10), None)
+        .distribute(storage, Timestamp::default().plus_seconds(10), None)
         .unwrap();
 }
 
 #[test]
 fn test_distribute_nothing_to_claim() {
     let storage = &mut mock_dependencies().storage;
-    let payment = Payment::new("vesting", "staking");
+    let payment = Payment::new("vesting", "staked", "validator", "cardinality");
+
     payment.initialize(storage, VestInit::default()).unwrap();
 
     payment.set_funded(storage).unwrap();
 
     // Can't distribute when there is nothing to claim.
     let err = payment
-        .distribute(storage, &Timestamp::default(), None)
+        .distribute(storage, Timestamp::default(), None)
         .unwrap_err();
     assert_eq!(
         err,
@@ -60,7 +61,8 @@ fn test_distribute_nothing_to_claim() {
 #[test]
 fn test_distribute_half_way() {
     let storage = &mut mock_dependencies().storage;
-    let payment = Payment::new("vesting", "staking");
+    let payment = Payment::new("vesting", "staked", "validator", "cardinality");
+
     payment.initialize(storage, VestInit::default()).unwrap();
 
     payment.set_funded(storage).unwrap();
@@ -68,7 +70,7 @@ fn test_distribute_half_way() {
     let err = payment
         .distribute(
             storage,
-            &Timestamp::from_seconds(50),
+            Timestamp::from_seconds(50),
             Some(Uint128::new(50_000_001)),
         )
         .unwrap_err();
@@ -84,14 +86,15 @@ fn test_distribute_half_way() {
 #[test]
 fn test_distribute() {
     let storage = &mut mock_dependencies().storage;
-    let payment = Payment::new("vesting", "staking");
+    let payment = Payment::new("vesting", "staked", "validator", "cardinality");
+
     payment.initialize(storage, VestInit::default()).unwrap();
 
     payment.set_funded(storage).unwrap();
 
     // partially claiming increases claimed
     let msg = payment
-        .distribute(storage, &Timestamp::from_seconds(50), Some(Uint128::new(3)))
+        .distribute(storage, Timestamp::from_seconds(50), Some(Uint128::new(3)))
         .unwrap();
 
     assert_eq!(
@@ -108,7 +111,7 @@ fn test_distribute() {
     payment
         .distribute(
             storage,
-            &Timestamp::from_seconds(50),
+            Timestamp::from_seconds(50),
             Some(Uint128::new(50_000_000 - 3)),
         )
         .unwrap();
@@ -183,7 +186,7 @@ fn test_complex_close() {
         title: "t".to_string(),
         description: "d".to_string(),
     };
-    let payment = Payment::new("vesting", "staking");
+    let payment = Payment::new("vesting", "staked", "validator", "cardinality");
 
     payment.initialize(storage, init).unwrap();
     payment.set_funded(storage).unwrap();
@@ -191,17 +194,19 @@ fn test_complex_close() {
     time = time.plus_seconds(50);
 
     payment
-        .distribute(storage, &time, Some(Uint128::new(10)))
+        .distribute(storage, time, Some(Uint128::new(10)))
         .unwrap();
 
-    payment.delegate(storage, &time, Uint128::new(75)).unwrap();
+    payment
+        .on_delegate(storage, time, Addr::unchecked("v1"), Uint128::new(75))
+        .unwrap();
 
     let vest = payment.get_vest(storage).unwrap();
     assert_eq!(vest.claimed, Uint128::new(10));
-    assert_eq!(vest.vested(&time), Uint128::new(50));
+    assert_eq!(vest.vested(time), Uint128::new(50));
 
     payment
-        .cancel(storage, &time, &Addr::unchecked("owner"))
+        .cancel(storage, time, &Addr::unchecked("owner"))
         .unwrap();
 
     let vest = payment.get_vest(storage).unwrap();
@@ -211,16 +216,16 @@ fn test_complex_close() {
             owner_withdrawable: Uint128::new(50)
         }
     );
-    assert_eq!(vest.vested(&time) - vest.claimed, Uint128::new(25));
+    assert_eq!(vest.vested(time) - vest.claimed, Uint128::new(25));
 
     payment
-        .undelegate(storage, &time, Uint128::new(50), 25)
+        .on_undelegate(storage, time, Addr::unchecked("v1"), Uint128::new(50), 25)
         .unwrap();
     time = time.plus_seconds(25);
 
-    payment.distribute(storage, &time, None).unwrap();
+    payment.distribute(storage, time, None).unwrap();
     payment
-        .withdraw_canceled(storage, &time, None, &Addr::unchecked("owner"))
+        .withdraw_canceled(storage, time, None, &Addr::unchecked("owner"))
         .unwrap();
 
     let vest = payment.get_vest(storage).unwrap();
@@ -234,11 +239,11 @@ fn test_complex_close() {
     );
 
     payment
-        .undelegate(storage, &time, Uint128::new(25), 25)
+        .on_undelegate(storage, time, Addr::unchecked("v1"), Uint128::new(25), 25)
         .unwrap();
     time = time.plus_seconds(25);
     payment
-        .withdraw_canceled(storage, &time, None, &Addr::unchecked("owner"))
+        .withdraw_canceled(storage, time, None, &Addr::unchecked("owner"))
         .unwrap();
     let vest = payment.get_vest(storage).unwrap();
     assert_eq!(
