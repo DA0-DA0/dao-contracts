@@ -834,6 +834,7 @@ dependencies = [
 name = "cw-vesting"
 version = "2.0.3"
 dependencies = [
+ "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-denom",
@@ -1580,6 +1581,7 @@ dependencies = [
  "cw-multi-test",
  "cw-proposal-single",
  "cw-utils 0.16.0",
+ "cw-vesting",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
