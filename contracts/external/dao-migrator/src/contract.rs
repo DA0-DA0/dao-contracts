@@ -215,15 +215,17 @@ fn execute_migration_v1_v2(
         },
     )?;
 
-    // We add 1 because migration module is added last, and we skip it.
+    // We add 1 because migration module is a proposal module, and we skip it.
     if proposal_modules.len() != (proposal_pairs.len() + 1) {
         return Err(ContractError::MigrationParamsNotEqualProposalModulesLength);
     }
 
     // Loop over proposals and verify that they are valid DAO DAO modules
     // and set them to be migrated.
-    proposal_modules.into_iter().enumerate().try_for_each(
-        |(proposal_index, module)| -> Result<(), ContractError> {
+    let mut index = 0;
+    proposal_modules
+        .iter()
+        .try_for_each(|module| -> Result<(), ContractError> {
             // Instead of doing 2 loops, just ignore our module, we don't care about the vec after this.
             if module.address == env.contract.address {
                 return Ok(());
@@ -243,16 +245,16 @@ fn execute_migration_v1_v2(
             }?;
 
             // check if Code id is valid DAO DAO code id
-            if proposal_code_id == proposal_pairs[proposal_index].v1_code_id {
+            if proposal_code_id == proposal_pairs[index].v1_code_id {
                 msgs.push(
                     WasmMsg::Migrate {
                         contract_addr: module.address.to_string(),
-                        new_code_id: proposal_pairs[proposal_index].v2_code_id,
-                        msg: to_binary(&proposal_pairs[proposal_index].migrate_msg).unwrap(),
+                        new_code_id: proposal_pairs[index].v2_code_id,
+                        msg: to_binary(&proposal_pairs[index].migrate_msg).unwrap(),
                     }
                     .into(),
                 );
-                modules_addrs.proposals.push(module.address);
+                modules_addrs.proposals.push(module.address.clone());
                 Ok(())
             } else {
                 // Return false because we couldn't find the code id on our list.
@@ -261,9 +263,9 @@ fn execute_migration_v1_v2(
                 })
             }?;
 
+            index += 1;
             Ok(())
-        },
-    )?;
+        })?;
 
     // We successfully verified all modules of the DAO, we can send migration msgs.
 
