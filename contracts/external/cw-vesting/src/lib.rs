@@ -3,6 +3,7 @@
 pub mod contract;
 pub mod error;
 pub mod msg;
+pub mod stake_tracker;
 pub mod state;
 pub mod vesting;
 
@@ -15,5 +16,7 @@ pub use cw_ownable::Ownership;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+mod stake_tracker_tests;
 #[cfg(test)]
 mod vesting_tests;

@@ -41,16 +41,22 @@ pub enum ContractError {
     NotCancelled,
 
     #[error("vesting contract is not distributing funds")]
-    NotFunded {},
+    NotFunded,
 
     #[error("vesting contract has already been funded")]
-    Funded {},
+    Funded,
 
     #[error("only the vest receiver may perform this action")]
     NotReceiver,
 
     #[error("vesting denom may not be staked")]
     NotStakeable,
+
+    #[error("can't redelegate from a validator with no delegation")]
+    InvalidRedelegate,
+
+    #[error("can't redelegate funds that are not immediately redelegatable. max: ({max})")]
+    NonImmediateRedelegate { max: Uint128 },
 
     #[error("request must be <= claimable and > 0. !(0 < {request} <= {claimable})")]
     InvalidWithdrawal {

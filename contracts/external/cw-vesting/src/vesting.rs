@@ -4,14 +4,13 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128};
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Item;
-use cw_wormhole::Wormhole;
 use wynd_utils::Curve;
 
-use crate::error::ContractError;
+use crate::{error::ContractError, stake_tracker::StakeTracker};
 
 pub struct Payment<'a> {
     vesting: Item<'a, Vest>,
-    staking: Wormhole<'a, (), Uint128>,
+    staking: StakeTracker<'a>,
 }
 
 #[cw_serde]
@@ -33,7 +32,7 @@ pub enum Status {
     Unfunded,
     Funded,
     Canceled {
-        /// Number of tokens the owner may withdraw having canceled
+        /// Number of tokens the owner may withdraw, having canceled
         /// the vesting agreement.
         owner_withdrawable: Uint128,
     },
@@ -41,11 +40,11 @@ pub enum Status {
 
 #[cw_serde]
 pub enum Schedule {
-    // Vests linearally from `0` to `total`.
+    /// Vests linearally from `0` to `total`.
     SaturatingLinear,
-    // Vests by linearally interpolating between the provided
-    // (timestamp, amount) points. The first amount must be zero and
-    // the last `total`.
+    /// Vests by linearally interpolating between the provided
+    /// (timestamp, amount) points. The first amount must be zero and
+    /// the last `total`.
     PeacewiseLinear(Vec<(u64, Uint128)>),
 }
 
@@ -61,10 +60,15 @@ pub struct VestInit {
 }
 
 impl<'a> Payment<'a> {
-    pub const fn new(vesting_prefix: &'a str, staking_prefix: &'a str) -> Self {
+    pub const fn new(
+        vesting_prefix: &'a str,
+        staked_prefix: &'a str,
+        validator_prefix: &'a str,
+        cardinality_prefix: &'a str,
+    ) -> Self {
         Self {
             vesting: Item::new(vesting_prefix),
-            staking: Wormhole::new(staking_prefix),
+            staking: StakeTracker::new(staked_prefix, validator_prefix, cardinality_prefix),
         }
     }
 
@@ -90,11 +94,11 @@ impl<'a> Payment<'a> {
             Status::Unfunded | Status::Funded => vesting.total() - vesting.claimed - staked,
             Status::Canceled { owner_withdrawable } => {
                 // on cancelation, all liquid funds are settled and
-                // vesting.total() is set to the amount at that
-                // time. then, the remaining staked tokens are divided up
-                // between the owner and the veste so that the veste will
-                // receive all of their vested tokens. the following is
-                // then made true:
+                // vesting.total() is set to the amount that has
+                // vested so far. then, the remaining staked tokens
+                // are divided up between the owner and the veste so
+                // that the veste will receive all of their vested
+                // tokens. the following is then made true:
                 //
                 // staked = vesting_owned + owner_withdrawable
                 // staked = (vesting.total - vesting.claimed) + owner_withdrawable
@@ -123,14 +127,11 @@ impl<'a> Payment<'a> {
         &self,
         storage: &dyn Storage,
         vesting: &Vest,
-        t: &Timestamp,
+        t: Timestamp,
     ) -> StdResult<Uint128> {
-        let staked = self
-            .staking
-            .load(storage, (), t.seconds())?
-            .unwrap_or_default();
+        let staked = self.staking.total_staked(storage, t)?;
 
-        let liquid = self.liquid(&vesting, staked);
+        let liquid = self.liquid(vesting, staked);
         let claimable = vesting.vested(t) - vesting.claimed;
         Ok(min(liquid, claimable))
     }
@@ -142,7 +143,7 @@ impl<'a> Payment<'a> {
     pub fn distribute(
         &self,
         storage: &mut dyn Storage,
-        t: &Timestamp,
+        t: Timestamp,
         request: Option<Uint128>,
     ) -> Result<CosmosMsg, ContractError> {
         let vesting = self.vesting.load(storage)?;
@@ -167,35 +168,28 @@ impl<'a> Payment<'a> {
     }
 
     /// cancels the vesting payment. the current amount vested becomes
-    /// the total amount that will ever vest, and all pending and
-    /// future staking rewards from tokens staked by this contract
-    /// will be sent to the owner. note that canceling does not impact
-    /// already vested tokens.
+    /// the total amount that will ever vest, and all staked tokens
+    /// are unbonded. note that canceling does not impact already
+    /// vested tokens.
     ///
     /// upon canceling, the contract will use any liquid tokens in the
     /// contract to settle pending payments to the vestee, and then
-    /// returns the rest to the owner. staked tokens are then split
-    /// between the owner and the vestee according to the number of
-    /// tokens that the vestee is entitled to.
-    ///
-    /// the vestee will no longer receive staking rewards after
-    /// cancelation, and may unbond and distribute (vested - claimed)
-    /// tokens at their leisure. the owner may unbond (staked -
-    /// (vested - claimed)) tokens and withdraw them at their leisure.
+    /// return the rest to the owner. if there are not enough liquid
+    /// tokens to settle the vestee immediately, the vestee may
+    /// distribute tokens as normal until they have received the
+    /// amount of tokens they are entitled to. the owner may withdraw
+    /// the remaining tokens via the `withdraw_canceled` method.
     pub fn cancel(
         &self,
         storage: &mut dyn Storage,
-        t: &Timestamp,
-        owner: &Addr,
+        t: Timestamp,
+        owner: &Addr, // todo: also unbond field
     ) -> Result<Vec<CosmosMsg>, ContractError> {
         let mut vesting = self.vesting.load(storage)?;
         if matches!(vesting.status, Status::Canceled { .. }) {
             Err(ContractError::Cancelled {})
         } else {
-            let staked = self
-                .staking
-                .load(storage, (), t.seconds())?
-                .unwrap_or_default();
+            let staked = self.staking.total_staked(storage, t)?;
 
             // use liquid tokens to settle vestee as much as possible
             // and return any remaining liquid funds to the owner.
@@ -238,15 +232,12 @@ impl<'a> Payment<'a> {
     pub fn withdraw_canceled(
         &self,
         storage: &mut dyn Storage,
-        t: &Timestamp,
+        t: Timestamp,
         request: Option<Uint128>,
         owner: &Addr,
     ) -> Result<CosmosMsg, ContractError> {
         let vesting = self.vesting.load(storage)?;
-        let staked = self
-            .staking
-            .load(storage, (), t.seconds())?
-            .unwrap_or_default();
+        let staked = self.staking.total_staked(storage, t)?;
         if let Status::Canceled { owner_withdrawable } = vesting.status {
             let liquid = self.liquid(&vesting, staked);
             let claimable = min(liquid, owner_withdrawable);
@@ -267,29 +258,39 @@ impl<'a> Payment<'a> {
         }
     }
 
-    pub fn undelegate(
+    pub fn on_undelegate(
         &self,
         storage: &mut dyn Storage,
-        t: &Timestamp,
+        t: Timestamp,
+        validator: Addr,
         amount: Uint128,
         unbonding_duration_seconds: u64,
     ) -> Result<(), ContractError> {
-        self.staking.decrement(
-            storage,
-            (),
-            t.seconds() + unbonding_duration_seconds,
-            amount,
-        )?;
+        self.staking
+            .on_undelegate(storage, t, validator, amount, unbonding_duration_seconds)?;
         Ok(())
     }
 
-    pub fn delegate(
+    pub fn on_redelegate(
         &self,
         storage: &mut dyn Storage,
-        t: &Timestamp,
+        t: Timestamp,
+        src: Addr,
+        dst: Addr,
+        amount: Uint128,
+    ) -> StdResult<()> {
+        self.staking.on_redelegate(storage, t, src, dst, amount)?;
+        Ok(())
+    }
+
+    pub fn on_delegate(
+        &self,
+        storage: &mut dyn Storage,
+        t: Timestamp,
+        validator: Addr,
         amount: Uint128,
     ) -> Result<(), ContractError> {
-        self.staking.increment(storage, (), t.seconds(), amount)?;
+        self.staking.on_delegate(storage, t, validator, amount)?;
         Ok(())
     }
 
@@ -329,14 +330,14 @@ impl Vest {
     }
 
     /// Gets the number of tokens that have vested at `time`.
-    pub fn vested(&self, t: &Timestamp) -> Uint128 {
+    pub fn vested(&self, t: Timestamp) -> Uint128 {
         let elapsed =
             Timestamp::from_nanos(t.nanos().saturating_sub(self.start_time.nanos())).seconds();
         self.vested.value(elapsed)
     }
 
     /// Cancels the current vest. No additional tokens will vest after `t`.
-    pub fn cancel(&mut self, t: &Timestamp, owner_withdrawable: Uint128) {
+    pub fn cancel(&mut self, t: Timestamp, owner_withdrawable: Uint128) {
         debug_assert!(!matches!(self.status, Status::Canceled { .. }));
 
         self.status = Status::Canceled { owner_withdrawable };

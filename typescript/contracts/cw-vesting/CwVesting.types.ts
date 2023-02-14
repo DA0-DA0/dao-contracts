@@ -89,6 +89,10 @@ export type QueryMsg = {
   ownership: {};
 } | {
   vest: {};
+} | {
+  distributable: {
+    t?: number | null;
+  };
 };
 export type Addr = string;
 export interface OwnershipForAddr {

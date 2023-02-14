@@ -11,6 +11,11 @@ export interface CwVestingReadOnlyInterface {
   contractAddress: string;
   ownership: () => Promise<OwnershipForAddr>;
   vest: () => Promise<Vest>;
+  distributable: ({
+    t
+  }: {
+    t?: number;
+  }) => Promise<Uint128>;
 }
 export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
   client: CosmWasmClient;
@@ -21,6 +26,7 @@ export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
     this.contractAddress = contractAddress;
     this.ownership = this.ownership.bind(this);
     this.vest = this.vest.bind(this);
+    this.distributable = this.distributable.bind(this);
   }
 
   ownership = async (): Promise<OwnershipForAddr> => {
@@ -31,6 +37,17 @@ export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
   vest = async (): Promise<Vest> => {
     return this.client.queryContractSmart(this.contractAddress, {
       vest: {}
+    });
+  };
+  distributable = async ({
+    t
+  }: {
+    t?: number;
+  }): Promise<Uint128> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      distributable: {
+        t
+      }
     });
   };
 }
