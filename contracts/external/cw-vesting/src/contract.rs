@@ -8,6 +8,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw20::Cw20ReceiveMsg;
 use cw_denom::CheckedDenom;
+use cw_ownable::OwnershipError;
 use cw_utils::{must_pay, nonpayable};
 
 use crate::error::ContractError;
@@ -111,7 +112,7 @@ pub fn execute(
         }
         ExecuteMsg::WithdrawDelegatorReward { validator } => execute_withdraw_rewards(validator),
         ExecuteMsg::WithdrawCanceledPayment { amount } => {
-            execute_withdraw_canceled(deps, env, info, amount)
+            execute_withdraw_canceled(deps, env, amount)
         }
     }
 }
@@ -186,11 +187,12 @@ pub fn execute_distribute(
 pub fn execute_withdraw_canceled(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     amount: Option<Uint128>,
 ) -> Result<Response, ContractError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-    let msg = PAYMENT.withdraw_canceled(deps.storage, env.block.time, amount, &info.sender)?;
+    let owner = cw_ownable::get_ownership(deps.storage)?
+        .owner
+        .ok_or(OwnershipError::NoOwner)?;
+    let msg = PAYMENT.withdraw_canceled(deps.storage, env.block.time, amount, &owner)?;
 
     Ok(Response::new()
         .add_attribute("method", "withdraw_canceled")
@@ -203,6 +205,13 @@ pub fn execute_update_owner(
     env: Env,
     action: cw_ownable::Action,
 ) -> Result<Response, ContractError> {
+    if let Status::Canceled { owner_withdrawable } = PAYMENT.get_vest(deps.storage)?.status {
+        if action == cw_ownable::Action::RenounceOwnership && !owner_withdrawable.is_zero() {
+            // ownership can not be removed if there are withdrawable
+            // funds as this would lock those funds in the contract.
+            return Err(ContractError::Cancelled);
+        }
+    }
     let ownership = cw_ownable::update_ownership(deps, &env.block, &info.sender, action)?;
     Ok(Response::default().add_attributes(ownership.into_attributes()))
 }

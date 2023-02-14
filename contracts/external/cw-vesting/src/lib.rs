@@ -14,9 +14,10 @@ pub use cw_denom::{CheckedDenom, UncheckedDenom};
 pub use cw_ownable::Ownership;
 
 #[cfg(test)]
-mod tests;
-
-#[cfg(test)]
 mod stake_tracker_tests;
+#[cfg(test)]
+mod suite_tests;
+#[cfg(test)]
+mod tests;
 #[cfg(test)]
 mod vesting_tests;
