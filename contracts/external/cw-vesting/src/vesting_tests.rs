@@ -253,3 +253,67 @@ fn test_complex_close() {
         }
     );
 }
+
+#[test]
+fn test_piecewise_linear() {
+    let storage = &mut mock_dependencies().storage;
+    let payment = Payment::new("vesting", "staked", "validator", "cardinality");
+
+    let vest = VestInit {
+        schedule: Schedule::PeacewiseLinear(vec![
+            (1, Uint128::zero()),
+            (3, Uint128::new(4)),
+            (5, Uint128::new(8)),
+        ]),
+        total: Uint128::new(8),
+        ..Default::default()
+    };
+    payment.initialize(storage, vest).unwrap();
+    payment.set_funded(storage).unwrap();
+
+    let vesting = payment.get_vest(storage).unwrap();
+
+    // just check all the points as there aren't too many.
+    assert_eq!(
+        payment
+            .distributable(storage, &vesting, Timestamp::from_seconds(0))
+            .unwrap(),
+        Uint128::zero()
+    );
+    assert_eq!(
+        payment
+            .distributable(storage, &vesting, Timestamp::from_seconds(1))
+            .unwrap(),
+        Uint128::zero()
+    );
+    assert_eq!(
+        payment
+            .distributable(storage, &vesting, Timestamp::from_seconds(2))
+            .unwrap(),
+        Uint128::new(2)
+    );
+    assert_eq!(
+        payment
+            .distributable(storage, &vesting, Timestamp::from_seconds(3))
+            .unwrap(),
+        Uint128::new(4)
+    );
+    assert_eq!(
+        payment
+            .distributable(storage, &vesting, Timestamp::from_seconds(4))
+            .unwrap(),
+        Uint128::new(6)
+    );
+    assert_eq!(
+        payment
+            .distributable(storage, &vesting, Timestamp::from_seconds(5))
+            .unwrap(),
+        Uint128::new(8)
+    );
+    assert_eq!(
+        payment
+            .distributable(storage, &vesting, Timestamp::from_seconds(6))
+            .unwrap(),
+        Uint128::new(8)
+    );
+}
