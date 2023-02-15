@@ -68,6 +68,7 @@ bech32 = "0.9.1"
 cw-ownable = { git = "https://github.com/steak-enjoyers/cw-plus-plus", rev = "50d4d9333305894457e5028072a0465f4635b15b" }
 
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
+cw-verifier-middleware = { path = "./contracts/external/cw-verifier-middleware"}
 cw-denom = { path = "./packages/cw-denom", version = "*" }
 cw-hooks = { path = "./packages/cw-hooks", version = "*" }
 cw-wormhole = { path = "./packages/cw-wormhole", version = "*" }
