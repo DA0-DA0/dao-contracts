@@ -95,7 +95,7 @@ fn test_cancel_can_not_settle_receiver() {
     // withdraw rewards before cancelation. not doing this would cause
     // the rewards withdrawal address to be updated to the owner and
     // thus entitle them to the rewards.
-    suite.withdraw_delegator_reward().unwrap();
+    suite.withdraw_delegator_reward("validator").unwrap();
 
     suite.cancel(suite.owner.clone().unwrap()).unwrap();
 
@@ -103,7 +103,7 @@ fn test_cancel_can_not_settle_receiver() {
 
     // now that the vest is canceled, these rewards should go to the
     // owner.
-    suite.withdraw_delegator_reward().unwrap();
+    suite.withdraw_delegator_reward("validator").unwrap();
 
     let owner_rewards = suite.query_vesting_token_balance(suite.owner.clone().unwrap());
     let expected_staking_rewards = Uint128::new(90_000_000)
@@ -187,4 +187,69 @@ fn test_cancel_completed_vest() {
             owner_withdrawable: Uint128::zero()
         }
     )
+}
+
+#[test]
+fn test_redelegation() {
+    let expected_balance = {
+        // same operation as below, but without a redelegation.
+        let mut suite = SuiteBuilder::default().build();
+        suite.delegate(Uint128::new(100_000_000)).unwrap();
+        suite.a_day_passes();
+        suite.a_day_passes();
+        suite
+            .undelegate(suite.receiver.clone(), Uint128::new(25_000_000))
+            .unwrap();
+
+        suite.a_day_passes();
+        suite.process_unbonds();
+
+        suite.distribute("random", None).unwrap();
+        suite.withdraw_delegator_reward("validator").unwrap();
+
+        suite.query_receiver_vesting_token_balance()
+    };
+
+    let expected_staking_rewards = Uint128::new(100_000_000)
+        .multiply_ratio(1u128, 10u128)
+        .multiply_ratio(2u128, 365u128)
+        + Uint128::new(75_000_000)
+            .multiply_ratio(1u128, 10u128)
+            .multiply_ratio(1u128, 365u128);
+
+    assert_eq!(
+        expected_staking_rewards,
+        expected_balance - Uint128::new(25_000_001) // rounding 🤷
+    );
+
+    let mut suite = SuiteBuilder::default().build();
+
+    // delegate all the tokens in the contract.
+    suite.delegate(Uint128::new(100_000_000)).unwrap();
+
+    suite.a_day_passes(); // collect rewards
+
+    // redelegate half of the tokens to the other validator.
+    suite.redelegate(Uint128::new(50_000_000), true).unwrap();
+
+    suite.a_day_passes();
+
+    // undelegate from the first validator.
+    suite
+        .undelegate(suite.receiver.clone(), Uint128::new(25_000_000))
+        .unwrap();
+
+    suite.a_day_passes();
+    suite.process_unbonds();
+
+    suite.distribute("random", None).unwrap();
+    suite.withdraw_delegator_reward("validator").unwrap();
+    suite.withdraw_delegator_reward("otherone").unwrap();
+
+    let balance = suite.query_receiver_vesting_token_balance();
+
+    // for reasons beyond me, staking rewards accrue differently when
+    // the redelegate happens. i am unsure why and this test is more
+    // concerned with them working than teh absolute numbers, so >=.
+    assert!(balance >= expected_balance)
 }

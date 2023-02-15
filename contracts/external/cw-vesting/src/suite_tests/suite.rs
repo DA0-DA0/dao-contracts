@@ -58,6 +58,20 @@ impl SuiteBuilder {
                     },
                 )
                 .unwrap();
+            router
+                .staking
+                .add_validator(
+                    api,
+                    storage,
+                    &mock_env().block,
+                    Validator {
+                        address: "otherone".to_string(),
+                        commission: Decimal::zero(), // zero percent comission to keep math simple.
+                        max_commission: Decimal::percent(10),
+                        max_change_rate: Decimal::percent(2),
+                    },
+                )
+                .unwrap();
         });
 
         let funds = if let cw_denom::UncheckedDenom::Native(ref denom) = self.instantiate.denom {
@@ -156,6 +170,26 @@ impl Suite {
             .map(|_| ())
     }
 
+    pub fn redelegate(&mut self, amount: Uint128, to_other_one: bool) -> anyhow::Result<()> {
+        let (src_validator, dst_validator) = if to_other_one {
+            ("validator".to_string(), "otherone".to_string())
+        } else {
+            ("otherone".to_string(), "validator".to_string())
+        };
+        self.app
+            .execute_contract(
+                self.receiver.clone(),
+                self.vesting.clone(),
+                &ExecuteMsg::Redelegate {
+                    src_validator,
+                    dst_validator,
+                    amount,
+                },
+                &[],
+            )
+            .map(|_| ())
+    }
+
     pub fn undelegate<S: Into<String>>(
         &mut self,
         sender: S,
@@ -174,13 +208,13 @@ impl Suite {
             .map(|_| ())
     }
 
-    pub fn withdraw_delegator_reward(&mut self) -> anyhow::Result<()> {
+    pub fn withdraw_delegator_reward(&mut self, validator: &str) -> anyhow::Result<()> {
         self.app
             .execute_contract(
                 self.receiver.clone(),
                 self.vesting.clone(),
                 &ExecuteMsg::WithdrawDelegatorReward {
-                    validator: "validator".to_string(),
+                    validator: validator.to_string(),
                 },
                 &[],
             )

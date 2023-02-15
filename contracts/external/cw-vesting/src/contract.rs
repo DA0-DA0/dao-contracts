@@ -290,7 +290,7 @@ pub fn execute_redelegate(
 
     let resp: DelegationResponse = deps.querier.query(
         &StakingQuery::Delegation {
-            delegator: info.sender.to_string(),
+            delegator: env.contract.address.into_string(),
             validator: src_validator.clone(),
         }
         .into(),
