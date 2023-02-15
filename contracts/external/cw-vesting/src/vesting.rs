@@ -45,7 +45,10 @@ pub enum Schedule {
     SaturatingLinear,
     /// Vests by linearally interpolating between the provided
     /// (timestamp, amount) points. The first amount must be zero and
-    /// the last `total`.
+    /// the last `total`. `timestamp` is a unix timestamp in SECONDS
+    /// since epoch. Note that this differs from the CosmWasm
+    /// `Timestamp` type which is normally specified in nanoseconds
+    /// since epoch.
     PeacewiseLinear(Vec<(u64, Uint128)>),
 }
 

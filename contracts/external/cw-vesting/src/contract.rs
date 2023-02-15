@@ -403,8 +403,9 @@ pub fn execute_set_withdraw_address(
 
 pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractError> {
     let withdraw_msg = DistributionMsg::WithdrawDelegatorReward { validator };
-
-    Ok(Response::default().add_message(withdraw_msg))
+    Ok(Response::default()
+        .add_attribute("method", "execute_withdraw_rewards")
+        .add_message(withdraw_msg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
