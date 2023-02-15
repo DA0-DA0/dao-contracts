@@ -5,9 +5,10 @@ use cw_denom::{CheckedDenom, UncheckedDenom};
 use cw_multi_test::{
     App, AppBuilder, BankSudo, Contract, ContractWrapper, Executor, StakingInfo, SudoMsg,
 };
+use cw_ownable::Action;
 use dao_testing::contracts::cw20_base_contract;
 
-use crate::contract::execute_receive_cw20;
+use crate::contract::{execute, execute_receive_cw20};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
 use crate::state::PAYMENT;
 use crate::vesting::{Schedule, Status, Vest, VestInit};
@@ -656,4 +657,49 @@ fn test_illiquid_when_unfunfed() {
             .unwrap(),
         Uint128::zero()
     );
+}
+
+/// Ownership can not be renounced while the contract is canceled and
+/// there are funds withdrawable by the owner as this would lock those
+/// funds.
+#[test]
+fn test_update_owner() {
+    let env = mock_env;
+    let mut deps = mock_dependencies();
+    PAYMENT
+        .initialize(
+            deps.as_mut().storage,
+            VestInit {
+                total: Uint128::new(100),
+                schedule: Schedule::SaturatingLinear,
+                start_time: env().block.time,
+                duration_seconds: 60 * 60 * 24 * 7,
+                denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
+                recipient: Addr::unchecked("recipient"),
+                title: "title".to_string(),
+                description: "description".to_string(),
+            },
+        )
+        .unwrap();
+    let deps = deps.as_mut();
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some("owner")).unwrap();
+    PAYMENT
+        .on_delegate(
+            deps.storage,
+            env().block.time,
+            Addr::unchecked("validator"),
+            Uint128::new(10),
+        )
+        .unwrap();
+    PAYMENT
+        .cancel(deps.storage, env().block.time, &Addr::unchecked("owner"))
+        .unwrap();
+    let err = execute(
+        deps,
+        env(),
+        mock_info("owner", &[]),
+        ExecuteMsg::UpdateOwnership(Action::RenounceOwnership),
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::Cancelled);
 }
