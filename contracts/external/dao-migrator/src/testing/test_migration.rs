@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 
 use cosmwasm_std::Addr;
+use cw_multi_test::Executor;
 use dao_core::{query::SubDao, state::ProposalModuleStatus};
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
     ContractError,
 };
 
-use super::setup::setup_dao_v1_multiple_proposals;
+use super::{helpers::demo_contract, setup::setup_dao_v1_multiple_proposals};
 
 pub fn basic_test(voting_type: VotingType, from_core: bool) {
     let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(voting_type.clone());
@@ -81,6 +82,62 @@ fn test_execute_migration() {
     // Test basic migrator (called from core)
     basic_test(VotingType::Cw20, true);
     basic_test(VotingType::Cw4, true);
+}
+
+#[test]
+fn test_migrator_address_is_first() {
+    let (mut app, module_addrs, v1_code_ids) = setup_dao_v1(VotingType::Cw20);
+
+    // We init some demo contracts so we can bump the contract addr to "contract1X"
+    // That way, when we do a migration, the newely created migrator contract address
+    // will be "contract11", because the proposal module address is "contract4"
+    // when we query the dao for "ProposalModules", the migrator address
+    // will appear first in the list ("contract11" < "contract4")
+    let demo_code_id = app.store_code(demo_contract());
+    for _ in 0..6 {
+        app.instantiate_contract(
+            demo_code_id,
+            Addr::unchecked("some"),
+            &(),
+            &[],
+            "demo",
+            None,
+        )
+        .unwrap();
+    }
+
+    let mut test_state_v1 = query_state_v1_cw20(
+        &mut app,
+        module_addrs.proposals[0].clone(),
+        module_addrs.voting.clone(),
+    );
+    //NOTE: We add 1 to count because we create a new proposal in execute_migration
+    test_state_v1.proposal_count += 1;
+
+    execute_migration(app.borrow_mut(), &module_addrs, v1_code_ids, None).unwrap();
+
+    let test_state_v2 = query_state_v2_cw20(
+        &mut app,
+        module_addrs.proposals[0].clone(),
+        module_addrs.voting,
+    );
+
+    assert_eq!(test_state_v1, test_state_v2);
+
+    let modules: Vec<dao_core::state::ProposalModule> = app
+        .wrap()
+        .query_wasm_smart(
+            module_addrs.core,
+            &dao_core::msg::QueryMsg::ProposalModules {
+                start_after: None,
+                limit: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(modules.len(), 2);
+    assert_eq!(modules[1].address, module_addrs.proposals[0]); // proposal module
+    assert_eq!(modules[0].status, ProposalModuleStatus::Disabled); // migrator module
 }
 
 #[test]
