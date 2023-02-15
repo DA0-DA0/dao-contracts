@@ -2075,7 +2075,17 @@
           "proposal_params": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/ProposalParams"
+              "type": "array",
+              "items": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/definitions/ProposalParams"
+                }
+              ],
+              "maxItems": 2,
+              "minItems": 2
             }
           }
         },
