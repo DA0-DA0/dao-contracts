@@ -10,14 +10,14 @@ export type UncheckedDenom = {
   cw20: string;
 };
 export type Schedule = "saturating_linear" | {
-  peacewise_linear: [number, Uint128][];
+  piecewise_linear: [number, Uint128][];
 };
 export type Uint128 = string;
 export type Timestamp = Uint64;
 export type Uint64 = string;
 export interface InstantiateMsg {
   denom: UncheckedDenom;
-  description: string;
+  description?: string | null;
   owner?: string | null;
   recipient: string;
   schedule: Schedule;
@@ -88,23 +88,18 @@ export interface Cw20ReceiveMsg {
 export type QueryMsg = {
   ownership: {};
 } | {
-  vest: {};
+  info: {};
 } | {
   distributable: {
     t?: number | null;
   };
 };
-export type Addr = string;
-export interface OwnershipForAddr {
-  owner?: Addr | null;
-  pending_expiry?: Expiration | null;
-  pending_owner?: Addr | null;
-}
 export type CheckedDenom = {
   native: string;
 } | {
   cw20: Addr;
 };
+export type Addr = string;
 export type Status = ("unfunded" | "funded") | {
   canceled: {
     owner_withdrawable: Uint128;
@@ -123,7 +118,7 @@ export type Curve = {
 export interface Vest {
   claimed: Uint128;
   denom: CheckedDenom;
-  description: string;
+  description?: string | null;
   recipient: Addr;
   start_time: Timestamp;
   status: Status;
@@ -140,4 +135,9 @@ export interface SaturatingLinear {
 export interface PiecewiseLinear {
   steps: [number, Uint128][];
   [k: string]: unknown;
+}
+export interface OwnershipForAddr {
+  owner?: Addr | null;
+  pending_expiry?: Expiration | null;
+  pending_owner?: Addr | null;
 }

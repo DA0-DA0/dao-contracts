@@ -233,7 +233,6 @@
         "type": "object",
         "required": [
           "denom",
-          "description",
           "recipient",
           "schedule",
           "title",
@@ -243,22 +242,38 @@
         ],
         "properties": {
           "denom": {
-            "$ref": "#/definitions/UncheckedDenom"
+            "description": "The type and denom of token being vested.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/UncheckedDenom"
+              }
+            ]
           },
           "description": {
-            "type": "string"
+            "description": "A description for the payment to provide more context.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "owner": {
+            "description": "The optional owner address of the contract.",
             "type": [
               "string",
               "null"
             ]
           },
           "recipient": {
+            "description": "The receiver address of the vesting tokens.",
             "type": "string"
           },
           "schedule": {
-            "$ref": "#/definitions/Schedule"
+            "description": "The vesting schedule, can be either `SaturatingLinear` vesting (which vests evenly over time), or `PiecewiseLinear` which can represent a more complicated vesting schedule.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Schedule"
+              }
+            ]
           },
           "start_time": {
             "description": "The time to start vesting, or None to start vesting when the contract is instantiated.",
@@ -272,10 +287,16 @@
             ]
           },
           "title": {
+            "description": "The a name or title for this payment.",
             "type": "string"
           },
           "total": {
-            "$ref": "#/definitions/Uint128"
+            "description": "The total amount of tokens to be vested.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Uint128"
+              }
+            ]
           },
           "unbonding_duration_seconds": {
             "description": "The unbonding duration for the chain this contract is deployed on. Smart contracts do not have access to this data so it must be provided by the caller.\n\nThis value being too high will cause this contract to hold funds for longer than needed, this value being too low will reduce the quality of error messages and require additional external calculations with correct values to withdraw avaliable funds from the contract.",
@@ -284,6 +305,7 @@
             "minimum": 0.0
           },
           "vesting_duration_seconds": {
+            "description": "The length of the vesting schedule in seconds.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
@@ -301,13 +323,13 @@
             ]
           },
           {
-            "description": "Vests by linearally interpolating between the provided (timestamp, amount) points. The first amount must be zero and the last `total`. `timestamp` is a unix timestamp in SECONDS since epoch. Note that this differs from the CosmWasm `Timestamp` type which is normally specified in nanoseconds since epoch.",
+            "description": "Vests by linearally interpolating between the provided (timestamp, amount) points. The first amount must be zero and the last amount the total vesting amount. `timestamp` is a unix timestamp in SECONDS since epoch. Note that this differs from the CosmWasm `Timestamp` type which is normally specified in nanoseconds since epoch.",
             "type": "object",
             "required": [
-              "peacewise_linear"
+              "piecewise_linear"
             ],
             "properties": {
-              "peacewise_linear": {
+              "piecewise_linear": {
                 "type": "array",
                 "items": {
                   "type": "array",
