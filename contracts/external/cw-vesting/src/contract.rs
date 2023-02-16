@@ -207,7 +207,7 @@ pub fn execute_update_owner(
 ) -> Result<Response, ContractError> {
     if let Status::Canceled { owner_withdrawable } = PAYMENT.get_vest(deps.storage)?.status {
         if action == cw_ownable::Action::RenounceOwnership && !owner_withdrawable.is_zero() {
-            // ownership can not be removed if there are withdrawable
+            // Ownership cannot be removed if there are withdrawable
             // funds as this would lock those funds in the contract.
             return Err(ContractError::Cancelled);
         }
@@ -343,8 +343,8 @@ pub fn execute_undelegate(
                 return Err(ContractError::NotReceiver);
             }
         }
-        // anyone can undelegate while the contract is in the canceled
-        // state. this is to prevent us from neededing to undelegate
+        // Anyone can undelegate while the contract is in the canceled
+        // state. This is to prevent us from neededing to undelegate
         // all at once when the contract is canceled which could be a
         // DOS vector if the veste staked to 50+ validators.
         Status::Canceled { .. } => (),

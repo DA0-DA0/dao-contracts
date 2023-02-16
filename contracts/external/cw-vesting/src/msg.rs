@@ -8,19 +8,29 @@ use crate::vesting::Schedule;
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    /// The optional owner address of the contract.
     pub owner: Option<String>,
+    /// The receiver address of the vesting tokens.
     pub recipient: String,
 
+    /// The a name or title for this payment.
     pub title: String,
+    /// A description for the payment to provide more context.
     pub description: String,
 
+    /// The total amount of tokens to be vested.
     pub total: Uint128,
+    /// The type and denom of token being vested.
     pub denom: UncheckedDenom,
 
+    /// The vesting schedule, can be either `SaturatingLinear` vesting
+    /// (which vests evenly over time), or `PiecewiseLinear` which can
+    /// represent a more complicated vesting schedule.
     pub schedule: Schedule,
     /// The time to start vesting, or None to start vesting when the
     /// contract is instantiated.
     pub start_time: Option<Timestamp>,
+    /// The length of the vesting schedule in seconds.
     pub vesting_duration_seconds: u64,
 
     /// The unbonding duration for the chain this contract is deployed
@@ -49,19 +59,19 @@ pub enum ExecuteMsg {
         /// all claimable tokens will be distributed.
         amount: Option<Uint128>,
     },
-    /// cancels the vesting payment. the current amount vested becomes
+    /// Cancels the vesting payment. The current amount vested becomes
     /// the total amount that will ever vest, and all pending and
     /// future staking rewards from tokens staked by this contract
-    /// will be sent to the owner. note that canceling does not impact
+    /// will be sent to the owner. Tote that canceling does not impact
     /// already vested tokens.
     ///
-    /// upon canceling, the contract will use any liquid tokens in the
+    /// Upon canceling, the contract will use any liquid tokens in the
     /// contract to settle pending payments to the vestee, and then
-    /// returns the rest to the owner. staked tokens are then split
+    /// returns the rest to the owner. Staked tokens are then split
     /// between the owner and the vestee according to the number of
     /// tokens that the vestee is entitled to.
     ///
-    /// the vestee will no longer receive staking rewards after
+    /// The vestee will no longer receive staking rewards after
     /// cancelation, and may unbond and distribute (vested - claimed)
     /// tokens at their leisure. the owner will receive staking
     /// rewards and may unbond and withdraw (staked - (vested -
@@ -137,6 +147,8 @@ pub enum QueryMsg {
     /// Get the current ownership.
     #[returns(::cw_ownable::Ownership<::cosmwasm_std::Addr>)]
     Ownership {},
+    /// Returns information about the vesting contract and the
+    /// status of the payment.
     #[returns(crate::vesting::Vest)]
     Vest {},
     /// Returns the number of tokens currently claimable by the

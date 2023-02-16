@@ -127,7 +127,7 @@ fn test_vesting_validation() {
     assert_eq!(Vest::new(init), Err(ContractError::ZeroVest {}));
 
     let init = VestInit {
-        schedule: Schedule::PeacewiseLinear(vec![
+        schedule: Schedule::PiecewiseLinear(vec![
             (0, Uint128::zero()),
             (1, Uint128::one()),
             (2, Uint128::zero()), // non-monotonic-increasing
@@ -143,7 +143,7 @@ fn test_vesting_validation() {
 
     // Doesn't reach total.
     let init = VestInit {
-        schedule: Schedule::PeacewiseLinear(vec![
+        schedule: Schedule::PiecewiseLinear(vec![
             (1, Uint128::zero()),
             (2, Uint128::one()),
             (5, Uint128::new(2)),
@@ -260,7 +260,7 @@ fn test_piecewise_linear() {
     let payment = Payment::new("vesting", "staked", "validator", "cardinality");
 
     let vest = VestInit {
-        schedule: Schedule::PeacewiseLinear(vec![
+        schedule: Schedule::PiecewiseLinear(vec![
             (1, Uint128::zero()),
             (3, Uint128::new(4)),
             (5, Uint128::new(8)),

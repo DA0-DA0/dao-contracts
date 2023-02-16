@@ -45,11 +45,11 @@ pub enum Schedule {
     SaturatingLinear,
     /// Vests by linearally interpolating between the provided
     /// (timestamp, amount) points. The first amount must be zero and
-    /// the last `total`. `timestamp` is a unix timestamp in SECONDS
-    /// since epoch. Note that this differs from the CosmWasm
-    /// `Timestamp` type which is normally specified in nanoseconds
+    /// the last amount the total vesting amount. `timestamp` is a unix
+    /// timestamp in SECONDS since epoch. Note that this differs from the
+    /// CosmWasm `Timestamp` type which is normally specified in nanoseconds
     /// since epoch.
-    PeacewiseLinear(Vec<(u64, Uint128)>),
+    PiecewiseLinear(Vec<(u64, Uint128)>),
 }
 
 pub struct VestInit {
@@ -98,12 +98,12 @@ impl<'a> Payment<'a> {
             Status::Unfunded => Uint128::zero(),
             Status::Funded => vesting.total() - vesting.claimed - staked,
             Status::Canceled { owner_withdrawable } => {
-                // on cancelation, all liquid funds are settled and
+                // On cancelation, all liquid funds are settled and
                 // vesting.total() is set to the amount that has
-                // vested so far. then, the remaining staked tokens
-                // are divided up between the owner and the veste so
-                // that the veste will receive all of their vested
-                // tokens. the following is then made true:
+                // vested so far. Then, the remaining staked tokens
+                // are divided up between the owner and the vestee so
+                // that the vestee will receive all of their vested
+                // tokens. The following is then made true:
                 //
                 // staked = vesting_owned + owner_withdrawable
                 // staked = (vesting.total - vesting.claimed) + owner_withdrawable
@@ -114,19 +114,19 @@ impl<'a> Payment<'a> {
                 //
                 // claimable = (vesting.total - vesting.claimed) + owner_withdrawable - currently_staked
                 //
-                // note that this is slightly simplified, in practice we
+                // Note that this is slightly simplified, in practice we
                 // maintain:
                 //
                 // owner_withdrawable := owner.total - owner.claimed
                 //
-                // where owner.total is the initial amount they were
+                // Where owner.total is the initial amount they were
                 // entitled to.
                 owner_withdrawable + (vesting.total() - vesting.claimed) - staked
             }
         }
     }
 
-    /// gets the current number tokens that may be distributed to the
+    /// Gets the current number tokens that may be distributed to the
     /// vestee.
     pub fn distributable(
         &self,
@@ -141,8 +141,8 @@ impl<'a> Payment<'a> {
         Ok(min(liquid, claimable))
     }
 
-    /// distributes vested tokens. if a specific amount is
-    /// `request`ed, that amount will be distributed, otherwise all
+    /// Distributes vested tokens. If a specific amount is
+    /// requested, that amount will be distributed, otherwise all
     /// tokens currently avaliable for distribution will be
     /// transfered.
     pub fn distribute(
@@ -172,17 +172,17 @@ impl<'a> Payment<'a> {
         }
     }
 
-    /// cancels the vesting payment. the current amount vested becomes
+    /// Cancels the vesting payment. The current amount vested becomes
     /// the total amount that will ever vest, and all staked tokens
     /// are unbonded. note that canceling does not impact already
     /// vested tokens.
     ///
-    /// upon canceling, the contract will use any liquid tokens in the
+    /// Upon canceling, the contract will use any liquid tokens in the
     /// contract to settle pending payments to the vestee, and then
-    /// return the rest to the owner. if there are not enough liquid
+    /// return the rest to the owner. If there are not enough liquid
     /// tokens to settle the vestee immediately, the vestee may
     /// distribute tokens as normal until they have received the
-    /// amount of tokens they are entitled to. the owner may withdraw
+    /// amount of tokens they are entitled to. The owner may withdraw
     /// the remaining tokens via the `withdraw_canceled` method.
     pub fn cancel(
         &self,
@@ -196,7 +196,7 @@ impl<'a> Payment<'a> {
         } else {
             let staked = self.staking.total_staked(storage, t)?;
 
-            // use liquid tokens to settle vestee as much as possible
+            // Use liquid tokens to settle vestee as much as possible
             // and return any remaining liquid funds to the owner.
             let liquid = self.liquid(&vesting, staked);
             let to_vestee = min(vesting.vested(t) - vesting.claimed, liquid);
@@ -204,7 +204,7 @@ impl<'a> Payment<'a> {
 
             vesting.claimed += to_vestee;
 
-            // after cancelation liquid funds are settled, and
+            // After cancelation liquid funds are settled, and
             // the owners entitlement to the staked tokens is all
             // staked tokens that are not needed to settle the
             // vestee.
@@ -213,7 +213,7 @@ impl<'a> Payment<'a> {
             vesting.cancel(t, owner_outstanding);
             self.vesting.save(storage, &vesting)?;
 
-            // owner receives staking rewards
+            // Owner receives staking rewards
             let mut msgs = vec![DistributionMsg::SetWithdrawAddress {
                 address: owner.to_string(),
             }
@@ -366,7 +366,7 @@ impl Schedule {
             Schedule::SaturatingLinear => {
                 Curve::saturating_linear((0, 0), (duration_seconds, total.u128()))
             }
-            Schedule::PeacewiseLinear(steps) => {
+            Schedule::PiecewiseLinear(steps) => {
                 Curve::PiecewiseLinear(wynd_utils::PiecewiseLinear { steps })
             }
         };
