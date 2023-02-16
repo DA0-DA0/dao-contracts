@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, collections::HashSet};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -85,6 +85,12 @@ fn execute_migration_v1_v2(
 ) -> Result<Response, ContractError> {
     if info.sender != CORE_ADDR.load(deps.storage)? {
         return Err(ContractError::Unauthorized {});
+    }
+
+    //Check if params doesn't have duplicates
+    let mut uniq = HashSet::new();
+    if migration_params.proposal_params.iter().all(|(addr, _)| uniq.insert(addr)) {
+        return Err(ContractError::DuplicateProposalParams);
     }
 
     // List of code ids pairs we got and the migration msg of each one of them.

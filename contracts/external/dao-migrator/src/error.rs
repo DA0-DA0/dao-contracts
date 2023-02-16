@@ -39,6 +39,9 @@ pub enum ContractError {
 
     #[error("Failed to verify proposal in {module_addr}")]
     NoProposalsOnModule { module_addr: String },
+    
+    #[error("Duplicate params found for the same module")]
+    DuplicateProposalParams,
 
     #[error("Proposal migration params length is not equal to proposal modules length")]
     MigrationParamsNotEqualProposalModulesLength,
