@@ -1,4 +1,4 @@
-use std::{env, collections::HashSet};
+use std::{collections::HashSet, env};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -89,7 +89,11 @@ fn execute_migration_v1_v2(
 
     //Check if params doesn't have duplicates
     let mut uniq = HashSet::new();
-    if migration_params.proposal_params.iter().all(|(addr, _)| uniq.insert(addr)) {
+    if migration_params
+        .proposal_params
+        .iter()
+        .all(|(addr, _)| uniq.insert(addr))
+    {
         return Err(ContractError::DuplicateProposalParams);
     }
 
