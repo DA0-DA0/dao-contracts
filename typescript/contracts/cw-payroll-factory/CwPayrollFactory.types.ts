@@ -6,7 +6,7 @@
 
 export interface InstantiateMsg {
   denom: UncheckedDenom;
-  description: string;
+  description?: string | null;
   owner?: string | null;
   recipient: string;
   schedule: Schedule;
@@ -38,7 +38,7 @@ export type UncheckedDenom = {
   cw20: string;
 };
 export type Schedule = "saturating_linear" | {
-  peacewise_linear: [number, Uint128][];
+  piecewise_linear: [number, Uint128][];
 };
 export type Timestamp = Uint64;
 export type Uint64 = string;
