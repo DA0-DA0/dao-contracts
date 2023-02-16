@@ -18,7 +18,7 @@ impl Default for VestInit {
             denom: CheckedDenom::Native("native".to_string()),
             recipient: Addr::unchecked("recv"),
             title: "title".to_string(),
-            description: "desc".to_string(),
+            description: Some("desc".to_string()),
         }
     }
 }
@@ -184,7 +184,7 @@ fn test_complex_close() {
         denom: CheckedDenom::Native("ujuno".to_string()),
         recipient: Addr::unchecked("recv"),
         title: "t".to_string(),
-        description: "d".to_string(),
+        description: Some("d".to_string()),
     };
     let payment = Payment::new("vesting", "staked", "validator", "cardinality");
 
