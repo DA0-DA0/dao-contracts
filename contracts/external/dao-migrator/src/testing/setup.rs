@@ -228,6 +228,7 @@ pub fn execute_migration(
     module_addrs: &ModuleAddrs,
     v1_code_ids: V1CodeIds,
     params: Option<ExecuteParams>,
+    custom_proposal_params: Option<Vec<(String, ProposalParams)>>,
 ) -> Result<AppResponse, anyhow::Error> {
     let sender = Addr::unchecked(SENDER_ADDR);
     let migrator_code_id = app.store_code(migrator_contract());
@@ -237,19 +238,24 @@ pub fn execute_migration(
         migrate_cw20: Some(true),
     });
 
-    let proposal_params = module_addrs
-        .proposals
-        .iter()
-        .map(|addr| {
-            (
-                addr.clone().into(),
-                ProposalParams {
-                    close_proposal_on_execution_failure: true,
-                    pre_propose_info: dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
-                },
-            )
-        })
-        .collect::<Vec<(String, ProposalParams)>>();
+    let proposal_params = if let Some(params) = custom_proposal_params {
+        params
+    } else {
+        module_addrs
+            .proposals
+            .iter()
+            .map(|addr| {
+                (
+                    addr.clone().into(),
+                    ProposalParams {
+                        close_proposal_on_execution_failure: true,
+                        pre_propose_info:
+                            dao_voting::pre_propose::PreProposeInfo::AnyoneMayPropose {},
+                    },
+                )
+            })
+            .collect::<Vec<(String, ProposalParams)>>()
+    };
 
     app.execute_contract(
         sender.clone(),

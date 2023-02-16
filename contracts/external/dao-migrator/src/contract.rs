@@ -89,7 +89,7 @@ fn execute_migration_v1_v2(
 
     //Check if params doesn't have duplicates
     let mut uniq = HashSet::new();
-    if migration_params
+    if !migration_params
         .proposal_params
         .iter()
         .all(|(addr, _)| uniq.insert(addr))
