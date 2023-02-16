@@ -366,7 +366,7 @@ export interface MigrateV1ToV2 {
 }
 export interface MigrationModuleParams {
   migrate_stake_cw20_manager?: boolean | null;
-  proposal_params: ProposalParams[];
+  proposal_params: [string, ProposalParams][];
 }
 export interface ProposalParams {
   close_proposal_on_execution_failure: boolean;

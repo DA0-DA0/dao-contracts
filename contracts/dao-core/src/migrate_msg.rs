@@ -54,7 +54,7 @@ pub struct MigrationModuleParams {
     /// migration will be aborted.
     pub migrate_stake_cw20_manager: Option<bool>,
     // dao_proposal_single
-    pub proposal_params: Vec<ProposalParams>,
+    pub proposal_params: Vec<(String, ProposalParams)>,
 }
 
 #[cw_serde]

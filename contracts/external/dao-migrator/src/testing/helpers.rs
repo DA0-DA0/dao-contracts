@@ -1,4 +1,7 @@
-use cosmwasm_std::{to_binary, Addr, Empty, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult, Uint128,
+    WasmMsg,
+};
 use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_core::query::SubDao;
 use dao_testing::contracts::{
@@ -6,7 +9,10 @@ use dao_testing::contracts::{
     dao_core_contract, proposal_single_contract, v1_dao_core_contract, v1_proposal_single_contract,
 };
 
-use crate::types::{V1CodeIds, V2CodeIds};
+use crate::{
+    types::{V1CodeIds, V2CodeIds},
+    ContractError,
+};
 
 pub(crate) const SENDER_ADDR: &str = "creator";
 
@@ -26,7 +32,7 @@ pub struct ExecuteParams {
     pub migrate_cw20: Option<bool>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ModuleAddrs {
     pub core: Addr,
     pub proposals: Vec<Addr>,
@@ -319,4 +325,28 @@ pub fn dao_voting_cw4_contract() -> Box<dyn Contract<Empty>> {
     .with_reply(dao_voting_cw4::contract::reply)
     .with_migrate(dao_voting_cw4::contract::migrate);
     Box::new(contract)
+}
+
+fn some_init(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: (),
+) -> Result<Response, ContractError> {
+    Ok(Response::default())
+}
+fn some_execute(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: (),
+) -> Result<Response, ContractError> {
+    Ok(Response::default())
+}
+fn some_query(_deps: Deps, _env: Env, _msg: ()) -> StdResult<Binary> {
+    Ok(Binary::default())
+}
+
+pub fn demo_contract() -> Box<dyn Contract<Empty>> {
+    Box::new(ContractWrapper::new(some_execute, some_init, some_query))
 }

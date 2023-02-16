@@ -57,7 +57,7 @@ pub struct MigrationParams {
     /// migration will be aborted.
     pub migrate_stake_cw20_manager: Option<bool>,
     // dao_proposal_single
-    pub proposal_params: Vec<ProposalParams>,
+    pub proposal_params: Vec<(String, ProposalParams)>,
 }
 
 /// Wrapper enum that helps us to hold different types of migration msgs
@@ -71,6 +71,7 @@ pub enum MigrationMsgs {
 }
 
 /// Module data we need for migrations and tests.
+#[derive(Clone)]
 pub struct CodeIdPair {
     /// The code id used in V1 module
     pub v1_code_id: u64,
