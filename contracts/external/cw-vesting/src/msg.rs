@@ -150,7 +150,7 @@ pub enum QueryMsg {
     /// Returns information about the vesting contract and the
     /// status of the payment.
     #[returns(crate::vesting::Vest)]
-    Vest {},
+    Info {},
     /// Returns the number of tokens currently claimable by the
     /// vestee. This is the minimum of the number of unstaked tokens
     /// in the contract, and the number of tokens that have been

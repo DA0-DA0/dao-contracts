@@ -32,7 +32,7 @@ fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
 
 fn get_vesting_payment(app: &App, cw_vesting_addr: Addr) -> Vest {
     app.wrap()
-        .query_wasm_smart(cw_vesting_addr, &QueryMsg::Vest {})
+        .query_wasm_smart(cw_vesting_addr, &QueryMsg::Info {})
         .unwrap()
 }
 
