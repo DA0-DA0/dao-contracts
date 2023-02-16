@@ -3,6 +3,7 @@
 This contract enables the creation of native && cw20 token streams, which allows a payment to be vested continuously over time.
 
 Key features include:
+
 - Optional contract owner, with ability to cancel payments
 - Support for native and cw20 tokens
 - Allows for automated distribution via external parties or tools like [CronCat](https://cron.cat/)
@@ -13,7 +14,7 @@ Key features include:
 
 To instantiate a new instance of this contract you may specify a contract owner, as well as payment parameters.
 
-`cw-payroll-factory` can be used if wish to instantiate many `cw-vesting` contracts and query them.
+`cw-payroll-factory` can be used if you wish to instantiate many `cw-vesting` contracts and query them.
 
 ### Parameters
 
@@ -24,6 +25,7 @@ The `owner` of a contract is optional. Contracts without owners are not able to 
 This package uses the curve implementation from [wynd-utils](https://github.com/cosmorama/wynddao/tree/main/packages/utils).
 
 It supports 2 types of [curves](https://docs.rs/wynd-utils/0.4.1/wynd_utils/enum.Curve.html) that represent the vesting schedule:
+
 - Saturating Linear: vests at a linear rate with a start and stop time.
 - Piecewise Linear: linearally interpolates between a set of `(time, vested)` points
 
@@ -71,7 +73,7 @@ As you can see, it travels through `(0, 0)` in a straight line to `(2,
 A curve where 50% vests the first month starting January 1st 2023, and
 the remaining 50% vests over the next year. For 100 Juno.
 
-``` json
+```json
 {
     "piecewise_linear": [
         (1672531200, "0"),
@@ -93,7 +95,7 @@ A cw20 vesting payment can be funded using the cw20 [Send / Receive](https://git
 
 Vesting payments can be claimed continuously at any point after the start time by triggering a Distribute message.
 
-*Anyone* can call the distribute message, allowing for agents such as [CronCat](https://cron.cat/) to automatically trigger payouts.
+_Anyone_ can call the distribute message, allowing for agents such as [CronCat](https://cron.cat/) to automatically trigger payouts.
 
 ## Staking native tokens
 
@@ -102,7 +104,7 @@ match the staking token of the native chain (i.e. $JUNO on [Juno
 Network](https://junonetwork.io)).
 
 `Delegate`, `Undelegate`, `Redelegate`, and `SetWithdrawAddress` can
-*only* be called by the `recipient`. `WithdrawDelegatorReward` can be
+_only_ be called by the `recipient`. `WithdrawDelegatorReward` can be
 called by anyone to allow for easy auto-compounding. Due to
 limitations to our ability to inspect the SDK's state from CosmWasm,
 only funds that may be redelegated immediately (w/o an unbonding
