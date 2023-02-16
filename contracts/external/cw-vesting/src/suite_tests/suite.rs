@@ -260,7 +260,7 @@ impl Suite {
     pub fn query_vest(&self) -> Vest {
         self.app
             .wrap()
-            .query_wasm_smart(&self.vesting, &QueryMsg::Vest {})
+            .query_wasm_smart(&self.vesting, &QueryMsg::Info {})
             .unwrap()
     }
 

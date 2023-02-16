@@ -335,7 +335,7 @@ pub fn test_instantiate_cw20_payroll_contract() {
     // Check that the vesting payment contract is active
     let vp: Vest = app
         .wrap()
-        .query_wasm_smart(cw_vesting_addr, &PayrollQueryMsg::Vest {})
+        .query_wasm_smart(cw_vesting_addr, &PayrollQueryMsg::Info {})
         .unwrap();
     assert_eq!(vp.status, Status::Funded);
 }

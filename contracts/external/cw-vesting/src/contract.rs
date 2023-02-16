@@ -412,7 +412,7 @@ pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractE
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
-        QueryMsg::Vest {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
+        QueryMsg::Info {} => to_binary(&PAYMENT.get_vest(deps.storage)?),
         QueryMsg::Distributable { t } => to_binary(&PAYMENT.distributable(
             deps.storage,
             &PAYMENT.get_vest(deps.storage)?,

@@ -302,7 +302,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             // Query new vesting payment contract for info
             let vest: Vest = deps
                 .querier
-                .query_wasm_smart(contract_addr.clone(), &PayrollQueryMsg::Vest {})?;
+                .query_wasm_smart(contract_addr.clone(), &PayrollQueryMsg::Info {})?;
 
             let instantiator = TMP_INSTANTIATOR_INFO.load(deps.storage)?;
 
