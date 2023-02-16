@@ -29,7 +29,7 @@ impl Default for SuiteBuilder {
                 owner: Some("owner".to_string()),
                 recipient: "recipient".to_string(),
                 title: "title".to_string(),
-                description: "description".to_string(),
+                description: Some("description".to_string()),
                 total: Uint128::new(100_000_000),
                 denom: cw_denom::UncheckedDenom::Native(staking_defaults.bonded_denom),
                 schedule: Schedule::SaturatingLinear,

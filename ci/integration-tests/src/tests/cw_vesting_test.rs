@@ -28,7 +28,7 @@ fn test_cw_vesting_instantaite(chain: &mut Chain) {
                 recipient: user_addr,
 
                 title: "title".to_string(),
-                description: "description".to_string(),
+                description: Some("description".to_string()),
 
                 total: Uint128::new(1),
                 denom: cw_vesting::UncheckedDenom::Native("ujunox".to_string()),

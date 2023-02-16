@@ -24,7 +24,7 @@ pub struct Vest {
     pub denom: CheckedDenom,
     pub claimed: Uint128,
     pub title: String,
-    pub description: String,
+    pub description: Option<String>,
 }
 
 #[cw_serde]
@@ -60,7 +60,7 @@ pub struct VestInit {
     pub denom: CheckedDenom,
     pub recipient: Addr,
     pub title: String,
-    pub description: String,
+    pub description: Option<String>,
 }
 
 impl<'a> Payment<'a> {

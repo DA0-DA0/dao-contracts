@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
     /// The a name or title for this payment.
     pub title: String,
     /// A description for the payment to provide more context.
-    pub description: String,
+    pub description: Option<String>,
 
     /// The total amount of tokens to be vested.
     pub total: Uint128,

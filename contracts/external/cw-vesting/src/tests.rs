@@ -131,7 +131,7 @@ impl Default for InstantiateMsg {
             owner: Some(OWNER.to_string()),
             recipient: BOB.to_string(),
             title: "title".to_string(),
-            description: "desc".to_string(),
+            description: Some("desc".to_string()),
             total: Uint128::new(TOTAL_VEST),
             // cw20 normally first contract instantaited
             denom: UncheckedDenom::Cw20("contract0".to_string()),
@@ -581,7 +581,7 @@ fn test_execution_rejection_recv() {
                 denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
                 recipient: Addr::unchecked("recipient"),
                 title: "title".to_string(),
-                description: "description".to_string(),
+                description: Some("description".to_string()),
             },
         )
         .unwrap();
@@ -639,7 +639,7 @@ fn test_illiquid_when_unfunfed() {
                 denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
                 recipient: Addr::unchecked("recipient"),
                 title: "title".to_string(),
-                description: "description".to_string(),
+                description: Some("description".to_string()),
             },
         )
         .unwrap();
@@ -677,7 +677,7 @@ fn test_update_owner() {
                 denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
                 recipient: Addr::unchecked("recipient"),
                 title: "title".to_string(),
-                description: "description".to_string(),
+                description: Some("description".to_string()),
             },
         )
         .unwrap();
