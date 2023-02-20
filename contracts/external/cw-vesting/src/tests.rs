@@ -687,7 +687,7 @@ fn test_update_owner() {
         .on_delegate(
             deps.storage,
             env().block.time,
-            Addr::unchecked("validator"),
+            "validator".to_string(),
             Uint128::new(10),
         )
         .unwrap();

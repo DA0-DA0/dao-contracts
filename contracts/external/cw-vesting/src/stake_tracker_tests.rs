@@ -1,4 +1,4 @@
-use cosmwasm_std::{testing::mock_dependencies, Addr, Timestamp, Uint128};
+use cosmwasm_std::{testing::mock_dependencies, Timestamp, Uint128};
 
 use crate::stake_tracker::StakeTracker;
 
@@ -14,25 +14,25 @@ fn test_stake_tracking() {
     assert_eq!(st.validator_cardinality(storage, time).unwrap(), 0);
     assert_eq!(st.total_staked(storage, time).unwrap(), Uint128::zero());
     assert_eq!(
-        st.validator_staked(storage, time, Addr::unchecked("v1"))
+        st.validator_staked(storage, time, "v1".to_string())
             .unwrap(),
         Uint128::zero()
     );
 
     // delegating increases validator cardinality, validator_staked, and total.
-    st.on_delegate(storage, time, Addr::unchecked("v1"), Uint128::new(10))
+    st.on_delegate(storage, time, "v1".to_string(), Uint128::new(10))
         .unwrap();
 
     assert_eq!(st.validator_cardinality(storage, time).unwrap(), 1);
     assert_eq!(st.total_staked(storage, time).unwrap(), Uint128::new(10));
     assert_eq!(
-        st.validator_staked(storage, time, Addr::unchecked("v1"))
+        st.validator_staked(storage, time, "v1".to_string())
             .unwrap(),
         Uint128::new(10)
     );
     // delegating to one validator does not change the status of other validators.
     assert_eq!(
-        st.validator_staked(storage, time, Addr::unchecked("v2"))
+        st.validator_staked(storage, time, "v2".to_string())
             .unwrap(),
         Uint128::zero()
     );
@@ -40,12 +40,12 @@ fn test_stake_tracking() {
     // delegate to another validator, and undelegate from the first
     // one. the undelegation should not change cardinality or staked
     // values until the unbonding duration has passed.
-    st.on_delegate(storage, time, Addr::unchecked("v2"), Uint128::new(10))
+    st.on_delegate(storage, time, "v2".to_string(), Uint128::new(10))
         .unwrap();
     st.on_undelegate(
         storage,
         time,
-        Addr::unchecked("v1"),
+        "v1".to_string(),
         Uint128::new(10),
         unbonding_duration_seconds,
     )
@@ -54,12 +54,12 @@ fn test_stake_tracking() {
     assert_eq!(st.validator_cardinality(storage, time).unwrap(), 2);
     assert_eq!(st.total_staked(storage, time).unwrap(), Uint128::new(20));
     assert_eq!(
-        st.validator_staked(storage, time, Addr::unchecked("v1"))
+        st.validator_staked(storage, time, "v1".to_string())
             .unwrap(),
         Uint128::new(10)
     );
     assert_eq!(
-        st.validator_staked(storage, time, Addr::unchecked("v2"))
+        st.validator_staked(storage, time, "v2".to_string())
             .unwrap(),
         Uint128::new(10)
     );
@@ -71,12 +71,12 @@ fn test_stake_tracking() {
     assert_eq!(st.validator_cardinality(storage, time).unwrap(), 1);
     assert_eq!(st.total_staked(storage, time).unwrap(), Uint128::new(10));
     assert_eq!(
-        st.validator_staked(storage, time, Addr::unchecked("v1"))
+        st.validator_staked(storage, time, "v1".to_string())
             .unwrap(),
         Uint128::zero()
     );
     assert_eq!(
-        st.validator_staked(storage, time, Addr::unchecked("v2"))
+        st.validator_staked(storage, time, "v2".to_string())
             .unwrap(),
         Uint128::new(10)
     );
@@ -92,7 +92,7 @@ fn test_undelegation_before_delegation_panics() {
     st.on_delegate(
         storage,
         Timestamp::default(),
-        Addr::unchecked("v2"),
+        "v2".to_string(),
         Uint128::new(10),
     )
     .unwrap();
@@ -102,7 +102,7 @@ fn test_undelegation_before_delegation_panics() {
     st.on_undelegate(
         storage,
         Timestamp::default(),
-        Addr::unchecked("v1"),
+        "v1".to_string(),
         Uint128::new(10),
         10,
     )

@@ -74,6 +74,10 @@ pub fn execute_receive_cw20(
 
     let msg: ReceiveMsg = from_binary(&receive_msg.msg)?;
 
+    if TMP_INSTANTIATOR_INFO.may_load(deps.storage)?.is_some() {
+        return Err(ContractError::Reentrancy);
+    }
+
     // Save instantiator info for use in reply (cw20 sender in this case)
     let sender = deps.api.addr_validate(&receive_msg.sender)?;
     TMP_INSTANTIATOR_INFO.save(deps.storage, &sender)?;

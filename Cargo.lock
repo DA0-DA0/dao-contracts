@@ -2299,6 +2299,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "cosm-orc",
+ "cosm-tome",
  "cosmwasm-std",
  "cw-utils 0.16.0",
  "cw-vesting",
@@ -2320,6 +2321,7 @@ dependencies = [
  "serde",
  "serde_json",
  "test-context",
+ "tokio",
 ]
 
 [[package]]

@@ -242,12 +242,7 @@ pub fn execute_delegate(
         return Err(ContractError::NotStakeable);
     }
 
-    PAYMENT.on_delegate(
-        deps.storage,
-        env.block.time,
-        deps.api.addr_validate(&validator)?,
-        amount,
-    )?;
+    PAYMENT.on_delegate(deps.storage, env.block.time, validator.clone(), amount)?;
 
     let msg = StakingMsg::Delegate {
         validator: validator.clone(),
@@ -306,8 +301,8 @@ pub fn execute_redelegate(
     PAYMENT.on_redelegate(
         deps.storage,
         env.block.time,
-        deps.api.addr_validate(&src_validator)?,
-        deps.api.addr_validate(&dst_validator)?,
+        src_validator.clone(),
+        dst_validator.clone(),
         amount,
     )?;
 
@@ -351,13 +346,7 @@ pub fn execute_undelegate(
     };
 
     let ubs = UNBONDING_DURATION_SECONDS.load(deps.storage)?;
-    PAYMENT.on_undelegate(
-        deps.storage,
-        env.block.time,
-        deps.api.addr_validate(&validator)?,
-        amount,
-        ubs,
-    )?;
+    PAYMENT.on_undelegate(deps.storage, env.block.time, validator.clone(), amount, ubs)?;
 
     let denom = deps.querier.query_bonded_denom()?;
 

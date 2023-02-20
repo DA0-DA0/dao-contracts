@@ -267,7 +267,7 @@ impl<'a> Payment<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        validator: Addr,
+        validator: String,
         amount: Uint128,
         unbonding_duration_seconds: u64,
     ) -> Result<(), ContractError> {
@@ -280,8 +280,8 @@ impl<'a> Payment<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        src: Addr,
-        dst: Addr,
+        src: String,
+        dst: String,
         amount: Uint128,
     ) -> StdResult<()> {
         self.staking.on_redelegate(storage, t, src, dst, amount)?;
@@ -292,7 +292,7 @@ impl<'a> Payment<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        validator: Addr,
+        validator: String,
         amount: Uint128,
     ) -> Result<(), ContractError> {
         self.staking.on_delegate(storage, t, validator, amount)?;

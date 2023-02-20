@@ -198,7 +198,7 @@ fn test_complex_close() {
         .unwrap();
 
     payment
-        .on_delegate(storage, time, Addr::unchecked("v1"), Uint128::new(75))
+        .on_delegate(storage, time, "v1".to_string(), Uint128::new(75))
         .unwrap();
 
     let vest = payment.get_vest(storage).unwrap();
@@ -219,7 +219,7 @@ fn test_complex_close() {
     assert_eq!(vest.vested(time) - vest.claimed, Uint128::new(25));
 
     payment
-        .on_undelegate(storage, time, Addr::unchecked("v1"), Uint128::new(50), 25)
+        .on_undelegate(storage, time, "v1".to_string(), Uint128::new(50), 25)
         .unwrap();
     time = time.plus_seconds(25);
 
@@ -239,7 +239,7 @@ fn test_complex_close() {
     );
 
     payment
-        .on_undelegate(storage, time, Addr::unchecked("v1"), Uint128::new(25), 25)
+        .on_undelegate(storage, time, "v1".to_string(), Uint128::new(25), 25)
         .unwrap();
     time = time.plus_seconds(25);
     payment

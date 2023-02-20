@@ -30,5 +30,5 @@ pub enum ContractError {
     UnknownReplyId { id: u64 },
 
     #[error("reentered factory during payroll instantiation")]
-    Reentrancy {},
+    Reentrancy,
 }

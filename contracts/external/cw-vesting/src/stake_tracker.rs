@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{StdResult, Storage, Timestamp, Uint128};
 use cw_wormhole::Wormhole;
 
 pub struct StakeTracker<'a> {
@@ -7,7 +7,15 @@ pub struct StakeTracker<'a> {
     total_staked: Wormhole<'a, (), Uint128>,
     /// validators(v, t) := the amount staked + amount unbonding with
     /// validator v at time t.
-    validators: Wormhole<'a, Addr, Uint128>,
+    ///
+    /// deps.api.addr_validate does not validate validator addresses,
+    /// so we're left with a string. in theory, as all of these
+    /// functions are called only _on_ (un)delegation, their
+    /// surrounding transactions should fail for invalid keys as the
+    /// staking module ought to error. this is checked in
+    /// `test_cw_vesting_staking` in
+    /// `ci/integration-tests/src/tests/cw_vesting_test.rs`.
+    validators: Wormhole<'a, String, Uint128>,
     /// cardinality(t) := the # of validators with staked and/or
     /// unbonding tokens at time t.
     cardinality: Wormhole<'a, (), u64>,
@@ -30,7 +38,7 @@ impl<'a> StakeTracker<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        validator: Addr,
+        validator: String,
         amount: Uint128,
     ) -> StdResult<()> {
         self.total_staked
@@ -46,7 +54,7 @@ impl<'a> StakeTracker<'a> {
             .increment(storage, validator, t.seconds(), amount)
     }
 
-    /// Makes note of a redelegation. NOTE: this only supports
+    /// Makes note of a redelegation. note, this only supports
     /// redelegation of tokens that can be _immediately_
     /// redelegated. The caller of this function should make a
     /// `Delegation { delegator, validator: src }` query and ensure
@@ -55,8 +63,8 @@ impl<'a> StakeTracker<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        src: Addr,
-        dst: Addr,
+        src: String,
+        dst: String,
         amount: Uint128,
     ) -> StdResult<()> {
         self.validators
@@ -68,7 +76,7 @@ impl<'a> StakeTracker<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        validator: Addr,
+        validator: String,
         amount: Uint128,
         unbonding_duration_seconds: u64,
     ) -> StdResult<()> {
@@ -105,7 +113,7 @@ impl<'a> StakeTracker<'a> {
         &self,
         storage: &dyn Storage,
         t: Timestamp,
-        v: Addr,
+        v: String,
     ) -> StdResult<Uint128> {
         self.validators
             .load(storage, v, t.seconds())
