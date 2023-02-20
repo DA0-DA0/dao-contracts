@@ -9,7 +9,8 @@ For Discord, please DM:
 - elsehow#3115 (PST, more avaliable than ekez in PST mornings)
 - Callum#5521 (UTC)
 
-DM as many of us as you need to get a response.
+DM as many of us as you need to get a response. You can join our
+Discord via [this link](https://discord.com/invite/sAaGuyW3D2).
 
 If you're concerned about Discord's phone number requirements feel
 free to email a report to ekez at `ekez@withoutdoing.com`. That email
