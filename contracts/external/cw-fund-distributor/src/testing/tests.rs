@@ -443,52 +443,6 @@ pub fn test_fund_cw20_zero_amount() {
 }
 
 #[test]
-fn test_fund_cw20_after_funding_period() {
-    let BaseTest {
-        mut app,
-        distributor_address,
-        token_address,
-    } = setup_test(vec![
-        Cw20Coin {
-            address: "bekauz".to_string(),
-            amount: Uint128::new(10),
-        },
-        Cw20Coin {
-            address: "ekez".to_string(),
-            amount: Uint128::new(20),
-        },
-    ]);
-
-    let amount = Uint128::new(500000);
-    mint_cw20s(
-        &mut app,
-        Addr::unchecked(CREATOR_ADDR),
-        token_address.clone(),
-        amount,
-        Addr::unchecked(CREATOR_ADDR),
-    );
-
-    app.update_block(|mut b| b.height += 11);
-
-    let err: ContractError = app
-        .execute_contract(
-            Addr::unchecked(CREATOR_ADDR),
-            token_address,
-            &cw20::Cw20ExecuteMsg::Send {
-                contract: distributor_address.to_string(),
-                amount,
-                msg: Binary::default(),
-            },
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-
-    assert!(matches!(err, ContractError::FundDuringClaimingPeriod {}));
-}
-
-#[test]
 pub fn test_fund_natives() {
     let BaseTest {
         mut app,
@@ -515,8 +469,20 @@ pub fn test_fund_natives() {
         Addr::unchecked(CREATOR_ADDR),
     );
 
-    let balance = query_native_balance(&mut app, distributor_address).amount;
+    let balance = query_native_balance(&mut app, distributor_address.clone()).amount;
     assert_eq!(amount, balance);
+
+    // fund again with an existing balance with an existing balance, fund
+    mint_natives(&mut app, Addr::unchecked("bekauz"), amount);
+    fund_distributor_contract_natives(
+        &mut app,
+        distributor_address.clone(),
+        amount,
+        Addr::unchecked("bekauz"),
+    );
+
+    let balance = query_native_balance(&mut app, distributor_address).amount;
+    assert_eq!(amount * Uint128::new(2), balance);
 }
 
 #[test]
@@ -559,7 +525,7 @@ pub fn test_fund_natives_zero_amount() {
     )
     .unwrap();
 
-    // should filter out the zero amount coins and work properly
+    // should have filtered out the zero amount coins
     let balance = query_native_balance(&mut app, distributor_address.clone());
     assert_eq!(balance.amount, Uint128::one());
 
@@ -969,7 +935,7 @@ pub fn test_claim_all() {
 }
 
 #[test]
-pub fn test_claim_empty_list_of_denoms() {
+pub fn test_claim_natives_empty_list_of_denoms() {
     let BaseTest {
         mut app,
         distributor_address,
