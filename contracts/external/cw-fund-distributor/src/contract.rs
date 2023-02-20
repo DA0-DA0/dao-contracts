@@ -220,11 +220,11 @@ pub fn execute_claim_cw20s(
             CW20_CLAIMS.update(
                 deps.storage,
                 (sender.clone(), Addr::unchecked(addr.clone())),
-                |claim| {
-                    claim
-                        .unwrap_or_default()
+                |claim| match claim {
+                    Some(previous_claim) => previous_claim
                         .checked_add(entitlement)
-                        .map_err(ContractError::OverflowErr)
+                        .map_err(ContractError::OverflowErr),
+                    None => Ok(entitlement),
                 },
             )?;
 
