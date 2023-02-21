@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order, QueryRequest,
-    Response, StdResult, Uint128, WasmMsg, WasmQuery,
+    ensure, to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Order, QueryRequest,
+    Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_core_interface::{
@@ -68,6 +68,19 @@ pub fn execute(
             execute::member_changed(deps, info.sender, hook_msg.diffs)
         }
         ExecuteMsg::CreateGauge(options) => execute::create_gauge(deps, env, info.sender, options),
+        ExecuteMsg::UpdateGauge {
+            gauge_id,
+            epoch_size,
+            min_percent_selected,
+            max_options_selected,
+        } => execute::update_gauge(
+            deps,
+            info.sender,
+            gauge_id,
+            epoch_size,
+            min_percent_selected,
+            max_options_selected,
+        ),
         ExecuteMsg::StopGauge { gauge } => execute::stop_gauge(deps, info.sender, gauge),
         ExecuteMsg::AddOption { gauge, option } => {
             execute::add_option(deps, info.sender, gauge, option, true)
@@ -162,6 +175,18 @@ mod execute {
         }: GaugeConfig,
     ) -> Result<Addr, ContractError> {
         let adapter = deps.api.addr_validate(&adapter)?;
+        // gauge parameter validation
+        ensure!(epoch_size > 60u64, ContractError::EpochSizeTooShort {});
+        if let Some(min_percent_selected) = min_percent_selected {
+            ensure!(
+                min_percent_selected < Decimal::one(),
+                ContractError::MinPercentSelectedTooBig {}
+            );
+        }
+        ensure!(
+            max_options_selected > 0,
+            ContractError::MaxOptionsSelectedTooSmall {}
+        );
         let gauge = Gauge {
             title,
             adapter: adapter.clone(),
@@ -170,6 +195,7 @@ mod execute {
             max_options_selected,
             is_stopped: false,
             next_epoch: env.block.time.seconds() + epoch_size,
+            last_executed_set: None,
         };
         let last_id: GaugeId = fetch_last_id(deps.storage)?;
         GAUGES.save(deps.storage, last_id, &gauge)?;
@@ -186,6 +212,47 @@ mod execute {
         })?;
 
         Ok(adapter)
+    }
+
+    pub fn update_gauge(
+        deps: DepsMut,
+        sender: Addr,
+        gauge_id: u64,
+        epoch_size: Option<u64>,
+        min_percent_selected: Option<Decimal>,
+        max_options_selected: Option<u32>,
+    ) -> Result<Response, ContractError> {
+        let config = CONFIG.load(deps.storage)?;
+        if sender != config.owner {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        let mut gauge = GAUGES.load(deps.storage, gauge_id)?;
+        if let Some(epoch_size) = epoch_size {
+            ensure!(epoch_size > 60u64, ContractError::EpochSizeTooShort {});
+            gauge.epoch = epoch_size;
+        }
+        if let Some(min_percent_selected) = min_percent_selected {
+            if min_percent_selected.is_zero() {
+                gauge.min_percent_selected = None
+            } else {
+                ensure!(
+                    min_percent_selected < Decimal::one(),
+                    ContractError::MinPercentSelectedTooBig {}
+                );
+                gauge.min_percent_selected = Some(min_percent_selected)
+            };
+        }
+        if let Some(max_options_selected) = max_options_selected {
+            ensure!(
+                max_options_selected > 0,
+                ContractError::MaxOptionsSelectedTooSmall {}
+            );
+            gauge.max_options_selected = max_options_selected;
+        }
+        GAUGES.save(deps.storage, gauge_id, &gauge)?;
+
+        Ok(Response::new().add_attribute("action", "update_gauge"))
     }
 
     pub fn stop_gauge(
@@ -362,7 +429,7 @@ mod execute {
     }
 
     pub fn execute(deps: DepsMut, env: Env, gauge_id: u64) -> Result<Response, ContractError> {
-        let gauge = GAUGES.load(deps.storage, gauge_id)?;
+        let mut gauge = GAUGES.load(deps.storage, gauge_id)?;
 
         if gauge.is_stopped {
             return Err(ContractError::GaugeStopped(gauge_id));
@@ -376,26 +443,18 @@ mod execute {
                 next_epoch: gauge.next_epoch,
             });
         }
+        gauge.next_epoch = env.block.time.plus_seconds(gauge.epoch).seconds();
 
         // this set contains tuple (option, total_voted_power)
         // for adapter query, this needs to be transformed into (option, voted_weight)
         let selected_set_with_powers = query::selected_set(deps.as_ref(), gauge_id)?.votes;
-
-        // This is a bit hacky solution to accomplish 3 things:
-        // - remove executed option from TALLY
-        // - remove executed option from OPTION_BY_POINTS
-        // - summarizing all power to be subtracted from TOTAL_CAST
-        // Placed here to avoid copy of either whole iterator or its elements in second loop
-        // down below.
         let selected_powers_sum = selected_set_with_powers
             .iter()
-            .map(|(option, power)| {
-                let power = power.u128();
-                TALLY.remove(deps.storage, (gauge_id, option));
-                OPTION_BY_POINTS.remove(deps.storage, (gauge_id, power, option));
-                power
-            })
+            .map(|(_, power)| power.u128())
             .sum::<u128>();
+
+        // save the selected options and their powers for the frontend to display
+        gauge.last_executed_set = Some(selected_set_with_powers.clone());
 
         // calculate "local" ratios of voted options per total power of all selected options
         let selected = selected_set_with_powers
@@ -405,7 +464,7 @@ mod execute {
 
         // query gauge adapter for execute messages for DAO
         let execute_messages: SampleGaugeMsgsResponse = deps.querier.query_wasm_smart(
-            gauge.adapter,
+            gauge.adapter.clone(),
             &AdapterQueryMsg::SampleGaugeMsgs { selected },
         )?;
 
@@ -418,10 +477,7 @@ mod execute {
             funds: vec![],
         };
 
-        // update total cast to reflect executed messages
-        TOTAL_CAST.update(deps.storage, gauge_id, |total_cast| -> StdResult<_> {
-            Ok(total_cast.unwrap_or_default() - selected_powers_sum)
-        })?;
+        GAUGES.save(deps.storage, gauge_id, &gauge)?;
 
         Ok(Response::new()
             .add_attribute("action", "execute_tally")
@@ -459,13 +515,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         )?)?),
         QueryMsg::SelectedSet { gauge } => Ok(to_binary(&query::selected_set(deps, gauge)?)?),
+        QueryMsg::LastExecutedSet { gauge } => {
+            Ok(to_binary(&query::last_executed_set(deps, gauge)?)?)
+        }
     }
 }
 
 mod query {
     use super::*;
 
-    use crate::msg::{VoteInfo, VoteResponse};
+    use crate::msg::{LastExecutedSetResponse, VoteInfo, VoteResponse};
     use cw_core_interface::voting::InfoResponse;
 
     pub fn info(deps: Deps) -> StdResult<InfoResponse> {
@@ -586,10 +645,33 @@ mod query {
 
         Ok(SelectedSetResponse { votes })
     }
+
+    pub fn last_executed_set(deps: Deps, gauge_id: u64) -> StdResult<LastExecutedSetResponse> {
+        let gauge = GAUGES.load(deps.storage, gauge_id)?;
+        Ok(LastExecutedSetResponse {
+            votes: gauge.last_executed_set,
+        })
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
+pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    for (gauge_id, next_epoch) in msg.next_epochs.unwrap_or_default() {
+        GAUGES.update(deps.storage, gauge_id, |gauge| -> StdResult<_> {
+            let mut gauge = gauge.ok_or(StdError::NotFound {
+                kind: format!("Gauge with id {}", gauge_id),
+            })?;
+            if next_epoch < env.block.time.seconds() {
+                return Err(StdError::GenericErr {
+                    msg: "Next epoch value cannot be earlier then current epoch!".to_owned(),
+                });
+            }
+            gauge.next_epoch = next_epoch;
+            Ok(gauge)
+        })?;
+    }
+
     Ok(Response::new())
 }

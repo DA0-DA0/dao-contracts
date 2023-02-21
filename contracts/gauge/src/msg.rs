@@ -4,6 +4,8 @@ use cosmwasm_std::{CosmosMsg, Decimal, Uint128};
 use crate::state::Vote;
 use wynd_stake::hook::MemberChangedHookMsg;
 
+type GaugeId = u64;
+
 #[cw_serde]
 pub struct InstantiateMsg {
     /// Address of contract to that contains all voting powers (where we query and listen to hooks)
@@ -40,6 +42,15 @@ pub enum ExecuteMsg {
     /// This creates a new Gauge, returns CreateGaugeReply JSON-encoded in the data field.
     /// Can only be called by owner
     CreateGauge(GaugeConfig),
+    /// Allows owner to update certain parameters of GaugeConfig.
+    /// If you want to change next_epoch value, you need to use migration.
+    UpdateGauge {
+        gauge_id: u64,
+        epoch_size: Option<u64>,
+        // Some<0> would set min_percent_selected to None
+        min_percent_selected: Option<Decimal>,
+        max_options_selected: Option<u32>,
+    },
     /// Stops a given gauge, meaning it will not execute any more messages,
     /// Or receive any more updates on MemberChangedHook.
     /// Ideally, this will allow for eventual deletion of all data on that gauge
@@ -97,6 +108,8 @@ pub enum QueryMsg {
     },
     #[returns(SelectedSetResponse)]
     SelectedSet { gauge: u64 },
+    #[returns(LastExecutedSetResponse)]
+    LastExecutedSet { gauge: u64 },
 }
 
 /// Information about one gauge
@@ -157,6 +170,13 @@ pub struct ListOptionsResponse {
     pub options: Vec<(String, Uint128)>,
 }
 
+/// List the options that were selected in the last executed set.
+#[cw_serde]
+pub struct LastExecutedSetResponse {
+    /// `None` if no vote has been executed yet
+    pub votes: Option<Vec<(String, Uint128)>>,
+}
+
 /// List the top options by power that would make it into the selected set.
 /// Ordered from highest votes to lowest
 #[cw_serde]
@@ -197,4 +217,6 @@ pub struct SampleGaugeMsgsResponse {
 }
 
 #[cw_serde]
-pub enum MigrateMsg {}
+pub struct MigrateMsg {
+    pub next_epochs: Option<Vec<(GaugeId, u64)>>,
+}

@@ -39,4 +39,13 @@ pub enum ContractError {
 
     #[error("Trying to remove vote that does not exists")]
     CannotRemoveNonexistingVote {},
+
+    #[error("Epoch size must be bigger then 60 seconds")]
+    EpochSizeTooShort {},
+
+    #[error("Minimum percent selected parameter needs to be smaller then 1.0")]
+    MinPercentSelectedTooBig {},
+
+    #[error("Maximum options selected parameter needs to be bigger then 0")]
+    MaxOptionsSelectedTooSmall {},
 }

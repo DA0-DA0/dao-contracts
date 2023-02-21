@@ -18,18 +18,24 @@ use voting::{PercentageThreshold, Threshold, Vote};
 
 use super::adapter::{contract as adapter_contract, InstantiateMsg as AdapterInstantiateMsg};
 use crate::msg::{
-    ExecuteMsg, GaugeConfig, GaugeResponse, InstantiateMsg, ListOptionsResponse, ListVotesResponse,
-    QueryMsg, SelectedSetResponse, VoteInfo, VoteResponse,
+    ExecuteMsg, GaugeConfig, GaugeResponse, InstantiateMsg, LastExecutedSetResponse,
+    ListGaugesResponse, ListOptionsResponse, ListVotesResponse, MigrateMsg, QueryMsg,
+    SelectedSetResponse, VoteInfo, VoteResponse,
 };
+
+type GaugeId = u64;
 
 pub const BLOCK_TIME: u64 = 5;
 
 fn store_gauge(app: &mut App) -> u64 {
-    let contract = Box::new(ContractWrapper::new_with_empty(
-        crate::contract::execute,
-        crate::contract::instantiate,
-        crate::contract::query,
-    ));
+    let contract = Box::new(
+        ContractWrapper::new_with_empty(
+            crate::contract::execute,
+            crate::contract::instantiate,
+            crate::contract::query,
+        )
+        .with_migrate(crate::contract::migrate),
+    );
 
     app.store_code(contract)
 }
@@ -336,6 +342,20 @@ impl Suite {
             .query_wasm_smart(gauge_contract, &QueryMsg::Gauge { id })
     }
 
+    pub fn query_gauges(&self, gauge_contract: Addr) -> StdResult<Vec<GaugeResponse>> {
+        Ok(self
+            .app
+            .wrap()
+            .query_wasm_smart::<ListGaugesResponse>(
+                gauge_contract,
+                &QueryMsg::ListGauges {
+                    start_after: None,
+                    limit: None,
+                },
+            )?
+            .gauges)
+    }
+
     pub fn query_selected_set(
         &self,
         gauge_contract: &Addr,
@@ -345,6 +365,18 @@ impl Suite {
             .app
             .wrap()
             .query_wasm_smart(gauge_contract, &QueryMsg::SelectedSet { gauge: id })?;
+        Ok(set.votes)
+    }
+
+    pub fn query_last_executed_set(
+        &self,
+        gauge_contract: &Addr,
+        id: u64,
+    ) -> StdResult<Option<Vec<(String, Uint128)>>> {
+        let set: LastExecutedSetResponse = self
+            .app
+            .wrap()
+            .query_wasm_smart(gauge_contract, &QueryMsg::LastExecutedSet { gauge: id })?;
         Ok(set.votes)
     }
 
@@ -473,6 +505,28 @@ impl Suite {
         })
     }
 
+    pub fn update_gauge(
+        &mut self,
+        sender: &str,
+        gauge_contract: Addr,
+        gauge_id: u64,
+        epoch_size: impl Into<Option<u64>>,
+        min_percent_selected: Option<Decimal>,
+        max_options_selected: impl Into<Option<u32>>,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(sender),
+            gauge_contract,
+            &ExecuteMsg::UpdateGauge {
+                gauge_id,
+                epoch_size: epoch_size.into(),
+                min_percent_selected,
+                max_options_selected: max_options_selected.into(),
+            },
+            &[],
+        )
+    }
+
     pub fn place_vote_single(
         &mut self,
         voter: impl Into<String>,
@@ -524,5 +578,21 @@ impl Suite {
     pub fn query_balance(&self, account: &str, denom: &str) -> StdResult<u128> {
         let balance = self.app.wrap().query_balance(account, denom)?;
         Ok(balance.amount.u128())
+    }
+
+    pub fn auto_migrate_gauge(
+        &mut self,
+        gauge: &Addr,
+        next_epochs: impl Into<Option<Vec<(GaugeId, u64)>>>,
+    ) -> AnyResult<AppResponse> {
+        let sender = Addr::unchecked(&self.owner);
+        self.app.migrate_contract(
+            sender,
+            gauge.clone(),
+            &MigrateMsg {
+                next_epochs: next_epochs.into(),
+            },
+            self.gauge_code_id,
+        )
     }
 }

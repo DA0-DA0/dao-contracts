@@ -58,6 +58,8 @@ pub struct Gauge {
     pub is_stopped: bool,
     /// UNIX time (seconds) when next epoch can be executed. If < env.block.time then Execute can be called
     pub next_epoch: u64,
+    /// The last set of options selected by the gauge, `None` before the first execution
+    pub last_executed_set: Option<Vec<(String, Uint128)>>,
 }
 
 #[cw_serde]
