@@ -1,13 +1,13 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Binary, Uint128};
+use cosmwasm_std::{Binary, HexBinary, Uint128};
 use cw_utils::Expiration;
 
 #[cw_serde]
 pub struct WrappedMessage {
     pub payload: Payload,
-    // Assumes 'payload' has been hashed, signed, and base64 encoded
+    // Assumes signature is 'payload' hashed, signed, and base64 encoded
     pub signature: Binary,
-    pub public_key: String,
+    pub public_key: HexBinary, // hex encoded
 }
 
 #[cw_serde]
@@ -16,4 +16,6 @@ pub struct Payload {
     pub contract_address: String,
     pub msg: Binary,
     pub expiration: Option<Expiration>,
+    pub bech32_prefix: String,
+    pub version: String,
 }
