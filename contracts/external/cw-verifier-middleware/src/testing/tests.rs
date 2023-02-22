@@ -11,11 +11,22 @@ use crate::{
 };
 
 #[test]
-fn test_pk_to_addr() {
+fn test_pk_to_addr_uncompressed() {
     let juno_address = Addr::unchecked("juno1muw4rz9ml44wc6vssqrzkys4nuc3gylrxj4flw");
     let juno_pk = "04f620cd2e33d3f6af5a43d5b3ca3b9b7f653aa980ae56714cc5eb7637fd1eeb28fb722c0dacb5f005f583630dae8bbe7f5eaba70f129fc279d7ff421ae8c9eb79".to_string();
 
-    let generated_address = pk_to_addr(juno_pk, "juno").unwrap();
+    let deps = mock_dependencies();
+    let generated_address = pk_to_addr(deps.as_ref(), juno_pk, &"juno").unwrap();
+    assert_eq!(generated_address, juno_address);
+}
+
+#[test]
+fn test_pk_to_addr_compressed() {
+    let juno_address = Addr::unchecked("juno1vqxvyw6kpy7xj0msxz57svwn4p0kfdu46kv0pk");
+    let juno_pk = "022bf538609c68cd00c931353602d9e3585732c078fe784ad2e4f29cf486a6afa2".to_string();
+
+    let deps = mock_dependencies();
+    let generated_address = pk_to_addr(deps.as_ref(), juno_pk, &"juno").unwrap();
     assert_eq!(generated_address, juno_address);
 }
 

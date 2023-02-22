@@ -1,5 +1,7 @@
-use cosmwasm_std::{OverflowError, StdError, VerificationError};
+use bech32::Error as Bech32Error;
+use cosmwasm_std::{StdError, VerificationError};
 use hex::FromHexError;
+use secp256k1::Error as Secp256k1Error;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -12,6 +14,12 @@ pub enum ContractError {
 
     #[error("{0}")]
     VerificationError(#[from] VerificationError),
+
+    #[error("{0}")]
+    Bech32Error(#[from] Bech32Error),
+
+    #[error("{0}")]
+    Secp256k1Error(#[from] Secp256k1Error),
 
     #[error("Invalid nonce")]
     InvalidNonce,

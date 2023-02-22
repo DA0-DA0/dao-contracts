@@ -4,12 +4,13 @@ use crate::{
     state::{CONTRACT_ADDRESS, NONCES},
 };
 use bech32::{ToBase32, Variant};
-use cosmwasm_std::{to_binary, Addr, Binary, DepsMut, Env, MessageInfo, StdError, Uint128};
+use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, StdError, Uint128};
 
 use ripemd::Ripemd160;
 use sha2::{Digest, Sha256};
 
-const EXPECTED_HEX_PK_LEN: usize = 130;
+const UNCOMPRESSED_HEX_PK_LEN: usize = 130;
+const COMPRESSED_HEX_PK_LEN: usize = 66;
 
 pub fn verify(
     deps: DepsMut,
@@ -64,6 +65,7 @@ pub fn verify(
 
     // Set the message sender to the address corresponding to the provided public key.
     info.sender = pk_to_addr(
+        deps.as_ref(),
         wrapped_msg.public_key.to_hex(), // to_hex ensures that the public key has the expected number of bytes
         &wrapped_msg.payload.bech32_prefix,
     )?;
@@ -77,16 +79,24 @@ pub fn initialize_contract_addr(deps: DepsMut, env: Env) -> Result<(), ContractE
     Ok(())
 }
 
-// Takes an uncompressed hex-encoded EC public key and a bech32 prefix and derives the bech32 address.
-pub fn pk_to_addr(hex_pk: String, prefix: &str) -> Result<Addr, ContractError> {
-    if hex_pk.len() != EXPECTED_HEX_PK_LEN {
-        return Err(ContractError::InvalidPublicKeyLength {
-            length: hex_pk.len(),
-        });
-    }
-
+// Takes an compressed or uncompressed hex-encoded EC public key and a bech32 prefix and derives the bech32 address.
+pub fn pk_to_addr(deps: Deps, hex_pk: String, prefix: &str) -> Result<Addr, ContractError> {
     // Decode PK from hex
-    let raw_pk = hex::decode(hex_pk)?;
+    let raw_pk = hex::decode(&hex_pk)?;
+
+    let raw_pk: Vec<u8> = match hex_pk.len() {
+        COMPRESSED_HEX_PK_LEN => Ok::<std::vec::Vec<u8>, ContractError>(raw_pk),
+        UNCOMPRESSED_HEX_PK_LEN => {
+            let public_key = secp256k1::PublicKey::from_slice(raw_pk.as_slice())?;
+            // serialize will convert pk to compressed format
+            Ok(public_key.serialize().to_vec())
+        }
+        _ => {
+            return Err(ContractError::InvalidPublicKeyLength {
+                length: hex_pk.len(),
+            })
+        }
+    }?;
 
     // sha256 hash the raw public key
     let pk_sha256 = Sha256::digest(raw_pk);
@@ -95,10 +105,8 @@ pub fn pk_to_addr(hex_pk: String, prefix: &str) -> Result<Addr, ContractError> {
     let address_raw = Ripemd160::digest(pk_sha256);
 
     // Encode the prefix and the raw address bytes with bech32
-    let bech32 = bech32::encode(&prefix, address_raw.to_base32(), Variant::Bech32);
+    let bech32 = bech32::encode(&prefix, address_raw.to_base32(), Variant::Bech32)?;
 
-    match bech32 {
-        Ok(addr) => Ok(Addr::unchecked(addr)),
-        Err(e) => Err(ContractError::Std(StdError::generic_err(e.to_string()))),
-    }
+    // Return validated addr
+    Ok(deps.api.addr_validate(&bech32)?)
 }
