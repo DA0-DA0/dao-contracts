@@ -6,7 +6,9 @@ use secp256k1::{rand::rngs::OsRng, Message, Secp256k1};
 use sha2::{Digest, Sha256};
 
 use crate::{
+    error::ContractError,
     msg::{Payload, WrappedMessage},
+    state::NONCES,
     verify::{pk_to_addr, verify},
 };
 
@@ -37,7 +39,7 @@ fn test_verify_success() {
 
     let payload = Payload {
         nonce: Uint128::from(0u128),
-        msg: to_binary("eyJpbnN0YW50aWF0ZV9jb250cmFjdF93aXRoX3NlbGZfYWRtaW4iOnsiY29kZV9pZCI6MTY4OCwiaW5zdGFudGlhdGVfbXNnIjoiZXlKaFpHMXBiaUk2Ym5Wc2JDd2lZWFYwYjIxaGRHbGpZV3hzZVY5aFpHUmZZM2N5TUhNaU9uUnlkV1VzSW1GMWRHOXRZWFJwWTJGc2JIbGZZV1JrWDJOM056SXhjeUk2ZEhKMVpTd2laR1Z6WTNKcGNIUnBiMjRpT2lJeElpd2lhVzFoWjJWZmRYSnNJanB1ZFd4c0xDSnVZVzFsSWpvaWRHVnpkQ0lzSW5CeWIzQnZjMkZzWDIxdlpIVnNaWE5mYVc1emRHRnVkR2xoZEdWZmFXNW1ieUk2VzNzaVlXUnRhVzRpT25zaVkyOXlaVjl0YjJSMWJHVWlPbnQ5ZlN3aVkyOWtaVjlwWkNJNk1UWTVOQ3dpYkdGaVpXd2lPaUpFUVU5ZmRHVnpkRjlFWVc5UWNtOXdiM05oYkZOcGJtZHNaU0lzSW0xelp5STZJbVY1U21oaVIzaDJaREU1ZVZwWVduWmtSMngxV25sSk5scHRSbk5qTWxWelNXMU9jMkl6VG14WU0wSjVZak5DZG1NeVJuTllNamwxV0RKV05GcFhUakZrUjJ4MlltdzViVmxYYkhOa1dFcHNTV3B3TUdOdVZteE1RMHAwV1Zob1ptUnRPVEJoVnpWdVdETkNiR050YkhaYVEwazJaWGxLTUdGWE1XeEphbTh5VFVSUk5FMUVRamxNUTBwMFlWYzFabVJ0T1RCaFZ6VnVXRE5DYkdOdGJIWmFRMGsyWW01V2MySkRkMmxpTWpWelpWWTVkRnBYTVdsYVdFcDZXREpXTkZwWFRqRmtSMVZwVDI1U2VXUlhWWE5KYmtKNVdsWTVkMk50T1hkaU0wNXNXREpzZFZwdE9HbFBibk5wWWxjNWEyUlhlR3hZTWpGb1pWWTVkMk50T1hkaU0wNXNTV3B3TjBsdGJIVmFiVGhwVDI1emFWbFhVblJoVnpScFQyNXphVmt5T1hsYVZqbDBZakpTTVdKSFZXbFBiblE1WmxOM2FWa3lPV3RhVmpsd1drTkpOazFVV1RWTmFYZHBZa2RHYVZwWGQybFBhVXBGVVZVNVptUkhWbnBrUmpsM1kyMVZkR05JU25aalJ6bDZXbE14UlZsWE9WRmpiVGwzWWpOT2FHSkdUbkJpYldSeldsTkpjMGx0TVhwYWVVazJTVzFXTlZOdGRHRlhSVW95V1hwS2MwMUdaM2xpU0ZaaFlsUm9jRlF5TURGTlYwcElaRE5PU21KV1dUQmFSV1JYWkZkTmVXSklXbWxoVldzeVdsUk5kMk13YkhSUFdHUmhWbnBXYlZrd2FFdGtiVTVJVDFod1dsWXphRzFaZWs1WFlWZEtXR0pJY0dwTmJYZ3lXVzFzU2s1c2NIUlNiazVxVFd4Wk5VbHVNVGxtVTNkcFpFZG9lVnBZVG05aU1uaHJTV3B3TjBsdVVtOWpiVlo2WVVjNWMxcEdPWGhrVnpsNVpGY3dhVTl1YzJsaldGWjJZMjVXZEVscWNEZEpia0pzWTIxT2JHSnVVV2xQYVVsM1RHcEpkMGx1TUhOSmJsSnZZMjFXZW1GSE9YTmFRMGsyWlhsS2RGbFhjSFpqYld3d1pWTkpObVV6TVRsbVdERTVJbjFkTENKMmIzUnBibWRmYlc5a2RXeGxYMmx1YzNSaGJuUnBZWFJsWDJsdVptOGlPbnNpWVdSdGFXNGlPbnNpWTI5eVpWOXRiMlIxYkdVaU9udDlmU3dpWTI5a1pWOXBaQ0k2TVRZNU5pd2liR0ZpWld3aU9pSkVRVTlmZEdWemRGOUVZVzlXYjNScGJtZERkelFpTENKdGMyY2lPaUpsZVVwcVpIcFNabG96U25aa1dFSm1XVEk1YTFwV09YQmFRMGsyVFZSWk1rOURkMmxoVnpWd1pFZHNhR0pHT1hSYVZ6RnBXbGhLZWtscWNHSmxlVXBvV2tkU2VVbHFiMmxoYmxaMVlucEdNbU5ZYURKbFdHTXlZVE5DTlU0emFIRk5SekY2WlVodk1VNHpUakprTWpRd1kwUkNjbHB0VWpGT1JGcHlaR3BDZDJGNVNYTkpibVJzWVZka2IyUkRTVFpOV0RGa1psRTlQU0o5ZlE9PSIsImxhYmVsIjoidGVzdCJ9fQ==").unwrap(),
+        msg: to_binary("eyJpbnN0YW50aWF0ZV9jb250cmFjdF93aXRoX3NlbGZfYWRtaW4iOnsiY29kZV9pZCI6MTY4OCwiaW5zdGFudGlhdGVfbXNnIjp7fX19ICA=").unwrap(),
         expiration: None,
         contract_address: Addr::unchecked("contract_address").to_string(),
         bech32_prefix: "juno".to_string(),
@@ -58,11 +60,108 @@ fn test_verify_success() {
     let wrapped_msg = WrappedMessage {
         payload,
         signature: sig.serialize_compact().into(),
-        public_key: hex_encoded,
+        public_key: hex_encoded.clone(),
     };
 
+    // Verify
     let mut deps = mock_dependencies();
     let env = mock_env();
     let info = mock_info("creator", &[]);
     verify(deps.as_mut(), env, info, wrapped_msg).unwrap();
+
+    // Verify nonce was incremented correctly
+    let nonce = NONCES.load(&deps.storage, &hex_encoded.to_hex()).unwrap();
+    assert_eq!(nonce, Uint128::from(1u128))
 }
+
+#[test]
+fn test_verify_pk_invalid() {
+    // This test generates a payload in which the signature is of base64 format, and the public key is of hex format.
+    // The test then calls verify with an incorrectly formatted public key to validate that there is an error in parsing the public key.
+
+    let payload = Payload {
+        nonce: Uint128::from(0u128),
+        msg: to_binary("test").unwrap(),
+        expiration: None,
+        contract_address: Addr::unchecked("contract_address").to_string(),
+        bech32_prefix: "juno".to_string(),
+        version: "version-1".to_string(),
+    };
+
+    // Generate a keypair
+    let secp = Secp256k1::new();
+    let (secret_key, _) = secp.generate_keypair(&mut OsRng);
+
+    // Hash and sign the payload
+    let msg_hash = Sha256::digest(&to_binary(&payload).unwrap());
+    let msg = Message::from_slice(&msg_hash).unwrap();
+    let sig = secp.sign_ecdsa(&msg, &secret_key);
+
+    // Wrap the message but with incorrect public key
+    let wrapped_msg = WrappedMessage {
+        payload,
+        signature: sig.serialize_compact().into(),
+        public_key: Vec::from("incorrect_public_key").into(),
+    };
+
+    // Verify with incorrect public key
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let result = verify(deps.as_mut(), env, info, wrapped_msg);
+
+    // Ensure that there was a pub key verification error
+    assert!(matches!(result, Err(ContractError::VerificationError(_))));
+}
+
+#[test]
+fn test_verify_wrong_pk() {
+    // This test generates a payload in which the signature is of base64 format, and the public key is of hex format.
+    // The test then calls verify with an correctly formatted but different public key (that doesn't correspond to the signature) to validate that the signature is not verified.
+
+    let payload = Payload {
+        nonce: Uint128::from(0u128),
+        msg: to_binary("test").unwrap(),
+        expiration: None,
+        contract_address: Addr::unchecked("contract_address").to_string(),
+        bech32_prefix: "juno".to_string(),
+        version: "version-1".to_string(),
+    };
+
+    // Generate a keypair
+    let secp = Secp256k1::new();
+    let (secret_key, _) = secp.generate_keypair(&mut OsRng);
+
+    // Hash and sign the payload
+    let msg_hash = Sha256::digest(&to_binary(&payload).unwrap());
+    let msg = Message::from_slice(&msg_hash).unwrap();
+    let sig = secp.sign_ecdsa(&msg, &secret_key);
+
+    // Generate another keypair
+    let secp = Secp256k1::new();
+    let (_, public_key) = secp.generate_keypair(&mut OsRng);
+
+    // Wrap the message but with incorrect public key
+    let wrapped_msg = WrappedMessage {
+        payload,
+        signature: sig.serialize_compact().into(),
+        public_key: HexBinary::from(public_key.serialize_uncompressed()),
+    };
+
+    // Verify with incorrect public key
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+    let result = verify(deps.as_mut(), env, info, wrapped_msg);
+
+    // Ensure that there was a signature verification error
+    assert!(matches!(result, Err(ContractError::SignatureInvalid)));
+}
+
+/*
+Moar tests to write:
+signature is invalid / malformed
+incorrect nonce
+expired message
+load a keypair corresponding to pre-known address and validate that address in info was set correctly
+*/
