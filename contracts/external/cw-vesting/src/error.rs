@@ -52,8 +52,11 @@ pub enum ContractError {
     #[error("vesting denom may not be staked")]
     NotStakeable,
 
-    #[error("can't redelegate from a validator with no delegation")]
-    InvalidRedelegate,
+    #[error("no delegation to validator {0}")]
+    NoDelegation(String),
+
+    #[error("slash amount can not be zero")]
+    NoSlash,
 
     #[error("can't set wihtdraw address to vesting contract")]
     SelfWithdraw,
@@ -66,4 +69,7 @@ pub enum ContractError {
         request: Uint128,
         claimable: Uint128,
     },
+
+    #[error("can't register a slash event occuring in the future")]
+    FutureSlash,
 }

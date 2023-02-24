@@ -114,6 +114,9 @@ pub fn execute(
         ExecuteMsg::WithdrawCanceledPayment { amount } => {
             execute_withdraw_canceled(deps, env, amount)
         }
+        ExecuteMsg::RegisterBondedSlash { validator, time } => {
+            execute_register_bonded_slash(deps, env, validator, time)
+        }
     }
 }
 
@@ -291,7 +294,9 @@ pub fn execute_redelegate(
         .into(),
     )?;
 
-    let delegation = resp.delegation.ok_or(ContractError::InvalidRedelegate)?;
+    let delegation = resp
+        .delegation
+        .ok_or(ContractError::NoDelegation(src_validator.clone()))?;
     if delegation.can_redelegate.amount < amount {
         return Err(ContractError::NonImmediateRedelegate {
             max: delegation.can_redelegate.amount,
@@ -395,6 +400,32 @@ pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractE
     Ok(Response::default()
         .add_attribute("method", "execute_withdraw_rewards")
         .add_message(withdraw_msg))
+}
+
+pub fn execute_register_bonded_slash(
+    deps: DepsMut,
+    env: Env,
+    validator: String,
+    time: Timestamp,
+) -> Result<Response, ContractError> {
+    if time > env.block.time {
+        Err(ContractError::FutureSlash)
+    } else {
+        let resp: DelegationResponse = deps.querier.query(
+            &StakingQuery::Delegation {
+                delegator: env.contract.address.into_string(),
+                validator: validator.clone(),
+            }
+            .into(),
+        )?;
+        let delegation = resp
+            .delegation
+            .ok_or(ContractError::NoDelegation(validator.clone()))?
+            .amount
+            .amount;
+        PAYMENT.register_bonded_slash(deps.storage, validator, env.block.time, delegation)?;
+        Ok(Response::default().add_attribute("method", "execute_register_bonded_slash"))
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

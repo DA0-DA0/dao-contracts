@@ -108,3 +108,156 @@ fn test_undelegation_before_delegation_panics() {
     )
     .unwrap();
 }
+
+#[test]
+fn test_bonded_slash() {
+    let storage = &mut mock_dependencies().storage;
+    let st = StakeTracker::new("s", "v", "c");
+
+    st.on_delegate(
+        storage,
+        Timestamp::from_seconds(10),
+        "v1".to_string(),
+        Uint128::new(10),
+    )
+    .unwrap();
+
+    // undelegate half of tokens at t=10.
+    st.on_undelegate(
+        storage,
+        Timestamp::from_seconds(10),
+        "v1".to_string(),
+        Uint128::new(5),
+        5,
+    )
+    .unwrap();
+
+    // slash the rest at t=12.
+    st.on_bonded_slash(
+        storage,
+        Timestamp::from_seconds(12),
+        "v1".to_string(),
+        Uint128::new(5),
+    )
+    .unwrap();
+
+    // at t=13 tokens are still "staked" as this tracks `bonded +
+    // unbonding`.
+    assert_eq!(
+        st.validator_cardinality(storage, Timestamp::from_seconds(13))
+            .unwrap(),
+        1
+    );
+    // at t=15 the unbonding has completed and there are no tokens
+    // staked. `on_bonded_slash` ought to have updated the
+    // cardinality.
+    assert_eq!(
+        st.validator_cardinality(storage, Timestamp::from_seconds(15))
+            .unwrap(),
+        0
+    );
+
+    // at time t=10, there are five bonded tokens and five unbonding
+    // tokens so 10 total staked.
+    let staked = st
+        .validator_staked(storage, Timestamp::from_seconds(10), "v1".to_string())
+        .unwrap();
+    assert_eq!(staked, Uint128::new(10));
+
+    // at time t=12 all of the bonded tokens have been slashed, but
+    // the unbonding ones are still unbonding.
+    let staked = st
+        .validator_staked(storage, Timestamp::from_seconds(12), "v1".to_string())
+        .unwrap();
+    assert_eq!(staked, Uint128::new(5));
+
+    // at time t=15 all of the unbonding has completed and there are
+    // no staked tokens.
+    let staked = st
+        .validator_staked(storage, Timestamp::from_seconds(15), "v1".to_string())
+        .unwrap();
+    assert_eq!(staked, Uint128::zero());
+}
+
+/// t=0 -> bond 10 tokens
+/// t=1 -> five tokens slashed, not registered
+/// t=2 -> unbond five tokens w/ five second unbonding period
+/// t=7 -> cardinality=0 w/ slash considered
+/// t=8 -> bond five tokens
+/// t=9 -> unbond five tokenw w/ five second unbonding period
+///
+/// t=9 -> register slash at time t=1
+/// t=9 -> cardinality history should now reflect reality.
+#[test]
+fn test_bonded_slash_updates_cardinality_history() {
+    let storage = &mut mock_dependencies().storage;
+    let st = StakeTracker::new("s", "v", "c");
+
+    st.on_delegate(
+        storage,
+        Timestamp::from_seconds(0),
+        "v1".to_string(),
+        Uint128::new(10),
+    )
+    .unwrap();
+    // t=1 slash of five tokens occurs.
+    st.on_undelegate(
+        storage,
+        Timestamp::from_seconds(2),
+        "v1".to_string(),
+        Uint128::new(5),
+        5,
+    )
+    .unwrap();
+
+    st.on_delegate(
+        storage,
+        Timestamp::from_seconds(8),
+        "v1".to_string(),
+        Uint128::new(5),
+    )
+    .unwrap();
+
+    // t=7, cardinality=0. but slash not registered so system thinks
+    // the cardinality is 1.
+    assert_eq!(
+        st.validator_cardinality(storage, Timestamp::from_seconds(7))
+            .unwrap(),
+        1
+    );
+
+    // register the slash
+    st.on_bonded_slash(
+        storage,
+        Timestamp::from_seconds(1),
+        "v1".to_string(),
+        Uint128::new(5),
+    )
+    .unwrap();
+
+    // t=0, cardinality=1
+    assert_eq!(
+        st.validator_cardinality(storage, Timestamp::from_seconds(0))
+            .unwrap(),
+        1
+    );
+    // t=1, cardinality=1
+    assert_eq!(
+        st.validator_cardinality(storage, Timestamp::from_seconds(1))
+            .unwrap(),
+        1
+    );
+
+    // t=7, cardinality=0. 5 slashed, 5 unbonded.
+    assert_eq!(
+        st.validator_cardinality(storage, Timestamp::from_seconds(7))
+            .unwrap(),
+        0
+    );
+    // t=8, cardinality=1. 5 bonded.
+    assert_eq!(
+        st.validator_cardinality(storage, Timestamp::from_seconds(8))
+            .unwrap(),
+        1
+    );
+}

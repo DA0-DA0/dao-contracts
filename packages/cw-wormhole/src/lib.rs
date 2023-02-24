@@ -91,7 +91,7 @@ where
     //    and can be converted into a key. required by the `range`
     //    call in the `load` method
     for<'a> <<&'a (K, u64) as PrimaryKey<'a>>::Suffix as KeyDeserialize>::Output:
-        'static + Into<u64>,
+        'static + Into<u64> + Copy,
 {
     /// Loads the value at a key at the specified time. If the key has
     /// no value at that time, returns `None`. Returns `Some(value)`
@@ -107,31 +107,49 @@ where
             .map(|(_k, v)| v))
     }
 
-    pub fn increment(&self, storage: &mut dyn Storage, k: K, t: u64, i: V) -> StdResult<()>
+    /// Increments the value of key `k` at time `t` by amount `i`.
+    pub fn increment(&self, storage: &mut dyn Storage, k: K, t: u64, i: V) -> StdResult<V>
     where
         V: Add<Output = V>,
     {
-        self.update(storage, k, t, &|v| v + i.clone())
+        self.update(storage, k, t, &mut |v, _| v + i.clone())
     }
 
-    pub fn decrement(&self, storage: &mut dyn Storage, k: K, t: u64, i: V) -> StdResult<()>
+    /// Decrements the value of key `k` at time `t` by amount `i`.
+    pub fn decrement(&self, storage: &mut dyn Storage, k: K, t: u64, i: V) -> StdResult<V>
     where
         V: Sub<Output = V>,
     {
-        self.update(storage, k, t, &|v| v - i.clone())
+        self.update(storage, k, t, &mut |v, _| v - i.clone())
     }
 
+    /// Gets the snapshot map with a namespace with a lifetime equal
+    /// to the lifetime of `&'a self`.
     const fn snapshots<'a>(&self) -> Map<'n, &'a (K, u64), V> {
         Map::new(self.namespace)
     }
 
-    fn update(
+    /// Updates `k` at time `t`. To do so, update is called on the
+    /// current value of `k` (or Default::default() if there is no
+    /// current value), and then all future (t' > t) values of `k`.
+    ///
+    /// For example, to perform a increment operation, the `update`
+    /// function used is `|v| v + amount`.
+    ///
+    /// The new value at `t` is returned.
+    pub fn update(
         &self,
         storage: &mut dyn Storage,
         k: K,
         t: u64,
-        update: &dyn Fn(V) -> V,
-    ) -> StdResult<()> {
+        update: &mut dyn FnMut(V, u64) -> V,
+    ) -> StdResult<V> {
+        // Update the value at t.
+        let prev = self.load(storage, k.clone(), t)?.unwrap_or_default();
+        let updated = update(prev, t);
+        self.snapshots().save(storage, &(k.clone(), t), &updated)?;
+
+        // Update all values where t' > t.
         for (t, v) in self
             .snapshots()
             .prefix(k.clone().into())
@@ -139,11 +157,13 @@ where
             .collect::<StdResult<Vec<_>>>()?
             .into_iter()
         {
-            self.snapshots()
-                .save(storage, &(k.clone(), t.into()), &update(v))?;
+            self.snapshots().save(
+                storage,
+                &(k.clone(), t.clone().into()),
+                &update(v, t.into()),
+            )?;
         }
-        let v = self.load(storage, k.clone(), t)?.unwrap_or_default();
-        self.snapshots().save(storage, &(k, t), &update(v))
+        Ok(updated)
     }
 }
 

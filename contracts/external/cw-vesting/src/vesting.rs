@@ -306,6 +306,28 @@ impl<'a> Payment<'a> {
         self.vesting.save(storage, &v)?;
         Ok(())
     }
+
+    /// Registers a slash of bonded tokens at time `t`.
+    ///
+    /// Invariants:
+    ///   1. The slash did indeed occur.
+    ///
+    /// Checking that these invariants are true is the responsibility
+    /// of the caller.
+    pub fn register_bonded_slash(
+        &self,
+        storage: &mut dyn Storage,
+        validator: String,
+        t: Timestamp,
+        slash: Uint128,
+    ) -> Result<(), ContractError> {
+        if slash.is_zero() {
+            Err(ContractError::NoSlash)
+        } else {
+            self.staking.on_bonded_slash(storage, t, validator, slash)?;
+            Ok(()) // TODO: vest.slashed += slash
+        }
+    }
 }
 
 impl Vest {

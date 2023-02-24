@@ -48,9 +48,11 @@ pub struct InstantiateMsg {
 #[cw_ownable]
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Used to fund the contract with cw20 tokens when that is the
-    /// token used for vesting. Otherwise, funds should be sent via
-    /// the instantiate message.
+    /// Fund the contract with a cw20 token. The `msg` field must have
+    /// the shape `{"fund":{}}`, and the amount sent must be the same
+    /// as the amount to be vested (as set during instantiation).
+    /// Anyone may call this method so long as the contract has not
+    /// yet been funded.
     Receive(Cw20ReceiveMsg),
     /// Distribute vested tokens to the vest receiver. Anyone may call
     /// this method.
@@ -119,8 +121,7 @@ pub enum ExecuteMsg {
     /// This is translated to a
     /// [MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50).
     /// `delegator_address` is automatically filled with the current
-    /// contract's address.  Only callable by Vesting Payment
-    /// Recipient
+    /// contract's address.
     WithdrawDelegatorReward {
         /// The validator to claim rewards for.
         validator: String,
@@ -132,6 +133,24 @@ pub enum ExecuteMsg {
     WithdrawCanceledPayment {
         /// The amount to withdraw.
         amount: Option<Uint128>,
+    },
+    /// Registers a slash event that impacted bonded (staked, not
+    /// unbonding) tokens with the contract. Anyone may call this
+    /// method.
+    RegisterBondedSlash {
+        /// The validator the slash occured for.
+        validator: String,
+        /// The time the slash event occured. Note that this is not
+        /// validated beyond validating that it is < now. This means
+        /// that if two slash events occur for a single validator, and
+        /// then this method is called, a dishonest sender could
+        /// register those two slashes as a single larger one at the
+        /// time of the first slash.
+        ///
+        /// The result of this is that the staked balances tracked in
+        /// this contract can not be relied on for accurate values in
+        /// the past. Staked balances will be correct at time=now.
+        time: Timestamp,
     },
 }
 
