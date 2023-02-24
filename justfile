@@ -28,7 +28,7 @@ integration-test: deploy-local workspace-optimize
 integration-test-dev test_name="":
 	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}
 
-bootstrap-dev: deploy-local workspace-optimize
+bootstrap-dev: deploy-local workspace-optimize-arm
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
 
 deploy-local: download-deps
@@ -63,3 +63,10 @@ workspace-optimize:
 		--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 		--platform linux/amd64 \
 		cosmwasm/workspace-optimizer:0.12.11
+
+workspace-optimize-arm:
+    docker run --rm -v "$(pwd)":/code \
+        --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
+        --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
+        --platform linux/arm64 \
+        cosmwasm/workspace-optimizer-arm64:0.12.11
