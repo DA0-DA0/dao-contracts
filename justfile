@@ -28,7 +28,7 @@ integration-test: deploy-local workspace-optimize
 integration-test-dev test_name="":
 	SKIP_CONTRACT_STORE=true RUST_LOG=info CONFIG='{{`pwd`}}/ci/configs/cosm-orc/local.yaml' cargo integration-test {{test_name}}
 
-bootstrap-dev: deploy-local workspace-optimize
+bootstrap-dev: deploy-local workspace-optimize-arm
 	RUST_LOG=info CONFIG={{orc_config}} cargo run bootstrap-env
 
 deploy-local: download-deps
@@ -70,7 +70,3 @@ workspace-optimize-arm:
         --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
         --platform linux/arm64 \
         cosmwasm/workspace-optimizer-arm64:0.12.11
-    # rename the wasm files so that they work with cosm-orc
-    # integration test contract names (which are expected to be the
-    # contract name, without the aarch64 postfix).
-    for file in artifacts/*-aarch64.wasm; do mv -- "$file" "${file%-aarch64.wasm}.wasm"; done
