@@ -8,7 +8,9 @@ use crate::vesting::Schedule;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// The optional owner address of the contract.
+    /// The optional owner address of the contract. If an owner is
+    /// specified, the owner may cancel the vesting contract at any
+    /// time and withdraw unvested funds.
     pub owner: Option<String>,
     /// The receiver address of the vesting tokens.
     pub recipient: String,
@@ -34,8 +36,9 @@ pub struct InstantiateMsg {
     pub vesting_duration_seconds: u64,
 
     /// The unbonding duration for the chain this contract is deployed
-    /// on. Smart contracts do not have access to this data so it must
-    /// be provided by the caller.
+    /// on. Smart contracts do not have access to this data as
+    /// stargate queries are disabled on most chains, and cosmwasm-std
+    /// provides no way to query it.
     ///
     /// This value being too high will cause this contract to hold
     /// funds for longer than needed, this value being too low will
@@ -135,8 +138,9 @@ pub enum ExecuteMsg {
         amount: Option<Uint128>,
     },
     /// Registers a slash event that impacted bonded (staked, not
-    /// unbonding) tokens with the contract. Anyone may call this
-    /// method.
+    /// unbonding) tokens with the contract. Only callable by the
+    /// owner as the contract is unable to verify that the slash
+    /// actually occured. The owner is assumed to be honest.
     RegisterBondedSlash {
         /// The validator the slash occured for.
         validator: String,

@@ -157,12 +157,65 @@ where
             .collect::<StdResult<Vec<_>>>()?
             .into_iter()
         {
-            self.snapshots().save(
-                storage,
-                &(k.clone(), t.clone().into()),
-                &update(v, t.into()),
-            )?;
+            self.snapshots()
+                .save(storage, &(k.clone(), t.into()), &update(v, t.into()))?;
         }
+        Ok(updated)
+    }
+
+    /// Updates a single key `k` at time `t` without performing an
+    /// update on values of `(k, t')` where `t' > t`.
+    ///
+    /// This is safe to use if updating a the key at the specified
+    /// time is not expected to impact values of the key \forall t' >
+    /// t. If you want to update a key and also update future values
+    /// of that key, (which is likely what you normally want) use the
+    /// `update` method.
+    ///
+    /// ```text
+    ///                         Unbonding Slash (Tokens / Time)
+    /// 30 +------------------------------------------------------------------+
+    ///    |            +             +            +             +            |
+    ///    |                                                w/o slash +.....+ |
+    /// 25 |-+                                               w/ slash =======-|
+    ///    |                                                                  |
+    ///    |                                                                  |
+    ///    |                                                                  |
+    /// 20 |===========================............+.............+          +-|
+    ///    |                          =                          :            |
+    ///    |                          =                          :            |
+    /// 15 |-+                        ============================          +-|
+    ///    |                                                     =            |
+    ///    |                                                     =            |
+    ///    |                                                     =            |
+    /// 10 |-+                                                   =============|
+    ///    |                                                                  |
+    ///    |            +             +            +             +            |
+    ///  5 +------------------------------------------------------------------+
+    ///    0            1             2            3             4            5
+    ///    ^                          ^                          ^
+    ///    |                          |                          |
+    ///  Unbonding Start            Slash                      Unbonded
+    ///
+    ///                                   Time ->
+    /// ```
+    ///
+    /// For example, consider the above graph showing bonded +
+    /// unbonded tokens over time with a slash ocuring at `t=2`. In
+    /// this case, the slash does not impact the value at `t=4` (when
+    /// unbonding completes), but it does change intermediate values,
+    /// so it is safe to use `dangerously_update` to register the
+    /// slash at t=2.
+    pub fn dangerously_update(
+        &self,
+        storage: &mut dyn Storage,
+        k: K,
+        t: u64,
+        update: &mut dyn FnMut(V, u64) -> V,
+    ) -> StdResult<V> {
+        let prev = self.load(storage, k.clone(), t)?.unwrap_or_default();
+        let updated = update(prev, t);
+        self.snapshots().save(storage, &(k, t), &updated)?;
         Ok(updated)
     }
 }

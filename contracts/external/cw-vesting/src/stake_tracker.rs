@@ -91,7 +91,7 @@ impl<'a> StakeTracker<'a> {
         )?;
         let new = self.validators.decrement(
             storage,
-            validator.clone(),
+            validator,
             t.seconds() + unbonding_duration_seconds,
             amount,
         )?;
@@ -166,6 +166,41 @@ impl<'a> StakeTracker<'a> {
             };
         }
 
+        Ok(())
+    }
+
+    /// Registers a slash of unbonding tokens.
+    ///
+    /// Invariants:
+    ///   1. amount is non-zero.
+    ///   2. the slash did indeed occur.
+    ///
+    /// Checking that these invariants are true is the responsibility
+    /// of the caller.
+    pub fn on_unbonding_slash(
+        &self,
+        storage: &mut dyn Storage,
+        t: Timestamp,
+        validator: String,
+        amount: Uint128,
+    ) -> StdResult<()> {
+        // invariant (2) provides that a slash did occur at time `t`,
+        // and that the `amount` <= `total_unbonding`. As such, we
+        // know at some time `t' > t`, total_staked, and
+        // validator_staked are scheduled to decrease by an amount >=
+        // `amount`. this means that we can safely use
+        // `dangerously_update` as we are only adding an intermediate
+        // step to reach a future value (`staked - total_unbonding`).
+
+        self.total_staked
+            .dangerously_update(storage, (), t.seconds(), &mut |v, _| v - amount)?;
+        let new =
+            self.validators
+                .dangerously_update(storage, validator, t.seconds(), &mut |v, _| v - amount)?;
+        if new.is_zero() {
+            self.cardinality
+                .dangerously_update(storage, (), t.seconds(), &mut |v, _| v - 1)?;
+        }
         Ok(())
     }
 

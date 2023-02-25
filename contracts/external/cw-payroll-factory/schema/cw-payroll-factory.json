@@ -257,7 +257,7 @@
             ]
           },
           "owner": {
-            "description": "The optional owner address of the contract.",
+            "description": "The optional owner address of the contract. If an owner is specified, the owner may cancel the vesting contract at any time and withdraw unvested funds.",
             "type": [
               "string",
               "null"
@@ -299,7 +299,7 @@
             ]
           },
           "unbonding_duration_seconds": {
-            "description": "The unbonding duration for the chain this contract is deployed on. Smart contracts do not have access to this data so it must be provided by the caller.\n\nThis value being too high will cause this contract to hold funds for longer than needed, this value being too low will reduce the quality of error messages and require additional external calculations with correct values to withdraw avaliable funds from the contract.",
+            "description": "The unbonding duration for the chain this contract is deployed on. Smart contracts do not have access to this data as stargate queries are disabled on most chains, and cosmwasm-std provides no way to query it.\n\nThis value being too high will cause this contract to hold funds for longer than needed, this value being too low will reduce the quality of error messages and require additional external calculations with correct values to withdraw avaliable funds from the contract.",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0

@@ -261,3 +261,134 @@ fn test_bonded_slash_updates_cardinality_history() {
         1
     );
 }
+
+/// @t=0, staked to two validators
+/// unbonding_duration = 5
+///
+/// @t=1, unbond from validator 1
+/// @t=2, slash of all unbonding tokens for validator 1, cardinality reduced
+/// @t=3, unbond from validator 2
+/// @t=4, t=2 slash registered
+#[test]
+fn test_unbonding_slash() {
+    let storage = &mut mock_dependencies().storage;
+    let st = StakeTracker::new("s", "v", "c");
+
+    let delegation = Uint128::new(10);
+    let unbonding_duration = 5;
+
+    // @t=0, staked to two validators
+    st.on_delegate(
+        storage,
+        Timestamp::from_seconds(0),
+        "v1".to_string(),
+        delegation,
+    )
+    .unwrap();
+    st.on_delegate(
+        storage,
+        Timestamp::from_seconds(0),
+        "v2".to_string(),
+        delegation,
+    )
+    .unwrap();
+
+    // @t=1, unbond from validator 1
+    st.on_undelegate(
+        storage,
+        Timestamp::from_seconds(1),
+        "v1".to_string(),
+        delegation,
+        unbonding_duration,
+    )
+    .unwrap();
+
+    // @t=3, unbond from validator 2
+    st.on_undelegate(
+        storage,
+        Timestamp::from_seconds(3),
+        "v2".to_string(),
+        delegation,
+        unbonding_duration,
+    )
+    .unwrap();
+
+    // check that values @t=2 are correct w/o slash registered.
+    let total = st
+        .total_staked(storage, Timestamp::from_seconds(2))
+        .unwrap();
+    let cardinality = st
+        .validator_cardinality(storage, Timestamp::from_seconds(2))
+        .unwrap();
+    let v1 = st
+        .validator_staked(storage, Timestamp::from_seconds(2), "v1".to_string())
+        .unwrap();
+    let v2 = st
+        .validator_staked(storage, Timestamp::from_seconds(2), "v2".to_string())
+        .unwrap();
+
+    assert_eq!(total, delegation + delegation);
+    assert_eq!(cardinality, 2);
+    assert_eq!(v1, delegation);
+    assert_eq!(v2, delegation);
+
+    // check that the cardinality reduces after v1's unbond @t=1.
+    let cardinality_after_v1_unbond = st
+        .validator_cardinality(storage, Timestamp::from_seconds(1 + unbonding_duration))
+        .unwrap();
+    let v1_after_unbond = st
+        .validator_staked(storage, Timestamp::from_seconds(6), "v1".to_string())
+        .unwrap();
+    assert_eq!(v1_after_unbond, Uint128::zero());
+    assert_eq!(cardinality_after_v1_unbond, 1);
+
+    // @t=2, slash of all unbonding tokens for validator 1
+    // cardinality reduced to 1 at t=2.
+    st.on_unbonding_slash(
+        storage,
+        Timestamp::from_seconds(2),
+        "v1".to_string(),
+        delegation,
+    )
+    .unwrap();
+
+    // check that cardinality, validator staked, and total staked now look as expected.
+    let cardinality = st
+        .validator_cardinality(storage, Timestamp::from_seconds(2))
+        .unwrap();
+    assert_eq!(cardinality, 1);
+    let v1 = st
+        .validator_staked(storage, Timestamp::from_seconds(2), "v1".to_string())
+        .unwrap();
+    assert_eq!(v1, Uint128::zero());
+
+    // post-slash value remains zero.
+    let v1 = st
+        .validator_staked(storage, Timestamp::from_seconds(8), "v1".to_string())
+        .unwrap();
+    assert_eq!(v1, Uint128::zero());
+
+    // @t=6, two more seconds of unbonding left for v2.
+    let v2 = st
+        .validator_staked(storage, Timestamp::from_seconds(6), "v2".to_string())
+        .unwrap();
+    assert_eq!(v2, delegation);
+    let cardinality = st
+        .validator_cardinality(storage, Timestamp::from_seconds(6))
+        .unwrap();
+    assert_eq!(cardinality, 1);
+
+    // @t=8 all unbonding has completed.
+    let v2 = st
+        .validator_staked(storage, Timestamp::from_seconds(8), "v2".to_string())
+        .unwrap();
+    assert_eq!(v2, Uint128::zero());
+    let v1 = st
+        .validator_staked(storage, Timestamp::from_seconds(8), "v1".to_string())
+        .unwrap();
+    assert_eq!(v1, Uint128::zero());
+    let cardinality = st
+        .validator_cardinality(storage, Timestamp::from_seconds(8))
+        .unwrap();
+    assert_eq!(cardinality, 0);
+}

@@ -106,15 +106,5 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
 
     let end = balance(&user_addr, &chain.orc.client);
 
-    assert!(end > start, "{} > {}", end, start);
-
-    // if we were to query the unbonding duration from a smart
-    // contract, we'd get an error like this:
-    //
-    // chain
-    //     .orc
-    //     .query(CONTRACT_NAME, &QueryMsg::UnbondingDurationSeconds {})
-    //     .unwrap_err()
-    //     .to_string()
-    //     .contains("Unsupported query type: Stargate queries are disabled");
+    assert!(end > start, "{end} > {start}");
 }

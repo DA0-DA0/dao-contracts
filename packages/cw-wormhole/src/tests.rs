@@ -72,3 +72,40 @@ fn test_update_visits_in_ascending_order() {
 
     assert_eq!(seen, vec![(8, 0), (10, 10), (11, 9)])
 }
+
+/// Construct's the graph shown in the `dangerously_update` docstring
+/// and verifies that the method behaves as expected.
+#[test]
+fn test_dangerous_update() {
+    let storage = &mut mock_dependencies().storage;
+    let w: Wormhole<(), u32> = Wormhole::new("ns");
+
+    // (0) -> 20
+    // (4) -> 10
+    w.increment(storage, (), 0, 20).unwrap();
+    w.decrement(storage, (), 4, 10).unwrap();
+
+    // (3) -> 20
+    let v = w.load(storage, (), 3).unwrap().unwrap();
+    assert_eq!(v, 20);
+
+    // (2) -> 15
+    let also_v = w
+        .dangerously_update(storage, (), 2, &mut |v, _| v - 5)
+        .unwrap();
+
+    // (2) -> 15
+    let v = w.load(storage, (), 2).unwrap().unwrap();
+    assert_eq!(v, 15);
+    // check that returned value is same as loaded one.
+    assert_eq!(also_v, 15);
+
+    // (3) -> 15
+    let v = w.load(storage, (), 3).unwrap().unwrap();
+    assert_eq!(v, 15);
+
+    // (4) -> 10, as dangerously_update should not change already set
+    // values.
+    let v = w.load(storage, (), 4).unwrap().unwrap();
+    assert_eq!(v, 10);
+}

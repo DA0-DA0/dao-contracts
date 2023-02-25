@@ -64,6 +64,11 @@ export type ExecuteMsg = {
     amount?: Uint128 | null;
   };
 } | {
+  register_bonded_slash: {
+    time: Timestamp;
+    validator: string;
+  };
+} | {
   update_ownership: Action;
 };
 export type Binary = string;

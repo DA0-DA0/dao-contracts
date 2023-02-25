@@ -32,7 +32,7 @@
         ]
       },
       "owner": {
-        "description": "The optional owner address of the contract.",
+        "description": "The optional owner address of the contract. If an owner is specified, the owner may cancel the vesting contract at any time and withdraw unvested funds.",
         "type": [
           "string",
           "null"
@@ -74,7 +74,7 @@
         ]
       },
       "unbonding_duration_seconds": {
-        "description": "The unbonding duration for the chain this contract is deployed on. Smart contracts do not have access to this data so it must be provided by the caller.\n\nThis value being too high will cause this contract to hold funds for longer than needed, this value being too low will reduce the quality of error messages and require additional external calculations with correct values to withdraw avaliable funds from the contract.",
+        "description": "The unbonding duration for the chain this contract is deployed on. Smart contracts do not have access to this data as stargate queries are disabled on most chains, and cosmwasm-std provides no way to query it.\n\nThis value being too high will cause this contract to hold funds for longer than needed, this value being too low will reduce the quality of error messages and require additional external calculations with correct values to withdraw avaliable funds from the contract.",
         "type": "integer",
         "format": "uint64",
         "minimum": 0.0
@@ -181,7 +181,7 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Used to fund the contract with cw20 tokens when that is the token used for vesting. Otherwise, funds should be sent via the instantiate message.",
+        "description": "Fund the contract with a cw20 token. The `msg` field must have the shape `{\"fund\":{}}`, and the amount sent must be the same as the amount to be vested (as set during instantiation). Anyone may call this method so long as the contract has not yet been funded.",
         "type": "object",
         "required": [
           "receive"
@@ -351,7 +351,7 @@
         "additionalProperties": false
       },
       {
-        "description": "This is translated to a [MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.  Only callable by Vesting Payment Recipient",
+        "description": "This is translated to a [MsgWithdrawDelegatorReward](https://github.com/cosmos/cosmos-sdk/blob/v0.42.4/proto/cosmos/distribution/v1beta1/tx.proto#L42-L50). `delegator_address` is automatically filled with the current contract's address.",
         "type": "object",
         "required": [
           "withdraw_delegator_reward"
@@ -393,6 +393,38 @@
                     "type": "null"
                   }
                 ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Registers a slash event that impacted bonded (staked, not unbonding) tokens with the contract. Only callable by the owner as the contract is unable to verify that the slash actually occured. The owner is assumed to be honest.",
+        "type": "object",
+        "required": [
+          "register_bonded_slash"
+        ],
+        "properties": {
+          "register_bonded_slash": {
+            "type": "object",
+            "required": [
+              "time",
+              "validator"
+            ],
+            "properties": {
+              "time": {
+                "description": "The time the slash event occured. Note that this is not validated beyond validating that it is < now. This means that if two slash events occur for a single validator, and then this method is called, a dishonest sender could register those two slashes as a single larger one at the time of the first slash.\n\nThe result of this is that the staked balances tracked in this contract can not be relied on for accurate values in the past. Staked balances will be correct at time=now.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Timestamp"
+                  }
+                ]
+              },
+              "validator": {
+                "description": "The validator the slash occured for.",
+                "type": "string"
               }
             },
             "additionalProperties": false
