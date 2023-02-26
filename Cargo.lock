@@ -297,9 +297,9 @@ checksum = "5827cebf4670468b8772dd191856768aedcb1b0278a04f989f7766351917b9dc"
 
 [[package]]
 name = "cosm-orc"
-version = "3.0.2"
+version = "4.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09d7b3a13272e1fac3bea1f95bafff21f737052cbb8e47fff66550a2dc71ce63"
+checksum = "6676a17fddc94aac5fe07bad646d99b7f7cef1f0cc2c74b61af25733cbbb9f08"
 dependencies = [
  "config",
  "cosm-tome",
@@ -313,13 +313,14 @@ dependencies = [
 
 [[package]]
 name = "cosm-tome"
-version = "0.1.1"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3daaf99d2364465e81ac948e6c27ecdc63aab74ab948d9f526793009dacd9d28"
+checksum = "2cb3cd1223843b9836b99b4eb275a49d9e94b019bea61448cd29977c0a282fdc"
 dependencies = [
  "async-trait",
  "cosmrs",
  "regex",
+ "schemars",
  "serde",
  "serde_json",
  "thiserror",
@@ -2321,7 +2322,6 @@ dependencies = [
  "serde",
  "serde_json",
  "test-context",
- "tokio",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 use std::{str::FromStr, time::Duration};
 
-use cosm_orc::orchestrator::{Address, Coin, Denom};
+use cosm_orc::orchestrator::{cosm_orc::tokio_block, Address, Coin, Denom};
 use cosm_tome::clients::client::{CosmTome, CosmosClient};
 use cw_vesting::{
     msg::{ExecuteMsg, InstantiateMsg},
@@ -10,15 +10,12 @@ use cw_vesting::{
 use cosmwasm_std::Uint128;
 use test_context::test_context;
 
-use tokio;
-
 use crate::helpers::chain::Chain;
 
 const CONTRACT_NAME: &str = "cw_vesting";
 // junod query staking validators on the juno docker node
 const VALIDATOR: &str = "junovaloper16mzxzn5xcrgj7jun0wmggy49ksl7glzgplg8z3";
 
-#[tokio::main]
 async fn balance<C: CosmosClient>(addr: &str, client: &CosmTome<C>) -> u128 {
     client
         .bank_query_balance(
@@ -38,8 +35,33 @@ async fn balance<C: CosmosClient>(addr: &str, client: &CosmTome<C>) -> u128 {
 #[test]
 #[ignore]
 fn test_cw_vesting_staking(chain: &mut Chain) {
-    let user_addr = chain.users["user2"].account.address.clone();
-    let user_key = chain.users["user2"].key.clone();
+    let user_addr = chain.users["user5"].account.address.clone();
+    let user_key = chain.users["user5"].key.clone();
+
+    // let pk = tokio_block(chain.orc.client.tendermint_query_latest_validator_set(None))
+    //     .unwrap()
+    //     .validators
+    //     .into_iter()
+    //     .next()
+    //     .unwrap()
+    //     .pubkey
+    //     .unwrap();
+    // let id = pk.account_id("junovaloper").unwrap();
+    // let validator = Address::from(id).to_string();
+
+    let addr = tokio_block(chain.orc.client.tendermint_query_latest_validator_set(None))
+        .unwrap()
+        .validators
+        .into_iter()
+        .next()
+        .unwrap()
+        .address;
+    let validator = Address::new("junovaloper", &addr.to_bytes())
+        .unwrap()
+        .to_string();
+
+    // at this point we have the bytes of the hash of the public key.
+    println!("{validator}");
 
     chain
         .orc
@@ -53,7 +75,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
                 title: "title".to_string(),
                 description: Some("description".to_string()),
 
-                total: Uint128::new(950_000_000),
+                total: Uint128::new(100),
                 denom: cw_vesting::UncheckedDenom::Native("ujunox".to_string()),
 
                 schedule: Schedule::SaturatingLinear,
@@ -65,7 +87,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
             None,
             vec![Coin {
                 denom: Denom::from_str("ujunox").unwrap(),
-                amount: 950_000_000,
+                amount: 100,
             }],
         )
         .unwrap();
@@ -76,7 +98,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
             CONTRACT_NAME,
             "stake_cw_vesting",
             &ExecuteMsg::Delegate {
-                validator: VALIDATOR.to_string(),
+                validator,
                 amount: Uint128::new(950_000_000),
             },
             &user_key,
@@ -89,7 +111,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
         .poll_for_n_blocks(10, Duration::from_secs(100), false)
         .unwrap();
 
-    let start = balance(&user_addr, &chain.orc.client);
+    let start = tokio_block(balance(&user_addr, &chain.orc.client));
 
     chain
         .orc
@@ -104,7 +126,7 @@ fn test_cw_vesting_staking(chain: &mut Chain) {
         )
         .unwrap();
 
-    let end = balance(&user_addr, &chain.orc.client);
+    let end = tokio_block(balance(&user_addr, &chain.orc.client));
 
     assert!(end > start, "{end} > {start}");
 }

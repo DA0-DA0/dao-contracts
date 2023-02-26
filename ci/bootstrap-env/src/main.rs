@@ -37,6 +37,7 @@ fn main() -> Result<()> {
     let key = SigningKey {
         name: account.name,
         key: Key::Mnemonic(account.mnemonic),
+        derivation_path: cfg.chain_cfg.derivation_path.clone(),
     };
     let addr = account.address;
 
