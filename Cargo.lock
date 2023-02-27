@@ -335,7 +335,19 @@ checksum = "673d31bd830c0772d78545de20d975129b6ab2f7db4e4e9313c3b8777d319194"
 dependencies = [
  "prost 0.11.6",
  "prost-types",
- "tendermint-proto",
+ "tendermint-proto 0.26.0",
+ "tonic",
+]
+
+[[package]]
+name = "cosmos-sdk-proto"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4776e787b24d9568dd61d3237eeb4eb321d622fb881b858c7b82806420e87d4"
+dependencies = [
+ "prost 0.11.6",
+ "prost-types",
+ "tendermint-proto 0.27.0",
  "tonic",
 ]
 
@@ -346,7 +358,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fa07096219b1817432b8f1e47c22e928c64bbfd231fc08f0a98f0e7ddd602b7"
 dependencies = [
  "bip32",
- "cosmos-sdk-proto",
+ "cosmos-sdk-proto 0.15.0",
  "ecdsa",
  "eyre",
  "getrandom",
@@ -2301,6 +2313,7 @@ dependencies = [
  "assert_matches",
  "cosm-orc",
  "cosm-tome",
+ "cosmos-sdk-proto 0.16.0",
  "cosmwasm-std",
  "cw-utils 0.16.0",
  "cw-vesting",
@@ -3282,7 +3295,7 @@ dependencies = [
  "signature",
  "subtle",
  "subtle-encoding",
- "tendermint-proto",
+ "tendermint-proto 0.26.0",
  "time",
  "zeroize",
 ]
@@ -3320,6 +3333,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "tendermint-proto"
+version = "0.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5895470f28c530f8ae8c4071bf8190304ce00bd131d25e81730453124a3375c"
+dependencies = [
+ "bytes",
+ "flex-error",
+ "num-derive",
+ "num-traits",
+ "prost 0.11.6",
+ "prost-types",
+ "serde",
+ "serde_bytes",
+ "subtle-encoding",
+ "time",
+]
+
+[[package]]
 name = "tendermint-rpc"
 version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3343,7 +3374,7 @@ dependencies = [
  "subtle-encoding",
  "tendermint",
  "tendermint-config",
- "tendermint-proto",
+ "tendermint-proto 0.26.0",
  "thiserror",
  "time",
  "tokio",

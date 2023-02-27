@@ -30,6 +30,13 @@ How do we know our requirements have been met?
   together in some complex scenerios.
 - `src/tests.rs` has some additional integration tests from an earlier
   iteration of this contract.
+- `ci/integration-tests/src/tests/cw_vesting_test.rs` tests a bond,
+  withdraw rewards, unbond flow with this contract to ensure that it
+  behaves correctly against a real cosmos-SDK blockchain. This test is
+  important because cw-multi-test has some bugs in its x/staking
+  implementaiton. Tests demonstrating these can be found in
+  `test_slash_during_unbonding` and `test_redelegation` in the suite
+  tests.
 
 ## Slashing
 
