@@ -4,23 +4,23 @@ A CosmWasm KV store that allows setting values from the past. For
 example:
 
 ```rust
-use cosmwasm_std::{testing::mock_dependencies, Uint128};
+use cosmwasm_std::{testing::mock_dependencies, Uint128, Addr};
 use cw_wormhole::Wormhole;
 let storage = &mut mock_dependencies().storage;
 let w: Wormhole<Addr, Uint128> = Wormhole::new("ns");
 let key = Addr::unchecked("violet");
 
 // increment the value by one at time 10.
-fm.increment(storage, key.clone(), 10, Uint128::new(1))
+w.increment(storage, key.clone(), 10, Uint128::new(1))
     .unwrap();
 
 // increment the value by two at time 9.
-fm.increment(storage, key.clone(), 9, Uint128::new(2))
+w.increment(storage, key.clone(), 9, Uint128::new(2))
     .unwrap();
 
 // the value at time 10 is now three.
 assert_eq!(
-    fm.load(storage, key, 10).unwrap(),
+    w.load(storage, key, 10).unwrap(),
     Some(Uint128::new(3))
 );
 ```
@@ -35,10 +35,11 @@ essay](https://gist.github.com/0xekez/15fab6436ed593cbd59f0bdf7ecf1f61).
 
 ## Limitations
 
-Presently, reference types may not be used as keys. Consider the trait
-bound:
+Reference types may not be used as keys.
 
-```rust
+Consider the trait bound:
+
+```text
     for<'a> &'a (K, u64): PrimaryKey<'a>
 ```
 
@@ -49,7 +50,7 @@ store tuples of this type in the map.
 In order to allow K to have a lifetime (call it `'k`), we'd need to
 write:
 
-```rust
+```text
     for<'a where 'a: 'k> &'a (K, u64): PrimaryKey<'a>
 ```
 

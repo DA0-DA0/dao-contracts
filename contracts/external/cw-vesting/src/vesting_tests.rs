@@ -225,7 +225,7 @@ fn test_complex_close() {
 
     payment.distribute(storage, time, None).unwrap();
     payment
-        .withdraw_canceled(storage, time, None, &Addr::unchecked("owner"))
+        .withdraw_canceled_payment(storage, time, None, &Addr::unchecked("owner"))
         .unwrap();
 
     let vest = payment.get_vest(storage).unwrap();
@@ -243,7 +243,7 @@ fn test_complex_close() {
         .unwrap();
     time = time.plus_seconds(25);
     payment
-        .withdraw_canceled(storage, time, None, &Addr::unchecked("owner"))
+        .withdraw_canceled_payment(storage, time, None, &Addr::unchecked("owner"))
         .unwrap();
     let vest = payment.get_vest(storage).unwrap();
     assert_eq!(

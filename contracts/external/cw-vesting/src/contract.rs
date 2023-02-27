@@ -112,7 +112,7 @@ pub fn execute(
         }
         ExecuteMsg::WithdrawDelegatorReward { validator } => execute_withdraw_rewards(validator),
         ExecuteMsg::WithdrawCanceledPayment { amount } => {
-            execute_withdraw_canceled(deps, env, amount)
+            execute_withdraw_canceled_payment(deps, env, amount)
         }
         ExecuteMsg::RegisterSlash {
             validator,
@@ -190,7 +190,7 @@ pub fn execute_distribute(
         .add_message(msg))
 }
 
-pub fn execute_withdraw_canceled(
+pub fn execute_withdraw_canceled_payment(
     deps: DepsMut,
     env: Env,
     amount: Option<Uint128>,
@@ -198,10 +198,10 @@ pub fn execute_withdraw_canceled(
     let owner = cw_ownable::get_ownership(deps.storage)?
         .owner
         .ok_or(OwnershipError::NoOwner)?;
-    let msg = PAYMENT.withdraw_canceled(deps.storage, env.block.time, amount, &owner)?;
+    let msg = PAYMENT.withdraw_canceled_payment(deps.storage, env.block.time, amount, &owner)?;
 
     Ok(Response::new()
-        .add_attribute("method", "withdraw_canceled")
+        .add_attribute("method", "withdraw_canceled_payment")
         .add_message(msg))
 }
 

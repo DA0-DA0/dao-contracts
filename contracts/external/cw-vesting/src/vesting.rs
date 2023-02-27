@@ -255,7 +255,7 @@ impl<'a> Payment<'a> {
         }
     }
 
-    pub fn withdraw_canceled(
+    pub fn withdraw_canceled_payment(
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
