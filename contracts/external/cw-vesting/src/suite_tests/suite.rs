@@ -1,4 +1,4 @@
-use cosmwasm_std::{coins, testing::mock_env, Addr, Decimal, Uint128, Validator};
+use cosmwasm_std::{coins, testing::mock_env, Addr, Decimal, Timestamp, Uint128, Validator};
 use cw_multi_test::{App, BankSudo, Executor, StakingInfo, StakingSudo};
 use dao_testing::contracts::cw_vesting_contract;
 
@@ -109,9 +109,22 @@ impl SuiteBuilder {
             vesting,
         }
     }
+
+    pub fn with_start_time(mut self, t: Timestamp) -> Self {
+        self.instantiate.start_time = Some(t);
+        self
+    }
 }
 
 impl Suite {
+    pub fn time(&self) -> Timestamp {
+        self.app.block_info().time
+    }
+
+    pub fn a_second_passes(&mut self) {
+        self.app.update_block(|b| b.time = b.time.plus_seconds(1))
+    }
+
     pub fn a_day_passes(&mut self) {
         self.app
             .update_block(|b| b.time = b.time.plus_seconds(60 * 60 * 24))
@@ -125,6 +138,22 @@ impl Suite {
         self.a_day_passes();
         self.a_day_passes();
         self.a_day_passes();
+    }
+
+    pub fn slash(&mut self, percent: u64) {
+        self.app
+            .sudo(
+                StakingSudo::Slash {
+                    validator: "validator".to_string(),
+                    percentage: Decimal::percent(percent),
+                }
+                .into(),
+            )
+            .unwrap();
+    }
+
+    pub fn process_unbonds(&mut self) {
+        self.app.sudo(StakingSudo::ProcessQueue {}.into()).unwrap();
     }
 }
 
@@ -250,8 +279,46 @@ impl Suite {
             .map(|_| ())
     }
 
-    pub fn process_unbonds(&mut self) {
-        self.app.sudo(StakingSudo::ProcessQueue {}.into()).unwrap();
+    pub fn register_bonded_slash<S: Into<String>>(
+        &mut self,
+        sender: S,
+        amount: Uint128,
+        time: Timestamp,
+    ) -> anyhow::Result<()> {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender),
+                self.vesting.clone(),
+                &ExecuteMsg::RegisterSlash {
+                    validator: "validator".to_string(),
+                    time,
+                    amount,
+                    during_unbonding: false,
+                },
+                &[],
+            )
+            .map(|_| ())
+    }
+
+    pub fn register_unbonding_slash<S: Into<String>>(
+        &mut self,
+        sender: S,
+        amount: Uint128,
+        time: Timestamp,
+    ) -> anyhow::Result<()> {
+        self.app
+            .execute_contract(
+                Addr::unchecked(sender),
+                self.vesting.clone(),
+                &ExecuteMsg::RegisterSlash {
+                    validator: "validator".to_string(),
+                    time,
+                    amount,
+                    during_unbonding: true,
+                },
+                &[],
+            )
+            .map(|_| ())
     }
 }
 
@@ -261,6 +328,13 @@ impl Suite {
         self.app
             .wrap()
             .query_wasm_smart(&self.vesting, &QueryMsg::Info {})
+            .unwrap()
+    }
+
+    pub fn query_distributable(&self) -> Uint128 {
+        self.app
+            .wrap()
+            .query_wasm_smart(&self.vesting, &QueryMsg::Distributable { t: None })
             .unwrap()
     }
 

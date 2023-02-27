@@ -137,11 +137,15 @@ pub enum ExecuteMsg {
         /// The amount to withdraw.
         amount: Option<Uint128>,
     },
-    /// Registers a slash event that impacted bonded (staked, not
-    /// unbonding) tokens with the contract. Only callable by the
-    /// owner as the contract is unable to verify that the slash
-    /// actually occured. The owner is assumed to be honest.
-    RegisterBondedSlash {
+    /// Registers a slash event bonded or unbonding tokens with the
+    /// contract. Only callable by the owner as the contract is unable
+    /// to verify that the slash actually occured. The owner is
+    /// assumed to be honest.
+    ///
+    /// A future version of this contract may be able to
+    /// permissionlessly take slashing evidence:
+    /// <https://github.com/CosmWasm/mesh-security/issues/35>
+    RegisterSlash {
         /// The validator the slash occured for.
         validator: String,
         /// The time the slash event occured. Note that this is not
@@ -155,6 +159,13 @@ pub enum ExecuteMsg {
         /// this contract can not be relied on for accurate values in
         /// the past. Staked balances will be correct at time=now.
         time: Timestamp,
+        /// The number of tokens that THIS CONTRACT lost as a result
+        /// of the slash. Note that this differs from the total amount
+        /// slashed from the validator.
+        amount: Uint128,
+        /// If the slash happened during unbonding. Set to false in
+        /// the common case where the slash impacted bonding tokens.
+        during_unbonding: bool,
     },
 }
 

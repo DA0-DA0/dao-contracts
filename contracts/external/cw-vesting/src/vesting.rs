@@ -15,14 +15,21 @@ pub struct Payment<'a> {
 
 #[cw_serde]
 pub struct Vest {
-    /// vested(t), where t is seconds since start time.
+    /// vested(t), where t is seconds since start_time.
     vested: Curve,
     start_time: Timestamp,
 
     pub status: Status,
     pub recipient: Addr,
     pub denom: CheckedDenom,
+
+    /// The number of tokens that have been claimed by the vest receiver.
     pub claimed: Uint128,
+    /// The number of tokens that have been slashed while staked by
+    /// the vest receiver. Slashed tokens count against the number of
+    /// tokens the receiver is entitled to.
+    pub slashed: Uint128,
+
     pub title: String,
     pub description: Option<String>,
 }
@@ -32,7 +39,7 @@ pub enum Status {
     Unfunded,
     Funded,
     Canceled {
-        /// owner_withdrawable(t). This is monotonicly decreasing and
+        /// owner_withdrawable(t). This is monotonically decreasing and
         /// will be zero once the owner has completed withdrawing
         /// their funds.
         owner_withdrawable: Uint128,
@@ -96,7 +103,7 @@ impl<'a> Payment<'a> {
     fn liquid(&self, vesting: &Vest, staked: Uint128) -> Uint128 {
         match vesting.status {
             Status::Unfunded => Uint128::zero(),
-            Status::Funded => vesting.total() - vesting.claimed - staked,
+            Status::Funded => vesting.total() - vesting.claimed - staked - vesting.slashed,
             Status::Canceled { owner_withdrawable } => {
                 // On cancelation, all liquid funds are settled and
                 // vesting.total() is set to the amount that has
@@ -105,7 +112,7 @@ impl<'a> Payment<'a> {
                 // that the vestee will receive all of their vested
                 // tokens. The following is then made true:
                 //
-                // staked = vesting_owned + owner_withdrawable
+                // staked = vesting_owed + owner_withdrawable
                 // staked = (vesting.total - vesting.claimed) + owner_withdrawable
                 //
                 // staked - currently_staked = claimable, as those tokens
@@ -121,6 +128,15 @@ impl<'a> Payment<'a> {
                 //
                 // Where owner.total is the initial amount they were
                 // entitled to.
+                //
+                // ## Slashing
+                //
+                // If a slash occurs while the contract is in a
+                // canceled state, the slash amount is deducted from
+                // `owner_withdrawable`. We don't count slashes that
+                // occured during the Funded state as those are
+                // considered when computing `owner_withdrawable`
+                // initially.
                 owner_withdrawable + (vesting.total() - vesting.claimed) - staked
             }
         }
@@ -137,7 +153,7 @@ impl<'a> Payment<'a> {
         let staked = self.staking.total_staked(storage, t)?;
 
         let liquid = self.liquid(vesting, staked);
-        let claimable = vesting.vested(t) - vesting.claimed;
+        let claimable = (vesting.vested(t) - vesting.claimed).saturating_sub(vesting.slashed);
         Ok(min(liquid, claimable))
     }
 
@@ -199,7 +215,8 @@ impl<'a> Payment<'a> {
             // Use liquid tokens to settle vestee as much as possible
             // and return any remaining liquid funds to the owner.
             let liquid = self.liquid(&vesting, staked);
-            let to_vestee = min(vesting.vested(t) - vesting.claimed, liquid);
+            let claimable = (vesting.vested(t) - vesting.claimed).saturating_sub(vesting.slashed);
+            let to_vestee = min(claimable, liquid);
             let to_owner = liquid - to_vestee;
 
             vesting.claimed += to_vestee;
@@ -208,12 +225,16 @@ impl<'a> Payment<'a> {
             // the owners entitlement to the staked tokens is all
             // staked tokens that are not needed to settle the
             // vestee.
-            let owner_outstanding = staked - (vesting.vested(t) - vesting.claimed);
+            let owner_outstanding =
+                staked - (vesting.vested(t) - vesting.claimed).saturating_sub(vesting.slashed);
 
             vesting.cancel(t, owner_outstanding);
             self.vesting.save(storage, &vesting)?;
 
-            // Owner receives staking rewards
+            // As the vest is cancelled, the veste is no longer
+            // entitled to staking rewards that may accure before the
+            // owner has a chance to undelegate from validators. Set
+            // the owner to the reward receiver.
             let mut msgs = vec![DistributionMsg::SetWithdrawAddress {
                 address: owner.to_string(),
             }
@@ -314,18 +335,47 @@ impl<'a> Payment<'a> {
     ///
     /// Checking that these invariants are true is the responsibility
     /// of the caller.
-    pub fn register_bonded_slash(
+    pub fn register_slash(
         &self,
         storage: &mut dyn Storage,
         validator: String,
         t: Timestamp,
-        slash: Uint128,
+        amount: Uint128,
+        during_unbonding: bool,
     ) -> Result<(), ContractError> {
-        if slash.is_zero() {
+        if amount.is_zero() {
             Err(ContractError::NoSlash)
         } else {
-            self.staking.on_bonded_slash(storage, t, validator, slash)?;
-            Ok(()) // TODO: vest.slashed += slash
+            let mut vest = self.vesting.load(storage)?;
+            match vest.status {
+                Status::Unfunded => return Err(ContractError::UnfundedSlash),
+                Status::Funded => vest.slashed += amount,
+                Status::Canceled { owner_withdrawable } => {
+                    // if the owner withdraws, then registeres the
+                    // slash as having happened (i.e. they are being
+                    // mean), then the slash will be forced to spill
+                    // over into the receivers claimable amount.
+                    if amount > owner_withdrawable {
+                        vest.status = Status::Canceled {
+                            owner_withdrawable: Uint128::zero(),
+                        };
+                        vest.slashed += amount - owner_withdrawable;
+                    } else {
+                        vest.status = Status::Canceled {
+                            owner_withdrawable: owner_withdrawable - amount,
+                        }
+                    }
+                }
+            };
+            self.vesting.save(storage, &vest)?;
+            if during_unbonding {
+                self.staking
+                    .on_unbonding_slash(storage, t, validator, amount)?;
+            } else {
+                self.staking
+                    .on_bonded_slash(storage, t, validator, amount)?;
+            }
+            Ok(())
         }
     }
 }
@@ -337,6 +387,7 @@ impl Vest {
         } else {
             Ok(Self {
                 claimed: Uint128::zero(),
+                slashed: Uint128::zero(),
                 vested: init
                     .schedule
                     .into_curve(init.total, init.duration_seconds)?,
@@ -358,8 +409,7 @@ impl Vest {
 
     /// Gets the number of tokens that have vested at `time`.
     pub fn vested(&self, t: Timestamp) -> Uint128 {
-        let elapsed =
-            Timestamp::from_nanos(t.nanos().saturating_sub(self.start_time.nanos())).seconds();
+        let elapsed = t.seconds().saturating_sub(self.start_time.seconds());
         self.vested.value(elapsed)
     }
 

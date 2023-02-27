@@ -43,6 +43,9 @@ pub enum ContractError {
     #[error("vesting contract is not distributing funds")]
     NotFunded,
 
+    #[error("it should not be possible for a slash to occur in the unfunded state")]
+    UnfundedSlash,
+
     #[error("vesting contract has already been funded")]
     Funded,
 

@@ -107,10 +107,14 @@ export interface CwVestingInterface extends CwVestingReadOnlyInterface {
   }: {
     amount?: Uint128;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  registerBondedSlash: ({
+  registerSlash: ({
+    amount,
+    duringUnbonding,
     time,
     validator
   }: {
+    amount: Uint128;
+    duringUnbonding: boolean;
     time: Timestamp;
     validator: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
@@ -135,7 +139,7 @@ export class CwVestingClient extends CwVestingQueryClient implements CwVestingIn
     this.setWithdrawAddress = this.setWithdrawAddress.bind(this);
     this.withdrawDelegatorReward = this.withdrawDelegatorReward.bind(this);
     this.withdrawCanceledPayment = this.withdrawCanceledPayment.bind(this);
-    this.registerBondedSlash = this.registerBondedSlash.bind(this);
+    this.registerSlash = this.registerSlash.bind(this);
     this.updateOwnership = this.updateOwnership.bind(this);
   }
 
@@ -250,15 +254,21 @@ export class CwVestingClient extends CwVestingQueryClient implements CwVestingIn
       }
     }, fee, memo, funds);
   };
-  registerBondedSlash = async ({
+  registerSlash = async ({
+    amount,
+    duringUnbonding,
     time,
     validator
   }: {
+    amount: Uint128;
+    duringUnbonding: boolean;
     time: Timestamp;
     validator: string;
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      register_bonded_slash: {
+      register_slash: {
+        amount,
+        during_unbonding: duringUnbonding,
         time,
         validator
       }

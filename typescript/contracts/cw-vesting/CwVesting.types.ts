@@ -64,7 +64,9 @@ export type ExecuteMsg = {
     amount?: Uint128 | null;
   };
 } | {
-  register_bonded_slash: {
+  register_slash: {
+    amount: Uint128;
+    during_unbonding: boolean;
     time: Timestamp;
     validator: string;
   };
@@ -125,6 +127,7 @@ export interface Vest {
   denom: CheckedDenom;
   description?: string | null;
   recipient: Addr;
+  slashed: Uint128;
   start_time: Timestamp;
   status: Status;
   title: string;

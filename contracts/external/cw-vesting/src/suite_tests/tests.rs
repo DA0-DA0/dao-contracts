@@ -1,4 +1,4 @@
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Timestamp, Uint128};
 use cw_ownable::OwnershipError;
 
 use crate::{vesting::Status, ContractError};
@@ -250,6 +250,203 @@ fn test_redelegation() {
 
     // for reasons beyond me, staking rewards accrue differently when
     // the redelegate happens. i am unsure why and this test is more
-    // concerned with them working than teh absolute numbers, so >=.
+    // concerned with them working than the absolute numbers, so >=.
     assert!(balance >= expected_balance)
+}
+
+/// Creates a vesting contract with a start time in the past s.t. the
+/// vest immediately completes.
+#[test]
+fn test_start_time_in_the_past() {
+    let mut suite = SuiteBuilder::default()
+        .with_start_time(Timestamp::from_seconds(0))
+        .build();
+
+    // distributing over two TXns shouldn't matter.
+    suite
+        .distribute("lerandom", Some(Uint128::new(10_000_000)))
+        .unwrap();
+    suite.distribute("lerandom", None).unwrap();
+    let balance = suite.query_receiver_vesting_token_balance();
+    assert_eq!(balance, Uint128::new(100_000_000));
+}
+
+/// 1. Vestee is vesting 100 tokens
+/// 2. Delegate 50 to validator
+/// 3. Vestee looses 10 tokens to a validator slash
+/// 4. Vestee slash reduces the amount the receiver may claim
+#[test]
+fn test_simple_slash() {
+    let mut suite = SuiteBuilder::default().build();
+    suite.delegate(Uint128::new(50_000_000)).unwrap();
+
+    let vest = suite.query_vest();
+    assert_eq!(vest.slashed, Uint128::zero());
+
+    let pre_slash_distributable = suite.query_distributable();
+
+    // because no time has passed, the slash amount is > the
+    // distributable amount. this should not cause an overflow in
+    // future calculations.
+    suite.slash(20); // 20% slash should slash 10_000_000 tokens.
+    let time = suite.time();
+
+    // Only the owner can register a slash.
+    let receiver = suite.receiver.clone();
+    let owner = suite.owner.clone().unwrap();
+    let res = suite.register_bonded_slash(&receiver, Uint128::new(10_000_000), time);
+    is_error!(res, OwnershipError::NotOwner.to_string().as_str());
+
+    suite
+        .register_bonded_slash(&owner, Uint128::new(10_000_000), time)
+        .unwrap();
+
+    let vest = suite.query_vest();
+    assert_eq!(vest.slashed, Uint128::new(10_000_000));
+    let distributable = suite.query_distributable();
+    assert_eq!(
+        distributable,
+        pre_slash_distributable.saturating_sub(Uint128::new(10_000_000))
+    );
+
+    assert_eq!(distributable, Uint128::zero());
+}
+
+/// A slash that is registered in the canceled state should count
+/// against the owner even if the time of the slash was during the
+/// Funded state. Owners should take care to register slashes before
+/// canceling the contract.
+#[test]
+fn test_slash_while_cancelled_counts_against_owner() {
+    let mut suite = SuiteBuilder::default().build();
+    suite.delegate(Uint128::new(50_000_000)).unwrap();
+
+    suite.a_day_passes();
+
+    let slash_time = suite.time();
+    suite.slash(20);
+
+    // on cancel all liquid tokens are sent to the receiver to make
+    // them whole. the slash has not been registered so this is an
+    // overpayment.
+    let distributable = suite.query_distributable();
+
+    suite.cancel(suite.owner.clone().unwrap()).unwrap();
+
+    let balance = suite.query_receiver_vesting_token_balance();
+    assert_eq!(balance, distributable);
+
+    let vest = suite.query_vest();
+    let Status::Canceled { owner_withdrawable: pre_slash } = vest.status else { panic!("should be canceled") };
+
+    // register the slash. even though the time of the slash was
+    // during the vest, the contract should deduct this from
+    // owner_withdrawable as the contract is in a canceled state.
+    suite
+        .register_bonded_slash(
+            suite.owner.clone().unwrap(),
+            Uint128::new(10_000_000),
+            slash_time,
+        )
+        .unwrap();
+
+    let vest = suite.query_vest();
+    let Status::Canceled { owner_withdrawable } = vest.status else { panic!("should be canceled") };
+    assert_eq!(pre_slash - Uint128::new(10_000_000), owner_withdrawable);
+}
+
+/// Simple slash while tokens are unbonding and no cancelation.
+#[test]
+fn test_slash_during_unbonding() {
+    let mut suite = SuiteBuilder::default().build();
+    suite.delegate(Uint128::new(50_000_000)).unwrap();
+
+    suite.a_second_passes();
+
+    suite
+        .undelegate(suite.receiver.clone(), Uint128::new(50_000_000))
+        .unwrap();
+
+    let pre_slash_distributable = suite.query_distributable();
+
+    suite.slash(20); // 20% slash should slash 10_000_000 tokens.
+    let time = suite.time();
+
+    let owner = suite.owner.clone().unwrap();
+    suite
+        .register_unbonding_slash(&owner, Uint128::new(10_000_000), time)
+        .unwrap();
+
+    let vest = suite.query_vest();
+    assert_eq!(vest.slashed, Uint128::new(10_000_000));
+    let distributable = suite.query_distributable();
+    assert_eq!(
+        distributable,
+        pre_slash_distributable.saturating_sub(Uint128::new(10_000_000))
+    );
+
+    suite.a_week_passes();
+    suite.a_week_passes();
+    suite.process_unbonds();
+
+    suite.distribute("lerandom", None).unwrap();
+    assert_eq!(
+        suite.query_receiver_vesting_token_balance(),
+        Uint128::new(90_000_000) // 10 slashed
+    );
+
+    // the staking implementation doesn't slash unbonding tokens in cw-multi-test..
+
+    // assert_eq!(
+    //     suite.query_vesting_token_balance(suite.vesting.clone()),
+    //     Uint128::zero()
+    // )
+}
+
+/// If the owner intentionally doesn't register a slash until they
+/// have already withdrawn their tokens, the slash will be forced to
+/// go to the receiver. The contract should handle this gracefully and
+/// cause no overflows.
+#[test]
+fn test_owner_registers_slash_after_withdrawal() {
+    let mut suite = SuiteBuilder::default().build();
+    suite.delegate(Uint128::new(100_000_000)).unwrap();
+    suite.a_day_passes();
+
+    suite.cancel(suite.owner.clone().unwrap()).unwrap();
+
+    let vested = suite.query_vest().vested(suite.time());
+
+    // at this point 1/7th of the vest has elapsed, so the receiver
+    // should be entitled to 1/7th regardless of a slash occuring as
+    // the slash occures while the contract is in the canceled state.
+    //
+    // instead, the owner undelegates the remaining tokens, claims all
+    // of them, and then registers the slash. as the slash as
+    // registered too late, this will result in the receiver not
+    // getting their tokens.
+    suite.slash(90); // 90% slash
+    let time = suite.time();
+
+    suite
+        .undelegate(suite.owner.clone().unwrap(), Uint128::new(10_000_000))
+        .unwrap();
+
+    suite.a_day_passes();
+    suite.process_unbonds();
+
+    suite.withdraw_canceled(None).unwrap();
+    assert_eq!(
+        suite.query_vesting_token_balance(suite.owner.clone().unwrap()),
+        Uint128::new(10_000_000)
+    );
+
+    suite
+        .register_bonded_slash(suite.owner.clone().unwrap(), Uint128::new(90_000_000), time)
+        .unwrap();
+    assert_eq!(suite.query_distributable(), Uint128::zero());
+    assert_eq!(
+        vested,
+        Uint128::new(100_000_000).multiply_ratio(1u128, 7u128)
+    );
 }

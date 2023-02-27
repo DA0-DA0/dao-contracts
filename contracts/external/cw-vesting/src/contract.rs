@@ -114,9 +114,12 @@ pub fn execute(
         ExecuteMsg::WithdrawCanceledPayment { amount } => {
             execute_withdraw_canceled(deps, env, amount)
         }
-        ExecuteMsg::RegisterBondedSlash { validator, time } => {
-            execute_register_bonded_slash(deps, env, validator, time)
-        }
+        ExecuteMsg::RegisterSlash {
+            validator,
+            time,
+            amount,
+            during_unbonding,
+        } => execute_register_slash(deps, env, info, validator, time, amount, during_unbonding),
     }
 }
 
@@ -402,29 +405,32 @@ pub fn execute_withdraw_rewards(validator: String) -> Result<Response, ContractE
         .add_message(withdraw_msg))
 }
 
-pub fn execute_register_bonded_slash(
+pub fn execute_register_slash(
     deps: DepsMut,
     env: Env,
+    info: MessageInfo,
     validator: String,
     time: Timestamp,
+    amount: Uint128,
+    during_unbonding: bool,
 ) -> Result<Response, ContractError> {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
     if time > env.block.time {
         Err(ContractError::FutureSlash)
     } else {
-        let resp: DelegationResponse = deps.querier.query(
-            &StakingQuery::Delegation {
-                delegator: env.contract.address.into_string(),
-                validator: validator.clone(),
-            }
-            .into(),
+        PAYMENT.register_slash(
+            deps.storage,
+            validator.clone(),
+            time,
+            amount,
+            during_unbonding,
         )?;
-        let delegation = resp
-            .delegation
-            .ok_or(ContractError::NoDelegation(validator.clone()))?
-            .amount
-            .amount;
-        PAYMENT.register_bonded_slash(deps.storage, validator, env.block.time, delegation)?;
-        Ok(Response::default().add_attribute("method", "execute_register_bonded_slash"))
+        Ok(Response::default()
+            .add_attribute("method", "execute_register_slash")
+            .add_attribute("during_unbonding", during_unbonding.to_string())
+            .add_attribute("validator", validator)
+            .add_attribute("time", time.to_string())
+            .add_attribute("amount", amount))
     }
 }
 
