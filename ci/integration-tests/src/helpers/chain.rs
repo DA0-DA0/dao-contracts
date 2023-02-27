@@ -46,7 +46,7 @@ impl TestContext for Chain {
     fn setup() -> Self {
         let cfg = CONFIG.get_or_init(global_setup).cfg.clone();
         let orc = CosmOrc::new(cfg.clone(), true).unwrap();
-        let users = test_accounts();
+        let users = test_accounts(cfg.chain_cfg.derivation_path.clone());
         Self { cfg, orc, users }
     }
 
@@ -56,7 +56,7 @@ impl TestContext for Chain {
     }
 }
 
-fn test_accounts() -> HashMap<String, SigningAccount> {
+fn test_accounts(derivation_path: String) -> HashMap<String, SigningAccount> {
     let bytes = fs::read("../configs/test_accounts.json").unwrap();
     let accounts: Vec<Account> = serde_json::from_slice(&bytes).unwrap();
 
@@ -69,6 +69,7 @@ fn test_accounts() -> HashMap<String, SigningAccount> {
                 key: SigningKey {
                     name: account.name,
                     key: Key::Mnemonic(account.mnemonic),
+                    derivation_path: derivation_path.clone(),
                 },
             },
         );
@@ -85,7 +86,7 @@ fn global_setup() -> Cfg {
     let mut cfg = Config::from_yaml(&config).unwrap();
     let mut orc = CosmOrc::new(cfg.clone(), true).unwrap();
 
-    let accounts = test_accounts();
+    let accounts = test_accounts(cfg.chain_cfg.derivation_path.clone());
 
     // Poll for first block to make sure the node is up:
     orc.poll_for_n_blocks(1, Duration::from_millis(20_000), true)

@@ -228,6 +228,7 @@ pub fn execute_update_active_threshold(
 
     Ok(Response::new().add_attribute("action", "update_active_threshold"))
 }
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {

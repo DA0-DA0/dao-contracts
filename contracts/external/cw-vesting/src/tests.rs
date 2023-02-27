@@ -1,25 +1,25 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{
-    coin, coins, to_binary, Addr, Coin, CosmosMsg, DistributionMsg, Empty, StakingMsg, Uint128,
-};
-use cw20::{Cw20Coin, Cw20ExecuteMsg};
+use cosmwasm_std::{coins, to_binary, Addr, Coin, Decimal, Empty, Uint128, Validator};
+use cw20::{Cw20Coin, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_denom::{CheckedDenom, UncheckedDenom};
-use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_multi_test::{
+    App, AppBuilder, BankSudo, Contract, ContractWrapper, Executor, StakingInfo, SudoMsg,
+};
+use cw_ownable::Action;
 use dao_testing::contracts::cw20_base_contract;
-use wynd_utils::Curve;
 
-use crate::contract::{execute, instantiate};
+use crate::contract::{execute, execute_receive_cw20};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg};
-use crate::state::{UncheckedVestingParams, VestingPayment, VestingPaymentStatus};
+use crate::state::PAYMENT;
+use crate::vesting::{Schedule, Status, Vest, VestInit};
 use crate::ContractError;
 
 const ALICE: &str = "alice";
 const BOB: &str = "bob";
 const INITIAL_BALANCE: u128 = 1000000000;
+const TOTAL_VEST: u128 = 1000000;
 const OWNER: &str = "owner";
 const NATIVE_DENOM: &str = "ujuno";
-const VALIDATOR: &str = "validator";
-const VALIDATOR_TWO: &str = "validator2";
 
 fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -30,7 +30,7 @@ fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-fn get_vesting_payment(app: &App, cw_vesting_addr: Addr) -> VestingPayment {
+fn get_vesting_payment(app: &App, cw_vesting_addr: Addr) -> Vest {
     app.wrap()
         .query_wasm_smart(cw_vesting_addr, &QueryMsg::Info {})
         .unwrap()
@@ -124,23 +124,33 @@ pub fn setup_contracts(app: &mut App) -> (Addr, u64, u64) {
     (cw20_addr, cw20_code_id, cw_vesting_code_id)
 }
 
+#[cfg(test)]
+impl Default for InstantiateMsg {
+    fn default() -> Self {
+        Self {
+            owner: Some(OWNER.to_string()),
+            recipient: BOB.to_string(),
+            title: "title".to_string(),
+            description: Some("desc".to_string()),
+            total: Uint128::new(TOTAL_VEST),
+            // cw20 normally first contract instantaited
+            denom: UncheckedDenom::Cw20("contract0".to_string()),
+            schedule: Schedule::SaturatingLinear,
+            start_time: None,
+            vesting_duration_seconds: 604800,    // one week
+            unbonding_duration_seconds: 2592000, // 30 days
+        }
+    }
+}
+
 struct TestCase {
     cw20_addr: Addr,
     cw_vesting_addr: Addr,
-    owner: Addr,
     recipient: Addr,
-    vesting_payment: VestingPayment,
+    vesting_payment: Vest,
 }
 
-fn setup_test_case(
-    app: &mut App,
-    vesting_schedule: Curve,
-    amount: Uint128,
-    denom: UncheckedDenom,
-    recipient: &str,
-    owner: Option<String>,
-    funds: &[Coin],
-) -> TestCase {
+fn setup_test_case(app: &mut App, msg: InstantiateMsg, funds: &[Coin]) -> TestCase {
     let (cw20_addr, _, cw_vesting_code_id) = setup_contracts(app);
 
     // Instantiate cw-vesting contract
@@ -148,28 +158,18 @@ fn setup_test_case(
         .instantiate_contract(
             cw_vesting_code_id,
             Addr::unchecked(OWNER),
-            &InstantiateMsg {
-                owner,
-                params: UncheckedVestingParams {
-                    recipient: recipient.to_string(),
-                    amount,
-                    denom: denom.clone(),
-                    vesting_schedule,
-                    title: None,
-                    description: None,
-                },
-            },
+            &msg,
             funds,
             "cw-vesting",
             None,
         )
         .unwrap();
 
-    let vesting_payment = match denom {
+    let vesting_payment = match msg.denom {
         UncheckedDenom::Cw20(ref cw20_addr) => {
             let msg = Cw20ExecuteMsg::Send {
                 contract: cw_vesting_addr.to_string(),
-                amount,
+                amount: msg.total,
                 msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
             };
             app.execute_contract(
@@ -188,8 +188,7 @@ fn setup_test_case(
     TestCase {
         cw20_addr,
         cw_vesting_addr,
-        owner: Addr::unchecked(OWNER),
-        recipient: Addr::unchecked(recipient),
+        recipient: Addr::unchecked(msg.recipient),
         vesting_payment,
     }
 }
@@ -198,123 +197,292 @@ fn setup_test_case(
 fn test_happy_cw20_path() {
     let mut app = setup_app();
 
-    let amount = Uint128::new(1000000);
-    // cw20 is the first contract instantiated and will hve the address "contract0"
-    let unchecked_denom = UncheckedDenom::Cw20("contract0".to_string());
-
-    // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
     let TestCase {
         cw20_addr,
         cw_vesting_addr,
         recipient: bob,
         vesting_payment,
         ..
-    } = setup_test_case(
-        &mut app,
-        vesting_schedule.clone(),
-        amount,
-        unchecked_denom,
-        BOB,
-        None,
-        &[],
-    );
+    } = setup_test_case(&mut app, InstantiateMsg::default(), &[]);
 
     // Check Vesting Payment was created correctly
+    assert_eq!(vesting_payment.status, Status::Funded);
+    assert_eq!(vesting_payment.claimed, Uint128::zero());
     assert_eq!(
-        vesting_payment,
-        VestingPayment {
-            recipient: Addr::unchecked(BOB),
-            amount,
-            claimed_amount: Uint128::zero(),
-            denom: CheckedDenom::Cw20(Addr::unchecked(cw20_addr.clone())),
-            canceled_at_time: None,
-            vesting_schedule,
-            title: None,
-            description: None,
-            status: VestingPaymentStatus::Active,
-            staked_amount: Uint128::zero(),
-        }
+        vesting_payment.vested(app.block_info().time),
+        Uint128::zero()
     );
 
-    // VestingPayment has not started
+    // No time has passed, so nothing is withdrawable.
     let err: ContractError = app
         .execute_contract(
             bob.clone(),
             cw_vesting_addr.clone(),
-            &ExecuteMsg::Distribute {},
+            &ExecuteMsg::Distribute { amount: None },
             &[],
         )
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(err, ContractError::NoFundsToClaim);
+    assert_eq!(
+        err,
+        ContractError::InvalidWithdrawal {
+            request: Uint128::zero(),
+            claimable: Uint128::zero()
+        }
+    );
 
-    // Advance the clock
+    // Advance the clock by 1/2 the vesting period.
     app.update_block(|block| {
-        block.time = block.time.plus_seconds(150);
+        block.time = block.time.plus_seconds(604800 / 2);
     });
 
-    // VestingPayment has started so tokens have vested
+    // Distribute, expect to receive 50% of funds.
     app.execute_contract(
         bob,
-        cw_vesting_addr.clone(),
-        &ExecuteMsg::Distribute {},
+        cw_vesting_addr,
+        &ExecuteMsg::Distribute { amount: None },
         &[],
     )
     .unwrap();
 
-    // Check final amounts after distribution
+    // Owner has funded the contract and down
     assert_eq!(
-        get_vesting_payment(&app, cw_vesting_addr),
-        VestingPayment {
-            recipient: Addr::unchecked(BOB),
-            amount: Uint128::new(750000),
-            claimed_amount: Uint128::new(250000),
-            ..vesting_payment
+        get_balance_cw20(&app, cw20_addr.clone(), OWNER),
+        Uint128::new(INITIAL_BALANCE - TOTAL_VEST)
+    );
+
+    // Bob has claimed vested funds and is up
+    assert_eq!(
+        get_balance_cw20(&app, cw20_addr, BOB),
+        Uint128::new(INITIAL_BALANCE) + Uint128::new(TOTAL_VEST / 2)
+    );
+}
+
+#[test]
+fn test_happy_native_path() {
+    let mut app = setup_app();
+
+    let msg = InstantiateMsg {
+        denom: UncheckedDenom::Native(NATIVE_DENOM.to_string()),
+        ..Default::default()
+    };
+
+    let TestCase {
+        cw_vesting_addr,
+        recipient: bob,
+        vesting_payment,
+        ..
+    } = setup_test_case(&mut app, msg, &coins(TOTAL_VEST, NATIVE_DENOM));
+
+    assert_eq!(vesting_payment.status, Status::Funded);
+    assert_eq!(vesting_payment.claimed, Uint128::zero());
+    assert_eq!(
+        vesting_payment.vested(app.block_info().time),
+        Uint128::zero()
+    );
+
+    // No time has passed, so nothing is withdrawable.
+    let err: ContractError = app
+        .execute_contract(
+            bob.clone(),
+            cw_vesting_addr.clone(),
+            &ExecuteMsg::Distribute { amount: None },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::InvalidWithdrawal {
+            request: Uint128::zero(),
+            claimable: Uint128::zero()
         }
     );
 
+    // Advance the clock by 1/2 the vesting period.
+    app.update_block(|block| {
+        block.time = block.time.plus_seconds(604800 / 2);
+    });
+
+    // Distribute, expect to receive 50% of funds.
+    app.execute_contract(
+        bob,
+        cw_vesting_addr,
+        &ExecuteMsg::Distribute { amount: None },
+        &[],
+    )
+    .unwrap();
+
     // Owner has funded the contract and down 1000
     assert_eq!(
-        get_balance_cw20(&app, cw20_addr.clone(), OWNER),
-        Uint128::new(INITIAL_BALANCE) - amount
+        get_balance_native(&app, OWNER, NATIVE_DENOM),
+        Uint128::new(INITIAL_BALANCE - TOTAL_VEST)
     );
-
     // Bob has claimed vested funds and is up 250
     assert_eq!(
-        get_balance_cw20(&app, cw20_addr, BOB),
-        Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
+        get_balance_native(&app, BOB, NATIVE_DENOM),
+        Uint128::new(INITIAL_BALANCE) + Uint128::new(TOTAL_VEST / 2)
+    );
+}
+
+#[test]
+fn test_staking_rewards_go_to_receiver() {
+    let validator = Validator {
+        address: "testvaloper1".to_string(),
+        commission: Decimal::percent(1),
+        max_commission: Decimal::percent(100),
+        max_change_rate: Decimal::percent(1),
+    };
+
+    let mut app = AppBuilder::default().build(|router, api, storage| {
+        router
+            .staking
+            .setup(
+                storage,
+                StakingInfo {
+                    bonded_denom: NATIVE_DENOM.to_string(),
+                    unbonding_time: 60,
+                    /// Interest rate per year (60 * 60 * 24 * 365 seconds)
+                    apr: Decimal::percent(10),
+                },
+            )
+            .unwrap();
+        router
+            .staking
+            .add_validator(api, storage, &mock_env().block, validator)
+            .unwrap();
+    });
+
+    let vesting_id = app.store_code(cw_vesting_contract());
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: OWNER.to_string(),
+        amount: coins(100, NATIVE_DENOM),
+    }))
+    .unwrap();
+
+    let msg = InstantiateMsg {
+        denom: UncheckedDenom::Native(NATIVE_DENOM.to_string()),
+        total: Uint128::new(100),
+        ..Default::default()
+    };
+
+    let vesting = app
+        .instantiate_contract(
+            vesting_id,
+            Addr::unchecked(OWNER),
+            &msg,
+            &coins(100, NATIVE_DENOM),
+            "cw-vesting",
+            None,
+        )
+        .unwrap();
+
+    // delegate all of the tokens to the validaor.
+    app.execute_contract(
+        Addr::unchecked(BOB),
+        vesting.clone(),
+        &ExecuteMsg::Delegate {
+            validator: "testvaloper1".to_string(),
+            amount: Uint128::new(100),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let balance = get_balance_native(&app, BOB, NATIVE_DENOM);
+    assert_eq!(balance.u128(), 0);
+
+    // A year passes.
+    app.update_block(|block| block.time = block.time.plus_seconds(60 * 60 * 24 * 365));
+
+    app.execute_contract(
+        Addr::unchecked(BOB),
+        vesting,
+        &ExecuteMsg::WithdrawDelegatorReward {
+            validator: "testvaloper1".to_string(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let balance = get_balance_native(&app, BOB, NATIVE_DENOM);
+    assert_eq!(balance.u128(), 9); // 10% APY, 1% comission, 100 staked, one year elapsed.
+}
+
+#[test]
+fn test_cancel_vesting() {
+    let mut app = setup_app();
+
+    let TestCase {
+        cw_vesting_addr, ..
+    } = setup_test_case(&mut app, InstantiateMsg::default(), &[]);
+
+    // Non-owner can't cancel
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ALICE),
+            cw_vesting_addr.clone(),
+            &ExecuteMsg::Cancel {},
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
+    );
+
+    // Advance the clock by 1/2 the vesting period.
+    app.update_block(|block| {
+        block.time = block.time.plus_seconds(604800 / 2);
+    });
+
+    // Owner DAO cancels vesting contract. All tokens are liquid so
+    // everything settles instantly.
+    app.execute_contract(
+        Addr::unchecked(OWNER),
+        cw_vesting_addr.clone(),
+        &ExecuteMsg::Cancel {},
+        &[],
+    )
+    .unwrap();
+
+    // Can't distribute as tokens are already distributed.
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(BOB),
+            cw_vesting_addr,
+            &ExecuteMsg::Distribute { amount: None },
+            &[],
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert!(matches!(err, ContractError::InvalidWithdrawal { .. }));
+
+    // Unvested funds have been returned to contract owner
+    assert_eq!(
+        get_balance_cw20(&app, "contract0", OWNER),
+        Uint128::new(INITIAL_BALANCE - TOTAL_VEST / 2)
+    );
+    // Bob has gets the funds vest up until cancelation
+    assert_eq!(
+        get_balance_cw20(&app, "contract0", BOB),
+        Uint128::new(INITIAL_BALANCE + TOTAL_VEST / 2)
     );
 }
 
 #[test]
 fn test_catch_imposter_cw20() {
     let mut app = setup_app();
-    let (cw20_addr, cw20_code_id, _) = setup_contracts(&mut app);
+    let (_, cw20_code_id, _) = setup_contracts(&mut app);
 
-    let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
-
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
-    // Instantiate cw-vesting
     let TestCase {
         cw_vesting_addr, ..
-    } = setup_test_case(
-        &mut app,
-        vesting_schedule,
-        amount,
-        unchecked_denom,
-        BOB,
-        None,
-        &[],
-    );
+    } = setup_test_case(&mut app, InstantiateMsg::default(), &[]);
 
     // Create imposter cw20
     let cw20_imposter_addr = app
@@ -340,7 +508,7 @@ fn test_catch_imposter_cw20() {
 
     let msg = Cw20ExecuteMsg::Send {
         contract: cw_vesting_addr.to_string(),
-        amount,
+        amount: Uint128::new(TOTAL_VEST),
         msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
     };
 
@@ -355,181 +523,19 @@ fn test_catch_imposter_cw20() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(error, ContractError::Cw20DoesNotMatch);
-}
-
-#[test]
-fn test_catch_incorrect_cw20_funding_amount() {
-    let mut app = setup_app();
-    let (cw20_addr, _, _) = setup_contracts(&mut app);
-
-    let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
-
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
-    // Instantiate cw-vesting
-    let TestCase {
-        cw_vesting_addr, ..
-    } = setup_test_case(
-        &mut app,
-        vesting_schedule,
-        amount,
-        unchecked_denom,
-        BOB,
-        None,
-        &[],
-    );
-
-    let msg = Cw20ExecuteMsg::Send {
-        contract: cw_vesting_addr.to_string(),
-        amount: Uint128::new(100),
-        msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
-    };
-
-    // Errors that cw20 does not match what was expected
-    let error: ContractError = app
-        .execute_contract(
-            Addr::unchecked(OWNER),
-            Addr::unchecked(cw20_addr),
-            &msg,
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(error, ContractError::AmountDoesNotMatch);
-}
-
-#[test]
-fn test_happy_native_path() {
-    let mut app = setup_app();
-
-    let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
-
-    // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
-    let TestCase {
-        cw_vesting_addr,
-        recipient: bob,
-        vesting_payment,
-        ..
-    } = setup_test_case(
-        &mut app,
-        vesting_schedule.clone(),
-        amount,
-        unchecked_denom,
-        BOB,
-        None,
-        &coins(amount.into(), NATIVE_DENOM),
-    );
-
-    // Check Vesting Payment was created correctly
-    assert_eq!(
-        vesting_payment,
-        VestingPayment {
-            recipient: Addr::unchecked(BOB),
-            amount,
-            claimed_amount: Uint128::zero(),
-            canceled_at_time: None,
-            denom: CheckedDenom::Native(NATIVE_DENOM.to_string()),
-            vesting_schedule,
-            title: None,
-            description: None,
-            status: VestingPaymentStatus::Active,
-            staked_amount: Uint128::zero(),
-        }
-    );
-
-    // VestingPayment has not started
-    let err: ContractError = app
-        .execute_contract(
-            bob.clone(),
-            cw_vesting_addr.clone(),
-            &ExecuteMsg::Distribute {},
-            &[],
-        )
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(err, ContractError::NoFundsToClaim);
-
-    // Advance the clock
-    app.update_block(|block| {
-        block.time = block.time.plus_seconds(150);
-    });
-
-    // VestingPayment has started so tokens have vested
-    app.execute_contract(
-        bob,
-        cw_vesting_addr.clone(),
-        &ExecuteMsg::Distribute {},
-        &[],
-    )
-    .unwrap();
-
-    // Check final amounts after distribution
-    assert_eq!(
-        get_vesting_payment(&app, cw_vesting_addr),
-        VestingPayment {
-            recipient: Addr::unchecked(BOB),
-            amount: Uint128::new(750000),
-            claimed_amount: Uint128::new(250000),
-            ..vesting_payment
-        }
-    );
-
-    // Owner has funded the contract and down 1000
-    assert_eq!(
-        get_balance_native(&app, OWNER, NATIVE_DENOM),
-        Uint128::new(INITIAL_BALANCE) - amount
-    );
-    // Bob has claimed vested funds and is up 250
-    assert_eq!(
-        get_balance_native(&app, BOB, NATIVE_DENOM),
-        Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
-    );
-}
-
-#[test]
-#[should_panic(expected = "The transfer will never become fully vested. Must hit 0 eventually")]
-fn test_constant_vesting_curve_fails() {
-    let mut app = setup_app();
-
-    let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
-
-    let vesting_schedule = Curve::Constant { y: amount };
-
-    // Fails because constant curve never fully vests
-    let TestCase { .. } = setup_test_case(
-        &mut app,
-        vesting_schedule,
-        amount,
-        unchecked_denom,
-        BOB,
-        None,
-        &coins(amount.into(), NATIVE_DENOM),
-    );
+    assert_eq!(error, ContractError::WrongCw20);
 }
 
 #[test]
 fn test_incorrect_native_funding_amount() {
     let mut app = setup_app();
 
-    let amount = Uint128::new(1000000);
     let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
 
-    // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
+    let msg = InstantiateMsg {
+        denom: unchecked_denom,
+        ..Default::default()
+    };
 
     let alice = Addr::unchecked(ALICE);
 
@@ -539,18 +545,8 @@ fn test_incorrect_native_funding_amount() {
     let error: ContractError = app
         .instantiate_contract(
             cw_vesting_code_id,
-            alice.clone(),
-            &InstantiateMsg {
-                owner: Some(alice.to_string()),
-                params: UncheckedVestingParams {
-                    recipient: BOB.to_string(),
-                    amount,
-                    denom: unchecked_denom,
-                    vesting_schedule,
-                    title: None,
-                    description: None,
-                },
-            },
+            alice,
+            &msg,
             &coins(100, NATIVE_DENOM),
             "cw-vesting",
             None,
@@ -558,313 +554,152 @@ fn test_incorrect_native_funding_amount() {
         .unwrap_err()
         .downcast()
         .unwrap();
-    assert_eq!(error, ContractError::AmountDoesNotMatch)
+    assert_eq!(
+        error,
+        ContractError::WrongFundAmount {
+            sent: Uint128::new(100),
+            expected: Uint128::new(TOTAL_VEST)
+        }
+    )
 }
 
+/// should reject funding if the token is wrong, or the token amount is wrong.
 #[test]
-fn test_cancel_vesting() {
-    let mut app = setup_app();
-
-    let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
-
-    // Basic linear vesting schedule
-    let start_time = app.block_info().time.plus_seconds(100).seconds();
-    let end_time = app.block_info().time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
-    let alice = Addr::unchecked(ALICE);
-
-    let TestCase {
-        cw_vesting_addr,
-        owner,
-        recipient: bob,
-        ..
-    } = setup_test_case(
-        &mut app,
-        vesting_schedule,
-        amount,
-        unchecked_denom,
-        BOB,
-        Some(OWNER.to_string()),
-        &coins(amount.into(), NATIVE_DENOM),
-    );
-
-    // Non-owner can't cancel
-    let err: ContractError = app
-        .execute_contract(alice, cw_vesting_addr.clone(), &ExecuteMsg::Cancel {}, &[])
-        .unwrap_err()
-        .downcast()
-        .unwrap();
-    assert_eq!(
-        err,
-        ContractError::Ownable(cw_ownable::OwnershipError::NotOwner)
-    );
-
-    // Advance the clock
-    app.update_block(|block| {
-        block.time = block.time.plus_seconds(150);
-    });
-
-    // Owner DAO cancels vesting contract
-    app.execute_contract(owner, cw_vesting_addr.clone(), &ExecuteMsg::Cancel {}, &[])
-        .unwrap();
-
-    // Bob tries to withdraw but can't
-    app.execute_contract(bob, cw_vesting_addr, &ExecuteMsg::Distribute {}, &[])
-        .unwrap_err();
-
-    // Unvested funds have been returned to contract owner
-    assert_eq!(
-        get_balance_native(&app, "owner", NATIVE_DENOM),
-        Uint128::new(INITIAL_BALANCE) - Uint128::new(250000)
-    );
-    // Bob has gets the funds vest up until cancelation
-    assert_eq!(
-        get_balance_native(&app, BOB, NATIVE_DENOM),
-        Uint128::new(INITIAL_BALANCE) + Uint128::new(250000)
-    );
-}
-
-#[test]
-fn staking_unit_tests() {
+fn test_execution_rejection_recv() {
+    let env = mock_env;
+    let info = |sender| mock_info(sender, &[]);
     let mut deps = mock_dependencies();
 
-    // Update staking querier info
-    deps.querier.update_staking(NATIVE_DENOM, &[], &[]);
-
-    let env = mock_env();
-    let alice = mock_info(ALICE, &[]);
-    let bob = mock_info(BOB, &[]);
-
-    let amount = Uint128::new(1000000);
-    let unchecked_denom = UncheckedDenom::Native(NATIVE_DENOM.to_string());
-
-    // Basic linear vesting schedule
-    let start_time = env.block.time.plus_seconds(100).seconds();
-    let end_time = env.block.time.plus_seconds(300).seconds();
-    let vesting_schedule = Curve::saturating_linear((start_time, amount.into()), (end_time, 0));
-
-    // Alice successfully instantiates
-    instantiate(
-        deps.as_mut(),
-        env.clone(),
-        mock_info(ALICE, &coins(amount.into(), NATIVE_DENOM.to_string())),
-        InstantiateMsg {
-            owner: Some(OWNER.to_string()),
-            params: UncheckedVestingParams {
-                recipient: BOB.to_string(),
-                amount,
-                denom: unchecked_denom,
-                vesting_schedule,
-                title: None,
-                description: None,
+    PAYMENT
+        .initialize(
+            deps.as_mut().storage,
+            VestInit {
+                total: Uint128::new(100),
+                schedule: Schedule::SaturatingLinear,
+                start_time: env().block.time,
+                duration_seconds: 60 * 60 * 24 * 7,
+                denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
+                recipient: Addr::unchecked("recipient"),
+                title: "title".to_string(),
+                description: Some("description".to_string()),
             },
-        },
-    )
-    .unwrap();
+        )
+        .unwrap();
+    let mut deps = deps.as_mut();
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some("owner")).unwrap();
 
-    // Alice can't delegate his vesting payment
-    let err = execute(
-        deps.as_mut(),
-        env.clone(),
-        alice.clone(),
-        ExecuteMsg::Delegate {
-            validator: VALIDATOR.to_string(),
-            amount,
+    let err = execute_receive_cw20(
+        env(),
+        deps.branch(),
+        info("notcw20"),
+        Cw20ReceiveMsg {
+            sender: "random".to_string(),
+            amount: Uint128::new(100),
+            msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
         },
     )
     .unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized);
+    assert_eq!(err, ContractError::WrongCw20);
 
-    // Bob delegates his vesting payment
-    let res = execute(
-        deps.as_mut(),
-        env.clone(),
-        bob.clone(),
-        ExecuteMsg::Delegate {
-            validator: VALIDATOR.to_string(),
-            amount,
+    let err = execute_receive_cw20(
+        env(),
+        deps.branch(),
+        info("cw20"),
+        Cw20ReceiveMsg {
+            sender: "random".to_string(),
+            amount: Uint128::new(101),
+            msg: to_binary(&ReceiveMsg::Fund {}).unwrap(),
         },
     )
-    .unwrap();
+    .unwrap_err();
     assert_eq!(
-        res.messages[0].msg,
-        CosmosMsg::Staking(StakingMsg::Delegate {
-            validator: VALIDATOR.to_string(),
-            amount: coin(amount.into(), NATIVE_DENOM)
-        })
+        err,
+        ContractError::WrongFundAmount {
+            sent: Uint128::new(101),
+            expected: Uint128::new(100)
+        }
     );
+}
 
-    // Bob can't delegate more than he has
-    execute(
-        deps.as_mut(),
-        env.clone(),
-        bob.clone(),
-        ExecuteMsg::Delegate {
-            validator: VALIDATOR.to_string(),
-            amount,
-        },
-    )
-    .unwrap_err();
+/// Should report zero distributable tokens when the contract is
+/// unfunded.
+#[test]
+fn test_illiquid_when_unfunfed() {
+    let env = mock_env;
+    let mut deps = mock_dependencies();
 
-    // Any can call Withdraw Rewards, even alice
-    let res = execute(
-        deps.as_mut(),
-        env.clone(),
-        alice.clone(),
-        ExecuteMsg::WithdrawDelegatorReward {
-            validator: VALIDATOR.to_string(),
-        },
-    )
-    .unwrap();
+    PAYMENT
+        .initialize(
+            deps.as_mut().storage,
+            VestInit {
+                total: Uint128::new(100),
+                schedule: Schedule::SaturatingLinear,
+                start_time: env().block.time,
+                duration_seconds: 60 * 60 * 24 * 7,
+                denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
+                recipient: Addr::unchecked("recipient"),
+                title: "title".to_string(),
+                description: Some("description".to_string()),
+            },
+        )
+        .unwrap();
+    let deps = deps.as_mut();
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some("owner")).unwrap();
+
+    // nothing is liquid in the unfunded state.
     assert_eq!(
-        res.messages[0].msg,
-        CosmosMsg::Distribution(DistributionMsg::WithdrawDelegatorReward {
-            validator: VALIDATOR.to_string(),
-        })
-    );
-
-    // Alice can't redelegate or undelegate on bob's behalf
-    let err = execute(
-        deps.as_mut(),
-        env.clone(),
-        alice.clone(),
-        ExecuteMsg::Redelegate {
-            src_validator: VALIDATOR.to_string(),
-            dst_validator: VALIDATOR_TWO.to_string(),
-            amount,
-        },
-    )
-    .unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized);
-    let err = execute(
-        deps.as_mut(),
-        env.clone(),
-        alice.clone(),
-        ExecuteMsg::Undelegate {
-            validator: VALIDATOR.to_string(),
-            amount,
-        },
-    )
-    .unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized);
-
-    // Bob (recipient) can't redelegate more than they have
-    execute(
-        deps.as_mut(),
-        env.clone(),
-        bob.clone(),
-        ExecuteMsg::Redelegate {
-            src_validator: VALIDATOR.to_string(),
-            dst_validator: VALIDATOR_TWO.to_string(),
-            amount: amount + Uint128::new(1000),
-        },
-    )
-    .unwrap_err();
-
-    // Bob redelegates half their tokens
-    let res = execute(
-        deps.as_mut(),
-        env.clone(),
-        bob.clone(),
-        ExecuteMsg::Redelegate {
-            src_validator: VALIDATOR.to_string(),
-            dst_validator: VALIDATOR_TWO.to_string(),
-            amount: amount - amount.checked_div(Uint128::new(2)).unwrap(),
-        },
-    )
-    .unwrap();
-    assert_eq!(
-        res.messages[0].msg,
-        CosmosMsg::Staking(StakingMsg::Redelegate {
-            src_validator: VALIDATOR.to_string(),
-            dst_validator: VALIDATOR_TWO.to_string(),
-            amount: Coin {
-                denom: NATIVE_DENOM.to_string(),
-                amount: amount - amount.checked_div(Uint128::new(2)).unwrap(),
-            }
-        })
-    );
-
-    // Bob undelegates a little from validator two
-    let res = execute(
-        deps.as_mut(),
-        env.clone(),
-        bob.clone(),
-        ExecuteMsg::Undelegate {
-            validator: VALIDATOR_TWO.to_string(),
-            amount: Uint128::new(10),
-        },
-    )
-    .unwrap();
-    assert_eq!(
-        res.messages[0].msg,
-        CosmosMsg::Staking(StakingMsg::Undelegate {
-            validator: VALIDATOR_TWO.to_string(),
-            amount: coin(10, NATIVE_DENOM)
-        })
-    );
-
-    // Only Bob (the recipient) can call SetWithdrawAddress
-    let err = execute(
-        deps.as_mut(),
-        env.clone(),
-        alice,
-        ExecuteMsg::SetWithdrawAddress {
-            address: ALICE.to_string(),
-        },
-    )
-    .unwrap_err();
-    assert_eq!(err, ContractError::Unauthorized);
-    let res = execute(
-        deps.as_mut(),
-        env.clone(),
-        bob,
-        ExecuteMsg::SetWithdrawAddress {
-            address: "bob2".to_string(),
-        },
-    )
-    .unwrap();
-    assert_eq!(
-        res.messages[0].msg,
-        CosmosMsg::Distribution(DistributionMsg::SetWithdrawAddress {
-            address: "bob2".to_string()
-        })
-    );
-
-    // Contract owner cancels contract, it includes unbonding message for all validators bob delegates to
-    let res = execute(
-        deps.as_mut(),
-        env,
-        mock_info(OWNER, &[]),
-        ExecuteMsg::Cancel {},
-    )
-    .unwrap();
-    assert_eq!(res.messages.len(), 3);
-    assert_eq!(
-        res.messages[1].msg,
-        CosmosMsg::Staking(StakingMsg::Undelegate {
-            validator: VALIDATOR.to_string(),
-            amount: coin(
-                amount.checked_div(Uint128::new(2)).unwrap().into(),
-                NATIVE_DENOM
+        PAYMENT
+            .distributable(
+                deps.storage,
+                &PAYMENT.get_vest(deps.storage).unwrap(),
+                env().block.time
             )
-        })
+            .unwrap(),
+        Uint128::zero()
     );
-    assert_eq!(
-        res.messages[2].msg,
-        CosmosMsg::Staking(StakingMsg::Undelegate {
-            validator: VALIDATOR_TWO.to_string(),
-            amount: coin(
-                amount
-                    .checked_div(Uint128::new(2))
-                    .unwrap()
-                    .checked_sub(Uint128::new(10))
-                    .unwrap()
-                    .into(),
-                NATIVE_DENOM
-            )
-        })
-    );
+}
+
+/// Ownership can not be renounced while the contract is canceled and
+/// there are funds withdrawable by the owner as this would lock those
+/// funds.
+#[test]
+fn test_update_owner() {
+    let env = mock_env;
+    let mut deps = mock_dependencies();
+    PAYMENT
+        .initialize(
+            deps.as_mut().storage,
+            VestInit {
+                total: Uint128::new(100),
+                schedule: Schedule::SaturatingLinear,
+                start_time: env().block.time,
+                duration_seconds: 60 * 60 * 24 * 7,
+                denom: CheckedDenom::Cw20(Addr::unchecked("cw20")),
+                recipient: Addr::unchecked("recipient"),
+                title: "title".to_string(),
+                description: Some("description".to_string()),
+            },
+        )
+        .unwrap();
+    let deps = deps.as_mut();
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some("owner")).unwrap();
+    PAYMENT
+        .on_delegate(
+            deps.storage,
+            env().block.time,
+            "validator".to_string(),
+            Uint128::new(10),
+        )
+        .unwrap();
+    PAYMENT
+        .cancel(deps.storage, env().block.time, &Addr::unchecked("owner"))
+        .unwrap();
+    let err = execute(
+        deps,
+        env(),
+        mock_info("owner", &[]),
+        ExecuteMsg::UpdateOwnership(Action::RenounceOwnership),
+    )
+    .unwrap_err();
+    assert_eq!(err, ContractError::Cancelled);
 }

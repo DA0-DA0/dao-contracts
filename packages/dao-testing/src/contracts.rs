@@ -158,3 +158,12 @@ pub fn v1_dao_core_contract() -> Box<dyn Contract<Empty>> {
     .with_reply(cw_core_v1::contract::reply);
     Box::new(contract)
 }
+
+pub fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_vesting::contract::execute,
+        cw_vesting::contract::instantiate,
+        cw_vesting::contract::query,
+    );
+    Box::new(contract)
+}

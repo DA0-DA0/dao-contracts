@@ -4,49 +4,35 @@
 * and run the @cosmwasm/ts-codegen generate command to regenerate this file.
 */
 
-export type Uint128 = string;
 export type UncheckedDenom = {
   native: string;
 } | {
   cw20: string;
 };
-export type Curve = {
-  constant: {
-    y: Uint128;
-    [k: string]: unknown;
-  };
-} | {
-  saturating_linear: SaturatingLinear;
-} | {
-  piecewise_linear: PiecewiseLinear;
+export type Schedule = "saturating_linear" | {
+  piecewise_linear: [number, Uint128][];
 };
+export type Uint128 = string;
+export type Timestamp = Uint64;
+export type Uint64 = string;
 export interface InstantiateMsg {
-  owner?: string | null;
-  params: UncheckedVestingParams;
-}
-export interface UncheckedVestingParams {
-  amount: Uint128;
   denom: UncheckedDenom;
   description?: string | null;
+  owner?: string | null;
   recipient: string;
-  title?: string | null;
-  vesting_schedule: Curve;
-}
-export interface SaturatingLinear {
-  max_x: number;
-  max_y: Uint128;
-  min_x: number;
-  min_y: Uint128;
-  [k: string]: unknown;
-}
-export interface PiecewiseLinear {
-  steps: [number, Uint128][];
-  [k: string]: unknown;
+  schedule: Schedule;
+  start_time?: Timestamp | null;
+  title: string;
+  total: Uint128;
+  unbonding_duration_seconds: number;
+  vesting_duration_seconds: number;
 }
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
-  distribute: {};
+  distribute: {
+    amount?: Uint128 | null;
+  };
 } | {
   cancel: {};
 } | {
@@ -74,6 +60,17 @@ export type ExecuteMsg = {
     validator: string;
   };
 } | {
+  withdraw_canceled_payment: {
+    amount?: Uint128 | null;
+  };
+} | {
+  register_slash: {
+    amount: Uint128;
+    during_unbonding: boolean;
+    time: Timestamp;
+    validator: string;
+  };
+} | {
   update_ownership: Action;
 };
 export type Binary = string;
@@ -90,19 +87,19 @@ export type Expiration = {
 } | {
   never: {};
 };
-export type Timestamp = Uint64;
-export type Uint64 = string;
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
   sender: string;
 }
 export type QueryMsg = {
-  info: {};
-} | {
   ownership: {};
 } | {
-  vested_amount: {};
+  info: {};
+} | {
+  distributable: {
+    t?: number | null;
+  };
 };
 export type CheckedDenom = {
   native: string;
@@ -110,18 +107,42 @@ export type CheckedDenom = {
   cw20: Addr;
 };
 export type Addr = string;
-export type VestingPaymentStatus = "active" | "canceled" | "canceled_and_unbonding" | "fully_vested" | "unfunded";
-export interface VestingPayment {
-  amount: Uint128;
-  canceled_at_time?: number | null;
-  claimed_amount: Uint128;
+export type Status = ("unfunded" | "funded") | {
+  canceled: {
+    owner_withdrawable: Uint128;
+  };
+};
+export type Curve = {
+  constant: {
+    y: Uint128;
+    [k: string]: unknown;
+  };
+} | {
+  saturating_linear: SaturatingLinear;
+} | {
+  piecewise_linear: PiecewiseLinear;
+};
+export interface Vest {
+  claimed: Uint128;
   denom: CheckedDenom;
   description?: string | null;
   recipient: Addr;
-  staked_amount: Uint128;
-  status: VestingPaymentStatus;
-  title?: string | null;
-  vesting_schedule: Curve;
+  slashed: Uint128;
+  start_time: Timestamp;
+  status: Status;
+  title: string;
+  vested: Curve;
+}
+export interface SaturatingLinear {
+  max_x: number;
+  max_y: Uint128;
+  min_x: number;
+  min_y: Uint128;
+  [k: string]: unknown;
+}
+export interface PiecewiseLinear {
+  steps: [number, Uint128][];
+  [k: string]: unknown;
 }
 export interface OwnershipForAddr {
   owner?: Addr | null;

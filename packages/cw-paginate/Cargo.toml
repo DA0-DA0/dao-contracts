@@ -11,7 +11,7 @@ license = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-storage = { workspace = true }
 cw-storage-plus = { workspace = true }
-serde = { workspace = true, default-features = false }
+serde = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }

@@ -1,6 +1,4 @@
-use cosmwasm_std::{
-    CheckedFromRatioError, DecimalRangeExceeded, DivideByZeroError, OverflowError, StdError,
-};
+use cosmwasm_std::{StdError, Uint128};
 use cw_denom::DenomError;
 use cw_ownable::OwnershipError;
 use cw_utils::PaymentError;
@@ -9,99 +7,72 @@ use wynd_utils::CurveError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
-    #[error("{0}")]
+    #[error(transparent)]
     Std(#[from] StdError),
 
     #[error(transparent)]
-    CheckedFromRatioError(#[from] CheckedFromRatioError),
-
-    #[error("{0}")]
     Curve(#[from] CurveError),
 
     #[error(transparent)]
     Denom(#[from] DenomError),
 
     #[error(transparent)]
-    DivideByZeroError(#[from] DivideByZeroError),
-
-    #[error(transparent)]
-    DecimalRangeExceeded(#[from] DecimalRangeExceeded),
-
-    #[error(transparent)]
     Ownable(#[from] OwnershipError),
-
-    #[error("{0}")]
-    OverflowErr(#[from] OverflowError),
 
     #[error("{0}")]
     PaymentError(#[from] PaymentError),
 
-    #[error("Contract has already been funded")]
-    AlreadyFunded,
+    #[error("vesting curve values be in [0, total]`. got [{min}, {max}]")]
+    VestRange { min: Uint128, max: Uint128 },
 
-    #[error("Amount sent does not match vesting amount")]
-    AmountDoesNotMatch,
+    #[error("vesting contract vests ({expected}) tokens, funded with ({sent})")]
+    WrongFundAmount { sent: Uint128, expected: Uint128 },
 
-    #[error("Cw20 contract does not match vesting denom")]
-    Cw20DoesNotMatch,
+    #[error("sent wrong cw20")]
+    WrongCw20,
 
-    #[error("Fully vested")]
-    FullyVested,
+    #[error("total amount to vest must be non-zero")]
+    ZeroVest,
 
-    #[error("Title must be less than 280 characters and not be an empty string")]
-    InvalidTitle,
+    #[error("payment is cancelled")]
+    Cancelled,
 
-    #[error("Cannot undelegate more than you previously delegated")]
-    InsufficientDelegation {},
+    #[error("payment is not cancelled")]
+    NotCancelled,
 
-    #[error("Only callable if vesting payment is active")]
-    NotActive,
+    #[error("vesting contract is not distributing funds")]
+    NotFunded,
 
-    #[error("Must redelegate to a different validator")]
-    SameValidator,
+    #[error("it should not be possible for a slash to occur in the unfunded state")]
+    UnfundedSlash,
 
-    #[error("Vesting payment does not have enough funds")]
-    NotEnoughFunds {},
+    #[error("vesting contract has already been funded")]
+    Funded,
 
-    #[error("Cannot undelegate or claim rewards from a validator that does not have delegations")]
-    NoDelegationsForValidator {},
+    #[error("only the vest receiver may perform this action")]
+    NotReceiver,
 
-    #[error("No tokens have vested at the moment")]
-    NoFundsToClaim,
-
-    #[error("Contract has run out of funds to delegate")]
-    NoFundsToDelegate {},
-
-    #[error("Only callable if contract has been canceled and is unbonding")]
-    NotCanceledAndUnbonding,
-
-    #[error("Tokens for this vesting payment are not stakeable")]
+    #[error("vesting denom may not be staked")]
     NotStakeable,
 
-    #[error("The transfer will never become fully vested. Must hit 0 eventually")]
-    NeverFullyVested,
+    #[error("no delegation to validator {0}")]
+    NoDelegation(String),
 
-    #[error("This account is unauthorized to perform the transaction")]
-    Unauthorized,
+    #[error("slash amount can not be zero")]
+    NoSlash,
 
-    #[error("The transfer tries to vest a different amount of tokens than it sends")]
-    VestsDifferently,
+    #[error("can't set wihtdraw address to vesting contract")]
+    SelfWithdraw,
 
-    #[error("Nothing to vest, amount is zero")]
-    NothingToVest,
+    #[error("can't redelegate funds that are not immediately redelegatable. max: ({max})")]
+    NonImmediateRedelegate { max: Uint128 },
 
-    #[error("Cannot stake more than what is vesting")]
-    StakingMoreThanVesting,
+    #[error("request must be <= claimable and > 0. !(0 < {request} <= {claimable})")]
+    InvalidWithdrawal {
+        request: Uint128,
+        claimable: Uint128,
+    },
 
-    #[error("Vesting Payment has been cancelled by contract owner")]
-    VestingPaymentCanceled,
-
-    #[error("Vesting Payment does not exist")]
-    VestingPaymentNotFound,
-
-    #[error("Rewards amount is 0")]
-    ZeroRewardsToSend {},
-
-    #[error("Validator is not delegated to")]
-    ValidatorNotDelegatedTo {},
+    #[error("can't register a slash event occuring in the future")]
+    FutureSlash,
 }

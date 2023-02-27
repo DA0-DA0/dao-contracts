@@ -5,8 +5,16 @@
 */
 
 export interface InstantiateMsg {
+  denom: UncheckedDenom;
+  description?: string | null;
   owner?: string | null;
-  params: UncheckedVestingParams;
+  recipient: string;
+  schedule: Schedule;
+  start_time?: Timestamp | null;
+  title: string;
+  total: Uint128;
+  unbonding_duration_seconds: number;
+  vesting_duration_seconds: number;
 }
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
@@ -29,16 +37,11 @@ export type UncheckedDenom = {
 } | {
   cw20: string;
 };
-export type Curve = {
-  constant: {
-    y: Uint128;
-    [k: string]: unknown;
-  };
-} | {
-  saturating_linear: SaturatingLinear;
-} | {
-  piecewise_linear: PiecewiseLinear;
+export type Schedule = "saturating_linear" | {
+  piecewise_linear: [number, Uint128][];
 };
+export type Timestamp = Uint64;
+export type Uint64 = string;
 export type Action = {
   transfer_ownership: {
     expiry?: Expiration | null;
@@ -52,31 +55,10 @@ export type Expiration = {
 } | {
   never: {};
 };
-export type Timestamp = Uint64;
-export type Uint64 = string;
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
   sender: string;
-}
-export interface UncheckedVestingParams {
-  amount: Uint128;
-  denom: UncheckedDenom;
-  description?: string | null;
-  recipient: string;
-  title?: string | null;
-  vesting_schedule: Curve;
-}
-export interface SaturatingLinear {
-  max_x: number;
-  max_y: Uint128;
-  min_x: number;
-  min_y: Uint128;
-  [k: string]: unknown;
-}
-export interface PiecewiseLinear {
-  steps: [number, Uint128][];
-  [k: string]: unknown;
 }
 export type QueryMsg = {
   list_vesting_contracts: {
