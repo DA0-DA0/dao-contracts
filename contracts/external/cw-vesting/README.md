@@ -158,3 +158,11 @@ to pay someone 50% $USDC could contain three messages:
 1. Swap 50% of grant tokens for $USDC
 2. Instantiate a vesting contract for the $USDC
 3. Instantiate a vesting contract for the native DAO token
+
+## Attribution
+
+Thank you to Wynd DAO for their previous work on
+[cw20-vesting](https://github.com/cosmorama/wynddao/tree/main/contracts/cw20-vesting)
+and their [curve
+package](https://github.com/cosmorama/wynddao/tree/main/packages/utils)
+which informed and inspired this contract's design.
