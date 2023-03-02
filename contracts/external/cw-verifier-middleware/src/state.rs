@@ -1,8 +1,8 @@
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
-/// Nonce for each public key
-pub const NONCES: Map<&str, Uint128> = Map::new("pk_to_nonce");
+/// Nonce for each public key, contract addr, contract version thruple
+pub const NONCES: Map<(&str, &Addr, &str), Uint128> = Map::new("pk_to_nonce");
 
 /// Contract address for which this middleware is used.
 /// We require the contract address as part of the

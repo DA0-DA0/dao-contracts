@@ -877,6 +877,7 @@ dependencies = [
  "hex",
  "ripemd",
  "secp256k1",
+ "serde_json",
  "sha2 0.10.6",
  "thiserror",
 ]

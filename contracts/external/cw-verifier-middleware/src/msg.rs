@@ -14,8 +14,9 @@ pub struct WrappedMessage {
 pub struct Payload {
     pub nonce: Uint128,
     pub contract_address: String,
+    pub chain_id: String,
     pub msg: Binary,
     pub expiration: Option<Expiration>,
     pub bech32_prefix: String,
-    pub version: String,
+    pub contract_version: String,
 }

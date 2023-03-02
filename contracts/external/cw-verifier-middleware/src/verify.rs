@@ -4,22 +4,40 @@ use crate::{
     state::{CONTRACT_ADDRESS, NONCES},
 };
 use bech32::{ToBase32, Variant};
-use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, StdError, Uint128};
+use cosmwasm_schema::schemars::_serde_json::json;
+use cosmwasm_std::{
+    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, StdError, StdResult, Uint128,
+};
 
 use ripemd::Ripemd160;
+use secp256k1::hashes::serde_macros;
 use sha2::{Digest, Sha256};
 
 const UNCOMPRESSED_HEX_PK_LEN: usize = 130;
 const COMPRESSED_HEX_PK_LEN: usize = 66;
 
-pub fn verify(
-    deps: DepsMut,
+pub fn verify<'a>(
+    deps: DepsMut<'a>,
     env: Env,
-    mut info: MessageInfo,
+    info: &'a mut MessageInfo,
     wrapped_msg: WrappedMessage,
-) -> Result<(Binary, MessageInfo), ContractError> {
-    // Serialize the inner message
-    let msg_ser = to_binary(&wrapped_msg.payload)?;
+) -> Result<(Binary, &'a mut MessageInfo), ContractError> {
+    let payload = wrapped_msg.payload;
+
+    let signer_addr = pk_to_addr(
+        deps.as_ref(),
+        wrapped_msg.public_key.to_hex(), // to_hex ensures that the public key has the expected number of bytes
+        &payload.bech32_prefix,
+    )?;
+
+    let payload_ser =
+        serde_json::to_string(&payload).map_err(|e| ContractError::SerdeError(e.into()))?;
+
+    // Convert message to signDoc format
+    let sign_doc = get_sign_doc(&signer_addr.as_str(), &payload_ser, &payload.chain_id)?;
+
+    // Serialize the payload
+    let msg_ser = to_binary(&sign_doc)?;
 
     // Hash the serialized payload using SHA-256
     let msg_hash = Sha256::digest(&msg_ser);
@@ -35,43 +53,42 @@ pub fn verify(
         return Err(ContractError::SignatureInvalid {});
     }
 
+    let validated_contract_addr = deps.api.addr_validate(&payload.contract_address)?;
+    let pk = wrapped_msg.public_key.to_hex();
+    let nonce_key = (
+        pk.as_str(),
+        &validated_contract_addr,
+        payload.contract_version.as_str(),
+    );
+
     // Validate that the message has the correct nonce
     let nonce = NONCES
-        .may_load(deps.storage, &wrapped_msg.public_key.to_hex())?
+        .may_load(deps.storage, nonce_key)?
         .unwrap_or(Uint128::from(0u128));
 
-    if wrapped_msg.payload.nonce != nonce {
+    if payload.nonce != nonce {
         return Err(ContractError::InvalidNonce {});
     }
 
     // Increment nonce
-    NONCES.update(
-        deps.storage,
-        &wrapped_msg.public_key.to_string(),
-        |nonce: Option<Uint128>| {
-            nonce
-                .unwrap_or(Uint128::from(0u128))
-                .checked_add(Uint128::from(1u128))
-                .map_err(|e| StdError::from(e))
-        },
-    )?;
+    NONCES.update(deps.storage, nonce_key, |nonce: Option<Uint128>| {
+        nonce
+            .unwrap_or(Uint128::from(0u128))
+            .checked_add(Uint128::from(1u128))
+            .map_err(|e| StdError::from(e))
+    })?;
 
     // Validate that the message has not expired
-    if let Some(expiration) = wrapped_msg.payload.expiration {
+    if let Some(expiration) = payload.expiration {
         if expiration.is_expired(&env.block) {
             return Err(ContractError::MessageExpired {});
         }
     }
-
     // Set the message sender to the address corresponding to the provided public key.
-    info.sender = pk_to_addr(
-        deps.as_ref(),
-        wrapped_msg.public_key.to_hex(), // to_hex ensures that the public key has the expected number of bytes
-        &wrapped_msg.payload.bech32_prefix,
-    )?;
+    info.sender = signer_addr;
 
     // Return info with updater sender and msg to be deserialized by caller
-    return Ok((wrapped_msg.payload.msg, info));
+    return Ok((payload.msg, info));
 }
 
 pub fn initialize_contract_addr(deps: DepsMut, env: Env) -> Result<(), ContractError> {
@@ -80,7 +97,7 @@ pub fn initialize_contract_addr(deps: DepsMut, env: Env) -> Result<(), ContractE
 }
 
 // Takes an compressed or uncompressed hex-encoded EC public key and a bech32 prefix and derives the bech32 address.
-pub fn pk_to_addr(deps: Deps, hex_pk: String, prefix: &str) -> Result<Addr, ContractError> {
+pub(crate) fn pk_to_addr(deps: Deps, hex_pk: String, prefix: &str) -> Result<Addr, ContractError> {
     // Decode PK from hex
     let raw_pk = hex::decode(&hex_pk)?;
 
@@ -109,4 +126,34 @@ pub fn pk_to_addr(deps: Deps, hex_pk: String, prefix: &str) -> Result<Addr, Cont
 
     // Return validated addr
     Ok(deps.api.addr_validate(&bech32)?)
+}
+
+use serde_json;
+
+pub(crate) fn get_sign_doc(
+    signer: &str,
+    message: &str,
+    chain_id: &str,
+) -> Result<String, ContractError> {
+    let doc = json!({
+        "account_number": "0",
+        "chain_id": chain_id,
+        "fee": {
+            "amount": [],
+            "gas": "0"
+        },
+        "memo": "",
+        "msgs": [
+            {
+                "type": "cw-verifier",
+                "value": {
+                    "data": message,
+                    "signer": signer
+                }
+            }
+        ],
+        "sequence": "0"
+    });
+
+    serde_json::to_string(&doc).map_err(|e| ContractError::SerdeError(e.into()))
 }

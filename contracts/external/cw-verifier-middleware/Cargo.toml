@@ -17,6 +17,7 @@ hex = { workspace = true }
 bip32 = { workspace = true }
 ripemd = { workspace = true }
 bech32 = { workspace = true }
+serde_json = { workspace = true}
 
 [dev-dependencies]
 
