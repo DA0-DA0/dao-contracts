@@ -17,7 +17,7 @@ pub fn verify(
     env: Env,
     mut info: MessageInfo,
     wrapped_msg: WrappedMessage,
-) -> Result<Binary, ContractError> {
+) -> Result<(Binary, MessageInfo), ContractError> {
     // Serialize the inner message
     let msg_ser = to_binary(&wrapped_msg.payload)?;
 
@@ -70,8 +70,8 @@ pub fn verify(
         &wrapped_msg.payload.bech32_prefix,
     )?;
 
-    // Return the msg; caller will deserialize
-    return Ok(wrapped_msg.payload.msg);
+    // Return info with updater sender and msg to be deserialized by caller
+    return Ok((wrapped_msg.payload.msg, info));
 }
 
 pub fn initialize_contract_addr(deps: DepsMut, env: Env) -> Result<(), ContractError> {

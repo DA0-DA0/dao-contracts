@@ -353,10 +353,52 @@ fn test_verify_malformed_signature() {
     assert!(matches!(err, ContractError::VerificationError { .. }));
 }
 
+#[test]
+fn test_verify_sets_sender_to_pk_address_representation() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+    let info = mock_info("creator", &[]);
+
+    let payload = Payload {
+        nonce: Uint128::from(0u128),
+        msg: to_binary("eyJpbnN0YW50aWF0ZV9jb250cmFjdF93aXRoX3NlbGZfYWRtaW4iOnsiY29kZV9pZCI6MTY4OCwiaW5zdGFudGlhdGVfbXNnIjp7fX19ICA=").unwrap(),
+        expiration: None,
+        contract_address: Addr::unchecked("contract_address").to_string(),
+        bech32_prefix: JUNO_PREFIX.to_string(),
+        version: "version-1".to_string(),
+    };
+
+    // Generate a keypair
+    let secp = Secp256k1::new();
+    let (secret_key, public_key) = secp.generate_keypair(&mut OsRng);
+
+    // Hash and sign the payload
+    let msg_hash = Sha256::digest(&to_binary(&payload).unwrap());
+    let msg = Message::from_slice(&msg_hash).unwrap();
+    let sig = secp.sign_ecdsa(&msg, &secret_key);
+
+    // Wrap the message
+    let hex_encoded = HexBinary::from(public_key.serialize_uncompressed());
+    let wrapped_msg = WrappedMessage {
+        payload: payload.clone(),
+        signature: sig.serialize_compact().into(),
+        public_key: hex_encoded.clone(),
+    };
+
+    let (verified_msg, verified_info) = verify(deps.as_mut(), env.clone(), info, wrapped_msg).unwrap();
+
+    // pk_to_addr is tested above so assumed to be working
+    // TODO: generate a new keypair to avoid generating in every test
+    let respective_address = pk_to_addr(deps.as_ref(), hex_encoded.to_string(), JUNO_PREFIX).unwrap();
+
+    // assert that info.sender is set to the expected representation of pk
+    assert_eq!(verified_info.sender, respective_address);
+    assert_eq!(verified_msg, payload.msg);
+}
+
 /*
 Moar tests to write:
 nonce overflow?
-load a keypair corresponding to pre-known address and validate that address in info was set correctly
 */
 
 
