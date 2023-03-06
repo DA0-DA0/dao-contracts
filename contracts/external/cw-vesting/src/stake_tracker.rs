@@ -68,10 +68,18 @@ impl<'a> StakeTracker<'a> {
         dst: String,
         amount: Uint128,
     ) -> StdResult<()> {
-        self.validators
+        let new = self
+            .validators
             .decrement(storage, src, t.seconds(), amount)?;
-        self.validators
+        if new.is_zero() {
+            self.cardinality.decrement(storage, (), t.seconds(), 1)?;
+        }
+        let new = self
+            .validators
             .increment(storage, dst, t.seconds(), amount)?;
+        if new == amount {
+            self.cardinality.increment(storage, (), t.seconds(), 1)?;
+        }
         Ok(())
     }
 
