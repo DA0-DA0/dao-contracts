@@ -624,3 +624,97 @@ fn test_update_vesting_code_id() {
         .unwrap();
     assert_eq!(info.code_id, cw_vesting_code_two);
 }
+
+/// This test was contributed by Oak Security as part of their audit
+/// of cw-vesting. It addresses issue two, "Misconfiguring the total
+/// vested amount to be lower than the sent CW20 amount would cause a
+/// loss of funds".
+#[test]
+pub fn test_inconsistent_cw20_amount() {
+    let mut app = App::default();
+    let code_id = app.store_code(factory_contract());
+    let cw20_code_id = app.store_code(cw20_contract());
+    let cw_vesting_code_id = app.store_code(cw_vesting_contract());
+    // Instantiate cw20 contract with balances for Alice
+    let cw20_addr = app
+        .instantiate_contract(
+            cw20_code_id,
+            Addr::unchecked(ALICE),
+            &cw20_base::msg::InstantiateMsg {
+                name: "cw20 token".to_string(),
+                symbol: "cwtwenty".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: ALICE.to_string(),
+                    amount: Uint128::new(INITIAL_BALANCE),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "cw20-base",
+            None,
+        )
+        .unwrap();
+    let instantiate = InstantiateMsg {
+        owner: Some(ALICE.to_string()),
+        vesting_code_id: cw_vesting_code_id,
+    };
+    let factory_addr = app
+        .instantiate_contract(
+            code_id,
+            Addr::unchecked("CREATOR"),
+            &instantiate,
+            &[],
+            "cw-admin-factory",
+            None,
+        )
+        .unwrap();
+    // Mint alice native tokens
+    app.sudo(SudoMsg::Bank({
+        BankSudo::Mint {
+            to_address: ALICE.to_string(),
+            amount: coins(INITIAL_BALANCE, NATIVE_DENOM),
+        }
+    }))
+    .unwrap();
+    let amount = Uint128::new(1000000);
+    let unchecked_denom = UncheckedDenom::Cw20(cw20_addr.to_string());
+    let instantiate_payroll_msg = PayrollInstantiateMsg {
+        owner: Some(ALICE.to_string()),
+        recipient: BOB.to_string(),
+        title: "title".to_string(),
+        description: Some("desc".to_string()),
+        total: amount - Uint128::new(1), // lesser amount than sent
+        denom: unchecked_denom,
+        schedule: Schedule::SaturatingLinear,
+        vesting_duration_seconds: 200,
+        unbonding_duration_seconds: 2592000, // 30 days
+        start_time: None,
+    };
+    let err: ContractError = app
+        .execute_contract(
+            Addr::unchecked(ALICE),
+            cw20_addr,
+            &Cw20ExecuteMsg::Send {
+                contract: factory_addr.to_string(),
+                amount,
+                msg: to_binary(&ReceiveMsg::InstantiatePayrollContract {
+                    instantiate_msg: instantiate_payroll_msg,
+                    label: "Payroll".to_string(),
+                })
+                .unwrap(),
+            },
+            &coins(amount.into(), NATIVE_DENOM), // https://github.com/CosmWasm/cw-plus/issues/862
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(
+        err,
+        ContractError::WrongFundAmount {
+            sent: amount,
+            expected: amount - Uint128::one()
+        }
+    );
+}
