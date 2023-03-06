@@ -31,6 +31,17 @@ fn test_no_duration_instavest() {
         .build();
 }
 
+#[test]
+#[should_panic(expected = "this vesting contract would complete instantly")]
+fn test_no_instavest_in_the_future() {
+    let default_start_time = App::default().block_info().time;
+
+    SuiteBuilder::default()
+        .with_start_time(default_start_time.plus_seconds(60 * 60 * 24))
+        .with_vesting_duration(0)
+        .build();
+}
+
 /// Attempting to distribute more tokens than are claimable is not
 /// allowed.
 #[test]
@@ -474,4 +485,68 @@ fn test_owner_registers_slash_after_withdrawal() {
         vested,
         Uint128::new(100_000_000).multiply_ratio(1u128, 7u128)
     );
+}
+
+/// Tests a one second vesting duration and a start time one week in
+/// the future. Before the vest has completed, the receier should be
+/// allowed to bond tokens and receive staking rewards, but should not
+/// be able to claim any tokens.
+#[test]
+fn test_almost_instavest_in_the_future() {
+    let default_start_time = App::default().block_info().time;
+
+    let mut suite = SuiteBuilder::default()
+        .with_start_time(default_start_time.plus_seconds(60 * 60 * 24 * 7))
+        .with_vesting_duration(1)
+        .build();
+
+    suite.delegate(Uint128::new(100_000_000)).unwrap();
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::zero());
+
+    // five days pass.
+    suite.a_day_passes();
+    suite.a_day_passes();
+    suite.a_day_passes();
+    suite.a_day_passes();
+    suite.a_day_passes();
+
+    let balance_pre_claim = suite.query_receiver_vesting_token_balance();
+    suite.withdraw_delegator_reward("validator").unwrap();
+    let balance_post_claim = suite.query_receiver_vesting_token_balance();
+    assert!(balance_post_claim > balance_pre_claim);
+
+    suite
+        .undelegate(suite.receiver.clone(), Uint128::new(100_000_000))
+        .unwrap();
+
+    // seven days have passed. one second remaining for vest
+    // completion.
+    suite.a_day_passes();
+    suite.a_day_passes();
+    suite.process_unbonds();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::zero());
+    let res = suite.distribute("lerandom", None);
+    is_error!(
+        res,
+        ContractError::InvalidWithdrawal {
+            request: Uint128::zero(),
+            claimable: Uint128::zero()
+        }
+        .to_string()
+        .as_str()
+    );
+
+    // a second passes, the vest is now complete.
+    suite.a_second_passes();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(100_000_000));
+    suite
+        .distribute("lerandom", Some(Uint128::new(100_000_000)))
+        .unwrap();
+    let balance = suite.query_receiver_vesting_token_balance();
+    assert_eq!(balance, balance_post_claim + Uint128::new(100_000_000));
 }
