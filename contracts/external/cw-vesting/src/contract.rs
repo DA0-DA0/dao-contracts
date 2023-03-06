@@ -359,11 +359,15 @@ pub fn execute_undelegate(
     let denom = deps.querier.query_bonded_denom()?;
 
     let msg = StakingMsg::Undelegate {
-        validator,
+        validator: validator.clone(),
         amount: Coin { denom, amount },
     };
 
-    Ok(Response::default().add_message(msg))
+    Ok(Response::default()
+        .add_message(msg)
+        .add_attribute("method", "undelegate")
+        .add_attribute("validator", validator)
+        .add_attribute("amount", amount))
 }
 
 pub fn execute_set_withdraw_address(
