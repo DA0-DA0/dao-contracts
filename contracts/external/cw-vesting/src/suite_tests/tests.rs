@@ -1,4 +1,5 @@
 use cosmwasm_std::{Timestamp, Uint128};
+use cw_multi_test::App;
 use cw_ownable::OwnershipError;
 
 use crate::{vesting::Status, ContractError};
@@ -8,6 +9,26 @@ use super::{is_error, suite::SuiteBuilder};
 #[test]
 fn test_suite_instantiate() {
     SuiteBuilder::default().build();
+}
+
+/// Can not have a start time in the past such that the vest would
+/// complete instantly.
+#[test]
+#[should_panic(expected = "this vesting contract would complete instantly")]
+fn test_no_past_instavest() {
+    SuiteBuilder::default()
+        .with_start_time(Timestamp::from_seconds(0))
+        .with_vesting_duration(10)
+        .build();
+}
+
+#[test]
+#[should_panic(expected = "this vesting contract would complete instantly")]
+fn test_no_duration_instavest() {
+    SuiteBuilder::default()
+        .with_start_time(Timestamp::from_seconds(0))
+        .with_vesting_duration(0)
+        .build();
 }
 
 /// Attempting to distribute more tokens than are claimable is not
@@ -258,9 +279,13 @@ fn test_redelegation() {
 /// vest immediately completes.
 #[test]
 fn test_start_time_in_the_past() {
+    let default_start_time = App::default().block_info().time;
+
     let mut suite = SuiteBuilder::default()
-        .with_start_time(Timestamp::from_seconds(0))
+        .with_start_time(default_start_time.minus_seconds(100))
         .build();
+
+    suite.a_week_passes();
 
     // distributing over two TXns shouldn't matter.
     suite
