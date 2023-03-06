@@ -30,11 +30,10 @@ pub struct InstantiateMsg {
     /// represent a more complicated vesting schedule.
     pub schedule: Schedule,
     /// The time to start vesting, or None to start vesting when the
-    /// contract is instantiated. This may be a time in the past,
-    /// though it is checked that `start_time +
-    /// vesting_duration_seconds > now` as a vest that completes
-    /// instantly is equivalent to a regular fund transfer, but with a
-    /// lot of extra code.
+    /// contract is instantiated. `start_time` may be in the past,
+    /// though the contract checks that `start_time +
+    /// vesting_duration_seconds > now`. Otherwise, this would amount
+    /// to a regular fund transfer.
     pub start_time: Option<Timestamp>,
     /// The length of the vesting schedule in seconds.
     pub vesting_duration_seconds: u64,
