@@ -203,8 +203,7 @@ pub enum QueryMsg {
     /// vested at time t.
     #[returns(::cosmwasm_std::Uint128)]
     Distributable {
-        /// The time, as a unix timestamp in seconds, or none to use
-        /// the current time.
+        /// The time or none to use the current time.
         t: Option<Timestamp>,
     },
     /// Gets the current value of `vested(t)`. If `t` is `None`, the

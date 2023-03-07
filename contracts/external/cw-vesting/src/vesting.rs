@@ -56,11 +56,17 @@ pub enum Schedule {
     /// Vests linearally from `0` to `total`.
     SaturatingLinear,
     /// Vests by linearally interpolating between the provided
-    /// (timestamp, amount) points. The first amount must be zero and
-    /// the last amount the total vesting amount. `timestamp` is a unix
-    /// timestamp in SECONDS since epoch. Note that this differs from the
-    /// CosmWasm `Timestamp` type which is normally specified in nanoseconds
-    /// since epoch.
+    /// (seconds, amount) points. The first amount must be zero and
+    /// the last amount the total vesting amount. `seconds` are
+    /// seconds since the vest start time.
+    ///
+    /// There is a problem in the underlying Curve library that
+    /// doesn't allow zero start values, so the first value of
+    /// `seconds` must be > 1. To start at a particular time (if you
+    /// need that level of percision), subtract one from the true
+    /// start time, and make the first `seconds` value `1`.
+    ///
+    /// <https://github.com/cosmorama/wynddao/pull/4>
     PiecewiseLinear(Vec<(u64, Uint128)>),
 }
 
@@ -209,7 +215,7 @@ impl<'a> Payment<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        owner: &Addr, // todo: also unbond field
+        owner: &Addr,
     ) -> Result<Vec<CosmosMsg>, ContractError> {
         let mut vesting = self.vesting.load(storage)?;
         if matches!(vesting.status, Status::Canceled { .. }) {
