@@ -1,10 +1,13 @@
-use cosmwasm_std::{coins, testing::mock_env, Addr, Decimal, Timestamp, Uint128, Validator};
+use cosmwasm_std::{
+    coins, testing::mock_env, Addr, BlockInfo, Decimal, Timestamp, Uint128, Validator,
+};
 use cw_multi_test::{App, BankSudo, Executor, StakingInfo, StakingSudo};
 use dao_testing::contracts::cw_vesting_contract;
 
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     vesting::{Schedule, Vest},
+    StakeTrackerQuery,
 };
 
 pub(crate) struct Suite {
@@ -143,6 +146,10 @@ impl Suite {
         self.a_day_passes();
         self.a_day_passes();
         self.a_day_passes();
+    }
+
+    pub fn what_block_is_it(&self) -> BlockInfo {
+        self.app.block_info()
     }
 
     pub fn slash(&mut self, percent: u64) {
@@ -352,6 +359,13 @@ impl Suite {
         let vest = self.query_vest();
         vest.denom
             .query_balance(&self.app.wrap(), &Addr::unchecked(who.into()))
+            .unwrap()
+    }
+
+    pub fn query_stake(&self, q: StakeTrackerQuery) -> Uint128 {
+        self.app
+            .wrap()
+            .query_wasm_smart(&self.vesting, &QueryMsg::Stake(q))
             .unwrap()
     }
 }

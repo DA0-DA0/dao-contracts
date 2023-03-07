@@ -1,6 +1,6 @@
-use cosmwasm_std::{testing::mock_dependencies, Timestamp, Uint128};
+use cosmwasm_std::{from_binary, testing::mock_dependencies, Timestamp, Uint128};
 
-use crate::stake_tracker::StakeTracker;
+use crate::{StakeTracker, StakeTrackerQuery};
 
 #[test]
 fn test_stake_tracking() {
@@ -417,4 +417,67 @@ fn test_redelegation_changes_cardinality() {
         .unwrap();
     let c = st.validator_cardinality(storage, t).unwrap();
     assert_eq!(c, 1);
+}
+
+#[test]
+fn test_queries() {
+    let storage = &mut mock_dependencies().storage;
+    let st = StakeTracker::new("s", "v", "c");
+    st.on_delegate(
+        storage,
+        Timestamp::from_seconds(10),
+        "v1".to_string(),
+        Uint128::new(42),
+    )
+    .unwrap();
+
+    let cardinality: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::Cardinality {
+                t: Timestamp::from_seconds(11),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(cardinality, Uint128::one());
+
+    let total_staked: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::TotalStaked {
+                t: Timestamp::from_seconds(10),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(total_staked, Uint128::new(42));
+
+    let val_staked: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::ValidatorStaked {
+                t: Timestamp::from_seconds(10),
+                validator: "v1".to_string(),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(val_staked, Uint128::new(42));
+
+    let val_staked_before_staking: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::ValidatorStaked {
+                t: Timestamp::from_seconds(9),
+                validator: "v1".to_string(),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(val_staked_before_staking, Uint128::new(0));
 }

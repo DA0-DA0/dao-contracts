@@ -1,12 +1,16 @@
 use std::cmp::min;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{
+    Addr, Binary, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128,
+};
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Item;
 use wynd_utils::Curve;
 
-use crate::{error::ContractError, stake_tracker::StakeTracker};
+use cw_stake_tracker::{StakeTracker, StakeTrackerQuery};
+
+use crate::error::ContractError;
 
 pub struct Payment<'a> {
     vesting: Item<'a, Vest>,
@@ -377,6 +381,10 @@ impl<'a> Payment<'a> {
             }
             Ok(())
         }
+    }
+
+    pub fn query_stake(&self, storage: &dyn Storage, q: StakeTrackerQuery) -> StdResult<Binary> {
+        self.staking.query(storage, q)
     }
 }
 

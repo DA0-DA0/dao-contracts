@@ -3,6 +3,7 @@ use cosmwasm_std::{Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
 use cw_ownable::cw_ownable;
+use cw_stake_tracker::StakeTrackerQuery;
 
 use crate::vesting::Schedule;
 
@@ -206,4 +207,10 @@ pub enum QueryMsg {
         /// the current time.
         t: Option<u64>,
     },
+    /// Queries information about the contract's understanding of it's
+    /// bonded and unbonding token balances. See the
+    /// `StakeTrackerQuery` in `packages/cw-stake-tracker/lib.rs` for
+    /// query methods and their return types.
+    #[returns(::cosmwasm_std::Uint128)]
+    Stake(StakeTrackerQuery),
 }

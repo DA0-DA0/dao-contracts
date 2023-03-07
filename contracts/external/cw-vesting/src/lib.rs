@@ -3,7 +3,6 @@
 pub mod contract;
 pub mod error;
 pub mod msg;
-pub mod stake_tracker;
 pub mod state;
 pub mod vesting;
 
@@ -13,8 +12,9 @@ pub use crate::error::ContractError;
 pub use cw_denom::{CheckedDenom, UncheckedDenom};
 pub use cw_ownable::Ownership;
 
-#[cfg(test)]
-mod stake_tracker_tests;
+// so consumers don't need a cw_stake_tracker dependency to use this contract's queries.
+pub use cw_stake_tracker::StakeTrackerQuery;
+
 #[cfg(test)]
 mod suite_tests;
 #[cfg(test)]

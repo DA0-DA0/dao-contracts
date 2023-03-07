@@ -1,5 +1,9 @@
-use cosmwasm_std::{StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{to_binary, Binary, StdResult, Storage, Timestamp, Uint128};
 use cw_wormhole::Wormhole;
+
+#[cfg(test)]
+mod tests;
 
 pub struct StakeTracker<'a> {
     /// staked(t) := the total number of native tokens staked &
@@ -19,6 +23,17 @@ pub struct StakeTracker<'a> {
     /// cardinality(t) := the # of validators with staked and/or
     /// unbonding tokens at time t.
     cardinality: Wormhole<'a, (), u64>,
+}
+
+#[cw_serde]
+#[derive(QueryResponses)]
+pub enum StakeTrackerQuery {
+    #[returns(::cosmwasm_std::Uint128)]
+    Cardinality { t: Timestamp },
+    #[returns(::cosmwasm_std::Uint128)]
+    TotalStaked { t: Timestamp },
+    #[returns(::cosmwasm_std::Uint128)]
+    ValidatorStaked { validator: String, t: Timestamp },
 }
 
 impl<'a> StakeTracker<'a> {
@@ -239,5 +254,20 @@ impl<'a> StakeTracker<'a> {
         self.cardinality
             .load(storage, (), t.seconds())
             .map(|v| v.unwrap_or_default())
+    }
+
+    /// Provides a query interface for contracts that embed this stake
+    /// tracker and want to make its information part of their public
+    /// API.
+    pub fn query(&self, storage: &dyn Storage, msg: StakeTrackerQuery) -> StdResult<Binary> {
+        match msg {
+            StakeTrackerQuery::Cardinality { t } => to_binary(&Uint128::new(
+                self.validator_cardinality(storage, t)?.into(),
+            )),
+            StakeTrackerQuery::TotalStaked { t } => to_binary(&self.total_staked(storage, t)?),
+            StakeTrackerQuery::ValidatorStaked { validator, t } => {
+                to_binary(&self.validator_staked(storage, t, validator)?)
+            }
+        }
     }
 }

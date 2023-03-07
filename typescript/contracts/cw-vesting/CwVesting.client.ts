@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { UncheckedDenom, Schedule, Uint128, Timestamp, Uint64, InstantiateMsg, ExecuteMsg, Binary, Action, Expiration, Cw20ReceiveMsg, QueryMsg, CheckedDenom, Addr, Status, Curve, Vest, SaturatingLinear, PiecewiseLinear, OwnershipForAddr } from "./CwVesting.types";
+import { UncheckedDenom, Schedule, Uint128, Timestamp, Uint64, InstantiateMsg, ExecuteMsg, Binary, Action, Expiration, Cw20ReceiveMsg, QueryMsg, StakeTrackerQuery, CheckedDenom, Addr, Status, Curve, Vest, SaturatingLinear, PiecewiseLinear, OwnershipForAddr } from "./CwVesting.types";
 export interface CwVestingReadOnlyInterface {
   contractAddress: string;
   ownership: () => Promise<OwnershipForAddr>;
@@ -16,6 +16,7 @@ export interface CwVestingReadOnlyInterface {
   }: {
     t?: number;
   }) => Promise<Uint128>;
+  stake: () => Promise<Uint128>;
 }
 export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
   client: CosmWasmClient;
@@ -27,6 +28,7 @@ export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
     this.ownership = this.ownership.bind(this);
     this.info = this.info.bind(this);
     this.distributable = this.distributable.bind(this);
+    this.stake = this.stake.bind(this);
   }
 
   ownership = async (): Promise<OwnershipForAddr> => {
@@ -48,6 +50,11 @@ export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
       distributable: {
         t
       }
+    });
+  };
+  stake = async (): Promise<Uint128> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      stake: {}
     });
   };
 }

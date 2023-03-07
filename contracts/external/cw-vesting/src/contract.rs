@@ -453,5 +453,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             &PAYMENT.get_vest(deps.storage)?,
             t.map(Timestamp::from_seconds).unwrap_or(env.block.time),
         )?),
+        QueryMsg::Stake(q) => PAYMENT.query_stake(deps.storage, q),
     }
 }

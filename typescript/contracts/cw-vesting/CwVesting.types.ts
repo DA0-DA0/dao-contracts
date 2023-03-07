@@ -100,6 +100,22 @@ export type QueryMsg = {
   distributable: {
     t?: number | null;
   };
+} | {
+  stake: StakeTrackerQuery;
+};
+export type StakeTrackerQuery = {
+  cardinality: {
+    t: Timestamp;
+  };
+} | {
+  total_staked: {
+    t: Timestamp;
+  };
+} | {
+  validator_staked: {
+    t: Timestamp;
+    validator: string;
+  };
 };
 export type CheckedDenom = {
   native: string;
