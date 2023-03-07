@@ -207,10 +207,7 @@ pub fn execute_claim_cw20s(
 
         // check for any previous claims
         let previous_claim = CW20_CLAIMS
-            .load(
-                deps.storage,
-                (sender.clone(), Addr::unchecked(addr.clone())),
-            )
+            .may_load(deps.storage, (sender.clone(), Addr::unchecked(addr.clone())))?
             .unwrap_or_default();
 
         // get % share of sender and subtract any previous claims
@@ -269,7 +266,7 @@ pub fn execute_claim_natives(
 
         // check for any previous claims
         let previous_claim = NATIVE_CLAIMS
-            .load(deps.storage, (sender.clone(), addr.clone()))
+            .may_load(deps.storage, (sender.clone(), addr.clone()))?
             .unwrap_or_default();
 
         // get % share of sender and subtract any previous claims
@@ -323,7 +320,7 @@ pub fn execute_claim_all(deps: DepsMut, env: Env, sender: Addr) -> Result<Respon
 
         // retrieve the existing claim or default to 0
         let previous_claim = CW20_CLAIMS
-            .load(deps.storage, (sender.clone(), addr.clone()))
+            .may_load(deps.storage, (sender.clone(), addr.clone()))?
             .unwrap_or_default();
 
         // get % share of sender and subtract any previous claims
@@ -364,7 +361,7 @@ pub fn execute_claim_all(deps: DepsMut, env: Env, sender: Addr) -> Result<Respon
         let (denom, amount) = entry?;
 
         let previous_claim = NATIVE_CLAIMS
-            .load(deps.storage, (sender.clone(), denom.clone()))
+            .may_load(deps.storage, (sender.clone(), denom.clone()))?
             .unwrap_or_default();
 
         // get % share of sender and subtract any previous claims
@@ -433,7 +430,9 @@ pub fn query_voting_contract(deps: Deps) -> StdResult<Binary> {
 }
 
 pub fn query_total_power(deps: Deps) -> StdResult<Binary> {
-    let total_power = TOTAL_POWER.load(deps.storage)?;
+    let total_power: Uint128 = TOTAL_POWER
+        .may_load(deps.storage)?
+        .unwrap_or_default();
     to_binary(&TotalPowerResponse { total_power })
 }
 
@@ -469,8 +468,12 @@ pub fn query_cw20_tokens(deps: Deps) -> StdResult<Binary> {
 
 pub fn query_native_entitlement(deps: Deps, sender: Addr, denom: String) -> StdResult<Binary> {
     let address = deps.api.addr_validate(sender.as_ref())?;
-    let prev_claim = NATIVE_CLAIMS.load(deps.storage, (address, denom.clone()))?;
-    let total_bal = NATIVE_BALANCES.load(deps.storage, denom.clone())?;
+    let prev_claim = NATIVE_CLAIMS
+        .may_load(deps.storage, (address, denom.clone()))?
+        .unwrap_or_default();
+    let total_bal = NATIVE_BALANCES
+        .may_load(deps.storage, denom.clone())?
+        .unwrap_or_default();
     let relative_share = get_relative_share(&deps, sender)?;
 
     let total_share =
@@ -486,8 +489,13 @@ pub fn query_native_entitlement(deps: Deps, sender: Addr, denom: String) -> StdR
 pub fn query_cw20_entitlement(deps: Deps, sender: Addr, token: String) -> StdResult<Binary> {
     let address = deps.api.addr_validate(sender.as_ref())?;
     let token = Addr::unchecked(token);
-    let prev_claim = CW20_CLAIMS.load(deps.storage, (address, token.clone()))?;
-    let total_bal = CW20_BALANCES.load(deps.storage, token.clone())?;
+
+    let prev_claim = CW20_CLAIMS
+        .may_load(deps.storage, (address, token.clone()))?
+        .unwrap_or_default();
+    let total_bal = CW20_BALANCES
+        .may_load(deps.storage, token.clone())?
+        .unwrap_or_default();
     let relative_share = get_relative_share(&deps, sender)?;
 
     let total_share =
@@ -512,7 +520,9 @@ pub fn query_native_entitlements(
 
     let mut entitlements: Vec<NativeEntitlementResponse> = vec![];
     for (denom, amount) in natives {
-        let prev_claim = NATIVE_CLAIMS.load(deps.storage, (address.clone(), denom.clone()))?;
+        let prev_claim = NATIVE_CLAIMS
+            .may_load(deps.storage, (address.clone(), denom.clone()))?
+            .unwrap_or_default();
         let total_share =
             amount.multiply_ratio(relative_share.numerator(), relative_share.denominator());
         let entitlement = total_share.checked_sub(prev_claim)?;
@@ -539,7 +549,9 @@ pub fn query_cw20_entitlements(
 
     let mut entitlements: Vec<CW20EntitlementResponse> = vec![];
     for (token, amount) in cw20s {
-        let prev_claim = CW20_CLAIMS.load(deps.storage, (address.clone(), token.clone()))?;
+        let prev_claim = CW20_CLAIMS    
+            .may_load(deps.storage, (address.clone(), token.clone()))?
+            .unwrap_or_default();
 
         let total_share =
             amount.multiply_ratio(relative_share.numerator(), relative_share.denominator());
