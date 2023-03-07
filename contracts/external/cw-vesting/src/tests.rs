@@ -703,3 +703,15 @@ fn test_update_owner() {
     .unwrap_err();
     assert_eq!(err, ContractError::Cancelled);
 }
+
+#[test]
+#[should_panic(expected = "can not vest a constant amount, specifiy two or more points")]
+fn test_constant_piecewise_not_allowed() {
+    let mut app = setup_app();
+    let instantiate = InstantiateMsg {
+        schedule: Schedule::PiecewiseLinear(vec![(1, Uint128::new(10))]),
+        ..Default::default()
+    };
+
+    setup_test_case(&mut app, instantiate, &[]);
+}

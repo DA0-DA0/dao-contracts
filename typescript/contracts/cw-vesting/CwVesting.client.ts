@@ -6,7 +6,7 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { Coin, StdFee } from "@cosmjs/amino";
-import { UncheckedDenom, Schedule, Uint128, Timestamp, Uint64, InstantiateMsg, ExecuteMsg, Binary, Action, Expiration, Cw20ReceiveMsg, QueryMsg, StakeTrackerQuery, CheckedDenom, Addr, Status, Curve, Vest, SaturatingLinear, PiecewiseLinear, OwnershipForAddr } from "./CwVesting.types";
+import { UncheckedDenom, Schedule, Uint128, Timestamp, Uint64, InstantiateMsg, ExecuteMsg, Binary, Action, Expiration, Cw20ReceiveMsg, QueryMsg, StakeTrackerQuery, CheckedDenom, Addr, Status, Curve, Vest, SaturatingLinear, PiecewiseLinear, OwnershipForAddr, Nullable_Duration, Duration } from "./CwVesting.types";
 export interface CwVestingReadOnlyInterface {
   contractAddress: string;
   ownership: () => Promise<OwnershipForAddr>;
@@ -14,8 +14,15 @@ export interface CwVestingReadOnlyInterface {
   distributable: ({
     t
   }: {
-    t?: number;
+    t?: Timestamp;
   }) => Promise<Uint128>;
+  vested: ({
+    t
+  }: {
+    t?: Timestamp;
+  }) => Promise<Uint128>;
+  totalToVest: () => Promise<Uint128>;
+  vestDuration: () => Promise<NullableDuration>;
   stake: () => Promise<Uint128>;
 }
 export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
@@ -28,6 +35,9 @@ export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
     this.ownership = this.ownership.bind(this);
     this.info = this.info.bind(this);
     this.distributable = this.distributable.bind(this);
+    this.vested = this.vested.bind(this);
+    this.totalToVest = this.totalToVest.bind(this);
+    this.vestDuration = this.vestDuration.bind(this);
     this.stake = this.stake.bind(this);
   }
 
@@ -44,12 +54,33 @@ export class CwVestingQueryClient implements CwVestingReadOnlyInterface {
   distributable = async ({
     t
   }: {
-    t?: number;
+    t?: Timestamp;
   }): Promise<Uint128> => {
     return this.client.queryContractSmart(this.contractAddress, {
       distributable: {
         t
       }
+    });
+  };
+  vested = async ({
+    t
+  }: {
+    t?: Timestamp;
+  }): Promise<Uint128> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      vested: {
+        t
+      }
+    });
+  };
+  totalToVest = async (): Promise<Uint128> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      total_to_vest: {}
+    });
+  };
+  vestDuration = async (): Promise<NullableDuration> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      vest_duration: {}
     });
   };
   stake = async (): Promise<Uint128> => {

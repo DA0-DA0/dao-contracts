@@ -4,10 +4,10 @@
 * and run the @cosmwasm/ts-codegen generate command to regenerate this file.
 */
 
-import * as _6 from "./CwVesting.types";
-import * as _7 from "./CwVesting.client";
+import * as _20 from "./CwVesting.types";
+import * as _21 from "./CwVesting.client";
 export namespace contracts {
-  export const CwVesting = { ..._6,
-    ..._7
+  export const CwVesting = { ..._20,
+    ..._21
   };
 }

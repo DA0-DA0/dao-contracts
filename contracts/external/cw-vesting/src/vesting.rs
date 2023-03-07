@@ -6,7 +6,8 @@ use cosmwasm_std::{
 };
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Item;
-use wynd_utils::Curve;
+use cw_utils::Duration;
+use wynd_utils::{Curve, PiecewiseLinear, SaturatingLinear};
 
 use cw_stake_tracker::{StakeTracker, StakeTrackerQuery};
 
@@ -383,8 +384,16 @@ impl<'a> Payment<'a> {
         }
     }
 
+    /// Passes a query through to the vest's stake tracker which has
+    /// information about bonded and unbonding token balances.
     pub fn query_stake(&self, storage: &dyn Storage, q: StakeTrackerQuery) -> StdResult<Binary> {
         self.staking.query(storage, q)
+    }
+
+    /// Return's the duration of the vest, or `None` if the vest has
+    /// been canceled.
+    pub fn duration(&self, storage: &dyn Storage) -> StdResult<Option<Duration>> {
+        self.vesting.load(storage).map(|v| v.duration())
     }
 }
 
@@ -430,6 +439,19 @@ impl Vest {
         self.status = Status::Canceled { owner_withdrawable };
         self.vested = Curve::Constant { y: self.vested(t) };
     }
+
+    /// Gets the duration of the vest. For constant curves, `None` is
+    /// returned.
+    pub fn duration(&self) -> Option<Duration> {
+        let (start, end) = match &self.vested {
+            Curve::Constant { .. } => return None,
+            Curve::SaturatingLinear(SaturatingLinear { min_x, max_x, .. }) => (*min_x, *max_x),
+            Curve::PiecewiseLinear(PiecewiseLinear { steps }) => {
+                (steps[0].0, steps[steps.len() - 1].0)
+            }
+        };
+        Some(Duration::Time(end - start))
+    }
 }
 
 impl Schedule {
@@ -440,6 +462,9 @@ impl Schedule {
     /// 2. it must end at total,
     /// 3. it must never decrease.
     ///
+    /// Piecewise curves must have at least two steps. One step would
+    /// be a constant vest (why would you want this?).
+    ///
     /// A schedule is valid if `total` is zero: nothing will ever be
     /// paid out. Consumers should consider validating that `total` is
     /// non-zero.
@@ -449,6 +474,9 @@ impl Schedule {
                 Curve::saturating_linear((0, 0), (duration_seconds, total.u128()))
             }
             Schedule::PiecewiseLinear(steps) => {
+                if steps.len() < 2 {
+                    return Err(ContractError::ConstantVest);
+                }
                 Curve::PiecewiseLinear(wynd_utils::PiecewiseLinear { steps })
             }
         };

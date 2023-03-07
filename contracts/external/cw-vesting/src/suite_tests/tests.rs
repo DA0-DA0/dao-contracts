@@ -1,8 +1,12 @@
 use cosmwasm_std::{Timestamp, Uint128};
 use cw_multi_test::App;
 use cw_ownable::OwnershipError;
+use cw_utils::Duration;
 
-use crate::{vesting::Status, ContractError};
+use crate::{
+    vesting::{Schedule, Status},
+    ContractError,
+};
 
 use super::{is_error, suite::SuiteBuilder};
 
@@ -619,4 +623,54 @@ fn test_stake_query() {
         t: suite.what_block_is_it().time,
     });
     assert_eq!(cardinality, Uint128::new(1));
+}
+
+/// Basic checks on piecewise vests and queries.
+#[test]
+fn test_piecewise_and_queries() {
+    let mut suite = SuiteBuilder::default()
+        .with_start_time(SuiteBuilder::default().build().what_block_is_it().time)
+        .with_curve(Schedule::PiecewiseLinear(vec![
+            // <https://github.com/cosmorama/wynddao/pull/4> allows
+            // for zero start values.
+            (1, Uint128::new(0)),
+            (2, Uint128::new(40_000_000)),
+            (3, Uint128::new(100_000_000)),
+        ]))
+        .build();
+
+    let duration = suite.query_duration();
+    assert_eq!(duration.unwrap(), Duration::Time(2));
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(0));
+
+    suite.a_second_passes();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(0));
+
+    suite.a_second_passes();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(40_000_000));
+
+    suite.delegate(Uint128::new(80_000_000)).unwrap();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(20_000_000));
+    let vested = suite.query_vested(None);
+    assert_eq!(vested, Uint128::new(40_000_000));
+
+    let total = suite.query_total_to_vest();
+    assert_eq!(total, Uint128::new(100_000_000));
+
+    suite.cancel(suite.owner.clone().unwrap()).unwrap();
+
+    let total = suite.query_total_to_vest();
+    assert_eq!(total, Uint128::new(40_000_000));
+
+    // canceled, duration no longer has a meaning.
+    let duration = suite.query_duration();
+    assert_eq!(duration, None);
 }

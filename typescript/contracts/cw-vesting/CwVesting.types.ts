@@ -98,8 +98,16 @@ export type QueryMsg = {
   info: {};
 } | {
   distributable: {
-    t?: number | null;
+    t?: Timestamp | null;
   };
+} | {
+  vested: {
+    t?: Timestamp | null;
+  };
+} | {
+  total_to_vest: {};
+} | {
+  vest_duration: {};
 } | {
   stake: StakeTrackerQuery;
 };
@@ -165,3 +173,9 @@ export interface OwnershipForAddr {
   pending_expiry?: Expiration | null;
   pending_owner?: Addr | null;
 }
+export type Nullable_Duration = Duration | null;
+export type Duration = {
+  height: number;
+} | {
+  time: number;
+};

@@ -2,6 +2,7 @@ use cosmwasm_std::{
     coins, testing::mock_env, Addr, BlockInfo, Decimal, Timestamp, Uint128, Validator,
 };
 use cw_multi_test::{App, BankSudo, Executor, StakingInfo, StakingSudo};
+use cw_utils::Duration;
 use dao_testing::contracts::cw_vesting_contract;
 
 use crate::{
@@ -120,6 +121,11 @@ impl SuiteBuilder {
 
     pub fn with_vesting_duration(mut self, duration_seconds: u64) -> Self {
         self.instantiate.vesting_duration_seconds = duration_seconds;
+        self
+    }
+
+    pub fn with_curve(mut self, s: Schedule) -> Self {
+        self.instantiate.schedule = s;
         self
     }
 }
@@ -366,6 +372,27 @@ impl Suite {
         self.app
             .wrap()
             .query_wasm_smart(&self.vesting, &QueryMsg::Stake(q))
+            .unwrap()
+    }
+
+    pub fn query_vested(&self, t: Option<Timestamp>) -> Uint128 {
+        self.app
+            .wrap()
+            .query_wasm_smart(&self.vesting, &QueryMsg::Vested { t })
+            .unwrap()
+    }
+
+    pub fn query_total_to_vest(&self) -> Uint128 {
+        self.app
+            .wrap()
+            .query_wasm_smart(&self.vesting, &QueryMsg::TotalToVest {})
+            .unwrap()
+    }
+
+    pub fn query_duration(&self) -> Option<Duration> {
+        self.app
+            .wrap()
+            .query_wasm_smart(&self.vesting, &QueryMsg::VestDuration {})
             .unwrap()
     }
 }

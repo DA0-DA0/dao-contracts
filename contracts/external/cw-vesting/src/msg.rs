@@ -205,8 +205,23 @@ pub enum QueryMsg {
     Distributable {
         /// The time, as a unix timestamp in seconds, or none to use
         /// the current time.
-        t: Option<u64>,
+        t: Option<Timestamp>,
     },
+    /// Gets the current value of `vested(t)`. If `t` is `None`, the
+    /// current time is used.
+    #[returns(::cosmwasm_std::Uint128)]
+    Vested { t: Option<Timestamp> },
+    /// Gets the total amount that will ever vest, `max(vested(t))`.
+    ///
+    /// Note that if the contract is canceled at time c, this value
+    /// will change to `vested(c)`. Thus, it can not be assumed to be
+    /// constant over the contract's lifetime.
+    #[returns(::cosmwasm_std::Uint128)]
+    TotalToVest {},
+    /// Gets the amount of time between the vest starting, and it
+    /// completing. Returns `None` if the vest has been cancelled.
+    #[returns(Option<::cw_utils::Duration>)]
+    VestDuration {},
     /// Queries information about the contract's understanding of it's
     /// bonded and unbonding token balances. See the
     /// `StakeTrackerQuery` in `packages/cw-stake-tracker/lib.rs` for
