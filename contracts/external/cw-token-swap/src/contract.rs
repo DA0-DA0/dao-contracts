@@ -10,7 +10,8 @@ use cw_utils::must_pay;
 use crate::{
     error::ContractError,
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StatusResponse},
-    state::{CheckedCounterparty, CheckedTokenInfo, COUNTERPARTY_ONE, COUNTERPARTY_TWO},
+    state::{COUNTERPARTY_ONE, COUNTERPARTY_TWO},
+    types::{CheckedCounterparty, CheckedTokenInfo},
 };
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:cw-token-swap";
@@ -115,10 +116,10 @@ fn do_fund(
         vec![
             counterparty
                 .promise
-                .into_send_message(&other_counterparty.address)?,
+                .into_send_message(&other_counterparty.address, other_counterparty.send_msg)?,
             other_counterparty
                 .promise
-                .into_send_message(&counterparty.address)?,
+                .into_send_message(&counterparty.address, counterparty.send_msg)?,
         ]
     } else {
         vec![]
@@ -217,7 +218,7 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
     let message = counterparty
         .promise
         .clone()
-        .into_send_message(&counterparty.address)?;
+        .into_send_message(&counterparty.address, None)?;
 
     let mut counterparty = counterparty;
     counterparty.provided = false;

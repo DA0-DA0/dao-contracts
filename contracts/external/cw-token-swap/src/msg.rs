@@ -1,29 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
 
-use crate::state::CheckedCounterparty;
-
-/// Information about the token being used on one side of the escrow.
-#[cw_serde]
-pub enum TokenInfo {
-    /// A native token.
-    Native { denom: String, amount: Uint128 },
-    /// A cw20 token.
-    Cw20 {
-        contract_addr: String,
-        amount: Uint128,
-    },
-}
-
-/// Information about a counterparty in this escrow transaction and
-/// their promised funds.
-#[cw_serde]
-pub struct Counterparty {
-    /// The address of the counterparty.
-    pub address: String,
-    /// The funds they have promised to provide.
-    pub promise: TokenInfo,
-}
+use crate::types::{CheckedCounterparty, Counterparty};
 
 #[cw_serde]
 pub struct InstantiateMsg {
