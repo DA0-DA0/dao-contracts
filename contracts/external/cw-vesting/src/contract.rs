@@ -32,6 +32,11 @@ pub fn instantiate(
     let denom = msg.denom.into_checked(deps.as_ref())?;
     let recipient = deps.api.addr_validate(&msg.recipient)?;
     let start_time = msg.start_time.unwrap_or(env.block.time);
+
+    if start_time.plus_seconds(msg.vesting_duration_seconds) <= env.block.time {
+        return Err(ContractError::Instavest);
+    }
+
     let vest = PAYMENT.initialize(
         deps.storage,
         VestInit {

@@ -114,6 +114,11 @@ impl SuiteBuilder {
         self.instantiate.start_time = Some(t);
         self
     }
+
+    pub fn with_vesting_duration(mut self, duration_seconds: u64) -> Self {
+        self.instantiate.vesting_duration_seconds = duration_seconds;
+        self
+    }
 }
 
 impl Suite {

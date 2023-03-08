@@ -383,7 +383,9 @@ impl<'a> Payment<'a> {
 impl Vest {
     pub fn new(init: VestInit) -> Result<Self, ContractError> {
         if init.total.is_zero() {
-            Err(ContractError::ZeroVest {})
+            Err(ContractError::ZeroVest)
+        } else if init.duration_seconds == 0 {
+            Err(ContractError::Instavest)
         } else {
             Ok(Self {
                 claimed: Uint128::zero(),

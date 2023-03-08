@@ -30,9 +30,20 @@ pub struct InstantiateMsg {
     /// represent a more complicated vesting schedule.
     pub schedule: Schedule,
     /// The time to start vesting, or None to start vesting when the
-    /// contract is instantiated.
+    /// contract is instantiated. `start_time` may be in the past,
+    /// though the contract checks that `start_time +
+    /// vesting_duration_seconds > now`. Otherwise, this would amount
+    /// to a regular fund transfer.
     pub start_time: Option<Timestamp>,
-    /// The length of the vesting schedule in seconds.
+    /// The length of the vesting schedule in seconds. Must be
+    /// non-zero, though one second vesting durations are
+    /// allowed. This may be combined with a `start_time` in the
+    /// future to create an agreement that instantly vests at a time
+    /// in the future, and allows the receiver to stake vesting tokens
+    /// before the agreement completes.
+    ///
+    /// See `suite_tests/tests.rs`
+    /// `test_almost_instavest_in_the_future` for an example of this.
     pub vesting_duration_seconds: u64,
 
     /// The unbonding duration for the chain this contract is deployed
