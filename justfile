@@ -11,6 +11,8 @@ test:
 lint:
 	cargo +nightly clippy --all-targets -- -D warnings
 
+gen: build gen-schema
+
 gen-schema:
 	./scripts/schema.sh
 

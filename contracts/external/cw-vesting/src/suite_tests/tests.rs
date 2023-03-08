@@ -1,7 +1,6 @@
-use cosmwasm_std::{Timestamp, Uint128};
+use cosmwasm_std::{Timestamp, Uint128, Uint64};
 use cw_multi_test::App;
 use cw_ownable::OwnershipError;
-use cw_utils::Duration;
 
 use crate::{
     vesting::{Schedule, Status},
@@ -640,7 +639,7 @@ fn test_piecewise_and_queries() {
         .build();
 
     let duration = suite.query_duration();
-    assert_eq!(duration.unwrap(), Duration::Time(2));
+    assert_eq!(duration.unwrap(), Uint64::new(2));
 
     let distributable = suite.query_distributable();
     assert_eq!(distributable, Uint128::new(0));

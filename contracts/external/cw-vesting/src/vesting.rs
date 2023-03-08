@@ -2,11 +2,10 @@ use std::cmp::min;
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    Addr, Binary, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128,
+    Addr, Binary, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128, Uint64,
 };
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Item;
-use cw_utils::Duration;
 use wynd_utils::{Curve, PiecewiseLinear, SaturatingLinear};
 
 use cw_stake_tracker::{StakeTracker, StakeTrackerQuery};
@@ -396,9 +395,9 @@ impl<'a> Payment<'a> {
         self.staking.query(storage, q)
     }
 
-    /// Return's the duration of the vest, or `None` if the vest has
-    /// been canceled.
-    pub fn duration(&self, storage: &dyn Storage) -> StdResult<Option<Duration>> {
+    /// Returns the duration of the vesting agreement (not the
+    /// remaining time) in seconds, or `None` if the vest has been cancelled.
+    pub fn duration(&self, storage: &dyn Storage) -> StdResult<Option<Uint64>> {
         self.vesting.load(storage).map(|v| v.duration())
     }
 }
@@ -448,7 +447,7 @@ impl Vest {
 
     /// Gets the duration of the vest. For constant curves, `None` is
     /// returned.
-    pub fn duration(&self) -> Option<Duration> {
+    pub fn duration(&self) -> Option<Uint64> {
         let (start, end) = match &self.vested {
             Curve::Constant { .. } => return None,
             Curve::SaturatingLinear(SaturatingLinear { min_x, max_x, .. }) => (*min_x, *max_x),
@@ -456,7 +455,7 @@ impl Vest {
                 (steps[0].0, steps[steps.len() - 1].0)
             }
         };
-        Some(Duration::Time(end - start))
+        Some(Uint64::new(end - start))
     }
 }
 

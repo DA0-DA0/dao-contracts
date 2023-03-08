@@ -219,7 +219,7 @@ pub enum QueryMsg {
     TotalToVest {},
     /// Gets the amount of time between the vest starting, and it
     /// completing. Returns `None` if the vest has been cancelled.
-    #[returns(Option<::cw_utils::Duration>)]
+    #[returns(Option<::cosmwasm_std::Uint64>)]
     VestDuration {},
     /// Queries information about the contract's understanding of it's
     /// bonded and unbonding token balances. See the

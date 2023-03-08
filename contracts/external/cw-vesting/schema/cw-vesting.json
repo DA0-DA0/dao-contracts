@@ -98,7 +98,7 @@
             ]
           },
           {
-            "description": "Vests by linearally interpolating between the provided (timestamp, amount) points. The first amount must be zero and the last amount the total vesting amount. `timestamp` is a unix timestamp in SECONDS since epoch. Note that this differs from the CosmWasm `Timestamp` type which is normally specified in nanoseconds since epoch.",
+            "description": "Vests by linearally interpolating between the provided (seconds, amount) points. The first amount must be zero and the last amount the total vesting amount. `seconds` are seconds since the vest start time.\n\nThere is a problem in the underlying Curve library that doesn't allow zero start values, so the first value of `seconds` must be > 1. To start at a particular time (if you need that level of percision), subtract one from the true start time, and make the first `seconds` value `1`.\n\n<https://github.com/cosmorama/wynddao/pull/4>",
             "type": "object",
             "required": [
               "piecewise_linear"
@@ -645,7 +645,7 @@
             "type": "object",
             "properties": {
               "t": {
-                "description": "The time, as a unix timestamp in seconds, or none to use the current time.",
+                "description": "The time or none to use the current time.",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Timestamp"
@@ -1201,49 +1201,19 @@
     },
     "vest_duration": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Nullable_Duration",
+      "title": "Nullable_Uint64",
       "anyOf": [
         {
-          "$ref": "#/definitions/Duration"
+          "$ref": "#/definitions/Uint64"
         },
         {
           "type": "null"
         }
       ],
       "definitions": {
-        "Duration": {
-          "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
-          "oneOf": [
-            {
-              "type": "object",
-              "required": [
-                "height"
-              ],
-              "properties": {
-                "height": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            },
-            {
-              "description": "Time in seconds",
-              "type": "object",
-              "required": [
-                "time"
-              ],
-              "properties": {
-                "time": {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
         }
       }
     },

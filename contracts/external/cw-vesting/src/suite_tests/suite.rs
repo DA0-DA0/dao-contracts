@@ -1,8 +1,7 @@
 use cosmwasm_std::{
-    coins, testing::mock_env, Addr, BlockInfo, Decimal, Timestamp, Uint128, Validator,
+    coins, testing::mock_env, Addr, BlockInfo, Decimal, Timestamp, Uint128, Uint64, Validator,
 };
 use cw_multi_test::{App, BankSudo, Executor, StakingInfo, StakingSudo};
-use cw_utils::Duration;
 use dao_testing::contracts::cw_vesting_contract;
 
 use crate::{
@@ -389,7 +388,7 @@ impl Suite {
             .unwrap()
     }
 
-    pub fn query_duration(&self) -> Option<Duration> {
+    pub fn query_duration(&self) -> Option<Uint64> {
         self.app
             .wrap()
             .query_wasm_smart(&self.vesting, &QueryMsg::VestDuration {})
