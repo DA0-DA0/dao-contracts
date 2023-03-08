@@ -86,7 +86,15 @@ pub fn execute_receive_cw20(
         ReceiveMsg::InstantiatePayrollContract {
             instantiate_msg,
             label,
-        } => instantiate_contract(deps, sender, None, instantiate_msg, label),
+        } => {
+            if receive_msg.amount != instantiate_msg.total {
+                return Err(ContractError::WrongFundAmount {
+                    sent: receive_msg.amount,
+                    expected: instantiate_msg.total,
+                });
+            }
+            instantiate_contract(deps, sender, None, instantiate_msg, label)
+        }
     }
 }
 
