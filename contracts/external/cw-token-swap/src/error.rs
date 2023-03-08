@@ -1,4 +1,5 @@
 use cosmwasm_std::{StdError, Uint128};
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -6,6 +7,9 @@ use thiserror::Error;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error(transparent)]
+    PaymentError(#[from] PaymentError),
 
     #[error("Unauthorized")]
     Unauthorized {},
@@ -27,6 +31,9 @@ pub enum ContractError {
 
     #[error("Provided funds do not match promised funds")]
     InvalidFunds {},
+    
+    #[error("Send message doesn't match the other party token type")]
+    InvalidSendMsg {},
 
     #[error("Invalid amount. Expected ({expected}), got ({actual})")]
     InvalidAmount { expected: Uint128, actual: Uint128 },

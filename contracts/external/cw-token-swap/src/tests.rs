@@ -1,6 +1,7 @@
 use cosmwasm_std::{
+    coins,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, Coin, Empty, Uint128,
+    to_binary, Addr, Coin, Decimal, Empty, Uint128, Validator,
 };
 use cw20::Cw20Coin;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
@@ -29,6 +30,15 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
         cw20_base::contract::execute,
         cw20_base::contract::instantiate,
         cw20_base::contract::query,
+    );
+    Box::new(contract)
+}
+
+fn cw_vesting() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw_vesting::contract::execute,
+        cw_vesting::contract::instantiate,
+        cw_vesting::contract::query,
     );
     Box::new(contract)
 }
@@ -138,10 +148,35 @@ fn test_simple_escrow() {
 
 #[test]
 fn test_simple_with_send_messages() {
-    let mut app = App::default();
+    let mut app = App::new(|router, api, storage| {
+        router
+            .bank
+            .init_balance(
+                storage,
+                &Addr::unchecked("owner"),
+                coins(100_000_000_000, "ujuno"),
+            )
+            .unwrap();
+
+        router
+            .staking
+            .add_validator(
+                api,
+                storage,
+                &mock_env().block,
+                Validator {
+                    address: "validator".to_string(),
+                    commission: Decimal::zero(), // zero percent comission to keep math simple.
+                    max_commission: Decimal::percent(10),
+                    max_change_rate: Decimal::percent(2),
+                },
+            )
+            .unwrap();
+    });
 
     let cw20_code = app.store_code(cw20_contract());
     let escrow_code = app.store_code(escrow_contract());
+    let vesting_code = app.store_code(cw_vesting());
 
     let cw20 = app
         .instantiate_contract(
@@ -159,6 +194,28 @@ fn test_simple_with_send_messages() {
                 marketing: None,
             },
             &[],
+            "coin",
+            None,
+        )
+        .unwrap();
+
+    let vetsing = app
+        .instantiate_contract(
+            vesting_code,
+            Addr::unchecked("owner"),
+            &cw_vesting::msg::InstantiateMsg {
+                owner: Some("owner".to_string()),
+                recipient: DAO2.to_string(),
+                title: "title".to_string(),
+                description: Some("description".to_string()),
+                total: Uint128::new(100_000_000),
+                denom: cw_denom::UncheckedDenom::Native("ujuno".to_string()),
+                schedule: cw_vesting::vesting::Schedule::SaturatingLinear,
+                start_time: None,
+                vesting_duration_seconds: 60 * 60 * 24 * 7, // one week
+                unbonding_duration_seconds: 60,
+            },
+            &coins(100_000_000, "ujuno"),
             "coin",
             None,
         )
@@ -192,37 +249,37 @@ fn test_simple_with_send_messages() {
         )
         .unwrap();
 
-        app.execute_contract(
-            Addr::unchecked(DAO2),
-            cw20.clone(),
-            &cw20::Cw20ExecuteMsg::Send {
-                contract: escrow.to_string(),
-                amount: Uint128::new(100),
-                msg: to_binary("").unwrap(),
-            },
-            &[],
-        )
-        .unwrap();
-    
-        app.sudo(SudoMsg::Bank(BankSudo::Mint {
-            to_address: DAO1.to_string(),
-            amount: vec![Coin {
-                amount: Uint128::new(100),
-                denom: "ujuno".to_string(),
-            }],
-        }))
-        .unwrap();
-    
-        app.execute_contract(
-            Addr::unchecked(DAO1),
-            escrow,
-            &ExecuteMsg::Fund {},
-            &[Coin {
-                amount: Uint128::new(100),
-                denom: "ujuno".to_string(),
-            }],
-        )
-        .unwrap();
+    app.execute_contract(
+        Addr::unchecked(DAO2),
+        cw20.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: escrow.to_string(),
+            amount: Uint128::new(100),
+            msg: to_binary("").unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: DAO1.to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(100),
+            denom: "ujuno".to_string(),
+        }],
+    }))
+    .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(DAO1),
+        escrow,
+        &ExecuteMsg::Fund {},
+        &[Coin {
+            amount: Uint128::new(100),
+            denom: "ujuno".to_string(),
+        }],
+    )
+    .unwrap();
 }
 
 #[test]

@@ -1,7 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+    Uint128,
 };
 use cw2::set_contract_version;
 use cw_storage_plus::Item;
@@ -26,8 +27,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let counterparty_one = msg.counterparty_one.into_checked(deps.as_ref())?;
-    let counterparty_two = msg.counterparty_two.into_checked(deps.as_ref())?;
+    let counterparty_one = msg.counterparty_one.into_checked(deps.as_ref(), None)?;
+    let counterparty_two = msg.counterparty_two.into_checked(deps.as_ref(), None)?;
 
     if counterparty_one.address == counterparty_two.address {
         return Err(ContractError::NonDistinctCounterparties {});
@@ -51,7 +52,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Receive(msg) => execute_receive(deps, info.sender, msg),
-        ExecuteMsg::Fund {} => execute_fund(deps, info),
+        ExecuteMsg::Fund { send_message } => execute_fund(deps, info, send_message),
         ExecuteMsg::Withdraw {} => execute_withdraw(deps, info),
     }
 }
@@ -113,14 +114,18 @@ fn do_fund(
     storage.save(deps.storage, &counterparty)?;
 
     let messages = if counterparty.provided && other_counterparty.provided {
-        vec![
-            counterparty
-                .promise
-                .into_send_message(&other_counterparty.address, other_counterparty.send_msg)?,
-            other_counterparty
-                .promise
-                .into_send_message(&counterparty.address, counterparty.send_msg)?,
-        ]
+        let mut msgs = counterparty.promise.clone().into_send_message(
+            deps.as_ref(),
+            &other_counterparty,
+            counterparty.send_msg.clone(),
+        )?;
+
+        msgs.append(&mut other_counterparty.promise.into_send_message(
+            deps.as_ref(),
+            &counterparty,
+            other_counterparty.send_msg,
+        )?);
+        msgs
     } else {
         vec![]
     };
@@ -169,13 +174,16 @@ pub fn execute_receive(
     )
 }
 
-pub fn execute_fund(deps: DepsMut, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn execute_fund(
+    deps: DepsMut,
+    info: MessageInfo,
+    send_message: Option<CosmosMsg>,
+) -> Result<Response, ContractError> {
     let CounterpartyResponse {
-        counterparty,
+        mut counterparty,
         other_counterparty,
         storage,
     } = get_counterparty(deps.as_ref(), &info.sender)?;
-
     let (expected_payment, paid) =
         if let CheckedTokenInfo::Native { amount, denom } = &counterparty.promise {
             let paid = must_pay(&info, denom).map_err(|_| ContractError::InvalidFunds {})?;
@@ -215,10 +223,12 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
         return Err(ContractError::Complete {});
     }
 
-    let message = counterparty
-        .promise
-        .clone()
-        .into_send_message(&counterparty.address, None)?;
+    let message =
+        counterparty
+            .promise
+            .clone()
+            .into_send_message(deps.as_ref(), &counterparty, None)?[0]
+            .clone();
 
     let mut counterparty = counterparty;
     counterparty.provided = false;

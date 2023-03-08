@@ -1,4 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{CosmosMsg, Empty};
 
 use crate::types::{CheckedCounterparty, Counterparty};
 
@@ -13,7 +14,7 @@ pub enum ExecuteMsg {
     /// Used to provide cw20 tokens to satisfy a funds promise.
     Receive(cw20::Cw20ReceiveMsg),
     /// Provides native tokens to satisfy a funds promise.
-    Fund {},
+    Fund { send_message: Option<CosmosMsg<Empty>> },
     /// Withdraws provided funds. Only allowed if the other
     /// counterparty has yet to provide their promised funds.
     Withdraw {},
