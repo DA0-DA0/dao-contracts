@@ -207,7 +207,10 @@ pub fn execute_claim_cw20s(
 
         // check for any previous claims
         let previous_claim = CW20_CLAIMS
-            .may_load(deps.storage, (sender.clone(), Addr::unchecked(addr.clone())))?
+            .may_load(
+                deps.storage,
+                (sender.clone(), Addr::unchecked(addr.clone())),
+            )?
             .unwrap_or_default();
 
         // get % share of sender and subtract any previous claims
@@ -430,9 +433,7 @@ pub fn query_voting_contract(deps: Deps) -> StdResult<Binary> {
 }
 
 pub fn query_total_power(deps: Deps) -> StdResult<Binary> {
-    let total_power: Uint128 = TOTAL_POWER
-        .may_load(deps.storage)?
-        .unwrap_or_default();
+    let total_power: Uint128 = TOTAL_POWER.may_load(deps.storage)?.unwrap_or_default();
     to_binary(&TotalPowerResponse { total_power })
 }
 
@@ -549,7 +550,7 @@ pub fn query_cw20_entitlements(
 
     let mut entitlements: Vec<CW20EntitlementResponse> = vec![];
     for (token, amount) in cw20s {
-        let prev_claim = CW20_CLAIMS    
+        let prev_claim = CW20_CLAIMS
             .may_load(deps.storage, (address.clone(), token.clone()))?
             .unwrap_or_default();
 

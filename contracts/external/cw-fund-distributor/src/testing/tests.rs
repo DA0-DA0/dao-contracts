@@ -1,6 +1,9 @@
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, TotalPowerResponse, QueryMsg, VotingContractResponse, DenomResponse, CW20Response, CW20EntitlementResponse, NativeEntitlementResponse};
+use crate::msg::{
+    CW20EntitlementResponse, CW20Response, DenomResponse, ExecuteMsg, InstantiateMsg, MigrateMsg,
+    NativeEntitlementResponse, QueryMsg, TotalPowerResponse, VotingContractResponse,
+};
 use crate::ContractError;
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, WasmMsg, Uint128};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, Empty, Uint128, WasmMsg};
 use cw20::Cw20Coin;
 use cw_multi_test::{next_block, App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
@@ -1347,22 +1350,20 @@ fn test_query_cw20_entitlements() {
         mut app,
         distributor_address,
         token_address,
-    } = setup_test(vec![
-        Cw20Coin {
-            address: "bekauz".to_string(),
-            amount: Uint128::new(10),
-        },
-    ]);
+    } = setup_test(vec![Cw20Coin {
+        address: "bekauz".to_string(),
+        amount: Uint128::new(10),
+    }]);
 
     let res: Vec<CW20EntitlementResponse> = app
         .wrap()
         .query_wasm_smart(
-            distributor_address.clone(), 
-            &QueryMsg::CW20Entitlements { 
-                sender: Addr::unchecked("bekauz"), 
-                start_at: None, 
-                limit: None, 
-            }
+            distributor_address.clone(),
+            &QueryMsg::CW20Entitlements {
+                sender: Addr::unchecked("bekauz"),
+                start_at: None,
+                limit: None,
+            },
         )
         .unwrap();
 
@@ -1386,22 +1387,21 @@ fn test_query_cw20_entitlements() {
     );
 
     let res: Vec<CW20EntitlementResponse> = app
-    .wrap()
-    .query_wasm_smart(
-        distributor_address.clone(), 
-        &QueryMsg::CW20Entitlements { 
-            sender: Addr::unchecked("bekauz"), 
-            start_at: None, 
-            limit: None, 
-        }
-    )
-    .unwrap();
+        .wrap()
+        .query_wasm_smart(
+            distributor_address,
+            &QueryMsg::CW20Entitlements {
+                sender: Addr::unchecked("bekauz"),
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
 
     assert_eq!(res.len(), 1);
     let entitlement = res.get(0).unwrap();
     assert_eq!(entitlement.amount.u128(), 500000);
     assert_eq!(entitlement.token_contract, token_address);
-
 }
 
 #[test]
@@ -1410,22 +1410,20 @@ fn test_query_native_entitlements() {
         mut app,
         distributor_address,
         token_address: _,
-    } = setup_test(vec![
-        Cw20Coin {
-            address: "bekauz".to_string(),
-            amount: Uint128::new(10),
-        },
-    ]);
+    } = setup_test(vec![Cw20Coin {
+        address: "bekauz".to_string(),
+        amount: Uint128::new(10),
+    }]);
 
     let res: Vec<NativeEntitlementResponse> = app
         .wrap()
         .query_wasm_smart(
-            distributor_address.clone(), 
-            &QueryMsg::NativeEntitlements { 
-                sender: Addr::unchecked("bekauz"), 
-                start_at: None, 
-                limit: None, 
-            }
+            distributor_address.clone(),
+            &QueryMsg::NativeEntitlements {
+                sender: Addr::unchecked("bekauz"),
+                start_at: None,
+                limit: None,
+            },
         )
         .unwrap();
 
@@ -1433,11 +1431,7 @@ fn test_query_native_entitlements() {
 
     // fund the contract with some native tokens
     let amount = Uint128::new(500000);
-    mint_natives(
-        &mut app,
-        Addr::unchecked(CREATOR_ADDR),
-        amount,
-    );
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
     fund_distributor_contract_natives(
         &mut app,
         distributor_address.clone(),
@@ -1446,16 +1440,16 @@ fn test_query_native_entitlements() {
     );
 
     let res: Vec<NativeEntitlementResponse> = app
-    .wrap()
-    .query_wasm_smart(
-        distributor_address.clone(), 
-        &QueryMsg::NativeEntitlements { 
-            sender: Addr::unchecked("bekauz"), 
-            start_at: None, 
-            limit: None, 
-        }
-    )
-    .unwrap();
+        .wrap()
+        .query_wasm_smart(
+            distributor_address,
+            &QueryMsg::NativeEntitlements {
+                sender: Addr::unchecked("bekauz"),
+                start_at: None,
+                limit: None,
+            },
+        )
+        .unwrap();
 
     assert_eq!(res.len(), 1);
     let entitlement = res.get(0).unwrap();
@@ -1469,12 +1463,10 @@ fn test_query_cw20_entitlement() {
         mut app,
         distributor_address,
         token_address,
-    } = setup_test(vec![
-        Cw20Coin {
-            address: "bekauz".to_string(),
-            amount: Uint128::new(10),
-        },
-    ]);
+    } = setup_test(vec![Cw20Coin {
+        address: "bekauz".to_string(),
+        amount: Uint128::new(10),
+    }]);
 
     // fund the contract with some cw20 tokens
     let amount = Uint128::new(500000);
@@ -1497,8 +1489,8 @@ fn test_query_cw20_entitlement() {
 
     // query and assert the expected entitlement
     let res: CW20EntitlementResponse = query_cw20_entitlement(
-        app, 
-        distributor_address.to_string(), 
+        app,
+        distributor_address.to_string(),
         Addr::unchecked("bekauz"),
         token_address.to_string(),
     );
@@ -1512,14 +1504,10 @@ fn query_cw20_entitlement(
     sender: Addr,
     token: String,
 ) -> CW20EntitlementResponse {
-    app
-        .wrap()
+    app.wrap()
         .query_wasm_smart(
-            distributor_address, 
-            &QueryMsg::CW20Entitlement { 
-                sender, 
-                token,
-            },
+            distributor_address,
+            &QueryMsg::CW20Entitlement { sender, token },
         )
         .unwrap()
 }
@@ -1530,14 +1518,10 @@ fn query_native_entitlement(
     sender: Addr,
     denom: String,
 ) -> NativeEntitlementResponse {
-    app
-        .wrap()
+    app.wrap()
         .query_wasm_smart(
-            distributor_address, 
-            &QueryMsg::NativeEntitlement { 
-                sender, 
-                denom,
-             }
+            distributor_address,
+            &QueryMsg::NativeEntitlement { sender, denom },
         )
         .unwrap()
 }
@@ -1548,20 +1532,14 @@ fn test_query_native_entitlement() {
         mut app,
         distributor_address,
         token_address: _,
-    } = setup_test(vec![
-        Cw20Coin {
-            address: "bekauz".to_string(),
-            amount: Uint128::new(10),
-        },
-    ]);
+    } = setup_test(vec![Cw20Coin {
+        address: "bekauz".to_string(),
+        amount: Uint128::new(10),
+    }]);
 
     // fund the contract with some native tokens
     let amount = Uint128::new(500000);
-    mint_natives(
-        &mut app,
-        Addr::unchecked(CREATOR_ADDR),
-        amount,
-    );
+    mint_natives(&mut app, Addr::unchecked(CREATOR_ADDR), amount);
     fund_distributor_contract_natives(
         &mut app,
         distributor_address.clone(),
@@ -1571,9 +1549,9 @@ fn test_query_native_entitlement() {
 
     // assert the expected native entitlement
     let res = query_native_entitlement(
-        app, 
-        distributor_address.to_string(), 
-        Addr::unchecked("bekauz"), 
+        app,
+        distributor_address.to_string(),
+        Addr::unchecked("bekauz"),
         FEE_DENOM.to_string(),
     );
     assert_eq!(res.amount.u128(), 500000);
@@ -1594,10 +1572,7 @@ fn test_query_cw20_tokens() {
     // no cw20s expected
     let res: Vec<CW20Response> = app
         .wrap()
-        .query_wasm_smart(
-            distributor_address.clone(),
-            &QueryMsg::CW20Tokens { },
-        )
+        .query_wasm_smart(distributor_address.clone(), &QueryMsg::CW20Tokens {})
         .unwrap();
 
     assert_eq!(res.len(), 0);
@@ -1605,29 +1580,26 @@ fn test_query_cw20_tokens() {
     // mint and fund the distributor with a cw20 token
     let amount = Uint128::new(500000);
     mint_cw20s(
-        &mut app, 
-        Addr::unchecked(CREATOR_ADDR), 
+        &mut app,
+        Addr::unchecked(CREATOR_ADDR),
         token_address.clone(),
-        amount, 
+        amount,
         Addr::unchecked(CREATOR_ADDR),
     );
     fund_distributor_contract_cw20(
-        &mut app, 
-        distributor_address.clone(), 
-        token_address, 
-        amount, 
+        &mut app,
+        distributor_address.clone(),
+        token_address,
+        amount,
         Addr::unchecked(CREATOR_ADDR),
     );
 
     // assert distributor now contains one expected cw20 token
 
     let res: Vec<CW20Response> = app
-    .wrap()
-    .query_wasm_smart(
-        distributor_address.clone(),
-        &QueryMsg::CW20Tokens { },
-    )
-    .unwrap();
+        .wrap()
+        .query_wasm_smart(distributor_address, &QueryMsg::CW20Tokens {})
+        .unwrap();
 
     assert_eq!(res.len(), 1);
     let cw20 = res.get(0).unwrap();
@@ -1648,15 +1620,11 @@ fn test_query_native_denoms() {
 
     // no denoms expected
     let res: Vec<DenomResponse> = app
-    .wrap()
-    .query_wasm_smart(
-        distributor_address.clone(),
-        &QueryMsg::NativeDenoms {  },
-    )
-    .unwrap();
+        .wrap()
+        .query_wasm_smart(distributor_address.clone(), &QueryMsg::NativeDenoms {})
+        .unwrap();
 
     assert_eq!(res.len(), 0);
-
 
     // mint and fund the distributor with a native token
     let amount = Uint128::new(500000);
@@ -1670,10 +1638,7 @@ fn test_query_native_denoms() {
 
     let res: Vec<DenomResponse> = app
         .wrap()
-        .query_wasm_smart(
-            distributor_address.clone(),
-            &QueryMsg::NativeDenoms {  },
-        )
+        .query_wasm_smart(distributor_address, &QueryMsg::NativeDenoms {})
         .unwrap();
 
     // assert distributor now contains one expected native token
@@ -1693,13 +1658,10 @@ fn test_query_total_power() {
         address: "bekauz".to_string(),
         amount: Uint128::new(10),
     }]);
-   
+
     let res: TotalPowerResponse = app
         .wrap()
-        .query_wasm_smart(
-            distributor_address.clone(),
-            &QueryMsg::TotalPower {  },
-        )
+        .query_wasm_smart(distributor_address, &QueryMsg::TotalPower {})
         .unwrap();
 
     assert_eq!(10, res.total_power.u128());
@@ -1715,13 +1677,10 @@ fn test_query_voting_contract() {
         address: "bekauz".to_string(),
         amount: Uint128::new(10),
     }]);
-    
+
     let res: VotingContractResponse = app
         .wrap()
-        .query_wasm_smart(
-            distributor_address.clone(),
-            &QueryMsg::VotingContract {},
-        )
+        .query_wasm_smart(distributor_address, &QueryMsg::VotingContract {})
         .unwrap();
 
     assert_eq!("contract0", res.contract.to_string());
