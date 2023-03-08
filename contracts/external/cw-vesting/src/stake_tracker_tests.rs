@@ -392,3 +392,29 @@ fn test_unbonding_slash() {
         .unwrap();
     assert_eq!(cardinality, 0);
 }
+
+/// Redelegating should cause cardinality changes if redelegation
+/// removes all tokens from the source validator, or if it delegates
+/// to a new validator.
+#[test]
+fn test_redelegation_changes_cardinality() {
+    let storage = &mut mock_dependencies().storage;
+    let st = StakeTracker::new("s", "v", "c");
+    let t = Timestamp::default();
+    let amount = Uint128::new(10);
+
+    st.on_delegate(storage, t, "v1".to_string(), amount + amount)
+        .unwrap();
+    let c = st.validator_cardinality(storage, t).unwrap();
+    assert_eq!(c, 1);
+
+    st.on_redelegate(storage, t, "v1".to_string(), "v2".to_string(), amount)
+        .unwrap();
+    let c = st.validator_cardinality(storage, t).unwrap();
+    assert_eq!(c, 2);
+
+    st.on_redelegate(storage, t, "v1".to_string(), "v2".to_string(), amount)
+        .unwrap();
+    let c = st.validator_cardinality(storage, t).unwrap();
+    assert_eq!(c, 1);
+}

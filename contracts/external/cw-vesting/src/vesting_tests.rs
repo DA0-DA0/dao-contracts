@@ -317,3 +317,51 @@ fn test_piecewise_linear() {
         Uint128::new(8)
     );
 }
+
+/// This test was contributed by Oak Security as part of issue 1 in
+/// their audit report: "Undelegations will fail when redelegating to
+/// a new validator".
+#[test]
+fn test_redelegate_should_increase_cardinality() {
+    let storage = &mut mock_dependencies().storage;
+    let time = Timestamp::default();
+
+    let init = VestInit {
+        total: Uint128::new(100),
+        schedule: Schedule::SaturatingLinear,
+        start_time: time,
+        duration_seconds: 100,
+        denom: CheckedDenom::Native("ujuno".to_string()),
+        recipient: Addr::unchecked("recv"),
+        title: "t".to_string(),
+        description: Some("d".to_string()),
+    };
+    let payment = Payment::new("vesting", "staked", "validator", "cardinality");
+
+    payment.initialize(storage, init).unwrap();
+    payment.set_funded(storage).unwrap();
+
+    let src = String::from("validator1");
+    let dst = String::from("validator2");
+    let amount = Uint128::new(10);
+    let ubs: u64 = 25;
+
+    // delegate twice amount to validator 1
+    payment
+        .on_delegate(storage, time, src.clone(), amount + amount)
+        .unwrap();
+    // relegate to validator 2
+    payment
+        .on_redelegate(storage, time, src.clone(), dst.clone(), amount)
+        .unwrap();
+    // undelegate for validator 1
+    payment
+        .on_undelegate(storage, time, src, amount, ubs)
+        .unwrap();
+    // undelegate for validator 2
+    payment
+        .on_undelegate(storage, time, dst, amount, ubs)
+        .unwrap(); // cardinality should have increased during
+                   // undelegation so this should not cause an
+                   // overflow when we remove stake.
+}
