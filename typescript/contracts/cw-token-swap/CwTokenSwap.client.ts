@@ -5,8 +5,8 @@
 */
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
-import { Coin, StdFee } from "@cosmjs/amino";
-import { TokenInfo, Uint128, InstantiateMsg, Counterparty, ExecuteMsg, Binary, Cw20ReceiveMsg, QueryMsg, MigrateMsg, Addr, CheckedTokenInfo, StatusResponse, CheckedCounterparty } from "./CwTokenSwap.types";
+import { StdFee } from "@cosmjs/amino";
+import { TokenInfo, Uint128, InstantiateMsg, Counterparty, ExecuteMsg, Binary, SendMessage, AcceptedMessages, Cw20ReceiveMsg, Coin, QueryMsg, MigrateMsg, Addr, CheckedTokenInfo, CosmosMsgForEmpty, BankMsg, StakingMsg, DistributionMsg, IbcMsg, Timestamp, Uint64, WasmMsg, GovMsg, VoteOption, StatusResponse, CheckedCounterparty, Empty, IbcTimeout, IbcTimeoutBlock } from "./CwTokenSwap.types";
 export interface CwTokenSwapReadOnlyInterface {
   contractAddress: string;
   status: () => Promise<StatusResponse>;
@@ -39,7 +39,11 @@ export interface CwTokenSwapInterface extends CwTokenSwapReadOnlyInterface {
     msg: Binary;
     sender: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
-  fund: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
+  fund: ({
+    sendMessage
+  }: {
+    sendMessage?: SendMessage;
+  }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   withdraw: (fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
 }
 export class CwTokenSwapClient extends CwTokenSwapQueryClient implements CwTokenSwapInterface {
@@ -74,9 +78,15 @@ export class CwTokenSwapClient extends CwTokenSwapQueryClient implements CwToken
       }
     }, fee, memo, funds);
   };
-  fund = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
+  fund = async ({
+    sendMessage
+  }: {
+    sendMessage?: SendMessage;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
-      fund: {}
+      fund: {
+        send_message: sendMessage
+      }
     }, fee, memo, funds);
   };
   withdraw = async (fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {

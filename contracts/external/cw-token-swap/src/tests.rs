@@ -1,15 +1,18 @@
 use cosmwasm_std::{
     coins,
     testing::{mock_dependencies, mock_env},
-    to_binary, Addr, Coin, Decimal, Empty, Uint128, Validator,
+    to_binary, Addr, Coin, Empty, Uint128,
 };
 use cw20::Cw20Coin;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StatusResponse},
-    types::{CheckedCounterparty, CheckedTokenInfo, Counterparty, TokenInfo},
+    msg::{Cw20RecieveMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StatusResponse},
+    types::{
+        AcceptedMessages, CheckedCounterparty, CheckedTokenInfo, Counterparty, SendMessage,
+        TokenInfo,
+    },
     ContractError,
 };
 
@@ -82,7 +85,6 @@ fn test_simple_escrow() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -90,7 +92,6 @@ fn test_simple_escrow() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -123,7 +124,7 @@ fn test_simple_escrow() {
     app.execute_contract(
         Addr::unchecked(DAO1),
         escrow,
-        &ExecuteMsg::Fund {},
+        &ExecuteMsg::Fund { send_message: None },
         &[Coin {
             amount: Uint128::new(100),
             denom: "ujuno".to_string(),
@@ -148,31 +149,7 @@ fn test_simple_escrow() {
 
 #[test]
 fn test_simple_with_send_messages() {
-    let mut app = App::new(|router, api, storage| {
-        router
-            .bank
-            .init_balance(
-                storage,
-                &Addr::unchecked("owner"),
-                coins(100_000_000_000, "ujuno"),
-            )
-            .unwrap();
-
-        router
-            .staking
-            .add_validator(
-                api,
-                storage,
-                &mock_env().block,
-                Validator {
-                    address: "validator".to_string(),
-                    commission: Decimal::zero(), // zero percent comission to keep math simple.
-                    max_commission: Decimal::percent(10),
-                    max_change_rate: Decimal::percent(2),
-                },
-            )
-            .unwrap();
-    });
+    let mut app = App::default();
 
     let cw20_code = app.store_code(cw20_contract());
     let escrow_code = app.store_code(escrow_contract());
@@ -199,23 +176,184 @@ fn test_simple_with_send_messages() {
         )
         .unwrap();
 
-    let vetsing = app
+    let vetsing_init_msg = cw_vesting::msg::InstantiateMsg {
+        owner: Some("owner".to_string()),
+        recipient: DAO2.to_string(),
+        title: "title".to_string(),
+        description: Some("description".to_string()),
+        total: Uint128::new(200),
+        denom: cw_denom::UncheckedDenom::Native("ujuno".to_string()),
+        schedule: cw_vesting::vesting::Schedule::SaturatingLinear,
+        start_time: None,
+        vesting_duration_seconds: 60 * 60 * 24 * 7, // one week
+        unbonding_duration_seconds: 60,
+    };
+
+    let escrow = app
         .instantiate_contract(
-            vesting_code,
-            Addr::unchecked("owner"),
-            &cw_vesting::msg::InstantiateMsg {
-                owner: Some("owner".to_string()),
-                recipient: DAO2.to_string(),
-                title: "title".to_string(),
-                description: Some("description".to_string()),
-                total: Uint128::new(100_000_000),
-                denom: cw_denom::UncheckedDenom::Native("ujuno".to_string()),
-                schedule: cw_vesting::vesting::Schedule::SaturatingLinear,
-                start_time: None,
-                vesting_duration_seconds: 60 * 60 * 24 * 7, // one week
-                unbonding_duration_seconds: 60,
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(200),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Cw20 {
+                        contract_addr: cw20.to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
             },
-            &coins(100_000_000, "ujuno"),
+            &[],
+            "escrow",
+            None,
+        )
+        .unwrap();
+
+    let some_other_escrow = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: escrow.to_string(),
+                    promise: TokenInfo::Cw20 {
+                        contract_addr: cw20.to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[],
+            "escrow",
+            None,
+        )
+        .unwrap();
+
+    // In this case we are sending cw20 tokens, but expecting to get native token
+    // So we can send any set of messages we want here.
+    app.execute_contract(
+        Addr::unchecked(DAO2),
+        cw20.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: escrow.to_string(),
+            amount: Uint128::new(100),
+            msg: to_binary(&Cw20RecieveMsg::FundWithMsgs {
+                amount: Uint128::new(200),
+                send_message: SendMessage::SendNative {
+                    messages: vec![AcceptedMessages::WasmInstantiate {
+                        admin: None,
+                        code_id: vesting_code,
+                        msg: to_binary(&vetsing_init_msg).unwrap(),
+                        funds: coins(200, "ujuno"),
+                        label: "some vesting".to_string(),
+                    }],
+                },
+            })
+            .unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: DAO1.to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(200),
+            denom: "ujuno".to_string(),
+        }],
+    }))
+    .unwrap();
+
+    // We recieve 100 cw20 token, just for fun, im trying to fund a differetn swap with this swap
+    // So once this swap is done, I can fund the other swap with the 50 cw20 tokens
+    app.execute_contract(
+        Addr::unchecked(DAO1),
+        escrow,
+        &ExecuteMsg::Fund {
+            send_message: Some(SendMessage::SendCw20 {
+                contract_address: some_other_escrow.to_string(),
+                message: to_binary("").unwrap(),
+            }),
+        },
+        &[Coin {
+            amount: Uint128::new(200),
+            denom: "ujuno".to_string(),
+        }],
+    )
+    .unwrap();
+
+    // --- Cool everything passed, lets make sure everything is sent correctly ---
+
+    // dao1 cw20 balance should be 0 because we sent it into the other escrow
+    let dao1_cw20_balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            cw20.clone(),
+            &cw20::Cw20QueryMsg::Balance {
+                address: DAO2.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(dao1_cw20_balance.balance, Uint128::new(0));
+
+    // Lets make sure the other escrow was funded correctly
+    // provided is true and the cw20 balance is 100
+    let other_escrow_status: StatusResponse = app
+        .wrap()
+        .query_wasm_smart(some_other_escrow.clone(), &QueryMsg::Status {})
+        .unwrap();
+    let other_escrow_cw20_balance: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            cw20,
+            &cw20::Cw20QueryMsg::Balance {
+                address: some_other_escrow.to_string(),
+            },
+        )
+        .unwrap();
+    assert!(other_escrow_status.counterparty_two.provided);
+    assert_eq!(other_escrow_cw20_balance.balance, Uint128::new(100));
+
+    // Make sure that DAO1 native balance is 0 (sent to the vesting contract)
+    let dao1_balance = app.wrap().query_balance(DAO1.to_string(), "ujuno").unwrap();
+    assert_eq!(dao1_balance.amount, Uint128::new(0));
+}
+
+#[test]
+fn test_multiple_send_messages() {
+    let mut app = App::default();
+
+    let cw20_code = app.store_code(cw20_contract());
+    let escrow_code = app.store_code(escrow_contract());
+
+    let cw20 = app
+        .instantiate_contract(
+            cw20_code,
+            Addr::unchecked(DAO2),
+            &cw20_base::msg::InstantiateMsg {
+                name: "coin coin".to_string(),
+                symbol: "coin".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: DAO2.to_string(),
+                    amount: Uint128::new(100),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
             "coin",
             None,
         )
@@ -230,9 +368,8 @@ fn test_simple_with_send_messages() {
                     address: DAO1.to_string(),
                     promise: TokenInfo::Native {
                         denom: "ujuno".to_string(),
-                        amount: Uint128::new(100),
+                        amount: Uint128::new(200),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -240,7 +377,6 @@ fn test_simple_with_send_messages() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -249,37 +385,161 @@ fn test_simple_with_send_messages() {
         )
         .unwrap();
 
-    app.execute_contract(
-        Addr::unchecked(DAO2),
-        cw20.clone(),
-        &cw20::Cw20ExecuteMsg::Send {
-            contract: escrow.to_string(),
-            amount: Uint128::new(100),
-            msg: to_binary("").unwrap(),
-        },
-        &[],
-    )
-    .unwrap();
-
     app.sudo(SudoMsg::Bank(BankSudo::Mint {
         to_address: DAO1.to_string(),
         amount: vec![Coin {
-            amount: Uint128::new(100),
+            amount: Uint128::new(200),
             denom: "ujuno".to_string(),
         }],
     }))
     .unwrap();
 
+    // We recieve 100 cw20 token, just for fun, im trying to fund a differetn swap with this swap
+    // So once this swap is done, I can fund the other swap with the 50 cw20 tokens
     app.execute_contract(
         Addr::unchecked(DAO1),
-        escrow,
-        &ExecuteMsg::Fund {},
+        escrow.clone(),
+        &ExecuteMsg::Fund { send_message: None },
         &[Coin {
-            amount: Uint128::new(100),
+            amount: Uint128::new(200),
             denom: "ujuno".to_string(),
         }],
     )
     .unwrap();
+
+    app.execute_contract(
+        Addr::unchecked(DAO2),
+        cw20,
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: escrow.to_string(),
+            amount: Uint128::new(100),
+            msg: to_binary(&Cw20RecieveMsg::FundWithMsgs {
+                amount: Uint128::new(200),
+                send_message: SendMessage::SendNative {
+                    messages: vec![
+                        AcceptedMessages::BankBurn {
+                            amount: coins(100, "ujuno"),
+                        },
+                        AcceptedMessages::BankSend {
+                            to_address: "some_random".to_string(),
+                            amount: coins(100, "ujuno"),
+                        },
+                    ],
+                },
+            })
+            .unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let some_random_balance = app
+        .wrap()
+        .query_balance("some_random".to_string(), "ujuno")
+        .unwrap();
+    assert_eq!(some_random_balance.amount, Uint128::new(100));
+}
+
+#[test]
+fn test_send_messages_incomplete_funds() {
+    let mut app = App::default();
+
+    let cw20_code = app.store_code(cw20_contract());
+    let escrow_code = app.store_code(escrow_contract());
+
+    let cw20 = app
+        .instantiate_contract(
+            cw20_code,
+            Addr::unchecked(DAO2),
+            &cw20_base::msg::InstantiateMsg {
+                name: "coin coin".to_string(),
+                symbol: "coin".to_string(),
+                decimals: 6,
+                initial_balances: vec![Cw20Coin {
+                    address: DAO2.to_string(),
+                    amount: Uint128::new(100),
+                }],
+                mint: None,
+                marketing: None,
+            },
+            &[],
+            "coin",
+            None,
+        )
+        .unwrap();
+
+    let escrow = app
+        .instantiate_contract(
+            escrow_code,
+            Addr::unchecked(DAO1),
+            &InstantiateMsg {
+                counterparty_one: Counterparty {
+                    address: DAO1.to_string(),
+                    promise: TokenInfo::Native {
+                        denom: "ujuno".to_string(),
+                        amount: Uint128::new(200),
+                    },
+                },
+                counterparty_two: Counterparty {
+                    address: DAO2.to_string(),
+                    promise: TokenInfo::Cw20 {
+                        contract_addr: cw20.to_string(),
+                        amount: Uint128::new(100),
+                    },
+                },
+            },
+            &[],
+            "escrow",
+            None,
+        )
+        .unwrap();
+
+    app.sudo(SudoMsg::Bank(BankSudo::Mint {
+        to_address: DAO1.to_string(),
+        amount: vec![Coin {
+            amount: Uint128::new(200),
+            denom: "ujuno".to_string(),
+        }],
+    }))
+    .unwrap();
+
+    // We recieve 100 cw20 token, just for fun, im trying to fund a differetn swap with this swap
+    // So once this swap is done, I can fund the other swap with the 50 cw20 tokens
+    app.execute_contract(
+        Addr::unchecked(DAO1),
+        escrow.clone(),
+        &ExecuteMsg::Fund { send_message: None },
+        &[Coin {
+            amount: Uint128::new(200),
+            denom: "ujuno".to_string(),
+        }],
+    )
+    .unwrap();
+
+    let err = app
+        .execute_contract(
+            Addr::unchecked(DAO2),
+            cw20,
+            &cw20::Cw20ExecuteMsg::Send {
+                contract: escrow.to_string(),
+                amount: Uint128::new(100),
+                msg: to_binary(&Cw20RecieveMsg::FundWithMsgs {
+                    amount: Uint128::new(200),
+                    send_message: SendMessage::SendNative {
+                        messages: vec![AcceptedMessages::BankBurn {
+                            amount: coins(100, "ujuno"),
+                        }],
+                    },
+                })
+                .unwrap(),
+            },
+            &[],
+        )
+        .unwrap_err()
+        .downcast::<ContractError>()
+        .unwrap();
+
+    assert_eq!(err, ContractError::WrongFundsCalculation {});
 }
 
 #[test]
@@ -321,7 +581,6 @@ fn test_withdraw() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -329,7 +588,6 @@ fn test_withdraw() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -395,7 +653,7 @@ fn test_withdraw() {
     app.execute_contract(
         Addr::unchecked(DAO1),
         escrow.clone(),
-        &ExecuteMsg::Fund {},
+        &ExecuteMsg::Fund { send_message: None },
         &[Coin {
             amount: Uint128::new(100),
             denom: "ujuno".to_string(),
@@ -511,7 +769,6 @@ fn test_withdraw_post_completion() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -519,7 +776,6 @@ fn test_withdraw_post_completion() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -552,7 +808,7 @@ fn test_withdraw_post_completion() {
     app.execute_contract(
         Addr::unchecked(DAO1),
         escrow.clone(),
-        &ExecuteMsg::Fund {},
+        &ExecuteMsg::Fund { send_message: None },
         &[Coin {
             amount: Uint128::new(100),
             denom: "ujuno".to_string(),
@@ -622,7 +878,6 @@ fn test_invalid_instantiate() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(0),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -630,7 +885,6 @@ fn test_invalid_instantiate() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -655,7 +909,6 @@ fn test_invalid_instantiate() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -663,7 +916,6 @@ fn test_invalid_instantiate() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(0),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -695,7 +947,6 @@ fn test_non_distincy_counterparties() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(110),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO1.to_string(),
@@ -703,7 +954,6 @@ fn test_non_distincy_counterparties() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(10),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -756,7 +1006,6 @@ fn test_fund_non_counterparty() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -764,7 +1013,6 @@ fn test_fund_non_counterparty() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -803,7 +1051,7 @@ fn test_fund_non_counterparty() {
         .execute_contract(
             Addr::unchecked("noah"),
             escrow,
-            &ExecuteMsg::Fund {},
+            &ExecuteMsg::Fund { send_message: None },
             &[Coin {
                 amount: Uint128::new(100),
                 denom: "ujuno".to_string(),
@@ -855,7 +1103,6 @@ fn test_fund_twice() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -863,7 +1110,6 @@ fn test_fund_twice() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -896,7 +1142,7 @@ fn test_fund_twice() {
     app.execute_contract(
         Addr::unchecked(DAO1),
         escrow.clone(),
-        &ExecuteMsg::Fund {},
+        &ExecuteMsg::Fund { send_message: None },
         &[Coin {
             amount: Uint128::new(100),
             denom: "ujuno".to_string(),
@@ -908,7 +1154,7 @@ fn test_fund_twice() {
         .execute_contract(
             Addr::unchecked(DAO1),
             escrow.clone(),
-            &ExecuteMsg::Fund {},
+            &ExecuteMsg::Fund { send_message: None },
             &[Coin {
                 amount: Uint128::new(100),
                 denom: "ujuno".to_string(),
@@ -977,7 +1223,6 @@ fn test_fund_invalid_amount() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -985,7 +1230,6 @@ fn test_fund_invalid_amount() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -1028,7 +1272,7 @@ fn test_fund_invalid_amount() {
         .execute_contract(
             Addr::unchecked(DAO1),
             escrow,
-            &ExecuteMsg::Fund {},
+            &ExecuteMsg::Fund { send_message: None },
             &[Coin {
                 amount: Uint128::new(200),
                 denom: "ujuno".to_string(),
@@ -1062,7 +1306,6 @@ fn test_fund_invalid_denom() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -1070,7 +1313,6 @@ fn test_fund_invalid_denom() {
                         denom: "uekez".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],
@@ -1094,7 +1336,7 @@ fn test_fund_invalid_denom() {
         .execute_contract(
             Addr::unchecked(DAO1),
             escrow,
-            &ExecuteMsg::Fund {},
+            &ExecuteMsg::Fund { send_message: None },
             &[Coin {
                 amount: Uint128::new(100),
                 denom: "uekez".to_string(),
@@ -1167,7 +1409,6 @@ fn test_fund_invalid_cw20() {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
                 counterparty_two: Counterparty {
                     address: DAO2.to_string(),
@@ -1175,7 +1416,6 @@ fn test_fund_invalid_cw20() {
                         contract_addr: cw20.to_string(),
                         amount: Uint128::new(100),
                     },
-                    send_msg: None,
                 },
             },
             &[],

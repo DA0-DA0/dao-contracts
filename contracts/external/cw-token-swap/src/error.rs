@@ -31,7 +31,10 @@ pub enum ContractError {
 
     #[error("Provided funds do not match promised funds")]
     InvalidFunds {},
-    
+
+    #[error("You are trying to send more funds then you have")]
+    WrongFundsCalculation {},
+
     #[error("Send message doesn't match the other party token type")]
     InvalidSendMsg {},
 

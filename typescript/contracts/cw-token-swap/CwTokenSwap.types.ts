@@ -27,15 +27,56 @@ export interface Counterparty {
 export type ExecuteMsg = {
   receive: Cw20ReceiveMsg;
 } | {
-  fund: {};
+  fund: {
+    send_message?: SendMessage | null;
+  };
 } | {
   withdraw: {};
 };
 export type Binary = string;
+export type SendMessage = {
+  send_cw20: {
+    contract_address: string;
+    message: Binary;
+  };
+} | {
+  send_native: {
+    messages: AcceptedMessages[];
+  };
+};
+export type AcceptedMessages = {
+  bank_send: {
+    amount: Coin[];
+    to_address: string;
+  };
+} | {
+  bank_burn: {
+    amount: Coin[];
+  };
+} | {
+  wasm_execute: {
+    contract_addr: string;
+    funds: Coin[];
+    msg: Binary;
+  };
+} | {
+  wasm_instantiate: {
+    admin?: string | null;
+    code_id: number;
+    funds: Coin[];
+    label: string;
+    msg: Binary;
+  };
+};
 export interface Cw20ReceiveMsg {
   amount: Uint128;
   msg: Binary;
   sender: string;
+}
+export interface Coin {
+  amount: Uint128;
+  denom: string;
+  [k: string]: unknown;
 }
 export type QueryMsg = {
   status: {};
@@ -53,6 +94,136 @@ export type CheckedTokenInfo = {
     contract_addr: Addr;
   };
 };
+export type CosmosMsgForEmpty = {
+  bank: BankMsg;
+} | {
+  custom: Empty;
+} | {
+  staking: StakingMsg;
+} | {
+  distribution: DistributionMsg;
+} | {
+  stargate: {
+    type_url: string;
+    value: Binary;
+    [k: string]: unknown;
+  };
+} | {
+  ibc: IbcMsg;
+} | {
+  wasm: WasmMsg;
+} | {
+  gov: GovMsg;
+};
+export type BankMsg = {
+  send: {
+    amount: Coin[];
+    to_address: string;
+    [k: string]: unknown;
+  };
+} | {
+  burn: {
+    amount: Coin[];
+    [k: string]: unknown;
+  };
+};
+export type StakingMsg = {
+  delegate: {
+    amount: Coin;
+    validator: string;
+    [k: string]: unknown;
+  };
+} | {
+  undelegate: {
+    amount: Coin;
+    validator: string;
+    [k: string]: unknown;
+  };
+} | {
+  redelegate: {
+    amount: Coin;
+    dst_validator: string;
+    src_validator: string;
+    [k: string]: unknown;
+  };
+};
+export type DistributionMsg = {
+  set_withdraw_address: {
+    address: string;
+    [k: string]: unknown;
+  };
+} | {
+  withdraw_delegator_reward: {
+    validator: string;
+    [k: string]: unknown;
+  };
+};
+export type IbcMsg = {
+  transfer: {
+    amount: Coin;
+    channel_id: string;
+    timeout: IbcTimeout;
+    to_address: string;
+    [k: string]: unknown;
+  };
+} | {
+  send_packet: {
+    channel_id: string;
+    data: Binary;
+    timeout: IbcTimeout;
+    [k: string]: unknown;
+  };
+} | {
+  close_channel: {
+    channel_id: string;
+    [k: string]: unknown;
+  };
+};
+export type Timestamp = Uint64;
+export type Uint64 = string;
+export type WasmMsg = {
+  execute: {
+    contract_addr: string;
+    funds: Coin[];
+    msg: Binary;
+    [k: string]: unknown;
+  };
+} | {
+  instantiate: {
+    admin?: string | null;
+    code_id: number;
+    funds: Coin[];
+    label: string;
+    msg: Binary;
+    [k: string]: unknown;
+  };
+} | {
+  migrate: {
+    contract_addr: string;
+    msg: Binary;
+    new_code_id: number;
+    [k: string]: unknown;
+  };
+} | {
+  update_admin: {
+    admin: string;
+    contract_addr: string;
+    [k: string]: unknown;
+  };
+} | {
+  clear_admin: {
+    contract_addr: string;
+    [k: string]: unknown;
+  };
+};
+export type GovMsg = {
+  vote: {
+    proposal_id: number;
+    vote: VoteOption;
+    [k: string]: unknown;
+  };
+};
+export type VoteOption = "yes" | "no" | "abstain" | "no_with_veto";
 export interface StatusResponse {
   counterparty_one: CheckedCounterparty;
   counterparty_two: CheckedCounterparty;
@@ -61,4 +232,18 @@ export interface CheckedCounterparty {
   address: Addr;
   promise: CheckedTokenInfo;
   provided: boolean;
+  send_msg?: CosmosMsgForEmpty[] | null;
+}
+export interface Empty {
+  [k: string]: unknown;
+}
+export interface IbcTimeout {
+  block?: IbcTimeoutBlock | null;
+  timestamp?: Timestamp | null;
+  [k: string]: unknown;
+}
+export interface IbcTimeoutBlock {
+  height: number;
+  revision: number;
+  [k: string]: unknown;
 }
