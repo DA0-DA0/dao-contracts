@@ -24,6 +24,8 @@ use crate::state::{
     TALLY, TOTAL_CAST,
 };
 
+use semver::Version;
+
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:gauge";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -73,6 +75,7 @@ pub fn execute(
             epoch_size,
             min_percent_selected,
             max_options_selected,
+            max_available_percentage,
         } => execute::update_gauge(
             deps,
             info.sender,
@@ -80,6 +83,7 @@ pub fn execute(
             epoch_size,
             min_percent_selected,
             max_options_selected,
+            max_available_percentage,
         ),
         ExecuteMsg::StopGauge { gauge } => execute::stop_gauge(deps, info.sender, gauge),
         ExecuteMsg::AddOption { gauge, option } => {
@@ -172,6 +176,7 @@ mod execute {
             epoch_size,
             min_percent_selected,
             max_options_selected,
+            max_available_percentage,
         }: GaugeConfig,
     ) -> Result<Addr, ContractError> {
         let adapter = deps.api.addr_validate(&adapter)?;
@@ -193,6 +198,7 @@ mod execute {
             epoch: epoch_size,
             min_percent_selected,
             max_options_selected,
+            max_available_percentage,
             is_stopped: false,
             next_epoch: env.block.time.seconds() + epoch_size,
             last_executed_set: None,
@@ -221,6 +227,7 @@ mod execute {
         epoch_size: Option<u64>,
         min_percent_selected: Option<Decimal>,
         max_options_selected: Option<u32>,
+        max_available_percentage: Option<Decimal>,
     ) -> Result<Response, ContractError> {
         let config = CONFIG.load(deps.storage)?;
         if sender != config.owner {
@@ -249,6 +256,17 @@ mod execute {
                 ContractError::MaxOptionsSelectedTooSmall {}
             );
             gauge.max_options_selected = max_options_selected;
+        }
+        if let Some(max_available_percentage) = max_available_percentage {
+            if max_available_percentage.is_zero() {
+                gauge.max_available_percentage = None
+            } else {
+                ensure!(
+                    max_available_percentage < Decimal::one(),
+                    ContractError::MaxAvailablePercentTooBig {}
+                );
+                gauge.max_available_percentage = Some(max_available_percentage)
+            };
         }
         GAUGES.save(deps.storage, gauge_id, &gauge)?;
 
@@ -540,6 +558,7 @@ mod query {
             epoch_size: gauge.epoch,
             min_percent_selected: gauge.min_percent_selected,
             max_options_selected: gauge.max_options_selected,
+            max_available_percentage: gauge.max_available_percentage,
             is_stopped: gauge.is_stopped,
             next_epoch: gauge.next_epoch,
         }
@@ -638,6 +657,14 @@ mod query {
             })
             .map(|o| {
                 let ((power, option), _) = o?;
+                // If gauge has max_available_percentage set, discard all power
+                // above that percentage
+                if let Some(max_available_percentage) = gauge.max_available_percentage {
+                    if Decimal::from_ratio(power, total_cast) > max_available_percentage {
+                        // If power is above available percentage, cut power down to max available
+                        return Ok((option, Uint128::new(total_cast) * max_available_percentage));
+                    }
+                }
                 Ok((option, Uint128::new(power)))
             })
             .take(gauge.max_options_selected as usize)
@@ -656,7 +683,7 @@ mod query {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    let version = ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     for (gauge_id, next_epoch) in msg.next_epochs.unwrap_or_default() {
         GAUGES.update(deps.storage, gauge_id, |gauge| -> StdResult<_> {
@@ -671,6 +698,26 @@ pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, Con
             gauge.next_epoch = next_epoch;
             Ok(gauge)
         })?;
+    }
+
+    // temporary implementation - since wyndex has only one gauge right now, update it quickly
+    if version <= "1.5.3".parse::<Version>().unwrap() {
+        use cw_storage_plus::Map;
+        let old_storage: Map<u64, gauge_orchestrator_1_5_3::state::Gauge> = Map::new("gauges");
+        let gauge = old_storage.load(deps.storage, 0)?;
+        let new_gauge = Gauge {
+            title: gauge.title,
+            adapter: gauge.adapter,
+            epoch: gauge.epoch,
+            min_percent_selected: gauge.min_percent_selected,
+            max_options_selected: gauge.max_options_selected,
+            max_available_percentage: None,
+            is_stopped: gauge.is_stopped,
+            next_epoch: gauge.next_epoch,
+            // this is fine, it will be overwritten on next gauge execution
+            last_executed_set: None,
+        };
+        GAUGES.save(deps.storage, 0, &new_gauge)?;
     }
 
     Ok(Response::new())

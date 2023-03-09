@@ -48,4 +48,7 @@ pub enum ContractError {
 
     #[error("Maximum options selected parameter needs to be bigger then 0")]
     MaxOptionsSelectedTooSmall {},
+
+    #[error("Maximum percentage available parameter needs to be smaller then 1.0")]
+    MaxAvailablePercentTooBig {},
 }

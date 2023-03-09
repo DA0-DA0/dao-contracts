@@ -54,6 +54,8 @@ pub struct Gauge {
     /// Maximum number of Options to make the selected set. Needed even with
     /// `min_percent_selected` to provide some guarantees on gas usage of this query.
     pub max_options_selected: u32,
+    // Any votes above that percentage will be discarded
+    pub max_available_percentage: Option<Decimal>,
     /// True if the gauge is stopped
     pub is_stopped: bool,
     /// UNIX time (seconds) when next epoch can be executed. If < env.block.time then Execute can be called

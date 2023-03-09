@@ -22,6 +22,9 @@ schemars = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 wynd-stake = { workspace = true }
+# Temporarily added for migration tests
+semver = { workspace = true }
+gauge-orchestrator-1_5_3 = { git = "https://github.com/cosmorama/wynddao.git", tag="v1.5.3", package = "gauge-orchestrator" }
 
 [dev-dependencies]
 anyhow = { workspace = true }
