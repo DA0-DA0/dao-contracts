@@ -250,7 +250,6 @@ fn test_simple_with_send_messages() {
             contract: escrow.to_string(),
             amount: Uint128::new(100),
             msg: to_binary(&Cw20RecieveMsg::FundWithMsgs {
-                amount: Uint128::new(200),
                 send_message: SendMessage::SendNative {
                     messages: vec![AcceptedMessages::WasmInstantiate {
                         admin: None,
@@ -414,7 +413,6 @@ fn test_multiple_send_messages() {
             contract: escrow.to_string(),
             amount: Uint128::new(100),
             msg: to_binary(&Cw20RecieveMsg::FundWithMsgs {
-                amount: Uint128::new(200),
                 send_message: SendMessage::SendNative {
                     messages: vec![
                         AcceptedMessages::BankBurn {
@@ -524,7 +522,6 @@ fn test_send_messages_incomplete_funds() {
                 contract: escrow.to_string(),
                 amount: Uint128::new(100),
                 msg: to_binary(&Cw20RecieveMsg::FundWithMsgs {
-                    amount: Uint128::new(200),
                     send_message: SendMessage::SendNative {
                         messages: vec![AcceptedMessages::BankBurn {
                             amount: coins(100, "ujuno"),

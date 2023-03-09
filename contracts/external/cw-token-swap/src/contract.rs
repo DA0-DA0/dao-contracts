@@ -27,8 +27,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let counterparty_one = msg.counterparty_one.into_checked(deps.as_ref(), None)?;
-    let counterparty_two = msg.counterparty_two.into_checked(deps.as_ref(), None)?;
+    let counterparty_one = msg.counterparty_one.into_checked(deps.as_ref())?;
+    let counterparty_two = msg.counterparty_two.into_checked(deps.as_ref())?;
 
     if counterparty_one.address == counterparty_two.address {
         return Err(ContractError::NonDistinctCounterparties {});
@@ -191,18 +191,8 @@ pub fn execute_receive(
     if let Ok(msg) = from_binary::<Cw20RecieveMsg>(&msg.msg) {
         match msg {
             Cw20RecieveMsg::FundWithMsgs {
-                amount,
                 send_message,
             } => {
-                if let CheckedTokenInfo::Cw20 {
-                    amount: promised_amount,
-                    ..
-                } = other_counterparty.promise
-                {
-                    if promised_amount != amount {
-                        return Err(ContractError::WrongFundsCalculation {});
-                    }
-                };
                 send_msg = Some(send_message);
             }
         }

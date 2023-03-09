@@ -202,13 +202,12 @@ impl Counterparty {
     pub fn into_checked(
         self,
         deps: Deps,
-        send_msg: Option<Vec<CosmosMsg>>,
     ) -> Result<CheckedCounterparty, ContractError> {
         Ok(CheckedCounterparty {
             address: deps.api.addr_validate(&self.address)?,
             provided: false,
             promise: self.promise.into_checked(deps)?,
-            send_msg,
+            send_msg: None,
         })
     }
 }

@@ -1,5 +1,4 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
 
 use crate::types::{CheckedCounterparty, Counterparty, SendMessage};
 
@@ -40,7 +39,6 @@ pub struct MigrateMsg {}
 #[cw_serde]
 pub enum Cw20RecieveMsg {
     FundWithMsgs {
-        amount: Uint128,
         send_message: SendMessage,
     },
 }
