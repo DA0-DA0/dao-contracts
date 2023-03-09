@@ -1,6 +1,6 @@
-use cosmwasm_std::{testing::mock_dependencies, Timestamp, Uint128};
+use cosmwasm_std::{from_binary, testing::mock_dependencies, Timestamp, Uint128};
 
-use crate::stake_tracker::StakeTracker;
+use crate::{StakeTracker, StakeTrackerQuery};
 
 #[test]
 fn test_stake_tracking() {
@@ -391,4 +391,93 @@ fn test_unbonding_slash() {
         .validator_cardinality(storage, Timestamp::from_seconds(8))
         .unwrap();
     assert_eq!(cardinality, 0);
+}
+
+/// Redelegating should cause cardinality changes if redelegation
+/// removes all tokens from the source validator, or if it delegates
+/// to a new validator.
+#[test]
+fn test_redelegation_changes_cardinality() {
+    let storage = &mut mock_dependencies().storage;
+    let st = StakeTracker::new("s", "v", "c");
+    let t = Timestamp::default();
+    let amount = Uint128::new(10);
+
+    st.on_delegate(storage, t, "v1".to_string(), amount + amount)
+        .unwrap();
+    let c = st.validator_cardinality(storage, t).unwrap();
+    assert_eq!(c, 1);
+
+    st.on_redelegate(storage, t, "v1".to_string(), "v2".to_string(), amount)
+        .unwrap();
+    let c = st.validator_cardinality(storage, t).unwrap();
+    assert_eq!(c, 2);
+
+    st.on_redelegate(storage, t, "v1".to_string(), "v2".to_string(), amount)
+        .unwrap();
+    let c = st.validator_cardinality(storage, t).unwrap();
+    assert_eq!(c, 1);
+}
+
+#[test]
+fn test_queries() {
+    let storage = &mut mock_dependencies().storage;
+    let st = StakeTracker::new("s", "v", "c");
+    st.on_delegate(
+        storage,
+        Timestamp::from_seconds(10),
+        "v1".to_string(),
+        Uint128::new(42),
+    )
+    .unwrap();
+
+    let cardinality: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::Cardinality {
+                t: Timestamp::from_seconds(11),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(cardinality, Uint128::one());
+
+    let total_staked: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::TotalStaked {
+                t: Timestamp::from_seconds(10),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(total_staked, Uint128::new(42));
+
+    let val_staked: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::ValidatorStaked {
+                t: Timestamp::from_seconds(10),
+                validator: "v1".to_string(),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(val_staked, Uint128::new(42));
+
+    let val_staked_before_staking: Uint128 = from_binary(
+        &st.query(
+            storage,
+            StakeTrackerQuery::ValidatorStaked {
+                t: Timestamp::from_seconds(9),
+                validator: "v1".to_string(),
+            },
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(val_staked_before_staking, Uint128::new(0));
 }

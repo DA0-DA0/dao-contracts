@@ -34,6 +34,12 @@ pub enum ContractError {
     #[error("total amount to vest must be non-zero")]
     ZeroVest,
 
+    #[error("this vesting contract would complete instantly")]
+    Instavest,
+
+    #[error("can not vest a constant amount, specifiy two or more points")]
+    ConstantVest,
+
     #[error("payment is cancelled")]
     Cancelled,
 

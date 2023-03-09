@@ -3,6 +3,7 @@ use cosmwasm_std::{Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
 use cw_ownable::cw_ownable;
+use cw_stake_tracker::StakeTrackerQuery;
 
 use crate::vesting::Schedule;
 
@@ -30,9 +31,20 @@ pub struct InstantiateMsg {
     /// represent a more complicated vesting schedule.
     pub schedule: Schedule,
     /// The time to start vesting, or None to start vesting when the
-    /// contract is instantiated.
+    /// contract is instantiated. `start_time` may be in the past,
+    /// though the contract checks that `start_time +
+    /// vesting_duration_seconds > now`. Otherwise, this would amount
+    /// to a regular fund transfer.
     pub start_time: Option<Timestamp>,
-    /// The length of the vesting schedule in seconds.
+    /// The length of the vesting schedule in seconds. Must be
+    /// non-zero, though one second vesting durations are
+    /// allowed. This may be combined with a `start_time` in the
+    /// future to create an agreement that instantly vests at a time
+    /// in the future, and allows the receiver to stake vesting tokens
+    /// before the agreement completes.
+    ///
+    /// See `suite_tests/tests.rs`
+    /// `test_almost_instavest_in_the_future` for an example of this.
     pub vesting_duration_seconds: u64,
 
     /// The unbonding duration for the chain this contract is deployed
@@ -191,8 +203,28 @@ pub enum QueryMsg {
     /// vested at time t.
     #[returns(::cosmwasm_std::Uint128)]
     Distributable {
-        /// The time, as a unix timestamp in seconds, or none to use
-        /// the current time.
-        t: Option<u64>,
+        /// The time or none to use the current time.
+        t: Option<Timestamp>,
     },
+    /// Gets the current value of `vested(t)`. If `t` is `None`, the
+    /// current time is used.
+    #[returns(::cosmwasm_std::Uint128)]
+    Vested { t: Option<Timestamp> },
+    /// Gets the total amount that will ever vest, `max(vested(t))`.
+    ///
+    /// Note that if the contract is canceled at time c, this value
+    /// will change to `vested(c)`. Thus, it can not be assumed to be
+    /// constant over the contract's lifetime.
+    #[returns(::cosmwasm_std::Uint128)]
+    TotalToVest {},
+    /// Gets the amount of time between the vest starting, and it
+    /// completing. Returns `None` if the vest has been cancelled.
+    #[returns(Option<::cosmwasm_std::Uint64>)]
+    VestDuration {},
+    /// Queries information about the contract's understanding of it's
+    /// bonded and unbonding token balances. See the
+    /// `StakeTrackerQuery` in `packages/cw-stake-tracker/lib.rs` for
+    /// query methods and their return types.
+    #[returns(::cosmwasm_std::Uint128)]
+    Stake(StakeTrackerQuery),
 }

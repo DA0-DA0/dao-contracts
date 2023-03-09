@@ -1,12 +1,16 @@
 use std::cmp::min;
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128};
+use cosmwasm_std::{
+    Addr, Binary, CosmosMsg, DistributionMsg, StdResult, Storage, Timestamp, Uint128, Uint64,
+};
 use cw_denom::CheckedDenom;
 use cw_storage_plus::Item;
-use wynd_utils::Curve;
+use wynd_utils::{Curve, PiecewiseLinear, SaturatingLinear};
 
-use crate::{error::ContractError, stake_tracker::StakeTracker};
+use cw_stake_tracker::{StakeTracker, StakeTrackerQuery};
+
+use crate::error::ContractError;
 
 pub struct Payment<'a> {
     vesting: Item<'a, Vest>,
@@ -51,11 +55,17 @@ pub enum Schedule {
     /// Vests linearally from `0` to `total`.
     SaturatingLinear,
     /// Vests by linearally interpolating between the provided
-    /// (timestamp, amount) points. The first amount must be zero and
-    /// the last amount the total vesting amount. `timestamp` is a unix
-    /// timestamp in SECONDS since epoch. Note that this differs from the
-    /// CosmWasm `Timestamp` type which is normally specified in nanoseconds
-    /// since epoch.
+    /// (seconds, amount) points. The first amount must be zero and
+    /// the last amount the total vesting amount. `seconds` are
+    /// seconds since the vest start time.
+    ///
+    /// There is a problem in the underlying Curve library that
+    /// doesn't allow zero start values, so the first value of
+    /// `seconds` must be > 1. To start at a particular time (if you
+    /// need that level of percision), subtract one from the true
+    /// start time, and make the first `seconds` value `1`.
+    ///
+    /// <https://github.com/cosmorama/wynddao/pull/4>
     PiecewiseLinear(Vec<(u64, Uint128)>),
 }
 
@@ -204,7 +214,7 @@ impl<'a> Payment<'a> {
         &self,
         storage: &mut dyn Storage,
         t: Timestamp,
-        owner: &Addr, // todo: also unbond field
+        owner: &Addr,
     ) -> Result<Vec<CosmosMsg>, ContractError> {
         let mut vesting = self.vesting.load(storage)?;
         if matches!(vesting.status, Status::Canceled { .. }) {
@@ -378,12 +388,26 @@ impl<'a> Payment<'a> {
             Ok(())
         }
     }
+
+    /// Passes a query through to the vest's stake tracker which has
+    /// information about bonded and unbonding token balances.
+    pub fn query_stake(&self, storage: &dyn Storage, q: StakeTrackerQuery) -> StdResult<Binary> {
+        self.staking.query(storage, q)
+    }
+
+    /// Returns the duration of the vesting agreement (not the
+    /// remaining time) in seconds, or `None` if the vest has been cancelled.
+    pub fn duration(&self, storage: &dyn Storage) -> StdResult<Option<Uint64>> {
+        self.vesting.load(storage).map(|v| v.duration())
+    }
 }
 
 impl Vest {
     pub fn new(init: VestInit) -> Result<Self, ContractError> {
         if init.total.is_zero() {
-            Err(ContractError::ZeroVest {})
+            Err(ContractError::ZeroVest)
+        } else if init.duration_seconds == 0 {
+            Err(ContractError::Instavest)
         } else {
             Ok(Self {
                 claimed: Uint128::zero(),
@@ -420,6 +444,19 @@ impl Vest {
         self.status = Status::Canceled { owner_withdrawable };
         self.vested = Curve::Constant { y: self.vested(t) };
     }
+
+    /// Gets the duration of the vest. For constant curves, `None` is
+    /// returned.
+    pub fn duration(&self) -> Option<Uint64> {
+        let (start, end) = match &self.vested {
+            Curve::Constant { .. } => return None,
+            Curve::SaturatingLinear(SaturatingLinear { min_x, max_x, .. }) => (*min_x, *max_x),
+            Curve::PiecewiseLinear(PiecewiseLinear { steps }) => {
+                (steps[0].0, steps[steps.len() - 1].0)
+            }
+        };
+        Some(Uint64::new(end - start))
+    }
 }
 
 impl Schedule {
@@ -430,6 +467,9 @@ impl Schedule {
     /// 2. it must end at total,
     /// 3. it must never decrease.
     ///
+    /// Piecewise curves must have at least two steps. One step would
+    /// be a constant vest (why would you want this?).
+    ///
     /// A schedule is valid if `total` is zero: nothing will ever be
     /// paid out. Consumers should consider validating that `total` is
     /// non-zero.
@@ -439,6 +479,9 @@ impl Schedule {
                 Curve::saturating_linear((0, 0), (duration_seconds, total.u128()))
             }
             Schedule::PiecewiseLinear(steps) => {
+                if steps.len() < 2 {
+                    return Err(ContractError::ConstantVest);
+                }
                 Curve::PiecewiseLinear(wynd_utils::PiecewiseLinear { steps })
             }
         };

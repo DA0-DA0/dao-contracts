@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_ownable::OwnershipError;
 use cw_utils::{ParseReplyError, PaymentError};
 use thiserror::Error;
@@ -31,4 +31,7 @@ pub enum ContractError {
 
     #[error("reentered factory during payroll instantiation")]
     Reentrancy,
+
+    #[error("vesting contract vests ({expected}) tokens, funded with ({sent})")]
+    WrongFundAmount { sent: Uint128, expected: Uint128 },
 }

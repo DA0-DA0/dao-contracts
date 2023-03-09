@@ -32,6 +32,11 @@ pub fn instantiate(
     let denom = msg.denom.into_checked(deps.as_ref())?;
     let recipient = deps.api.addr_validate(&msg.recipient)?;
     let start_time = msg.start_time.unwrap_or(env.block.time);
+
+    if start_time.plus_seconds(msg.vesting_duration_seconds) <= env.block.time {
+        return Err(ContractError::Instavest);
+    }
+
     let vest = PAYMENT.initialize(
         deps.storage,
         VestInit {
@@ -359,11 +364,15 @@ pub fn execute_undelegate(
     let denom = deps.querier.query_bonded_denom()?;
 
     let msg = StakingMsg::Undelegate {
-        validator,
+        validator: validator.clone(),
         amount: Coin { denom, amount },
     };
 
-    Ok(Response::default().add_message(msg))
+    Ok(Response::default()
+        .add_message(msg)
+        .add_attribute("method", "undelegate")
+        .add_attribute("validator", validator)
+        .add_attribute("amount", amount))
 }
 
 pub fn execute_set_withdraw_address(
@@ -442,7 +451,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Distributable { t } => to_binary(&PAYMENT.distributable(
             deps.storage,
             &PAYMENT.get_vest(deps.storage)?,
-            t.map(Timestamp::from_seconds).unwrap_or(env.block.time),
+            t.unwrap_or(env.block.time),
         )?),
+        QueryMsg::Stake(q) => PAYMENT.query_stake(deps.storage, q),
+        QueryMsg::Vested { t } => to_binary(
+            &PAYMENT
+                .get_vest(deps.storage)?
+                .vested(t.unwrap_or(env.block.time)),
+        ),
+        QueryMsg::TotalToVest {} => to_binary(&PAYMENT.get_vest(deps.storage)?.total()),
+        QueryMsg::VestDuration {} => to_binary(&PAYMENT.duration(deps.storage)?),
     }
 }
