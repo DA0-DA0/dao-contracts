@@ -451,7 +451,15 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Distributable { t } => to_binary(&PAYMENT.distributable(
             deps.storage,
             &PAYMENT.get_vest(deps.storage)?,
-            t.map(Timestamp::from_seconds).unwrap_or(env.block.time),
+            t.unwrap_or(env.block.time),
         )?),
+        QueryMsg::Stake(q) => PAYMENT.query_stake(deps.storage, q),
+        QueryMsg::Vested { t } => to_binary(
+            &PAYMENT
+                .get_vest(deps.storage)?
+                .vested(t.unwrap_or(env.block.time)),
+        ),
+        QueryMsg::TotalToVest {} => to_binary(&PAYMENT.get_vest(deps.storage)?.total()),
+        QueryMsg::VestDuration {} => to_binary(&PAYMENT.duration(deps.storage)?),
     }
 }

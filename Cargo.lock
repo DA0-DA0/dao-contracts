@@ -744,6 +744,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-stake-tracker"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-wormhole",
+]
+
+[[package]]
 name = "cw-storage-plus"
 version = "0.13.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -854,6 +863,7 @@ dependencies = [
  "cw-multi-test",
  "cw-ownable",
  "cw-paginate 2.0.3",
+ "cw-stake-tracker",
  "cw-storage-plus 1.0.1 (git+https://github.com/DA0-DA0/cw-storage-plus.git)",
  "cw-utils 0.16.0",
  "cw-wormhole",

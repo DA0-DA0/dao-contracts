@@ -1,8 +1,11 @@
-use cosmwasm_std::{Timestamp, Uint128};
+use cosmwasm_std::{Timestamp, Uint128, Uint64};
 use cw_multi_test::App;
 use cw_ownable::OwnershipError;
 
-use crate::{vesting::Status, ContractError};
+use crate::{
+    vesting::{Schedule, Status},
+    ContractError,
+};
 
 use super::{is_error, suite::SuiteBuilder};
 
@@ -549,4 +552,124 @@ fn test_almost_instavest_in_the_future() {
         .unwrap();
     let balance = suite.query_receiver_vesting_token_balance();
     assert_eq!(balance, balance_post_claim + Uint128::new(100_000_000));
+}
+
+/// Test that the stake tracker correctly tracks stake during bonding,
+/// unbonding, and slashing.
+#[test]
+fn test_stake_query() {
+    use crate::StakeTrackerQuery;
+
+    let mut suite = SuiteBuilder::default().build();
+
+    let total_staked = suite.query_stake(StakeTrackerQuery::TotalStaked {
+        t: suite.what_block_is_it().time,
+    });
+    assert_eq!(total_staked, Uint128::zero());
+
+    suite.delegate(Uint128::new(123_456)).unwrap();
+
+    let val_staked = suite.query_stake(StakeTrackerQuery::ValidatorStaked {
+        t: suite.what_block_is_it().time,
+        validator: "validator".to_string(),
+    });
+    assert_eq!(val_staked, Uint128::new(123_456));
+
+    suite.slash(50);
+    suite
+        .register_bonded_slash(
+            suite.owner.clone().unwrap().as_str(),
+            Uint128::new(61_728),
+            suite.what_block_is_it().time,
+        )
+        .unwrap();
+
+    let val_staked = suite.query_stake(StakeTrackerQuery::ValidatorStaked {
+        t: suite.what_block_is_it().time,
+        validator: "validator".to_string(),
+    });
+    assert_eq!(val_staked, Uint128::new(61_728));
+
+    suite
+        .undelegate(suite.receiver.clone(), Uint128::new(61_728))
+        .unwrap();
+
+    let val_staked = suite.query_stake(StakeTrackerQuery::ValidatorStaked {
+        t: suite.what_block_is_it().time,
+        validator: "validator".to_string(),
+    });
+    assert_eq!(val_staked, Uint128::new(61_728));
+
+    suite.slash(50);
+    suite
+        .register_unbonding_slash(
+            suite.owner.clone().unwrap().as_str(),
+            Uint128::new(30_864),
+            suite.what_block_is_it().time,
+        )
+        .unwrap();
+
+    let total_staked = suite.query_stake(StakeTrackerQuery::TotalStaked {
+        t: suite.what_block_is_it().time,
+    });
+    assert_eq!(total_staked, Uint128::new(30_864));
+    let val_staked = suite.query_stake(StakeTrackerQuery::ValidatorStaked {
+        t: suite.what_block_is_it().time,
+        validator: "validator".to_string(),
+    });
+    assert_eq!(val_staked, Uint128::new(30_864));
+    let cardinality = suite.query_stake(StakeTrackerQuery::Cardinality {
+        t: suite.what_block_is_it().time,
+    });
+    assert_eq!(cardinality, Uint128::new(1));
+}
+
+/// Basic checks on piecewise vests and queries.
+#[test]
+fn test_piecewise_and_queries() {
+    let mut suite = SuiteBuilder::default()
+        .with_start_time(SuiteBuilder::default().build().what_block_is_it().time)
+        .with_curve(Schedule::PiecewiseLinear(vec![
+            // <https://github.com/cosmorama/wynddao/pull/4> allows
+            // for zero start values.
+            (1, Uint128::new(0)),
+            (2, Uint128::new(40_000_000)),
+            (3, Uint128::new(100_000_000)),
+        ]))
+        .build();
+
+    let duration = suite.query_duration();
+    assert_eq!(duration.unwrap(), Uint64::new(2));
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(0));
+
+    suite.a_second_passes();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(0));
+
+    suite.a_second_passes();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(40_000_000));
+
+    suite.delegate(Uint128::new(80_000_000)).unwrap();
+
+    let distributable = suite.query_distributable();
+    assert_eq!(distributable, Uint128::new(20_000_000));
+    let vested = suite.query_vested(None);
+    assert_eq!(vested, Uint128::new(40_000_000));
+
+    let total = suite.query_total_to_vest();
+    assert_eq!(total, Uint128::new(100_000_000));
+
+    suite.cancel(suite.owner.clone().unwrap()).unwrap();
+
+    let total = suite.query_total_to_vest();
+    assert_eq!(total, Uint128::new(40_000_000));
+
+    // canceled, duration no longer has a meaning.
+    let duration = suite.query_duration();
+    assert_eq!(duration, None);
 }

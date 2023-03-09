@@ -11,16 +11,10 @@ test:
 lint:
 	cargo +nightly clippy --all-targets -- -D warnings
 
-gen: build gen-schema gen-typescript
+gen: build gen-schema
 
 gen-schema:
 	./scripts/schema.sh
-
-gen-typescript:
-	git checkout typescript/contracts # Clear out any old or invalid state.
-	yarn --cwd ./typescript install --frozen-lockfile
-	yarn --cwd ./typescript build
-	yarn --cwd ./typescript codegen
 
 integration-test: deploy-local workspace-optimize
 	RUST_LOG=info CONFIG={{orc_config}} cargo integration-test
