@@ -38,7 +38,5 @@ pub struct MigrateMsg {}
 
 #[cw_serde]
 pub enum Cw20RecieveMsg {
-    FundWithMsgs {
-        send_message: SendMessage,
-    },
+    FundWithMsgs { send_message: SendMessage },
 }

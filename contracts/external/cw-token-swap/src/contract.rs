@@ -190,9 +190,7 @@ pub fn execute_receive(
     let mut send_msg = None;
     if let Ok(msg) = from_binary::<Cw20RecieveMsg>(&msg.msg) {
         match msg {
-            Cw20RecieveMsg::FundWithMsgs {
-                send_message,
-            } => {
+            Cw20RecieveMsg::FundWithMsgs { send_message } => {
                 send_msg = Some(send_message);
             }
         }

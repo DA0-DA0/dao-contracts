@@ -199,10 +199,7 @@ pub struct Counterparty {
 }
 
 impl Counterparty {
-    pub fn into_checked(
-        self,
-        deps: Deps,
-    ) -> Result<CheckedCounterparty, ContractError> {
+    pub fn into_checked(self, deps: Deps) -> Result<CheckedCounterparty, ContractError> {
         Ok(CheckedCounterparty {
             address: deps.api.addr_validate(&self.address)?,
             provided: false,
