@@ -23,6 +23,7 @@ fn create_gauge() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
         )
         .unwrap();
 
@@ -36,6 +37,7 @@ fn create_gauge() {
             epoch_size: EPOCH,
             min_percent_selected: Some(Decimal::percent(5)),
             max_options_selected: 10,
+            max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
         }
@@ -56,6 +58,7 @@ fn gauge_can_upgrade_from_self() {
             gauge_contract.clone(),
             &["option1", "option2"],
             (1000, "ujuno"),
+            None,
         )
         .unwrap();
 
@@ -72,6 +75,7 @@ fn gauge_can_upgrade_from_self() {
             epoch_size: EPOCH,
             min_percent_selected: Some(Decimal::percent(5)),
             max_options_selected: 10,
+            max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
         }
@@ -92,6 +96,7 @@ fn gauge_migrate_with_next_epochs() {
             gauge_contract.clone(),
             &["option1", "option2"],
             (1000, "ujuno"),
+            None,
         )
         .unwrap();
 
@@ -106,6 +111,7 @@ fn gauge_migrate_with_next_epochs() {
             epoch_size: EPOCH,
             min_percent_selected: Some(Decimal::percent(5)),
             max_options_selected: 10,
+            max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
         }
@@ -131,6 +137,7 @@ fn gauge_migrate_with_next_epochs() {
             epoch_size: EPOCH,
             min_percent_selected: Some(Decimal::percent(5)),
             max_options_selected: 10,
+            max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 14 * 86400,
         }
@@ -160,7 +167,7 @@ fn execute_gauge() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute)
+        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -261,6 +268,7 @@ fn query_last_execution() {
             gauge_contract.clone(),
             &[voter1, voter2, gauge_contract.as_str()],
             (1000, "ujuno"),
+            None,
         )
         .unwrap();
     let gauge_id = 0;
@@ -353,7 +361,7 @@ fn execute_gauge_twice_same_epoch() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], (1000, "ujuno")) // reward per
+        .instantiate_adapter_and_return_config(&[voter1, voter2], (1000, "ujuno"), None) // reward per
         // epoch
         .unwrap();
     suite
@@ -464,7 +472,7 @@ fn execute_stopped_gauge() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute)
+        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -548,6 +556,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
         )
         .unwrap();
 
@@ -556,6 +565,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "uusdc"),
+            None,
         )
         .unwrap();
 
@@ -570,6 +580,7 @@ fn update_gauge() {
                 epoch_size: EPOCH,
                 min_percent_selected: Some(Decimal::percent(5)),
                 max_options_selected: 10,
+                max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
             },
@@ -580,6 +591,7 @@ fn update_gauge() {
                 epoch_size: EPOCH,
                 min_percent_selected: Some(Decimal::percent(5)),
                 max_options_selected: 10,
+                max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
             }
@@ -591,6 +603,7 @@ fn update_gauge() {
     let new_epoch = EPOCH * 2;
     let new_min_percent = Some(Decimal::percent(10));
     let new_max_options = 15;
+    let new_max_available_percentage = Some(Decimal::percent(5));
     suite
         .update_gauge(
             &owner,
@@ -599,6 +612,7 @@ fn update_gauge() {
             new_epoch,
             new_min_percent,
             new_max_options,
+            new_max_available_percentage,
         )
         .unwrap();
 
@@ -613,6 +627,7 @@ fn update_gauge() {
                 epoch_size: new_epoch,
                 min_percent_selected: new_min_percent,
                 max_options_selected: new_max_options,
+                max_available_percentage: new_max_available_percentage,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
             },
@@ -623,6 +638,7 @@ fn update_gauge() {
                 epoch_size: EPOCH,
                 min_percent_selected: Some(Decimal::percent(5)),
                 max_options_selected: 10,
+                max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
             }
@@ -638,6 +654,7 @@ fn update_gauge() {
             None,
             Some(Decimal::zero()),
             None,
+            None,
         )
         .unwrap();
 
@@ -652,6 +669,7 @@ fn update_gauge() {
                 epoch_size: new_epoch,
                 min_percent_selected: new_min_percent,
                 max_options_selected: new_max_options,
+                max_available_percentage: new_max_available_percentage,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
             },
@@ -662,6 +680,7 @@ fn update_gauge() {
                 epoch_size: EPOCH,
                 min_percent_selected: None,
                 max_options_selected: 10,
+                max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
             }
@@ -677,6 +696,7 @@ fn update_gauge() {
             new_epoch,
             new_min_percent,
             new_max_options,
+            None,
         )
         .unwrap_err();
     assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
@@ -689,6 +709,7 @@ fn update_gauge() {
             50,
             new_min_percent,
             new_max_options,
+            None,
         )
         .unwrap_err();
     assert_eq!(ContractError::EpochSizeTooShort {}, err.downcast().unwrap());
@@ -701,6 +722,7 @@ fn update_gauge() {
             new_epoch,
             Some(Decimal::one()),
             new_max_options,
+            None,
         )
         .unwrap_err();
     assert_eq!(
@@ -709,10 +731,34 @@ fn update_gauge() {
     );
 
     let err = suite
-        .update_gauge(&owner, gauge_contract, 0, new_epoch, new_min_percent, 0)
+        .update_gauge(
+            &owner,
+            gauge_contract.clone(),
+            0,
+            new_epoch,
+            new_min_percent,
+            0,
+            None,
+        )
         .unwrap_err();
     assert_eq!(
         ContractError::MaxOptionsSelectedTooSmall {},
+        err.downcast().unwrap()
+    );
+
+    let err = suite
+        .update_gauge(
+            &owner,
+            gauge_contract,
+            1,
+            None,
+            Some(Decimal::zero()),
+            None,
+            Some(Decimal::percent(101)),
+        )
+        .unwrap_err();
+    assert_eq!(
+        ContractError::MaxAvailablePercentTooBig {},
         err.downcast().unwrap()
     );
 }

@@ -32,6 +32,8 @@ pub struct GaugeConfig {
     /// Maximum number of Options to make the selected set. Needed even with
     /// `min_percent_selected` to provide some guarantees on gas usage of this query.
     pub max_options_selected: u32,
+    // Any votes above that percentage will be discarded
+    pub max_available_percentage: Option<Decimal>,
 }
 
 #[cw_serde]
@@ -50,6 +52,7 @@ pub enum ExecuteMsg {
         // Some<0> would set min_percent_selected to None
         min_percent_selected: Option<Decimal>,
         max_options_selected: Option<u32>,
+        max_available_percentage: Option<Decimal>,
     },
     /// Stops a given gauge, meaning it will not execute any more messages,
     /// Or receive any more updates on MemberChangedHook.
@@ -128,6 +131,8 @@ pub struct GaugeResponse {
     /// Maximum number of Options to make the selected set. Needed even with
     /// `min_percent_selected` to provide some guarantees on gas usage of this query.
     pub max_options_selected: u32,
+    // Any votes above that percentage will be discarded
+    pub max_available_percentage: Option<Decimal>,
     /// True if the gauge is stopped
     pub is_stopped: bool,
     /// UNIX time (seconds) when next epoch may be executed. May be future or past

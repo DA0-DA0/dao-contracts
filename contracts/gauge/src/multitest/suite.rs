@@ -467,8 +467,13 @@ impl Suite {
         gauge_contract: Addr,
         options: &[&str],
         to_distribute: (u128, &str),
+        max_available_percentage: impl Into<Option<Decimal>>,
     ) -> AnyResult<Addr> {
-        let option = self.instantiate_adapter_and_return_config(options, to_distribute)?;
+        let option = self.instantiate_adapter_and_return_config(
+            options,
+            to_distribute,
+            max_available_percentage,
+        )?;
         let gauge_adapter = option.adapter.clone();
         self.app.execute_contract(
             Addr::unchecked(&self.owner),
@@ -483,6 +488,7 @@ impl Suite {
         &mut self,
         options: &[&str],
         to_distribute: (u128, &str),
+        max_available_percentage: impl Into<Option<Decimal>>,
     ) -> AnyResult<GaugeConfig> {
         let gauge_adapter = self.app.instantiate_contract(
             self.gauge_adapter_code_id,
@@ -502,9 +508,11 @@ impl Suite {
             epoch_size: 7 * 86400,
             min_percent_selected: Some(Decimal::percent(5)),
             max_options_selected: 10,
+            max_available_percentage: max_available_percentage.into(),
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn update_gauge(
         &mut self,
         sender: &str,
@@ -513,6 +521,7 @@ impl Suite {
         epoch_size: impl Into<Option<u64>>,
         min_percent_selected: Option<Decimal>,
         max_options_selected: impl Into<Option<u32>>,
+        max_available_percentage: impl Into<Option<Decimal>>,
     ) -> AnyResult<AppResponse> {
         self.app.execute_contract(
             Addr::unchecked(sender),
@@ -522,6 +531,7 @@ impl Suite {
                 epoch_size: epoch_size.into(),
                 min_percent_selected,
                 max_options_selected: max_options_selected.into(),
+                max_available_percentage: max_available_percentage.into(),
             },
             &[],
         )

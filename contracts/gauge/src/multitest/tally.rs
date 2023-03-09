@@ -45,6 +45,7 @@ fn multiple_options_one_gauge() {
             gauge_contract.clone(),
             &["option1", "option2", "option3", "option4", "option5"],
             reward_to_distribute,
+            None,
         )
         .unwrap();
     let gauge_id = 0;
@@ -145,7 +146,7 @@ fn multiple_options_two_gauges() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&["option1", "option2"], reward_to_distribute)
+        .instantiate_adapter_and_return_config(&["option1", "option2"], reward_to_distribute, None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -170,6 +171,7 @@ fn multiple_options_two_gauges() {
             gauge_contract.clone(),
             &["option3", "option4", "option5"],
             reward_to_distribute,
+            None,
         )
         .unwrap();
     let second_gauge_id = 1;
@@ -271,6 +273,7 @@ fn not_voted_options_are_not_selected() {
             gauge_contract.clone(),
             &["option1", "option2", "option3", "option4"],
             reward_to_distribute,
+            None,
         )
         .unwrap();
     let first_gauge_id = 0;
