@@ -1,13 +1,7 @@
 #!/bin/bash
 
-if [ "$1" = "" ]
-then
-  echo "Usage: $0 junod key name required as an argument, e.g. ./create-v2-dao-native-voting.sh mykeyname"
-  exit
-fi
-
-export CHAIN_ID="uni-5"
-export TESTNET_NAME="uni-5"
+export CHAIN_ID="uni-6"
+export TESTNET_NAME="uni-6"
 export DENOM="ujunox"
 export BECH32_HRP="juno"
 export WASMD_VERSION="v0.20.0"
@@ -29,17 +23,15 @@ export COSMOVISOR_HOME=$HOME/.juno
 export COSMOVISOR_NAME=junod
 
 export TXFLAG="--chain-id ${CHAIN_ID} --gas-prices 0.025ujunox --gas auto --gas-adjustment 1.3 --broadcast-mode block"
-export NODE="https://juno-testnet-rpc.polkachu.com:443"
+export NODE="https://rpc.uni.junonetwork.io:443/"
 
-KEY_NAME=$1
-
-MODULE_MSG='{
+MODULE_MSG_SINGLE='{
         "allow_revoting": false,
         "max_voting_period": {
           "time": 604800
         },
         "close_proposal_on_execution_failure": true,
-        "pre_propose_info": {"AnyoneMayPropose":{}},
+        "pre_propose_info": {"anyone_may_propose":{}},
         "only_members_execute": true,
         "threshold": {
           "threshold_quorum": {
@@ -53,37 +45,60 @@ MODULE_MSG='{
         }
       }'
 
-ENCODED_PROP_MESSAGE=`echo -n $MODULE_MSG | tr -d '[:space:]' | openssl base64 | tr -d '[:space:]'`
-echo -e '\nENCODED PROP MESSAGE'
-echo $ENCODED_PROP_MESSAGE
+ENCODED_PROP_MESSAGE_SINGLE=`echo -n $MODULE_MSG_SINGLE | tr -d '[:space:]' | openssl base64 | tr -d '[:space:]'`
+echo -e '\nENCODED PROP MESSAGE SINGLE CHOICE'
+echo $ENCODED_PROP_MESSAGE_SINGLE
 
-VOTING_MSG='{"cw4_group_code_id":701,"initial_members":[{"addr":"juno1873my89qs478e56austefw0ewpp774xmq5m4xv","weight":30},{"addr":"juno16mrjtqffn3awme2eczhlpwzj7mnatkeluvhj6c","weight":1}]}'
+MODULE_MSG_MULTIPLE='{
+	"allow_revoting": false,
+	"max_voting_period": {
+		"time": 604800
+	},
+	"close_proposal_on_execution_failure": true,
+	"pre_propose_info": {
+		"anyone_may_propose": {}
+	},
+	"only_members_execute": true,
+	"voting_strategy": {
+		"single_choice": {
+			"quorum": {
+				"percent": "0.20"
+			}
+		}
+	}
+}'
+
+ENCODED_PROP_MESSAGE_MULTIPLE=`echo -n $MODULE_MSG_MULTIPLE | tr -d '[:space:]' | openssl base64 | tr -d '[:space:]'`
+echo -e '\nENCODED PROP MESSAGE MULTIPLE CHOICE'
+echo $ENCODED_PROP_MESSAGE_MULTIPLE
+
+VOTING_MSG='{"cw4_group_code_id":3472,"initial_members":[{"addr":"juno1873my89qs478e56austefw0ewpp774xmq5m4xv","weight":30}]}'
 
 ENCODED_VOTING_MESSAGE=`echo $VOTING_MSG | tr -d '[:space:]' | openssl base64 | tr -d '[:space:]'`
 echo -e '\nENCODED VOTING MESSAGE'
 echo $ENCODED_VOTING_MESSAGE
 
 CW_CORE_INIT='{
-  "admin": "juno12jphyrpd82v8s8cq4n0nu7fa9qcx5hppdwevulhqdhyqu7vkrscs3sv2ct",
+  "admin": "juno1873my89qs478e56austefw0ewpp774xmq5m4xv",
   "automatically_add_cw20s": true,
   "automatically_add_cw721s": true,
-  "description": "V2 DAO",
-  "name": "V2 DAO",
+  "description": "V2 DAO with 2 proposal modules",
+  "name": "test DAO",
   "proposal_modules_instantiate_info": [
-    {
+     {
       "admin": {
         "core_module": {}
       },
-      "code_id": 696,
-      "label": "v2 dao",
-      "msg": "'$ENCODED_PROP_MESSAGE'"
+      "code_id": 3462,
+      "label": "multiple choice proposal module",
+      "msg": "'$ENCODED_PROP_MESSAGE_MULTIPLE'"
     }
   ],
   "voting_module_instantiate_info": {
     "admin": {
       "core_module": {}
     },
-    "code_id": 698,
+    "code_id": 3465,
     "label": "test_v2_dao-cw4-voting",
     "msg": "'$ENCODED_VOTING_MESSAGE'"
   }
@@ -98,8 +113,8 @@ echo -e '\nCW-CORE ENCODED MESSAGE:\n'
 echo  $CW_CORE_ENCODED
 
 # init with factory
-INIT_MSG='{"instantiate_contract_with_self_admin":{"code_id":695, "label": "v2 subDAO subDAO", "instantiate_msg":"'$CW_CORE_ENCODED'"}}'
+INIT_MSG='{"instantiate_contract_with_self_admin":{"code_id":1967, "label": "v2 DAO multiple choice", "instantiate_msg":"'$CW_CORE_ENCODED'"}}'
 
 # instantiate with factory 
 echo 'instantiating cw-core with factory'
-junod tx wasm execute juno143quaa25ynh6j5chhqh8w6lj647l4kpu5r6aqxvzul8du0mwyvns2g6u45 "$INIT_MSG" --from $KEY_NAME --node $NODE $TXFLAG
+junod tx wasm execute juno143quaa25ynh6j5chhqh8w6lj647l4kpu5r6aqxvzul8du0mwyvns2g6u45 "$INIT_MSG" --from bluenote --node $NODE $TXFLAG
