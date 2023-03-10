@@ -117,12 +117,12 @@ fn do_fund(
         let mut msgs = counterparty
             .promise
             .clone()
-            .into_send_message(other_counterparty.address.to_string())?;
+            .into_send_message(other_counterparty.address.to_string(), false)?;
 
         msgs.append(
             &mut other_counterparty
                 .promise
-                .into_send_message(counterparty.address.to_string())?,
+                .into_send_message(counterparty.address.to_string(), false)?,
         );
         msgs
     } else {
@@ -222,7 +222,7 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
     let message = counterparty
         .promise
         .clone()
-        .into_send_message(counterparty.address.to_string())?[0]
+        .into_send_message(counterparty.address.to_string(), true)?[0]
         .clone();
 
     let mut counterparty = counterparty;

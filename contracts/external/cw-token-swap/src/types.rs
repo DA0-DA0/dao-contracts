@@ -311,7 +311,7 @@ pub enum CheckedSwapInfo {
 }
 
 impl CheckedSwapInfo {
-    pub fn into_send_message(self, recipient: String) -> Result<Vec<CosmosMsg>, ContractError> {
+    pub fn into_send_message(self, recipient: String, is_withdraw: bool) -> Result<Vec<CosmosMsg>, ContractError> {
         Ok(match self {
             Self::Native {
                 denom,
@@ -319,7 +319,7 @@ impl CheckedSwapInfo {
                 on_completion,
             } => {
                 // If completion msgs was specified we send them
-                if !on_completion.is_empty() {
+                if !is_withdraw && !on_completion.is_empty() {
                     return Ok(on_completion);
                 }
 
@@ -336,7 +336,7 @@ impl CheckedSwapInfo {
                 on_completion,
             } => {
                 // If completion msgs was specified we send them
-                if !on_completion.is_empty() {
+                if !is_withdraw && !on_completion.is_empty() {
                     return Ok(on_completion);
                 }
 
@@ -369,7 +369,7 @@ mod tests {
                 }],
             })],
         };
-        let message = info.into_send_message("ekez".to_string()).unwrap();
+        let message = info.into_send_message("ekez".to_string(), false).unwrap();
 
         assert_eq!(
             message[0],
@@ -398,7 +398,7 @@ mod tests {
                 .unwrap(),
             })],
         };
-        let message = info.into_send_message("ekez".to_string()).unwrap();
+        let message = info.into_send_message("ekez".to_string(), false).unwrap();
 
         assert_eq!(
             message[0],
