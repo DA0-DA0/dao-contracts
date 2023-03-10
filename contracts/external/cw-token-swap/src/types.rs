@@ -1,14 +1,50 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, MessageInfo, StdError, Uint128,
-    WasmMsg,
-};
-use cw_utils::must_pay;
+use cosmwasm_std::{to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, Uint128, WasmMsg};
 
 use crate::ContractError;
 
+// We create empty trait and implement it for the types we want to use
+// so we can create a generic function that only accepts a vec of those types
+trait CompletionMsgsToCosmosMsg {
+    fn into_checked_cosmos_msg(
+        self,
+        deps: Deps,
+        denom: &str,
+    ) -> Result<(Uint128, CosmosMsg), ContractError>;
+}
+
+/// This function returns a vector of CosmosMsgs from the given vector of CompletionMsgs
+/// It verifies the msgs is not empty (else return empty vec)
+/// It verifies the total amount of funds matches the funds sent in all messages
+fn completion_to_cosmos_msgs<T: CompletionMsgsToCosmosMsg>(
+    deps: Deps,
+    msgs: Vec<T>,
+    amount: Uint128,
+    string: &str, // extra data we need (denom or contract addr)
+) -> Result<Vec<CosmosMsg>, ContractError> {
+    if msgs.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let mut total_amount = Uint128::zero();
+    let cosmos_msgs = msgs
+        .into_iter()
+        .map(|msg| {
+            let (amount, cosmos_msg) = msg.into_checked_cosmos_msg(deps, string)?;
+            total_amount += amount;
+            Ok(cosmos_msg)
+        })
+        .collect::<Result<Vec<CosmosMsg>, ContractError>>()?;
+
+    // Verify that total amount of funds matches funds sent in all messages
+    if total_amount != amount {
+        return Err(ContractError::WrongFundsCalculation {});
+    }
+    Ok(cosmos_msgs)
+}
+
 #[cw_serde]
-pub enum AcceptedMessages {
+pub enum NativeSendMsg {
     BankSend {
         to_address: String,
         amount: Vec<Coin>,
@@ -30,162 +66,136 @@ pub enum AcceptedMessages {
     },
 }
 
-/// Enum to accept either a cosmos msg (for recieved native tokens)
-/// or address and binary message (for recieved cw20 tokens)
-#[cw_serde]
-pub enum SendMessage {
-    SendCw20 {
-        /// Contract address to execute the msg on
-        contract_address: String,
-        /// The message in binary format
-        message: Binary,
-    },
-    SendNative {
-        /// Vector of accepted messages to send
-        messages: Vec<AcceptedMessages>,
-    },
-}
-
-impl SendMessage {
-    pub fn into_checked_cosmos_msgs(
+impl CompletionMsgsToCosmosMsg for NativeSendMsg {
+    fn into_checked_cosmos_msg(
         self,
         deps: Deps,
-        token_info: CheckedTokenInfo,
-    ) -> Result<Vec<CosmosMsg>, ContractError> {
+        denom: &str,
+    ) -> Result<(Uint128, CosmosMsg), ContractError> {
+        let verify_coin = |coins: &Vec<Coin>| {
+            if coins.len() != 1 {
+                return Err(ContractError::InvalidSendMsg {});
+            }
+            if coins[0].amount.is_zero() {
+                return Err(ContractError::InvalidSendMsg {});
+            }
+            if denom != coins[0].denom {
+                return Err(ContractError::InvalidSendMsg {});
+            }
+            Ok(coins[0].amount)
+        };
+
         match self {
-            SendMessage::SendCw20 {
-                contract_address,
-                message,
-            } => {
-                // We check if the other party token type is cw20
-                if let CheckedTokenInfo::Cw20 {
-                    contract_addr: cw20_address,
+            NativeSendMsg::BankSend { to_address, amount } => Ok((
+                verify_coin(&amount)?,
+                BankMsg::Send {
+                    to_address: deps.api.addr_validate(&to_address)?.to_string(),
                     amount,
-                } = token_info
-                {
-                    Ok(vec![WasmMsg::Execute {
-                        contract_addr: cw20_address.to_string(),
-                        msg: to_binary(&cw20::Cw20ExecuteMsg::Send {
-                            contract: deps.api.addr_validate(&contract_address)?.to_string(),
-                            amount,
-                            msg: message,
-                        })?,
-                        funds: vec![],
-                    }
-                    .into()])
-                } else {
-                    Err(ContractError::InvalidSendMsg {})
                 }
+                .into(),
+            )),
+            NativeSendMsg::BankBurn { amount } => {
+                Ok((verify_coin(&amount)?, BankMsg::Burn { amount }.into()))
             }
-            SendMessage::SendNative { messages } => {
-                if let CheckedTokenInfo::Native {
-                    amount: total_amount,
-                    denom,
-                } = token_info
-                {
-                    if messages.is_empty() {
-                        return Err(ContractError::InvalidSendMsg {});
-                    }
-
-                    let mut total_send_funds = Uint128::zero();
-                    let cosmos_msgs = messages
-                        .into_iter()
-                        .map(|msg| match msg {
-                            AcceptedMessages::BankSend {
-                                to_address,
-                                amount: amount_to_pay,
-                            } => {
-                                total_send_funds =
-                                    add_to_total(total_send_funds, &amount_to_pay, &denom)?;
-
-                                Ok(BankMsg::Send {
-                                    to_address: deps.api.addr_validate(&to_address)?.to_string(),
-                                    amount: amount_to_pay,
-                                }
-                                .into())
-                            }
-                            AcceptedMessages::BankBurn {
-                                amount: amount_to_pay,
-                            } => {
-                                total_send_funds =
-                                    add_to_total(total_send_funds, &amount_to_pay, &denom)?;
-
-                                Ok(BankMsg::Burn {
-                                    amount: amount_to_pay,
-                                }
-                                .into())
-                            }
-                            AcceptedMessages::WasmExecute {
-                                contract_addr,
-                                msg,
-                                funds: amount_to_pay,
-                            } => {
-                                total_send_funds =
-                                    add_to_total(total_send_funds, &amount_to_pay, &denom)?;
-
-                                Ok(WasmMsg::Execute {
-                                    contract_addr: deps
-                                        .api
-                                        .addr_validate(&contract_addr)?
-                                        .to_string(),
-                                    msg,
-                                    funds: amount_to_pay,
-                                }
-                                .into())
-                            }
-                            AcceptedMessages::WasmInstantiate {
-                                admin,
-                                code_id,
-                                msg,
-                                funds: amount_to_pay,
-                                label,
-                            } => {
-                                total_send_funds =
-                                    add_to_total(total_send_funds, &amount_to_pay, &denom)?;
-
-                                Ok(WasmMsg::Instantiate {
-                                    admin: admin
-                                        .map(|a| deps.api.addr_validate(&a).unwrap().to_string()),
-                                    code_id,
-                                    msg,
-                                    funds: amount_to_pay,
-                                    label,
-                                }
-                                .into())
-                            }
-                        })
-                        .collect::<Result<Vec<CosmosMsg>, ContractError>>()?;
-
-                    // Make sure that the funds we try to send, matches exactly to the total amount swapped.
-                    if total_send_funds != total_amount {
-                        return Err(ContractError::WrongFundsCalculation {});
-                    }
-
-                    Ok(cosmos_msgs)
-                } else {
-                    Err(ContractError::InvalidSendMsg {})
+            NativeSendMsg::WasmExecute {
+                contract_addr,
+                msg,
+                funds,
+            } => Ok((
+                verify_coin(&funds)?,
+                WasmMsg::Execute {
+                    contract_addr: deps.api.addr_validate(&contract_addr)?.to_string(),
+                    msg,
+                    funds,
                 }
-            }
+                .into(),
+            )),
+            NativeSendMsg::WasmInstantiate {
+                admin,
+                code_id,
+                msg,
+                funds,
+                label,
+            } => Ok((
+                verify_coin(&funds)?,
+                WasmMsg::Instantiate {
+                    admin: admin.map(|a| deps.api.addr_validate(&a).unwrap().to_string()),
+                    code_id,
+                    msg,
+                    funds,
+                    label,
+                }
+                .into(),
+            )),
         }
     }
 }
 
-/// This function check the given funds are valid and adds the amount to the total funds.
-/// returns the new total.
-pub fn add_to_total(
-    total_funds: Uint128,
-    funds: &[Coin],
-    denom: &str,
-) -> Result<Uint128, ContractError> {
-    let amount = must_pay(
-        &MessageInfo {
-            sender: Addr::unchecked(""),
-            funds: funds.to_owned(),
-        },
-        denom,
-    )?;
+#[cw_serde]
+pub enum Cw20SendMsgs {
+    Cw20Send {
+        contract: String,
+        amount: Uint128,
+        msg: Binary,
+    },
+    Cw20Burn {
+        amount: Uint128,
+    },
+    Cw20Transfer {
+        recipient: String,
+        amount: Uint128,
+    },
+}
 
-    Ok(total_funds + amount)
+impl CompletionMsgsToCosmosMsg for Cw20SendMsgs {
+    /// This is a helper function to convert the Cw20SendMsgs into a CosmosMsg
+    /// It will return the amount of tokens and the cosmosMsg to be sent
+    fn into_checked_cosmos_msg(
+        self,
+        deps: Deps,
+        cw20_addr: &str,
+    ) -> Result<(Uint128, CosmosMsg), ContractError> {
+        match self {
+            Cw20SendMsgs::Cw20Send {
+                contract,
+                amount,
+                msg,
+            } => Ok((
+                amount,
+                WasmMsg::Execute {
+                    contract_addr: cw20_addr.to_string(),
+                    msg: to_binary(&cw20::Cw20ExecuteMsg::Send {
+                        contract: deps.api.addr_validate(&contract)?.to_string(),
+                        amount,
+                        msg,
+                    })?,
+                    funds: vec![],
+                }
+                .into(),
+            )),
+            Cw20SendMsgs::Cw20Burn { amount } => Ok((
+                amount,
+                WasmMsg::Execute {
+                    contract_addr: cw20_addr.to_string(),
+                    msg: to_binary(&cw20::Cw20ExecuteMsg::Burn { amount })?,
+                    funds: vec![],
+                }
+                .into(),
+            )),
+            Cw20SendMsgs::Cw20Transfer { recipient, amount } => Ok((
+                amount,
+                WasmMsg::Execute {
+                    contract_addr: cw20_addr.to_string(),
+                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                        recipient: deps.api.addr_validate(&recipient)?.to_string(),
+                        amount,
+                    })?,
+                    funds: vec![],
+                }
+                .into(),
+            )),
+        }
+    }
 }
 
 /// Information about a counterparty in this escrow transaction and
@@ -195,7 +205,7 @@ pub struct Counterparty {
     /// The address of the counterparty.
     pub address: String,
     /// The funds they have promised to provide.
-    pub promise: TokenInfo,
+    pub promise: SwapInfo,
 }
 
 impl Counterparty {
@@ -204,7 +214,6 @@ impl Counterparty {
             address: deps.api.addr_validate(&self.address)?,
             provided: false,
             promise: self.promise.into_checked(deps)?,
-            send_msg: None,
         })
     }
 }
@@ -212,53 +221,52 @@ impl Counterparty {
 #[cw_serde]
 pub struct CheckedCounterparty {
     pub address: Addr,
-    pub promise: CheckedTokenInfo,
+    pub promise: CheckedSwapInfo,
     pub provided: bool,
-    pub send_msg: Option<Vec<CosmosMsg>>,
-}
-
-impl CheckedCounterparty {
-    pub fn add_send_msg(
-        &mut self,
-        deps: Deps,
-        send_msg: Option<SendMessage>,
-    ) -> Result<(), ContractError> {
-        self.send_msg = match send_msg {
-            Some(msg) => Some(msg.into_checked_cosmos_msgs(deps, self.promise.clone())?),
-            None => None,
-        };
-        Ok(())
-    }
-    pub fn remove_send_msg(&mut self) {
-        self.send_msg = None;
-    }
 }
 
 /// Information about the token being used on one side of the escrow.
 #[cw_serde]
-pub enum TokenInfo {
+pub enum SwapInfo {
     /// A native token.
-    Native { denom: String, amount: Uint128 },
+    Native {
+        denom: String,
+        amount: Uint128,
+        on_completion: Vec<NativeSendMsg>,
+    },
     /// A cw20 token.
     Cw20 {
         contract_addr: String,
         amount: Uint128,
+        on_completion: Vec<Cw20SendMsgs>,
     },
 }
 
-impl TokenInfo {
-    pub fn into_checked(self, deps: Deps) -> Result<CheckedTokenInfo, ContractError> {
+impl SwapInfo {
+    pub fn into_checked(self, deps: Deps) -> Result<CheckedSwapInfo, ContractError> {
         match self {
-            TokenInfo::Native { denom, amount } => {
+            SwapInfo::Native {
+                denom,
+                amount,
+                on_completion,
+            } => {
                 if amount.is_zero() {
                     Err(ContractError::ZeroTokens {})
                 } else {
-                    Ok(CheckedTokenInfo::Native { denom, amount })
+                    let on_completion =
+                        completion_to_cosmos_msgs(deps, on_completion, amount, &denom)?;
+
+                    Ok(CheckedSwapInfo::Native {
+                        denom,
+                        amount,
+                        on_completion,
+                    })
                 }
             }
-            TokenInfo::Cw20 {
+            SwapInfo::Cw20 {
                 contract_addr,
                 amount,
+                on_completion,
             } => {
                 if amount.is_zero() {
                     Err(ContractError::ZeroTokens {})
@@ -269,9 +277,18 @@ impl TokenInfo {
                         contract_addr.clone(),
                         &cw20::Cw20QueryMsg::TokenInfo {},
                     )?;
-                    Ok(CheckedTokenInfo::Cw20 {
+
+                    let on_completion = completion_to_cosmos_msgs(
+                        deps,
+                        on_completion,
+                        amount,
+                        contract_addr.as_str(),
+                    )?;
+
+                    Ok(CheckedSwapInfo::Cw20 {
                         contract_addr,
                         amount,
+                        on_completion,
                     })
                 }
             }
@@ -280,47 +297,57 @@ impl TokenInfo {
 }
 
 #[cw_serde]
-pub enum CheckedTokenInfo {
+pub enum CheckedSwapInfo {
     Native {
         denom: String,
         amount: Uint128,
+        on_completion: Vec<CosmosMsg>,
     },
     Cw20 {
         contract_addr: Addr,
         amount: Uint128,
+        on_completion: Vec<CosmosMsg>,
     },
 }
 
-impl CheckedTokenInfo {
-    pub fn into_send_message(
-        self,
-        recipient_counterparty: &CheckedCounterparty,
-        send_msg: Option<Vec<CosmosMsg>>,
-    ) -> Result<Vec<CosmosMsg>, StdError> {
+impl CheckedSwapInfo {
+    pub fn into_send_message(self, recipient: String) -> Result<Vec<CosmosMsg>, ContractError> {
         Ok(match self {
-            Self::Native { denom, amount } => match send_msg {
-                Some(msgs) => msgs,
-                None => vec![BankMsg::Send {
-                    to_address: recipient_counterparty.address.to_string(),
+            Self::Native {
+                denom,
+                amount,
+                on_completion,
+            } => {
+                // If completion msgs was specified we send them
+                if !on_completion.is_empty() {
+                    return Ok(on_completion);
+                }
+
+                // If completion msgs was not specified we send funds to the other party
+                vec![BankMsg::Send {
+                    to_address: recipient,
                     amount: vec![Coin { denom, amount }],
                 }
-                .into()],
-            },
+                .into()]
+            }
             Self::Cw20 {
                 contract_addr,
                 amount,
-            } => match send_msg {
-                Some(msgs) => msgs,
-                None => vec![WasmMsg::Execute {
+                on_completion,
+            } => {
+                // If completion msgs was specified we send them
+                if !on_completion.is_empty() {
+                    return Ok(on_completion);
+                }
+
+                // If completion msgs was not specified we transfer funds to the other party
+                vec![WasmMsg::Execute {
                     contract_addr: contract_addr.into_string(),
-                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
-                        recipient: recipient_counterparty.address.to_string(),
-                        amount,
-                    })?,
+                    msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer { recipient, amount })?,
                     funds: vec![],
                 }
-                .into()],
-            },
+                .into()]
+            }
         })
     }
 }
@@ -331,24 +358,18 @@ mod tests {
 
     #[test]
     fn test_into_spend_message_native() {
-        let info = CheckedTokenInfo::Native {
+        let info = CheckedSwapInfo::Native {
             amount: Uint128::new(100),
             denom: "uekez".to_string(),
+            on_completion: vec![CosmosMsg::Bank(BankMsg::Send {
+                to_address: "ekez".to_string(),
+                amount: vec![Coin {
+                    amount: Uint128::new(100),
+                    denom: "uekez".to_string(),
+                }],
+            })],
         };
-        let message = info
-            .into_send_message(
-                &CheckedCounterparty {
-                    address: Addr::unchecked("ekez"),
-                    promise: CheckedTokenInfo::Native {
-                        amount: Uint128::new(100),
-                        denom: "uekez".to_string(),
-                    },
-                    provided: false,
-                    send_msg: None,
-                },
-                None,
-            )
-            .unwrap();
+        let message = info.into_send_message("ekez".to_string()).unwrap();
 
         assert_eq!(
             message[0],
@@ -364,24 +385,20 @@ mod tests {
 
     #[test]
     fn test_into_spend_message_cw20() {
-        let info = CheckedTokenInfo::Cw20 {
+        let info = CheckedSwapInfo::Cw20 {
             amount: Uint128::new(100),
             contract_addr: Addr::unchecked("ekez_token"),
+            on_completion: vec![CosmosMsg::Wasm(WasmMsg::Execute {
+                funds: vec![],
+                contract_addr: "ekez_token".to_string(),
+                msg: to_binary(&cw20::Cw20ExecuteMsg::Transfer {
+                    recipient: "ekez".to_string(),
+                    amount: Uint128::new(100),
+                })
+                .unwrap(),
+            })],
         };
-        let message = info
-            .into_send_message(
-                &CheckedCounterparty {
-                    address: Addr::unchecked("ekez"),
-                    promise: CheckedTokenInfo::Native {
-                        amount: Uint128::new(100),
-                        denom: "uekez".to_string(),
-                    },
-                    provided: false,
-                    send_msg: None,
-                },
-                None,
-            )
-            .unwrap();
+        let message = info.into_send_message("ekez".to_string()).unwrap();
 
         assert_eq!(
             message[0],
