@@ -311,7 +311,11 @@ pub enum CheckedSwapInfo {
 }
 
 impl CheckedSwapInfo {
-    pub fn into_send_message(self, recipient: String, is_withdraw: bool) -> Result<Vec<CosmosMsg>, ContractError> {
+    pub fn into_send_message(
+        self,
+        recipient: String,
+        is_withdraw: bool,
+    ) -> Result<Vec<CosmosMsg>, ContractError> {
         Ok(match self {
             Self::Native {
                 denom,

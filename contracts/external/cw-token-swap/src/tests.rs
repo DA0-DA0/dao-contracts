@@ -503,7 +503,7 @@ fn test_withdraw_ignores_msgs() {
 
     app.execute_contract(
         Addr::unchecked(DAO2),
-        cw20.clone(),
+        cw20,
         &cw20::Cw20ExecuteMsg::Send {
             contract: escrow.to_string(),
             amount: Uint128::new(200),
@@ -524,7 +524,7 @@ fn test_withdraw_ignores_msgs() {
 
     app.execute_contract(
         Addr::unchecked(DAO1),
-        escrow.clone(),
+        escrow,
         &ExecuteMsg::Fund {},
         &[Coin {
             amount: Uint128::new(200),
