@@ -11,11 +11,11 @@ pub mod msg;
 pub mod state;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw721-non-transferable-with-weight";
+const CONTRACT_NAME: &str = "crates.io:cw721-soulbound-roles";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cw_serde]
-pub struct MetadataExtension {
+pub struct MetadataExt {
     pub weight: u32,
 }
 
@@ -32,7 +32,6 @@ pub enum ExecuteExt {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryExt {
- /// /// TODO maybe make these an exetension?
     /// Total weight at a given height
     #[returns(cw4::TotalWeightResponse)]
     TotalWeight { at_height: Option<u64> },
@@ -48,16 +47,13 @@ pub enum QueryExt {
 }
 
 pub type Cw721NonTransferableContract<'a> =
-    Cw721Contract<'a, MetadataExtension, Empty, Empty, Empty>;
+    Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
 
-// TODO add weight extension to token
-// TODO hooks for minting, burning, updates?
-// TODO updatable? (yes, by minter)
 
 #[cfg(not(feature = "library"))]
 pub mod entry {
     use super::*;
-    use crate::state::{Config, CONFIG, TOTAL};
+    use crate::state::{TOTAL};
     use cosmwasm_std::{
         entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
     };
@@ -69,28 +65,11 @@ pub mod entry {
         info: MessageInfo,
         msg: InstantiateMsg,
     ) -> Result<Response, ContractError> {
-        // TODO use cw-ownable
-        // let admin_addr: Option<Addr> = msg
-        //     .admin
-        //     .as_deref()
-        //     .map(|s| deps.api.addr_validate(s))
-        //     .transpose()?;
-
-        // let config = Config { admin: admin_addr };
-
-        // CONFIG.save(deps.storage, &config)?;
-
-        let cw721_base_instantiate_msg = Cw721BaseInstantiateMsg {
-            name: msg.name,
-            symbol: msg.symbol,
-            minter: msg.minter,
-        };
-
         Cw721NonTransferableContract::default().instantiate(
             deps.branch(),
             env,
             info,
-            cw721_base_instantiate_msg,
+            msg,
         )?;
 
         // Initialize total weight to zero
@@ -108,9 +87,8 @@ pub mod entry {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: ExecuteMsg<MetadataExtension, Empty>,
+        msg: ExecuteMsg<MetadataExtension, ExecuteExt>,
     ) -> Result<Response, cw721_base::ContractError> {
-        // TODO use cw-ownable
         let owner = cw_ownable::assert_owner(deps.storage, &info.sender)?;
         match owner {
             Some(admin) => {
@@ -142,9 +120,12 @@ pub mod entry {
 
     #[entry_point]
     pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
-        // TODO query weight by owner at height?
-        // TODO query total weight at height?
         match msg {
+            QueryMsg::Extension { msg } => match msg {
+                QueryExt::Hooks {} => unimplemented!(),
+                QueryExt::Member { addr,  at_height } => unimplemented!(),
+                QueryExt::TotalWeight { at_height } => unimplemented!(),
+            }
             _ => _query(deps, env, msg.into()),
         }
     }
