@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -23,4 +23,7 @@ pub enum ContractError {
 
     #[error("List of specified tokens to claim is empty")]
     EmptyClaim {},
+
+    #[error("{0}")]
+    OverflowErr(#[from] OverflowError),
 }
