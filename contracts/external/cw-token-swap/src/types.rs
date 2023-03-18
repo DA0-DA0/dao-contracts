@@ -3,48 +3,8 @@ use cosmwasm_std::{to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, Uint
 
 use crate::ContractError;
 
-// We create empty trait and implement it for the types we want to use
-// so we can create a generic function that only accepts a vec of those types
-trait CompletionMsgsToCosmosMsg {
-    fn into_checked_cosmos_msg(
-        self,
-        deps: Deps,
-        denom: &str,
-    ) -> Result<(Uint128, CosmosMsg), ContractError>;
-}
-
-/// This function returns a vector of CosmosMsgs from the given vector of CompletionMsgs
-/// It verifies the msgs is not empty (else return empty vec)
-/// It verifies the total amount of funds matches the funds sent in all messages
-fn completion_to_cosmos_msgs<T: CompletionMsgsToCosmosMsg>(
-    deps: Deps,
-    msgs: Vec<T>,
-    amount: Uint128,
-    string: &str, // extra data we need (denom or contract addr)
-) -> Result<Vec<CosmosMsg>, ContractError> {
-    if msgs.is_empty() {
-        return Ok(vec![]);
-    }
-
-    let mut total_amount = Uint128::zero();
-    let cosmos_msgs = msgs
-        .into_iter()
-        .map(|msg| {
-            let (amount, cosmos_msg) = msg.into_checked_cosmos_msg(deps, string)?;
-            total_amount += amount;
-            Ok(cosmos_msg)
-        })
-        .collect::<Result<Vec<CosmosMsg>, ContractError>>()?;
-
-    // Verify that total amount of funds matches funds sent in all messages
-    if total_amount != amount {
-        return Err(ContractError::WrongFundsCalculation {});
-    }
-    Ok(cosmos_msgs)
-}
-
 #[cw_serde]
-pub enum NativeSendMsg {
+pub enum NativeSendMsgs {
     BankSend {
         to_address: String,
         amount: Vec<Coin>,
@@ -66,27 +26,31 @@ pub enum NativeSendMsg {
     },
 }
 
-impl CompletionMsgsToCosmosMsg for NativeSendMsg {
+impl NativeSendMsgs {
+    /// This is a helper function to convert the Cw20SendMsgs into a CosmosMsg
+    ///
+    /// Returns (amount_funds_to_send, CosmosMsg), we need `amount_funds_to_send` because later
+    /// we make sure total amount of funds sent is equal to the amount of funds promised
     fn into_checked_cosmos_msg(
         self,
         deps: Deps,
-        denom: &str,
+        denom: &str, // Promised denom.
     ) -> Result<(Uint128, CosmosMsg), ContractError> {
         let verify_coin = |coins: &Vec<Coin>| {
             if coins.len() != 1 {
-                return Err(ContractError::InvalidSendMsg {});
+                return Err(ContractError::InvalidSendMsgFunds {});
             }
             if coins[0].amount.is_zero() {
-                return Err(ContractError::InvalidSendMsg {});
+                return Err(ContractError::InvalidSendMsgFunds {});
             }
             if denom != coins[0].denom {
-                return Err(ContractError::InvalidSendMsg {});
+                return Err(ContractError::InvalidSendMsgFunds {});
             }
             Ok(coins[0].amount)
         };
 
         match self {
-            NativeSendMsg::BankSend { to_address, amount } => Ok((
+            NativeSendMsgs::BankSend { to_address, amount } => Ok((
                 verify_coin(&amount)?,
                 BankMsg::Send {
                     to_address: deps.api.addr_validate(&to_address)?.to_string(),
@@ -94,10 +58,10 @@ impl CompletionMsgsToCosmosMsg for NativeSendMsg {
                 }
                 .into(),
             )),
-            NativeSendMsg::BankBurn { amount } => {
+            NativeSendMsgs::BankBurn { amount } => {
                 Ok((verify_coin(&amount)?, BankMsg::Burn { amount }.into()))
             }
-            NativeSendMsg::WasmExecute {
+            NativeSendMsgs::WasmExecute {
                 contract_addr,
                 msg,
                 funds,
@@ -110,7 +74,7 @@ impl CompletionMsgsToCosmosMsg for NativeSendMsg {
                 }
                 .into(),
             )),
-            NativeSendMsg::WasmInstantiate {
+            NativeSendMsgs::WasmInstantiate {
                 admin,
                 code_id,
                 msg,
@@ -147,9 +111,11 @@ pub enum Cw20SendMsgs {
     },
 }
 
-impl CompletionMsgsToCosmosMsg for Cw20SendMsgs {
+impl Cw20SendMsgs {
     /// This is a helper function to convert the Cw20SendMsgs into a CosmosMsg
-    /// It will return the amount of tokens and the cosmosMsg to be sent
+    ///
+    /// Returns (amount_funds_to_send, CosmosMsg), we need `amount_funds_to_send` because later
+    /// we make sure total amount of funds sent is equal to the amount of funds promised
     fn into_checked_cosmos_msg(
         self,
         deps: Deps,
@@ -232,7 +198,7 @@ pub enum SwapInfo {
     Native {
         denom: String,
         amount: Uint128,
-        on_completion: Vec<NativeSendMsg>,
+        on_completion: Vec<NativeSendMsgs>,
     },
     /// A cw20 token.
     Cw20 {
@@ -253,8 +219,26 @@ impl SwapInfo {
                 if amount.is_zero() {
                     Err(ContractError::ZeroTokens {})
                 } else {
-                    let on_completion =
-                        completion_to_cosmos_msgs(deps, on_completion, amount, &denom)?;
+                    let on_completion = if on_completion.is_empty() {
+                        vec![]
+                    } else {
+                        let mut total_amount = Uint128::zero();
+                        let cosmos_msgs = on_completion
+                            .into_iter()
+                            .map(|msg| {
+                                let (amount, cosmos_msg) =
+                                    msg.into_checked_cosmos_msg(deps, &denom)?;
+                                total_amount += amount;
+                                Ok(cosmos_msg)
+                            })
+                            .collect::<Result<Vec<CosmosMsg>, ContractError>>()?;
+
+                        // Verify that total amount of funds matches funds sent in all messages
+                        if total_amount != amount {
+                            return Err(ContractError::WrongFundsCalculation {});
+                        }
+                        cosmos_msgs
+                    };
 
                     Ok(CheckedSwapInfo::Native {
                         denom,
@@ -278,12 +262,26 @@ impl SwapInfo {
                         &cw20::Cw20QueryMsg::TokenInfo {},
                     )?;
 
-                    let on_completion = completion_to_cosmos_msgs(
-                        deps,
-                        on_completion,
-                        amount,
-                        contract_addr.as_str(),
-                    )?;
+                    let on_completion = if on_completion.is_empty() {
+                        vec![]
+                    } else {
+                        let mut total_amount = Uint128::zero();
+                        let cosmos_msgs = on_completion
+                            .into_iter()
+                            .map(|msg| {
+                                let (amount, cosmos_msg) =
+                                    msg.into_checked_cosmos_msg(deps, contract_addr.as_str())?;
+                                total_amount += amount;
+                                Ok(cosmos_msg)
+                            })
+                            .collect::<Result<Vec<CosmosMsg>, ContractError>>()?;
+
+                        // Verify that total amount of funds matches funds sent in all messages
+                        if total_amount != amount {
+                            return Err(ContractError::WrongFundsCalculation {});
+                        }
+                        cosmos_msgs
+                    };
 
                     Ok(CheckedSwapInfo::Cw20 {
                         contract_addr,

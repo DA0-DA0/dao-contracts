@@ -10,7 +10,7 @@ use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
     msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg, StatusResponse},
     types::{
-        CheckedCounterparty, CheckedSwapInfo, Counterparty, Cw20SendMsgs, NativeSendMsg, SwapInfo,
+        CheckedCounterparty, CheckedSwapInfo, Counterparty, Cw20SendMsgs, NativeSendMsgs, SwapInfo,
     },
     ContractError,
 };
@@ -200,7 +200,7 @@ fn test_simple_with_send_messages() {
                     promise: SwapInfo::Native {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(200),
-                        on_completion: vec![NativeSendMsg::WasmInstantiate {
+                        on_completion: vec![NativeSendMsgs::WasmInstantiate {
                             admin: None,
                             code_id: vesting_code,
                             msg: to_binary(&vetsing_init_msg).unwrap(),
@@ -572,7 +572,7 @@ fn test_send_messages_incomplete_funds() {
                     promise: SwapInfo::Native {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(200),
-                        on_completion: vec![NativeSendMsg::BankBurn {
+                        on_completion: vec![NativeSendMsgs::BankBurn {
                             amount: coins(100, "ujuno"),
                         }],
                     },
@@ -608,7 +608,7 @@ fn test_send_messages_incomplete_funds() {
                     promise: SwapInfo::Native {
                         denom: "ujuno".to_string(),
                         amount: Uint128::new(200),
-                        on_completion: vec![NativeSendMsg::BankBurn {
+                        on_completion: vec![NativeSendMsgs::BankBurn {
                             amount: coins(200, "ujuno"),
                         }],
                     },

@@ -89,7 +89,6 @@ fn get_counterparty<'a>(
 /// escrow funds if both counterparties have funded the contract.
 ///
 /// NOTE: The caller must verify that the denom of PAID is correct.
-#[allow(clippy::too_many_arguments)]
 fn do_fund(
     deps: DepsMut,
     counterparty: CheckedCounterparty,
@@ -116,11 +115,10 @@ fn do_fund(
     let messages = if counterparty.provided && other_counterparty.provided {
         let mut msgs = counterparty
             .promise
-            .clone()
             .into_send_message(other_counterparty.address.to_string(), false)?;
 
-        msgs.append(
-            &mut other_counterparty
+        msgs.extend(
+            other_counterparty
                 .promise
                 .into_send_message(counterparty.address.to_string(), false)?,
         );
@@ -222,8 +220,7 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
     let message = counterparty
         .promise
         .clone()
-        .into_send_message(counterparty.address.to_string(), true)?[0]
-        .clone();
+        .into_send_message(counterparty.address.to_string(), true)?;
 
     let mut counterparty = counterparty;
     counterparty.provided = false;
@@ -232,7 +229,7 @@ pub fn execute_withdraw(deps: DepsMut, info: MessageInfo) -> Result<Response, Co
     Ok(Response::new()
         .add_attribute("method", "withdraw")
         .add_attribute("counterparty", counterparty.address)
-        .add_message(message))
+        .add_messages(message))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
