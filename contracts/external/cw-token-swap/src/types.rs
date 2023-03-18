@@ -36,6 +36,8 @@ impl NativeSendMsgs {
         deps: Deps,
         denom: &str, // Promised denom.
     ) -> Result<(Uint128, CosmosMsg), ContractError> {
+        // Function to verify the coins sent is valid
+        // it MUST be used in every match arm
         let verify_coin = |coins: &Vec<Coin>| {
             if coins.len() != 1 {
                 return Err(ContractError::InvalidSendMsgFunds {});
