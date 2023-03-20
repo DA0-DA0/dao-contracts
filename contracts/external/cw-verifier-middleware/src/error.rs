@@ -42,9 +42,3 @@ pub enum ContractError {
     #[error("Invalid uncompressed public key hex string length; expected 130 bytes, got {length}")]
     InvalidPublicKeyLength { length: usize },
 }
-
-// impl From<SerdeError> for ContractError {
-//     fn from(error: SerdeError) -> Self {
-//         ContractError::SerdeError(error.to_string())
-//     }
-// }
