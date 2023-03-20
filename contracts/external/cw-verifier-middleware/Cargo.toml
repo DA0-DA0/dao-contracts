@@ -19,6 +19,7 @@ ripemd = { workspace = true }
 bech32 = { workspace = true }
 serde_json = { workspace = true}
 
+
 [dev-dependencies]
 
 secp256k1 = { workspace = true, features = ["rand-std", "bitcoin-hashes-std"] }

@@ -1,4 +1,5 @@
 use bech32::Error as Bech32Error;
+
 use cosmwasm_std::OverflowError;
 use cosmwasm_std::{StdError, VerificationError};
 use hex::FromHexError;
@@ -6,7 +7,7 @@ use secp256k1::Error as Secp256k1Error;
 use serde_json::Error as SerdeError;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -27,7 +28,7 @@ pub enum ContractError {
     OverflowError(#[from] OverflowError),
 
     #[error("{0}")]
-    SerdeError(String),
+    SerdeError(#[from] SerdeError),
 
     #[error("Invalid nonce")]
     InvalidNonce,
@@ -42,8 +43,8 @@ pub enum ContractError {
     InvalidPublicKeyLength { length: usize },
 }
 
-impl From<SerdeError> for ContractError {
-    fn from(error: SerdeError) -> Self {
-        ContractError::SerdeError(error.to_string())
-    }
-}
+// impl From<SerdeError> for ContractError {
+//     fn from(error: SerdeError) -> Self {
+//         ContractError::SerdeError(error.to_string())
+//     }
+// }

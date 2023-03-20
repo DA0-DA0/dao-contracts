@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, Binary, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, Api, Binary, DepsMut, Empty, HexBinary, Uint128};
 use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;

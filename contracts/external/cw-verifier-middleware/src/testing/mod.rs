@@ -1,2 +1,2 @@
-mod tests;
 mod adversarial_tests;
+mod tests;
