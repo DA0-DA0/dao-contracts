@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, BlockInfo, HexBinary, Uint128, VerificationError,
+    to_binary, Addr, BlockInfo, DepsMut, HexBinary, Uint128, VerificationError,
 };
 use cw_utils::Expiration;
 use secp256k1::{hashes::hex::ToHex, rand::rngs::OsRng, Message, PublicKey, Secp256k1, SecretKey};
@@ -66,10 +66,11 @@ fn test_pk_to_addr_bech32_invalid_human_readable_part() {
 
 #[test]
 fn test_verify_success() {
-    // This test generates a payload in which the signature is base64 encoded, and the public key is hex encoded.
-    // The test then calls verify to validate that the signature is correctly verified.
+    fn test_verify_success() {
+        // This test generates a payload in which the signature is base64 encoded, and the public key is hex encoded.
+        // The test then calls verify to validate that the signature is correctly verified.
 
-    let payload = Payload {
+        let payload = Payload {
         nonce: Uint128::from(0u128),
         msg: to_binary("eyJpbnN0YW50aWF0ZV9jb250cmFjdF93aXRoX3NlbGZfYWRtaW4iOnsiY29kZV9pZCI6MTY4OCwiaW5zdGFudGlhdGVfbXNnIjp7fX19ICA=").unwrap(),
         expiration: None,
@@ -79,30 +80,31 @@ fn test_verify_success() {
         chain_id: "juno-1".to_string(),
     };
 
-    let wrapped_msg = get_wrapped_msg(payload);
+        let mut deps = mock_dependencies();
+        let wrapped_msg = get_wrapped_msg(deps.as_mut(), payload.clone());
 
-    // Verify
-    let mut deps = mock_dependencies();
-    let env = mock_env();
-    let info = mock_info("creator", &[]);
-    verify(deps.as_mut(), env, &mut info, wrapped_msg).unwrap();
+        // Verify
+        let env = mock_env();
+        let mut info = mock_info("creator", &[]);
+        verify(deps.as_mut(), env, &mut info, wrapped_msg.clone()).unwrap();
 
-    // Verify nonce was incremented correctly
-    let nonce = NONCES
-        .load(
-            &deps.storage,
-            (
-                &wrapped_msg.public_key.to_hex(),
-                &Addr::unchecked(payload.contract_address),
-                &payload.contract_version,
-            ),
-        )
-        .unwrap();
-    assert_eq!(nonce, Uint128::from(1u128))
+        // Verify nonce was incremented correctly
+        let nonce = NONCES
+            .load(
+                &deps.storage,
+                (
+                    &wrapped_msg.public_key.to_hex(),
+                    &Addr::unchecked(payload.contract_address),
+                    &payload.contract_version,
+                ),
+            )
+            .unwrap();
+        assert_eq!(nonce, Uint128::from(1u128))
+    }
 }
 
 #[test]
-fn test_verify_pk_invalid() {
+fn test_verify_invalid_pk() {
     // This test generates a payload in which the signature is of base64 format, and the public key is of hex format.
     // The test then calls verify with an incorrectly formatted public key to validate that there is an error in parsing the public key.
 
@@ -116,30 +118,23 @@ fn test_verify_pk_invalid() {
         chain_id: "juno-1".to_string(),
     };
 
-    // Generate a keypair
-    let secp = Secp256k1::new();
-    let (secret_key, _) = secp.generate_keypair(&mut OsRng);
+    // Generate wrapped message
+    let mut deps = mock_dependencies();
+    let mut wrapped_msg = get_wrapped_msg(deps.as_mut(), payload);
 
-    // Hash and sign the payload
-    let msg_hash = Sha256::digest(&to_binary(&payload).unwrap());
-    let msg = Message::from_slice(&msg_hash).unwrap();
-    let sig = secp.sign_ecdsa(&msg, &secret_key);
-
-    // Wrap the message but with incorrect public key
-    let wrapped_msg = WrappedMessage {
-        payload,
-        signature: sig.serialize_compact().into(),
-        public_key: Vec::from("incorrect_public_key").into(),
-    };
+    // Set public key to invalid
+    wrapped_msg.public_key = Vec::from("incorrect_public_key").into();
 
     // Verify with incorrect public key
-    let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let mut info = mock_info("creator", &[]);
     let result = verify(deps.as_mut(), env, &mut info, wrapped_msg);
 
-    // Ensure that there was a pub key verification error
-    assert!(matches!(result, Err(ContractError::VerificationError(_))));
+    // Ensure that there was a pub key parsing error
+    assert!(matches!(
+        result,
+        Err(ContractError::InvalidPublicKeyLength { .. })
+    ));
 }
 
 #[test]
@@ -177,7 +172,7 @@ fn test_verify_wrong_pk() {
     // Verify with incorrect public key
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let mut info = mock_info("creator", &[]);
     let result = verify(deps.as_mut(), env, &mut info, wrapped_msg);
 
     // Ensure that there was a signature verification error
@@ -188,7 +183,7 @@ fn test_verify_wrong_pk() {
 fn test_verify_incorrect_nonce() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let mut info = mock_info("creator", &[]);
 
     // get a default wrapped message and verify it
     let payload = Payload {
@@ -200,7 +195,7 @@ fn test_verify_incorrect_nonce() {
         contract_version: "version-1".to_string(),
         chain_id: "juno-1".to_string(),
     };
-    let wrapped_msg = get_wrapped_msg(payload);
+    let wrapped_msg = get_wrapped_msg(deps.as_mut(), payload);
     verify(deps.as_mut(), env.clone(), &mut info, wrapped_msg).unwrap();
 
     // skip a nonce iteration
@@ -213,7 +208,7 @@ fn test_verify_incorrect_nonce() {
         contract_version: "version-1".to_string(),
         chain_id: "juno-1".to_string(),
     };
-    let wrapped_msg = get_wrapped_msg(invalid_nonce_payload);
+    let wrapped_msg = get_wrapped_msg(deps.as_mut(), invalid_nonce_payload);
     let err = verify(deps.as_mut(), env, &mut info, wrapped_msg).unwrap_err();
 
     // verify the invalid nonce error
@@ -224,7 +219,7 @@ fn test_verify_incorrect_nonce() {
 fn test_verify_expired_message() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let mut info = mock_info("creator", &[]);
 
     // get an expired message
     let payload = Payload {
@@ -236,7 +231,7 @@ fn test_verify_expired_message() {
         contract_version: "version-1".to_string(),
         chain_id: "juno-1".to_string(),
     };
-    let wrapped_msg = get_wrapped_msg(payload);
+    let wrapped_msg = get_wrapped_msg(deps.as_mut(), payload);
 
     let err: ContractError =
         verify(deps.as_mut(), env.clone(), &mut info, wrapped_msg).unwrap_err();
@@ -245,10 +240,10 @@ fn test_verify_expired_message() {
 }
 
 #[test]
-fn test_verify_invalid_signature() {
+fn test_verify_wrong_payload() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("creator", &[]);
+    let mut info = mock_info("creator", &[]);
 
     // Generate a keypair
     let secp = Secp256k1::new();
@@ -298,11 +293,7 @@ fn test_verify_invalid_signature() {
 fn test_verify_malformed_signature() {
     let mut deps = mock_dependencies();
     let env = mock_env();
-    let info = mock_info("creator", &[]);
-
-    // Generate a keypair
-    let secp = Secp256k1::new();
-    let (secret_key, public_key) = secp.generate_keypair(&mut OsRng);
+    let mut info = mock_info("creator", &[]);
 
     let payload = Payload {
         nonce: Uint128::from(0u128),
@@ -314,42 +305,55 @@ fn test_verify_malformed_signature() {
         chain_id: "juno-1".to_string(),
     };
 
-    // Hash and sign the payload
-    let msg_hash = Sha256::digest(&to_binary(&payload).unwrap());
-    let msg = Message::from_slice(&msg_hash).unwrap();
-    let sig = secp.sign_ecdsa(&msg, &secret_key);
-
-    let hex_encoded = HexBinary::from(public_key.serialize_uncompressed());
-    let serialized_sig = sig.serialize_compact();
-
-    // join two signatures for unexpected format
-    let malformed_sig = [serialized_sig, serialized_sig].concat();
-    let wrapped_msg = WrappedMessage {
-        payload,
-        signature: malformed_sig.into(),
-        public_key: hex_encoded.clone(),
-    };
+    let mut wrapped_msg = get_wrapped_msg(deps.as_mut(), payload);
+    let malformed_sig = Vec::from("malformed signature");
+    wrapped_msg.signature = malformed_sig.into();
 
     let err: ContractError =
         verify(deps.as_mut(), env.clone(), &mut info, wrapped_msg).unwrap_err();
     assert!(matches!(err, ContractError::VerificationError { .. }));
 }
 
+// Verify that sender's address is set correctly in info.
 #[test]
-fn test_verify_sets_sender_to_pk_address_representation() {
+fn test_verify_correct_address() {
+    let payload = Payload {
+        nonce: Uint128::from(0u128),
+        msg: to_binary("test").unwrap(),
+        expiration: None,
+        contract_address: Addr::unchecked("contract_address").to_string(),
+        bech32_prefix: "juno".to_string(),
+        contract_version: "version-1".to_string(),
+        chain_id: "juno-1".to_string(),
+    };
     let mut deps = mock_dependencies();
-    let env = mock_env();
-    let info = mock_info("creator", &[]);
 
+    let wrapped_msg = get_wrapped_msg(deps.as_mut(), payload);
+
+    let mut env = mock_env();
+    env.block.height = 1;
+    let mut info = mock_info("creator", &[]);
+    verify(deps.as_mut(), env, &mut info, wrapped_msg.clone()).unwrap();
+
+    let addr = pk_to_addr(deps.as_ref(), wrapped_msg.public_key.to_hex(), JUNO_PREFIX).unwrap();
+
+    assert_eq!(info.sender, addr);
+}
+
+// Generate a validly signed message but without creating a sign doc first.
+#[test]
+fn test_verify_no_sign_doc() {
     let payload = Payload {
         nonce: Uint128::from(0u128),
         msg: to_binary("eyJpbnN0YW50aWF0ZV9jb250cmFjdF93aXRoX3NlbGZfYWRtaW4iOnsiY29kZV9pZCI6MTY4OCwiaW5zdGFudGlhdGVfbXNnIjp7fX19ICA=").unwrap(),
         expiration: None,
         contract_address: Addr::unchecked("contract_address").to_string(),
-        bech32_prefix: JUNO_PREFIX.to_string(),
+        bech32_prefix: "juno".to_string(),
         contract_version: "version-1".to_string(),
         chain_id: "juno-1".to_string(),
     };
+
+    let mut deps = mock_dependencies();
 
     // Generate a keypair
     let secp = Secp256k1::new();
@@ -363,96 +367,16 @@ fn test_verify_sets_sender_to_pk_address_representation() {
     // Wrap the message
     let hex_encoded = HexBinary::from(public_key.serialize_uncompressed());
     let wrapped_msg = WrappedMessage {
-        payload: payload.clone(),
+        payload,
         signature: sig.serialize_compact().into(),
         public_key: hex_encoded.clone(),
     };
 
-    let (verified_msg, verified_info) =
-        verify(deps.as_mut(), env.clone(), &mut info, wrapped_msg).unwrap();
-
-    // pk_to_addr is tested above so assumed to be working
-    // TODO: generate a new keypair to avoid generating in every test
-    let respective_address =
-        pk_to_addr(deps.as_ref(), hex_encoded.to_string(), JUNO_PREFIX).unwrap();
-
-    // assert that info.sender is set to the expected representation of pk
-    assert_eq!(verified_info.sender, respective_address);
-    assert_eq!(verified_msg, payload.msg);
-}
-
-#[test]
-fn test_verify_wrong_payload() {
-    let payload = Payload {
-        nonce: Uint128::from(0u128),
-        msg: to_binary("test").unwrap(),
-        expiration: None,
-        contract_address: Addr::unchecked("contract_address").to_string(),
-        bech32_prefix: "juno".to_string(),
-        contract_version: "version-1".to_string(),
-        chain_id: "juno-1".to_string(),
-    };
-
-    let wrong_payload = Payload {
-        nonce: Uint128::from(0u128),
-        msg: to_binary("test").unwrap(),
-        expiration: None,
-        contract_address: Addr::unchecked("contract_address").to_string(),
-        bech32_prefix: "juney".to_string(),
-        contract_version: "version-0".to_string(),
-        chain_id: "juno-1".to_string(),
-    };
-
-    // Generate a keypair
-    let secp = Secp256k1::new();
-    let (secret_key, public_key) = secp.generate_keypair(&mut OsRng);
-
-    // Hash and sign the payload
-    let msg_hash = Sha256::digest(&to_binary(&payload).unwrap());
-    let msg = Message::from_slice(&msg_hash).unwrap();
-    let sig = secp.sign_ecdsa(&msg, &secret_key);
-
-    // Wrap the message with wrong payload
-    let hex_encoded = HexBinary::from(public_key.serialize_uncompressed());
-    let wrapped_msg = WrappedMessage {
-        payload: wrong_payload.clone(),
-        signature: sig.serialize_compact().into(),
-        public_key: hex_encoded.clone(),
-    };
-
-    let mut deps = mock_dependencies();
+    // Verify should fail
     let env = mock_env();
-    let info = mock_info("creator", &[]);
-    let err = verify(deps.as_mut(), env, &mut info, wrapped_msg).unwrap_err();
-    println!("{:?}", err);
-}
-
-// Verify that sender's address is set correctly in info.
-#[test]
-fn test_verify_correct_address() {
-    let payload = Payload {
-        nonce: Uint128::from(0u128),
-        msg: to_binary("test").unwrap(),
-        expiration: Some(Expiration::AtHeight(10)),
-        contract_address: Addr::unchecked("contract_address").to_string(),
-        bech32_prefix: "juno".to_string(),
-        contract_version: "version-1".to_string(),
-        chain_id: "juno-1".to_string(),
-    };
-
-    let wrapped_msg = get_wrapped_msg(payload);
-
-    // Verify with public key
-    let mut deps = mock_dependencies();
-    let env = mock_env();
-
-    let info = mock_info("creator", &[]);
-    let result = verify(deps.as_mut(), env, &mut info, wrapped_msg);
-
-    let addr = pk_to_addr(deps.as_ref(), wrapped_msg.public_key.to_hex(), JUNO_PREFIX).unwrap();
-
-    // Ensure that there was an error
-    assert_eq!(info.sender, addr);
+    let mut info = mock_info("creator", &[]);
+    let res = verify(deps.as_mut(), env, &mut info, wrapped_msg.clone());
+    assert!(matches!(res, Err(ContractError::SignatureInvalid { .. })));
 }
 
 // signs a given payload and returns the wrapped message
@@ -469,10 +393,12 @@ fn get_wrapped_msg(deps: DepsMut, payload: Payload) -> WrappedMessage {
     )
     .unwrap();
 
-    let sign_doc = get_sign_doc(signer_addr.as_str(), payload.clone(), &"juno-1").unwrap();
+    let payload_ser = serde_json::to_string(&payload).unwrap();
+
+    let sign_doc = get_sign_doc(signer_addr.as_str(), &payload_ser, &"juno-1").unwrap();
 
     // Hash and sign the payload
-    let msg_hash = Sha256::digest(&to_binary(&payload).unwrap());
+    let msg_hash = Sha256::digest(&to_binary(&sign_doc).unwrap());
     let msg = Message::from_slice(&msg_hash).unwrap();
     let sig = secp.sign_ecdsa(&msg, &secret_key);
 

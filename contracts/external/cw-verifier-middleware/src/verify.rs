@@ -16,12 +16,12 @@ use sha2::{Digest, Sha256};
 const UNCOMPRESSED_HEX_PK_LEN: usize = 130;
 const COMPRESSED_HEX_PK_LEN: usize = 66;
 
-pub fn verify<'a>(
-    deps: DepsMut<'a>,
+pub fn verify(
+    deps: DepsMut,
     env: Env,
-    info: &'a mut MessageInfo,
+    info: &mut MessageInfo,
     wrapped_msg: WrappedMessage,
-) -> Result<(Binary, &'a mut MessageInfo), ContractError> {
+) -> Result<Binary, ContractError> {
     let payload = wrapped_msg.payload;
 
     let signer_addr = pk_to_addr(
@@ -30,8 +30,7 @@ pub fn verify<'a>(
         &payload.bech32_prefix,
     )?;
 
-    let payload_ser =
-        serde_json::to_string(&payload).map_err(|e| ContractError::SerdeError(e.into()))?;
+    let payload_ser = serde_json::to_string(&payload)?;
 
     // Convert message to signDoc format
     let sign_doc = get_sign_doc(&signer_addr.as_str(), &payload_ser, &payload.chain_id)?;
@@ -88,7 +87,7 @@ pub fn verify<'a>(
     info.sender = signer_addr;
 
     // Return info with updater sender and msg to be deserialized by caller
-    return Ok((payload.msg, info));
+    return Ok(payload.msg);
 }
 
 pub fn initialize_contract_addr(deps: DepsMut, env: Env) -> Result<(), ContractError> {
@@ -155,5 +154,5 @@ pub(crate) fn get_sign_doc(
         "sequence": "0"
     });
 
-    serde_json::to_string(&doc).map_err(|e| ContractError::SerdeError(e.into()))
+    Ok(serde_json::to_string(&doc)?)
 }

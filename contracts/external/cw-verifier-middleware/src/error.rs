@@ -1,4 +1,5 @@
 use bech32::Error as Bech32Error;
+use cosmwasm_std::OverflowError;
 use cosmwasm_std::{StdError, VerificationError};
 use hex::FromHexError;
 use secp256k1::Error as Secp256k1Error;
@@ -23,7 +24,10 @@ pub enum ContractError {
     Secp256k1Error(#[from] Secp256k1Error),
 
     #[error("{0}")]
-    SerdeError(#[from] SerdeError),
+    OverflowError(#[from] OverflowError),
+
+    #[error("{0}")]
+    SerdeError(String),
 
     #[error("Invalid nonce")]
     InvalidNonce,
@@ -36,4 +40,10 @@ pub enum ContractError {
 
     #[error("Invalid uncompressed public key hex string length; expected 130 bytes, got {length}")]
     InvalidPublicKeyLength { length: usize },
+}
+
+impl From<SerdeError> for ContractError {
+    fn from(error: SerdeError) -> Self {
+        ContractError::SerdeError(error.to_string())
+    }
 }
