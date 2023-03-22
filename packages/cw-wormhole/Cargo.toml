@@ -1,9 +1,10 @@
 [package]
 name = "cw-wormhole"
-version = "0.1.0"
+version = "2.1.0"
 edition = "2021"
 authors = ["ekez <ekez@withoutdoing.com>"]
 description = "A CosmWasm map that allows incrementing and decrementing values from the past."
+license = { workspace = true }
 
 [dependencies]
 cosmwasm-schema = { workspace = true }

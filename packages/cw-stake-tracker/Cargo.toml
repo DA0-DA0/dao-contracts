@@ -1,9 +1,10 @@
 [package]
 name = "cw-stake-tracker"
-version = "0.1.0"
+version = "2.1.0"
 edition = "2021"
 authors = ["ekez <ekez@withoutdoing.com>"]
 description = "A package for tracking staked and unbonding tokens in x/staking."
+license = { workspace = true }
 
 [dependencies]
 cosmwasm-schema = { workspace = true }
