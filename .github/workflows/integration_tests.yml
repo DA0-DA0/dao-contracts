@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GAS_OUT_DIR: gas_reports
-      GAS_LIMIT: 10000000
+      GAS_LIMIT: 100000000
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
