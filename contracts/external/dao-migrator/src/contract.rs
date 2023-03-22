@@ -100,7 +100,7 @@ fn execute_migration_v1_v2(
     // List of code ids pairs we got and the migration msg of each one of them.
     let proposal_pairs: Vec<(String, CodeIdPair)> = migration_params
         .proposal_params
-        .iter()
+        .into_iter()
         .map(|(addr, proposal_params)| {
             (
                 addr.clone(),
@@ -111,7 +111,7 @@ fn execute_migration_v1_v2(
                         dao_proposal_single::msg::MigrateMsg::FromV1 {
                             close_proposal_on_execution_failure: proposal_params
                                 .close_proposal_on_execution_failure,
-                            pre_propose_info: proposal_params.pre_propose_info.clone(),
+                            pre_propose_info: proposal_params.pre_propose_info,
                         },
                     ),
                 ),

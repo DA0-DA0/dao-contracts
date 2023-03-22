@@ -2,7 +2,7 @@ use crate::state::Config;
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 
-use cw_ownable::cw_ownable;
+use cw_ownable::cw_ownable_execute;
 
 // so that consumers don't need a cw_ownable dependency to consume
 // this contract's queries.
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
     pub reward_token: String,
 }
 
-#[cw_ownable]
+#[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     UpdateConfig {

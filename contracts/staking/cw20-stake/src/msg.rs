@@ -4,7 +4,7 @@ use cw20::Cw20ReceiveMsg;
 
 use cw_utils::Duration;
 
-use cw_ownable::cw_ownable;
+use cw_ownable::cw_ownable_execute;
 
 pub use cw_controllers::ClaimsResponse;
 // so that consumers don't need a cw_ownable dependency to consume
@@ -19,7 +19,7 @@ pub struct InstantiateMsg {
     pub unstaking_duration: Option<Duration>,
 }
 
-#[cw_ownable]
+#[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
