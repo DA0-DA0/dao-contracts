@@ -211,6 +211,7 @@ pub enum SwapInfo {
 }
 
 impl SwapInfo {
+    ///
     pub fn into_checked(self, deps: Deps) -> Result<CheckedSwapInfo, ContractError> {
         match self {
             SwapInfo::Native {
@@ -224,19 +225,17 @@ impl SwapInfo {
                     let on_completion = if on_completion.is_empty() {
                         vec![]
                     } else {
-                        let mut total_amount = Uint128::zero();
-                        let cosmos_msgs = on_completion
-                            .into_iter()
-                            .map(|msg| {
-                                let (amount, cosmos_msg) =
-                                    msg.into_checked_cosmos_msg(deps, &denom)?;
-                                total_amount += amount;
-                                Ok(cosmos_msg)
-                            })
-                            .collect::<Result<Vec<CosmosMsg>, ContractError>>()?;
+                        let (cosmos_msgs, tokens_sent) = on_completion.into_iter().try_fold(
+                            (vec![], Uint128::zero()),
+                            |(mut messages, total_sent), msg| -> Result<_, ContractError> {
+                                let (sent, msg) = msg.into_checked_cosmos_msg(deps, &denom)?;
+                                messages.push(msg);
+                                Ok((messages, sent + total_sent))
+                            },
+                        )?;
 
                         // Verify that total amount of funds matches funds sent in all messages
-                        if total_amount != amount {
+                        if tokens_sent != amount {
                             return Err(ContractError::WrongFundsCalculation {});
                         }
                         cosmos_msgs
@@ -267,19 +266,18 @@ impl SwapInfo {
                     let on_completion = if on_completion.is_empty() {
                         vec![]
                     } else {
-                        let mut total_amount = Uint128::zero();
-                        let cosmos_msgs = on_completion
-                            .into_iter()
-                            .map(|msg| {
-                                let (amount, cosmos_msg) =
+                        let (cosmos_msgs, tokens_sent) = on_completion.into_iter().try_fold(
+                            (vec![], Uint128::zero()),
+                            |(mut messages, total_sent), msg| -> Result<_, ContractError> {
+                                let (sent, msg) =
                                     msg.into_checked_cosmos_msg(deps, contract_addr.as_str())?;
-                                total_amount += amount;
-                                Ok(cosmos_msg)
-                            })
-                            .collect::<Result<Vec<CosmosMsg>, ContractError>>()?;
+                                messages.push(msg);
+                                Ok((messages, sent + total_sent))
+                            },
+                        )?;
 
                         // Verify that total amount of funds matches funds sent in all messages
-                        if total_amount != amount {
+                        if tokens_sent != amount {
                             return Err(ContractError::WrongFundsCalculation {});
                         }
                         cosmos_msgs
@@ -311,6 +309,9 @@ pub enum CheckedSwapInfo {
 }
 
 impl CheckedSwapInfo {
+    /// Returns the msgs we need to send based on what we do/have
+    /// If we do withdraw, we ignore on completion msgs and set recipient as the withdrawer address
+    /// If swap successful, we either return on completion msgs if we have them or send funds to the other party
     pub fn into_send_message(
         self,
         recipient: String,
