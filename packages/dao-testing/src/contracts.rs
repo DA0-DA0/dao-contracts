@@ -167,3 +167,12 @@ pub fn cw_vesting_contract() -> Box<dyn Contract<Empty>> {
     );
     Box::new(contract)
 }
+
+pub fn stake_cw20_v03_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        stake_cw20_v03::contract::execute,
+        stake_cw20_v03::contract::instantiate,
+        stake_cw20_v03::contract::query,
+    );
+    Box::new(contract)
+}

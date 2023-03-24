@@ -103,3 +103,4 @@ cw20-stake-v1 = { package = "cw20-stake", version = "0.2.6", git = "https://gith
 cw20-staked-balance-voting-v1 = { package = "cw20-staked-balance-voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw4-voting-v1 = { package = "cw4-voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 voting-v1 = { package = "voting", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+stake-cw20-v03 = { package = "stake-cw20", version = "0.2.6", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v0.3.0" }

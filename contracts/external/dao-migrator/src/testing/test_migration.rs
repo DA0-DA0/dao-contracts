@@ -33,6 +33,11 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
             module_addrs.proposals[0].clone(),
             module_addrs.voting.clone(),
         ),
+        VotingType::Cw20V03 => query_state_v1_cw20(
+            &mut app,
+            module_addrs.proposals[0].clone(),
+            module_addrs.voting.clone(),
+        ),
     };
     //NOTE: We add 1 to count because we create a new proposal in execute_migration
     test_state_v1.proposal_count += 1;
@@ -53,6 +58,11 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
             module_addrs.voting,
         ),
         VotingType::Cw20 => query_state_v2_cw20(
+            &mut app,
+            module_addrs.proposals[0].clone(),
+            module_addrs.voting,
+        ),
+        VotingType::Cw20V03 => query_state_v2_cw20(
             &mut app,
             module_addrs.proposals[0].clone(),
             module_addrs.voting,
@@ -81,10 +91,12 @@ fn test_execute_migration() {
     // Test basic migrator (not called from core)
     basic_test(VotingType::Cw20, false);
     basic_test(VotingType::Cw4, false);
+    basic_test(VotingType::Cw20V03, false);
 
     // Test basic migrator (called from core)
     basic_test(VotingType::Cw20, true);
     basic_test(VotingType::Cw4, true);
+    basic_test(VotingType::Cw20V03, true);
 }
 
 #[test]

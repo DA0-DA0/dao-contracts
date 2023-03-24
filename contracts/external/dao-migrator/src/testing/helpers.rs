@@ -45,6 +45,7 @@ pub struct ModuleAddrs {
 pub enum VotingType {
     Cw4,
     Cw20,
+    Cw20V03,
 }
 
 pub fn get_v1_code_ids(app: &mut App) -> (CodeIds, V1CodeIds) {

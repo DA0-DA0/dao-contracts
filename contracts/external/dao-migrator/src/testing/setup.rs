@@ -3,6 +3,7 @@ use std::borrow::BorrowMut;
 use cosmwasm_std::{to_binary, Addr, WasmMsg};
 use cw_multi_test::{next_block, App, AppResponse, Executor};
 use dao_interface::{Admin, ModuleInstantiateInfo};
+use dao_testing::contracts::stake_cw20_v03_contract;
 
 use crate::{
     testing::helpers::get_module_addrs,
@@ -15,7 +16,7 @@ use super::helpers::{
 };
 
 pub fn init_v1(app: &mut App, sender: Addr, voting_type: VotingType) -> (Addr, V1CodeIds) {
-    let (code_ids, v1_code_ids) = get_v1_code_ids(app);
+    let (mut code_ids, mut v1_code_ids) = get_v1_code_ids(app);
 
     let (voting_code_id, msg) = match voting_type {
         VotingType::Cw4 => (
@@ -26,6 +27,17 @@ pub fn init_v1(app: &mut App, sender: Addr, voting_type: VotingType) -> (Addr, V
             code_ids.cw20_voting,
             to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
         ),
+        VotingType::Cw20V03 => {
+            // The simple change we need to do is to swap the cw20_stake with the one in v0.3.0
+            let v03_cw20_stake = app.store_code(stake_cw20_v03_contract());
+            code_ids.cw20_stake = v03_cw20_stake;
+            v1_code_ids.cw20_stake = v03_cw20_stake;
+
+            (
+                code_ids.cw20_voting,
+                to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
+            )
+        }
     };
 
     let core_addr = app
@@ -103,6 +115,7 @@ pub fn init_v1_with_multiple_proposals(
             code_ids.cw20_voting,
             to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
         ),
+        VotingType::Cw20V03 => todo!(),
     };
 
     let core_addr = app
@@ -198,6 +211,8 @@ pub fn setup_dao_v1(voting_type: VotingType) -> (App, ModuleAddrs, V1CodeIds) {
             module_addrs.proposals[0].clone(),
         ),
         VotingType::Cw20 => set_cw20_to_dao(app.borrow_mut(), sender, module_addrs.clone()),
+        // Same as Cw20
+        VotingType::Cw20V03 => set_cw20_to_dao(app.borrow_mut(), sender, module_addrs.clone()),
     };
 
     (app, module_addrs, v1_code_ids)
