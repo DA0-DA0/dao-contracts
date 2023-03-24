@@ -104,7 +104,7 @@ pub fn init_v1_with_multiple_proposals(
     sender: Addr,
     voting_type: VotingType,
 ) -> (Addr, V1CodeIds) {
-    let (code_ids, v1_code_ids) = get_v1_code_ids(app);
+    let (mut code_ids, mut v1_code_ids) = get_v1_code_ids(app);
 
     let (voting_code_id, msg) = match voting_type {
         VotingType::Cw4 => (
@@ -115,7 +115,16 @@ pub fn init_v1_with_multiple_proposals(
             code_ids.cw20_voting,
             to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
         ),
-        VotingType::Cw20V03 => todo!(),
+        VotingType::Cw20V03 => {
+            let v03_cw20_stake = app.store_code(stake_cw20_v03_contract());
+            code_ids.cw20_stake = v03_cw20_stake;
+            v1_code_ids.cw20_stake = v03_cw20_stake;
+
+            (
+                code_ids.cw20_voting,
+                to_binary(&get_cw20_init_msg(code_ids.clone())).unwrap(),
+            )
+        }
     };
 
     let core_addr = app
