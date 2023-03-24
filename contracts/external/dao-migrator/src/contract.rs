@@ -100,10 +100,11 @@ fn execute_migration_v1_v2(
     // List of code ids pairs we got and the migration msg of each one of them.
     let proposal_pairs: Vec<(String, CodeIdPair)> = migration_params
         .proposal_params
+        .clone()
         .into_iter()
         .map(|(addr, proposal_params)| {
             (
-                addr.clone(),
+                addr,
                 CodeIdPair::new(
                     v1_code_ids.proposal_single,
                     v2_code_ids.proposal_single,
