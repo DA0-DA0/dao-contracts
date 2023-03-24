@@ -4,7 +4,7 @@ This is a CosmWasm package for tracking the staked balance of a smart
 contract.
 
 The `StakeTracker` type here exposes a couple methods with the `on_`
-prefix. These shouold be called whenever the contract performs an
+prefix. These should be called whenever the contract performs an
 action with x/staking. For example, when the contract delegates
 tokens, it should call the `on_delegate` method to register that. Not
 calling the method will cause the package to incorrectly track staked
