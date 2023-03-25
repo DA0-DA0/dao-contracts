@@ -37,6 +37,7 @@ pub enum ExecuteMsg {
     /// Used to provide cw20 tokens to satisfy a funds promise.
     Receive(cw20::Cw20ReceiveMsg),
     /// Provides native tokens to satisfy a funds promise.
+    #[payable]
     Fund {},
     /// Withdraws provided funds. Only allowed if the other
     /// counterparty has yet to provide their promised funds.

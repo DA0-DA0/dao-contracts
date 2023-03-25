@@ -35,6 +35,7 @@ fn cw20_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+
 #[test]
 fn test_simple_escrow() {
     let mut app = App::default();
