@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw20::Cw20ReceiveMsg;
-use cw_ownable::cw_ownable;
+use cw_ownable::cw_ownable_execute;
 use cw_vesting::msg::InstantiateMsg as PayrollInstantiateMsg;
 
 #[cw_serde]
@@ -9,7 +9,7 @@ pub struct InstantiateMsg {
     pub vesting_code_id: u64,
 }
 
-#[cw_ownable]
+#[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Instantiates a new vesting contract that is funded by a cw20 token.

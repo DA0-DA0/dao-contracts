@@ -56,7 +56,8 @@ pub struct MigrationParams {
     /// contract is detected in the DAO's configuration the
     /// migration will be aborted.
     pub migrate_stake_cw20_manager: Option<bool>,
-    // dao_proposal_single
+    /// List of (address, ProposalParams) where `address` is an
+    /// address of a proposal module currently part of the DAO.
     pub proposal_params: Vec<(String, ProposalParams)>,
 }
 

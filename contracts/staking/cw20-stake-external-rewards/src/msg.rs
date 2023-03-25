@@ -10,7 +10,7 @@ pub use cw_controllers::ClaimsResponse;
 // this contract's queries.
 pub use cw_ownable::Ownership;
 
-use cw_ownable::cw_ownable;
+use cw_ownable::cw_ownable_execute;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -20,7 +20,7 @@ pub struct InstantiateMsg {
     pub reward_duration: u64,
 }
 
-#[cw_ownable]
+#[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     StakeChangeHook(StakeChangedHookMsg),

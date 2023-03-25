@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Timestamp, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_denom::UncheckedDenom;
-use cw_ownable::cw_ownable;
+use cw_ownable::cw_ownable_execute;
 use cw_stake_tracker::StakeTrackerQuery;
 
 use crate::vesting::Schedule;
@@ -60,7 +60,7 @@ pub struct InstantiateMsg {
     pub unbonding_duration_seconds: u64,
 }
 
-#[cw_ownable]
+#[cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Fund the contract with a cw20 token. The `msg` field must have
