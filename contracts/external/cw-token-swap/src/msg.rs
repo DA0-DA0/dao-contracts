@@ -32,6 +32,7 @@ pub struct InstantiateMsg {
 }
 
 #[cw_serde]
+#[cfg_attr(feature = "boot", derive(boot_core::ExecuteFns))]
 pub enum ExecuteMsg {
     /// Used to provide cw20 tokens to satisfy a funds promise.
     Receive(cw20::Cw20ReceiveMsg),
@@ -44,6 +45,7 @@ pub enum ExecuteMsg {
 
 #[cw_serde]
 #[derive(QueryResponses)]
+#[cfg_attr(feature = "boot", derive(boot_core::QueryFns))]
 pub enum QueryMsg {
     // Gets the current status of the escrow transaction.
     #[returns(crate::msg::StatusResponse)]

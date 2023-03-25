@@ -7,5 +7,7 @@ pub mod state;
 
 #[cfg(test)]
 mod tests;
+#[cfg(feature = "boot")]
+mod boot;
 
 pub use crate::error::ContractError;
