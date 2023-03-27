@@ -366,8 +366,6 @@ pub fn reply(deps: DepsMut, env: Env, reply: Reply) -> Result<Response, Contract
     }
 }
 
-// TODO: Refactor to match queries based on passed version? or leave it like that?
-// We can pass the version we want to query to a single function and let the function handle the right call to make.
 fn query_state_v1(deps: Deps, module_addrs: ModulesAddrs) -> Result<TestState, ContractError> {
     let proposal_counts = query_proposal_count_v1(deps, module_addrs.proposals.clone())?;
     let (proposals, sample_proposal_data) = query_proposal_v1(deps, module_addrs.proposals)?;
