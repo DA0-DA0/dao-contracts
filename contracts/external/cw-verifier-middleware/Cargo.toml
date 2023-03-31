@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 cosmwasm-std = { workspace = true}
 thiserror = { workspace = true }
-secp256k1 = { workspace = true, features = ["rand-std", "bitcoin-hashes-std"] }
 sha2 = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
@@ -18,8 +17,7 @@ bip32 = { workspace = true }
 ripemd = { workspace = true }
 bech32 = { workspace = true }
 serde_json = { workspace = true}
-
+secp256k1 = { workspace = true }
 
 [dev-dependencies]
-
 secp256k1 = { workspace = true, features = ["rand-std", "bitcoin-hashes-std"] }

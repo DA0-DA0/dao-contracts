@@ -1,0 +1,19 @@
+[package]
+name = "derive"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dao-macros = { workspace = true }
+cosmwasm-std = { workspace = true}
+serde = { workspace = true, features = ["derive"]}
+serde_derive = { workspace = true }
+serde_json = { workspace = true }
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true }
+
+[lib]
+name = "derive"
+path = "lib.rs"
+proc-macro = true

@@ -8,7 +8,8 @@ members = [
 	"packages/*",
 	"test-contracts/*",
 	"ci/*",
-	"contracts/external/*"
+	"contracts/external/*",
+	"contracts/external/cw-verifier-middleware/derive" 
 	]
 exclude = ["ci/configs/"]
 

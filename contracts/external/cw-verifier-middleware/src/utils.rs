@@ -22,7 +22,6 @@ pub fn get_wrapped_msg(api: &dyn Api, payload: Payload) -> WrappedMessage {
     .unwrap();
 
     let payload_ser = serde_json::to_string(&payload).unwrap();
-
     let sign_doc = get_sign_doc(signer_addr.as_str(), &payload_ser, &"juno-1").unwrap();
 
     // Hash and sign the payload

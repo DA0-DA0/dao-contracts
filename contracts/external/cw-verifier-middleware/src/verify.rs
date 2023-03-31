@@ -162,3 +162,17 @@ pub fn get_sign_doc(signer: &str, message: &str, chain_id: &str) -> Result<Strin
 
     Ok(serde_json::to_string(&doc)?)
 }
+
+pub fn execute_submit_externally_signed<
+    T: DeserializeOwned,
+    E: Error + From<crate::error::ContractError>,
+>(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: WrappedMessage,
+    execute: fn(DepsMut, Env, MessageInfo, T) -> Result<Response, E>,
+) -> Result<Response, E> {
+    let (msg, info): (T, _) = verify(deps.api, deps.storage, env, info, msg)?;
+    execute(deps, env, info, msg)
+}
