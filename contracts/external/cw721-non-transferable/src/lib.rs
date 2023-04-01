@@ -1,6 +1,10 @@
 pub use crate::msg::{InstantiateMsg, QueryMsg};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, Empty};
+use cw4::{
+    Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
+    TotalWeightResponse,
+};
 pub use cw721_base::{
     entry::{execute as _execute, query as _query},
     ContractError, Cw721Contract, ExecuteMsg, InstantiateMsg as Cw721BaseInstantiateMsg,
@@ -8,8 +12,7 @@ pub use cw721_base::{
 };
 use cw_controllers::Hooks;
 
-// Hooks to contracts that will receive staking and unstaking
-// messages.
+// Hooks to contracts that will receive staking and unstaking messages.
 pub const HOOKS: Hooks = Hooks::new("hooks");
 
 pub mod state;
@@ -25,13 +28,8 @@ pub struct MetadataExt {
 
 #[cw_serde]
 pub enum ExecuteExt {
-    /// Update a given token ID with a new token URI or weight
-    UpdateToken {
-        id: String,
-        weight: Option<u64>,
-        token_uri: Option<String>,
-    },
-    /// Add a new hook to be informed of all membership changes. Must be called by Admin
+    /// Add a new hook to be informed of all membership changes.
+    /// Must be called by Admin
     AddHook { addr: String },
     /// Remove a hook. Must be called by Admin
     RemoveHook { addr: String },
@@ -108,11 +106,6 @@ pub mod entry {
                             ExecuteExt::RemoveHook { addr } => {
                                 execute_remove_hook(deps, info, addr)
                             }
-                            ExecuteExt::UpdateToken {
-                                id,
-                                token_uri,
-                                weight,
-                            } => execute_update_token(deps, id, token_uri, weight),
                         },
                         _ => _execute(deps, env, info, msg),
                     }
@@ -138,52 +131,74 @@ pub mod entry {
         token_uri: String,
         extension: MetadataExt,
     ) -> Result<Response, ContractError> {
-        // TODO update member weights and total
+        // Update member weights and total
         let mut total = Uint64::from(TOTAL.load(deps.storage)?);
+        let mut diff: MemberDiff;
 
         MEMBERS.update(deps.storage, &add_addr, height, |old| -> StdResult<_> {
             total = total.checked_sub(Uint64::from(old.unwrap_or_default()))?;
             total = total.checked_add(Uint64::from(add.weight))?;
-            diffs.push(MemberDiff::new(add.addr, old, Some(add.weight)));
+            diff = MemberDiff::new(add.addr, old, Some(add.weight));
             Ok(add.weight)
         })?;
 
         TOTAL.save(deps.storage, &total.u64(), height)?;
 
-        // TODO fire hooks
-        // TODO call base mint
-        unimplemented!()
+        let diffs = MembershipChangedHookMsg {
+            diffs: vec![diff]
+        }
+
+        // Prepare hook messages
+        let msgs = HOOKS.prepare_hooks(deps.storage, |h| {
+            diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
+        })?;
+
+        // Call base mint
+        let mut res =_execute(deps, info, msg ExecuteMsg::Mint{
+            token_id,
+            owner,
+            token_uri,
+            extension
+        })?;
+
+        Ok(res.add_messages(msgs))
     }
 
     pub fn execute_burn(
         deps: Deps,
-        info: MessageInfo,
         env: Env,
+        info: MessageInfo,
         id: String,
     ) -> Result<Response, ContractError> {
-        // TODO update member weights and total
+        // Update member weights and total
+        let mut total = Uint64::from(TOTAL.load(deps.storage)?);
+        let mut diff: MemberDiff;
+
         let remove_addr = deps.api.addr_validate(&remove)?;
         let old = MEMBERS.may_load(deps.storage, &remove_addr)?;
+
         // Only process this if they were actually in the list before
         if let Some(weight) = old {
-            diffs.push(MemberDiff::new(remove, Some(weight), None));
+            diff = MemberDiff::new(remove, Some(weight), None);
             total = total.checked_sub(Uint64::from(weight))?;
             MEMBERS.remove(deps.storage, &remove_addr, height)?;
         }
 
         TOTAL.save(deps.storage, &total.u64(), height)?;
 
-        // TODO fire hooks
-        unimplemented!()
-    }
+        let diffs = MembershipChangedHookMsg {
+            diffs: vec![diff]
+        }
 
-    pub fn execute_update_token(
-        deps: Deps,
-        id: String,
-        token_uri: String,
-        weight: u64,
-    ) -> Result<Response, ContractError> {
-        Ok(Response::default())
+        // Prepare hook messages
+        let msgs = HOOKS.prepare_hooks(deps.storage, |h| {
+            diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
+        })?;
+
+        // Call base burn
+        let mut res =_execute(deps, env, info, ExecuteMsg::Burn {id})
+
+            Ok(res.add_messages(msgs))
     }
 
     pub fn execute_add_hook(
