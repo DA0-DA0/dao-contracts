@@ -3,6 +3,25 @@ use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use dao_interface::Admin;
 use dao_macros::voting_module_query;
+use dao_voting::threshold::ActiveThreshold;
+
+// TODO
+#[cw_serde]
+#[allow(clippy::large_enum_variant)]
+pub enum TokenInfo {
+    Existing {
+        /// Address of an already instantiated cw721 token contract.
+        address: String,
+    },
+    New {
+        /// Code ID for cw721 token contract.
+        code_id: u64,
+        /// Label to use for instantiated cw721 contract.
+        label: String,
+        name: String,
+        symbol: String,
+    },
+}
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,6 +32,9 @@ pub struct InstantiateMsg {
     /// Amount of time between unstaking and tokens being
     /// avaliable. To unstake with no delay, leave as `None`.
     pub unstaking_duration: Option<Duration>,
+    /// The number or percentage of tokens that must be staked
+    /// for the DAO to be active
+    pub active_threshold: Option<ActiveThreshold>,
 }
 
 #[cw_serde]
@@ -38,6 +60,12 @@ pub enum ExecuteMsg {
     RemoveHook {
         addr: String,
     },
+    /// Sets the active threshold to a new value. Only the
+    /// instantiator this contract (a DAO most likely) may call this
+    /// method.
+    UpdateActiveThreshold {
+        new_threshold: Option<ActiveThreshold>,
+    },
 }
 
 #[voting_module_query]
@@ -57,4 +85,14 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[returns(ActiveThresholdResponse)]
+    ActiveThreshold {},
 }
+
+#[cw_serde]
+pub struct ActiveThresholdResponse {
+    pub active_threshold: Option<ActiveThreshold>,
+}
+
+#[cw_serde]
+pub struct MigrateMsg {}

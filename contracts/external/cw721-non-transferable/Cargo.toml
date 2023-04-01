@@ -2,12 +2,10 @@
 name          = "cw721-soulbound-roles"
 authors       = ["Jake Hartnell"]
 description   = "Non-transferable CW721 NFT example that incorporates voting weights."
-version       = { workspace = true }
-edition       = { workspace = true }
+version       = "0.1.0"
+edition       = "2021"
+repository    = "https://github.com/DA0-DA0/dao-contracts"
 license       = { workspace = true }
-repository    = { workspace = true }
-homepage      = { workspace = true }
-documentation = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -26,5 +24,4 @@ cw-storage-plus = { workspace = true }
 cw2             = { workspace = true }
 cw721           = { workspace = true }
 cw721-base      = { workspace = true, features = ["library"] }
-schemars        = { workspace = true }
 serde           = { workspace = true }

@@ -1,10 +1,6 @@
-use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
 #[cfg(not(feature = "library"))]
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{
-    register_staked_nft, register_unstaked_nfts, Config, CONFIG, DAO, HOOKS, MAX_CLAIMS,
-    NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
-};
+use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
+use crate::state::{Config, CONFIG, DAO, HOOKS, NFT_BALANCES, NFT_CLAIMS};
 use crate::ContractError;
 use cosmwasm_std::{
     entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
@@ -19,7 +15,6 @@ use dao_interface::Admin;
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-// TODO use cw-ownable?
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -46,15 +41,18 @@ pub fn instantiate(
     };
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::default()
-        .add_attribute("method", "instantiate")
-        .add_attribute("nft_contract", msg.nft_address)
-        .add_attribute(
-            "owner",
-            owner
-                .map(|a| a.into_string())
-                .unwrap_or_else(|| "None".to_string()),
-        ))
+    match msg.nft_contract {
+        NftContract::Existing { address } => Ok(Response::default()
+            .add_attribute("method", "instantiate")
+            .add_attribute("nft_contract", address)
+            .add_attribute(
+                "owner",
+                owner
+                    .map(|a| a.into_string())
+                    .unwrap_or_else(|| "None".to_string()),
+            )),
+        NftContract::New { .. } => unimplented!(),
+    }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -70,30 +68,6 @@ pub fn execute(
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
     }
 }
-
-pub fn execute_stake(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    wrapper: Cw721ReceiveMsg,
-) -> Result<Response, ContractError> {
-    let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.nft_address {
-        return Err(ContractError::InvalidToken {
-            received: info.sender,
-            expected: config.nft_address,
-        });
-    }
-    let staker = deps.api.addr_validate(&wrapper.sender)?;
-    register_staked_nft(deps.storage, env.block.height, &staker, &wrapper.token_id)?;
-    let hook_msgs = stake_hook_msgs(deps.storage, staker.clone(), wrapper.token_id.clone())?;
-    Ok(Response::default()
-        .add_submessages(hook_msgs)
-        .add_attribute("action", "stake")
-        .add_attribute("from", staker)
-        .add_attribute("token_id", wrapper.token_id))
-}
-
 
 pub fn execute_update_config(
     info: MessageInfo,
@@ -122,9 +96,10 @@ pub fn execute_update_config(
                 .owner
                 .map(|a| a.to_string())
                 .unwrap_or_else(|| "none".to_string()),
-        )
+        ))
 }
 
+// TODO maybe remove? When would these fire?
 pub fn execute_add_hook(
     deps: DepsMut,
     info: MessageInfo,
@@ -143,6 +118,7 @@ pub fn execute_add_hook(
         .add_attribute("hook", addr))
 }
 
+// TODO maybe remove? When would these fire?
 pub fn execute_remove_hook(
     deps: DepsMut,
     info: MessageInfo,
@@ -181,24 +157,21 @@ pub fn query_voting_power_at_height(
     address: String,
     height: Option<u64>,
 ) -> StdResult<Binary> {
-    // TODO query the contract?
+    // TODO query the contract
     unimplemented!();
-    // let address = deps.api.addr_validate(&address)?;
-    // let height = height.unwrap_or(env.block.height);
-    // let power = NFT_BALANCES
-    //     .may_load_at_height(deps.storage, &address, height)?
-    //     .unwrap_or_default();
-    // to_binary(&dao_interface::voting::VotingPowerAtHeightResponse { power, height })
+    // to_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
+    //     power: res.balance,
+    //     height: res.height,
+    // })
 }
 
 pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) -> StdResult<Binary> {
-    // TODO query the contract?
+    // TODO query the contract
     unimplemented!();
-    // let height = height.unwrap_or(env.block.height);
-    // let power = TOTAL_STAKED_NFTS
-    //     .may_load_at_height(deps.storage, height)?
-    //     .unwrap_or_default();
-    // to_binary(&dao_interface::voting::TotalPowerAtHeightResponse { power, height })
+    // to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
+    //     power: res.total,
+    //     height: res.height,
+    // })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {

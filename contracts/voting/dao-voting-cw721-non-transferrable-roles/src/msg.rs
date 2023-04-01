@@ -5,11 +5,27 @@ use dao_interface::Admin;
 use dao_macros::voting_module_query;
 
 #[cw_serde]
+pub enum NftContract {
+    Existing {
+        /// Address of an already instantiated cw721-weighted-roles token contract.
+        address: String,
+    },
+    New {
+        /// Code ID for cw721 token contract.
+        code_id: u64,
+        /// Label to use for instantiated cw721 contract.
+        label: String,
+        name: String,
+        symbol: String,
+    },
+}
+
+#[cw_serde]
 pub struct InstantiateMsg {
     /// May add hooks.
     pub owner: Option<Admin>,
-    /// Address of the cw721 NFT contract that may be staked.
-    pub nft_address: String,
+    /// Info about the associated NFT contract
+    pub nft_contract: NftContract,
 }
 
 #[cw_serde]
