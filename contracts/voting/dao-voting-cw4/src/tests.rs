@@ -10,8 +10,7 @@ use dao_interface::voting::{
 
 use crate::{
     contract::{migrate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::{ExecuteMsg, GroupContract, InstantiateMsg, MigrateMsg, QueryMsg},
-    ContractError,
+    msg::{GroupContract, InstantiateMsg, MigrateMsg, QueryMsg},
 };
 
 const DAO_ADDR: &str = "dao";
@@ -98,7 +97,7 @@ fn test_instantiate() {
     let msg = InstantiateMsg {
         group_contract: GroupContract::New {
             cw4_group_code_id: cw4_id,
-            initial_members: members,
+            initial_members: [].into(),
         },
     };
     let _err = app
@@ -181,38 +180,6 @@ fn test_contract_info() {
         .unwrap();
     assert_eq!(dao_contract, Addr::unchecked(DAO_ADDR));
 }
-
-// #[test]
-// fn test_permissions() {
-//     let mut app = App::default();
-//     let voting_addr = setup_test_case(&mut app);
-
-//     // DAO can not execute hook message.
-//     let err: ContractError = app
-//         .execute_contract(
-//             Addr::unchecked(DAO_ADDR),
-//             voting_addr.clone(),
-//             &ExecuteMsg::MemberChangedHook { diffs: vec![] },
-//             &[],
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
-//     assert!(matches!(err, ContractError::Unauthorized {}));
-
-//     // Contract itself can not execute hook message.
-//     let err: ContractError = app
-//         .execute_contract(
-//             voting_addr.clone(),
-//             voting_addr,
-//             &ExecuteMsg::MemberChangedHook { diffs: vec![] },
-//             &[],
-//         )
-//         .unwrap_err()
-//         .downcast()
-//         .unwrap();
-//     assert!(matches!(err, ContractError::Unauthorized {}));
-// }
 
 #[test]
 fn test_power_at_height() {
@@ -514,8 +481,10 @@ fn test_migrate() {
     let voting_id = app.store_code(voting_contract());
     let cw4_id = app.store_code(cw4_contract());
     let msg = InstantiateMsg {
-        cw4_group_code_id: cw4_id,
-        initial_members,
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members,
+        },
     };
     let voting_addr = app
         .instantiate_contract(
@@ -572,25 +541,27 @@ fn test_duplicate_member() {
     // Instantiate with members but have a duplicate
     // Total weight is actually 69 but ADDR3 appears twice.
     let msg = InstantiateMsg {
-        cw4_group_code_id: cw4_id,
-        initial_members: vec![
-            cw4::Member {
-                addr: ADDR3.to_string(), // same address above
-                weight: 19,
-            },
-            cw4::Member {
-                addr: ADDR1.to_string(),
-                weight: 25,
-            },
-            cw4::Member {
-                addr: ADDR2.to_string(),
-                weight: 25,
-            },
-            cw4::Member {
-                addr: ADDR3.to_string(),
-                weight: 19,
-            },
-        ],
+        group_contract: GroupContract::New {
+            cw4_group_code_id: cw4_id,
+            initial_members: vec![
+                cw4::Member {
+                    addr: ADDR3.to_string(), // same address above
+                    weight: 19,
+                },
+                cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 25,
+                },
+                cw4::Member {
+                    addr: ADDR2.to_string(),
+                    weight: 25,
+                },
+                cw4::Member {
+                    addr: ADDR3.to_string(),
+                    weight: 19,
+                },
+            ],
+        },
     };
     // Previous versions voting power was 100, due to no dedup.
     // Now we error
@@ -643,22 +614,7 @@ fn test_zero_voting_power() {
     app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr, &msg, &[])
         .unwrap();
 
-    // Should still be one as voting power should not update until
-    // the following block.
-    let addr1_voting_power: VotingPowerAtHeightResponse = app
-        .wrap()
-        .query_wasm_smart(
-            voting_addr.clone(),
-            &QueryMsg::VotingPowerAtHeight {
-                address: ADDR1.to_string(),
-                height: None,
-            },
-        )
-        .unwrap();
-    assert_eq!(addr1_voting_power.power, Uint128::new(1u128));
-
-    // update block to see the changes
-    app.update_block(next_block);
+    // Check ADDR1's power is now 0
     let addr1_voting_power: VotingPowerAtHeightResponse = app
         .wrap()
         .query_wasm_smart(

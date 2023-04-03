@@ -1,14 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg, WasmMsg,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::error::ContractError;
-use crate::msg::{GroupContract, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, GroupContract, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{DAO, GROUP_CONTRACT};
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw4";
@@ -32,6 +33,34 @@ pub fn instantiate(
             cw4_group_code_id,
             initial_members,
         } => {
+            if initial_members.is_empty() {
+                return Err(ContractError::NoMembers {});
+            }
+            let original_len = initial_members.len();
+            let mut initial_members = initial_members;
+            initial_members.sort_by(|a, b| a.addr.cmp(&b.addr));
+            initial_members.dedup();
+            let new_len = initial_members.len();
+
+            if original_len != new_len {
+                return Err(ContractError::DuplicateMembers {});
+            }
+
+            let mut total_weight = Uint128::zero();
+            for member in initial_members.iter() {
+                deps.api.addr_validate(&member.addr)?;
+                if member.weight > 0 {
+                    // This works because query_voting_power_at_height will return 0 on address missing
+                    // from storage, so no need to store anything.
+                    let weight = Uint128::from(member.weight);
+                    total_weight += weight;
+                }
+            }
+
+            if total_weight.is_zero() {
+                return Err(ContractError::ZeroTotalWeight {});
+            }
+
             // We need to set ourself as the CW4 admin it is then transferred to the DAO in the reply
             let msg = WasmMsg::Instantiate {
                 admin: Some(info.sender.to_string()),
@@ -61,20 +90,15 @@ pub fn instantiate(
     }
 }
 
-// // TODO remove? Should it refire hooks? Should all voting modules have hooks?
-// #[cfg_attr(not(feature = "library"), entry_point)]
-// pub fn execute(
-//     deps: DepsMut,
-//     env: Env,
-//     info: MessageInfo,
-//     msg: ExecuteMsg,
-// ) -> Result<Response, ContractError> {
-//     match msg {
-//         ExecuteMsg::MemberChangedHook { diffs } => {
-//             execute_member_changed_hook(deps, env, info, diffs)
-//         }
-//     }
-// }
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn execute(
+    _deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    _msg: ExecuteMsg,
+) -> Result<Response, ContractError> {
+    Err(ContractError::NoExecute {})
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -147,8 +171,19 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                         return Err(ContractError::DuplicateGroupContract {});
                     }
                     let group_contract = deps.api.addr_validate(&res.contract_address)?;
+                    let dao = DAO.load(deps.storage)?;
                     GROUP_CONTRACT.save(deps.storage, &group_contract)?;
-                    Ok(Response::default().add_attribute("group_contract", group_contract))
+                    // Transfer admin status to the DAO
+                    let msg1 = WasmMsg::Execute {
+                        contract_addr: group_contract.to_string(),
+                        msg: to_binary(&cw4_group::msg::ExecuteMsg::UpdateAdmin {
+                            admin: Some(dao.to_string()),
+                        })?,
+                        funds: vec![],
+                    };
+                    Ok(Response::default()
+                        .add_attribute("group_contract_address", group_contract)
+                        .add_message(msg1))
                 }
                 Err(_) => Err(ContractError::GroupContractInstantiateError {}),
             }
