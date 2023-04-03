@@ -1,10 +1,10 @@
 [package]
 name = "cw-fund-distributor"
-version = "0.1.0"
 authors = ["bekauz <bekauz@protonmail.com>"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A CosmWasm contract for distributing funds to DAO members based on voting power."
+edition = { workspace = true }
+repository = { workspace = true }
+version = "0.1.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

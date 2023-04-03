@@ -1,11 +1,11 @@
 [package]
 name = "cw20-stake"
-version = "2.1.0"
+version = { workspace = true }
 authors = ["Ben2x4 <Ben2x4@tutanota.com>"]
-edition = "2018"
-repository = "https://github.com/DA0-DA0/cw-dao/contracts/cw20-stake"
 description = "CW20 token that can be staked and staked balance can be queried at any height"
+edition = "2018"
 license = { workspace = true }
+repository = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

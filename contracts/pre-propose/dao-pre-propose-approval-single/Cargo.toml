@@ -1,11 +1,11 @@
 [package]
 name = "dao-pre-propose-approval-single"
-version = "2.1.0"
 authors = ["ekez <ekez@withoutdoing.com>", "Jake Hartnell <no-reply@no-reply.com>"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO pre-propose module handling a proposal approval flow for for dao-proposal-single."
+edition = { workspace = true }
 license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

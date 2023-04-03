@@ -1,10 +1,10 @@
 [package]
 name ="cw-payroll-factory"
-version = "2.0.0-beta"
 authors = ["Jake Hartnell"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A CosmWasm factory contract for instantiating a payroll contract."
+edition = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

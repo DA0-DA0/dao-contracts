@@ -1,11 +1,11 @@
 [package]
 name = "dao-voting-cw20-staked"
-version = "2.1.0"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO voting module based on staked cw20 tokens."
+edition = { workspace = true }
 license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

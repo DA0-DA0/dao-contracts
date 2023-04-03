@@ -1,11 +1,11 @@
 [package]
 name ="dao-proposal-condorcet"
-version = "0.1.0"
 authors = ["ekez <ekez@withoutdoing.com>"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO proposal module with ranked-choice, Condorcet voting."
+edition = { workspace = true }
 license = { workspace = true }
+repository = { workspace = true }
+version = "0.1.0"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

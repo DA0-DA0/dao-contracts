@@ -1,8 +1,8 @@
 [package]
 name = "bootstrap-env"
 version = "0.2.0"
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
+edition = { workspace = true }
+repository = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 cosm-orc = { version = "4.0" }

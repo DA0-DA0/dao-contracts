@@ -1,11 +1,11 @@
 [package]
 name = "dao-core"
-version = "2.1.0"
 authors = ["ekez <ekez@withoutdoing.com>"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO core module."
+edition = { workspace = true }
 license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
