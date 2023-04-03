@@ -145,8 +145,71 @@ fn test_instantiate() {
 
 #[test]
 pub fn test_instantiate_existing_contract() {
-    // TODO write a test for using the existing contract
-    assert!(false);
+    let mut app = App::default();
+
+    let voting_id = app.store_code(voting_contract());
+    let cw4_id = app.store_code(cw4_contract());
+
+    let cw4_addr = app
+        .instantiate_contract(
+            cw4_id,
+            Addr::unchecked(DAO_ADDR),
+            &cw4_group::msg::InstantiateMsg {
+                admin: Some(DAO_ADDR.to_string()),
+                members: vec![cw4::Member {
+                    addr: ADDR1.to_string(),
+                    weight: 1,
+                }],
+            },
+            &[],
+            "cw4 group",
+            None,
+        )
+        .unwrap();
+
+    // Instantiate with existing contract
+    let msg = InstantiateMsg {
+        group_contract: GroupContract::Existing {
+            address: cw4_addr.to_string(),
+        },
+    };
+    let _err = app
+        .instantiate_contract(
+            voting_id,
+            Addr::unchecked(DAO_ADDR),
+            &msg,
+            &[],
+            "voting module",
+            None,
+        )
+        .unwrap();
+
+    // Update ADDR1's weight to 2
+    let msg = cw4_group::msg::ExecuteMsg::UpdateMembers {
+        remove: vec![],
+        add: vec![cw4::Member {
+            addr: ADDR1.to_string(),
+            weight: 2,
+        }],
+    };
+
+    app.execute_contract(Addr::unchecked(DAO_ADDR), cw4_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Same should be true about the groups contract.
+    let cw4_power: cw4::MemberResponse = app
+        .wrap()
+        .query_wasm_smart(
+            cw4_addr.clone(),
+            &cw4::Cw4QueryMsg::Member {
+                addr: ADDR1.to_string(),
+                at_height: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(cw4_power.weight.unwrap(), 2);
+
+    app.update_block(next_block);
 }
 
 #[test]
