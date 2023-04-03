@@ -200,7 +200,7 @@ pub fn test_instantiate_existing_contract() {
     let cw4_power: cw4::MemberResponse = app
         .wrap()
         .query_wasm_smart(
-            cw4_addr.clone(),
+            cw4_addr,
             &cw4::Cw4QueryMsg::Member {
                 addr: ADDR1.to_string(),
                 at_height: None,
@@ -208,8 +208,6 @@ pub fn test_instantiate_existing_contract() {
         )
         .unwrap();
     assert_eq!(cw4_power.weight.unwrap(), 2);
-
-    app.update_block(next_block);
 }
 
 #[test]
