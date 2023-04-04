@@ -1,11 +1,11 @@
 [package]
 name = "dao-voting-cw721-staked"
-version = "2.1.0"
 authors = ["CypherApe cypherape@protonmail.com"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO voting module based on staked cw721 tokens."
+edition = { workspace = true }
 license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]
