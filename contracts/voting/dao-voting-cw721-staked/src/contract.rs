@@ -75,6 +75,7 @@ pub fn execute(
         }
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
+        ExecuteMsg::UpdateActiveThreshold { new_threshold } => unimplemented!(),
     }
 }
 
@@ -307,6 +308,7 @@ pub fn execute_remove_hook(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::ActiveThreshold {} => unimplemented!(),
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::Dao {} => query_dao(deps),
         QueryMsg::NftClaims { address } => query_nft_claims(deps, address),

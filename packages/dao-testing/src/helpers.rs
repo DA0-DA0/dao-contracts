@@ -3,7 +3,7 @@ use cw20::Cw20Coin;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use cw_utils::Duration;
 use dao_interface::{Admin, ModuleInstantiateInfo};
-use dao_voting_cw20_staked::msg::ActiveThreshold;
+use dao_voting::threshold::ActiveThreshold;
 use dao_voting_cw4::msg::GroupContract;
 
 const CREATOR_ADDR: &str = "creator";

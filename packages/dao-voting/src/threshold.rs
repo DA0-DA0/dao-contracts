@@ -3,6 +3,21 @@ use cosmwasm_std::{Decimal, Uint128};
 
 use thiserror::Error;
 
+/// The threshold of tokens that must be staked in order for this
+/// voting module to be active. If this is not reached, this module
+/// will response to `is_active` queries with false and proposal
+/// modules which respect active thresholds will not allow the
+/// creation of proposals.
+#[cw_serde]
+pub enum ActiveThreshold {
+    /// The absolute number of tokens that must be staked for the
+    /// module to be active.
+    AbsoluteCount { count: Uint128 },
+    /// The percentage of tokens that must be staked for the module to
+    /// be active. Computed as `staked / total_supply`.
+    Percentage { percent: Decimal },
+}
+
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum ThresholdError {
     #[error("Required threshold cannot be zero")]

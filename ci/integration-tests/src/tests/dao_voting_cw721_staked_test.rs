@@ -53,6 +53,7 @@ fn setup_test(
                 owner,
                 nft_address: cw721.clone(),
                 unstaking_duration,
+                active_threshold: None,
             },
             key,
             None,
