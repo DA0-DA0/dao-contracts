@@ -1378,12 +1378,16 @@ version = "0.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-controllers 0.16.0",
  "cw-ownable",
  "cw-storage-plus 1.0.1",
+ "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721 0.16.0",
- "cw721-base 0.16.0",
+ "cw4 0.16.0",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "serde",
+ "thiserror",
 ]
 
 [[package]]

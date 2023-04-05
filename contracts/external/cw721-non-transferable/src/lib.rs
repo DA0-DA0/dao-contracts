@@ -1,21 +1,23 @@
-pub use crate::msg::{InstantiateMsg, QueryMsg};
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, Empty};
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{CustomMsg, Empty};
 use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
 pub use cw721_base::{
     entry::{execute as _execute, query as _query},
-    ContractError, Cw721Contract, ExecuteMsg, InstantiateMsg as Cw721BaseInstantiateMsg,
-    MinterResponse,
+    Cw721Contract, ExecuteMsg, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse, QueryMsg,
 };
 use cw_controllers::Hooks;
+use cw_utils::maybe_addr;
 
 // Hooks to contracts that will receive staking and unstaking messages.
 pub const HOOKS: Hooks = Hooks::new("hooks");
 
+mod error;
 pub mod state;
+
+pub use crate::error::RolesContractError as ContractError;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw721-soulbound-roles";
@@ -34,6 +36,7 @@ pub enum ExecuteExt {
     /// Remove a hook. Must be called by Admin
     RemoveHook { addr: String },
 }
+impl CustomMsg for ExecuteExt {}
 
 #[cw_serde]
 #[derive(QueryResponses)]
@@ -51,6 +54,7 @@ pub enum QueryExt {
     #[returns(cw_controllers::HooksResponse)]
     Hooks {},
 }
+impl CustomMsg for QueryExt {}
 
 pub type Cw721NonTransferableContract<'a> =
     Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
@@ -58,22 +62,30 @@ pub type Cw721NonTransferableContract<'a> =
 #[cfg(not(feature = "library"))]
 pub mod entry {
     use super::*;
-    use crate::state::TOTAL;
+    use crate::state::{MEMBERS, TOTAL};
     use cosmwasm_std::{
-        entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
+        entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order,
+        Response, StdResult, SubMsg, Uint64,
     };
+    use cw721::OwnerOfResponse;
+    use cw_storage_plus::Bound;
 
     #[entry_point]
     pub fn instantiate(
         mut deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: InstantiateMsg,
+        msg: Cw721BaseInstantiateMsg,
     ) -> Result<Response, ContractError> {
-        Cw721NonTransferableContract::default().instantiate(deps.branch(), env, info, msg)?;
+        Cw721NonTransferableContract::default().instantiate(
+            deps.branch(),
+            env.clone(),
+            info,
+            msg,
+        )?;
 
         // Initialize total weight to zero
-        TOTAL.save(deps.storage, 0);
+        TOTAL.save(deps.storage, &0, env.block.height)?;
 
         cw2::set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -87,66 +99,58 @@ pub mod entry {
         deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        msg: ExecuteMsg<MetadataExtension, ExecuteExt>,
-    ) -> Result<Response, cw721_base::ContractError> {
-        let owner = cw_ownable::assert_owner(deps.storage, &info.sender)?;
-        match owner {
-            Some(admin) => {
-                if admin == info.sender {
-                    match msg {
-                        ExecuteMsg::Mint {
-                            token_id,
-                            owner,
-                            token_uri,
-                            extension,
-                        } => execute_mint(deps, env, info, token_id, owner, token_uri, extension),
-                        ExecuteMsg::Burn { id } => execute_burn(deps, env, info, id),
-                        ExecuteMsg::Extension { msg } => match msg {
-                            ExecuteExt::AddHook { addr } => execute_add_hook(deps, info, addr),
-                            ExecuteExt::RemoveHook { addr } => {
-                                execute_remove_hook(deps, info, addr)
-                            }
-                        },
-                        _ => _execute(deps, env, info, msg),
-                    }
-                } else {
-                    Err(ContractError::Ownership(
-                        cw721_base::OwnershipError::NotOwner,
-                    ))
-                }
-            }
-            // TODO Error should be "no owner", this contract is immutable
-            None => Err(ContractError::Ownership(
-                cw721_base::OwnershipError::NotOwner,
-            )),
+        msg: ExecuteMsg<MetadataExt, ExecuteExt>,
+    ) -> Result<Response, ContractError> {
+        cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+        match msg {
+            ExecuteMsg::Mint {
+                token_id,
+                owner,
+                token_uri,
+                extension,
+            } => execute_mint(deps, env, info, token_id, owner, token_uri, extension),
+            ExecuteMsg::Burn { token_id } => execute_burn(deps, env, info, token_id),
+            ExecuteMsg::Extension { msg } => match msg {
+                ExecuteExt::AddHook { addr } => execute_add_hook(deps, info, addr),
+                ExecuteExt::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
+            },
+            _ => Cw721NonTransferableContract::default()
+                .execute(deps, env, info, msg)
+                .map_err(Into::into),
         }
     }
 
     pub fn execute_mint(
-        deps: Deps,
+        deps: DepsMut,
         env: Env,
         info: MessageInfo,
         token_id: String,
         owner: String,
-        token_uri: String,
+        token_uri: Option<String>,
         extension: MetadataExt,
     ) -> Result<Response, ContractError> {
+        // TODO get weight from extension and add to members
+
         // Update member weights and total
         let mut total = Uint64::from(TOTAL.load(deps.storage)?);
-        let mut diff: MemberDiff;
+        let mut diff = MemberDiff::new(owner.clone(), None, None);
 
-        MEMBERS.update(deps.storage, &add_addr, height, |old| -> StdResult<_> {
-            total = total.checked_sub(Uint64::from(old.unwrap_or_default()))?;
-            total = total.checked_add(Uint64::from(add.weight))?;
-            diff = MemberDiff::new(add.addr, old, Some(add.weight));
-            Ok(add.weight)
-        })?;
+        MEMBERS.update(
+            deps.storage,
+            &deps.api.addr_validate(&owner)?,
+            env.block.height,
+            |old| -> StdResult<_> {
+                total = total.checked_sub(Uint64::from(old.unwrap_or_default()))?;
+                total = total.checked_add(Uint64::from(extension.weight))?;
+                diff = MemberDiff::new(owner.clone(), old, Some(extension.weight.into()));
+                Ok(extension.weight.into())
+            },
+        )?;
 
-        TOTAL.save(deps.storage, &total.u64(), height)?;
+        TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
 
-        let diffs = MembershipChangedHookMsg {
-            diffs: vec![diff]
-        }
+        let diffs = MemberChangedHookMsg { diffs: vec![diff] };
 
         // Prepare hook messages
         let msgs = HOOKS.prepare_hooks(deps.storage, |h| {
@@ -154,41 +158,55 @@ pub mod entry {
         })?;
 
         // Call base mint
-        let mut res =_execute(deps, info, msg ExecuteMsg::Mint{
-            token_id,
-            owner,
-            token_uri,
-            extension
-        })?;
+        let res = Cw721NonTransferableContract::default().execute(
+            deps,
+            env,
+            info,
+            ExecuteMsg::Mint {
+                token_id,
+                owner,
+                token_uri,
+                extension,
+            },
+        )?;
 
-        Ok(res.add_messages(msgs))
+        Ok(res.add_submessages(msgs))
     }
 
     pub fn execute_burn(
-        deps: Deps,
+        deps: DepsMut,
         env: Env,
         info: MessageInfo,
-        id: String,
+        token_id: String,
     ) -> Result<Response, ContractError> {
+        // Lookup the owner of the NFT
+        let remove: OwnerOfResponse =
+            from_binary(&Cw721NonTransferableContract::default().query(
+                deps.as_ref(),
+                env.clone(),
+                QueryMsg::OwnerOf {
+                    token_id: token_id.clone(),
+                    include_expired: None,
+                },
+            )?)?;
+
         // Update member weights and total
         let mut total = Uint64::from(TOTAL.load(deps.storage)?);
-        let mut diff: MemberDiff;
+        let mut diff = MemberDiff::new(remove.owner.clone(), None, None);
 
-        let remove_addr = deps.api.addr_validate(&remove)?;
+        let remove_addr = deps.api.addr_validate(&remove.owner)?;
         let old = MEMBERS.may_load(deps.storage, &remove_addr)?;
 
         // Only process this if they were actually in the list before
         if let Some(weight) = old {
-            diff = MemberDiff::new(remove, Some(weight), None);
+            diff = MemberDiff::new(remove.owner, Some(weight), None);
             total = total.checked_sub(Uint64::from(weight))?;
-            MEMBERS.remove(deps.storage, &remove_addr, height)?;
+            MEMBERS.remove(deps.storage, &remove_addr, env.block.height)?;
         }
 
-        TOTAL.save(deps.storage, &total.u64(), height)?;
+        TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
 
-        let diffs = MembershipChangedHookMsg {
-            diffs: vec![diff]
-        }
+        let diffs = MemberChangedHookMsg { diffs: vec![diff] };
 
         // Prepare hook messages
         let msgs = HOOKS.prepare_hooks(deps.storage, |h| {
@@ -196,9 +214,14 @@ pub mod entry {
         })?;
 
         // Call base burn
-        let mut res =_execute(deps, env, info, ExecuteMsg::Burn {id})
+        let res = Cw721NonTransferableContract::default().execute(
+            deps,
+            env,
+            info,
+            ExecuteMsg::Burn { token_id },
+        )?;
 
-            Ok(res.add_messages(msgs))
+        Ok(res.add_submessages(msgs))
     }
 
     pub fn execute_add_hook(
@@ -206,10 +229,7 @@ pub mod entry {
         info: MessageInfo,
         addr: String,
     ) -> Result<Response, ContractError> {
-        let config: Config = CONFIG.load(deps.storage)?;
-        if config.owner.map_or(true, |owner| owner != info.sender) {
-            return Err(ContractError::NotOwner {});
-        }
+        cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
         let hook = deps.api.addr_validate(&addr)?;
         HOOKS.add_hook(deps.storage, hook)?;
@@ -224,10 +244,7 @@ pub mod entry {
         info: MessageInfo,
         addr: String,
     ) -> Result<Response, ContractError> {
-        let config: Config = CONFIG.load(deps.storage)?;
-        if config.owner.map_or(true, |owner| owner != info.sender) {
-            return Err(ContractError::NotOwner {});
-        }
+        cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
         let hook = deps.api.addr_validate(&addr)?;
         HOOKS.remove_hook(deps.storage, hook)?;
@@ -238,7 +255,7 @@ pub mod entry {
     }
 
     #[entry_point]
-    pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
         match msg {
             QueryMsg::Extension { msg } => match msg {
                 QueryExt::Hooks {} => to_binary(&HOOKS.query_hooks(deps)?),
@@ -249,7 +266,7 @@ pub mod entry {
                     to_binary(&query_total_weight(deps, at_height)?)
                 }
             },
-            _ => _query(deps, env, msg.into()),
+            _ => Cw721NonTransferableContract::default().query(deps, env, msg.into()),
         }
     }
 

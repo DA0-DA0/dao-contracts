@@ -19,9 +19,14 @@ library = []
 [dependencies]
 cosmwasm-schema = { workspace = true }
 cosmwasm-std    = { workspace = true }
+cw-controllers  = { workspace = true }
 cw-ownable      = { workspace = true }
 cw-storage-plus = { workspace = true }
+cw-utils        = { workspace = true }
 cw2             = { workspace = true }
-cw721           = { workspace = true }
-cw721-base      = { workspace = true, features = ["library"] }
+cw4             = { workspace = true }
+# TODO update when cw-nfts v0.17 is published
+cw721 = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
+cw721-base = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
 serde           = { workspace = true }
+thiserror = { workspace = true }

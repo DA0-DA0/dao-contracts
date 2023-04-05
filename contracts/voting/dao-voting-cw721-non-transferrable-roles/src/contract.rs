@@ -1,15 +1,11 @@
 #[cfg(not(feature = "library"))]
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
-use crate::state::{Config, CONFIG, DAO, HOOKS, NFT_BALANCES, NFT_CLAIMS};
+use crate::state::{Config, CONFIG, DAO, HOOKS};
 use crate::ContractError;
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, Uint128, WasmMsg,
+    entry_point, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
-use cw721::Cw721ReceiveMsg;
-use cw_storage_plus::Bound;
-use cw_utils::Duration;
 use dao_interface::Admin;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
@@ -18,7 +14,7 @@ pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
@@ -35,30 +31,32 @@ pub fn instantiate(
         })
         .transpose()?;
 
-    let config = Config {
-        owner: owner.clone(),
-        nft_address: deps.api.addr_validate(&msg.nft_address)?,
-    };
-    CONFIG.save(deps.storage, &config)?;
-
     match msg.nft_contract {
-        NftContract::Existing { address } => Ok(Response::default()
-            .add_attribute("method", "instantiate")
-            .add_attribute("nft_contract", address)
-            .add_attribute(
-                "owner",
-                owner
-                    .map(|a| a.into_string())
-                    .unwrap_or_else(|| "None".to_string()),
-            )),
-        NftContract::New { .. } => unimplented!(),
+        NftContract::Existing { address } => {
+            let config = Config {
+                owner: owner.clone(),
+                nft_address: deps.api.addr_validate(&address)?,
+            };
+            CONFIG.save(deps.storage, &config)?;
+
+            Ok(Response::default()
+                .add_attribute("method", "instantiate")
+                .add_attribute("nft_contract", address)
+                .add_attribute(
+                    "owner",
+                    owner
+                        .map(|a| a.into_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                ))
+        }
+        NftContract::New { .. } => unimplemented!(),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
@@ -73,7 +71,6 @@ pub fn execute_update_config(
     info: MessageInfo,
     deps: DepsMut,
     new_owner: Option<String>,
-    duration: Option<Duration>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
@@ -152,10 +149,10 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_voting_power_at_height(
-    deps: Deps,
-    env: Env,
-    address: String,
-    height: Option<u64>,
+    _deps: Deps,
+    _env: Env,
+    _address: String,
+    _height: Option<u64>,
 ) -> StdResult<Binary> {
     // TODO query the contract
     unimplemented!();
@@ -165,7 +162,11 @@ pub fn query_voting_power_at_height(
     // })
 }
 
-pub fn query_total_power_at_height(deps: Deps, env: Env, height: Option<u64>) -> StdResult<Binary> {
+pub fn query_total_power_at_height(
+    _deps: Deps,
+    _env: Env,
+    _height: Option<u64>,
+) -> StdResult<Binary> {
     // TODO query the contract
     unimplemented!();
     // to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {

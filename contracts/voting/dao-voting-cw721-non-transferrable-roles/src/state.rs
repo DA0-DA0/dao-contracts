@@ -1,11 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Empty, StdError, StdResult, Storage, Uint128};
-use cw721_controllers::NftClaims;
+use cosmwasm_std::Addr;
 use cw_controllers::Hooks;
-use cw_storage_plus::{Item, Map, SnapshotItem, SnapshotMap, Strategy};
-use cw_utils::Duration;
-
-use crate::ContractError;
+use cw_storage_plus::Item;
 
 #[cw_serde]
 pub struct Config {
