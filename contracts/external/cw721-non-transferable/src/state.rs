@@ -1,6 +1,9 @@
-use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
+use cw_controllers::Hooks;
 use cw_storage_plus::{SnapshotItem, SnapshotMap, Strategy};
+
+// Hooks to contracts that will receive staking and unstaking messages.
+pub const HOOKS: Hooks = Hooks::new("hooks");
 
 /// A historic snapshot of total weight over time
 pub const TOTAL: SnapshotItem<u64> = SnapshotItem::new(
