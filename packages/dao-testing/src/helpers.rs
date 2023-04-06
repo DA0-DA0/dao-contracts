@@ -1,6 +1,6 @@
-use cosmwasm_std::{to_binary, Addr, Binary, Empty, Uint128};
+use cosmwasm_std::{to_binary, Addr, Binary, Uint128};
 use cw20::Cw20Coin;
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
 use dao_interface::{Admin, ModuleInstantiateInfo};
 use dao_voting::threshold::ActiveThreshold;

@@ -7,7 +7,7 @@ use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
-use cw721::OwnerOfResponse;
+use cw721::{NftInfoResponse, OwnerOfResponse};
 pub use cw721_base::{
     entry::{execute as _execute, query as _query},
     Cw721Contract, ExecuteMsg, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse, QueryMsg,
@@ -66,6 +66,8 @@ pub fn execute(
             ExecuteExt::AddHook { addr } => execute_add_hook(deps, info, addr),
             ExecuteExt::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
         },
+        // TODO send and transfer?
+        // TODO approvals?
         _ => Cw721NonTransferableContract::default()
             .execute(deps, env, info, msg)
             .map_err(Into::into),
@@ -90,10 +92,13 @@ pub fn execute_mint(
         &deps.api.addr_validate(&owner)?,
         env.block.height,
         |old| -> StdResult<_> {
-            total = total.checked_sub(Uint64::from(old.unwrap_or_default()))?;
+            // Increment the total weight by the weight of the new token
             total = total.checked_add(Uint64::from(extension.weight))?;
-            diff = MemberDiff::new(owner.clone(), old, Some(extension.weight.into()));
-            Ok(extension.weight.into())
+            // Add the new NFT weight to the old weight for the owner
+            let new_weight = old.unwrap_or_default() + extension.weight;
+            // Set the diff for use in hooks
+            diff = MemberDiff::new(owner.clone(), old, Some(new_weight));
+            Ok(new_weight)
         },
     )?;
     TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
@@ -105,6 +110,7 @@ pub fn execute_mint(
         diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
     })?;
 
+    // TODO call in a submessage? Add DAO to approvals? Or just implement the methods?
     // Call base mint
     let res = Cw721NonTransferableContract::default().execute(
         deps,
@@ -128,7 +134,7 @@ pub fn execute_burn(
     token_id: String,
 ) -> Result<Response, ContractError> {
     // Lookup the owner of the NFT
-    let remove: OwnerOfResponse = from_binary(&Cw721NonTransferableContract::default().query(
+    let owner: OwnerOfResponse = from_binary(&Cw721NonTransferableContract::default().query(
         deps.as_ref(),
         env.clone(),
         QueryMsg::OwnerOf {
@@ -137,20 +143,48 @@ pub fn execute_burn(
         },
     )?)?;
 
+    // Get the weight of the token
+    let nft_info: NftInfoResponse<MetadataExt> =
+        from_binary(&Cw721NonTransferableContract::default().query(
+            deps.as_ref(),
+            env.clone(),
+            QueryMsg::NftInfo {
+                token_id: token_id.clone(),
+            },
+        )?)?;
+
     let mut total = Uint64::from(TOTAL.load(deps.storage)?);
-    let mut diff = MemberDiff::new(remove.owner.clone(), None, None);
+    let mut diff = MemberDiff::new(owner.owner.clone(), None, None);
 
     // Update member weights and total
-    let remove_addr = deps.api.addr_validate(&remove.owner)?;
-    let old = MEMBERS.may_load(deps.storage, &remove_addr)?;
+    let owner_addr = deps.api.addr_validate(&owner.owner)?;
+    let old = MEMBERS.may_load(deps.storage, &owner_addr)?;
 
     // Only process this if they were actually in the list before
-    if let Some(weight) = old {
-        diff = MemberDiff::new(remove.owner, Some(weight), None);
-        total = total.checked_sub(Uint64::from(weight))?;
+    if let Some(old_weight) = old {
+        // Subtract the nft weight from the old weight
+        //// TODO no unwrap
+        let new_weight = old_weight.checked_sub(nft_info.extension.weight).unwrap();
+        // Subtract nft weight from the total
+        total = total.checked_sub(Uint64::from(nft_info.extension.weight))?;
 
-        // TODO only remove if weight is zero
-        MEMBERS.remove(deps.storage, &remove_addr, env.block.height)?;
+        // Check if the new weight is now zero
+        if new_weight == 0 {
+            // New weight is now None
+            diff = MemberDiff::new(owner.owner, Some(old_weight), None);
+            // Owner owner from list of members
+            MEMBERS.remove(deps.storage, &owner_addr, env.block.height)?;
+        } else {
+            MEMBERS.update(
+                deps.storage,
+                &owner_addr,
+                env.block.height,
+                |old| -> StdResult<_> {
+                    diff = MemberDiff::new(owner.owner.clone(), old, Some(new_weight));
+                    Ok(new_weight)
+                },
+            )?;
+        }
     }
 
     TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
@@ -162,15 +196,18 @@ pub fn execute_burn(
         diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
     })?;
 
-    // Call base burn
-    let res = Cw721NonTransferableContract::default().execute(
-        deps,
-        env,
-        info,
-        ExecuteMsg::Burn { token_id },
-    )?;
+    // Remove the token
+    Cw721NonTransferableContract::default()
+        .tokens
+        .remove(deps.storage, &token_id)?;
+    // Decrement the account
+    Cw721NonTransferableContract::default().decrement_tokens(deps.storage)?;
 
-    Ok(res.add_submessages(msgs))
+    Ok(Response::new()
+        .add_attribute("action", "burn")
+        .add_attribute("sender", info.sender)
+        .add_attribute("token_id", token_id)
+        .add_submessages(msgs))
 }
 
 pub fn execute_add_hook(

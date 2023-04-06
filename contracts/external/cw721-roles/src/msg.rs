@@ -3,7 +3,7 @@ use cosmwasm_std::CustomMsg;
 
 #[cw_serde]
 pub struct MetadataExt {
-    pub weight: u32,
+    pub weight: u64,
 }
 
 #[cw_serde]
