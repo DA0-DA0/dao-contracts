@@ -13,37 +13,9 @@ pub fn query_config(app: &App, module: &Addr) -> StdResult<Config> {
     Ok(config)
 }
 
-pub fn query_claims(app: &App, module: &Addr, addr: &str) -> StdResult<NftClaimsResponse> {
-    let claims = app.wrap().query_wasm_smart(
-        module,
-        &QueryMsg::NftClaims {
-            address: addr.to_string(),
-        },
-    )?;
-    Ok(claims)
-}
-
 pub fn query_hooks(app: &App, module: &Addr) -> StdResult<HooksResponse> {
     let hooks = app.wrap().query_wasm_smart(module, &QueryMsg::Hooks {})?;
     Ok(hooks)
-}
-
-pub fn query_staked_nfts(
-    app: &App,
-    module: &Addr,
-    addr: &str,
-    start_after: Option<String>,
-    limit: Option<u32>,
-) -> StdResult<Vec<String>> {
-    let nfts = app.wrap().query_wasm_smart(
-        module,
-        &QueryMsg::StakedNfts {
-            address: addr.to_string(),
-            start_after,
-            limit,
-        },
-    )?;
-    Ok(nfts)
 }
 
 pub fn query_voting_power(

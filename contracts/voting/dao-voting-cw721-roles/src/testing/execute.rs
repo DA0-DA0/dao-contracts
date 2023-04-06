@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Binary, Empty};
 use cw721::Cw721ExecuteMsg;
-use cw721_base::MintMsg;
+use cw721_roles::msg::{ExecuteExt, MetadataExt};
 use cw_multi_test::{App, AppResponse, Executor};
 
 use anyhow::Result as AnyResult;
@@ -45,49 +45,11 @@ pub fn mint_nft(
     app.execute_contract(
         addr!(sender),
         cw721.clone(),
-        &cw721_base::ExecuteMsg::Mint::<Empty, Empty>(MintMsg {
+        &cw721_base::ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
             token_id: token_id.to_string(),
             owner: receiver.to_string(),
             token_uri: None,
-            extension: Empty::default(),
-        }),
-        &[],
-    )
-}
-
-pub fn stake_nft(
-    app: &mut App,
-    cw721: &Addr,
-    module: &Addr,
-    sender: &str,
-    token_id: &str,
-) -> AnyResult<AppResponse> {
-    send_nft(app, cw721, sender, module, token_id, Binary::default())
-}
-
-pub fn mint_and_stake_nft(
-    app: &mut App,
-    cw721: &Addr,
-    module: &Addr,
-    sender: &str,
-    token_id: &str,
-) -> AnyResult<()> {
-    mint_nft(app, cw721, sender, sender, token_id)?;
-    stake_nft(app, cw721, module, sender, token_id)?;
-    Ok(())
-}
-
-pub fn unstake_nfts(
-    app: &mut App,
-    module: &Addr,
-    sender: &str,
-    token_ids: &[&str],
-) -> AnyResult<AppResponse> {
-    app.execute_contract(
-        addr!(sender),
-        module.clone(),
-        &ExecuteMsg::Unstake {
-            token_ids: token_ids.iter().map(|s| s.to_string()).collect(),
+            extension: MetadataExt { weight: 1 },
         },
         &[],
     )
@@ -105,17 +67,7 @@ pub fn update_config(
         module.clone(),
         &ExecuteMsg::UpdateConfig {
             owner: owner.map(str::to_string),
-            duration,
         },
-        &[],
-    )
-}
-
-pub fn claim_nfts(app: &mut App, module: &Addr, sender: &str) -> AnyResult<AppResponse> {
-    app.execute_contract(
-        addr!(sender),
-        module.clone(),
-        &ExecuteMsg::ClaimNfts {},
         &[],
     )
 }
