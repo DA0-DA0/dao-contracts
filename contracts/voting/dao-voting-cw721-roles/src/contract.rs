@@ -6,6 +6,8 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
+use cw4::{MemberResponse, TotalWeightResponse};
+use cw721_roles::msg::QueryExt;
 use dao_interface::Admin;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
@@ -149,30 +151,45 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_voting_power_at_height(
-    _deps: Deps,
-    _env: Env,
-    _address: String,
-    _height: Option<u64>,
+    deps: Deps,
+    env: Env,
+    address: String,
+    at_height: Option<u64>,
 ) -> StdResult<Binary> {
-    // TODO query the contract
-    unimplemented!();
-    // to_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
-    //     power: res.balance,
-    //     height: res.height,
-    // })
+    let config = CONFIG.load(deps.storage)?;
+    let member: MemberResponse = deps.querier.query_wasm_smart(
+        config.nft_address,
+        &cw721_base::msg::QueryMsg::<QueryExt>::Extension {
+            msg: QueryExt::Member {
+                addr: address,
+                at_height,
+            },
+        },
+    )?;
+
+    to_binary(&dao_interface::voting::VotingPowerAtHeightResponse {
+        power: member.weight.unwrap_or(0).into(),
+        height: at_height.unwrap_or(env.block.height),
+    })
 }
 
 pub fn query_total_power_at_height(
-    _deps: Deps,
-    _env: Env,
-    _height: Option<u64>,
+    deps: Deps,
+    env: Env,
+    at_height: Option<u64>,
 ) -> StdResult<Binary> {
-    // TODO query the contract
-    unimplemented!();
-    // to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
-    //     power: res.total,
-    //     height: res.height,
-    // })
+    let config = CONFIG.load(deps.storage)?;
+    let total: TotalWeightResponse = deps.querier.query_wasm_smart(
+        config.nft_address,
+        &cw721_base::msg::QueryMsg::<QueryExt>::Extension {
+            msg: QueryExt::TotalWeight { at_height },
+        },
+    )?;
+
+    to_binary(&dao_interface::voting::TotalPowerAtHeightResponse {
+        power: total.weight.into(),
+        height: at_height.unwrap_or(env.block.height),
+    })
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Binary> {

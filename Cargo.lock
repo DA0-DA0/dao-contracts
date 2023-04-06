@@ -1875,6 +1875,7 @@ dependencies = [
  "cw-storage-plus 1.0.1",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "cw4 0.16.0",
  "cw721 0.17.0",
  "cw721-base 0.17.0",
  "cw721-controllers",
