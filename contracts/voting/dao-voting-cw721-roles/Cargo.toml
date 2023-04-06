@@ -1,5 +1,5 @@
 [package]
-name = "dao-voting-cw721-non-transferrable-roles"
+name = "dao-voting-cw721-roles"
 version = "2.0.3"
 authors = ["Jake Hartnell"]
 edition = "2021"
@@ -30,6 +30,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 cw721-base = { workspace = true }
+cw721-roles = { workspace = true }
 cw-multi-test = { workspace = true }
 anyhow = { workspace = true }
 dao-testing = { workspace = true }

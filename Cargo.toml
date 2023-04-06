@@ -74,6 +74,7 @@ cw-vesting = { path = "./contracts/external/cw-vesting" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "*" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "*" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "*" }
+cw721-roles = { path = "./contracts/external/cw721-roles", version = "*" }
 dao-core = { path = "./contracts/dao-core" }
 dao-interface = { path = "./packages/dao-interface", version = "*" }
 dao-macros = { path = "./packages/dao-macros", version = "*" }
@@ -93,6 +94,7 @@ dao-voting = { path = "./packages/dao-voting", version = "*" }
 dao-voting-cw20-balance = { path = "./test-contracts/dao-voting-cw20-balance", version = "*" }
 dao-voting-cw20-staked = { path = "./contracts/voting/dao-voting-cw20-staked", version = "*" }
 dao-voting-cw4 = { path = "./contracts/voting/dao-voting-cw4", version = "*" }
+dao-voting-cw721-roles = { path = "./contracts/voting/dao-voting-cw721-roles", version = "*" }
 dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked", version = "*" }
 dao-voting-native-staked = { path = "./contracts/voting/dao-voting-native-staked", version = "*" }
 

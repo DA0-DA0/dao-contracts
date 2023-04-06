@@ -1,7 +1,7 @@
 [package]
-name          = "cw721-soulbound-roles"
+name          = "cw721-roles"
 authors       = ["Jake Hartnell"]
-description   = "Non-transferable CW721 NFT example that incorporates voting weights."
+description   = "Non-transferable CW721 NFT contract that incorporates voting weights."
 version       = "0.1.0"
 edition       = "2021"
 repository    = "https://github.com/DA0-DA0/dao-contracts"
@@ -30,3 +30,7 @@ cw721 = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
 cw721-base = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
 serde           = { workspace = true }
 thiserror = { workspace = true }
+
+[dev-dependencies]
+cw-multi-test = { workspace = true }
+dao-testing = { workspace = true }
