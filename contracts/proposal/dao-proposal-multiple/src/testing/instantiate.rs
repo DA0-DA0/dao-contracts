@@ -15,10 +15,8 @@ use dao_voting::{
     deposit::{DepositRefundPolicy, UncheckedDepositInfo},
     multiple_choice::VotingStrategy,
     pre_propose::PreProposeInfo,
-    threshold::PercentageThreshold,
+    threshold::{ActiveThreshold, ActiveThreshold::AbsoluteCount, PercentageThreshold},
 };
-use dao_voting_cw20_staked::msg::ActiveThreshold;
-use dao_voting_cw20_staked::msg::ActiveThreshold::AbsoluteCount;
 use dao_voting_cw4::msg::GroupContract;
 
 use crate::testing::tests::ALTERNATIVE_ADDR;
@@ -155,6 +153,7 @@ pub fn _instantiate_with_staked_cw721_governance(
                 owner: Some(Admin::CoreModule {}),
                 unstaking_duration: None,
                 nft_address: nft_address.to_string(),
+                active_threshold: None,
             })
             .unwrap(),
             admin: None,

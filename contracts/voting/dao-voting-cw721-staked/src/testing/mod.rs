@@ -37,6 +37,7 @@ pub(crate) fn setup_test(owner: Option<Admin>, unstaking_duration: Option<Durati
                 owner,
                 nft_address: nft.to_string(),
                 unstaking_duration,
+                active_threshold: None,
             },
             &[],
             "cw721_voting",
