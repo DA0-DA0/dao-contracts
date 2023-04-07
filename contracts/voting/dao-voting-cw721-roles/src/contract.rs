@@ -1,22 +1,29 @@
 #[cfg(not(feature = "library"))]
-use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
-use crate::state::{Config, CONFIG, DAO, HOOKS};
-use crate::ContractError;
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdResult,
+    to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Reply, Response, StdResult, SubMsg,
+    WasmMsg,
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
-use cw721_roles::msg::QueryExt;
+use cw721_roles::msg::{ExecuteExt, MetadataExt, QueryExt};
+use cw_utils::parse_reply_instantiate_data;
 use dao_interface::Admin;
 
-pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
+use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
+use crate::state::{Config, CONFIG, DAO, HOOKS, INITITIAL_NFTS};
+use crate::ContractError;
+
+pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-roles";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
+const MINT_NFT_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response<Empty>, ContractError> {
@@ -24,37 +31,57 @@ pub fn instantiate(
 
     DAO.save(deps.storage, &info.sender)?;
 
-    let owner = msg
-        .owner
-        .as_ref()
-        .map(|owner| match owner {
-            Admin::Address { addr } => deps.api.addr_validate(addr),
-            Admin::CoreModule {} => Ok(info.sender),
-        })
-        .transpose()?;
-
     match msg.nft_contract {
         NftContract::Existing { address } => {
             let config = Config {
-                owner: owner.clone(),
                 nft_address: deps.api.addr_validate(&address)?,
             };
             CONFIG.save(deps.storage, &config)?;
 
             Ok(Response::default()
                 .add_attribute("method", "instantiate")
-                .add_attribute("nft_contract", address)
-                .add_attribute(
-                    "owner",
-                    owner
-                        .map(|a| a.into_string())
-                        .unwrap_or_else(|| "None".to_string()),
-                ))
+                .add_attribute("nft_contract", address))
         }
-        NftContract::New { .. } => unimplemented!(),
+        NftContract::New {
+            code_id,
+            label,
+            name,
+            symbol,
+            initial_nfts,
+        } => {
+            // Check there is at least one NFT to initialize
+            if initial_nfts.is_empty() {
+                return Err(ContractError::NoInitialNfts {});
+            }
+
+            // Save initial NFTs for use in reply
+            INITITIAL_NFTS.save(deps.storage, &initial_nfts)?;
+
+            // Create instantiate submessage for NFT roles contract
+            let msg = SubMsg::reply_on_success(
+                WasmMsg::Instantiate {
+                    code_id,
+                    funds: vec![],
+                    admin: Some(info.sender.to_string()),
+                    label,
+                    msg: to_binary(&cw721_base::msg::InstantiateMsg {
+                        name,
+                        symbol,
+                        // Admin must be set to contract to mint initial NFTs
+                        minter: env.contract.address.to_string(),
+                    })?,
+                },
+                INSTANTIATE_NFT_CONTRACT_REPLY_ID,
+            );
+
+            Ok(Response::default()
+                .add_submessage(msg)
+                .set_data(to_binary(&initial_nfts)?))
+        }
     }
 }
 
+// TODO clean up
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -62,80 +89,10 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    match msg {
-        ExecuteMsg::UpdateConfig { owner } => execute_update_config(info, deps, owner),
-        ExecuteMsg::AddHook { addr } => execute_add_hook(deps, info, addr),
-        ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
-    }
+    unimplemented!()
 }
 
-pub fn execute_update_config(
-    info: MessageInfo,
-    deps: DepsMut,
-    new_owner: Option<String>,
-) -> Result<Response, ContractError> {
-    let mut config: Config = CONFIG.load(deps.storage)?;
-
-    if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::NotOwner {});
-    }
-
-    let new_owner = new_owner
-        .map(|new_owner| deps.api.addr_validate(&new_owner))
-        .transpose()?;
-
-    config.owner = new_owner;
-    CONFIG.save(deps.storage, &config)?;
-
-    Ok(Response::default()
-        .add_attribute("action", "update_config")
-        .add_attribute(
-            "owner",
-            config
-                .owner
-                .map(|a| a.to_string())
-                .unwrap_or_else(|| "none".to_string()),
-        ))
-}
-
-// TODO maybe remove? When would these fire?
-pub fn execute_add_hook(
-    deps: DepsMut,
-    info: MessageInfo,
-    addr: String,
-) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::NotOwner {});
-    }
-
-    let hook = deps.api.addr_validate(&addr)?;
-    HOOKS.add_hook(deps.storage, hook)?;
-
-    Ok(Response::default()
-        .add_attribute("action", "add_hook")
-        .add_attribute("hook", addr))
-}
-
-// TODO maybe remove? When would these fire?
-pub fn execute_remove_hook(
-    deps: DepsMut,
-    info: MessageInfo,
-    addr: String,
-) -> Result<Response, ContractError> {
-    let config: Config = CONFIG.load(deps.storage)?;
-    if config.owner.map_or(true, |owner| owner != info.sender) {
-        return Err(ContractError::NotOwner {});
-    }
-
-    let hook = deps.api.addr_validate(&addr)?;
-    HOOKS.remove_hook(deps.storage, hook)?;
-
-    Ok(Response::default()
-        .add_attribute("action", "remove_hook")
-        .add_attribute("hook", addr))
-}
-
+// TODO maybe add NFT Contract query?
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -209,4 +166,78 @@ pub fn query_hooks(deps: Deps) -> StdResult<Binary> {
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
     let info = cw2::get_contract_version(deps.storage)?;
     to_binary(&dao_interface::voting::InfoResponse { info })
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        INSTANTIATE_NFT_CONTRACT_REPLY_ID => {
+            let res = parse_reply_instantiate_data(msg);
+            match res {
+                Ok(res) => {
+                    let dao = DAO.load(deps.storage)?;
+                    let nft_contract = res.contract_address;
+
+                    // Save config
+                    let config = Config {
+                        nft_address: deps.api.addr_validate(&nft_contract)?,
+                    };
+                    CONFIG.save(deps.storage, &config)?;
+
+                    let initial_nfts = INITITIAL_NFTS.load(deps.storage)?;
+
+                    // Add mint submessages
+                    let mint_submessages: Vec<SubMsg> = initial_nfts
+                        .iter()
+                        .map(|nft| -> Result<SubMsg, ContractError> {
+                            Ok(SubMsg::new(WasmMsg::Execute {
+                                contract_addr: nft_contract.clone(),
+                                funds: vec![],
+                                msg: to_binary(&cw721_base::msg::ExecuteMsg::<
+                                    MetadataExt,
+                                    ExecuteExt,
+                                >::Mint {
+                                    token_id: nft.token_id.clone(),
+                                    owner: nft.owner.clone(),
+                                    token_uri: nft.token_uri.clone(),
+                                    extension: MetadataExt {
+                                        weight: nft.extension.weight,
+                                    },
+                                })?,
+                            }))
+                        })
+                        .flatten()
+                        .collect::<Vec<SubMsg>>();
+
+                    // Clear space
+                    INITITIAL_NFTS.remove(deps.storage);
+
+                    // Update minter message
+                    let update_minter_msg = WasmMsg::Execute {
+                        contract_addr: nft_contract.clone(),
+                        msg: to_binary(
+                            &cw721_base::msg::ExecuteMsg::<MetadataExt, ExecuteExt>::UpdateOwnership(cw721_base::Action::TransferOwnership {
+                                new_owner: dao.to_string(),
+                                expiry: None,
+                            }),
+                        )?,
+                        funds: vec![],
+                    };
+
+                    Ok(Response::default()
+                        .add_attribute("method", "instantiate")
+                        .add_attribute("nft_contract", nft_contract)
+                        .add_message(update_minter_msg)
+                        .add_submessages(mint_submessages))
+                }
+                Err(_) => Err(ContractError::NftInstantiateError {}),
+            }
+        }
+        // TODO maybe don't need this?
+        MINT_NFT_REPLY_ID => {
+            // Mint NFTs
+            unimplemented!()
+        }
+        _ => Err(ContractError::UnknownReplyId { id: msg.id }),
+    }
 }

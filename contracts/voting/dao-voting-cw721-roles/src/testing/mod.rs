@@ -8,34 +8,39 @@ use cw_multi_test::{App, Executor};
 use cw_utils::Duration;
 
 use dao_interface::Admin;
-use dao_testing::contracts::voting_cw721_staked_contract;
+use dao_testing::contracts::dao_voting_cw721_roles_contract;
 
-use crate::msg::{InstantiateMsg, NftContract};
+use crate::msg::{InstantiateMsg, NftContract, NftMintMsg};
 
-use self::instantiate::instantiate_cw721_base;
+use self::instantiate::instantiate_cw721_roles;
 
 /// Address used as the owner, instantiator, and minter.
 pub(crate) const CREATOR_ADDR: &str = "creator";
 
 pub(crate) struct CommonTest {
     app: App,
-    module: Addr,
-    nft: Addr,
+    module_addr: Addr,
+    cw721_addr: Addr,
+    module_id: u64,
+    cw721_id: u64,
 }
 
-pub(crate) fn setup_test(owner: Option<Admin>, unstaking_duration: Option<Duration>) -> CommonTest {
+pub(crate) fn setup_test(initial_nfts: Vec<NftMintMsg>) -> CommonTest {
     let mut app = App::default();
-    let module_id = app.store_code(voting_cw721_staked_contract());
+    let module_id = app.store_code(dao_voting_cw721_roles_contract());
 
-    let nft = instantiate_cw721_base(&mut app, CREATOR_ADDR, CREATOR_ADDR);
-    let module = app
+    let (cw721_addr, cw721_id) = instantiate_cw721_roles(&mut app, CREATOR_ADDR, CREATOR_ADDR);
+    let module_addr = app
         .instantiate_contract(
             module_id,
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
-                owner,
-                nft_contract: NftContract::Existing {
-                    address: nft.to_string(),
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "cw721-roles".to_string(),
+                    name: "Job Titles".to_string(),
+                    symbol: "TITLES".to_string(),
+                    initial_nfts,
                 },
             },
             &[],
@@ -43,7 +48,14 @@ pub(crate) fn setup_test(owner: Option<Admin>, unstaking_duration: Option<Durati
             None,
         )
         .unwrap();
-    CommonTest { app, module, nft }
+
+    CommonTest {
+        app,
+        module_addr,
+        module_id,
+        cw721_addr,
+        cw721_id,
+    }
 }
 
 // Advantage to using a macro for this is that the error trace links

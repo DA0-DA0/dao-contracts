@@ -31,6 +31,15 @@ pub fn cw721_base_contract() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+pub fn cw721_roles_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        cw721_roles::contract::execute,
+        cw721_roles::contract::instantiate,
+        cw721_roles::contract::query,
+    );
+    Box::new(contract)
+}
+
 pub fn cw20_stake_contract() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         cw20_stake::contract::execute,
@@ -135,6 +144,16 @@ pub fn dao_voting_cw4_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_cw4::contract::query,
     )
     .with_reply(dao_voting_cw4::contract::reply);
+    Box::new(contract)
+}
+
+pub fn dao_voting_cw721_roles_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        dao_voting_cw721_roles::contract::execute,
+        dao_voting_cw721_roles::contract::instantiate,
+        dao_voting_cw721_roles::contract::query,
+    )
+    .with_reply(dao_voting_cw721_roles::contract::reply);
     Box::new(contract)
 }
 
