@@ -1330,6 +1330,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "cwd-proposal-delegate"
+version = "1.0.0-beta"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-denom",
+ "cw-hooks",
+ "cw-multi-test",
+ "cw-paginate 2.0.0-beta",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw20-base",
+ "cw20-stake",
+ "cw3 0.16.0",
+ "cw4",
+ "cw4-group",
+ "cw721-base",
+ "dao-core",
+ "dao-interface",
+ "dao-macros",
+ "dao-pre-propose-base",
+ "dao-pre-propose-multiple",
+ "dao-proposal-hooks",
+ "dao-testing",
+ "dao-vote-hooks",
+ "dao-voting",
+ "dao-voting-cw20-balance",
+ "dao-voting-cw20-staked",
+ "dao-voting-cw4",
+ "dao-voting-cw721-staked",
+ "dao-voting-native-staked",
+ "rand",
+ "thiserror",
+ "voting",
+]
+
+[[package]]
 name = "dao-core"
 version = "2.1.0"
 dependencies = [
