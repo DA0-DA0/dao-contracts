@@ -1,0 +1,23 @@
+[package]
+name = "cw-verifier-middleware"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cosmwasm-std = { workspace = true}
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = {workspace = true}
+hex = { workspace = true }
+bip32 = { workspace = true }
+ripemd = { workspace = true }
+bech32 = { workspace = true }
+serde_json = { workspace = true}
+secp256k1 = { workspace = true }
+
+[dev-dependencies]
+secp256k1 = { workspace = true, features = ["rand-std", "bitcoin-hashes-std"] }
