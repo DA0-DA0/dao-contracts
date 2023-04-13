@@ -4,7 +4,7 @@ use voting::Vote;
 use super::suite::{Suite, SuiteBuilder};
 
 use crate::error::ContractError;
-use crate::msg::GaugeResponse;
+use crate::msg::{GaugeMigrationConfig, GaugeResponse};
 
 const EPOCH: u64 = 7 * 86_400;
 
@@ -24,6 +24,7 @@ fn create_gauge() {
             &[voter1, voter2],
             (1000, "ujuno"),
             None,
+            None,
         )
         .unwrap();
 
@@ -40,6 +41,7 @@ fn create_gauge() {
             max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
+            reset: None,
         }
     );
 }
@@ -58,6 +60,7 @@ fn gauge_can_upgrade_from_self() {
             gauge_contract.clone(),
             &["option1", "option2"],
             (1000, "ujuno"),
+            None,
             None,
         )
         .unwrap();
@@ -78,6 +81,7 @@ fn gauge_can_upgrade_from_self() {
             max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
+            reset: None,
         }
     );
 }
@@ -97,6 +101,7 @@ fn gauge_migrate_with_next_epochs() {
             &["option1", "option2"],
             (1000, "ujuno"),
             None,
+            None,
         )
         .unwrap();
 
@@ -114,6 +119,7 @@ fn gauge_migrate_with_next_epochs() {
             max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 7 * 86400,
+            reset: None,
         }
     );
 
@@ -123,7 +129,13 @@ fn gauge_migrate_with_next_epochs() {
     suite
         .auto_migrate_gauge(
             &gauge_contract,
-            vec![(gauge_id, suite.current_time() + 14 * 86400)],
+            vec![(
+                gauge_id,
+                GaugeMigrationConfig {
+                    next_epoch: Some(suite.current_time() + 14 * 86400),
+                    reset: None,
+                },
+            )],
         )
         .unwrap();
 
@@ -140,6 +152,7 @@ fn gauge_migrate_with_next_epochs() {
             max_available_percentage: None,
             is_stopped: false,
             next_epoch: suite.current_time() + 14 * 86400,
+            reset: None,
         }
     );
 
@@ -149,7 +162,13 @@ fn gauge_migrate_with_next_epochs() {
     let _err = suite
         .auto_migrate_gauge(
             &gauge_contract,
-            vec![(420, suite.current_time() + 14 * 86400)],
+            vec![(
+                420,
+                GaugeMigrationConfig {
+                    next_epoch: Some(suite.current_time() + 14 * 86400),
+                    reset: None,
+                },
+            )],
         )
         .unwrap_err();
 }
@@ -167,7 +186,7 @@ fn execute_gauge() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None)
+        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -269,6 +288,7 @@ fn query_last_execution() {
             &[voter1, voter2, gauge_contract.as_str()],
             (1000, "ujuno"),
             None,
+            None,
         )
         .unwrap();
     let gauge_id = 0;
@@ -361,7 +381,7 @@ fn execute_gauge_twice_same_epoch() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], (1000, "ujuno"), None) // reward per
+        .instantiate_adapter_and_return_config(&[voter1, voter2], (1000, "ujuno"), None, None) // reward per
         // epoch
         .unwrap();
     suite
@@ -472,7 +492,7 @@ fn execute_stopped_gauge() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None)
+        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -557,6 +577,7 @@ fn update_gauge() {
             &[voter1, voter2],
             (1000, "ujuno"),
             None,
+            None,
         )
         .unwrap();
 
@@ -565,6 +586,7 @@ fn update_gauge() {
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "uusdc"),
+            None,
             None,
         )
         .unwrap();
@@ -583,6 +605,7 @@ fn update_gauge() {
                 max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
+                reset: None,
             },
             GaugeResponse {
                 id: 1,
@@ -594,6 +617,7 @@ fn update_gauge() {
                 max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
+                reset: None,
             }
         ]
     );
@@ -630,6 +654,7 @@ fn update_gauge() {
                 max_available_percentage: new_max_available_percentage,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
+                reset: None,
             },
             GaugeResponse {
                 id: 1,
@@ -641,6 +666,7 @@ fn update_gauge() {
                 max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
+                reset: None,
             }
         ]
     );
@@ -672,6 +698,7 @@ fn update_gauge() {
                 max_available_percentage: new_max_available_percentage,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
+                reset: None,
             },
             GaugeResponse {
                 id: 1,
@@ -683,6 +710,7 @@ fn update_gauge() {
                 max_available_percentage: None,
                 is_stopped: false,
                 next_epoch: suite.current_time() + 7 * 86400,
+                reset: None,
             }
         ]
     );

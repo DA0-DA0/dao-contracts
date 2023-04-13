@@ -24,6 +24,9 @@ pub enum ContractError {
     #[error("Option {option} has been judged as invalid by gauge adapter of gauge ID {gauge_id}")]
     OptionInvalidByAdapter { option: String, gauge_id: u64 },
 
+    #[error("Option {option} has been judged as valid by gauge adapter of gauge ID {gauge_id} and cannot be removed")]
+    OptionValidByAdapter { option: String, gauge_id: u64 },
+
     #[error("Option {option} does not exists for gauge ID {gauge_id}")]
     OptionDoesNotExists { option: String, gauge_id: u64 },
 
@@ -34,8 +37,14 @@ pub enum ContractError {
         next_epoch: u64,
     },
 
+    #[error("Reset epoch has not passed yet")]
+    ResetEpochNotPassed {},
+
     #[error("Gauge ID {0} cannot execute because it is stopped")]
     GaugeStopped(u64),
+
+    #[error("Gauge ID {0} is currently resetting, please try again later")]
+    GaugeResetting(u64),
 
     #[error("Trying to remove vote that does not exists")]
     CannotRemoveNonexistingVote {},

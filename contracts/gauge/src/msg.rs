@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Decimal, Uint128};
 
-use crate::state::Vote;
+use crate::state::{Reset, Vote};
 use wynd_stake::hook::MemberChangedHookMsg;
 
 type GaugeId = u64;
@@ -34,6 +34,8 @@ pub struct GaugeConfig {
     pub max_options_selected: u32,
     // Any votes above that percentage will be discarded
     pub max_available_percentage: Option<Decimal>,
+    /// If set, the gauge can be reset periodically, every `reset_epoch` seconds.
+    pub reset_epoch: Option<u64>,
 }
 
 #[cw_serde]
@@ -58,12 +60,18 @@ pub enum ExecuteMsg {
     /// Or receive any more updates on MemberChangedHook.
     /// Ideally, this will allow for eventual deletion of all data on that gauge
     StopGauge { gauge: u64 },
+    /// Resets all votes on a given gauge if it is configured to be periodically reset and the epoch has passed.
+    /// One call to this will only clear `batch_size` votes to prevent gas exhaustion. Call repeatedly to clear all votes.
+    ResetGauge { gauge: u64, batch_size: u32 },
     // WISH: make this implicit - call it inside PlaceVote.
     // If not, I would just make it invisible to user in UI (smart client adds it if needed)
     /// Try to add an option. Error if no such gauge, or option already registered.
     /// Otherwise check adapter and error if invalid.
     /// Can be called by anyone, not just owner
     AddOption { gauge: u64, option: String },
+    /// Allows the owner to remove an option. This is useful if the option is no longer valid
+    /// or if the owner wants to remove all votes from a valid option.
+    RemoveOption { gauge: u64, option: String },
     /// Place your vote on the gauge. Can be updated anytime
     PlaceVotes {
         /// Gauge to vote on
@@ -137,6 +145,8 @@ pub struct GaugeResponse {
     pub is_stopped: bool,
     /// UNIX time (seconds) when next epoch may be executed. May be future or past
     pub next_epoch: u64,
+    /// Set this in migration if the gauge should be periodically reset
+    pub reset: Option<Reset>,
 }
 
 /// Information about one gauge
@@ -152,6 +162,9 @@ pub struct VoteInfo {
     pub voter: String,
     /// List of all votes with power
     pub votes: Vec<Vote>,
+    /// Timestamp when vote was cast.
+    /// Allow `None` for 0-cost migration from current data
+    pub cast: Option<u64>,
 }
 
 /// Information about a vote.
@@ -223,5 +236,22 @@ pub struct SampleGaugeMsgsResponse {
 
 #[cw_serde]
 pub struct MigrateMsg {
-    pub next_epochs: Option<Vec<(GaugeId, u64)>>,
+    pub gauge_config: Option<Vec<(GaugeId, GaugeMigrationConfig)>>,
+}
+
+#[cw_serde]
+#[derive(Default)]
+pub struct GaugeMigrationConfig {
+    /// When the next epoch should be executed
+    pub next_epoch: Option<u64>,
+    /// If set, the gauge will be reset periodically
+    pub reset: Option<ResetMigrationConfig>,
+}
+
+#[cw_serde]
+pub struct ResetMigrationConfig {
+    /// How often to reset the gauge (in seconds)
+    pub reset_epoch: u64,
+    /// When to start the first reset
+    pub next_reset: u64,
 }

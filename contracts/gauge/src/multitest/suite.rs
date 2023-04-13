@@ -16,11 +16,14 @@ use cw_proposal_single::{
 use cw_utils::Duration;
 use voting::{PercentageThreshold, Threshold, Vote};
 
-use super::adapter::{contract as adapter_contract, InstantiateMsg as AdapterInstantiateMsg};
+use super::adapter::{
+    contract as adapter_contract, ExecuteMsg as AdapterExecuteMsg,
+    InstantiateMsg as AdapterInstantiateMsg,
+};
 use crate::msg::{
-    ExecuteMsg, GaugeConfig, GaugeResponse, InstantiateMsg, LastExecutedSetResponse,
-    ListGaugesResponse, ListOptionsResponse, ListVotesResponse, MigrateMsg, QueryMsg,
-    SelectedSetResponse, VoteInfo, VoteResponse,
+    ExecuteMsg, GaugeConfig, GaugeMigrationConfig, GaugeResponse, InstantiateMsg,
+    LastExecutedSetResponse, ListGaugesResponse, ListOptionsResponse, ListVotesResponse,
+    MigrateMsg, QueryMsg, SelectedSetResponse, VoteInfo, VoteResponse,
 };
 
 type GaugeId = u64;
@@ -220,11 +223,11 @@ impl SuiteBuilder {
 
 pub struct Suite {
     pub owner: String,
-    app: App,
-    core: Addr,
+    pub app: App,
+    pub core: Addr,
     voting: Addr,
     proposal_single: Addr,
-    gauge_code_id: u64,
+    pub gauge_code_id: u64,
     gauge_adapter_code_id: u64,
 }
 
@@ -277,6 +280,56 @@ impl Suite {
             gauge.clone(),
             &ExecuteMsg::AddOption {
                 gauge: gauge_id,
+                option: option.into(),
+            },
+            &[],
+        )
+    }
+
+    pub fn remove_option(
+        &mut self,
+        gauge: &Addr,
+        voter: impl Into<String>,
+        gauge_id: u64,
+        option: impl Into<String>,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(voter),
+            gauge.clone(),
+            &ExecuteMsg::RemoveOption {
+                gauge: gauge_id,
+                option: option.into(),
+            },
+            &[],
+        )
+    }
+
+    /// Helper to remove an option from the test gauge adapter
+    pub fn invalidate_option(
+        &mut self,
+        gauge_adapter: &Addr,
+        option: impl Into<String>,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(self.owner.clone()),
+            gauge_adapter.clone(),
+            &AdapterExecuteMsg::InvalidateOption {
+                option: option.into(),
+            },
+            &[],
+        )
+    }
+
+    /// Helper to add an option to the test gauge adapter
+    pub fn add_valid_option(
+        &mut self,
+        gauge_adapter: &Addr,
+        option: impl Into<String>,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(self.owner.clone()),
+            gauge_adapter.clone(),
+            &AdapterExecuteMsg::AddValidOption {
                 option: option.into(),
             },
             &[],
@@ -468,11 +521,13 @@ impl Suite {
         options: &[&str],
         to_distribute: (u128, &str),
         max_available_percentage: impl Into<Option<Decimal>>,
+        reset_epoch: impl Into<Option<u64>>,
     ) -> AnyResult<Addr> {
         let option = self.instantiate_adapter_and_return_config(
             options,
             to_distribute,
             max_available_percentage,
+            reset_epoch,
         )?;
         let gauge_adapter = option.adapter.clone();
         self.app.execute_contract(
@@ -489,6 +544,7 @@ impl Suite {
         options: &[&str],
         to_distribute: (u128, &str),
         max_available_percentage: impl Into<Option<Decimal>>,
+        reset_epoch: impl Into<Option<u64>>,
     ) -> AnyResult<GaugeConfig> {
         let gauge_adapter = self.app.instantiate_contract(
             self.gauge_adapter_code_id,
@@ -509,6 +565,7 @@ impl Suite {
             min_percent_selected: Some(Decimal::percent(5)),
             max_options_selected: 10,
             max_available_percentage: max_available_percentage.into(),
+            reset_epoch: reset_epoch.into(),
         })
     }
 
@@ -533,6 +590,21 @@ impl Suite {
                 max_options_selected: max_options_selected.into(),
                 max_available_percentage: max_available_percentage.into(),
             },
+            &[],
+        )
+    }
+
+    pub fn reset_gauge(
+        &mut self,
+        sender: &str,
+        gauge_contract: &Addr,
+        gauge: u64,
+        batch_size: u32,
+    ) -> AnyResult<AppResponse> {
+        self.app.execute_contract(
+            Addr::unchecked(sender),
+            gauge_contract.clone(),
+            &ExecuteMsg::ResetGauge { gauge, batch_size },
             &[],
         )
     }
@@ -593,14 +665,15 @@ impl Suite {
     pub fn auto_migrate_gauge(
         &mut self,
         gauge: &Addr,
-        next_epochs: impl Into<Option<Vec<(GaugeId, u64)>>>,
+        gauge_config: impl Into<Option<Vec<(GaugeId, GaugeMigrationConfig)>>>,
     ) -> AnyResult<AppResponse> {
         let sender = Addr::unchecked(&self.owner);
+
         self.app.migrate_contract(
             sender,
             gauge.clone(),
             &MigrateMsg {
-                next_epochs: next_epochs.into(),
+                gauge_config: gauge_config.into(),
             },
             self.gauge_code_id,
         )

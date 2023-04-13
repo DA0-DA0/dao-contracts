@@ -37,11 +37,12 @@ fn add_option() {
 
     let gauge_contract = proposal_modules[0].clone();
 
-    suite
+    let gauge_adapter = suite
         .instantiate_adapter_and_create_gauge(
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
             None,
         )
         .unwrap();
@@ -51,6 +52,14 @@ fn add_option() {
     // gauge returns list all options; it does query adapter at initialization
     let options = suite.query_list_options(&gauge_contract, gauge_id).unwrap();
     assert_eq!(options.len(), 2);
+
+    // add more valid options to gauge adapter
+    suite
+        .add_valid_option(&gauge_adapter, "addedoption1")
+        .unwrap();
+    suite
+        .add_valid_option(&gauge_adapter, "addedoption2")
+        .unwrap();
 
     // Voting members can add options
     suite
@@ -71,6 +80,10 @@ fn add_option() {
         ]
     );
 
+    // add another valid option to gauge adapter
+    suite
+        .add_valid_option(&gauge_adapter, "addedoption3")
+        .unwrap();
     // Non-voting members cannot add options
     let err = suite
         .add_option(&gauge_contract, "random_voter", gauge_id, "addedoption3")
@@ -81,17 +94,140 @@ fn add_option() {
     );
 }
 
-fn simple_vote(voter: &str, option: &str, percentage: u64) -> VoteInfo {
+#[test]
+fn remove_option() {
+    let owner = "owner";
+    let voter1 = "voter1";
+    let voter2 = "voter2";
+    let mut suite = SuiteBuilder::new()
+        .with_voting_members(&[(voter1, 100), (voter2, 200)])
+        .build();
+
+    suite.next_block();
+    suite
+        .propose_update_proposal_module(voter1.to_string(), None)
+        .unwrap();
+
+    suite.next_block();
+    let proposal = suite.list_proposals().unwrap()[0];
+    suite
+        .place_vote_single(voter1, proposal, Vote::Yes)
+        .unwrap();
+    suite
+        .place_vote_single(voter2, proposal, Vote::Yes)
+        .unwrap();
+
+    suite.next_block();
+    suite
+        .execute_single_proposal(voter1.to_string(), proposal)
+        .unwrap();
+    let proposal_modules = suite.query_proposal_modules().unwrap();
+
+    let gauge_contract = proposal_modules[0].clone();
+
+    let adapter = suite
+        .instantiate_adapter_and_create_gauge(
+            gauge_contract.clone(),
+            &[voter1, voter2],
+            (1000, "ujuno"),
+            None,
+            None,
+        )
+        .unwrap();
+
+    let gauge_id = 0; // first created gauge
+
+    // gauge returns list all options; it does query adapter at initialization
+    let options = suite.query_list_options(&gauge_contract, gauge_id).unwrap();
+    assert_eq!(
+        options,
+        vec![
+            ("voter1".to_owned(), Uint128::zero()),
+            ("voter2".to_owned(), Uint128::zero())
+        ]
+    );
+
+    // add new valid options to the gauge adapter
+    suite.add_valid_option(&adapter, "addedoption1").unwrap();
+    suite.add_valid_option(&adapter, "addedoption2").unwrap();
+
+    // Voting members can add options
+    suite
+        .add_option(&gauge_contract, voter1, gauge_id, "addedoption1")
+        .unwrap();
+    suite
+        .add_option(&gauge_contract, voter2, gauge_id, "addedoption2")
+        .unwrap();
+    let options = suite.query_list_options(&gauge_contract, gauge_id).unwrap();
+    // added options are automatically voted for by creators
+    assert_eq!(
+        options,
+        vec![
+            ("addedoption1".to_owned(), Uint128::zero()),
+            ("addedoption2".to_owned(), Uint128::zero()),
+            ("voter1".to_owned(), Uint128::zero()),
+            ("voter2".to_owned(), Uint128::zero())
+        ]
+    );
+
+    // owner can remove an option that has been added already
+    suite
+        .remove_option(&gauge_contract, owner, gauge_id, "addedoption1")
+        .unwrap();
+
+    // Anyone else cannot remove options
+    let err = suite
+        .remove_option(&gauge_contract, voter1, gauge_id, "addedoption2")
+        .unwrap_err();
+
+    assert_eq!(ContractError::Unauthorized {}, err.downcast().unwrap());
+
+    let options = suite.query_list_options(&gauge_contract, gauge_id).unwrap();
+    // one has been removed
+    assert_eq!(
+        options,
+        vec![
+            ("addedoption2".to_owned(), Uint128::zero()),
+            ("voter1".to_owned(), Uint128::zero()),
+            ("voter2".to_owned(), Uint128::zero())
+        ]
+    );
+
+    suite.invalidate_option(&adapter, "addedoption2").unwrap();
+
+    // owner can remove an option that is no longer valid
+    suite
+        .remove_option(&gauge_contract, owner, gauge_id, "addedoption2")
+        .unwrap();
+
+    // Both options are now removed
+    let options = suite.query_list_options(&gauge_contract, gauge_id).unwrap();
+    assert_eq!(
+        options,
+        vec![
+            ("voter1".to_owned(), Uint128::zero()),
+            ("voter2".to_owned(), Uint128::zero())
+        ]
+    );
+}
+
+fn simple_vote(
+    voter: &str,
+    option: &str,
+    percentage: u64,
+    cast: impl Into<Option<u64>>,
+) -> VoteInfo {
     VoteInfo {
         voter: voter.to_string(),
         votes: vec![crate::state::Vote {
             option: option.to_string(),
             weight: Decimal::percent(percentage),
         }],
+        cast: cast.into(),
     }
 }
 
-fn multi_vote(voter: &str, votes: &[(&str, u64)]) -> VoteInfo {
+fn multi_vote(voter: &str, votes: &[(&str, u64)], cast: impl Into<Option<u64>>) -> VoteInfo {
     let votes = votes
         .iter()
         .map(|(opt, percentage)| crate::state::Vote {
@@ -102,6 +238,7 @@ fn multi_vote(voter: &str, votes: &[(&str, u64)]) -> VoteInfo {
     VoteInfo {
         voter: voter.to_string(),
         votes,
+        cast: cast.into(),
     }
 }
 
@@ -135,11 +272,12 @@ fn vote_for_option() {
 
     let gauge_contract = proposal_modules[0].clone();
 
-    suite
+    let gauge_adapter = suite
         .instantiate_adapter_and_create_gauge(
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
+            None,
             None,
         )
         .unwrap();
@@ -157,7 +295,7 @@ fn vote_for_option() {
         )
         .unwrap();
     assert_eq!(
-        simple_vote(voter1, voter1, 90),
+        simple_vote(voter1, voter1, 90, suite.current_time()),
         suite
             .query_vote(&gauge_contract, gauge_id, voter1)
             .unwrap()
@@ -166,6 +304,10 @@ fn vote_for_option() {
     // check tally is proper
     let selected_set = suite.query_selected_set(&gauge_contract, gauge_id).unwrap();
     assert_eq!(selected_set, vec![(voter1.to_string(), Uint128::new(90))]);
+
+    // add new valid options to the gauge adapter
+    suite.add_valid_option(&gauge_adapter, "option1").unwrap();
+    suite.add_valid_option(&gauge_adapter, "option2").unwrap();
 
     // change vote for option added through gauge
     suite
@@ -188,8 +330,12 @@ fn vote_for_option() {
         .unwrap();
     assert_eq!(
         vec![
-            simple_vote(voter1, voter1, 90),
-            multi_vote(voter2, &[("option1", 50), ("option2", 50)]),
+            simple_vote(voter1, voter1, 90, suite.current_time()),
+            multi_vote(
+                voter2,
+                &[("option1", 50), ("option2", 50)],
+                suite.current_time()
+            ),
         ],
         suite.query_list_votes(&gauge_contract, gauge_id).unwrap()
     );
@@ -213,8 +359,8 @@ fn vote_for_option() {
         .unwrap();
     assert_eq!(
         vec![
-            simple_vote(voter1, "option1", 90),
-            simple_vote(voter2, "option1", 90),
+            simple_vote(voter1, "option1", 90, suite.current_time()),
+            simple_vote(voter2, "option1", 90, suite.current_time()),
         ],
         suite.query_list_votes(&gauge_contract, gauge_id).unwrap()
     );
@@ -273,6 +419,7 @@ fn remove_vote() {
             &[voter1, voter2],
             (1000, "ujuno"),
             None,
+            None,
         )
         .unwrap();
 
@@ -298,8 +445,8 @@ fn remove_vote() {
         .unwrap();
     assert_eq!(
         vec![
-            simple_vote(voter1, voter1, 100),
-            simple_vote(voter2, voter1, 100),
+            simple_vote(voter1, voter1, 100, suite.current_time()),
+            simple_vote(voter2, voter1, 100, suite.current_time()),
         ],
         suite.query_list_votes(&gauge_contract, gauge_id).unwrap()
     );
@@ -309,7 +456,7 @@ fn remove_vote() {
         .place_vote(&gauge_contract, voter1.to_owned(), gauge_id, None)
         .unwrap();
     assert_eq!(
-        vec![simple_vote(voter2, voter1, 100)],
+        vec![simple_vote(voter2, voter1, 100, suite.current_time())],
         suite.query_list_votes(&gauge_contract, gauge_id).unwrap()
     );
     assert_eq!(
@@ -318,7 +465,7 @@ fn remove_vote() {
     );
     assert_eq!(
         suite.query_vote(&gauge_contract, gauge_id, voter2).unwrap(),
-        Some(simple_vote(voter2, voter1, 100)),
+        Some(simple_vote(voter2, voter1, 100, suite.current_time())),
     );
 
     // remove nonexisting vote
@@ -343,7 +490,7 @@ fn votes_stays_the_same_after_execution() {
 
     suite.next_block();
     let gauge_config = suite
-        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None)
+        .instantiate_adapter_and_return_config(&[voter1, voter2], reward_to_distribute, None, None)
         .unwrap();
     suite
         .propose_update_proposal_module(voter1.to_string(), vec![gauge_config])
@@ -394,8 +541,8 @@ fn votes_stays_the_same_after_execution() {
 
     assert_eq!(
         vec![
-            simple_vote(voter1, voter1, 100),
-            simple_vote(voter2, voter1, 100)
+            simple_vote(voter1, voter1, 100, suite.current_time() - EPOCH),
+            simple_vote(voter2, voter1, 100, suite.current_time() - EPOCH)
         ],
         suite.query_list_votes(&gauge_contract, gauge_id).unwrap()
     );
@@ -405,18 +552,28 @@ fn votes_stays_the_same_after_execution() {
 
     assert_eq!(
         vec![
-            simple_vote(voter1, voter1, 100),
-            simple_vote(voter2, voter1, 100)
+            simple_vote(voter1, voter1, 100, suite.current_time() - EPOCH),
+            simple_vote(voter2, voter1, 100, suite.current_time() - EPOCH)
         ],
         suite.query_list_votes(&gauge_contract, gauge_id).unwrap()
     );
     assert_eq!(
         suite.query_vote(&gauge_contract, gauge_id, voter1).unwrap(),
-        Some(simple_vote(voter1, voter1, 100)),
+        Some(simple_vote(
+            voter1,
+            voter1,
+            100,
+            suite.current_time() - EPOCH
+        )),
     );
     assert_eq!(
         suite.query_vote(&gauge_contract, gauge_id, voter2).unwrap(),
-        Some(simple_vote(voter2, voter1, 100)),
+        Some(simple_vote(
+            voter2,
+            voter1,
+            100,
+            suite.current_time() - EPOCH
+        )),
     );
 }
 
@@ -450,12 +607,13 @@ fn vote_for_max_capped_option() {
 
     let gauge_contract = proposal_modules[0].clone();
 
-    suite
+    let gauge_adapter = suite
         .instantiate_adapter_and_create_gauge(
             gauge_contract.clone(),
             &[voter1, voter2],
             (1000, "ujuno"),
             Some(Decimal::percent(10)),
+            None,
         )
         .unwrap();
 
@@ -463,6 +621,10 @@ fn vote_for_max_capped_option() {
 
     // wait until epoch passes
     suite.advance_time(EPOCH);
+
+    // add more valid options to gauge adapter
+    suite.add_valid_option(&gauge_adapter, "option1").unwrap();
+    suite.add_valid_option(&gauge_adapter, "option2").unwrap();
 
     // change vote for option added through gauge
     suite
@@ -493,8 +655,8 @@ fn vote_for_max_capped_option() {
 
     assert_eq!(
         vec![
-            multi_vote(voter1, &[("option1", 100)]),
-            multi_vote(voter2, &[("option2", 10)]),
+            multi_vote(voter1, &[("option1", 100)], suite.current_time()),
+            multi_vote(voter2, &[("option2", 10)], suite.current_time()),
         ],
         suite.query_list_votes(&gauge_contract, gauge_id).unwrap()
     );
