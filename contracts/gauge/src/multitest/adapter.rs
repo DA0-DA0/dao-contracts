@@ -22,6 +22,12 @@ pub struct InstantiateMsg {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ExecuteMsg {
+    InvalidateOption { option: String },
+    AddValidOption { option: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct EmptyMsg {}
 
 const OPTIONS: Map<String, bool> = Map::new("options");
@@ -41,11 +47,19 @@ fn instantiate(
 }
 
 fn execute(
-    _deps: DepsMut,
+    deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: EmptyMsg,
+    msg: ExecuteMsg,
 ) -> Result<Response, StdError> {
+    match msg {
+        ExecuteMsg::InvalidateOption { option } => {
+            OPTIONS.remove(deps.storage, option);
+        }
+        ExecuteMsg::AddValidOption { option } => {
+            OPTIONS.save(deps.storage, option, &true)?;
+        }
+    }
     Ok(Response::new())
 }
 
@@ -56,9 +70,9 @@ fn query(deps: Deps, _env: Env, msg: AdapterQueryMsg) -> Result<Binary, StdError
                 .keys(deps.storage, None, None, Order::Ascending)
                 .collect::<StdResult<Vec<_>>>()?,
         }),
-        AdapterQueryMsg::CheckOption { option: _ } => {
-            to_binary(&CheckOptionResponse { valid: true })
-        }
+        AdapterQueryMsg::CheckOption { option } => to_binary(&CheckOptionResponse {
+            valid: OPTIONS.has(deps.storage, option),
+        }),
         AdapterQueryMsg::SampleGaugeMsgs { selected } => {
             let to_distribute = TO_DISTRIBUTE.load(deps.storage)?;
             let mut weights_sum = Decimal::zero();

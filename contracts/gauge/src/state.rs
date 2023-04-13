@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, Deps, Order, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, Env, Order, StdResult, Storage, Uint128};
 use cw_storage_plus::{Bound, Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 use cw_utils::maybe_addr;
 
@@ -62,6 +62,28 @@ pub struct Gauge {
     pub next_epoch: u64,
     /// The last set of options selected by the gauge, `None` before the first execution
     pub last_executed_set: Option<Vec<(String, Uint128)>>,
+    /// Set this in migration if the gauge should be periodically reset
+    pub reset: Option<Reset>,
+}
+
+#[cw_serde]
+pub struct Reset {
+    /// until the first reset, this is None - needed for 0-cost migration from current state
+    pub last: Option<u64>,
+    /// seconds between reset
+    pub reset_each: u64,
+    /// next time we can reset
+    pub next: u64,
+}
+
+impl Gauge {
+    /// Returns `true` if the gauge is currently being reset
+    pub fn is_resetting(&self) -> bool {
+        self.reset
+            .as_ref()
+            .map(|r| r.last == Some(r.next))
+            .unwrap_or_default()
+    }
 }
 
 #[cw_serde]
@@ -72,6 +94,28 @@ pub struct WeightedVotes {
     pub power: Uint128,
     /// the user's votes for this gauge
     pub votes: Vec<Vote>,
+    /// Timestamp when vote was cast.
+    /// Allow `None` for 0-cost migration from current data
+    pub cast: Option<u64>,
+}
+
+impl WeightedVotes {
+    /// Returns `true` if the vote is
+    pub fn is_expired(&self, gauge: &Gauge) -> bool {
+        // check if the vote is older than the last reset
+        match &gauge.reset {
+            Some(Reset {
+                last: Some(expired),
+                ..
+            }) => {
+                // votes with no timestamp are always considered too old once a reset happened
+                // (they are legacy votes pre-first reset)
+                self.cast.unwrap_or_default() < *expired
+            }
+            // everything is valid before the first reset (last = `None`) or if the gauge is not resettable
+            _ => false,
+        }
+    }
 }
 
 impl Default for WeightedVotes {
@@ -80,6 +124,7 @@ impl Default for WeightedVotes {
             gauge_id: 0,
             power: Uint128::zero(),
             votes: vec![],
+            cast: None,
         }
     }
 }
@@ -130,6 +175,7 @@ impl<'a> Votes<'a> {
     pub fn set_votes(
         &self,
         storage: &mut dyn Storage,
+        env: &Env,
         voter: &'a Addr,
         gauge_id: GaugeId,
         votes: Vec<Vote>,
@@ -143,6 +189,7 @@ impl<'a> Votes<'a> {
                 gauge_id,
                 power,
                 votes,
+                cast: Some(env.block.time.seconds()),
             },
         )
     }
@@ -206,17 +253,24 @@ impl<'a> Votes<'a> {
         let addr = maybe_addr(deps.api, start_after)?;
         let start = addr.as_ref().map(|a| Bound::exclusive((a, gauge_id)));
 
+        let gauge = GAUGES.load(deps.storage, gauge_id)?;
+
         self.votes
             .idx
             .vote
             .prefix(gauge_id)
             .range(deps.storage, start, None, Order::Ascending)
             .take(limit)
+            .filter(|r| match r {
+                Ok((_, v)) => !v.is_expired(&gauge), // filter out expired votes
+                Err(_) => true,                      // keep the error
+            })
             .map(|r| {
                 let ((voter, _gauge), votes) = r?;
                 Ok(VoteInfo {
                     voter: voter.into_string(),
                     votes: votes.votes,
+                    cast: votes.cast,
                 })
             })
             // NIT: collect and into_iter is a bit inefficient... guess it was too complex/confusing otherwise, so fine
@@ -244,6 +298,25 @@ pub fn update_tally(
     new_vote: u128,
 ) -> StdResult<()> {
     update_tallies(storage, gauge, vec![(option, old_vote, new_vote)])
+}
+
+/// Completely removes the given option from the tally.
+pub fn remove_tally(storage: &mut dyn Storage, gauge: GaugeId, option: &str) -> StdResult<()> {
+    let old_vote = TALLY.may_load(storage, (gauge, option))?;
+
+    // update main index
+    TALLY.remove(storage, (gauge, option));
+
+    if let Some(old_vote) = old_vote {
+        let total_cast = TOTAL_CAST.may_load(storage, gauge)?.unwrap_or_default();
+        // update total cast
+        TOTAL_CAST.save(storage, gauge, &(total_cast - old_vote))?;
+
+        // update sorted index
+        OPTION_BY_POINTS.remove(storage, (gauge, old_vote, option));
+    }
+
+    Ok(())
 }
 
 /// Updates the tally for one option.
@@ -289,7 +362,7 @@ mod tests {
     use super::*;
     use cosmwasm_std::Order;
 
-    use cosmwasm_std::testing::mock_dependencies;
+    use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
     const GAUGE: u64 = 2;
 
@@ -345,17 +418,41 @@ mod tests {
         assert_eq!(total, 750u128);
     }
 
-    fn to_vote_info(voter: &Addr, votes: &[Vote]) -> VoteInfo {
+    fn to_vote_info(voter: &Addr, votes: &[Vote], cast: impl Into<Option<u64>>) -> VoteInfo {
         VoteInfo {
             voter: voter.to_string(),
             votes: votes.to_vec(),
+            cast: cast.into(),
         }
     }
 
     #[test]
     fn votes_works() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
         let votes = votes();
+
+        // setup gauges
+        for gauge_id in 1..=3 {
+            GAUGES
+                .save(
+                    &mut deps.storage,
+                    gauge_id,
+                    &Gauge {
+                        title: "test".to_string(),
+                        adapter: Addr::unchecked("gauge_adapter"),
+                        epoch: 100,
+                        min_percent_selected: None,
+                        max_options_selected: 10,
+                        max_available_percentage: None,
+                        is_stopped: false,
+                        next_epoch: env.block.time.seconds(),
+                        last_executed_set: None,
+                        reset: None,
+                    },
+                )
+                .unwrap();
+        }
 
         let user1 = Addr::unchecked("user1");
         let votes1 = vec![Vote {
@@ -366,6 +463,7 @@ mod tests {
             gauge_id: 1,
             power: Uint128::new(3),
             votes: votes1.clone(),
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -381,6 +479,7 @@ mod tests {
             gauge_id: 1,
             power: Uint128::new(6),
             votes: votes2.clone(),
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -396,6 +495,7 @@ mod tests {
             gauge_id: 1,
             power: Uint128::new(9),
             votes: votes3.clone(),
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -410,6 +510,7 @@ mod tests {
             gauge_id: 2,
             power: Uint128::new(12),
             votes: votes4,
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -424,6 +525,7 @@ mod tests {
             gauge_id: 3,
             power: Uint128::new(15),
             votes: votes5,
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -439,9 +541,9 @@ mod tests {
         assert_eq!(
             result,
             vec![
-                to_vote_info(&user1, &votes1),
-                to_vote_info(&user2, &votes2),
-                to_vote_info(&user3, &votes3),
+                to_vote_info(&user1, &votes1, env.block.time.seconds()),
+                to_vote_info(&user2, &votes2, env.block.time.seconds()),
+                to_vote_info(&user3, &votes3, env.block.time.seconds()),
             ]
         );
 
@@ -454,9 +556,29 @@ mod tests {
     #[test]
     fn query_votes_by_gauge_paginated() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
         let votes = votes();
 
         let gauge_id = 1;
+
+        GAUGES
+            .save(
+                &mut deps.storage,
+                gauge_id,
+                &Gauge {
+                    title: "test".to_string(),
+                    adapter: Addr::unchecked("gauge_adapter"),
+                    epoch: 100,
+                    min_percent_selected: None,
+                    max_options_selected: 10,
+                    max_available_percentage: None,
+                    is_stopped: false,
+                    next_epoch: env.block.time.seconds(),
+                    last_executed_set: None,
+                    reset: None,
+                },
+            )
+            .unwrap();
 
         let user1 = Addr::unchecked("user1");
         let votes1 = vec![Vote {
@@ -467,6 +589,7 @@ mod tests {
             gauge_id: 1,
             power: Uint128::new(3),
             votes: votes1.clone(),
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -482,6 +605,7 @@ mod tests {
             gauge_id: 1,
             power: Uint128::new(6),
             votes: votes2.clone(),
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -497,6 +621,7 @@ mod tests {
             gauge_id: 1,
             power: Uint128::new(9),
             votes: votes3.clone(),
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -509,7 +634,10 @@ mod tests {
             .unwrap();
         assert_eq!(
             result,
-            vec![to_vote_info(&user1, &votes1), to_vote_info(&user2, &votes2)]
+            vec![
+                to_vote_info(&user1, &votes1, env.block.time.seconds()),
+                to_vote_info(&user2, &votes2, env.block.time.seconds())
+            ]
         );
 
         // start from second user (start_after user1)
@@ -518,13 +646,17 @@ mod tests {
             .unwrap();
         assert_eq!(
             result,
-            vec![to_vote_info(&user2, &votes2), to_vote_info(&user3, &votes3)]
+            vec![
+                to_vote_info(&user2, &votes2, env.block.time.seconds()),
+                to_vote_info(&user3, &votes3, env.block.time.seconds())
+            ]
         );
     }
 
     #[test]
     fn query_votes_by_user_paginated() {
         let mut deps = mock_dependencies();
+        let env = mock_env();
         let votes = votes();
         let user1 = Addr::unchecked("user1");
 
@@ -535,6 +667,7 @@ mod tests {
                 option: "someoption".to_owned(),
                 weight: Decimal::percent(100),
             }],
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -548,6 +681,7 @@ mod tests {
                 option: "otheroption".to_owned(),
                 weight: Decimal::percent(100),
             }],
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes
@@ -561,6 +695,7 @@ mod tests {
                 option: "otheroption".to_owned(),
                 weight: Decimal::percent(100),
             }],
+            cast: Some(env.block.time.seconds()),
         };
         votes
             .votes

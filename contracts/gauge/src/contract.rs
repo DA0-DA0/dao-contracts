@@ -13,7 +13,6 @@ use cw_storage_plus::Bound;
 use cw_utils::ensure_from_older_version;
 use wynd_stake::hook::MemberDiff;
 
-use crate::error::ContractError;
 use crate::msg::{
     AdapterQueryMsg, AllOptionsResponse, CheckOptionResponse, ExecuteMsg, GaugeConfig,
     GaugeResponse, InstantiateMsg, ListGaugesResponse, ListOptionsResponse, ListVotesResponse,
@@ -23,8 +22,7 @@ use crate::state::{
     fetch_last_id, update_tally, votes, Config, Gauge, GaugeId, CONFIG, GAUGES, OPTION_BY_POINTS,
     TALLY, TOTAL_CAST,
 };
-
-use semver::Version;
+use crate::{error::ContractError, state::Reset};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:gauge";
@@ -86,11 +84,17 @@ pub fn execute(
             max_available_percentage,
         ),
         ExecuteMsg::StopGauge { gauge } => execute::stop_gauge(deps, info.sender, gauge),
+        ExecuteMsg::ResetGauge { gauge, batch_size } => {
+            execute::reset_gauge(deps, env, gauge, batch_size)
+        }
         ExecuteMsg::AddOption { gauge, option } => {
             execute::add_option(deps, info.sender, gauge, option, true)
         }
+        ExecuteMsg::RemoveOption { gauge, option } => {
+            execute::remove_option(deps, info.sender, gauge, option)
+        }
         ExecuteMsg::PlaceVotes { gauge, votes } => {
-            execute::place_votes(deps, info.sender, gauge, votes)
+            execute::place_votes(deps, env, info.sender, gauge, votes)
         }
         ExecuteMsg::Execute { gauge } => execute::execute(deps, env, gauge),
     }
@@ -98,7 +102,7 @@ pub fn execute(
 
 mod execute {
     use super::*;
-    use crate::state::{update_tallies, Vote};
+    use crate::state::{remove_tally, update_tallies, Reset, Vote};
     use std::collections::HashMap;
 
     pub fn member_changed(
@@ -112,6 +116,7 @@ mod execute {
         }
 
         let mut response = Response::new().add_attribute("action", "member_changed_hook");
+        let mut gauges = HashMap::new();
 
         for diff in diffs {
             response = response.add_attribute("member", &diff.key);
@@ -125,6 +130,15 @@ mod execute {
                 // find change of vote powers
                 let old = diff.old.unwrap_or_default();
                 let new = diff.new.unwrap_or_default();
+
+                // load gauge if not already loaded
+                let gauge = gauges
+                    .entry(vote.gauge_id)
+                    .or_insert_with(|| GAUGES.load(deps.storage, vote.gauge_id).unwrap());
+
+                if vote.is_expired(gauge) {
+                    continue;
+                }
 
                 // calculate updates and adjust tallies
                 let updates: Vec<_> = vote
@@ -164,7 +178,7 @@ mod execute {
 
         Ok(Response::new()
             .add_attribute("action", "create_gauge")
-            .add_attribute("adapter", &adapter))
+            .add_attribute("adapter", adapter))
     }
 
     pub fn attach_gauge(
@@ -177,6 +191,7 @@ mod execute {
             min_percent_selected,
             max_options_selected,
             max_available_percentage,
+            reset_epoch,
         }: GaugeConfig,
     ) -> Result<Addr, ContractError> {
         let adapter = deps.api.addr_validate(&adapter)?;
@@ -202,6 +217,11 @@ mod execute {
             is_stopped: false,
             next_epoch: env.block.time.seconds() + epoch_size,
             last_executed_set: None,
+            reset: reset_epoch.map(|r| Reset {
+                last: None,
+                reset_each: r,
+                next: env.block.time.plus_seconds(r).seconds(),
+            }),
         };
         let last_id: GaugeId = fetch_last_id(deps.storage)?;
         GAUGES.save(deps.storage, last_id, &gauge)?;
@@ -295,6 +315,76 @@ mod execute {
             .add_attribute("gauge_id", gauge_id.to_string()))
     }
 
+    pub fn remove_option(
+        deps: DepsMut,
+        sender: Addr,
+        gauge_id: GaugeId,
+        option: String,
+    ) -> Result<Response, ContractError> {
+        // check if such option even exists
+        if !TALLY.has(deps.as_ref().storage, (gauge_id, &option)) {
+            return Err(ContractError::OptionDoesNotExists { option, gauge_id });
+        };
+
+        // only owner can remove option for now
+        if sender != CONFIG.load(deps.storage)?.owner {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        remove_tally(deps.storage, gauge_id, &option)?;
+
+        Ok(Response::new()
+            .add_attribute("action", "remove_option")
+            .add_attribute("sender", &sender)
+            .add_attribute("gauge_id", gauge_id.to_string())
+            .add_attribute("option", option))
+    }
+
+    pub fn reset_gauge(
+        deps: DepsMut,
+        env: Env,
+        gauge_id: GaugeId,
+        batch_size: u32,
+    ) -> Result<Response, ContractError> {
+        let mut gauge = GAUGES.load(deps.storage, gauge_id)?;
+        match gauge.reset {
+            Some(ref mut reset) if reset.next <= env.block.time.seconds() => {
+                reset.last = Some(reset.next);
+
+                // remove all options from the gauge
+                let keys = OPTION_BY_POINTS
+                    .sub_prefix(gauge_id)
+                    .keys(deps.storage, None, None, Order::Ascending)
+                    .take(batch_size as usize)
+                    .collect::<StdResult<Vec<_>>>()?;
+                for (points, option) in &keys {
+                    OPTION_BY_POINTS.remove(deps.storage, (gauge_id, *points, option));
+                    OPTION_BY_POINTS.save(deps.storage, (gauge_id, 0, option), &1)?;
+                    TALLY.save(deps.storage, (gauge_id, option), &0)?;
+                }
+
+                // if this is the last batch, update the reset epoch
+                if (keys.len() as u32) < batch_size {
+                    // removing total cast only once at the end to save gas
+                    TOTAL_CAST.save(deps.storage, gauge_id, &0)?;
+                    reset.next += reset.reset_each;
+                }
+            }
+            Some(_) => {
+                return Err(ContractError::ResetEpochNotPassed {});
+            }
+            None => {
+                return Err(ContractError::Unauthorized {});
+            }
+        }
+
+        GAUGES.save(deps.storage, gauge_id, &gauge)?;
+
+        Ok(Response::new()
+            .add_attribute("action", "reset_gauge")
+            .add_attribute("gauge_id", gauge_id.to_string()))
+    }
+
     pub fn add_option(
         deps: DepsMut,
         sender: Addr,
@@ -356,12 +446,18 @@ mod execute {
 
     pub fn place_votes(
         deps: DepsMut,
+        env: Env,
         sender: Addr,
         gauge_id: GaugeId,
         new_votes: Option<Vec<Vote>>,
     ) -> Result<Response, ContractError> {
-        if !GAUGES.has(deps.storage, gauge_id) {
-            return Err(ContractError::GaugeMissing(gauge_id));
+        let gauge = match GAUGES.may_load(deps.storage, gauge_id)? {
+            Some(gauge) => gauge,
+            None => return Err(ContractError::GaugeMissing(gauge_id)),
+        };
+
+        if gauge.is_resetting() {
+            return Err(ContractError::GaugeResetting(gauge_id));
         }
 
         // make sure sums work out
@@ -386,7 +482,12 @@ mod execute {
             return Err(ContractError::NoVotingPower(sender.to_string()));
         }
 
-        let previous_vote = votes().may_load(deps.storage, &sender, gauge_id)?;
+        let mut previous_vote = votes().may_load(deps.storage, &sender, gauge_id)?;
+        if let Some(v) = &previous_vote {
+            if v.is_expired(&gauge) {
+                previous_vote = None;
+            }
+        }
         if previous_vote.is_none() && new_votes.is_empty() {
             return Err(ContractError::CannotRemoveNonexistingVote {});
         }
@@ -436,7 +537,14 @@ mod execute {
             votes().remove_votes(deps.storage, &sender, gauge_id)?;
         } else {
             // store sender's new votes (overwriting old votes)
-            votes().set_votes(deps.storage, &sender, gauge_id, new_votes, voting_power)?;
+            votes().set_votes(
+                deps.storage,
+                &env,
+                &sender,
+                gauge_id,
+                new_votes,
+                voting_power,
+            )?;
         }
 
         let response = Response::new()
@@ -451,6 +559,9 @@ mod execute {
 
         if gauge.is_stopped {
             return Err(ContractError::GaugeStopped(gauge_id));
+        }
+        if gauge.is_resetting() {
+            return Err(ContractError::GaugeResetting(gauge_id));
         }
 
         let current_epoch = env.block.time.seconds();
@@ -561,6 +672,7 @@ mod query {
             max_available_percentage: gauge.max_available_percentage,
             is_stopped: gauge.is_stopped,
             next_epoch: gauge.next_epoch,
+            reset: gauge.reset,
         }
     }
 
@@ -595,11 +707,15 @@ mod query {
 
     pub fn vote(deps: Deps, gauge_id: u64, voter: String) -> StdResult<VoteResponse> {
         let voter_addr = deps.api.addr_validate(&voter)?;
+        let gauge = GAUGES.load(deps.storage, gauge_id)?;
+
         let vote = votes()
             .may_load(deps.storage, &voter_addr, gauge_id)?
+            .filter(|v| !v.is_expired(&gauge))
             .map(|v| VoteInfo {
                 voter,
                 votes: v.votes,
+                cast: v.cast,
             });
         Ok(VoteResponse { vote })
     }
@@ -640,6 +756,10 @@ mod query {
     pub fn selected_set(deps: Deps, gauge_id: u64) -> StdResult<SelectedSetResponse> {
         let gauge = GAUGES.load(deps.storage, gauge_id)?;
         let total_cast = TOTAL_CAST.load(deps.storage, gauge_id)?;
+
+        if gauge.is_resetting() || total_cast == 0 {
+            return Ok(SelectedSetResponse { votes: vec![] });
+        }
 
         // This is sorted index, but requires manual filtering - cannot be prefixed
         // given our requirements
@@ -683,41 +803,35 @@ mod query {
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
-    let version = ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    ensure_from_older_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    for (gauge_id, next_epoch) in msg.next_epochs.unwrap_or_default() {
+    for (gauge_id, config) in msg.gauge_config.unwrap_or_default() {
         GAUGES.update(deps.storage, gauge_id, |gauge| -> StdResult<_> {
             let mut gauge = gauge.ok_or(StdError::NotFound {
                 kind: format!("Gauge with id {}", gauge_id),
             })?;
-            if next_epoch < env.block.time.seconds() {
-                return Err(StdError::GenericErr {
-                    msg: "Next epoch value cannot be earlier then current epoch!".to_owned(),
+            if let Some(next_epoch) = config.next_epoch {
+                if next_epoch < env.block.time.seconds() {
+                    return Err(StdError::GenericErr {
+                        msg: "Next epoch value cannot be earlier then current epoch!".to_owned(),
+                    });
+                }
+                gauge.next_epoch = next_epoch;
+            }
+            if let Some(reset_config) = config.reset {
+                if reset_config.next_reset < env.block.time.seconds() {
+                    return Err(StdError::GenericErr {
+                        msg: "Next reset value cannot be earlier then current epoch!".to_owned(),
+                    });
+                }
+                gauge.reset = Some(Reset {
+                    last: gauge.reset.map(|r| r.last).unwrap_or_default(),
+                    reset_each: reset_config.reset_epoch,
+                    next: reset_config.next_reset,
                 });
             }
-            gauge.next_epoch = next_epoch;
             Ok(gauge)
         })?;
-    }
-
-    // temporary implementation - since wyndex has only one gauge right now, update it quickly
-    if version <= "1.5.3".parse::<Version>().unwrap() {
-        use cw_storage_plus::Map;
-        let old_storage: Map<u64, gauge_orchestrator_1_5_3::state::Gauge> = Map::new("gauges");
-        let gauge = old_storage.load(deps.storage, 0)?;
-        let new_gauge = Gauge {
-            title: gauge.title,
-            adapter: gauge.adapter,
-            epoch: gauge.epoch,
-            min_percent_selected: gauge.min_percent_selected,
-            max_options_selected: gauge.max_options_selected,
-            max_available_percentage: None,
-            is_stopped: gauge.is_stopped,
-            next_epoch: gauge.next_epoch,
-            // this is fine, it will be overwritten on next gauge execution
-            last_executed_set: None,
-        };
-        GAUGES.save(deps.storage, 0, &new_gauge)?;
     }
 
     Ok(Response::new())

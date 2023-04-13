@@ -1,7 +1,7 @@
 [package]
 name = "gauge-orchestrator"
 version = { workspace = true }
-authors = [ "Cosmorama <cosmorama@proton.me>" ]
+authors = ["Cosmorama <cosmorama@proton.me>"]
 edition = { workspace = true }
 
 [lib]
@@ -22,9 +22,6 @@ schemars = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
 wynd-stake = { workspace = true }
-# Temporarily added for migration tests
-semver = { workspace = true }
-gauge-orchestrator-1_5_3 = { git = "https://github.com/cosmorama/wynddao.git", tag="v1.5.3", package = "gauge-orchestrator" }
 
 [dev-dependencies]
 anyhow = { workspace = true }
@@ -35,3 +32,4 @@ cw4 = { workspace = true }
 cw4-group = { workspace = true }
 cw4-voting = { workspace = true }
 voting = { workspace = true }
+gauge-orchestrator-1_6 = { git = "https://github.com/cosmorama/wynddao.git", tag = "v1.6.0", package = "gauge-orchestrator" }
