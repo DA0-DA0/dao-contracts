@@ -1,21 +1,23 @@
 use crate::hooks::{stake_hook_msgs, unstake_hook_msgs};
-use crate::msg::NftContract;
+use crate::msg::{ActiveThresholdResponse, NftContract};
 #[cfg(not(feature = "library"))]
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
-    register_staked_nft, register_unstaked_nfts, Config, CONFIG, DAO, HOOKS, INITITIAL_NFTS,
-    MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
+    register_staked_nft, register_unstaked_nfts, Config, ACTIVE_THRESHOLD, CONFIG, DAO, HOOKS,
+    INITITIAL_NFTS, MAX_CLAIMS, NFT_BALANCES, NFT_CLAIMS, STAKED_NFTS_PER_OWNER, TOTAL_STAKED_NFTS,
 };
 use crate::ContractError;
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Reply,
-    Response, StdResult, SubMsg, Uint128, WasmMsg,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
+    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw721::Cw721ReceiveMsg;
+use cw721::{Cw721ReceiveMsg, NumTokensResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{parse_reply_instantiate_data, Duration};
+use dao_interface::voting::IsActiveResponse;
 use dao_interface::Admin;
+use dao_voting::threshold::ActiveThreshold;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -41,6 +43,15 @@ pub fn instantiate(
             Admin::CoreModule {} => Ok(info.sender.clone()),
         })
         .transpose()?;
+
+    if let Some(active_threshold) = msg.active_threshold.as_ref() {
+        if let ActiveThreshold::Percentage { percent } = active_threshold {
+            if *percent > Decimal::percent(100) || *percent <= Decimal::percent(0) {
+                return Err(ContractError::InvalidActivePercentage {});
+            }
+        }
+        ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
+    }
 
     TOTAL_STAKED_NFTS.save(deps.storage, &Uint128::zero(), env.block.height)?;
 
@@ -103,9 +114,12 @@ pub fn instantiate(
                 INSTANTIATE_NFT_CONTRACT_REPLY_ID,
             );
 
-            Ok(Response::default()
-                .add_submessage(msg)
-                .set_data(to_binary(&initial_nfts)?))
+            Ok(Response::default().add_submessage(msg).add_attribute(
+                "owner",
+                owner
+                    .map(|a| a.into_string())
+                    .unwrap_or_else(|| "None".to_string()),
+            ))
         }
     }
 }
@@ -126,7 +140,9 @@ pub fn execute(
         }
         ExecuteMsg::AddHook { addr } => execute_add_hook(deps, info, addr),
         ExecuteMsg::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
-        ExecuteMsg::UpdateActiveThreshold { new_threshold } => unimplemented!(),
+        ExecuteMsg::UpdateActiveThreshold { new_threshold } => {
+            execute_update_active_threshold(deps, env, info, new_threshold)
+        }
     }
 }
 
@@ -356,24 +372,90 @@ pub fn execute_remove_hook(
         .add_attribute("hook", addr))
 }
 
+pub fn execute_update_active_threshold(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_active_threshold: Option<ActiveThreshold>,
+) -> Result<Response, ContractError> {
+    let dao = DAO.load(deps.storage)?;
+    if info.sender != dao {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    if let Some(active_threshold) = new_active_threshold {
+        match active_threshold {
+            ActiveThreshold::Percentage { percent } => {
+                if percent > Decimal::percent(100) || percent.is_zero() {
+                    return Err(ContractError::InvalidActivePercentage {});
+                }
+            }
+            ActiveThreshold::AbsoluteCount { count } => {
+                if count.is_zero() {
+                    return Err(ContractError::ZeroActiveCount {});
+                }
+            }
+        }
+        ACTIVE_THRESHOLD.save(deps.storage, &active_threshold)?;
+    } else {
+        ACTIVE_THRESHOLD.remove(deps.storage);
+    }
+
+    Ok(Response::new().add_attribute("action", "update_active_threshold"))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::ActiveThreshold {} => unimplemented!(),
+        QueryMsg::ActiveThreshold {} => query_active_threshold(deps),
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::Dao {} => query_dao(deps),
+        QueryMsg::Info {} => query_info(deps),
+        QueryMsg::IsActive {} => query_is_active(deps, env),
         QueryMsg::NftClaims { address } => query_nft_claims(deps, address),
         QueryMsg::Hooks {} => query_hooks(deps),
-        QueryMsg::VotingPowerAtHeight { address, height } => {
-            query_voting_power_at_height(deps, env, address, height)
-        }
-        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
-        QueryMsg::Info {} => query_info(deps),
         QueryMsg::StakedNfts {
             address,
             start_after,
             limit,
         } => query_staked_nfts(deps, address, start_after, limit),
+        QueryMsg::TotalPowerAtHeight { height } => query_total_power_at_height(deps, env, height),
+        QueryMsg::VotingPowerAtHeight { address, height } => {
+            query_voting_power_at_height(deps, env, address, height)
+        }
+    }
+}
+
+pub fn query_active_threshold(deps: Deps) -> StdResult<Binary> {
+    to_binary(&ActiveThresholdResponse {
+        active_threshold: ACTIVE_THRESHOLD.may_load(deps.storage)?,
+    })
+}
+
+pub fn query_is_active(deps: Deps, env: Env) -> StdResult<Binary> {
+    let threshold = ACTIVE_THRESHOLD.may_load(deps.storage)?;
+    if let Some(threshold) = threshold {
+        let config = CONFIG.load(deps.storage)?;
+        let staked_nfts = TOTAL_STAKED_NFTS
+            .may_load_at_height(deps.storage, env.block.height)?
+            .unwrap_or_default();
+        let total_nfts: NumTokensResponse = deps.querier.query_wasm_smart(
+            config.nft_address,
+            &cw721_base::msg::QueryMsg::<Empty>::NumTokens {},
+        )?;
+        match threshold {
+            ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
+                active: staked_nfts >= count,
+            }),
+            ActiveThreshold::Percentage { percent } => {
+                // Staked NFTs >= Percent * Total NFTs
+                to_binary(&IsActiveResponse {
+                    active: Uint128::from(total_nfts.count) >= staked_nfts * percent,
+                })
+            }
+        }
+    } else {
+        to_binary(&IsActiveResponse { active: true })
     }
 }
 
@@ -465,7 +547,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Add mint submessages
                     let mint_submessages: Vec<SubMsg> = initial_nfts
                         .iter()
-                        .map(|nft| -> Result<SubMsg, ContractError> {
+                        .flat_map(|nft| -> Result<SubMsg, ContractError> {
                             Ok(SubMsg::new(WasmMsg::Execute {
                                 contract_addr: nft_contract.clone(),
                                 funds: vec![],
@@ -479,7 +561,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                                 )?,
                             }))
                         })
-                        .flatten()
                         .collect::<Vec<SubMsg>>();
 
                     // Clear space

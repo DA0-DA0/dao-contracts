@@ -12,6 +12,9 @@ pub enum ContractError {
     #[error(transparent)]
     HookError(#[from] cw_controllers::HookError),
 
+    #[error("Active threshold percentage must be greater than 0 and less than 1")]
+    InvalidActivePercentage {},
+
     #[error("Invalid token. Got ({received}), expected ({expected})")]
     InvalidToken { received: Addr, expected: Addr },
 
@@ -33,8 +36,14 @@ pub enum ContractError {
     #[error("Too many outstanding claims. Claim some tokens before unstaking more.")]
     TooManyClaims {},
 
+    #[error("Unauthorized")]
+    Unauthorized {},
+
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
+
+    #[error("Active threshold count must be greater than zero")]
+    ZeroActiveCount {},
 
     #[error("Can't unstake zero NFTs.")]
     ZeroUnstake {},

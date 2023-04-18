@@ -307,7 +307,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary>
             }
             QueryExt::TotalWeight { at_height } => to_binary(&query_total_weight(deps, at_height)?),
         },
-        _ => Cw721Roles::default().query(deps, env, msg.into()),
+        _ => Cw721Roles::default().query(deps, env, msg),
     }
 }
 

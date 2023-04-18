@@ -183,7 +183,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Add mint submessages
                     let mint_submessages: Vec<SubMsg> = initial_nfts
                         .iter()
-                        .map(|nft| -> Result<SubMsg, ContractError> {
+                        .flat_map(|nft| -> Result<SubMsg, ContractError> {
                             Ok(SubMsg::new(WasmMsg::Execute {
                                 contract_addr: nft_contract.clone(),
                                 funds: vec![],
@@ -200,7 +200,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                                 })?,
                             }))
                         })
-                        .flatten()
                         .collect::<Vec<SubMsg>>();
 
                     // Clear space

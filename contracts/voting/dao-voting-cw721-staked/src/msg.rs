@@ -3,7 +3,7 @@ use cosmwasm_std::Empty;
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use dao_interface::Admin;
-use dao_macros::voting_module_query;
+use dao_macros::{active_query, voting_module_query};
 use dao_voting::threshold::ActiveThreshold;
 
 #[cw_serde]
@@ -84,6 +84,7 @@ pub enum ExecuteMsg {
     },
 }
 
+#[active_query]
 #[voting_module_query]
 #[cw_serde]
 #[derive(QueryResponses)]

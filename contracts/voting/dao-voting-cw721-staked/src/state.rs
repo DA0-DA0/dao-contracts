@@ -4,6 +4,7 @@ use cw721_controllers::NftClaims;
 use cw_controllers::Hooks;
 use cw_storage_plus::{Item, Map, SnapshotItem, SnapshotMap, Strategy};
 use cw_utils::Duration;
+use dao_voting::threshold::ActiveThreshold;
 
 use crate::{msg::NftMintMsg, ContractError};
 
@@ -14,6 +15,7 @@ pub struct Config {
     pub unstaking_duration: Option<Duration>,
 }
 
+pub const ACTIVE_THRESHOLD: Item<ActiveThreshold> = Item::new("active_threshold");
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const DAO: Item<Addr> = Item::new("dao");
 

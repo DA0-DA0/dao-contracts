@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::Uint128;
 use cw20::Cw20Coin;
 use cw20_base::msg::InstantiateMarketingInfo;
 use cw_utils::Duration;
