@@ -8,7 +8,6 @@ use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
 use cw721_roles::msg::{ExecuteExt, MetadataExt, QueryExt};
 use cw_utils::parse_reply_instantiate_data;
-use dao_interface::Admin;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
 use crate::state::{Config, CONFIG, DAO, HOOKS, INITITIAL_NFTS};
@@ -18,7 +17,6 @@ pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-roles";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
-const MINT_NFT_REPLY_ID: u64 = 0;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -81,18 +79,16 @@ pub fn instantiate(
     }
 }
 
-// TODO clean up
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
-    deps: DepsMut,
+    _deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
+    _info: MessageInfo,
+    _msg: ExecuteMsg,
 ) -> Result<Response<Empty>, ContractError> {
-    unimplemented!()
+    Err(ContractError::NoExecute {})
 }
 
-// TODO maybe add NFT Contract query?
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -169,7 +165,7 @@ pub fn query_info(deps: Deps) -> StdResult<Binary> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         INSTANTIATE_NFT_CONTRACT_REPLY_ID => {
             let res = parse_reply_instantiate_data(msg);
@@ -232,11 +228,6 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractEr
                 }
                 Err(_) => Err(ContractError::NftInstantiateError {}),
             }
-        }
-        // TODO maybe don't need this?
-        MINT_NFT_REPLY_ID => {
-            // Mint NFTs
-            unimplemented!()
         }
         _ => Err(ContractError::UnknownReplyId { id: msg.id }),
     }

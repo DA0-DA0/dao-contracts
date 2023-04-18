@@ -9,6 +9,9 @@ pub enum ContractError {
     #[error("Error instantiating cw721-roles contract")]
     NftInstantiateError {},
 
+    #[error("This contract only supports queries")]
+    NoExecute {},
+
     #[error("New cw721-roles contract must be instantiated with at least one NFT")]
     NoInitialNfts {},
 

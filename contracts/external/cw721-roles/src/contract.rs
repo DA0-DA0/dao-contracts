@@ -7,7 +7,7 @@ use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
-use cw721::{NftInfoResponse, OwnerOfResponse};
+use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
 pub use cw721_base::{
     entry::{execute as _execute, query as _query},
     Cw721Contract, ExecuteMsg, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse, QueryMsg,
@@ -20,11 +20,10 @@ use crate::state::{MEMBERS, TOTAL};
 use crate::{error::RolesContractError as ContractError, state::HOOKS};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw721-soulbound-roles";
+const CONTRACT_NAME: &str = "crates.io:cw721-roles";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub type Cw721NonTransferableContract<'a> =
-    Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
+pub type Cw721Roles<'a> = Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
 
 #[entry_point]
 pub fn instantiate(
@@ -33,7 +32,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: Cw721BaseInstantiateMsg,
 ) -> Result<Response, ContractError> {
-    Cw721NonTransferableContract::default().instantiate(deps.branch(), env.clone(), info, msg)?;
+    Cw721Roles::default().instantiate(deps.branch(), env.clone(), info, msg)?;
 
     // Initialize total weight to zero
     TOTAL.save(deps.storage, &0, env.block.height)?;
@@ -66,9 +65,17 @@ pub fn execute(
             ExecuteExt::AddHook { addr } => execute_add_hook(deps, info, addr),
             ExecuteExt::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
         },
-        // TODO send and transfer?
+        ExecuteMsg::TransferNft {
+            recipient,
+            token_id,
+        } => execute_transfer(deps, env, info, recipient, token_id),
+        ExecuteMsg::SendNft {
+            contract,
+            token_id,
+            msg,
+        } => execute_send(deps, env, info, contract, token_id, msg),
         // TODO approvals?
-        _ => Cw721NonTransferableContract::default()
+        _ => Cw721Roles::default()
             .execute(deps, env, info, msg)
             .map_err(Into::into),
     }
@@ -110,9 +117,8 @@ pub fn execute_mint(
         diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
     })?;
 
-    // TODO call in a submessage? Add DAO to approvals? Or just implement the methods?
     // Call base mint
-    let res = Cw721NonTransferableContract::default().execute(
+    let res = Cw721Roles::default().execute(
         deps,
         env,
         info,
@@ -127,6 +133,58 @@ pub fn execute_mint(
     Ok(res.add_submessages(msgs))
 }
 
+pub fn execute_transfer(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    recipient: String,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    let contract = Cw721Roles::default();
+
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    // set owner and remove existing approvals
+    token.owner = deps.api.addr_validate(&recipient)?;
+    token.approvals = vec![];
+    contract.tokens.save(deps.storage, &token_id, &token)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "transfer_nft")
+        .add_attribute("sender", info.sender)
+        .add_attribute("recipient", recipient)
+        .add_attribute("token_id", token_id))
+}
+
+pub fn execute_send(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+    recipient_contract: String,
+    msg: Binary,
+) -> Result<Response, ContractError> {
+    let contract = Cw721Roles::default();
+
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+    // set owner and remove existing approvals
+    token.owner = deps.api.addr_validate(&recipient_contract)?;
+    token.approvals = vec![];
+    contract.tokens.save(deps.storage, &token_id, &token)?;
+
+    let send = Cw721ReceiveMsg {
+        sender: info.sender.to_string(),
+        token_id: token_id.clone(),
+        msg,
+    };
+
+    Ok(Response::new()
+        .add_message(send.into_cosmos_msg(recipient_contract.clone())?)
+        .add_attribute("action", "send_nft")
+        .add_attribute("sender", info.sender)
+        .add_attribute("recipient", recipient_contract)
+        .add_attribute("token_id", token_id))
+}
+
 pub fn execute_burn(
     deps: DepsMut,
     env: Env,
@@ -134,7 +192,7 @@ pub fn execute_burn(
     token_id: String,
 ) -> Result<Response, ContractError> {
     // Lookup the owner of the NFT
-    let owner: OwnerOfResponse = from_binary(&Cw721NonTransferableContract::default().query(
+    let owner: OwnerOfResponse = from_binary(&Cw721Roles::default().query(
         deps.as_ref(),
         env.clone(),
         QueryMsg::OwnerOf {
@@ -144,14 +202,13 @@ pub fn execute_burn(
     )?)?;
 
     // Get the weight of the token
-    let nft_info: NftInfoResponse<MetadataExt> =
-        from_binary(&Cw721NonTransferableContract::default().query(
-            deps.as_ref(),
-            env.clone(),
-            QueryMsg::NftInfo {
-                token_id: token_id.clone(),
-            },
-        )?)?;
+    let nft_info: NftInfoResponse<MetadataExt> = from_binary(&Cw721Roles::default().query(
+        deps.as_ref(),
+        env.clone(),
+        QueryMsg::NftInfo {
+            token_id: token_id.clone(),
+        },
+    )?)?;
 
     let mut total = Uint64::from(TOTAL.load(deps.storage)?);
     let mut diff = MemberDiff::new(owner.owner.clone(), None, None);
@@ -197,11 +254,11 @@ pub fn execute_burn(
     })?;
 
     // Remove the token
-    Cw721NonTransferableContract::default()
+    Cw721Roles::default()
         .tokens
         .remove(deps.storage, &token_id)?;
     // Decrement the account
-    Cw721NonTransferableContract::default().decrement_tokens(deps.storage)?;
+    Cw721Roles::default().decrement_tokens(deps.storage)?;
 
     Ok(Response::new()
         .add_attribute("action", "burn")
@@ -250,7 +307,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary>
             }
             QueryExt::TotalWeight { at_height } => to_binary(&query_total_weight(deps, at_height)?),
         },
-        _ => Cw721NonTransferableContract::default().query(deps, env, msg.into()),
+        _ => Cw721Roles::default().query(deps, env, msg.into()),
     }
 }
 
