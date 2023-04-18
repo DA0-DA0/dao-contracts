@@ -72,9 +72,7 @@ pub fn instantiate(
                 INSTANTIATE_NFT_CONTRACT_REPLY_ID,
             );
 
-            Ok(Response::default()
-                .add_submessage(msg)
-                .set_data(to_binary(&initial_nfts)?))
+            Ok(Response::default().add_submessage(msg))
         }
     }
 }

@@ -1,14 +1,28 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::Empty;
 use cw721::Cw721ReceiveMsg;
 use cw_utils::Duration;
 use dao_interface::Admin;
 use dao_macros::voting_module_query;
 use dao_voting::threshold::ActiveThreshold;
 
-// TODO
+#[cw_serde]
+pub struct NftMintMsg {
+    /// Unique ID of the NFT
+    pub token_id: String,
+    /// The owner of the newly minter NFT
+    pub owner: String,
+    /// Universal resource identifier for this NFT
+    /// Should point to a JSON file that conforms to the ERC721
+    /// Metadata JSON Schema
+    pub token_uri: Option<String>,
+    /// Any custom extension used by this contract
+    pub extension: Empty,
+}
+
 #[cw_serde]
 #[allow(clippy::large_enum_variant)]
-pub enum TokenInfo {
+pub enum NftContract {
     Existing {
         /// Address of an already instantiated cw721 token contract.
         address: String,
@@ -20,6 +34,8 @@ pub enum TokenInfo {
         label: String,
         name: String,
         symbol: String,
+        /// Initial NFTs to mint when creating the NFT contract.
+        initial_nfts: Vec<NftMintMsg>,
     },
 }
 
@@ -28,7 +44,7 @@ pub struct InstantiateMsg {
     /// May change unstaking duration and add hooks.
     pub owner: Option<Admin>,
     /// Address of the cw721 NFT contract that may be staked.
-    pub nft_address: String,
+    pub nft_contract: NftContract,
     /// Amount of time between unstaking and tokens being
     /// avaliable. To unstake with no delay, leave as `None`.
     pub unstaking_duration: Option<Duration>,

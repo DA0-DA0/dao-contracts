@@ -11,7 +11,7 @@ use cw_utils::Duration;
 use dao_interface::Admin;
 use dao_testing::contracts::voting_cw721_staked_contract;
 
-use crate::msg::InstantiateMsg;
+use crate::msg::{InstantiateMsg, NftContract};
 
 use self::instantiate::instantiate_cw721_base;
 
@@ -35,7 +35,9 @@ pub(crate) fn setup_test(owner: Option<Admin>, unstaking_duration: Option<Durati
             Addr::unchecked(CREATOR_ADDR),
             &InstantiateMsg {
                 owner,
-                nft_address: nft.to_string(),
+                nft_contract: NftContract::Existing {
+                    address: nft.to_string(),
+                },
                 unstaking_duration,
                 active_threshold: None,
             },

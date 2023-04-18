@@ -152,7 +152,9 @@ pub fn _instantiate_with_staked_cw721_governance(
             msg: to_binary(&dao_voting_cw721_staked::msg::InstantiateMsg {
                 owner: Some(Admin::CoreModule {}),
                 unstaking_duration: None,
-                nft_address: nft_address.to_string(),
+                nft_contract: dao_voting_cw721_staked::msg::NftContract::Existing {
+                    address: nft_address.to_string(),
+                },
                 active_threshold: None,
             })
             .unwrap(),

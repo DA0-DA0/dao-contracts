@@ -51,7 +51,9 @@ fn setup_test(
             "instantiate_dao_voting_cw721_staked",
             &module::msg::InstantiateMsg {
                 owner,
-                nft_address: cw721.clone(),
+                nft_contract: module::msg::NftContract::Existing {
+                    address: cw721.clone(),
+                },
                 unstaking_duration,
                 active_threshold: None,
             },
