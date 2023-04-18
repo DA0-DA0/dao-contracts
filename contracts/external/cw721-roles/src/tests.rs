@@ -1,8 +1,9 @@
-use cosmwasm_std::{Addr, Empty};
+use cosmwasm_std::Addr;
 use cw4::{MemberResponse, TotalWeightResponse};
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use cw_multi_test::{App, Contract, ContractWrapper, Executor};
+use cw_multi_test::{App, Executor};
+use dao_testing::contracts::cw721_roles_contract;
 
 use crate::error::RolesContractError;
 use crate::msg::{ExecuteExt, MetadataExt, QueryExt};
@@ -10,16 +11,6 @@ use crate::msg::{ExecuteExt, MetadataExt, QueryExt};
 const ALICE: &str = "alice";
 const BOB: &str = "bob";
 const DAO: &str = "dao";
-
-// TODO add this to DAO testing after renaming
-pub fn cw721_roles_contract() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new(
-        crate::contract::execute,
-        crate::contract::instantiate,
-        crate::contract::query,
-    );
-    Box::new(contract)
-}
 
 pub fn setup() -> (App, Addr) {
     let mut app = App::default();

@@ -5,9 +5,6 @@ mod tests;
 
 use cosmwasm_std::Addr;
 use cw_multi_test::{App, Executor};
-use cw_utils::Duration;
-
-use dao_interface::Admin;
 use dao_testing::contracts::dao_voting_cw721_roles_contract;
 
 use crate::msg::{InstantiateMsg, NftContract, NftMintMsg};
@@ -20,16 +17,13 @@ pub(crate) const CREATOR_ADDR: &str = "creator";
 pub(crate) struct CommonTest {
     app: App,
     module_addr: Addr,
-    cw721_addr: Addr,
-    module_id: u64,
-    cw721_id: u64,
 }
 
 pub(crate) fn setup_test(initial_nfts: Vec<NftMintMsg>) -> CommonTest {
     let mut app = App::default();
     let module_id = app.store_code(dao_voting_cw721_roles_contract());
 
-    let (cw721_addr, cw721_id) = instantiate_cw721_roles(&mut app, CREATOR_ADDR, CREATOR_ADDR);
+    let (_, cw721_id) = instantiate_cw721_roles(&mut app, CREATOR_ADDR, CREATOR_ADDR);
     let module_addr = app
         .instantiate_contract(
             module_id,
@@ -49,22 +43,5 @@ pub(crate) fn setup_test(initial_nfts: Vec<NftMintMsg>) -> CommonTest {
         )
         .unwrap();
 
-    CommonTest {
-        app,
-        module_addr,
-        module_id,
-        cw721_addr,
-        cw721_id,
-    }
+    CommonTest { app, module_addr }
 }
-
-// Advantage to using a macro for this is that the error trace links
-// to the exact line that the error occured, instead of inside of a
-// function where the assertion would otherwise happen.
-macro_rules! is_error {
-    ($x:expr => $e:tt) => {
-        assert!(format!("{:#}", $x.unwrap_err()).contains($e))
-    };
-}
-
-pub(crate) use is_error;

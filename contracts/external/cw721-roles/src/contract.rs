@@ -1,8 +1,8 @@
-use cosmwasm_std::Empty;
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
     StdResult, SubMsg, Uint64,
 };
+use cosmwasm_std::{Empty, StdError};
 use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
@@ -74,7 +74,6 @@ pub fn execute(
             token_id,
             msg,
         } => execute_send(deps, env, info, contract, token_id, msg),
-        // TODO approvals?
         _ => Cw721Roles::default()
             .execute(deps, env, info, msg)
             .map_err(Into::into),
@@ -220,8 +219,13 @@ pub fn execute_burn(
     // Only process this if they were actually in the list before
     if let Some(old_weight) = old {
         // Subtract the nft weight from the old weight
-        //// TODO no unwrap
-        let new_weight = old_weight.checked_sub(nft_info.extension.weight).unwrap();
+        let new_weight = old_weight
+            .checked_sub(nft_info.extension.weight)
+            .ok_or_else(|| {
+                ContractError::Std(StdError::generic_err(
+                    "Cannot burn NFT, member weight would be negative",
+                ))
+            })?;
         // Subtract nft weight from the total
         total = total.checked_sub(Uint64::from(nft_info.extension.weight))?;
 
