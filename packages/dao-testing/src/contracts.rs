@@ -122,7 +122,8 @@ pub fn voting_cw721_staked_contract() -> Box<dyn Contract<Empty>> {
         dao_voting_cw721_staked::contract::execute,
         dao_voting_cw721_staked::contract::instantiate,
         dao_voting_cw721_staked::contract::query,
-    );
+    )
+    .with_reply(dao_voting_cw721_staked::contract::reply);
     Box::new(contract)
 }
 

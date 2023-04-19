@@ -1,10 +1,12 @@
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Addr, Empty, Uint128};
 use cw721_controllers::{NftClaim, NftClaimsResponse};
-use cw_multi_test::next_block;
+use cw_multi_test::{next_block, App, Executor};
 use cw_utils::Duration;
 use dao_interface::Admin;
+use dao_testing::contracts::{cw721_base_contract, voting_cw721_staked_contract};
 
 use crate::{
+    msg::{InstantiateMsg, NftContract, NftMintMsg},
     state::{Config, MAX_CLAIMS},
     testing::{
         execute::{
@@ -20,6 +22,52 @@ use super::{
     queries::{query_claims, query_info, query_staked_nfts, query_total_power, query_voting_power},
     setup_test, CommonTest, CREATOR_ADDR,
 };
+
+// I can create new NFT collection when creating a dao-voting-cw721-staked contract
+#[test]
+fn test_instantiate_with_new_collection() -> anyhow::Result<()> {
+    let mut app = App::default();
+    let module_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_id = app.store_code(cw721_base_contract());
+
+    let module_addr = app
+        .instantiate_contract(
+            module_id,
+            Addr::unchecked(CREATOR_ADDR),
+            &InstantiateMsg {
+                owner: Some(Admin::Address {
+                    addr: CREATOR_ADDR.to_string(),
+                }),
+                nft_contract: NftContract::New {
+                    code_id: cw721_id,
+                    label: "Test NFT".to_string(),
+                    name: "Test NFT".to_string(),
+                    symbol: "TEST".to_string(),
+                    initial_nfts: vec![NftMintMsg {
+                        owner: CREATOR_ADDR.to_string(),
+                        token_uri: Some("https://example.com".to_string()),
+                        token_id: "1".to_string(),
+                        extension: Empty {},
+                    }],
+                },
+                unstaking_duration: None,
+                active_threshold: None,
+            },
+            &[],
+            "cw721_voting",
+            None,
+        )
+        .unwrap();
+
+    let config = query_config(&app, &module_addr)?;
+    let cw721_addr = config.nft_address;
+
+    // Check that the NFT contract was created
+    let owner = query_nft_owner(&app, &cw721_addr, "1")?;
+    assert_eq!(owner.owner, CREATOR_ADDR);
+
+    Ok(())
+}
 
 // I can stake tokens, voting power and total power is updated one
 // block later.
