@@ -6,7 +6,9 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
-use cw721_roles::msg::{ExecuteExt, MetadataExt, QueryExt};
+use cw721_roles::msg::{
+    ExecuteMsg as Cw721RolesExecuteMsg, MetadataExt, QueryExt, QueryMsg as Cw721RolesQueryMsg,
+};
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
@@ -110,7 +112,7 @@ pub fn query_voting_power_at_height(
     let config = CONFIG.load(deps.storage)?;
     let member: MemberResponse = deps.querier.query_wasm_smart(
         config.nft_address,
-        &cw721_base::msg::QueryMsg::<QueryExt>::Extension {
+        &Cw721RolesQueryMsg::Extension {
             msg: QueryExt::Member {
                 addr: address,
                 at_height,
@@ -132,7 +134,7 @@ pub fn query_total_power_at_height(
     let config = CONFIG.load(deps.storage)?;
     let total: TotalWeightResponse = deps.querier.query_wasm_smart(
         config.nft_address,
-        &cw721_base::msg::QueryMsg::<QueryExt>::Extension {
+        &Cw721RolesQueryMsg::Extension {
             msg: QueryExt::TotalWeight { at_height },
         },
     )?;
@@ -187,10 +189,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                             Ok(SubMsg::new(WasmMsg::Execute {
                                 contract_addr: nft_contract.clone(),
                                 funds: vec![],
-                                msg: to_binary(&cw721_base::msg::ExecuteMsg::<
-                                    MetadataExt,
-                                    ExecuteExt,
-                                >::Mint {
+                                msg: to_binary(&Cw721RolesExecuteMsg::Mint {
                                     token_id: nft.token_id.clone(),
                                     owner: nft.owner.clone(),
                                     token_uri: nft.token_uri.clone(),
@@ -208,12 +207,12 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Update minter message
                     let update_minter_msg = WasmMsg::Execute {
                         contract_addr: nft_contract.clone(),
-                        msg: to_binary(
-                            &cw721_base::msg::ExecuteMsg::<MetadataExt, ExecuteExt>::UpdateOwnership(cw721_base::Action::TransferOwnership {
+                        msg: to_binary(&Cw721RolesExecuteMsg::UpdateOwnership(
+                            cw721_base::Action::TransferOwnership {
                                 new_owner: dao.to_string(),
                                 expiry: None,
-                            }),
-                        )?,
+                            },
+                        ))?,
                         funds: vec![],
                     };
 

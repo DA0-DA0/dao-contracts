@@ -6,6 +6,9 @@ pub struct MetadataExt {
     pub weight: u64,
 }
 
+pub type ExecuteMsg = cw721_base::ExecuteMsg<MetadataExt, ExecuteExt>;
+pub type QueryMsg = cw721_base::QueryMsg<QueryExt>;
+
 #[cw_serde]
 pub enum ExecuteExt {
     /// Add a new hook to be informed of all membership changes.

@@ -1,12 +1,12 @@
 use cosmwasm_std::Addr;
 use cw4::{MemberResponse, TotalWeightResponse};
 use cw721::{NftInfoResponse, OwnerOfResponse};
-use cw721_base::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use cw721_base::InstantiateMsg;
 use cw_multi_test::{App, Executor};
 use dao_testing::contracts::cw721_roles_contract;
 
 use crate::error::RolesContractError;
-use crate::msg::{ExecuteExt, MetadataExt, QueryExt};
+use crate::msg::{ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
 
 const ALICE: &str = "alice";
 const BOB: &str = "bob";
@@ -41,7 +41,7 @@ pub fn query_nft_owner(
 ) -> Result<cw721::OwnerOfResponse, RolesContractError> {
     let owner = app.wrap().query_wasm_smart(
         nft,
-        &QueryMsg::<QueryExt>::OwnerOf {
+        &QueryMsg::OwnerOf {
             token_id: token_id.to_string(),
             include_expired: None,
         },
@@ -57,7 +57,7 @@ pub fn query_member(
 ) -> Result<MemberResponse, RolesContractError> {
     let member = app.wrap().query_wasm_smart(
         nft,
-        &QueryMsg::<QueryExt>::Extension {
+        &QueryMsg::Extension {
             msg: QueryExt::Member {
                 addr: member.to_string(),
                 at_height,
@@ -74,7 +74,7 @@ pub fn query_total_weight(
 ) -> Result<TotalWeightResponse, RolesContractError> {
     let member = app.wrap().query_wasm_smart(
         nft,
-        &QueryMsg::<QueryExt>::Extension {
+        &QueryMsg::Extension {
             msg: QueryExt::TotalWeight { at_height },
         },
     )?;
@@ -88,7 +88,7 @@ pub fn query_token_info(
 ) -> Result<NftInfoResponse<MetadataExt>, RolesContractError> {
     let info = app.wrap().query_wasm_smart(
         nft,
-        &QueryMsg::<QueryExt>::NftInfo {
+        &QueryMsg::NftInfo {
             token_id: token_id.to_string(),
         },
     )?;
@@ -100,7 +100,7 @@ fn test_minting_and_burning() {
     let (mut app, cw721_addr) = setup();
 
     // Mint token
-    let msg = ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
+    let msg = ExecuteMsg::Mint {
         token_id: "1".to_string(),
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
@@ -114,7 +114,7 @@ fn test_minting_and_burning() {
     assert_eq!(info.extension.weight, 1);
 
     // Create another token for alice to give her even more total weight
-    let msg = ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
+    let msg = ExecuteMsg::Mint {
         token_id: "2".to_string(),
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
@@ -132,7 +132,7 @@ fn test_minting_and_burning() {
     assert_eq!(total.weight, 2);
 
     // Burn a role for alice
-    let msg = ExecuteMsg::<MetadataExt, ExecuteExt>::Burn {
+    let msg = ExecuteMsg::Burn {
         token_id: "2".to_string(),
     };
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
@@ -152,12 +152,13 @@ fn test_permissions() {
     let (mut app, cw721_addr) = setup();
 
     // Mint token
-    let msg = ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
+    let msg = ExecuteMsg::Mint {
         token_id: "1".to_string(),
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
         extension: MetadataExt { weight: 1 },
     };
+
     // Non-minter can't mint
     app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
         .unwrap_err();
@@ -167,7 +168,7 @@ fn test_permissions() {
         .unwrap();
 
     // Non-minter can't transfer
-    let msg = ExecuteMsg::<MetadataExt, ExecuteExt>::TransferNft {
+    let msg = ExecuteMsg::TransferNft {
         recipient: BOB.to_string(),
         token_id: "1".to_string(),
     };

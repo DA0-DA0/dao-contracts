@@ -10,12 +10,12 @@ use cw4::{
 use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
 pub use cw721_base::{
     entry::{execute as _execute, query as _query},
-    Cw721Contract, ExecuteMsg, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse, QueryMsg,
+    Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse,
 };
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
 
-use crate::msg::{ExecuteExt, MetadataExt, QueryExt};
+use crate::msg::{ExecuteExt, ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
 use crate::state::{MEMBERS, TOTAL};
 use crate::{error::RolesContractError as ContractError, state::HOOKS};
 
@@ -49,7 +49,7 @@ pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: ExecuteMsg<MetadataExt, ExecuteExt>,
+    msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
@@ -302,7 +302,7 @@ pub fn execute_remove_hook(
 }
 
 #[entry_point]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg<QueryExt>) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Extension { msg } => match msg {
             QueryExt::Hooks {} => to_binary(&HOOKS.query_hooks(deps)?),
