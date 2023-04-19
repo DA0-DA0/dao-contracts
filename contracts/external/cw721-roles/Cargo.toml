@@ -27,7 +27,7 @@ cw2             = { workspace = true }
 cw4             = { workspace = true }
 # TODO update when cw-nfts v0.17 is published
 cw721 = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
-cw721-base = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
+cw721-base = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0", features = ["library"] }
 serde           = { workspace = true }
 thiserror = { workspace = true }
 

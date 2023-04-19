@@ -24,7 +24,7 @@ dao-interface = { workspace = true }
 cw721-controllers = { workspace = true }
 cw-paginate = { workspace = true }
 cw721 = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
-cw721-base = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
+cw721-base = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0", features = ["library"] }
 cw721-roles = { workspace = true }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
