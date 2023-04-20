@@ -1,0 +1,34 @@
+[package]
+name = "cw-abc"
+version = "0.0.1"
+authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>", "Jake Hartnell"]
+edition = { workspace = true }
+description = "Implements an Augmented Bonding Curve"
+license = "Apache-2.0"
+repository = { workspace = true }
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+cw-storage-plus = { workspace = true }
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+thiserror = { workspace = true }
+rust_decimal = "1.14.3"
+integer-sqrt = "0.1.5"
+integer-cbrt = "0.1.2"
+# TODO publish this
+token-bindings = { git = "https://github.com/CosmosContracts/token-bindings", rev = "1412b94" }
+
+[dev-dependencies]
+
