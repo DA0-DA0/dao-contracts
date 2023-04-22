@@ -2,18 +2,19 @@ use std::collections::HashSet;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coins, to_binary, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    Binary, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult, to_binary,
 };
 use cw2::set_contract_version;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
-use crate::msg::{CurveInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, SUPPLY_DENOM, PHASE_CONFIG,  PHASE, HATCHERS};
-use cw_utils::{must_pay, nonpayable};
-use crate::abc::{ CurveFn, CommonsPhase};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHERS, PHASE_CONFIG, SUPPLY_DENOM};
+use cw_utils::{nonpayable};
+use crate::abc::{CurveFn};
+use crate::{commands, queries};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-abc";
@@ -22,7 +23,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // By default, the prefix for token factory tokens is "factory"
 const DENOM_PREFIX: &str = "factory";
 
-type CwAbcResult<T = Response<TokenFactoryMsg>> = Result<T, ContractError>;
+pub type CwAbcResult<T = Response<TokenFactoryMsg>> = Result<T, ContractError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -86,156 +87,7 @@ pub fn execute(
     // contract and just pass in your custom curve to do_execute
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let curve_fn = curve_type.to_curve_fn();
-    do_execute(deps, env, info, msg, curve_fn)
-}
-
-/// We pull out logic here, so we can import this from another contract and set a different Curve.
-/// This contacts sets a curve with an enum in InstantiateMsg and stored in state, but you may want
-/// to use custom math not included - make this easily reusable
-pub fn do_execute(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-    curve_fn: CurveFn,
-) -> CwAbcResult {
-    match msg {
-        ExecuteMsg::Buy {} => execute_buy(deps, env, info, curve_fn),
-        ExecuteMsg::Burn { amount } => Ok(execute_sell(deps, env, info, curve_fn, amount)?),
-    }
-}
-
-pub fn execute_buy(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    info: MessageInfo,
-    curve_fn: CurveFn,
-) -> CwAbcResult {
-    let mut curve_state = CURVE_STATE.load(deps.storage)?;
-
-    let payment = must_pay(&info, &curve_state.reserve_denom)?;
-
-    // Load the phase config and phase
-    let phase_config = PHASE_CONFIG.load(deps.storage)?;
-    let mut phase = PHASE.load(deps.storage)?;
-
-    let (reserved, funded) = match phase {
-        CommonsPhase::Hatch => {
-            let hatch_config = &phase_config.hatch;
-
-            // Check that the potential hatcher is allowlisted
-            hatch_config.assert_allowlisted(&info.sender)?;
-            HATCHERS.update(deps.storage, |mut hatchers| -> StdResult<_>{
-                hatchers.insert(info.sender.clone());
-                Ok(hatchers)
-            })?;
-
-            // Check if the initial_raise max has been met
-            if curve_state.reserve + payment >= hatch_config.initial_raise.1 {
-                // Transition to the Open phase, the hatchers' tokens are now vesting
-                phase = CommonsPhase::Open;
-                PHASE.save(deps.storage, &phase)?;
-            }
-
-            // Calculate the number of tokens sent to the funding pool using the initial allocation percentage
-            // TODO: is it safe to multiply a Decimal with a Uint128?
-            let funded = payment * hatch_config.initial_allocation_percentage;
-            // Calculate the number of tokens sent to the reserve
-            let reserved = payment - funded;
-
-            (reserved, funded)
-        }
-        CommonsPhase::Open => {
-            let hatch_config = &phase_config.open;
-
-            // Calculate the number of tokens sent to the funding pool using the allocation percentage
-            let funded = payment * hatch_config.allocation_percentage;
-            // Calculate the number of tokens sent to the reserve
-            let reserved = payment - funded;
-
-            (reserved, funded)
-        }
-        CommonsPhase::Closed => {
-            // TODO: what to do here?
-            return Err(ContractError::CommonsClosed {});
-        }
-    };
-
-    // calculate how many tokens can be purchased with this and mint them
-    let curve = curve_fn(curve_state.clone().decimals);
-    curve_state.reserve += reserved;
-    curve_state.funding += funded;
-    let new_supply = curve.supply(curve_state.reserve);
-    let minted = new_supply
-        .checked_sub(curve_state.supply)
-        .map_err(StdError::overflow)?;
-    curve_state.supply = new_supply;
-    CURVE_STATE.save(deps.storage, &curve_state)?;
-
-    let denom = SUPPLY_DENOM.load(deps.storage)?;
-    // mint supply token
-    let mint_msg = TokenMsg::MintTokens {
-        denom,
-        amount: minted,
-        mint_to_address: info.sender.to_string(),
-    };
-
-    Ok(Response::new()
-        .add_message(mint_msg)
-        .add_attribute("action", "buy")
-        .add_attribute("from", info.sender)
-        .add_attribute("reserved", reserved)
-        .add_attribute("funded", funded)
-        .add_attribute("supply", minted))
-}
-
-pub fn execute_sell(
-    deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
-    info: MessageInfo,
-    curve_fn: CurveFn,
-    amount: Uint128,
-) -> CwAbcResult {
-    let receiver = info.sender.clone();
-
-    let denom = SUPPLY_DENOM.load(deps.storage)?;
-    let payment = must_pay(&info, &denom)?;
-
-    // calculate how many tokens can be purchased with this and mint them
-    let mut state = CURVE_STATE.load(deps.storage)?;
-    let curve = curve_fn(state.clone().decimals);
-    state.supply = state
-        .supply
-        .checked_sub(amount)
-        .map_err(StdError::overflow)?;
-    let new_reserve = curve.reserve(state.supply);
-    let released = state
-        .reserve
-        .checked_sub(new_reserve)
-        .map_err(StdError::overflow)?;
-    state.reserve = new_reserve;
-    CURVE_STATE.save(deps.storage, &state)?;
-
-    // Burn the tokens
-    let burn_msg = TokenMsg::BurnTokens {
-        denom,
-        amount: payment,
-        burn_from_address: info.sender.to_string(),
-    };
-
-    // now send the tokens to the sender (TODO: for sell_from we do something else, right???)
-    let msg = BankMsg::Send {
-        to_address: receiver.to_string(),
-        amount: coins(released.u128(), state.reserve_denom),
-    };
-
-    Ok(Response::new()
-        .add_message(msg)
-        .add_message(burn_msg)
-        .add_attribute("action", "burn")
-        .add_attribute("from", info.sender)
-        .add_attribute("supply", amount)
-        .add_attribute("reserve", released))
+    commands::do_execute(deps, env, info, msg, curve_fn)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -258,52 +110,13 @@ pub fn do_query(
 ) -> StdResult<Binary> {
     match msg {
         // custom queries
-        QueryMsg::CurveInfo {} => to_binary(&query_curve_info(deps, curve_fn)?),
+        QueryMsg::CurveInfo {} => to_binary(&queries::query_curve_info(deps, curve_fn)?),
         // QueryMsg::GetDenom {
         //     creator_address,
         //     subdenom,
         // } => to_binary(&get_denom(deps, creator_address, subdenom)),
     }
 }
-
-pub fn query_curve_info(
-    deps: Deps<TokenFactoryQuery>,
-    curve_fn: CurveFn,
-) -> StdResult<CurveInfoResponse> {
-    let CurveState {
-        reserve,
-        supply,
-        reserve_denom,
-        decimals,
-        funding,
-    } = CURVE_STATE.load(deps.storage)?;
-
-    // This we can get from the local digits stored in instantiate
-    let curve = curve_fn(decimals);
-    let spot_price = curve.spot_price(supply);
-
-    Ok(CurveInfoResponse {
-        reserve,
-        supply,
-        funding,
-        spot_price,
-        reserve_denom,
-    })
-}
-
-// // TODO, maybe we don't need this
-// pub fn get_denom(
-//     deps: Deps<TokenFactoryQuery>,
-//     creator_addr: String,
-//     subdenom: String,
-// ) -> GetDenomResponse {
-//     let querier = TokenQuerier::new(&deps.querier);
-//     let response = querier.full_denom(creator_addr, subdenom).unwrap();
-
-//     GetDenomResponse {
-//         denom: response.denom,
-//     }
-// }
 
 // fn validate_denom(
 //     deps: DepsMut<TokenFactoryQuery>,
@@ -350,16 +163,12 @@ pub fn query_curve_info(
 #[cfg(test)]
 mod tests {
     use std::marker::PhantomData;
-    use cosmwasm_std::{
-        CosmosMsg,
-        Decimal,
-        OwnedDeps,
-        testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage}
-    };
-    use token_bindings::{Metadata};
+    use cosmwasm_std::{CosmosMsg, Decimal, OwnedDeps, testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage}, Uint128};
+    use token_bindings::Metadata;
     use crate::abc::{ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, OpenConfig, ReserveToken, SupplyToken};
     use super::*;
     use speculoos::prelude::*;
+    use crate::queries::query_curve_info;
 //     use crate::msg::CurveType;
 //     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 //     use cosmwasm_std::{coin, Decimal, OverflowError, OverflowOperation, StdError, SubMsg};
