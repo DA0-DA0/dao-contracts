@@ -48,9 +48,6 @@ pub fn instantiate(
         metadata: Some(supply.metadata),
     };
 
-    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
-    let curve_state = CurveState::new(reserve.denom, normalization_places);
-
     // TODO validate denom?
 
     // Save the denom
@@ -65,6 +62,8 @@ pub fn instantiate(
     )?;
 
     // Save the curve type and state
+    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
+    let curve_state = CurveState::new(reserve.denom, normalization_places);
     CURVE_STATE.save(deps.storage, &curve_state)?;
     CURVE_TYPE.save(deps.storage, &curve_type)?;
 
@@ -295,34 +294,65 @@ pub fn query_curve_info(
 //     Result::Ok(())
 // }
 
-// // this is poor mans "skip" flag
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+// this is poor mans "skip" flag
+#[cfg(test)]
+mod tests {
+    use std::marker::PhantomData;
+    use cosmwasm_std::{CosmosMsg, Decimal, OwnedDeps, SubMsg};
+    use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage};
+    use token_bindings::{Metadata, TokenQuery};
+    use crate::abc::{CurveType, HatchConfig, ReserveToken, SupplyToken};
+    use super::*;
+    use speculoos::prelude::*;
 //     use crate::msg::CurveType;
 //     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 //     use cosmwasm_std::{coin, Decimal, OverflowError, OverflowOperation, StdError, SubMsg};
 //     use cw_utils::PaymentError;
 
-//     const DENOM: &str = "satoshi";
-//     const CREATOR: &str = "creator";
-//     const INVESTOR: &str = "investor";
-//     const BUYER: &str = "buyer";
+    const DENOM: &str = "satoshi";
+    const CREATOR: &str = "creator";
+    const INVESTOR: &str = "investor";
+    const BUYER: &str = "buyer";
 
-//     fn default_instantiate(
-//         decimals: u8,
-//         reserve_decimals: u8,
-//         curve_type: CurveType,
-//     ) -> InstantiateMsg {
-//         InstantiateMsg {
-//             name: "Bonded".to_string(),
-//             symbol: "EPOXY".to_string(),
-//             decimals,
-//             reserve_denom: DENOM.to_string(),
-//             reserve_decimals,
-//             curve_type,
-//         }
-//     }
+    const SUPPLY_DENOM: &str = "subdenom";
+
+
+
+    fn default_supply_metadata() -> Metadata {
+        Metadata {
+            name: Some("Bonded".to_string()),
+            symbol: Some("EPOXY".to_string()),
+            description: None,
+            denom_units: vec![],
+            base: None,
+            display: None,
+        }
+    }
+
+    fn default_instantiate(
+        decimals: u8,
+        reserve_decimals: u8,
+        curve_type: CurveType,
+    ) -> InstantiateMsg {
+        InstantiateMsg {
+            supply: SupplyToken {
+                subdenom: SUPPLY_DENOM.to_string(),
+                metadata: default_supply_metadata(),
+                decimals,
+            },
+            reserve: ReserveToken {
+                denom: DENOM.to_string(),
+                decimals: reserve_decimals,
+            },
+            hatch_config: HatchConfig {
+                initial_raise: (Uint128::one(), Uint128::from(100u128)),
+                initial_price: Uint128::one(),
+                initial_allocation: 10,
+                reserve_percentage: 10,
+            },
+            curve_type,
+        }
+    }
 
 //     fn get_balance<U: Into<String>>(deps: Deps, addr: U) -> Uint128 {
 //         query_balance(deps, addr.into()).unwrap().balance
@@ -339,45 +369,63 @@ pub fn query_curve_info(
 //         assert_eq!(0, res.messages.len());
 //     }
 
-//     #[test]
-//     fn proper_instantiation() {
-//         let mut deps = mock_dependencies();
+    /// Mock token factory querier dependencies
+    fn mock_tf_dependencies() -> OwnedDeps<MockStorage, MockApi, MockQuerier<TokenFactoryQuery>, TokenFactoryQuery> {
+        OwnedDeps {
+            storage: MockStorage::default(),
+            api: MockApi::default(),
+            querier: MockQuerier::<TokenFactoryQuery>::new(&[]),
+            custom_query_type: PhantomData::<TokenFactoryQuery>,
+        }
+    }
 
-//         // this matches `linear_curve` test case from curves.rs
-//         let creator = String::from("creator");
-//         let curve_type = CurveType::SquareRoot {
-//             slope: Uint128::new(1),
-//             scale: 1,
-//         };
-//         let msg = default_instantiate(2, 8, curve_type.clone());
-//         let info = mock_info(&creator, &[]);
+    #[test]
+    fn proper_instantiation() -> CwAbcResult<()> {
+        let mut deps = mock_tf_dependencies();
 
-//         // make sure we can instantiate with this
-//         let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
-//         assert_eq!(0, res.messages.len());
+        // this matches `linear_curve` test case from curves.rs
+        let creator = String::from("creator");
+        let curve_type = CurveType::SquareRoot {
+            slope: Uint128::new(1),
+            scale: 1,
+        };
+        let msg = default_instantiate(2, 8, curve_type.clone());
+        let info = mock_info(&creator, &[]);
 
-//         // token info is proper
-//         let token = query_token_info(deps.as_ref()).unwrap();
-//         assert_eq!(&token.name, &msg.name);
-//         assert_eq!(&token.symbol, &msg.symbol);
-//         assert_eq!(token.decimals, 2);
-//         assert_eq!(token.total_supply, Uint128::zero());
+        // make sure we can instantiate with this
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone())?;
+        assert_that!(res.messages.len()).is_equal_to(1);
+        let submsg = res.messages.get(0).unwrap();
+        assert_that!(submsg.msg).is_equal_to(CosmosMsg::Custom(TokenFactoryMsg::Token(TokenMsg::CreateDenom {
+            subdenom: SUPPLY_DENOM.to_string(),
+            metadata: Some(default_supply_metadata()),
+        })));
 
-//         // curve state is sensible
-//         let state = query_curve_info(deps.as_ref(), curve_type.to_curve_fn()).unwrap();
-//         assert_eq!(state.reserve, Uint128::zero());
-//         assert_eq!(state.supply, Uint128::zero());
-//         assert_eq!(state.reserve_denom.as_str(), DENOM);
-//         // spot price 0 as supply is 0
-//         assert_eq!(state.spot_price, Decimal::zero());
+        // TODO!
+        // // token info is proper
+        // let token = query_token_info(deps.as_ref()).unwrap();
+        // assert_that!(&token.name, &msg.name);
+        // assert_that!(&token.symbol, &msg.symbol);
+        // assert_that!(token.decimals, 2);
+        // assert_that!(token.total_supply, Uint128::zero());
 
-//         // curve type is stored properly
-//         let curve = CURVE_TYPE.load(&deps.storage).unwrap();
-//         assert_eq!(curve_type, curve);
+        // curve state is sensible
+        let state = query_curve_info(deps.as_ref(), curve_type.to_curve_fn())?;
+        assert_that!(state.reserve).is_equal_to(Uint128::zero());
+        assert_that!(state.supply).is_equal_to(Uint128::zero());
+        assert_that!(state.reserve_denom.as_str()).is_equal_to(DENOM);
+        // spot price 0 as supply is 0
+        assert_that!(state.spot_price).is_equal_to(Decimal::zero());
 
-//         // no balance
-//         assert_eq!(get_balance(deps.as_ref(), &creator), Uint128::zero());
-//     }
+        // curve type is stored properly
+        let curve = CURVE_TYPE.load(&deps.storage).unwrap();
+        assert_eq!(curve_type, curve);
+
+        // no balance
+        // assert_eq!(get_balance(deps.as_ref(), &creator), Uint128::zero());
+
+        Ok(())
+    }
 
 //     #[test]
 //     fn buy_issues_tokens() {
@@ -511,4 +559,4 @@ pub fn query_curve_info(
 //         assert_eq!(token.decimals, 2);
 //         assert_eq!(token.total_supply, Uint128::new(1000));
 //     }
-// }
+}

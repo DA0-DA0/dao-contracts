@@ -30,4 +30,4 @@ integer-cbrt = "0.1.2"
 token-bindings = { git = "https://github.com/CosmosContracts/token-bindings", rev = "1412b94" }
 
 [dev-dependencies]
-
+speculoos = "0.11.0"
