@@ -1,17 +1,18 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    attr, coins, to_binary, Addr, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response,
+    coins, to_binary, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 use cw2::set_contract_version;
-use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery, TokenMsg, TokenQuerier};
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
-use crate::msg::{CurveFn, CurveInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, DENOM};
+use crate::msg::{CurveInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, SUPPLY_DENOM, PHASE};
 use cw_utils::{must_pay, nonpayable};
+use crate::abc::{CommonsPhase, CurveFn};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-abc";
@@ -32,39 +33,44 @@ pub fn instantiate(
     nonpayable(&info)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    if msg.subdenom.eq("") {
-        return Err(ContractError::InvalidSubdenom {
-            subdenom: msg.subdenom,
-        });
-    }
+    msg.validate()?;
 
-    // Create denom with metadata
-    let create_denom_msg = TokenMsg::CreateDenom {
-        subdenom: msg.subdenom.clone(),
-        metadata: Some(msg.metadata),
+    let InstantiateMsg {
+        supply,
+        reserve,
+        curve_type,
+        hatch_config,
+    } = msg;
+
+    // Create supply denom with metadata
+    let create_supply_denom_msg = TokenMsg::CreateDenom {
+        subdenom: supply.subdenom.clone(),
+        metadata: Some(supply.metadata),
     };
 
-    let places = DecimalPlaces::new(msg.decimals, msg.reserve_decimals);
-    let supply = CurveState::new(msg.reserve_denom, places);
+    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
+    let curve_state = CurveState::new(reserve.denom, normalization_places);
 
     // TODO validate denom?
 
     // Save the denom
-    DENOM.save(
+    SUPPLY_DENOM.save(
         deps.storage,
         &format!(
             "{}/{}/{}",
             DENOM_PREFIX,
-            env.contract.address.to_string(),
-            msg.subdenom
+            env.contract.address.into_string(),
+            supply.subdenom
         ),
     )?;
 
-    CURVE_STATE.save(deps.storage, &supply)?;
+    // Save the curve type and state
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+    CURVE_TYPE.save(deps.storage, &curve_type)?;
 
-    CURVE_TYPE.save(deps.storage, &msg.curve_type)?;
+    PHASE.save(deps.storage, &CommonsPhase::Hatch(hatch_config))?;
 
-    Ok(Response::default().add_message(create_denom_msg))
+    Ok(Response::default().add_message(create_supply_denom_msg))
 }
 
 
@@ -100,13 +106,13 @@ pub fn do_execute(
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     curve_fn: CurveFn,
 ) -> CwAbcResult {
     let mut state = CURVE_STATE.load(deps.storage)?;
 
-    let denom = DENOM.load(deps.storage)?;
+    let denom = SUPPLY_DENOM.load(deps.storage)?;
     let payment = must_pay(&info, &state.reserve_denom)?;
 
     // calculate how many tokens can be purchased with this and mint them
@@ -136,14 +142,14 @@ pub fn execute_buy(
 
 pub fn execute_sell(
     deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     curve_fn: CurveFn,
     amount: Uint128,
 ) -> CwAbcResult {
     let receiver = info.sender.clone();
 
-    let denom = DENOM.load(deps.storage)?;
+    let denom = SUPPLY_DENOM.load(deps.storage)?;
     let payment = must_pay(&info, &denom)?;
 
     // calculate how many tokens can be purchased with this and mint them
@@ -165,7 +171,7 @@ pub fn execute_sell(
     let burn_msg = TokenMsg::BurnTokens {
         denom,
         amount: payment,
-        burn_from_address: info.sender.clone().to_string(),
+        burn_from_address: info.sender.to_string(),
     };
 
     // now send the tokens to the sender (TODO: for sell_from we do something else, right???)

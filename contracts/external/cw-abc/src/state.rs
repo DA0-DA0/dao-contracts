@@ -2,9 +2,9 @@ use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::Uint128;
 use cw_storage_plus::Item;
+use crate::abc::{CommonsPhase, CurveType};
 
 use crate::curves::DecimalPlaces;
-use crate::msg::CurveType;
 
 /// Supply is dynamic and tracks the current supply of staked and ERC20 tokens.
 #[cw_serde]
@@ -36,4 +36,8 @@ pub const CURVE_STATE: Item<CurveState> = Item::new("curve_state");
 
 pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
 
-pub const DENOM: Item<String> = Item::new("denom");
+/// The denom used for the supply token
+pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
+
+/// The phase of the Augmented Bonding Curve
+pub static PHASE: Item<CommonsPhase> = Item::new("phase");

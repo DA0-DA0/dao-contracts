@@ -15,4 +15,10 @@ pub enum ContractError {
 
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("Hatch config error {0}")]
+    HatchConfigError(String),
+
+    #[error("Supply token error {0}")]
+    SupplyTokenError(String),
 }
