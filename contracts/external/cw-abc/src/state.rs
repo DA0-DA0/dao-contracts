@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::Uint128;
 use cw_storage_plus::Item;
-use crate::abc::{CommonsPhase, CurveType};
+use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType};
 
 use crate::curves::DecimalPlaces;
 
@@ -38,6 +38,9 @@ pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
 
 /// The denom used for the supply token
 pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
+
+/// The phase configuration of the Augmented Bonding Curve
+pub static PHASE_CONFIG: Item<CommonsPhaseConfig> = Item::new("phase_config");
 
 /// The phase of the Augmented Bonding Curve
 pub static PHASE: Item<CommonsPhase> = Item::new("phase");

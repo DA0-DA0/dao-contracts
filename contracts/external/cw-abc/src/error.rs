@@ -21,4 +21,7 @@ pub enum ContractError {
 
     #[error("Supply token error {0}")]
     SupplyTokenError(String),
+
+    #[error("Sender {sender:?} is not in the hatcher allowlist.")]
+    SenderNotAllowlisted { sender: String },
 }

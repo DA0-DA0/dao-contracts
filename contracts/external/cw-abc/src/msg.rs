@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Uint128};
 
-use crate::abc::{CurveType, HatchConfig, ReserveToken, SupplyToken};
+use crate::abc::{CommonsPhaseConfig, CurveType, HatchConfig, ReserveToken, SupplyToken};
 use crate::ContractError;
 
 #[cw_serde]
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
     pub curve_type: CurveType,
 
     // Hatch configuration information
-    pub hatch_config: HatchConfig,
+    pub phase_config: CommonsPhaseConfig,
 }
 
 impl InstantiateMsg {
@@ -26,7 +26,7 @@ impl InstantiateMsg {
             return Err(ContractError::SupplyTokenError("Token subdenom must not be empty.".to_string()));
         }
 
-        self.hatch_config.validate()
+        self.phase_config.validate()
     }
 }
 

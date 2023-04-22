@@ -1,5 +1,6 @@
+use std::collections::HashSet;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Uint128};
+use cosmwasm_std::{Addr, ensure, Timestamp, Uint128};
 use token_bindings::Metadata;
 use crate::curves::{Constant, Curve, decimal, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
@@ -24,27 +25,10 @@ pub struct ReserveToken {
     pub decimals: u8,
 }
 
-
-#[cw_serde]
-pub enum CommonsPhase {
-    // The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
-    Hatch(HatchConfig),
-    // The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
-    Vesting {
-        // The start timestamp of the vesting process.
-        vesting_start: u64,
-        // The end timestamp of the vesting process.
-        vesting_end: u64,
-    },
-    // The Open phase where anyone can mint tokens by contributing DAI into the curve and becoming members of the Commons.
-    Open,
-}
-
-
 #[cw_serde]
 pub struct HatchConfig {
-    // Initial contributors (Hatchers) list
-    // pub hatchers: Vec<Addr>,
+    // Initial contributors (Hatchers) allow list
+    pub allowlist: Option<Vec<Addr>>,
     // The initial raise range (min, max) in the reserve token
     pub initial_raise: (Uint128, Uint128),
     // The initial price (p0) per reserve token
@@ -56,9 +40,8 @@ pub struct HatchConfig {
 }
 
 impl HatchConfig {
+    /// Validate the hatch config
     pub fn validate(&self) -> Result<(), ContractError> {
-        // ensure!(!self.hatchers.is_empty(), ContractError::HatchConfigError("Hatchers list must not be empty."));
-
         ensure!(
             self.initial_raise.0 < self.initial_raise.1,
             ContractError::HatchConfigError("Initial raise minimum value must be less than maximum value.".to_string())
@@ -78,6 +61,72 @@ impl HatchConfig {
             self.reserve_percentage <= 100,
             ContractError::HatchConfigError("Reserve percentage must be between 0 and 100.".to_string())
         );
+
+        Ok(())
+    }
+
+    /// Check if the sender is allowlisted for the hatch phase
+    pub fn assert_allowlisted(&self, hatcher: &Addr) -> Result<(), ContractError> {
+        if let Some(allowlist) = &self.allowlist {
+            ensure!(
+                allowlist.contains(hatcher),
+                ContractError::SenderNotAllowlisted {
+                    sender: hatcher.to_string(),
+                }
+            );
+        }
+
+        Ok(())
+    }
+}
+
+#[cw_serde]
+pub struct VestingConfig {
+    // The vesting period (in blocks) for the tokens minted during the Hatch phase
+    pub vesting_period: Timestamp,
+    // TODO: vesting parameters
+    // // The vesting cliff (in blocks) for the tokens minted during the Hatch phase
+    // pub vesting_cliff: u64,
+}
+
+#[cw_serde]
+pub struct OpenConfig {}
+
+#[cw_serde]
+pub struct ClosedConfig {}
+
+
+#[cw_serde]
+pub struct CommonsPhaseConfig {
+    // The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
+    pub hatch: HatchConfig,
+    // The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
+    // pub vesting: VestingConfig,
+    // The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.
+    pub open: OpenConfig,
+    // The Closed phase where the Commons is closed to new members.
+    pub closed: ClosedConfig,
+}
+
+#[derive(Default)]
+#[cw_serde]
+pub struct HatchPhase {
+    // Initial contributors (Hatchers)
+    pub hatchers: HashSet<Addr>,
+}
+
+#[cw_serde]
+pub enum CommonsPhase {
+    Hatch(HatchPhase),
+    // Vesting,
+    Open,
+    // TODO: should we allow for a closed phase?
+    Closed
+}
+
+impl CommonsPhaseConfig {
+    pub fn validate(&self) -> Result<(), ContractError> {
+        self.hatch.validate()?;
 
         Ok(())
     }

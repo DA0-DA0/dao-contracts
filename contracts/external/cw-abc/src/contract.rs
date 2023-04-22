@@ -10,9 +10,9 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{CurveInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, SUPPLY_DENOM, PHASE};
+use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, SUPPLY_DENOM, PHASE_CONFIG, PHASE};
 use cw_utils::{must_pay, nonpayable};
-use crate::abc::{CommonsPhase, CurveFn};
+use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveFn};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-abc";
@@ -39,7 +39,7 @@ pub fn instantiate(
         supply,
         reserve,
         curve_type,
-        hatch_config,
+        phase_config,
     } = msg;
 
     // Create supply denom with metadata
@@ -67,7 +67,7 @@ pub fn instantiate(
     CURVE_STATE.save(deps.storage, &curve_state)?;
     CURVE_TYPE.save(deps.storage, &curve_type)?;
 
-    PHASE.save(deps.storage, &CommonsPhase::Hatch(hatch_config))?;
+    PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
     Ok(Response::default().add_message(create_supply_denom_msg))
 }
@@ -105,26 +105,66 @@ pub fn do_execute(
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     curve_fn: CurveFn,
 ) -> CwAbcResult {
-    let mut state = CURVE_STATE.load(deps.storage)?;
+    let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
-    let denom = SUPPLY_DENOM.load(deps.storage)?;
-    let payment = must_pay(&info, &state.reserve_denom)?;
+    let payment = must_pay(&info, &curve_state.reserve_denom)?;
+
+    // Load the phase config and phase
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+    let mut phase = PHASE.load(deps.storage)?;
+
+    match phase {
+        CommonsPhase::Hatch(ref mut hatch_phase) => {
+            let hatch_config = &phase_config.hatch;
+
+            // Check that the potential hatcher is allowlisted
+            hatch_config.assert_allowlisted(&info.sender)?;
+            // Add the sender to the list of hatchers
+            hatch_phase.hatchers.insert(info.sender.clone());
+
+            // reserve percentage gets sent to the reserve
+            // TODO: WE LEFT OFF HERE
+
+            // Finally, check if the initial_raise max has been met
+            if curve_state.reserve + payment >= hatch_config.initial_raise.1 {
+                // Transition to the Open phase, the hatchers tokens are now vesting
+                phase = CommonsPhase::Open;
+                PHASE.save(deps.storage, &phase)?;
+            }
+        }
+        // CommonsPhase::Vesting => {
+        //     // Check if the vesting period has ended
+        //     if env.block.time > phase_config.vesting.vesting_period {
+        //         // Transition to the Open phase
+        //         phase = CommonsPhase::Open;
+        //         PHASE.save(deps.storage, &phase)?;
+        //     }
+        // }
+        CommonsPhase::Open => {
+            // TODO: what to do here?
+            // Do nothing
+        }
+        CommonsPhase::Closed => {
+            // Do nothing
+        }
+    }
 
     // calculate how many tokens can be purchased with this and mint them
-    let curve = curve_fn(state.clone().decimals);
-    state.reserve += payment;
-    let new_supply = curve.supply(state.reserve);
+    let curve = curve_fn(curve_state.clone().decimals);
+    curve_state.reserve += payment;
+    let new_supply = curve.supply(curve_state.reserve);
     let minted = new_supply
-        .checked_sub(state.supply)
+        .checked_sub(curve_state.supply)
         .map_err(StdError::overflow)?;
-    state.supply = new_supply;
-    CURVE_STATE.save(deps.storage, &state)?;
+    curve_state.supply = new_supply;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
 
-    // mint tf token
+    let denom = SUPPLY_DENOM.load(deps.storage)?;
+    // mint supply token
     let mint_msg = TokenMsg::MintTokens {
         denom,
         amount: minted,
@@ -344,7 +384,7 @@ mod tests {
                 denom: DENOM.to_string(),
                 decimals: reserve_decimals,
             },
-            hatch_config: HatchConfig {
+            phase_config: HatchConfig {
                 initial_raise: (Uint128::one(), Uint128::from(100u128)),
                 initial_price: Uint128::one(),
                 initial_allocation: 10,
