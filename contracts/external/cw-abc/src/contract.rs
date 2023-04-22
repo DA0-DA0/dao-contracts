@@ -117,6 +117,7 @@ pub fn do_query(
     match msg {
         // custom queries
         QueryMsg::CurveInfo {} => to_binary(&queries::query_curve_info(deps, curve_fn)?),
+        QueryMsg::PhaseConfig {} => to_binary(&queries::query_phase_config(deps)?),
         // QueryMsg::GetDenom {
         //     creator_address,
         //     subdenom,

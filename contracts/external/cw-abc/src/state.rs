@@ -44,6 +44,7 @@ pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
 pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 
 /// Keep track of who has contributed to the hatch phase
+/// TODO: cw-set?
 pub static HATCHERS: Item<HashSet<Addr>> = Item::new("hatchers");
 
 /// The phase configuration of the Augmented Bonding Curve

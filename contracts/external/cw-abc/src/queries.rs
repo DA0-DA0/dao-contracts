@@ -1,7 +1,7 @@
 use cosmwasm_std::{Deps, StdResult};
 use token_bindings::TokenFactoryQuery;
 use crate::abc::CurveFn;
-use crate::msg::CurveInfoResponse;
+use crate::msg::{CommonsPhaseConfigResponse, CurveInfoResponse};
 use crate::state::{CURVE_STATE, CurveState};
 
 /// Get the current state of the curve
@@ -27,6 +27,14 @@ pub fn query_curve_info(
         funding,
         spot_price,
         reserve_denom,
+    })
+}
+
+/// Load and return the phase config
+pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPhaseConfigResponse> {
+    let phase_config = crate::state::PHASE_CONFIG.load(deps.storage)?;
+    Ok(CommonsPhaseConfigResponse {
+        phase_config
     })
 }
 

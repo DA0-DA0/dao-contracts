@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 
 use crate::abc::{CommonsPhaseConfig, CurveType, ReserveToken, SupplyToken};
 
@@ -33,8 +33,13 @@ pub enum ExecuteMsg {
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     /// Returns the reserve and supply quantities, as well as the spot price to buy 1 token
+    /// Returns [`CurveInfoResponse`]
     #[returns(CurveInfoResponse)]
     CurveInfo {},
+    /// Returns the current phase configuration
+    /// Returns [`CommonsPhaseConfigResponse`]
+    #[returns(CommonsPhaseConfigResponse)]
+    PhaseConfig {}
 }
 
 #[cw_serde]
@@ -53,5 +58,6 @@ pub struct CurveInfoResponse {
 
 #[cw_serde]
 pub struct CommonsPhaseConfigResponse {
-
+    // the phase configuration
+    pub phase_config: CommonsPhaseConfig<Addr>,
 }
