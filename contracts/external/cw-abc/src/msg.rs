@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Uint128};
 
-use crate::abc::{CommonsPhaseConfig, CurveType, HatchConfig, ReserveToken, SupplyToken};
+use crate::abc::{CommonsPhaseConfig, CurveType, ReserveToken, SupplyToken};
 use crate::ContractError;
 
 #[cw_serde]
@@ -54,6 +54,10 @@ pub struct CurveInfoResponse {
     pub reserve: Uint128,
     // how many supply tokens have been issued
     pub supply: Uint128,
+    // the amount of tokens in the funding pool
+    pub funding: Uint128,
+    // current spot price of the token
     pub spot_price: Decimal,
+    // current reserve denom
     pub reserve_denom: String,
 }

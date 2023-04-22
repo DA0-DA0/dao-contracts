@@ -1,6 +1,6 @@
-use std::collections::HashSet;
+
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, ensure, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Decimal as StdDecimal, ensure, Uint128};
 use token_bindings::Metadata;
 use crate::curves::{Constant, Curve, decimal, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
@@ -34,9 +34,7 @@ pub struct HatchConfig {
     // The initial price (p0) per reserve token
     pub initial_price: Uint128,
     // The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
-    pub initial_allocation: u8,
-    // Percentage of capital put into the Reserve Pool during the Hatch phase
-    pub reserve_percentage: u8,
+    pub initial_allocation_percentage: StdDecimal,
 }
 
 impl HatchConfig {
@@ -44,22 +42,17 @@ impl HatchConfig {
     pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
             self.initial_raise.0 < self.initial_raise.1,
-            ContractError::HatchConfigError("Initial raise minimum value must be less than maximum value.".to_string())
+            ContractError::HatchPhaseConfigError("Initial raise minimum value must be less than maximum value.".to_string())
         );
 
         ensure!(
             !self.initial_price.is_zero(),
-            ContractError::HatchConfigError("Initial price must be greater than zero.".to_string())
+            ContractError::HatchPhaseConfigError("Initial price must be greater than zero.".to_string())
         );
 
         ensure!(
-            self.initial_allocation <= 100,
-            ContractError::HatchConfigError("Initial allocation percentage must be between 0 and 100.".to_string())
-        );
-
-        ensure!(
-            self.reserve_percentage <= 100,
-            ContractError::HatchConfigError("Reserve percentage must be between 0 and 100.".to_string())
+            self.initial_allocation_percentage <= StdDecimal::percent(100u64),
+            ContractError::HatchPhaseConfigError("Initial allocation percentage must be between 0 and 100.".to_string())
         );
 
         Ok(())
@@ -80,17 +73,25 @@ impl HatchConfig {
     }
 }
 
-#[cw_serde]
-pub struct VestingConfig {
-    // The vesting period (in blocks) for the tokens minted during the Hatch phase
-    pub vesting_period: Timestamp,
-    // TODO: vesting parameters
-    // // The vesting cliff (in blocks) for the tokens minted during the Hatch phase
-    // pub vesting_cliff: u64,
-}
 
 #[cw_serde]
-pub struct OpenConfig {}
+pub struct OpenConfig {
+    // Percentage of capital put into the Reserve Pool during the Open phase
+    pub allocation_percentage: StdDecimal,
+}
+
+impl OpenConfig {
+    /// Validate the open config
+    pub fn validate(&self) -> Result<(), ContractError> {
+
+        ensure!(
+            self.allocation_percentage <= StdDecimal::percent(100u64),
+            ContractError::OpenPhaseConfigError("Reserve percentage must be between 0 and 100.".to_string())
+        );
+
+        Ok(())
+    }
+}
 
 #[cw_serde]
 pub struct ClosedConfig {}
@@ -108,17 +109,26 @@ pub struct CommonsPhaseConfig {
     pub closed: ClosedConfig,
 }
 
-#[derive(Default)]
-#[cw_serde]
-pub struct HatchPhase {
-    // Initial contributors (Hatchers)
-    pub hatchers: HashSet<Addr>,
-}
+// #[derive(Default)]
+// #[cw_serde]
+// pub struct HatchPhaseState {
+//     // Initial contributors (Hatchers)
+//     pub hatchers: HashSet<Addr>,
+// }
+//
+// // TODO: maybe should be combined with config or just placed in state
+// #[cw_serde]
+// pub struct CommonsPhaseState {
+//     pub hatch: HatchPhaseState,
+//     // Vesting,
+//     pub open: (),
+//     // TODO: should we allow for a closed phase?
+//     pub closed: ()
+// }
 
 #[cw_serde]
 pub enum CommonsPhase {
-    Hatch(HatchPhase),
-    // Vesting,
+    Hatch,
     Open,
     // TODO: should we allow for a closed phase?
     Closed

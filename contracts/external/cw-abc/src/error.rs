@@ -16,12 +16,18 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Hatch config error {0}")]
-    HatchConfigError(String),
+    #[error("Hatch phase config error {0}")]
+    HatchPhaseConfigError(String),
+
+    #[error("Open phase config error {0}")]
+    OpenPhaseConfigError(String),
 
     #[error("Supply token error {0}")]
     SupplyTokenError(String),
 
     #[error("Sender {sender:?} is not in the hatcher allowlist.")]
     SenderNotAllowlisted { sender: String },
+
+    #[error("The commons is closed to new contributions")]
+    CommonsClosed {},
 }

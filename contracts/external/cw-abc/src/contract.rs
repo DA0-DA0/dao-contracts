@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -10,9 +11,9 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{CurveInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, SUPPLY_DENOM, PHASE_CONFIG, PHASE};
+use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, SUPPLY_DENOM, PHASE_CONFIG,  PHASE, HATCHERS};
 use cw_utils::{must_pay, nonpayable};
-use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveFn};
+use crate::abc::{ CurveFn, CommonsPhase};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-abc";
@@ -66,6 +67,7 @@ pub fn instantiate(
     let curve_state = CurveState::new(reserve.denom, normalization_places);
     CURVE_STATE.save(deps.storage, &curve_state)?;
     CURVE_TYPE.save(deps.storage, &curve_type)?;
+    HATCHERS.save(deps.storage, &HashSet::new())?;
 
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
@@ -105,7 +107,7 @@ pub fn do_execute(
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     curve_fn: CurveFn,
 ) -> CwAbcResult {
@@ -117,45 +119,52 @@ pub fn execute_buy(
     let phase_config = PHASE_CONFIG.load(deps.storage)?;
     let mut phase = PHASE.load(deps.storage)?;
 
-    match phase {
-        CommonsPhase::Hatch(ref mut hatch_phase) => {
+    let (reserved, funded) = match phase {
+        CommonsPhase::Hatch => {
             let hatch_config = &phase_config.hatch;
 
             // Check that the potential hatcher is allowlisted
             hatch_config.assert_allowlisted(&info.sender)?;
-            // Add the sender to the list of hatchers
-            hatch_phase.hatchers.insert(info.sender.clone());
+            HATCHERS.update(deps.storage, |mut hatchers| -> StdResult<_>{
+                hatchers.insert(info.sender.clone());
+                Ok(hatchers)
+            })?;
 
-            // reserve percentage gets sent to the reserve
-            // TODO: WE LEFT OFF HERE
-
-            // Finally, check if the initial_raise max has been met
+            // Check if the initial_raise max has been met
             if curve_state.reserve + payment >= hatch_config.initial_raise.1 {
-                // Transition to the Open phase, the hatchers tokens are now vesting
+                // Transition to the Open phase, the hatchers' tokens are now vesting
                 phase = CommonsPhase::Open;
                 PHASE.save(deps.storage, &phase)?;
             }
+
+            // Calculate the number of tokens sent to the funding pool using the initial allocation percentage
+            // TODO: is it safe to multiply a Decimal with a Uint128?
+            let funded = payment * hatch_config.initial_allocation_percentage;
+            // Calculate the number of tokens sent to the reserve
+            let reserved = payment - funded;
+
+            (reserved, funded)
         }
-        // CommonsPhase::Vesting => {
-        //     // Check if the vesting period has ended
-        //     if env.block.time > phase_config.vesting.vesting_period {
-        //         // Transition to the Open phase
-        //         phase = CommonsPhase::Open;
-        //         PHASE.save(deps.storage, &phase)?;
-        //     }
-        // }
         CommonsPhase::Open => {
-            // TODO: what to do here?
-            // Do nothing
+            let hatch_config = &phase_config.open;
+
+            // Calculate the number of tokens sent to the funding pool using the allocation percentage
+            let funded = payment * hatch_config.allocation_percentage;
+            // Calculate the number of tokens sent to the reserve
+            let reserved = payment - funded;
+
+            (reserved, funded)
         }
         CommonsPhase::Closed => {
-            // Do nothing
+            // TODO: what to do here?
+            return Err(ContractError::CommonsClosed {});
         }
-    }
+    };
 
     // calculate how many tokens can be purchased with this and mint them
     let curve = curve_fn(curve_state.clone().decimals);
-    curve_state.reserve += payment;
+    curve_state.reserve += reserved;
+    curve_state.funding += funded;
     let new_supply = curve.supply(curve_state.reserve);
     let minted = new_supply
         .checked_sub(curve_state.supply)
@@ -175,7 +184,8 @@ pub fn execute_buy(
         .add_message(mint_msg)
         .add_attribute("action", "buy")
         .add_attribute("from", info.sender)
-        .add_attribute("reserve", payment)
+        .add_attribute("reserved", reserved)
+        .add_attribute("funded", funded)
         .add_attribute("supply", minted))
 }
 
@@ -265,6 +275,7 @@ pub fn query_curve_info(
         supply,
         reserve_denom,
         decimals,
+        funding,
     } = CURVE_STATE.load(deps.storage)?;
 
     // This we can get from the local digits stored in instantiate
@@ -274,6 +285,7 @@ pub fn query_curve_info(
     Ok(CurveInfoResponse {
         reserve,
         supply,
+        funding,
         spot_price,
         reserve_denom,
     })
@@ -334,14 +346,18 @@ pub fn query_curve_info(
 //     Result::Ok(())
 // }
 
-// this is poor mans "skip" flag
+// this is poor man's "skip" flag
 #[cfg(test)]
 mod tests {
     use std::marker::PhantomData;
-    use cosmwasm_std::{CosmosMsg, Decimal, OwnedDeps, SubMsg};
-    use cosmwasm_std::testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage};
-    use token_bindings::{Metadata, TokenQuery};
-    use crate::abc::{CurveType, HatchConfig, ReserveToken, SupplyToken};
+    use cosmwasm_std::{
+        CosmosMsg,
+        Decimal,
+        OwnedDeps,
+        testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage}
+    };
+    use token_bindings::{Metadata};
+    use crate::abc::{ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, OpenConfig, ReserveToken, SupplyToken};
     use super::*;
     use speculoos::prelude::*;
 //     use crate::msg::CurveType;
@@ -384,11 +400,17 @@ mod tests {
                 denom: DENOM.to_string(),
                 decimals: reserve_decimals,
             },
-            phase_config: HatchConfig {
-                initial_raise: (Uint128::one(), Uint128::from(100u128)),
-                initial_price: Uint128::one(),
-                initial_allocation: 10,
-                reserve_percentage: 10,
+            phase_config: CommonsPhaseConfig {
+                hatch: HatchConfig {
+                    initial_raise: (Uint128::one(), Uint128::from(100u128)),
+                    initial_price: Uint128::one(),
+                    initial_allocation_percentage: Decimal::percent(10u64),
+                    allowlist: None,
+                },
+                open: OpenConfig {
+                    allocation_percentage: Decimal::percent(10u64),
+                },
+                closed: ClosedConfig {},
             },
             curve_type,
         }
@@ -433,7 +455,7 @@ mod tests {
         let info = mock_info(&creator, &[]);
 
         // make sure we can instantiate with this
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone())?;
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg)?;
         assert_that!(res.messages.len()).is_equal_to(1);
         let submsg = res.messages.get(0).unwrap();
         assert_that!(submsg.msg).is_equal_to(CosmosMsg::Custom(TokenFactoryMsg::Token(TokenMsg::CreateDenom {
