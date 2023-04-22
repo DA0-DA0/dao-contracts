@@ -42,6 +42,7 @@ pub struct HatchConfig<T: AddressLike> {
     // The initial raise range (min, max) in the reserve token
     pub initial_raise: MinMax,
     // The initial price (p0) per reserve token
+    // TODO: initial price is not implemented yet
     pub initial_price: Uint128,
     // The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
     pub initial_allocation_ratio: StdDecimal,

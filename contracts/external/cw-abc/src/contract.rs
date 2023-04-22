@@ -128,7 +128,7 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
 }
 
 /// We pull out logic here, so we can import this from another contract and set a different Curve.
-/// This contacts sets a curve with an enum in InstantitateMsg and stored in state, but you may want
+/// This contacts sets a curve with an enum in [`InstantiateMsg`] and stored in state, but you may want
 /// to use custom math not included - make this easily reusable
 pub fn do_query(
     deps: Deps<TokenFactoryQuery>,

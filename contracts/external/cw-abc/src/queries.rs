@@ -31,6 +31,7 @@ pub fn query_curve_info(
 }
 
 /// Load and return the phase config
+/// TODO: the allowlist will need to paged... should it be separate?
 pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPhaseConfigResponse> {
     let phase_config = crate::state::PHASE_CONFIG.load(deps.storage)?;
     Ok(CommonsPhaseConfigResponse {
