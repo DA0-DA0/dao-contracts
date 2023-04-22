@@ -14,11 +14,13 @@ use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, DENOM};
 use cw_utils::{must_pay, nonpayable};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw20-bonding";
+const CONTRACT_NAME: &str = "crates.io:cw20-abc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // By default, the prefix for token factory tokens is "factory"
 const DENOM_PREFIX: &str = "factory";
+
+type CwAbcResult<T = Response<TokenFactoryMsg>> = Result<T, ContractError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -26,7 +28,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     nonpayable(&info)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -65,13 +67,14 @@ pub fn instantiate(
     Ok(Response::default().add_message(create_denom_msg))
 }
 
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut<TokenFactoryQuery>,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     // default implementation stores curve info as enum, you can do something else in a derived
     // contract and just pass in your custom curve to do_execute
     let curve_type = CURVE_TYPE.load(deps.storage)?;
@@ -88,7 +91,7 @@ pub fn do_execute(
     info: MessageInfo,
     msg: ExecuteMsg,
     curve_fn: CurveFn,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     match msg {
         ExecuteMsg::Buy {} => execute_buy(deps, env, info, curve_fn),
         ExecuteMsg::Burn { amount } => Ok(execute_sell(deps, env, info, curve_fn, amount)?),
@@ -100,7 +103,7 @@ pub fn execute_buy(
     env: Env,
     info: MessageInfo,
     curve_fn: CurveFn,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     let mut state = CURVE_STATE.load(deps.storage)?;
 
     let denom = DENOM.load(deps.storage)?;
@@ -137,7 +140,7 @@ pub fn execute_sell(
     info: MessageInfo,
     curve_fn: CurveFn,
     amount: Uint128,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     let receiver = info.sender.clone();
 
     let denom = DENOM.load(deps.storage)?;
