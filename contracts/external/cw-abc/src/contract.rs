@@ -35,7 +35,6 @@ pub fn instantiate(
     nonpayable(&info)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    msg.validate()?;
 
     let InstantiateMsg {
         supply,
@@ -43,6 +42,13 @@ pub fn instantiate(
         curve_type,
         phase_config,
     } = msg;
+
+
+    if supply.subdenom.is_empty() {
+        return Err(ContractError::SupplyTokenError("Token subdenom must not be empty.".to_string()));
+    }
+
+    let phase_config = phase_config.validate(deps.api)?;
 
     // Create supply denom with metadata
     let create_supply_denom_msg = TokenMsg::CreateDenom {
@@ -169,10 +175,6 @@ mod tests {
     use super::*;
     use speculoos::prelude::*;
     use crate::queries::query_curve_info;
-//     use crate::msg::CurveType;
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-//     use cosmwasm_std::{coin, Decimal, OverflowError, OverflowOperation, StdError, SubMsg};
-//     use cw_utils::PaymentError;
 
     const DENOM: &str = "satoshi";
     const CREATOR: &str = "creator";

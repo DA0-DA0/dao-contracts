@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Decimal, Uint128};
 
 use crate::abc::{CommonsPhaseConfig, CurveType, ReserveToken, SupplyToken};
-use crate::ContractError;
+
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -16,18 +16,7 @@ pub struct InstantiateMsg {
     pub curve_type: CurveType,
 
     // Hatch configuration information
-    pub phase_config: CommonsPhaseConfig,
-}
-
-impl InstantiateMsg {
-    /// Validate the instantiate message
-    pub fn validate(&self) -> Result<(), ContractError> {
-        if self.supply.subdenom.is_empty() {
-            return Err(ContractError::SupplyTokenError("Token subdenom must not be empty.".to_string()));
-        }
-
-        self.phase_config.validate()
-    }
+    pub phase_config: CommonsPhaseConfig<String>,
 }
 
 
@@ -60,4 +49,9 @@ pub struct CurveInfoResponse {
     pub spot_price: Decimal,
     // current reserve denom
     pub reserve_denom: String,
+}
+
+#[cw_serde]
+pub struct CommonsPhaseConfigResponse {
+
 }

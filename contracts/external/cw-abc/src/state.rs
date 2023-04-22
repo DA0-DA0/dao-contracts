@@ -47,7 +47,7 @@ pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 pub static HATCHERS: Item<HashSet<Addr>> = Item::new("hatchers");
 
 /// The phase configuration of the Augmented Bonding Curve
-pub static PHASE_CONFIG: Item<CommonsPhaseConfig> = Item::new("phase_config");
+pub static PHASE_CONFIG: Item<CommonsPhaseConfig<Addr>> = Item::new("phase_config");
 
 /// The phase state of the Augmented Bonding Curve
 pub static PHASE: Item<CommonsPhase> = Item::new("phase");

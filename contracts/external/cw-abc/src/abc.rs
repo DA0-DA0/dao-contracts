@@ -1,6 +1,7 @@
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal as StdDecimal, ensure, Uint128};
+use cosmwasm_std::{Addr, Api, Decimal as StdDecimal, ensure, StdResult, Uint128};
+use cw_address_like::AddressLike;
 use token_bindings::Metadata;
 use crate::curves::{Constant, Curve, decimal, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
@@ -26,9 +27,9 @@ pub struct ReserveToken {
 }
 
 #[cw_serde]
-pub struct HatchConfig {
+pub struct HatchConfig<T: AddressLike> {
     // Initial contributors (Hatchers) allow list
-    pub allowlist: Option<Vec<Addr>>,
+    pub allowlist: Option<Vec<T>>,
     // The initial raise range (min, max) in the reserve token
     pub initial_raise: (Uint128, Uint128),
     // The initial price (p0) per reserve token
@@ -37,9 +38,23 @@ pub struct HatchConfig {
     pub initial_allocation_percentage: StdDecimal,
 }
 
-impl HatchConfig {
+impl From<HatchConfig<Addr>> for HatchConfig<String> {
+    fn from(value: HatchConfig<Addr>) -> Self {
+        HatchConfig {
+            allowlist: value.allowlist.map(|addresses| {
+                addresses.into_iter().map(|addr| addr.to_string()).collect()
+            }),
+            initial_raise: value.initial_raise,
+            initial_price: value.initial_price,
+            initial_allocation_percentage: value.initial_allocation_percentage,
+        }
+    }
+}
+
+
+impl HatchConfig<String> {
     /// Validate the hatch config
-    pub fn validate(&self) -> Result<(), ContractError> {
+    pub fn validate(&self, api: &dyn Api) -> Result<HatchConfig<Addr>, ContractError> {
         ensure!(
             self.initial_raise.0 < self.initial_raise.1,
             ContractError::HatchPhaseConfigError("Initial raise minimum value must be less than maximum value.".to_string())
@@ -55,9 +70,27 @@ impl HatchConfig {
             ContractError::HatchPhaseConfigError("Initial allocation percentage must be between 0 and 100.".to_string())
         );
 
-        Ok(())
-    }
+        let allowlist = self
+            .allowlist
+            .as_ref()
+            .map(|addresses| {
+                addresses
+                    .iter()
+                    .map(|addr| api.addr_validate(addr))
+                    .collect::<StdResult<Vec<_>>>()
+            })
+            .transpose()?;
 
+        Ok(HatchConfig {
+            allowlist,
+            initial_raise: self.initial_raise,
+            initial_price: self.initial_price,
+            initial_allocation_percentage: self.initial_allocation_percentage,
+        })
+    }
+}
+
+impl HatchConfig<Addr> {
     /// Check if the sender is allowlisted for the hatch phase
     pub fn assert_allowlisted(&self, hatcher: &Addr) -> Result<(), ContractError> {
         if let Some(allowlist) = &self.allowlist {
@@ -98,9 +131,9 @@ pub struct ClosedConfig {}
 
 
 #[cw_serde]
-pub struct CommonsPhaseConfig {
+pub struct CommonsPhaseConfig<T: AddressLike> {
     // The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
-    pub hatch: HatchConfig,
+    pub hatch: HatchConfig<T>,
     // The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
     // pub vesting: VestingConfig,
     // The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.
@@ -134,11 +167,17 @@ pub enum CommonsPhase {
     Closed
 }
 
-impl CommonsPhaseConfig {
-    pub fn validate(&self) -> Result<(), ContractError> {
-        self.hatch.validate()?;
+impl CommonsPhaseConfig<String> {
+    /// Validate that the commons configuration is valid
+    pub fn validate(&self, api: &dyn Api) -> Result<CommonsPhaseConfig<Addr>, ContractError> {
+        let hatch = self.hatch.validate(api)?;
+        self.open.validate()?;
 
-        Ok(())
+        Ok(CommonsPhaseConfig {
+            hatch,
+            open: self.open.clone(),
+            closed: self.closed.clone(),
+        })
     }
 }
 
