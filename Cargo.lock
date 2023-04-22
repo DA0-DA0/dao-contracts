@@ -587,6 +587,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-address-like",
+ "cw-ownable",
  "cw-storage-plus 1.0.1 (git+https://github.com/CosmWasm/cw-storage-plus?rev=6db957ce730a95141a3ab4dc5ab76fb38e8c0c42)",
  "cw-utils 0.16.0",
  "cw2 0.16.0",

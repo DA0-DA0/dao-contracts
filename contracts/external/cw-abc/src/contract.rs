@@ -1,10 +1,8 @@
 use std::collections::HashSet;
+use std::ops::Deref;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, to_binary,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdResult, to_binary};
 use cw2::set_contract_version;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
@@ -78,6 +76,8 @@ pub fn instantiate(
 
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
+
     Ok(Response::default().add_message(create_supply_denom_msg))
 }
 
@@ -110,10 +110,23 @@ pub fn do_execute(
         ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info, curve_fn),
         ExecuteMsg::Burn { amount } => commands::execute_sell(deps, env, info, curve_fn, amount),
         ExecuteMsg::UpdateHatchAllowlist { to_add: _, to_remove: _ } => {
+            cw_ownable::assert_owner(deps.storage, &info.sender)?;
             // commands::execute_update_hatch_allowlist(deps, env, info, to_add, to_remove)
             todo!()
         }
-        ExecuteMsg::UpdateHatchConfig { .. } => todo!()
+        ExecuteMsg::UpdateHatchConfig { .. } => {
+            cw_ownable::assert_owner(deps.storage, &info.sender)?;
+            todo!()
+        },
+        ExecuteMsg::UpdateOwnership(action) => {
+            let ownership = cw_ownable::update_ownership(DepsMut {
+                storage: deps.storage,
+                api: deps.api,
+                querier: QuerierWrapper::new(deps.querier.deref()),
+            }, &env.block, &info.sender, action)?;
+
+            Ok(Response::default().add_attributes(ownership.into_attributes()))
+        }
     }
 }
 
@@ -140,6 +153,7 @@ pub fn do_query(
         // custom queries
         QueryMsg::CurveInfo {} => to_binary(&queries::query_curve_info(deps, curve_fn)?),
         QueryMsg::PhaseConfig {} => to_binary(&queries::query_phase_config(deps)?),
+        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         // QueryMsg::GetDenom {
         //     creator_address,
         //     subdenom,

@@ -20,6 +20,7 @@ pub struct InstantiateMsg {
 }
 
 
+#[cw_ownable::cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
     /// Buy will attempt to purchase as many supply tokens as possible.
@@ -40,6 +41,7 @@ pub enum ExecuteMsg {
     },
 }
 
+#[cw_ownable::cw_ownable_query]
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {

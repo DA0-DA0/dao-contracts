@@ -13,6 +13,9 @@ pub enum ContractError {
     #[error("Invalid subdenom: {subdenom:?}")]
     InvalidSubdenom { subdenom: String },
 
+    #[error("{0}")]
+    Ownership(#[from] cw_ownable::OwnershipError),
+
     #[error("Unauthorized")]
     Unauthorized {},
 
