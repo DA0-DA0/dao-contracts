@@ -12,8 +12,8 @@ use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHERS, PHASE_CONFIG, SUPPLY_DENOM};
-use cw_utils::{nonpayable};
-use crate::abc::{CurveFn};
+use cw_utils::nonpayable;
+use crate::abc::CurveFn;
 use crate::{commands, queries};
 
 // version info for migration info
@@ -93,8 +93,30 @@ pub fn execute(
     // contract and just pass in your custom curve to do_execute
     let curve_type = CURVE_TYPE.load(deps.storage)?;
     let curve_fn = curve_type.to_curve_fn();
-    commands::do_execute(deps, env, info, msg, curve_fn)
+    do_execute(deps, env, info, msg, curve_fn)
 }
+
+/// We pull out logic here, so we can import this from another contract and set a different Curve.
+/// This contacts sets a curve with an enum in InstantiateMsg and stored in state, but you may want
+/// to use custom math not included - make this easily reusable
+pub fn do_execute(
+    deps: DepsMut<TokenFactoryQuery>,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+    curve_fn: CurveFn,
+) -> CwAbcResult {
+    match msg {
+        ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info, curve_fn),
+        ExecuteMsg::Burn { amount } => commands::execute_sell(deps, env, info, curve_fn, amount),
+        ExecuteMsg::UpdateHatchAllowlist { to_add: _, to_remove: _ } => {
+            // commands::execute_update_hatch_allowlist(deps, env, info, to_add, to_remove)
+            todo!()
+        }
+        ExecuteMsg::UpdateHatchConfig { .. } => todo!()
+    }
+}
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -172,7 +194,7 @@ mod tests {
     use std::marker::PhantomData;
     use cosmwasm_std::{CosmosMsg, Decimal, OwnedDeps, testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage}, Uint128};
     use token_bindings::Metadata;
-    use crate::abc::{ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, OpenConfig, ReserveToken, SupplyToken};
+    use crate::abc::{ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken, SupplyToken};
     use super::*;
     use speculoos::prelude::*;
     use crate::queries::query_curve_info;
@@ -214,9 +236,12 @@ mod tests {
             },
             phase_config: CommonsPhaseConfig {
                 hatch: HatchConfig {
-                    initial_raise: (Uint128::one(), Uint128::from(100u128)),
+                    initial_raise: MinMax {
+                        min: Uint128::one(),
+                        max: Uint128::from(1000000u128),
+                    },
                     initial_price: Uint128::one(),
-                    initial_allocation_percentage: Decimal::percent(10u64),
+                    initial_allocation_ratio: Decimal::percent(10u64),
                     allowlist: None,
                 },
                 open: OpenConfig {

@@ -2,26 +2,10 @@ use cosmwasm_std::{BankMsg, coins, DepsMut, Env, MessageInfo, Response, StdError
 use token_bindings::{TokenFactoryQuery, TokenMsg};
 use cw_utils::must_pay;
 use crate::abc::{CommonsPhase, CurveFn};
-use crate::{ContractError};
+use crate::ContractError;
 use crate::contract::CwAbcResult;
-use crate::msg::ExecuteMsg;
-use crate::state::{CURVE_STATE, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
 
-/// We pull out logic here, so we can import this from another contract and set a different Curve.
-/// This contacts sets a curve with an enum in InstantiateMsg and stored in state, but you may want
-/// to use custom math not included - make this easily reusable
-pub fn do_execute(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-    curve_fn: CurveFn,
-) -> CwAbcResult {
-    match msg {
-        ExecuteMsg::Buy {} => execute_buy(deps, env, info, curve_fn),
-        ExecuteMsg::Burn { amount } => Ok(execute_sell(deps, env, info, curve_fn, amount)?),
-    }
-}
+use crate::state::{CURVE_STATE, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
@@ -49,7 +33,7 @@ pub fn execute_buy(
             })?;
 
             // Check if the initial_raise max has been met
-            if curve_state.reserve + payment >= hatch_config.initial_raise.1 {
+            if curve_state.reserve + payment >= hatch_config.initial_raise.max {
                 // Transition to the Open phase, the hatchers' tokens are now vesting
                 phase = CommonsPhase::Open;
                 PHASE.save(deps.storage, &phase)?;
@@ -57,7 +41,7 @@ pub fn execute_buy(
 
             // Calculate the number of tokens sent to the funding pool using the initial allocation percentage
             // TODO: is it safe to multiply a Decimal with a Uint128?
-            let funded = payment * hatch_config.initial_allocation_percentage;
+            let funded = payment * hatch_config.initial_allocation_ratio;
             // Calculate the number of tokens sent to the reserve
             let reserved = payment - funded;
 

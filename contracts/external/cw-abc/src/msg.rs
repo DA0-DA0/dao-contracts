@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128, Decimal as StdDecimal};
 
-use crate::abc::{CommonsPhaseConfig, CurveType, ReserveToken, SupplyToken};
+use crate::abc::{CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken};
 
 
 #[cw_serde]
@@ -27,6 +27,17 @@ pub enum ExecuteMsg {
     Buy {},
     /// Implements CW20. Burn is a base message to destroy tokens forever
     Burn { amount: Uint128 },
+    /// Update the hatch phase allowlist
+    UpdateHatchAllowlist {
+        to_add: Vec<String>,
+        to_remove: Vec<String>,
+    },
+    /// Update the hatch phase configuration
+    /// This can only be called by the admin and only during the hatch phase
+    UpdateHatchConfig {
+        initial_raise: Option<MinMax>,
+        initial_allocation_ratio: Option<StdDecimal>,
+    },
 }
 
 #[cw_serde]

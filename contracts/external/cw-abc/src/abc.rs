@@ -26,16 +26,25 @@ pub struct ReserveToken {
     pub decimals: u8,
 }
 
+/// Struct for minimium and maximum values
+#[cw_serde]
+pub struct MinMax {
+    pub min: Uint128,
+    pub max: Uint128,
+}
+
 #[cw_serde]
 pub struct HatchConfig<T: AddressLike> {
     // Initial contributors (Hatchers) allow list
     pub allowlist: Option<Vec<T>>,
+    // /// TODO: The minimum and maximum contribution amounts (min, max) in the reserve token
+    // pub contribution_limits: MinMax,
     // The initial raise range (min, max) in the reserve token
-    pub initial_raise: (Uint128, Uint128),
+    pub initial_raise: MinMax,
     // The initial price (p0) per reserve token
     pub initial_price: Uint128,
     // The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
-    pub initial_allocation_percentage: StdDecimal,
+    pub initial_allocation_ratio: StdDecimal,
 }
 
 impl From<HatchConfig<Addr>> for HatchConfig<String> {
@@ -46,7 +55,7 @@ impl From<HatchConfig<Addr>> for HatchConfig<String> {
             }),
             initial_raise: value.initial_raise,
             initial_price: value.initial_price,
-            initial_allocation_percentage: value.initial_allocation_percentage,
+            initial_allocation_ratio: value.initial_allocation_ratio,
         }
     }
 }
@@ -56,7 +65,7 @@ impl HatchConfig<String> {
     /// Validate the hatch config
     pub fn validate(&self, api: &dyn Api) -> Result<HatchConfig<Addr>, ContractError> {
         ensure!(
-            self.initial_raise.0 < self.initial_raise.1,
+            self.initial_raise.min < self.initial_raise.max,
             ContractError::HatchPhaseConfigError("Initial raise minimum value must be less than maximum value.".to_string())
         );
 
@@ -66,7 +75,7 @@ impl HatchConfig<String> {
         );
 
         ensure!(
-            self.initial_allocation_percentage <= StdDecimal::percent(100u64),
+            self.initial_allocation_ratio <= StdDecimal::percent(100u64),
             ContractError::HatchPhaseConfigError("Initial allocation percentage must be between 0 and 100.".to_string())
         );
 
@@ -83,9 +92,9 @@ impl HatchConfig<String> {
 
         Ok(HatchConfig {
             allowlist,
-            initial_raise: self.initial_raise,
+            initial_raise: self.initial_raise.clone(),
             initial_price: self.initial_price,
-            initial_allocation_percentage: self.initial_allocation_percentage,
+            initial_allocation_ratio: self.initial_allocation_ratio,
         })
     }
 }
