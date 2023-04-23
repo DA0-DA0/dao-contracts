@@ -116,6 +116,7 @@ pub fn do_execute(
     match msg {
         ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info, curve_fn),
         ExecuteMsg::Burn { amount } => commands::execute_sell(deps, env, info, curve_fn, amount),
+        ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
             cw_ownable::assert_owner(deps.storage, &info.sender)?;
             commands::update_hatch_allowlist(deps, to_add, to_remove)
@@ -159,6 +160,9 @@ pub fn do_query(
         // custom queries
         QueryMsg::CurveInfo {} => to_binary(&queries::query_curve_info(deps, curve_fn)?),
         QueryMsg::PhaseConfig {} => to_binary(&queries::query_phase_config(deps)?),
+        QueryMsg::Donations { start_after, limit } => {
+            to_binary(&queries::query_donations(deps, start_after, limit)?)
+        }
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         // QueryMsg::GetDenom {
         //     creator_address,

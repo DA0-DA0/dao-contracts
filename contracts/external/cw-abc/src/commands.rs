@@ -6,7 +6,7 @@ use crate::abc::{CommonsPhase, CurveFn};
 use crate::ContractError;
 use crate::contract::CwAbcResult;
 
-use crate::state::{CURVE_STATE, HATCHER_ALLOWLIST, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
+use crate::state::{CURVE_STATE, DONATIONS, HATCHER_ALLOWLIST, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
@@ -141,6 +141,22 @@ pub fn execute_sell(
         .add_attribute("reserve", released))
 }
 
+/// Send a donation to the funding pool
+pub fn execute_donate(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
+    let mut curve_state = CURVE_STATE.load(deps.storage)?;
+
+    let payment = must_pay(&info, &curve_state.reserve_denom)?;
+    curve_state.funding += payment;
+
+    // No minting of tokens is necessary, the supply stays the same
+    DONATIONS.save(deps.storage, &info.sender, &payment)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "donate")
+        .add_attribute("from", info.sender)
+        .add_attribute("funded", payment))
+}
+
 /// Check if the sender is allowlisted for the hatch phase
 fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), ContractError> {
     let allowlist = HATCHER_ALLOWLIST.may_load(storage)?;
@@ -178,3 +194,4 @@ pub fn update_hatch_allowlist(deps: DepsMut<TokenFactoryQuery>, to_add: Vec<Stri
 
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
 }
+

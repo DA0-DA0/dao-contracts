@@ -30,6 +30,7 @@ integer-cbrt = "0.1.2"
 token-bindings = { git = "https://github.com/CosmosContracts/token-bindings", rev = "1412b94" }
 cw-address-like = "1.0.4"
 cw-ownable = { workspace = true }
+cw-paginate = { workspace = true }
 
 [dev-dependencies]
 speculoos = "0.11.0"

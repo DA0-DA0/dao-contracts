@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use cosmwasm_schema::cw_serde;
 
 use cosmwasm_std::{Addr, Uint128};
-use cw_storage_plus::Item;
+use cw_storage_plus::{Item, Map};
 use crate::abc::{ CommonsPhaseConfig, CurveType, CommonsPhase};
 
 use crate::curves::DecimalPlaces;
@@ -46,8 +46,12 @@ pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 pub static HATCHER_ALLOWLIST: Item<HashSet<Addr>> = Item::new("hatch_allowlist");
 
 /// Keep track of who has contributed to the hatch phase
-/// TODO: cw-set?
+/// TODO: cw-set? This should be a map because in the open-phase we need to be able
+/// to ascertain the amount contributed by a user
 pub static HATCHERS: Item<HashSet<Addr>> = Item::new("hatchers");
+
+/// Keep track of the donated amounts per user
+pub static DONATIONS: Map<&Addr, Uint128> = Map::new("donations");
 
 /// The phase configuration of the Augmented Bonding Curve
 pub static PHASE_CONFIG: Item<CommonsPhaseConfig> = Item::new("phase_config");

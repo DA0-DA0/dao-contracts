@@ -1,8 +1,9 @@
-use cosmwasm_std::{Deps, StdResult};
+use std::ops::Deref;
+use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult};
 use token_bindings::TokenFactoryQuery;
 use crate::abc::CurveFn;
-use crate::msg::{CommonsPhaseConfigResponse, CurveInfoResponse};
-use crate::state::{CURVE_STATE, CurveState, PHASE, PHASE_CONFIG};
+use crate::msg::{CommonsPhaseConfigResponse, CurveInfoResponse, DonationsResponse};
+use crate::state::{CURVE_STATE, CurveState, DONATIONS, PHASE, PHASE_CONFIG};
 
 /// Get the current state of the curve
 pub fn query_curve_info(
@@ -54,3 +55,21 @@ pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPha
 //         denom: response.denom,
 //     }
 // }
+
+pub fn query_donations(deps: Deps<TokenFactoryQuery>, start_aftor: Option<String>, limit: Option<u32>) -> StdResult<DonationsResponse> {
+    let donations = cw_paginate::paginate_map(
+        Deps {
+            storage: deps.storage,
+            api: deps.api,
+            querier: QuerierWrapper::new(deps.querier.deref())
+        },
+        &DONATIONS,
+        start_aftor.map(|addr| deps.api.addr_validate(&addr)).transpose()?.as_ref(),
+        limit,
+        Order::Descending,
+    )?;
+
+    Ok(DonationsResponse {
+        donations,
+    })
+}
