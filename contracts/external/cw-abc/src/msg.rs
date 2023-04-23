@@ -1,8 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Decimal, Uint128, Decimal as StdDecimal};
+use cosmwasm_std::{Addr, Decimal, Decimal as StdDecimal, Uint128};
 
 use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken};
-
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -21,7 +20,6 @@ pub struct InstantiateMsg {
     // Hatcher allowlist
     pub hatcher_allowlist: Option<Vec<String>>,
 }
-
 
 #[cw_ownable::cw_ownable_execute]
 #[cw_serde]

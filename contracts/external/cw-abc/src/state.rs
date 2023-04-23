@@ -1,9 +1,9 @@
-use std::collections::HashSet;
 use cosmwasm_schema::cw_serde;
+use std::collections::HashSet;
 
+use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType};
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
-use crate::abc::{ CommonsPhaseConfig, CurveType, CommonsPhase};
 
 use crate::curves::DecimalPlaces;
 
@@ -60,4 +60,3 @@ pub static PHASE_CONFIG: Item<CommonsPhaseConfig> = Item::new("phase_config");
 
 /// The phase state of the Augmented Bonding Curve
 pub static PHASE: Item<CommonsPhase> = Item::new("phase");
-

@@ -1,10 +1,9 @@
-
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Decimal as StdDecimal, ensure, Uint128};
+use cosmwasm_std::{ensure, Decimal as StdDecimal, Uint128};
 
-use token_bindings::Metadata;
-use crate::curves::{Constant, Curve, decimal, DecimalPlaces, Linear, SquareRoot};
+use crate::curves::{decimal, Constant, Curve, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
+use token_bindings::Metadata;
 
 #[cw_serde]
 pub struct SupplyToken {
@@ -53,23 +52,28 @@ impl HatchConfig {
     pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
             self.initial_raise.min < self.initial_raise.max,
-            ContractError::HatchPhaseConfigError("Initial raise minimum value must be less than maximum value.".to_string())
+            ContractError::HatchPhaseConfigError(
+                "Initial raise minimum value must be less than maximum value.".to_string()
+            )
         );
 
         ensure!(
             !self.initial_price.is_zero(),
-            ContractError::HatchPhaseConfigError("Initial price must be greater than zero.".to_string())
+            ContractError::HatchPhaseConfigError(
+                "Initial price must be greater than zero.".to_string()
+            )
         );
 
         ensure!(
             self.initial_allocation_ratio <= StdDecimal::percent(100u64),
-            ContractError::HatchPhaseConfigError("Initial allocation percentage must be between 0 and 100.".to_string())
+            ContractError::HatchPhaseConfigError(
+                "Initial allocation percentage must be between 0 and 100.".to_string()
+            )
         );
 
         Ok(())
     }
 }
-
 
 #[cw_serde]
 pub struct OpenConfig {
@@ -82,15 +86,18 @@ pub struct OpenConfig {
 impl OpenConfig {
     /// Validate the open config
     pub fn validate(&self) -> Result<(), ContractError> {
-
         ensure!(
             self.allocation_percentage <= StdDecimal::percent(100u64),
-            ContractError::OpenPhaseConfigError("Reserve percentage must be between 0 and 100.".to_string())
+            ContractError::OpenPhaseConfigError(
+                "Reserve percentage must be between 0 and 100.".to_string()
+            )
         );
 
         ensure!(
             self.exit_tax <= StdDecimal::percent(100u64),
-            ContractError::OpenPhaseConfigError("Exit taxation percentage must be between 0 and 100.".to_string())
+            ContractError::OpenPhaseConfigError(
+                "Exit taxation percentage must be between 0 and 100.".to_string()
+            )
         );
 
         Ok(())
@@ -99,7 +106,6 @@ impl OpenConfig {
 
 #[cw_serde]
 pub struct ClosedConfig {}
-
 
 #[cw_serde]
 pub struct CommonsPhaseConfig {
@@ -135,7 +141,7 @@ pub enum CommonsPhase {
     Hatch,
     Open,
     // TODO: should we allow for a closed phase?
-    Closed
+    Closed,
 }
 
 impl CommonsPhaseConfig {
@@ -147,7 +153,6 @@ impl CommonsPhaseConfig {
         Ok(())
     }
 }
-
 
 pub type CurveFn = Box<dyn Fn(DecimalPlaces) -> Box<dyn Curve>>;
 
@@ -185,4 +190,3 @@ impl CurveType {
         }
     }
 }
-

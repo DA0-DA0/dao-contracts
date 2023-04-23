@@ -1,18 +1,22 @@
-use std::collections::HashSet;
-use std::ops::Deref;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdResult, to_binary};
+use cosmwasm_std::{
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdResult,
+};
 use cw2::set_contract_version;
+use std::collections::HashSet;
+use std::ops::Deref;
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
+use crate::abc::CurveFn;
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHER_ALLOWLIST, PHASE_CONFIG, SUPPLY_DENOM};
-use cw_utils::nonpayable;
-use crate::abc::CurveFn;
+use crate::state::{
+    CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, PHASE_CONFIG, SUPPLY_DENOM,
+};
 use crate::{commands, queries};
+use cw_utils::nonpayable;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:cw20-abc";
@@ -33,7 +37,6 @@ pub fn instantiate(
     nonpayable(&info)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-
     let InstantiateMsg {
         supply,
         reserve,
@@ -42,9 +45,10 @@ pub fn instantiate(
         hatcher_allowlist,
     } = msg;
 
-
     if supply.subdenom.is_empty() {
-        return Err(ContractError::SupplyTokenError("Token subdenom must not be empty.".to_string()));
+        return Err(ContractError::SupplyTokenError(
+            "Token subdenom must not be empty.".to_string(),
+        ));
     }
 
     phase_config.validate()?;
@@ -75,8 +79,10 @@ pub fn instantiate(
     CURVE_TYPE.save(deps.storage, &curve_type)?;
 
     if let Some(allowlist) = hatcher_allowlist {
-        let allowlist = allowlist.into_iter()
-            .map(|addr| deps.api.addr_validate(addr.as_str())).collect::<StdResult<HashSet<_>>>()?;
+        let allowlist = allowlist
+            .into_iter()
+            .map(|addr| deps.api.addr_validate(addr.as_str()))
+            .collect::<StdResult<HashSet<_>>>()?;
         HATCHER_ALLOWLIST.save(deps.storage, &allowlist)?;
     }
 
@@ -86,7 +92,6 @@ pub fn instantiate(
 
     Ok(Response::default().add_message(create_supply_denom_msg))
 }
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
@@ -123,19 +128,23 @@ pub fn do_execute(
         ExecuteMsg::UpdateHatchConfig { .. } => {
             cw_ownable::assert_owner(deps.storage, &info.sender)?;
             todo!()
-        },
+        }
         ExecuteMsg::UpdateOwnership(action) => {
-            let ownership = cw_ownable::update_ownership(DepsMut {
-                storage: deps.storage,
-                api: deps.api,
-                querier: QuerierWrapper::new(deps.querier.deref()),
-            }, &env.block, &info.sender, action)?;
+            let ownership = cw_ownable::update_ownership(
+                DepsMut {
+                    storage: deps.storage,
+                    api: deps.api,
+                    querier: QuerierWrapper::new(deps.querier.deref()),
+                },
+                &env.block,
+                &info.sender,
+                action,
+            )?;
 
             Ok(Response::default().add_attributes(ownership.into_attributes()))
         }
     }
 }
-
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -214,13 +223,19 @@ pub fn do_query(
 // this is poor man's "skip" flag
 #[cfg(test)]
 mod tests {
-    use std::marker::PhantomData;
-    use cosmwasm_std::{CosmosMsg, Decimal, OwnedDeps, testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage}, Uint128};
-    use token_bindings::Metadata;
-    use crate::abc::{ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken, SupplyToken};
     use super::*;
-    use speculoos::prelude::*;
+    use crate::abc::{
+        ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
+        SupplyToken,
+    };
     use crate::queries::query_curve_info;
+    use cosmwasm_std::{
+        testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
+        CosmosMsg, Decimal, OwnedDeps, Uint128,
+    };
+    use speculoos::prelude::*;
+    use std::marker::PhantomData;
+    use token_bindings::Metadata;
 
     const DENOM: &str = "satoshi";
     const CREATOR: &str = "creator";
@@ -228,8 +243,6 @@ mod tests {
     const BUYER: &str = "buyer";
 
     const SUPPLY_DENOM: &str = "subdenom";
-
-
 
     fn default_supply_metadata() -> Metadata {
         Metadata {
@@ -278,23 +291,24 @@ mod tests {
         }
     }
 
-//     fn get_balance<U: Into<String>>(deps: Deps, addr: U) -> Uint128 {
-//         query_balance(deps, addr.into()).unwrap().balance
-//     }
+    //     fn get_balance<U: Into<String>>(deps: Deps, addr: U) -> Uint128 {
+    //         query_balance(deps, addr.into()).unwrap().balance
+    //     }
 
-//     fn setup_test(deps: DepsMut, decimals: u8, reserve_decimals: u8, curve_type: CurveType) {
-//         // this matches `linear_curve` test case from curves.rs
-//         let creator = String::from(CREATOR);
-//         let msg = default_instantiate(decimals, reserve_decimals, curve_type);
-//         let info = mock_info(&creator, &[]);
+    //     fn setup_test(deps: DepsMut, decimals: u8, reserve_decimals: u8, curve_type: CurveType) {
+    //         // this matches `linear_curve` test case from curves.rs
+    //         let creator = String::from(CREATOR);
+    //         let msg = default_instantiate(decimals, reserve_decimals, curve_type);
+    //         let info = mock_info(&creator, &[]);
 
-//         // make sure we can instantiate with this
-//         let res = instantiate(deps, mock_env(), info, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
-//     }
+    //         // make sure we can instantiate with this
+    //         let res = instantiate(deps, mock_env(), info, msg).unwrap();
+    //         assert_eq!(0, res.messages.len());
+    //     }
 
     /// Mock token factory querier dependencies
-    fn mock_tf_dependencies() -> OwnedDeps<MockStorage, MockApi, MockQuerier<TokenFactoryQuery>, TokenFactoryQuery> {
+    fn mock_tf_dependencies(
+    ) -> OwnedDeps<MockStorage, MockApi, MockQuerier<TokenFactoryQuery>, TokenFactoryQuery> {
         OwnedDeps {
             storage: MockStorage::default(),
             api: MockApi::default(),
@@ -320,10 +334,12 @@ mod tests {
         let res = instantiate(deps.as_mut(), mock_env(), info, msg)?;
         assert_that!(res.messages.len()).is_equal_to(1);
         let submsg = res.messages.get(0).unwrap();
-        assert_that!(submsg.msg).is_equal_to(CosmosMsg::Custom(TokenFactoryMsg::Token(TokenMsg::CreateDenom {
-            subdenom: SUPPLY_DENOM.to_string(),
-            metadata: Some(default_supply_metadata()),
-        })));
+        assert_that!(submsg.msg).is_equal_to(CosmosMsg::Custom(TokenFactoryMsg::Token(
+            TokenMsg::CreateDenom {
+                subdenom: SUPPLY_DENOM.to_string(),
+                metadata: Some(default_supply_metadata()),
+            },
+        )));
 
         // TODO!
         // // token info is proper
@@ -351,136 +367,136 @@ mod tests {
         Ok(())
     }
 
-//     #[test]
-//     fn buy_issues_tokens() {
-//         let mut deps = mock_dependencies();
-//         let curve_type = CurveType::Linear {
-//             slope: Uint128::new(1),
-//             scale: 1,
-//         };
-//         setup_test(deps.as_mut(), 2, 8, curve_type.clone());
+    //     #[test]
+    //     fn buy_issues_tokens() {
+    //         let mut deps = mock_dependencies();
+    //         let curve_type = CurveType::Linear {
+    //             slope: Uint128::new(1),
+    //             scale: 1,
+    //         };
+    //         setup_test(deps.as_mut(), 2, 8, curve_type.clone());
 
-//         // succeeds with proper token (5 BTC = 5*10^8 satoshi)
-//         let info = mock_info(INVESTOR, &coins(500_000_000, DENOM));
-//         let buy = ExecuteMsg::Buy {};
-//         execute(deps.as_mut(), mock_env(), info, buy.clone()).unwrap();
+    //         // succeeds with proper token (5 BTC = 5*10^8 satoshi)
+    //         let info = mock_info(INVESTOR, &coins(500_000_000, DENOM));
+    //         let buy = ExecuteMsg::Buy {};
+    //         execute(deps.as_mut(), mock_env(), info, buy.clone()).unwrap();
 
-//         // bob got 1000 EPOXY (10.00)
-//         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(1000));
-//         assert_eq!(get_balance(deps.as_ref(), BUYER), Uint128::zero());
+    //         // bob got 1000 EPOXY (10.00)
+    //         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(1000));
+    //         assert_eq!(get_balance(deps.as_ref(), BUYER), Uint128::zero());
 
-//         // send them all to buyer
-//         let info = mock_info(INVESTOR, &[]);
-//         let send = ExecuteMsg::Transfer {
-//             recipient: BUYER.into(),
-//             amount: Uint128::new(1000),
-//         };
-//         execute(deps.as_mut(), mock_env(), info, send).unwrap();
+    //         // send them all to buyer
+    //         let info = mock_info(INVESTOR, &[]);
+    //         let send = ExecuteMsg::Transfer {
+    //             recipient: BUYER.into(),
+    //             amount: Uint128::new(1000),
+    //         };
+    //         execute(deps.as_mut(), mock_env(), info, send).unwrap();
 
-//         // ensure balances updated
-//         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::zero());
-//         assert_eq!(get_balance(deps.as_ref(), BUYER), Uint128::new(1000));
+    //         // ensure balances updated
+    //         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::zero());
+    //         assert_eq!(get_balance(deps.as_ref(), BUYER), Uint128::new(1000));
 
-//         // second stake needs more to get next 1000 EPOXY
-//         let info = mock_info(INVESTOR, &coins(1_500_000_000, DENOM));
-//         execute(deps.as_mut(), mock_env(), info, buy).unwrap();
+    //         // second stake needs more to get next 1000 EPOXY
+    //         let info = mock_info(INVESTOR, &coins(1_500_000_000, DENOM));
+    //         execute(deps.as_mut(), mock_env(), info, buy).unwrap();
 
-//         // ensure balances updated
-//         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(1000));
-//         assert_eq!(get_balance(deps.as_ref(), BUYER), Uint128::new(1000));
+    //         // ensure balances updated
+    //         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(1000));
+    //         assert_eq!(get_balance(deps.as_ref(), BUYER), Uint128::new(1000));
 
-//         // check curve info updated
-//         let curve = query_curve_info(deps.as_ref(), curve_type.to_curve_fn()).unwrap();
-//         assert_eq!(curve.reserve, Uint128::new(2_000_000_000));
-//         assert_eq!(curve.supply, Uint128::new(2000));
-//         assert_eq!(curve.spot_price, Decimal::percent(200));
+    //         // check curve info updated
+    //         let curve = query_curve_info(deps.as_ref(), curve_type.to_curve_fn()).unwrap();
+    //         assert_eq!(curve.reserve, Uint128::new(2_000_000_000));
+    //         assert_eq!(curve.supply, Uint128::new(2000));
+    //         assert_eq!(curve.spot_price, Decimal::percent(200));
 
-//         // check token info updated
-//         let token = query_token_info(deps.as_ref()).unwrap();
-//         assert_eq!(token.decimals, 2);
-//         assert_eq!(token.total_supply, Uint128::new(2000));
-//     }
+    //         // check token info updated
+    //         let token = query_token_info(deps.as_ref()).unwrap();
+    //         assert_eq!(token.decimals, 2);
+    //         assert_eq!(token.total_supply, Uint128::new(2000));
+    //     }
 
-//     #[test]
-//     fn bonding_fails_with_wrong_denom() {
-//         let mut deps = mock_dependencies();
-//         let curve_type = CurveType::Linear {
-//             slope: Uint128::new(1),
-//             scale: 1,
-//         };
-//         setup_test(deps.as_mut(), 2, 8, curve_type);
+    //     #[test]
+    //     fn bonding_fails_with_wrong_denom() {
+    //         let mut deps = mock_dependencies();
+    //         let curve_type = CurveType::Linear {
+    //             slope: Uint128::new(1),
+    //             scale: 1,
+    //         };
+    //         setup_test(deps.as_mut(), 2, 8, curve_type);
 
-//         // fails when no tokens sent
-//         let info = mock_info(INVESTOR, &[]);
-//         let buy = ExecuteMsg::Buy {};
-//         let err = execute(deps.as_mut(), mock_env(), info, buy.clone()).unwrap_err();
-//         assert_eq!(err, PaymentError::NoFunds {}.into());
+    //         // fails when no tokens sent
+    //         let info = mock_info(INVESTOR, &[]);
+    //         let buy = ExecuteMsg::Buy {};
+    //         let err = execute(deps.as_mut(), mock_env(), info, buy.clone()).unwrap_err();
+    //         assert_eq!(err, PaymentError::NoFunds {}.into());
 
-//         // fails when wrong tokens sent
-//         let info = mock_info(INVESTOR, &coins(1234567, "wei"));
-//         let err = execute(deps.as_mut(), mock_env(), info, buy.clone()).unwrap_err();
-//         assert_eq!(err, PaymentError::MissingDenom(DENOM.into()).into());
+    //         // fails when wrong tokens sent
+    //         let info = mock_info(INVESTOR, &coins(1234567, "wei"));
+    //         let err = execute(deps.as_mut(), mock_env(), info, buy.clone()).unwrap_err();
+    //         assert_eq!(err, PaymentError::MissingDenom(DENOM.into()).into());
 
-//         // fails when too many tokens sent
-//         let info = mock_info(INVESTOR, &[coin(3400022, DENOM), coin(1234567, "wei")]);
-//         let err = execute(deps.as_mut(), mock_env(), info, buy).unwrap_err();
-//         assert_eq!(err, PaymentError::MultipleDenoms {}.into());
-//     }
+    //         // fails when too many tokens sent
+    //         let info = mock_info(INVESTOR, &[coin(3400022, DENOM), coin(1234567, "wei")]);
+    //         let err = execute(deps.as_mut(), mock_env(), info, buy).unwrap_err();
+    //         assert_eq!(err, PaymentError::MultipleDenoms {}.into());
+    //     }
 
-//     #[test]
-//     fn burning_sends_reserve() {
-//         let mut deps = mock_dependencies();
-//         let curve_type = CurveType::Linear {
-//             slope: Uint128::new(1),
-//             scale: 1,
-//         };
-//         setup_test(deps.as_mut(), 2, 8, curve_type.clone());
+    //     #[test]
+    //     fn burning_sends_reserve() {
+    //         let mut deps = mock_dependencies();
+    //         let curve_type = CurveType::Linear {
+    //             slope: Uint128::new(1),
+    //             scale: 1,
+    //         };
+    //         setup_test(deps.as_mut(), 2, 8, curve_type.clone());
 
-//         // succeeds with proper token (20 BTC = 20*10^8 satoshi)
-//         let info = mock_info(INVESTOR, &coins(2_000_000_000, DENOM));
-//         let buy = ExecuteMsg::Buy {};
-//         execute(deps.as_mut(), mock_env(), info, buy).unwrap();
+    //         // succeeds with proper token (20 BTC = 20*10^8 satoshi)
+    //         let info = mock_info(INVESTOR, &coins(2_000_000_000, DENOM));
+    //         let buy = ExecuteMsg::Buy {};
+    //         execute(deps.as_mut(), mock_env(), info, buy).unwrap();
 
-//         // bob got 2000 EPOXY (20.00)
-//         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(2000));
+    //         // bob got 2000 EPOXY (20.00)
+    //         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(2000));
 
-//         // cannot burn too much
-//         let info = mock_info(INVESTOR, &[]);
-//         let burn = ExecuteMsg::Burn {
-//             amount: Uint128::new(3000),
-//         };
-//         let err = execute(deps.as_mut(), mock_env(), info, burn).unwrap_err();
-//         // TODO check error
+    //         // cannot burn too much
+    //         let info = mock_info(INVESTOR, &[]);
+    //         let burn = ExecuteMsg::Burn {
+    //             amount: Uint128::new(3000),
+    //         };
+    //         let err = execute(deps.as_mut(), mock_env(), info, burn).unwrap_err();
+    //         // TODO check error
 
-//         // burn 1000 EPOXY to get back 15BTC (*10^8)
-//         let info = mock_info(INVESTOR, &[]);
-//         let burn = ExecuteMsg::Burn {
-//             amount: Uint128::new(1000),
-//         };
-//         let res = execute(deps.as_mut(), mock_env(), info, burn).unwrap();
+    //         // burn 1000 EPOXY to get back 15BTC (*10^8)
+    //         let info = mock_info(INVESTOR, &[]);
+    //         let burn = ExecuteMsg::Burn {
+    //             amount: Uint128::new(1000),
+    //         };
+    //         let res = execute(deps.as_mut(), mock_env(), info, burn).unwrap();
 
-//         // balance is lower
-//         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(1000));
+    //         // balance is lower
+    //         assert_eq!(get_balance(deps.as_ref(), INVESTOR), Uint128::new(1000));
 
-//         // ensure we got our money back
-//         assert_eq!(1, res.messages.len());
-//         assert_eq!(
-//             &res.messages[0],
-//             &SubMsg::new(BankMsg::Send {
-//                 to_address: INVESTOR.into(),
-//                 amount: coins(1_500_000_000, DENOM),
-//             })
-//         );
+    //         // ensure we got our money back
+    //         assert_eq!(1, res.messages.len());
+    //         assert_eq!(
+    //             &res.messages[0],
+    //             &SubMsg::new(BankMsg::Send {
+    //                 to_address: INVESTOR.into(),
+    //                 amount: coins(1_500_000_000, DENOM),
+    //             })
+    //         );
 
-//         // check curve info updated
-//         let curve = query_curve_info(deps.as_ref(), curve_type.to_curve_fn()).unwrap();
-//         assert_eq!(curve.reserve, Uint128::new(500_000_000));
-//         assert_eq!(curve.supply, Uint128::new(1000));
-//         assert_eq!(curve.spot_price, Decimal::percent(100));
+    //         // check curve info updated
+    //         let curve = query_curve_info(deps.as_ref(), curve_type.to_curve_fn()).unwrap();
+    //         assert_eq!(curve.reserve, Uint128::new(500_000_000));
+    //         assert_eq!(curve.supply, Uint128::new(1000));
+    //         assert_eq!(curve.spot_price, Decimal::percent(100));
 
-//         // check token info updated
-//         let token = query_token_info(deps.as_ref()).unwrap();
-//         assert_eq!(token.decimals, 2);
-//         assert_eq!(token.total_supply, Uint128::new(1000));
-//     }
+    //         // check token info updated
+    //         let token = query_token_info(deps.as_ref()).unwrap();
+    //         assert_eq!(token.decimals, 2);
+    //         assert_eq!(token.total_supply, Uint128::new(1000));
+    //     }
 }

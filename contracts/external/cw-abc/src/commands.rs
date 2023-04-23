@@ -1,12 +1,17 @@
-use std::collections::HashSet;
-use cosmwasm_std::{Addr, BankMsg, coins, DepsMut, ensure, Env, MessageInfo, Response, StdError, StdResult, Storage, Uint128};
-use token_bindings::{TokenFactoryQuery, TokenMsg};
-use cw_utils::must_pay;
 use crate::abc::{CommonsPhase, CurveFn};
-use crate::ContractError;
 use crate::contract::CwAbcResult;
+use crate::ContractError;
+use cosmwasm_std::{
+    coins, ensure, Addr, BankMsg, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    Storage, Uint128,
+};
+use cw_utils::must_pay;
+use std::collections::HashSet;
+use token_bindings::{TokenFactoryQuery, TokenMsg};
 
-use crate::state::{CURVE_STATE, DONATIONS, HATCHER_ALLOWLIST, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
+use crate::state::{
+    CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+};
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
@@ -82,11 +87,7 @@ pub fn execute_buy(
 
     let denom = SUPPLY_DENOM.load(deps.storage)?;
     // mint supply token
-    let mint_msg = TokenMsg::mint_contract_tokens(
-        denom,
-        minted,
-        info.sender.to_string(),
-    );
+    let mint_msg = TokenMsg::mint_contract_tokens(denom, minted, info.sender.to_string());
 
     Ok(Response::new()
         .add_message(mint_msg)
@@ -161,11 +162,7 @@ pub fn execute_sell(
     CURVE_STATE.save(deps.storage, &state)?;
 
     // Burn the tokens
-    let burn_msg = TokenMsg::burn_contract_tokens(
-        denom,
-        payment,
-        info.sender.to_string(),
-    );
+    let burn_msg = TokenMsg::burn_contract_tokens(denom, payment, info.sender.to_string());
 
     // now send the tokens to the sender (TODO: for sell_from we do something else, right???)
     let msg = BankMsg::Send {
@@ -180,12 +177,15 @@ pub fn execute_sell(
         .add_attribute("from", info.sender)
         .add_attribute("amount", amount)
         .add_attribute("released", released)
-        .add_attribute("funded", funded)
-    )
+        .add_attribute("funded", funded))
 }
 
 /// Send a donation to the funding pool
-pub fn execute_donate(deps: DepsMut<TokenFactoryQuery>, _env: Env, info: MessageInfo) -> CwAbcResult {
+pub fn execute_donate(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    info: MessageInfo,
+) -> CwAbcResult {
     let mut curve_state = CURVE_STATE.load(deps.storage)?;
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
@@ -205,17 +205,21 @@ fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), Contr
     let allowlist = HATCHER_ALLOWLIST.may_load(storage)?;
     if let Some(allowlist) = allowlist {
         ensure!(
-                allowlist.contains(hatcher),
-                ContractError::SenderNotAllowlisted {
-                    sender: hatcher.to_string(),
-                }
-            );
+            allowlist.contains(hatcher),
+            ContractError::SenderNotAllowlisted {
+                sender: hatcher.to_string(),
+            }
+        );
     }
 
     Ok(())
 }
 
-pub fn update_hatch_allowlist(deps: DepsMut<TokenFactoryQuery>, to_add: Vec<String>, to_remove: Vec<String>) -> CwAbcResult {
+pub fn update_hatch_allowlist(
+    deps: DepsMut<TokenFactoryQuery>,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
+) -> CwAbcResult {
     let mut allowlist = HATCHER_ALLOWLIST.may_load(deps.storage)?;
 
     if let Some(ref mut allowlist) = allowlist {
@@ -228,8 +232,10 @@ pub fn update_hatch_allowlist(deps: DepsMut<TokenFactoryQuery>, to_add: Vec<Stri
             allowlist.remove(&addr);
         }
     } else {
-        let validated = to_add.into_iter()
-            .map(|addr| deps.api.addr_validate(addr.as_str())).collect::<StdResult<HashSet<_>>>()?;
+        let validated = to_add
+            .into_iter()
+            .map(|addr| deps.api.addr_validate(addr.as_str()))
+            .collect::<StdResult<HashSet<_>>>()?;
         allowlist = Some(validated);
     }
 
@@ -237,4 +243,3 @@ pub fn update_hatch_allowlist(deps: DepsMut<TokenFactoryQuery>, to_add: Vec<Stri
 
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
 }
-
