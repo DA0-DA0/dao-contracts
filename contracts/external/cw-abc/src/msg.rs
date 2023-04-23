@@ -56,10 +56,17 @@ pub enum QueryMsg {
     /// Returns [`CommonsPhaseConfigResponse`]
     #[returns(CommonsPhaseConfigResponse)]
     PhaseConfig {},
-    /// Returns the donators
+    /// Returns a list of the donors and their donations
     /// Returns [`DonationsResponse`]
     #[returns(DonationsResponse)]
     Donations {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    /// List the hatchers and their contributions
+    /// Returns [`HatchersResponse`]
+    #[returns(HatchersResponse)]
+    Hatchers {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -98,4 +105,10 @@ pub struct CommonsPhaseConfigResponse {
 pub struct DonationsResponse {
     // the donators mapped to their donation in the reserve token
     pub donations: Vec<(Addr, Uint128)>,
+}
+
+#[cw_serde]
+pub struct HatchersResponse {
+    // the hatchers mapped to their contribution in the reserve token
+    pub hatchers: Vec<(Addr, Uint128)>,
 }

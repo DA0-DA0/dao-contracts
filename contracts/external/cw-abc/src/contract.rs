@@ -171,6 +171,9 @@ pub fn do_query(
         QueryMsg::Donations { start_after, limit } => {
             to_binary(&queries::query_donations(deps, start_after, limit)?)
         }
+        QueryMsg::Hatchers { start_after, limit } => {
+            to_binary(&queries::query_hatchers(deps, start_after, limit)?)
+        }
         QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         // QueryMsg::GetDenom {
         //     creator_address,

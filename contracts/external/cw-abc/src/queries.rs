@@ -1,6 +1,8 @@
 use crate::abc::CurveFn;
-use crate::msg::{CommonsPhaseConfigResponse, CurveInfoResponse, DonationsResponse};
-use crate::state::{CurveState, CURVE_STATE, DONATIONS, PHASE, PHASE_CONFIG};
+use crate::msg::{
+    CommonsPhaseConfigResponse, CurveInfoResponse, DonationsResponse, HatchersResponse,
+};
+use crate::state::{CurveState, CURVE_STATE, DONATIONS, HATCHERS, PHASE, PHASE_CONFIG};
 use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult};
 use std::ops::Deref;
 use token_bindings::TokenFactoryQuery;
@@ -76,4 +78,27 @@ pub fn query_donations(
     )?;
 
     Ok(DonationsResponse { donations })
+}
+
+pub fn query_hatchers(
+    deps: Deps<TokenFactoryQuery>,
+    start_aftor: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<HatchersResponse> {
+    let hatchers = cw_paginate::paginate_map(
+        Deps {
+            storage: deps.storage,
+            api: deps.api,
+            querier: QuerierWrapper::new(deps.querier.deref()),
+        },
+        &HATCHERS,
+        start_aftor
+            .map(|addr| deps.api.addr_validate(&addr))
+            .transpose()?
+            .as_ref(),
+        limit,
+        Order::Descending,
+    )?;
+
+    Ok(HatchersResponse { hatchers })
 }
