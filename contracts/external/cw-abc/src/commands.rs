@@ -49,12 +49,12 @@ pub fn execute_buy(
             (reserved, funded)
         }
         CommonsPhase::Open => {
-            let hatch_config = &phase_config.open;
+            let open_config = &phase_config.open;
 
             // Calculate the number of tokens sent to the funding pool using the allocation percentage
-            let funded = payment * hatch_config.allocation_percentage;
+            let funded = payment * open_config.allocation_percentage;
             // Calculate the number of tokens sent to the reserve
-            let reserved = payment - funded;
+            let reserved = payment.checked_sub(funded).map_err(StdError::overflow)?;
 
             (reserved, funded)
         }
@@ -112,11 +112,39 @@ pub fn execute_sell(
         .checked_sub(amount)
         .map_err(StdError::overflow)?;
     let new_reserve = curve.reserve(state.supply);
-    let released = state
+    state.reserve = new_reserve;
+    let released_funds = state
         .reserve
         .checked_sub(new_reserve)
         .map_err(StdError::overflow)?;
-    state.reserve = new_reserve;
+
+    // Load the phase config and phase
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+    let phase = PHASE.load(deps.storage)?;
+    let (released, funded) = match phase {
+        CommonsPhase::Hatch => {
+            // TODO: perhaps we should allow selling during hatch phase with a larger exit tax?
+            return Err(ContractError::HatchSellingDisabled {});
+        }
+        CommonsPhase::Open => {
+            let open_config = &phase_config.open;
+
+            // Calculate the number of tokens sent to the funding pool using the allocation percentage
+            // TODO: unsafe multiplication
+            let exit_tax = released_funds * open_config.exit_tax;
+            // Calculate the number of tokens sent to the reserve
+            let released = payment.checked_sub(exit_tax).map_err(StdError::overflow)?;
+
+            (released, exit_tax)
+        }
+        CommonsPhase::Closed => {
+            // TODO: what to do here?
+            return Err(ContractError::CommonsClosed {});
+        }
+    };
+
+    // Add the exit tax to the funding, reserve is already correctly calculated
+    state.funding += funded;
     CURVE_STATE.save(deps.storage, &state)?;
 
     // Burn the tokens
@@ -137,8 +165,10 @@ pub fn execute_sell(
         .add_message(burn_msg)
         .add_attribute("action", "burn")
         .add_attribute("from", info.sender)
-        .add_attribute("supply", amount)
-        .add_attribute("reserve", released))
+        .add_attribute("amount", amount)
+        .add_attribute("released", released)
+        .add_attribute("funded", funded)
+    )
 }
 
 /// Send a donation to the funding pool

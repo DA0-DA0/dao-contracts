@@ -33,4 +33,7 @@ pub enum ContractError {
 
     #[error("The commons is closed to new contributions")]
     CommonsClosed {},
+
+    #[error("Selling is disabled during the hatch phase")]
+    HatchSellingDisabled {},
 }

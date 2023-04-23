@@ -44,6 +44,8 @@ pub struct HatchConfig {
     pub initial_price: Uint128,
     // The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
     pub initial_allocation_ratio: StdDecimal,
+    // Exit tax for the hatch phase
+    pub exit_tax: StdDecimal,
 }
 
 impl HatchConfig {

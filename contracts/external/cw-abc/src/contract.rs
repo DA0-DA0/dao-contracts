@@ -266,6 +266,7 @@ mod tests {
                     },
                     initial_price: Uint128::one(),
                     initial_allocation_ratio: Decimal::percent(10u64),
+                    exit_tax: Decimal::zero(),
                 },
                 open: OpenConfig {
                     allocation_percentage: Decimal::percent(10u64),
