@@ -82,11 +82,11 @@ pub fn execute_buy(
 
     let denom = SUPPLY_DENOM.load(deps.storage)?;
     // mint supply token
-    let mint_msg = TokenMsg::MintTokens {
+    let mint_msg = TokenMsg::mint_contract_tokens(
         denom,
-        amount: minted,
-        mint_to_address: info.sender.to_string(),
-    };
+        minted,
+        info.sender.to_string(),
+    );
 
     Ok(Response::new()
         .add_message(mint_msg)
@@ -161,11 +161,11 @@ pub fn execute_sell(
     CURVE_STATE.save(deps.storage, &state)?;
 
     // Burn the tokens
-    let burn_msg = TokenMsg::BurnTokens {
+    let burn_msg = TokenMsg::burn_contract_tokens(
         denom,
-        amount: payment,
-        burn_from_address: info.sender.to_string(),
-    };
+        payment,
+        info.sender.to_string(),
+    );
 
     // now send the tokens to the sender (TODO: for sell_from we do something else, right???)
     let msg = BankMsg::Send {
