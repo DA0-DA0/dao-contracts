@@ -44,8 +44,7 @@ pub fn execute_buy(
             calculate_reserved_and_funded(payment, hatch_config.initial_allocation_ratio)
         }
         CommonsPhase::Open => {
-            let open_config = phase_config.open;
-            calculate_reserved_and_funded(payment, open_config.allocation_percentage)
+            calculate_reserved_and_funded(payment, phase_config.open.allocation_percentage)
         }
         CommonsPhase::Closed => {
             return Err(ContractError::CommonsClosed {});
@@ -56,17 +55,15 @@ pub fn execute_buy(
     let curve = curve_fn(curve_state.clone().decimals);
     curve_state.reserve += reserved;
     curve_state.funding += funded;
-    // Supply = locked + float
-    let new_supply = curve.supply(curve_state.reserve + curve_state.funding);
+    // Calculate the supply based on the reserve
+    let new_supply = curve.supply(curve_state.reserve);
     let minted = new_supply
         .checked_sub(curve_state.supply)
         .map_err(StdError::overflow)?;
     curve_state.supply = new_supply;
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
-    let denom = SUPPLY_DENOM.load(deps.storage)?;
-    // mint supply token
-    let mint_msg = TokenMsg::mint_contract_tokens(denom, minted, info.sender.to_string());
+    let mint_msg = mint_supply_msg(deps.storage, minted, &info.sender)?;
 
     Ok(Response::new()
         .add_message(mint_msg)
@@ -75,6 +72,17 @@ pub fn execute_buy(
         .add_attribute("reserved", reserved)
         .add_attribute("funded", funded)
         .add_attribute("supply", minted))
+}
+
+/// Build a message to mint the supply token to the sender
+fn mint_supply_msg(storage: &dyn Storage, minted: Uint128, minter: &Addr) -> CwAbcResult<TokenMsg> {
+    let denom = SUPPLY_DENOM.load(storage)?;
+    // mint supply token
+    Ok(TokenMsg::mint_contract_tokens(
+        denom,
+        minted,
+        minter.to_string(),
+    ))
 }
 
 /// Return the reserved and funded amounts based on the payment and the allocation ratio
@@ -110,20 +118,58 @@ pub fn execute_sell(
     _env: Env,
     info: MessageInfo,
     curve_fn: CurveFn,
-    amount: Uint128,
 ) -> CwAbcResult {
-    let receiver = info.sender.clone();
+    let burner = info.sender.clone();
 
-    let denom = SUPPLY_DENOM.load(deps.storage)?;
-    let payment = must_pay(&info, &denom)?;
+    let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
+    let burn_amount = must_pay(&info, &supply_denom)?;
+    // Burn the sent supply tokens
+    let burn_msg = TokenMsg::burn_contract_tokens(supply_denom, burn_amount, burner.to_string());
 
+    let taxed_amount = calculate_exit_tax(deps.storage, burn_amount)?;
+
+    let mut curve_state = CURVE_STATE.load(deps.storage)?;
+    let curve = curve_fn(curve_state.clone().decimals);
+
+    // Reduce the supply by the amount burned
+    curve_state.supply = curve_state
+        .supply
+        .checked_sub(burn_amount)
+        .map_err(StdError::overflow)?;
+
+    // Calculate the new reserve based on the new supply
+    let new_reserve = curve.reserve(curve_state.supply);
+    curve_state.reserve = new_reserve;
+    curve_state.funding += taxed_amount;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    // Calculate how many reserve tokens to release based on the sell amount
+    let released_reserve = curve_state
+        .reserve
+        .checked_sub(new_reserve)
+        .map_err(StdError::overflow)?;
+
+    // Now send the tokens to the sender
+    let msg = BankMsg::Send {
+        to_address: burner.to_string(),
+        amount: coins(released_reserve.u128(), curve_state.reserve_denom),
+    };
+
+    Ok(Response::new()
+        .add_message(msg)
+        .add_message(burn_msg)
+        .add_attribute("action", "burn")
+        .add_attribute("from", burner)
+        .add_attribute("amount", burn_amount)
+        .add_attribute("burned", released_reserve)
+        .add_attribute("funded", taxed_amount))
+}
+
+/// Calculate the exit taxation for the sell amount based on the phase
+fn calculate_exit_tax(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResult<Uint128> {
     // Load the phase config and phase
-    let phase = PHASE.load(deps.storage)?;
-    let phase_config = PHASE_CONFIG.load(deps.storage)?;
-
-    // calculate how many tokens can be purchased with this and mint them
-    let mut state = CURVE_STATE.load(deps.storage)?;
-    let curve = curve_fn(state.clone().decimals);
+    let phase = PHASE.load(storage)?;
+    let phase_config = PHASE_CONFIG.load(storage)?;
 
     // Calculate the exit tax based on the phase
     let exit_tax = match &phase {
@@ -133,44 +179,8 @@ pub fn execute_sell(
     };
 
     // TODO: safe decimal multiplication
-    let taxed_amount = amount * exit_tax;
-    let net_supply_reduction = amount
-        .checked_sub(taxed_amount)
-        .map_err(StdError::overflow)?;
-
-    // Reduce the supply by the net amount
-    state.supply = state
-        .supply
-        .checked_sub(net_supply_reduction)
-        .map_err(StdError::overflow)?;
-    let new_reserve = curve.reserve(state.supply);
-    state.reserve = new_reserve;
-    let released_funds = state
-        .reserve
-        .checked_sub(new_reserve)
-        .map_err(StdError::overflow)?;
-
-    // Add the exit tax to the funding, reserve is already correctly calculated
-    state.funding += taxed_amount;
-    CURVE_STATE.save(deps.storage, &state)?;
-
-    // Burn the tokens
-    let burn_msg = TokenMsg::burn_contract_tokens(denom, payment, info.sender.to_string());
-
-    // Now send the tokens to the sender
-    let msg = BankMsg::Send {
-        to_address: receiver.to_string(),
-        amount: coins(released_funds.u128(), state.reserve_denom),
-    };
-
-    Ok(Response::new()
-        .add_message(msg)
-        .add_message(burn_msg)
-        .add_attribute("action", "burn")
-        .add_attribute("from", info.sender)
-        .add_attribute("amount", amount)
-        .add_attribute("released", released_funds)
-        .add_attribute("funded", taxed_amount))
+    let taxed_amount = sell_amount * exit_tax;
+    Ok(taxed_amount)
 }
 
 /// Send a donation to the funding pool

@@ -27,8 +27,8 @@ pub enum ExecuteMsg {
     /// Buy will attempt to purchase as many supply tokens as possible.
     /// You must send only reserve tokens in that message
     Buy {},
-    /// Implements CW20. Burn is a base message to destroy tokens forever
-    Burn { amount: Uint128 },
+    /// Burn is a base message to destroy tokens forever
+    Burn {},
     /// Donate will add reserve tokens to the funding pool
     Donate {},
     /// Update the hatch phase allowlist

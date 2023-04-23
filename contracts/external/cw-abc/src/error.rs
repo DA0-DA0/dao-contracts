@@ -36,4 +36,7 @@ pub enum ContractError {
 
     #[error("Selling is disabled during the hatch phase")]
     HatchSellingDisabled {},
+
+    #[error("Invalid sell amount")]
+    MismatchedSellAmount {},
 }

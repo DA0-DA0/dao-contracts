@@ -119,7 +119,7 @@ pub fn do_execute(
 ) -> CwAbcResult {
     match msg {
         ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info, curve_fn),
-        ExecuteMsg::Burn { amount } => commands::execute_sell(deps, env, info, curve_fn, amount),
+        ExecuteMsg::Burn {} => commands::execute_sell(deps, env, info, curve_fn),
         ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
             cw_ownable::assert_owner(deps.storage, &info.sender)?;
