@@ -128,8 +128,16 @@ pub fn execute_sell(
     let phase = PHASE.load(deps.storage)?;
     let (released, funded) = match phase {
         CommonsPhase::Hatch => {
-            // TODO: perhaps we should allow selling during hatch phase with a larger exit tax?
-            return Err(ContractError::HatchSellingDisabled {});
+            // TODO: do we want to allow selling in the hatch phase?
+            let hatch_config = &phase_config.hatch;
+
+            // Calculate the number of tokens sent to the funding pool using the allocation percentage
+            // TODO: unsafe multiplication
+            let exit_tax = released_funds * hatch_config.exit_tax;
+            // Calculate the number of tokens sent to the reserve
+            let released = payment.checked_sub(exit_tax).map_err(StdError::overflow)?;
+
+            (released, exit_tax)
         }
         CommonsPhase::Open => {
             let open_config = &phase_config.open;
