@@ -13,6 +13,24 @@ pub enum ContractError {
     #[error("Invalid subdenom: {subdenom:?}")]
     InvalidSubdenom { subdenom: String },
 
+    #[error("{0}")]
+    Ownership(#[from] cw_ownable::OwnershipError),
+
     #[error("Unauthorized")]
     Unauthorized {},
+
+    #[error("Hatch phase config error {0}")]
+    HatchPhaseConfigError(String),
+
+    #[error("Open phase config error {0}")]
+    OpenPhaseConfigError(String),
+
+    #[error("Supply token error {0}")]
+    SupplyTokenError(String),
+
+    #[error("Sender {sender:?} is not in the hatcher allowlist.")]
+    SenderNotAllowlisted { sender: String },
+
+    #[error("The commons is closed to new contributions")]
+    CommonsClosed {},
 }

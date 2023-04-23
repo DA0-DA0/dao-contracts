@@ -1,24 +1,27 @@
+use std::collections::HashSet;
+use std::ops::Deref;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    attr, coins, to_binary, Addr, BankMsg, Binary, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
-};
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdResult, to_binary};
 use cw2::set_contract_version;
-use token_bindings::{Metadata, TokenFactoryMsg, TokenFactoryQuery, TokenMsg, TokenQuerier};
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
-use crate::msg::{CurveFn, CurveInfoResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CurveState, CURVE_STATE, CURVE_TYPE, DENOM};
-use cw_utils::{must_pay, nonpayable};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHERS, PHASE_CONFIG, SUPPLY_DENOM};
+use cw_utils::nonpayable;
+use crate::abc::CurveFn;
+use crate::{commands, queries};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw20-bonding";
+const CONTRACT_NAME: &str = "crates.io:cw20-abc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // By default, the prefix for token factory tokens is "factory"
 const DENOM_PREFIX: &str = "factory";
+
+pub type CwAbcResult<T = Response<TokenFactoryMsg>> = Result<T, ContractError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -26,44 +29,58 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     nonpayable(&info)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    if msg.subdenom.eq("") {
-        return Err(ContractError::InvalidSubdenom {
-            subdenom: msg.subdenom,
-        });
+
+    let InstantiateMsg {
+        supply,
+        reserve,
+        curve_type,
+        phase_config,
+    } = msg;
+
+
+    if supply.subdenom.is_empty() {
+        return Err(ContractError::SupplyTokenError("Token subdenom must not be empty.".to_string()));
     }
 
-    // Create denom with metadata
-    let create_denom_msg = TokenMsg::CreateDenom {
-        subdenom: msg.subdenom.clone(),
-        metadata: Some(msg.metadata),
-    };
+    let phase_config = phase_config.validate(deps.api)?;
 
-    let places = DecimalPlaces::new(msg.decimals, msg.reserve_decimals);
-    let supply = CurveState::new(msg.reserve_denom, places);
+    // Create supply denom with metadata
+    let create_supply_denom_msg = TokenMsg::CreateDenom {
+        subdenom: supply.subdenom.clone(),
+        metadata: Some(supply.metadata),
+    };
 
     // TODO validate denom?
 
     // Save the denom
-    DENOM.save(
+    SUPPLY_DENOM.save(
         deps.storage,
         &format!(
             "{}/{}/{}",
             DENOM_PREFIX,
-            env.contract.address.to_string(),
-            msg.subdenom
+            env.contract.address.into_string(),
+            supply.subdenom
         ),
     )?;
 
-    CURVE_STATE.save(deps.storage, &supply)?;
+    // Save the curve type and state
+    let normalization_places = DecimalPlaces::new(supply.decimals, reserve.decimals);
+    let curve_state = CurveState::new(reserve.denom, normalization_places);
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+    CURVE_TYPE.save(deps.storage, &curve_type)?;
+    HATCHERS.save(deps.storage, &HashSet::new())?;
 
-    CURVE_TYPE.save(deps.storage, &msg.curve_type)?;
+    PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
-    Ok(Response::default().add_message(create_denom_msg))
+    cw_ownable::initialize_owner(deps.storage, deps.api, Some(info.sender.as_str()))?;
+
+    Ok(Response::default().add_message(create_supply_denom_msg))
 }
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
@@ -71,7 +88,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     // default implementation stores curve info as enum, you can do something else in a derived
     // contract and just pass in your custom curve to do_execute
     let curve_type = CURVE_TYPE.load(deps.storage)?;
@@ -88,97 +105,31 @@ pub fn do_execute(
     info: MessageInfo,
     msg: ExecuteMsg,
     curve_fn: CurveFn,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
+) -> CwAbcResult {
     match msg {
-        ExecuteMsg::Buy {} => execute_buy(deps, env, info, curve_fn),
-        ExecuteMsg::Burn { amount } => Ok(execute_sell(deps, env, info, curve_fn, amount)?),
+        ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info, curve_fn),
+        ExecuteMsg::Burn { amount } => commands::execute_sell(deps, env, info, curve_fn, amount),
+        ExecuteMsg::UpdateHatchAllowlist { to_add: _, to_remove: _ } => {
+            cw_ownable::assert_owner(deps.storage, &info.sender)?;
+            // commands::execute_update_hatch_allowlist(deps, env, info, to_add, to_remove)
+            todo!()
+        }
+        ExecuteMsg::UpdateHatchConfig { .. } => {
+            cw_ownable::assert_owner(deps.storage, &info.sender)?;
+            todo!()
+        },
+        ExecuteMsg::UpdateOwnership(action) => {
+            let ownership = cw_ownable::update_ownership(DepsMut {
+                storage: deps.storage,
+                api: deps.api,
+                querier: QuerierWrapper::new(deps.querier.deref()),
+            }, &env.block, &info.sender, action)?;
+
+            Ok(Response::default().add_attributes(ownership.into_attributes()))
+        }
     }
 }
 
-pub fn execute_buy(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    info: MessageInfo,
-    curve_fn: CurveFn,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    let mut state = CURVE_STATE.load(deps.storage)?;
-
-    let denom = DENOM.load(deps.storage)?;
-    let payment = must_pay(&info, &state.reserve_denom)?;
-
-    // calculate how many tokens can be purchased with this and mint them
-    let curve = curve_fn(state.clone().decimals);
-    state.reserve += payment;
-    let new_supply = curve.supply(state.reserve);
-    let minted = new_supply
-        .checked_sub(state.supply)
-        .map_err(StdError::overflow)?;
-    state.supply = new_supply;
-    CURVE_STATE.save(deps.storage, &state)?;
-
-    // mint tf token
-    let mint_msg = TokenMsg::MintTokens {
-        denom,
-        amount: minted,
-        mint_to_address: info.sender.to_string(),
-    };
-
-    Ok(Response::new()
-        .add_message(mint_msg)
-        .add_attribute("action", "buy")
-        .add_attribute("from", info.sender)
-        .add_attribute("reserve", payment)
-        .add_attribute("supply", minted))
-}
-
-pub fn execute_sell(
-    deps: DepsMut<TokenFactoryQuery>,
-    env: Env,
-    info: MessageInfo,
-    curve_fn: CurveFn,
-    amount: Uint128,
-) -> Result<Response<TokenFactoryMsg>, ContractError> {
-    let receiver = info.sender.clone();
-
-    let denom = DENOM.load(deps.storage)?;
-    let payment = must_pay(&info, &denom)?;
-
-    // calculate how many tokens can be purchased with this and mint them
-    let mut state = CURVE_STATE.load(deps.storage)?;
-    let curve = curve_fn(state.clone().decimals);
-    state.supply = state
-        .supply
-        .checked_sub(amount)
-        .map_err(StdError::overflow)?;
-    let new_reserve = curve.reserve(state.supply);
-    let released = state
-        .reserve
-        .checked_sub(new_reserve)
-        .map_err(StdError::overflow)?;
-    state.reserve = new_reserve;
-    CURVE_STATE.save(deps.storage, &state)?;
-
-    // Burn the tokens
-    let burn_msg = TokenMsg::BurnTokens {
-        denom,
-        amount: payment,
-        burn_from_address: info.sender.clone().to_string(),
-    };
-
-    // now send the tokens to the sender (TODO: for sell_from we do something else, right???)
-    let msg = BankMsg::Send {
-        to_address: receiver.to_string(),
-        amount: coins(released.u128(), state.reserve_denom),
-    };
-
-    Ok(Response::new()
-        .add_message(msg)
-        .add_message(burn_msg)
-        .add_attribute("action", "burn")
-        .add_attribute("from", info.sender)
-        .add_attribute("supply", amount)
-        .add_attribute("reserve", released))
-}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -190,7 +141,7 @@ pub fn query(deps: Deps<TokenFactoryQuery>, env: Env, msg: QueryMsg) -> StdResul
 }
 
 /// We pull out logic here, so we can import this from another contract and set a different Curve.
-/// This contacts sets a curve with an enum in InstantitateMsg and stored in state, but you may want
+/// This contacts sets a curve with an enum in [`InstantiateMsg`] and stored in state, but you may want
 /// to use custom math not included - make this easily reusable
 pub fn do_query(
     deps: Deps<TokenFactoryQuery>,
@@ -200,50 +151,15 @@ pub fn do_query(
 ) -> StdResult<Binary> {
     match msg {
         // custom queries
-        QueryMsg::CurveInfo {} => to_binary(&query_curve_info(deps, curve_fn)?),
+        QueryMsg::CurveInfo {} => to_binary(&queries::query_curve_info(deps, curve_fn)?),
+        QueryMsg::PhaseConfig {} => to_binary(&queries::query_phase_config(deps)?),
+        QueryMsg::Ownership {} => to_binary(&cw_ownable::get_ownership(deps.storage)?),
         // QueryMsg::GetDenom {
         //     creator_address,
         //     subdenom,
         // } => to_binary(&get_denom(deps, creator_address, subdenom)),
     }
 }
-
-pub fn query_curve_info(
-    deps: Deps<TokenFactoryQuery>,
-    curve_fn: CurveFn,
-) -> StdResult<CurveInfoResponse> {
-    let CurveState {
-        reserve,
-        supply,
-        reserve_denom,
-        decimals,
-    } = CURVE_STATE.load(deps.storage)?;
-
-    // This we can get from the local digits stored in instantiate
-    let curve = curve_fn(decimals);
-    let spot_price = curve.spot_price(supply);
-
-    Ok(CurveInfoResponse {
-        reserve,
-        supply,
-        spot_price,
-        reserve_denom,
-    })
-}
-
-// // TODO, maybe we don't need this
-// pub fn get_denom(
-//     deps: Deps<TokenFactoryQuery>,
-//     creator_addr: String,
-//     subdenom: String,
-// ) -> GetDenomResponse {
-//     let querier = TokenQuerier::new(&deps.querier);
-//     let response = querier.full_denom(creator_addr, subdenom).unwrap();
-
-//     GetDenomResponse {
-//         denom: response.denom,
-//     }
-// }
 
 // fn validate_denom(
 //     deps: DepsMut<TokenFactoryQuery>,
@@ -286,34 +202,70 @@ pub fn query_curve_info(
 //     Result::Ok(())
 // }
 
-// // this is poor mans "skip" flag
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::msg::CurveType;
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-//     use cosmwasm_std::{coin, Decimal, OverflowError, OverflowOperation, StdError, SubMsg};
-//     use cw_utils::PaymentError;
+// this is poor man's "skip" flag
+#[cfg(test)]
+mod tests {
+    use std::marker::PhantomData;
+    use cosmwasm_std::{CosmosMsg, Decimal, OwnedDeps, testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage}, Uint128};
+    use token_bindings::Metadata;
+    use crate::abc::{ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken, SupplyToken};
+    use super::*;
+    use speculoos::prelude::*;
+    use crate::queries::query_curve_info;
 
-//     const DENOM: &str = "satoshi";
-//     const CREATOR: &str = "creator";
-//     const INVESTOR: &str = "investor";
-//     const BUYER: &str = "buyer";
+    const DENOM: &str = "satoshi";
+    const CREATOR: &str = "creator";
+    const INVESTOR: &str = "investor";
+    const BUYER: &str = "buyer";
 
-//     fn default_instantiate(
-//         decimals: u8,
-//         reserve_decimals: u8,
-//         curve_type: CurveType,
-//     ) -> InstantiateMsg {
-//         InstantiateMsg {
-//             name: "Bonded".to_string(),
-//             symbol: "EPOXY".to_string(),
-//             decimals,
-//             reserve_denom: DENOM.to_string(),
-//             reserve_decimals,
-//             curve_type,
-//         }
-//     }
+    const SUPPLY_DENOM: &str = "subdenom";
+
+
+
+    fn default_supply_metadata() -> Metadata {
+        Metadata {
+            name: Some("Bonded".to_string()),
+            symbol: Some("EPOXY".to_string()),
+            description: None,
+            denom_units: vec![],
+            base: None,
+            display: None,
+        }
+    }
+
+    fn default_instantiate(
+        decimals: u8,
+        reserve_decimals: u8,
+        curve_type: CurveType,
+    ) -> InstantiateMsg {
+        InstantiateMsg {
+            supply: SupplyToken {
+                subdenom: SUPPLY_DENOM.to_string(),
+                metadata: default_supply_metadata(),
+                decimals,
+            },
+            reserve: ReserveToken {
+                denom: DENOM.to_string(),
+                decimals: reserve_decimals,
+            },
+            phase_config: CommonsPhaseConfig {
+                hatch: HatchConfig {
+                    initial_raise: MinMax {
+                        min: Uint128::one(),
+                        max: Uint128::from(1000000u128),
+                    },
+                    initial_price: Uint128::one(),
+                    initial_allocation_ratio: Decimal::percent(10u64),
+                    allowlist: None,
+                },
+                open: OpenConfig {
+                    allocation_percentage: Decimal::percent(10u64),
+                },
+                closed: ClosedConfig {},
+            },
+            curve_type,
+        }
+    }
 
 //     fn get_balance<U: Into<String>>(deps: Deps, addr: U) -> Uint128 {
 //         query_balance(deps, addr.into()).unwrap().balance
@@ -330,45 +282,63 @@ pub fn query_curve_info(
 //         assert_eq!(0, res.messages.len());
 //     }
 
-//     #[test]
-//     fn proper_instantiation() {
-//         let mut deps = mock_dependencies();
+    /// Mock token factory querier dependencies
+    fn mock_tf_dependencies() -> OwnedDeps<MockStorage, MockApi, MockQuerier<TokenFactoryQuery>, TokenFactoryQuery> {
+        OwnedDeps {
+            storage: MockStorage::default(),
+            api: MockApi::default(),
+            querier: MockQuerier::<TokenFactoryQuery>::new(&[]),
+            custom_query_type: PhantomData::<TokenFactoryQuery>,
+        }
+    }
 
-//         // this matches `linear_curve` test case from curves.rs
-//         let creator = String::from("creator");
-//         let curve_type = CurveType::SquareRoot {
-//             slope: Uint128::new(1),
-//             scale: 1,
-//         };
-//         let msg = default_instantiate(2, 8, curve_type.clone());
-//         let info = mock_info(&creator, &[]);
+    #[test]
+    fn proper_instantiation() -> CwAbcResult<()> {
+        let mut deps = mock_tf_dependencies();
 
-//         // make sure we can instantiate with this
-//         let res = instantiate(deps.as_mut(), mock_env(), info, msg.clone()).unwrap();
-//         assert_eq!(0, res.messages.len());
+        // this matches `linear_curve` test case from curves.rs
+        let creator = String::from("creator");
+        let curve_type = CurveType::SquareRoot {
+            slope: Uint128::new(1),
+            scale: 1,
+        };
+        let msg = default_instantiate(2, 8, curve_type.clone());
+        let info = mock_info(&creator, &[]);
 
-//         // token info is proper
-//         let token = query_token_info(deps.as_ref()).unwrap();
-//         assert_eq!(&token.name, &msg.name);
-//         assert_eq!(&token.symbol, &msg.symbol);
-//         assert_eq!(token.decimals, 2);
-//         assert_eq!(token.total_supply, Uint128::zero());
+        // make sure we can instantiate with this
+        let res = instantiate(deps.as_mut(), mock_env(), info, msg)?;
+        assert_that!(res.messages.len()).is_equal_to(1);
+        let submsg = res.messages.get(0).unwrap();
+        assert_that!(submsg.msg).is_equal_to(CosmosMsg::Custom(TokenFactoryMsg::Token(TokenMsg::CreateDenom {
+            subdenom: SUPPLY_DENOM.to_string(),
+            metadata: Some(default_supply_metadata()),
+        })));
 
-//         // curve state is sensible
-//         let state = query_curve_info(deps.as_ref(), curve_type.to_curve_fn()).unwrap();
-//         assert_eq!(state.reserve, Uint128::zero());
-//         assert_eq!(state.supply, Uint128::zero());
-//         assert_eq!(state.reserve_denom.as_str(), DENOM);
-//         // spot price 0 as supply is 0
-//         assert_eq!(state.spot_price, Decimal::zero());
+        // TODO!
+        // // token info is proper
+        // let token = query_token_info(deps.as_ref()).unwrap();
+        // assert_that!(&token.name, &msg.name);
+        // assert_that!(&token.symbol, &msg.symbol);
+        // assert_that!(token.decimals, 2);
+        // assert_that!(token.total_supply, Uint128::zero());
 
-//         // curve type is stored properly
-//         let curve = CURVE_TYPE.load(&deps.storage).unwrap();
-//         assert_eq!(curve_type, curve);
+        // curve state is sensible
+        let state = query_curve_info(deps.as_ref(), curve_type.to_curve_fn())?;
+        assert_that!(state.reserve).is_equal_to(Uint128::zero());
+        assert_that!(state.supply).is_equal_to(Uint128::zero());
+        assert_that!(state.reserve_denom.as_str()).is_equal_to(DENOM);
+        // spot price 0 as supply is 0
+        assert_that!(state.spot_price).is_equal_to(Decimal::zero());
 
-//         // no balance
-//         assert_eq!(get_balance(deps.as_ref(), &creator), Uint128::zero());
-//     }
+        // curve type is stored properly
+        let curve = CURVE_TYPE.load(&deps.storage).unwrap();
+        assert_eq!(curve_type, curve);
+
+        // no balance
+        // assert_eq!(get_balance(deps.as_ref(), &creator), Uint128::zero());
+
+        Ok(())
+    }
 
 //     #[test]
 //     fn buy_issues_tokens() {
@@ -502,4 +472,4 @@ pub fn query_curve_info(
 //         assert_eq!(token.decimals, 2);
 //         assert_eq!(token.total_supply, Uint128::new(1000));
 //     }
-// }
+}
