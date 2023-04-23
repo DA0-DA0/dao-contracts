@@ -1,8 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::set_contract_version;
 use std::collections::HashSet;
 
@@ -11,7 +9,7 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 use crate::abc::CurveFn;
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, UpdatePhaseConfigMsg};
 use crate::state::{
     CurveState, CURVE_STATE, CURVE_TYPE, HATCHER_ALLOWLIST, PHASE_CONFIG, SUPPLY_DENOM,
 };
@@ -124,12 +122,19 @@ pub fn do_execute(
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
             commands::update_hatch_allowlist(deps, info, to_add, to_remove)
         }
-        ExecuteMsg::UpdateHatchConfig {
-            initial_raise,
-            initial_allocation_ratio,
-        } => {
-            commands::update_hatch_config(deps, env, info, initial_raise, initial_allocation_ratio)
-        }
+        ExecuteMsg::UpdatePhaseConfig(update) => match update {
+            UpdatePhaseConfigMsg::Hatch {
+                initial_raise,
+                initial_allocation_ratio,
+            } => commands::update_hatch_config(
+                deps,
+                env,
+                info,
+                initial_raise,
+                initial_allocation_ratio,
+            ),
+            _ => todo!(),
+        },
         ExecuteMsg::UpdateOwnership(action) => {
             commands::update_ownership(deps, &env, &info, action)
         }

@@ -2,8 +2,8 @@ use crate::abc::{CommonsPhase, CurveFn, MinMax};
 use crate::contract::CwAbcResult;
 use crate::ContractError;
 use cosmwasm_std::{
-    coins, ensure, Addr, BankMsg, Decimal as StdDecimal, DepsMut, Env, MessageInfo,
-    QuerierWrapper, Response, StdError, StdResult, Storage, Uint128,
+    coins, ensure, Addr, BankMsg, Decimal as StdDecimal, DepsMut, Env, MessageInfo, QuerierWrapper,
+    Response, StdError, StdResult, Storage, Uint128,
 };
 use cw_utils::must_pay;
 use std::collections::HashSet;

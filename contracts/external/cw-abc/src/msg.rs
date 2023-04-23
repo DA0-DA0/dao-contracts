@@ -21,6 +21,24 @@ pub struct InstantiateMsg {
     pub hatcher_allowlist: Option<Vec<String>>,
 }
 
+/// Update the phase configurations.
+/// These can only be called by the admin and only before or during each phase
+#[cw_serde]
+pub enum UpdatePhaseConfigMsg {
+    /// Update the hatch phase configuration
+    Hatch {
+        initial_raise: Option<MinMax>,
+        initial_allocation_ratio: Option<StdDecimal>,
+    },
+    /// Update the open phase configuration
+    Open {
+        exit_tax: Option<StdDecimal>,
+        reserve_ratio: Option<StdDecimal>,
+    },
+    /// Update the closed phase configuration
+    Closed {},
+}
+
 #[cw_ownable::cw_ownable_execute]
 #[cw_serde]
 pub enum ExecuteMsg {
@@ -38,10 +56,7 @@ pub enum ExecuteMsg {
     },
     /// Update the hatch phase configuration
     /// This can only be called by the admin and only during the hatch phase
-    UpdateHatchConfig {
-        initial_raise: Option<MinMax>,
-        initial_allocation_ratio: Option<StdDecimal>,
-    },
+    UpdatePhaseConfig(UpdatePhaseConfigMsg),
 }
 
 #[cw_ownable::cw_ownable_query]
