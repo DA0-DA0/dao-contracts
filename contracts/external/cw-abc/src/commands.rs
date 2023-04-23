@@ -28,9 +28,14 @@ pub fn execute_buy(
 
             // Check that the potential hatcher is allowlisted
             assert_allowlisted(deps.storage, &info.sender)?;
-            HATCHERS.update(deps.storage, |mut hatchers| -> StdResult<_>{
-                hatchers.insert(info.sender.clone());
-                Ok(hatchers)
+            HATCHERS.update(deps.storage, &info.sender, |amount| -> StdResult<_> {
+                match amount {
+                    Some(mut amount) => {
+                        amount += payment;
+                        Ok(amount)
+                    }
+                    None => Ok(payment),
+                }
             })?;
 
             // Check if the initial_raise max has been met

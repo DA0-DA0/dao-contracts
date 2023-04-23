@@ -9,7 +9,7 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHER_ALLOWLIST, HATCHERS, PHASE_CONFIG, SUPPLY_DENOM};
+use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHER_ALLOWLIST, PHASE_CONFIG, SUPPLY_DENOM};
 use cw_utils::nonpayable;
 use crate::abc::CurveFn;
 use crate::{commands, queries};
@@ -73,7 +73,6 @@ pub fn instantiate(
     let curve_state = CurveState::new(reserve.denom, normalization_places);
     CURVE_STATE.save(deps.storage, &curve_state)?;
     CURVE_TYPE.save(deps.storage, &curve_type)?;
-    HATCHERS.save(deps.storage, &HashSet::new())?;
 
     if let Some(allowlist) = hatcher_allowlist {
         let allowlist = allowlist.into_iter()
