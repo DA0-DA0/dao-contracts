@@ -64,10 +64,19 @@ impl HatchConfig {
             )
         );
 
+        // TODO: define better values
         ensure!(
             self.initial_allocation_ratio <= StdDecimal::percent(100u64),
             ContractError::HatchPhaseConfigError(
                 "Initial allocation percentage must be between 0 and 100.".to_string()
+            )
+        );
+
+        // TODO: define better values
+        ensure!(
+            self.exit_tax <= StdDecimal::percent(100u64),
+            ContractError::HatchPhaseConfigError(
+                "Exit taxation percentage must be between 0 and 100.".to_string()
             )
         );
 
@@ -107,6 +116,13 @@ impl OpenConfig {
 #[cw_serde]
 pub struct ClosedConfig {}
 
+impl ClosedConfig {
+    /// Validate the closed config
+    pub fn validate(&self) -> Result<(), ContractError> {
+        Ok(())
+    }
+}
+
 #[cw_serde]
 pub struct CommonsPhaseConfig {
     // The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
@@ -144,11 +160,47 @@ pub enum CommonsPhase {
     Closed,
 }
 
+impl CommonsPhase {
+    pub fn expect_hatch(&self) -> Result<(), ContractError> {
+        ensure!(
+            matches!(self, CommonsPhase::Hatch),
+            ContractError::InvalidPhase {
+                expected: "Hatch".to_string(),
+                actual: format!("{:?}", self)
+            }
+        );
+        Ok(())
+    }
+
+    pub fn expect_open(&self) -> Result<(), ContractError> {
+        ensure!(
+            matches!(self, CommonsPhase::Open),
+            ContractError::InvalidPhase {
+                expected: "Open".to_string(),
+                actual: format!("{:?}", self)
+            }
+        );
+        Ok(())
+    }
+
+    pub fn expect_closed(&self) -> Result<(), ContractError> {
+        ensure!(
+            matches!(self, CommonsPhase::Closed),
+            ContractError::InvalidPhase {
+                expected: "Closed".to_string(),
+                actual: format!("{:?}", self)
+            }
+        );
+        Ok(())
+    }
+}
+
 impl CommonsPhaseConfig {
     /// Validate that the commons configuration is valid
     pub fn validate(&self) -> Result<(), ContractError> {
         self.hatch.validate()?;
         self.open.validate()?;
+        self.closed.validate()?;
 
         Ok(())
     }

@@ -1,11 +1,11 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdResult,
+    to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
 };
 use cw2::set_contract_version;
 use std::collections::HashSet;
-use std::ops::Deref;
+
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
 use crate::abc::CurveFn;
@@ -122,26 +122,16 @@ pub fn do_execute(
         ExecuteMsg::Burn {} => commands::execute_sell(deps, env, info, curve_fn),
         ExecuteMsg::Donate {} => commands::execute_donate(deps, env, info),
         ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
-            cw_ownable::assert_owner(deps.storage, &info.sender)?;
-            commands::update_hatch_allowlist(deps, to_add, to_remove)
+            commands::update_hatch_allowlist(deps, info, to_add, to_remove)
         }
-        ExecuteMsg::UpdateHatchConfig { .. } => {
-            cw_ownable::assert_owner(deps.storage, &info.sender)?;
-            todo!()
+        ExecuteMsg::UpdateHatchConfig {
+            initial_raise,
+            initial_allocation_ratio,
+        } => {
+            commands::update_hatch_config(deps, env, info, initial_raise, initial_allocation_ratio)
         }
         ExecuteMsg::UpdateOwnership(action) => {
-            let ownership = cw_ownable::update_ownership(
-                DepsMut {
-                    storage: deps.storage,
-                    api: deps.api,
-                    querier: QuerierWrapper::new(deps.querier.deref()),
-                },
-                &env.block,
-                &info.sender,
-                action,
-            )?;
-
-            Ok(Response::default().add_attributes(ownership.into_attributes()))
+            commands::update_ownership(deps, &env, &info, action)
         }
     }
 }

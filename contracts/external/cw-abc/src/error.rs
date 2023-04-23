@@ -39,4 +39,7 @@ pub enum ContractError {
 
     #[error("Invalid sell amount")]
     MismatchedSellAmount {},
+
+    #[error("Invalid phase, expected {expected:?}, actual {actual:?}")]
+    InvalidPhase { expected: String, actual: String },
 }

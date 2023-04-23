@@ -1,13 +1,14 @@
-use crate::abc::{CommonsPhase, CurveFn};
+use crate::abc::{CommonsPhase, CurveFn, MinMax};
 use crate::contract::CwAbcResult;
 use crate::ContractError;
 use cosmwasm_std::{
-    coins, ensure, Addr, BankMsg, Decimal as StdDecimal, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Storage, Uint128,
+    coins, ensure, Addr, BankMsg, Decimal as StdDecimal, DepsMut, Env, MessageInfo,
+    QuerierWrapper, Response, StdError, StdResult, Storage, Uint128,
 };
 use cw_utils::must_pay;
 use std::collections::HashSet;
-use token_bindings::{TokenFactoryQuery, TokenMsg};
+use std::ops::Deref;
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
 use crate::state::{
     CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
@@ -218,31 +219,87 @@ fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), Contr
     Ok(())
 }
 
+/// Add and remove addresses from the hatcher allowlist
 pub fn update_hatch_allowlist(
     deps: DepsMut<TokenFactoryQuery>,
+    info: MessageInfo,
     to_add: Vec<String>,
     to_remove: Vec<String>,
 ) -> CwAbcResult {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
     let mut allowlist = HATCHER_ALLOWLIST.may_load(deps.storage)?;
 
-    if let Some(ref mut allowlist) = allowlist {
-        for allow in to_add {
-            let addr = deps.api.addr_validate(allow.as_str())?;
-            allowlist.insert(addr);
-        }
-        for deny in to_remove {
-            let addr = deps.api.addr_validate(deny.as_str())?;
-            allowlist.remove(&addr);
-        }
-    } else {
-        let validated = to_add
-            .into_iter()
-            .map(|addr| deps.api.addr_validate(addr.as_str()))
-            .collect::<StdResult<HashSet<_>>>()?;
-        allowlist = Some(validated);
+    if allowlist.is_none() {
+        allowlist = Some(HashSet::new());
     }
 
-    HATCHER_ALLOWLIST.save(deps.storage, &allowlist.unwrap())?;
+    let allowlist = allowlist.as_mut().unwrap();
+
+    // Add addresses to the allowlist
+    for allow in to_add {
+        let addr = deps.api.addr_validate(allow.as_str())?;
+        allowlist.insert(addr);
+    }
+
+    // Remove addresses from the allowlist
+    for deny in to_remove {
+        let addr = deps.api.addr_validate(deny.as_str())?;
+        allowlist.remove(&addr);
+    }
+
+    HATCHER_ALLOWLIST.save(deps.storage, allowlist)?;
 
     Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
+}
+
+/// Update the hatch config
+pub fn update_hatch_config(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    info: MessageInfo,
+    initial_raise: Option<MinMax>,
+    initial_allocation_ratio: Option<StdDecimal>,
+) -> CwAbcResult {
+    // Assert that the sender is the contract owner
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    // Ensure we're in the Hatch phase
+    PHASE.load(deps.storage)?.expect_hatch()?;
+
+    // Load the current phase config
+    let mut phase_config = PHASE_CONFIG.load(deps.storage)?;
+
+    // Update the hatch config if new values are provided
+    if let Some(initial_raise) = initial_raise {
+        phase_config.hatch.initial_raise = initial_raise;
+    }
+    if let Some(initial_allocation_ratio) = initial_allocation_ratio {
+        phase_config.hatch.initial_allocation_ratio = initial_allocation_ratio;
+    }
+
+    phase_config.hatch.validate()?;
+    PHASE_CONFIG.save(deps.storage, &phase_config)?;
+
+    Ok(Response::new().add_attribute("action", "update_hatch_config"))
+}
+
+/// Update the ownership of the contract
+pub fn update_ownership(
+    deps: DepsMut<TokenFactoryQuery>,
+    env: &Env,
+    info: &MessageInfo,
+    action: cw_ownable::Action,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    let ownership = cw_ownable::update_ownership(
+        DepsMut {
+            storage: deps.storage,
+            api: deps.api,
+            querier: QuerierWrapper::new(deps.querier.deref()),
+        },
+        &env.block,
+        &info.sender,
+        action,
+    )?;
+
+    Ok(Response::default().add_attributes(ownership.into_attributes()))
 }
