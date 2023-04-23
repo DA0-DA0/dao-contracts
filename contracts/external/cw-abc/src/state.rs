@@ -43,12 +43,14 @@ pub const CURVE_TYPE: Item<CurveType> = Item::new("curve_type");
 /// The denom used for the supply token
 pub const SUPPLY_DENOM: Item<String> = Item::new("denom");
 
+pub static HATCHER_ALLOWLIST: Item<HashSet<Addr>> = Item::new("hatch_allowlist");
+
 /// Keep track of who has contributed to the hatch phase
 /// TODO: cw-set?
 pub static HATCHERS: Item<HashSet<Addr>> = Item::new("hatchers");
 
 /// The phase configuration of the Augmented Bonding Curve
-pub static PHASE_CONFIG: Item<CommonsPhaseConfig<Addr>> = Item::new("phase_config");
+pub static PHASE_CONFIG: Item<CommonsPhaseConfig> = Item::new("phase_config");
 
 /// The phase state of the Augmented Bonding Curve
 pub static PHASE: Item<CommonsPhase> = Item::new("phase");

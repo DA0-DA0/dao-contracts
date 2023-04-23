@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Decimal, Uint128, Decimal as StdDecimal};
 
-use crate::abc::{CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken};
+use crate::abc::{CommonsPhase, CommonsPhaseConfig, CurveType, MinMax, ReserveToken, SupplyToken};
 
 
 #[cw_serde]
@@ -16,7 +16,10 @@ pub struct InstantiateMsg {
     pub curve_type: CurveType,
 
     // Hatch configuration information
-    pub phase_config: CommonsPhaseConfig<String>,
+    pub phase_config: CommonsPhaseConfig,
+
+    // Hatcher allowlist
+    pub hatcher_allowlist: Option<Vec<String>>,
 }
 
 
@@ -70,7 +73,16 @@ pub struct CurveInfoResponse {
 }
 
 #[cw_serde]
+pub struct HatcherAllowlistResponse {
+    // hatcher allowlist
+    pub allowlist: Option<Vec<Addr>>,
+}
+
+#[cw_serde]
 pub struct CommonsPhaseConfigResponse {
     // the phase configuration
-    pub phase_config: CommonsPhaseConfig<Addr>,
+    pub phase_config: CommonsPhaseConfig,
+
+    // current phase
+    pub phase: CommonsPhase,
 }

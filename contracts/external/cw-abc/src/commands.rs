@@ -1,11 +1,12 @@
-use cosmwasm_std::{BankMsg, coins, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
+use std::collections::HashSet;
+use cosmwasm_std::{Addr, BankMsg, coins, DepsMut, ensure, Env, MessageInfo, Response, StdError, StdResult, Storage, Uint128};
 use token_bindings::{TokenFactoryQuery, TokenMsg};
 use cw_utils::must_pay;
 use crate::abc::{CommonsPhase, CurveFn};
 use crate::ContractError;
 use crate::contract::CwAbcResult;
 
-use crate::state::{CURVE_STATE, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
+use crate::state::{CURVE_STATE, HATCHER_ALLOWLIST, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
@@ -26,7 +27,7 @@ pub fn execute_buy(
             let hatch_config = &phase_config.hatch;
 
             // Check that the potential hatcher is allowlisted
-            hatch_config.assert_allowlisted(&info.sender)?;
+            assert_allowlisted(deps.storage, &info.sender)?;
             HATCHERS.update(deps.storage, |mut hatchers| -> StdResult<_>{
                 hatchers.insert(info.sender.clone());
                 Ok(hatchers)
@@ -138,4 +139,42 @@ pub fn execute_sell(
         .add_attribute("from", info.sender)
         .add_attribute("supply", amount)
         .add_attribute("reserve", released))
+}
+
+/// Check if the sender is allowlisted for the hatch phase
+fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), ContractError> {
+    let allowlist = HATCHER_ALLOWLIST.may_load(storage)?;
+    if let Some(allowlist) = allowlist {
+        ensure!(
+                allowlist.contains(hatcher),
+                ContractError::SenderNotAllowlisted {
+                    sender: hatcher.to_string(),
+                }
+            );
+    }
+
+    Ok(())
+}
+
+pub fn update_hatch_allowlist(deps: DepsMut<TokenFactoryQuery>, to_add: Vec<String>, to_remove: Vec<String>) -> CwAbcResult {
+    let mut allowlist = HATCHER_ALLOWLIST.may_load(deps.storage)?;
+
+    if let Some(ref mut allowlist) = allowlist {
+        for allow in to_add {
+            let addr = deps.api.addr_validate(allow.as_str())?;
+            allowlist.insert(addr);
+        }
+        for deny in to_remove {
+            let addr = deps.api.addr_validate(deny.as_str())?;
+            allowlist.remove(&addr);
+        }
+    } else {
+        let validated = to_add.into_iter()
+            .map(|addr| deps.api.addr_validate(addr.as_str())).collect::<StdResult<HashSet<_>>>()?;
+        allowlist = Some(validated);
+    }
+
+    HATCHER_ALLOWLIST.save(deps.storage, &allowlist.unwrap())?;
+
+    Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
 }

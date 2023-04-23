@@ -1,7 +1,7 @@
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, Decimal as StdDecimal, ensure, StdResult, Uint128};
-use cw_address_like::AddressLike;
+use cosmwasm_std::{Decimal as StdDecimal, ensure, Uint128};
+
 use token_bindings::Metadata;
 use crate::curves::{Constant, Curve, decimal, DecimalPlaces, Linear, SquareRoot};
 use crate::ContractError;
@@ -34,9 +34,7 @@ pub struct MinMax {
 }
 
 #[cw_serde]
-pub struct HatchConfig<T: AddressLike> {
-    // Initial contributors (Hatchers) allow list
-    pub allowlist: Option<Vec<T>>,
+pub struct HatchConfig {
     // /// TODO: The minimum and maximum contribution amounts (min, max) in the reserve token
     // pub contribution_limits: MinMax,
     // The initial raise range (min, max) in the reserve token
@@ -48,23 +46,9 @@ pub struct HatchConfig<T: AddressLike> {
     pub initial_allocation_ratio: StdDecimal,
 }
 
-impl From<HatchConfig<Addr>> for HatchConfig<String> {
-    fn from(value: HatchConfig<Addr>) -> Self {
-        HatchConfig {
-            allowlist: value.allowlist.map(|addresses| {
-                addresses.into_iter().map(|addr| addr.to_string()).collect()
-            }),
-            initial_raise: value.initial_raise,
-            initial_price: value.initial_price,
-            initial_allocation_ratio: value.initial_allocation_ratio,
-        }
-    }
-}
-
-
-impl HatchConfig<String> {
+impl HatchConfig {
     /// Validate the hatch config
-    pub fn validate(&self, api: &dyn Api) -> Result<HatchConfig<Addr>, ContractError> {
+    pub fn validate(&self) -> Result<(), ContractError> {
         ensure!(
             self.initial_raise.min < self.initial_raise.max,
             ContractError::HatchPhaseConfigError("Initial raise minimum value must be less than maximum value.".to_string())
@@ -80,38 +64,6 @@ impl HatchConfig<String> {
             ContractError::HatchPhaseConfigError("Initial allocation percentage must be between 0 and 100.".to_string())
         );
 
-        let allowlist = self
-            .allowlist
-            .as_ref()
-            .map(|addresses| {
-                addresses
-                    .iter()
-                    .map(|addr| api.addr_validate(addr))
-                    .collect::<StdResult<Vec<_>>>()
-            })
-            .transpose()?;
-
-        Ok(HatchConfig {
-            allowlist,
-            initial_raise: self.initial_raise.clone(),
-            initial_price: self.initial_price,
-            initial_allocation_ratio: self.initial_allocation_ratio,
-        })
-    }
-}
-
-impl HatchConfig<Addr> {
-    /// Check if the sender is allowlisted for the hatch phase
-    pub fn assert_allowlisted(&self, hatcher: &Addr) -> Result<(), ContractError> {
-        if let Some(allowlist) = &self.allowlist {
-            ensure!(
-                allowlist.contains(hatcher),
-                ContractError::SenderNotAllowlisted {
-                    sender: hatcher.to_string(),
-                }
-            );
-        }
-
         Ok(())
     }
 }
@@ -121,6 +73,8 @@ impl HatchConfig<Addr> {
 pub struct OpenConfig {
     // Percentage of capital put into the Reserve Pool during the Open phase
     pub allocation_percentage: StdDecimal,
+    // Exit taxation ratio
+    pub exit_tax: StdDecimal,
 }
 
 impl OpenConfig {
@@ -132,6 +86,11 @@ impl OpenConfig {
             ContractError::OpenPhaseConfigError("Reserve percentage must be between 0 and 100.".to_string())
         );
 
+        ensure!(
+            self.exit_tax <= StdDecimal::percent(100u64),
+            ContractError::OpenPhaseConfigError("Exit taxation percentage must be between 0 and 100.".to_string())
+        );
+
         Ok(())
     }
 }
@@ -141,9 +100,9 @@ pub struct ClosedConfig {}
 
 
 #[cw_serde]
-pub struct CommonsPhaseConfig<T: AddressLike> {
+pub struct CommonsPhaseConfig {
     // The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
-    pub hatch: HatchConfig<T>,
+    pub hatch: HatchConfig,
     // The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
     // pub vesting: VestingConfig,
     // The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.
@@ -177,17 +136,13 @@ pub enum CommonsPhase {
     Closed
 }
 
-impl CommonsPhaseConfig<String> {
+impl CommonsPhaseConfig {
     /// Validate that the commons configuration is valid
-    pub fn validate(&self, api: &dyn Api) -> Result<CommonsPhaseConfig<Addr>, ContractError> {
-        let hatch = self.hatch.validate(api)?;
+    pub fn validate(&self) -> Result<(), ContractError> {
+        self.hatch.validate()?;
         self.open.validate()?;
 
-        Ok(CommonsPhaseConfig {
-            hatch,
-            open: self.open.clone(),
-            closed: self.closed.clone(),
-        })
+        Ok(())
     }
 }
 

@@ -9,7 +9,7 @@ use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 use crate::curves::DecimalPlaces;
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHERS, PHASE_CONFIG, SUPPLY_DENOM};
+use crate::state::{CURVE_STATE, CURVE_TYPE, CurveState, HATCHER_ALLOWLIST, HATCHERS, PHASE_CONFIG, SUPPLY_DENOM};
 use cw_utils::nonpayable;
 use crate::abc::CurveFn;
 use crate::{commands, queries};
@@ -39,6 +39,7 @@ pub fn instantiate(
         reserve,
         curve_type,
         phase_config,
+        hatcher_allowlist,
     } = msg;
 
 
@@ -46,7 +47,7 @@ pub fn instantiate(
         return Err(ContractError::SupplyTokenError("Token subdenom must not be empty.".to_string()));
     }
 
-    let phase_config = phase_config.validate(deps.api)?;
+    phase_config.validate()?;
 
     // Create supply denom with metadata
     let create_supply_denom_msg = TokenMsg::CreateDenom {
@@ -73,6 +74,12 @@ pub fn instantiate(
     CURVE_STATE.save(deps.storage, &curve_state)?;
     CURVE_TYPE.save(deps.storage, &curve_type)?;
     HATCHERS.save(deps.storage, &HashSet::new())?;
+
+    if let Some(allowlist) = hatcher_allowlist {
+        let allowlist = allowlist.into_iter()
+            .map(|addr| deps.api.addr_validate(addr.as_str())).collect::<StdResult<HashSet<_>>>()?;
+        HATCHER_ALLOWLIST.save(deps.storage, &allowlist)?;
+    }
 
     PHASE_CONFIG.save(deps.storage, &phase_config)?;
 
@@ -109,10 +116,9 @@ pub fn do_execute(
     match msg {
         ExecuteMsg::Buy {} => commands::execute_buy(deps, env, info, curve_fn),
         ExecuteMsg::Burn { amount } => commands::execute_sell(deps, env, info, curve_fn, amount),
-        ExecuteMsg::UpdateHatchAllowlist { to_add: _, to_remove: _ } => {
+        ExecuteMsg::UpdateHatchAllowlist { to_add, to_remove } => {
             cw_ownable::assert_owner(deps.storage, &info.sender)?;
-            // commands::execute_update_hatch_allowlist(deps, env, info, to_add, to_remove)
-            todo!()
+            commands::update_hatch_allowlist(deps, to_add, to_remove)
         }
         ExecuteMsg::UpdateHatchConfig { .. } => {
             cw_ownable::assert_owner(deps.storage, &info.sender)?;
@@ -256,13 +262,14 @@ mod tests {
                     },
                     initial_price: Uint128::one(),
                     initial_allocation_ratio: Decimal::percent(10u64),
-                    allowlist: None,
                 },
                 open: OpenConfig {
                     allocation_percentage: Decimal::percent(10u64),
+                    exit_tax: Decimal::percent(10u64),
                 },
                 closed: ClosedConfig {},
             },
+            hatcher_allowlist: None,
             curve_type,
         }
     }

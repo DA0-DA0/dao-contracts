@@ -2,7 +2,7 @@ use cosmwasm_std::{Deps, StdResult};
 use token_bindings::TokenFactoryQuery;
 use crate::abc::CurveFn;
 use crate::msg::{CommonsPhaseConfigResponse, CurveInfoResponse};
-use crate::state::{CURVE_STATE, CurveState};
+use crate::state::{CURVE_STATE, CurveState, PHASE, PHASE_CONFIG};
 
 /// Get the current state of the curve
 pub fn query_curve_info(
@@ -31,11 +31,12 @@ pub fn query_curve_info(
 }
 
 /// Load and return the phase config
-/// TODO: the allowlist will need to paged... should it be separate?
 pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPhaseConfigResponse> {
-    let phase_config = crate::state::PHASE_CONFIG.load(deps.storage)?;
+    let phase = PHASE.load(deps.storage)?;
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
     Ok(CommonsPhaseConfigResponse {
-        phase_config
+        phase_config,
+        phase,
     })
 }
 
