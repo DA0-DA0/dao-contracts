@@ -24,11 +24,15 @@ cw-storage-plus = { workspace = true }
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 thiserror = { workspace = true }
+# TODO move to workspace
+cw-address-like = "1.0.4"
 rust_decimal = "1.14.3"
 integer-sqrt = "0.1.5"
 integer-cbrt = "0.1.2"
 # TODO publish this
 token-bindings = { git = "https://github.com/CosmosContracts/token-bindings", rev = "1412b94" }
+cw-ownable = { workspace = true }
 
 [dev-dependencies]
-
+# TODO move to workspace
+speculoos = "0.11.0"
