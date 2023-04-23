@@ -2,8 +2,8 @@ use crate::abc::{CommonsPhase, CurveFn};
 use crate::contract::CwAbcResult;
 use crate::ContractError;
 use cosmwasm_std::{
-    coins, ensure, Addr, BankMsg, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-    Storage, Uint128,
+    coins, ensure, Addr, BankMsg, Decimal as StdDecimal, DepsMut, Env, MessageInfo, Response,
+    StdError, StdResult, Storage, Uint128,
 };
 use cw_utils::must_pay;
 use std::collections::HashSet;
@@ -27,21 +27,12 @@ pub fn execute_buy(
     let phase_config = PHASE_CONFIG.load(deps.storage)?;
     let mut phase = PHASE.load(deps.storage)?;
 
-    let (reserved, funded) = match phase {
+    let (reserved, funded) = match &phase {
         CommonsPhase::Hatch => {
-            let hatch_config = &phase_config.hatch;
-
+            let hatch_config = phase_config.hatch;
             // Check that the potential hatcher is allowlisted
             assert_allowlisted(deps.storage, &info.sender)?;
-            HATCHERS.update(deps.storage, &info.sender, |amount| -> StdResult<_> {
-                match amount {
-                    Some(mut amount) => {
-                        amount += payment;
-                        Ok(amount)
-                    }
-                    None => Ok(payment),
-                }
-            })?;
+            update_hatcher_contributions(deps.storage, &info.sender, payment)?;
 
             // Check if the initial_raise max has been met
             if curve_state.reserve + payment >= hatch_config.initial_raise.max {
@@ -50,26 +41,13 @@ pub fn execute_buy(
                 PHASE.save(deps.storage, &phase)?;
             }
 
-            // Calculate the number of tokens sent to the funding pool using the initial allocation percentage
-            // TODO: is it safe to multiply a Decimal with a Uint128?
-            let funded = payment * hatch_config.initial_allocation_ratio;
-            // Calculate the number of tokens sent to the reserve
-            let reserved = payment - funded;
-
-            (reserved, funded)
+            calculate_reserved_and_funded(payment, hatch_config.initial_allocation_ratio)
         }
         CommonsPhase::Open => {
-            let open_config = &phase_config.open;
-
-            // Calculate the number of tokens sent to the funding pool using the allocation percentage
-            let funded = payment * open_config.allocation_percentage;
-            // Calculate the number of tokens sent to the reserve
-            let reserved = payment.checked_sub(funded).map_err(StdError::overflow)?;
-
-            (reserved, funded)
+            let open_config = phase_config.open;
+            calculate_reserved_and_funded(payment, open_config.allocation_percentage)
         }
         CommonsPhase::Closed => {
-            // TODO: what to do here?
             return Err(ContractError::CommonsClosed {});
         }
     };
@@ -78,7 +56,8 @@ pub fn execute_buy(
     let curve = curve_fn(curve_state.clone().decimals);
     curve_state.reserve += reserved;
     curve_state.funding += funded;
-    let new_supply = curve.supply(curve_state.reserve);
+    // Supply = locked + float
+    let new_supply = curve.supply(curve_state.reserve + curve_state.funding);
     let minted = new_supply
         .checked_sub(curve_state.supply)
         .map_err(StdError::overflow)?;
@@ -98,6 +77,34 @@ pub fn execute_buy(
         .add_attribute("supply", minted))
 }
 
+/// Return the reserved and funded amounts based on the payment and the allocation ratio
+fn calculate_reserved_and_funded(
+    payment: Uint128,
+    allocation_ratio: StdDecimal,
+) -> (Uint128, Uint128) {
+    let funded = payment * allocation_ratio;
+    let reserved = payment.checked_sub(funded).unwrap(); // Since allocation_ratio is < 1, this subtraction is safe
+    (reserved, funded)
+}
+
+/// Add the hatcher's contribution to the total contributions
+fn update_hatcher_contributions(
+    storage: &mut dyn Storage,
+    hatcher: &Addr,
+    contribution: Uint128,
+) -> StdResult<()> {
+    HATCHERS.update(storage, hatcher, |amount| -> StdResult<_> {
+        match amount {
+            Some(mut amount) => {
+                amount += contribution;
+                Ok(amount)
+            }
+            None => Ok(contribution),
+        }
+    })?;
+    Ok(())
+}
+
 pub fn execute_sell(
     deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
@@ -110,12 +117,31 @@ pub fn execute_sell(
     let denom = SUPPLY_DENOM.load(deps.storage)?;
     let payment = must_pay(&info, &denom)?;
 
+    // Load the phase config and phase
+    let phase = PHASE.load(deps.storage)?;
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
+
     // calculate how many tokens can be purchased with this and mint them
     let mut state = CURVE_STATE.load(deps.storage)?;
     let curve = curve_fn(state.clone().decimals);
+
+    // Calculate the exit tax based on the phase
+    let exit_tax = match &phase {
+        CommonsPhase::Hatch => phase_config.hatch.exit_tax,
+        CommonsPhase::Open => phase_config.open.exit_tax,
+        CommonsPhase::Closed => return Err(ContractError::CommonsClosed {}),
+    };
+
+    // TODO: safe decimal multiplication
+    let taxed_amount = amount * exit_tax;
+    let net_supply_reduction = amount
+        .checked_sub(taxed_amount)
+        .map_err(StdError::overflow)?;
+
+    // Reduce the supply by the net amount
     state.supply = state
         .supply
-        .checked_sub(amount)
+        .checked_sub(net_supply_reduction)
         .map_err(StdError::overflow)?;
     let new_reserve = curve.reserve(state.supply);
     state.reserve = new_reserve;
@@ -124,50 +150,17 @@ pub fn execute_sell(
         .checked_sub(new_reserve)
         .map_err(StdError::overflow)?;
 
-    // Load the phase config and phase
-    let phase_config = PHASE_CONFIG.load(deps.storage)?;
-    let phase = PHASE.load(deps.storage)?;
-    let (released, funded) = match phase {
-        CommonsPhase::Hatch => {
-            // TODO: do we want to allow selling in the hatch phase?
-            let hatch_config = &phase_config.hatch;
-
-            // Calculate the number of tokens sent to the funding pool using the allocation percentage
-            // TODO: unsafe multiplication
-            let exit_tax = released_funds * hatch_config.exit_tax;
-            // Calculate the number of tokens sent to the reserve
-            let released = payment.checked_sub(exit_tax).map_err(StdError::overflow)?;
-
-            (released, exit_tax)
-        }
-        CommonsPhase::Open => {
-            let open_config = &phase_config.open;
-
-            // Calculate the number of tokens sent to the funding pool using the allocation percentage
-            // TODO: unsafe multiplication
-            let exit_tax = released_funds * open_config.exit_tax;
-            // Calculate the number of tokens sent to the reserve
-            let released = payment.checked_sub(exit_tax).map_err(StdError::overflow)?;
-
-            (released, exit_tax)
-        }
-        CommonsPhase::Closed => {
-            // TODO: what to do here?
-            return Err(ContractError::CommonsClosed {});
-        }
-    };
-
     // Add the exit tax to the funding, reserve is already correctly calculated
-    state.funding += funded;
+    state.funding += taxed_amount;
     CURVE_STATE.save(deps.storage, &state)?;
 
     // Burn the tokens
     let burn_msg = TokenMsg::burn_contract_tokens(denom, payment, info.sender.to_string());
 
-    // now send the tokens to the sender (TODO: for sell_from we do something else, right???)
+    // Now send the tokens to the sender
     let msg = BankMsg::Send {
         to_address: receiver.to_string(),
-        amount: coins(released.u128(), state.reserve_denom),
+        amount: coins(released_funds.u128(), state.reserve_denom),
     };
 
     Ok(Response::new()
@@ -176,8 +169,8 @@ pub fn execute_sell(
         .add_attribute("action", "burn")
         .add_attribute("from", info.sender)
         .add_attribute("amount", amount)
-        .add_attribute("released", released)
-        .add_attribute("funded", funded))
+        .add_attribute("released", released_funds)
+        .add_attribute("funded", taxed_amount))
 }
 
 /// Send a donation to the funding pool
