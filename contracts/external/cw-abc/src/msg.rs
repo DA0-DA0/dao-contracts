@@ -45,10 +45,13 @@ pub enum UpdatePhaseConfigMsg {
 pub enum ExecuteMsg {
     /// Buy will attempt to purchase as many supply tokens as possible.
     /// You must send only reserve tokens in that message
+    #[payable]
     Buy {},
     /// Burn is a base message to destroy tokens forever
+    #[payable]
     Burn {},
     /// Donate will add reserve tokens to the funding pool
+    #[payable]
     Donate {},
     /// Update the hatch phase allowlist
     UpdateHatchAllowlist {

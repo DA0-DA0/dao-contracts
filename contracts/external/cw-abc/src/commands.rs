@@ -179,7 +179,12 @@ fn calculate_exit_tax(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResul
         CommonsPhase::Closed => return Err(ContractError::CommonsClosed {}),
     };
 
-    // TODO: safe decimal multiplication
+    debug_assert!(
+        exit_tax <= StdDecimal::percent(100),
+        "Exit tax must be <= 100%"
+    );
+
+    // This won't ever overflow because it's checked
     let taxed_amount = sell_amount * exit_tax;
     Ok(taxed_amount)
 }
@@ -194,14 +199,15 @@ pub fn execute_donate(
 
     let payment = must_pay(&info, &curve_state.reserve_denom)?;
     curve_state.funding += payment;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
 
     // No minting of tokens is necessary, the supply stays the same
     DONATIONS.save(deps.storage, &info.sender, &payment)?;
 
     Ok(Response::new()
         .add_attribute("action", "donate")
-        .add_attribute("from", info.sender)
-        .add_attribute("funded", payment))
+        .add_attribute("donor", info.sender)
+        .add_attribute("amount", payment))
 }
 
 /// Check if the sender is allowlisted for the hatch phase
@@ -302,4 +308,96 @@ pub fn update_ownership(
     )?;
 
     Ok(Response::default().add_attributes(ownership.into_attributes()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::prelude::*;
+    use cosmwasm_std::testing::*;
+
+    mod donate {
+        use super::*;
+        use crate::abc::CurveType;
+        use crate::testing::mock_init;
+        use cosmwasm_std::coin;
+        use cw_utils::PaymentError;
+
+        const TEST_DONOR: &str = "donor";
+
+        fn exec_donate(deps: DepsMut<TokenFactoryQuery>, donation_amount: u128) -> CwAbcResult {
+            execute_donate(
+                deps,
+                mock_env(),
+                mock_info(TEST_DONOR, &[coin(donation_amount, TEST_RESERVE_DENOM)]),
+            )
+        }
+
+        #[test]
+        fn should_fail_with_no_funds() -> CwAbcResult<()> {
+            let mut deps = mock_tf_dependencies();
+            let curve_type = CurveType::Linear {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            let res = exec_donate(deps.as_mut(), 0);
+            assert_that!(res)
+                .is_err()
+                .is_equal_to(ContractError::Payment(PaymentError::NoFunds {}));
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_fail_with_incorrect_denom() -> CwAbcResult<()> {
+            let mut deps = mock_tf_dependencies();
+            let curve_type = CurveType::Linear {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            let res = execute_donate(
+                deps.as_mut(),
+                mock_env(),
+                mock_info(TEST_DONOR, &[coin(1, "fake")]),
+            );
+            assert_that!(res)
+                .is_err()
+                .is_equal_to(ContractError::Payment(PaymentError::MissingDenom(
+                    TEST_RESERVE_DENOM.to_string(),
+                )));
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_add_to_funding_pool() -> CwAbcResult<()> {
+            let mut deps = mock_tf_dependencies();
+            // this matches `linear_curve` test case from curves.rs
+            let curve_type = CurveType::SquareRoot {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            let donation_amount = 5;
+            let _res = exec_donate(deps.as_mut(), donation_amount)?;
+
+            // check that the curve's funding has been increased while supply and reserve have not
+            let curve_state = CURVE_STATE.load(&deps.storage)?;
+            assert_that!(curve_state.funding).is_equal_to(Uint128::new(donation_amount));
+
+            // check that the donor is in the donations map
+            let donation = DONATIONS.load(&deps.storage, &Addr::unchecked(TEST_DONOR))?;
+            assert_that!(donation).is_equal_to(Uint128::new(donation_amount));
+
+            Ok(())
+        }
+    }
 }

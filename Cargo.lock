@@ -290,7 +290,7 @@ dependencies = [
 [[package]]
 name = "boot-core"
 version = "0.10.0"
-source = "git+https://github.com/Abstract-OS/BOOT?branch=fix/custom_binding_contract_wrapper#2c1d9806a9782ece8f14107efa886eab12a1abdc"
+source = "git+https://github.com/Abstract-OS/BOOT?branch=fix/custom_binding_contract_wrapper#7a0c9f67ce1dfaf11aba7b1ac48e08e66fb3db0c"
 dependencies = [
  "anyhow",
  "base16",
@@ -807,9 +807,11 @@ dependencies = [
 name = "cw-abc"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "boot-core",
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-abc",
  "cw-address-like",
  "cw-ownable",
  "cw-paginate 2.1.0",

@@ -36,3 +36,20 @@ boot-core = { version = "0.10.0", optional = true, git = "https://github.com/Abs
 
 [dev-dependencies]
 speculoos = "0.11.0"
+#cw-multi-test = { version = "0.16.0" }
+anyhow = { workspace = true }
+cw-abc = { path = ".", features = ["boot"] }
+
+
+
+
+[profile.release]
+rpath = false
+lto = true
+overflow-checks = true
+opt-level = 3
+debug = false
+debug-assertions = false
+codegen-units = 1
+panic = 'abort'
+incremental = false

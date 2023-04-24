@@ -17,7 +17,7 @@ use crate::{commands, queries};
 use cw_utils::nonpayable;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:cw20-abc";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:cw20-abc";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // By default, the prefix for token factory tokens is "factory"
@@ -220,74 +220,17 @@ pub fn do_query(
 
 // this is poor man's "skip" flag
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
-    use crate::abc::{
-        ClosedConfig, CommonsPhaseConfig, CurveType, HatchConfig, MinMax, OpenConfig, ReserveToken,
-        SupplyToken,
-    };
+    use crate::abc::CurveType;
     use crate::queries::query_curve_info;
     use cosmwasm_std::{
-        testing::{mock_env, mock_info, MockApi, MockQuerier, MockStorage},
-        CosmosMsg, Decimal, OwnedDeps, Uint128,
+        testing::{mock_env, mock_info},
+        CosmosMsg, Decimal, Uint128,
     };
     use speculoos::prelude::*;
-    use std::marker::PhantomData;
-    use token_bindings::Metadata;
 
-    const DENOM: &str = "satoshi";
-    const CREATOR: &str = "creator";
-    const INVESTOR: &str = "investor";
-    const BUYER: &str = "buyer";
-
-    const SUPPLY_DENOM: &str = "subdenom";
-
-    fn default_supply_metadata() -> Metadata {
-        Metadata {
-            name: Some("Bonded".to_string()),
-            symbol: Some("EPOXY".to_string()),
-            description: None,
-            denom_units: vec![],
-            base: None,
-            display: None,
-        }
-    }
-
-    fn default_instantiate(
-        decimals: u8,
-        reserve_decimals: u8,
-        curve_type: CurveType,
-    ) -> InstantiateMsg {
-        InstantiateMsg {
-            supply: SupplyToken {
-                subdenom: SUPPLY_DENOM.to_string(),
-                metadata: default_supply_metadata(),
-                decimals,
-            },
-            reserve: ReserveToken {
-                denom: DENOM.to_string(),
-                decimals: reserve_decimals,
-            },
-            phase_config: CommonsPhaseConfig {
-                hatch: HatchConfig {
-                    initial_raise: MinMax {
-                        min: Uint128::one(),
-                        max: Uint128::from(1000000u128),
-                    },
-                    initial_price: Uint128::one(),
-                    initial_allocation_ratio: Decimal::percent(10u64),
-                    exit_tax: Decimal::zero(),
-                },
-                open: OpenConfig {
-                    allocation_percentage: Decimal::percent(10u64),
-                    exit_tax: Decimal::percent(10u64),
-                },
-                closed: ClosedConfig {},
-            },
-            hatcher_allowlist: None,
-            curve_type,
-        }
-    }
+    use crate::testing::*;
 
     //     fn get_balance<U: Into<String>>(deps: Deps, addr: U) -> Uint128 {
     //         query_balance(deps, addr.into()).unwrap().balance
@@ -305,15 +248,6 @@ mod tests {
     //     }
 
     /// Mock token factory querier dependencies
-    fn mock_tf_dependencies(
-    ) -> OwnedDeps<MockStorage, MockApi, MockQuerier<TokenFactoryQuery>, TokenFactoryQuery> {
-        OwnedDeps {
-            storage: MockStorage::default(),
-            api: MockApi::default(),
-            querier: MockQuerier::<TokenFactoryQuery>::new(&[]),
-            custom_query_type: PhantomData::<TokenFactoryQuery>,
-        }
-    }
 
     #[test]
     fn proper_instantiation() -> CwAbcResult<()> {
@@ -325,7 +259,7 @@ mod tests {
             slope: Uint128::new(1),
             scale: 1,
         };
-        let msg = default_instantiate(2, 8, curve_type.clone());
+        let msg = default_instantiate_msg(2, 8, curve_type.clone());
         let info = mock_info(&creator, &[]);
 
         // make sure we can instantiate with this
@@ -334,7 +268,7 @@ mod tests {
         let submsg = res.messages.get(0).unwrap();
         assert_that!(submsg.msg).is_equal_to(CosmosMsg::Custom(TokenFactoryMsg::Token(
             TokenMsg::CreateDenom {
-                subdenom: SUPPLY_DENOM.to_string(),
+                subdenom: TEST_SUPPLY_DENOM.to_string(),
                 metadata: Some(default_supply_metadata()),
             },
         )));
@@ -351,7 +285,7 @@ mod tests {
         let state = query_curve_info(deps.as_ref(), curve_type.to_curve_fn())?;
         assert_that!(state.reserve).is_equal_to(Uint128::zero());
         assert_that!(state.supply).is_equal_to(Uint128::zero());
-        assert_that!(state.reserve_denom.as_str()).is_equal_to(DENOM);
+        assert_that!(state.reserve_denom.as_str()).is_equal_to(TEST_RESERVE_DENOM);
         // spot price 0 as supply is 0
         assert_that!(state.spot_price).is_equal_to(Decimal::zero());
 
