@@ -2079,14 +2079,12 @@ fn test_cw721_receive() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(cw721_base::msg::MintMsg::<
-            Option<Empty>,
-        > {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
             extension: None,
-        }),
+        },
         &[],
     )
     .unwrap();
@@ -2211,14 +2209,12 @@ fn test_cw721_receive_no_auto_add() {
     app.execute_contract(
         Addr::unchecked(CREATOR_ADDR),
         cw721_addr.clone(),
-        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(cw721_base::msg::MintMsg::<
-            Option<Empty>,
-        > {
+        &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
             token_id: "ekez".to_string(),
             owner: CREATOR_ADDR.to_string(),
             token_uri: None,
             extension: None,
-        }),
+        },
         &[],
     )
     .unwrap();

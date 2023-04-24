@@ -188,14 +188,12 @@ pub(crate) fn instantiate_with_staked_cw721_governance(
             app.execute_contract(
                 Addr::unchecked("ekez"),
                 nft_address.clone(),
-                &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint(
-                    cw721_base::msg::MintMsg::<Option<Empty>> {
-                        token_id: format!("{address}_{i}"),
-                        owner: address.clone(),
-                        token_uri: None,
-                        extension: None,
-                    },
-                ),
+                &cw721_base::msg::ExecuteMsg::<Option<Empty>, Empty>::Mint {
+                    token_id: format!("{address}_{i}"),
+                    owner: address.clone(),
+                    token_uri: None,
+                    extension: None,
+                },
                 &[],
             )
             .unwrap();

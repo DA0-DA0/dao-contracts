@@ -96,12 +96,12 @@ pub fn mint_nft(chain: &mut Chain, sender: &SigningKey, receiver: &str, token_id
         .execute(
             CW721_NAME,
             "mint_nft",
-            &cw721_base::ExecuteMsg::Mint::<Empty, Empty>(cw721_base::MintMsg {
+            &cw721_base::ExecuteMsg::<Empty, Empty>::Mint {
                 token_id: token_id.to_string(),
                 owner: receiver.to_string(),
                 token_uri: None,
                 extension: Empty::default(),
-            }),
+            },
             sender,
             vec![],
         )
@@ -223,14 +223,12 @@ fn cw721_stake_max_claims_works(chain: &mut Chain) {
 
         reqs.push(ExecReq {
             contract_name: CW721_NAME.to_string(),
-            msg: Box::new(cw721_base::ExecuteMsg::Mint::<Empty, Empty>(
-                cw721_base::MintMsg {
-                    token_id: token_id.clone(),
-                    owner: user_addr.to_string(),
-                    token_uri: None,
-                    extension: Empty::default(),
-                },
-            )),
+            msg: Box::new(cw721_base::ExecuteMsg::<Empty, Empty>::Mint {
+                token_id: token_id.clone(),
+                owner: user_addr.to_string(),
+                token_uri: None,
+                extension: Empty::default(),
+            }),
             funds: vec![],
         });
 

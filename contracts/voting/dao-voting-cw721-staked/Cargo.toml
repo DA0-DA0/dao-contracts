@@ -21,11 +21,10 @@ cw-storage-plus = { workspace = true }
 cw-controllers = { workspace = true }
 dao-macros = { workspace = true }
 dao-interface = { workspace = true }
-cw721-base = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
+cw721 = { workspace = true }
+cw721-base = { workspace = true }
 cw721-controllers = { workspace = true }
 cw-paginate = { workspace = true }
-# TODO update when cw-nfts v0.17 is published
-cw721 = { git = "https://github.com/CosmWasm/cw-nfts", rev = "5179de0" }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 dao-voting = { workspace = true }
