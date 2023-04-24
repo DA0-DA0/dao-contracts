@@ -290,7 +290,7 @@ dependencies = [
 [[package]]
 name = "boot-core"
 version = "0.10.0"
-source = "git+https://github.com/Abstract-OS/BOOT?branch=fix/custom_binding_contract_wrapper#7a0c9f67ce1dfaf11aba7b1ac48e08e66fb3db0c"
+source = "git+https://github.com/AbstractSDK/BOOT?branch=fix/custom_binding_contract_wrapper#7a0c9f67ce1dfaf11aba7b1ac48e08e66fb3db0c"
 dependencies = [
  "anyhow",
  "base16",
@@ -5262,13 +5262,13 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.23"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4017f8f45139870ca7e672686113917c71c7a6e02d4924eda67186083c03081a"
+checksum = "0f57e3ca2a01450b1a921183a9c9cbfda207fd822cef4ccb00a65402cbba7a74"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.15",
 ]
 
 [[package]]
