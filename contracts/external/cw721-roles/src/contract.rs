@@ -233,7 +233,7 @@ pub fn execute_burn(
         if new_weight == 0 {
             // New weight is now None
             diff = MemberDiff::new(owner.owner, Some(old_weight), None);
-            // Owner owner from list of members
+            // Remove owner from list of members
             MEMBERS.remove(deps.storage, &owner_addr, env.block.height)?;
         } else {
             MEMBERS.update(
