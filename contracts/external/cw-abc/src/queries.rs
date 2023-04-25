@@ -1,8 +1,11 @@
-use cosmwasm_std::{Deps, StdResult};
-use token_bindings::TokenFactoryQuery;
 use crate::abc::CurveFn;
-use crate::msg::{CommonsPhaseConfigResponse, CurveInfoResponse};
-use crate::state::{CURVE_STATE, CurveState};
+use crate::msg::{
+    CommonsPhaseConfigResponse, CurveInfoResponse, DonationsResponse, HatchersResponse,
+};
+use crate::state::{CurveState, CURVE_STATE, DONATIONS, HATCHERS, PHASE, PHASE_CONFIG};
+use cosmwasm_std::{Deps, Order, QuerierWrapper, StdResult};
+use std::ops::Deref;
+use token_bindings::TokenFactoryQuery;
 
 /// Get the current state of the curve
 pub fn query_curve_info(
@@ -31,14 +34,14 @@ pub fn query_curve_info(
 }
 
 /// Load and return the phase config
-/// TODO: the allowlist will need to paged... should it be separate?
 pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPhaseConfigResponse> {
-    let phase_config = crate::state::PHASE_CONFIG.load(deps.storage)?;
+    let phase = PHASE.load(deps.storage)?;
+    let phase_config = PHASE_CONFIG.load(deps.storage)?;
     Ok(CommonsPhaseConfigResponse {
-        phase_config
+        phase_config,
+        phase,
     })
 }
-
 
 // // TODO, maybe we don't need this
 // pub fn get_denom(
@@ -53,3 +56,49 @@ pub fn query_phase_config(deps: Deps<TokenFactoryQuery>) -> StdResult<CommonsPha
 //         denom: response.denom,
 //     }
 // }
+
+pub fn query_donations(
+    deps: Deps<TokenFactoryQuery>,
+    start_aftor: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<DonationsResponse> {
+    let donations = cw_paginate::paginate_map(
+        Deps {
+            storage: deps.storage,
+            api: deps.api,
+            querier: QuerierWrapper::new(deps.querier.deref()),
+        },
+        &DONATIONS,
+        start_aftor
+            .map(|addr| deps.api.addr_validate(&addr))
+            .transpose()?
+            .as_ref(),
+        limit,
+        Order::Descending,
+    )?;
+
+    Ok(DonationsResponse { donations })
+}
+
+pub fn query_hatchers(
+    deps: Deps<TokenFactoryQuery>,
+    start_aftor: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<HatchersResponse> {
+    let hatchers = cw_paginate::paginate_map(
+        Deps {
+            storage: deps.storage,
+            api: deps.api,
+            querier: QuerierWrapper::new(deps.querier.deref()),
+        },
+        &HATCHERS,
+        start_aftor
+            .map(|addr| deps.api.addr_validate(&addr))
+            .transpose()?
+            .as_ref(),
+        limit,
+        Order::Descending,
+    )?;
+
+    Ok(HatchersResponse { hatchers })
+}
