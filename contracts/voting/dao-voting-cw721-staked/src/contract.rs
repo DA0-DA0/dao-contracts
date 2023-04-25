@@ -454,10 +454,6 @@ pub fn query_is_active(deps: Deps, env: Env) -> StdResult<Binary> {
             config.nft_address,
             &cw721_base::msg::QueryMsg::<Empty>::NumTokens {},
         )?;
-        println!("staked_nfts: {}", staked_nfts);
-        println!("total_nfts: {}", total_nfts.count);
-        println!("threshold: {:?}", threshold);
-        println!("========");
 
         match threshold {
             ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
