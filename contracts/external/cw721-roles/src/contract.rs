@@ -215,38 +215,35 @@ pub fn execute_burn(
 
     // Update member weights and total
     let owner_addr = deps.api.addr_validate(&owner.owner)?;
-    let old = MEMBERS.may_load(deps.storage, &owner_addr)?;
+    let old_weight = MEMBERS.load(deps.storage, &owner_addr)?;
 
-    // Only process this if they were actually in the list before
-    if let Some(old_weight) = old {
-        // Subtract the nft weight from the old weight
-        let new_weight = old_weight
-            .checked_sub(nft_info.extension.weight)
-            .ok_or_else(|| {
-                ContractError::Std(StdError::generic_err(
-                    "Cannot burn NFT, member weight would be negative",
-                ))
-            })?;
-        // Subtract nft weight from the total
-        total = total.checked_sub(Uint64::from(nft_info.extension.weight))?;
+    // Subtract the nft weight from the old weight
+    let new_weight = old_weight
+        .checked_sub(nft_info.extension.weight)
+        .ok_or_else(|| {
+            ContractError::Std(StdError::generic_err(
+                "Cannot burn NFT, member weight would be negative",
+            ))
+        })?;
+    // Subtract nft weight from the total
+    total = total.checked_sub(Uint64::from(nft_info.extension.weight))?;
 
-        // Check if the new weight is now zero
-        if new_weight == 0 {
-            // New weight is now None
-            diff = MemberDiff::new(owner.owner, Some(old_weight), None);
-            // Remove owner from list of members
-            MEMBERS.remove(deps.storage, &owner_addr, env.block.height)?;
-        } else {
-            MEMBERS.update(
-                deps.storage,
-                &owner_addr,
-                env.block.height,
-                |old| -> StdResult<_> {
-                    diff = MemberDiff::new(owner.owner.clone(), old, Some(new_weight));
-                    Ok(new_weight)
-                },
-            )?;
-        }
+    // Check if the new weight is now zero
+    if new_weight == 0 {
+        // New weight is now None
+        diff = MemberDiff::new(owner.owner, Some(old_weight), None);
+        // Remove owner from list of members
+        MEMBERS.remove(deps.storage, &owner_addr, env.block.height)?;
+    } else {
+        MEMBERS.update(
+            deps.storage,
+            &owner_addr,
+            env.block.height,
+            |old| -> StdResult<_> {
+                diff = MemberDiff::new(owner.owner.clone(), old, Some(new_weight));
+                Ok(new_weight)
+            },
+        )?;
     }
 
     TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
