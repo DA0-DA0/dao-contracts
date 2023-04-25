@@ -32,9 +32,12 @@ pub enum NftContract {
         code_id: u64,
         /// Label to use for instantiated cw721 contract.
         label: String,
+        /// NFT collection name
         name: String,
+        /// NFT collection symbol
         symbol: String,
         /// Initial NFTs to mint when creating the NFT contract.
+        /// If empty, an error is thrown.
         initial_nfts: Vec<NftMintMsg>,
     },
 }

@@ -894,7 +894,7 @@ checksum = "c80e93d1deccb8588db03945016a292c3c631e6325d349ebb35d2db6f4f946f7"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw2 1.0.1",
  "schemars",
  "semver",
  "serde",
@@ -983,19 +983,6 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "schemars",
  "serde",
-]
-
-[[package]]
-name = "cw2"
-version = "1.0.1"
-source = "git+https://github.com/mars-protocol/cw-plus?rev=1a3a944#1a3a944b64cf6e9fcfada48f2b09aaa1a90aef74"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-storage-plus 1.1.0",
- "schemars",
- "serde",
- "thiserror",
 ]
 
 [[package]]
@@ -1328,18 +1315,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cw721"
-version = "0.17.0"
-source = "git+https://github.com/CosmWasm/cw-nfts?rev=5179de0#5179de0616f658e43a1827822fe3b61edb8bd43a"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-utils 1.0.1",
- "schemars",
- "serde",
-]
-
-[[package]]
 name = "cw721-base"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1365,28 +1340,10 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-ownable",
- "cw-storage-plus 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw-utils 1.0.1",
- "cw2 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw721 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw721-base 0.16.0",
- "schemars",
- "serde",
- "thiserror",
-]
-
-[[package]]
-name = "cw721-base"
-version = "0.17.0"
-source = "git+https://github.com/CosmWasm/cw-nfts?rev=5179de0#5179de0616f658e43a1827822fe3b61edb8bd43a"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-ownable",
  "cw-storage-plus 1.1.0",
  "cw-utils 1.0.1",
- "cw2 1.0.1 (git+https://github.com/mars-protocol/cw-plus?rev=1a3a944)",
- "cw721 0.17.0 (git+https://github.com/CosmWasm/cw-nfts?rev=5179de0)",
+ "cw2 1.0.1",
+ "cw721 0.17.0",
  "cw721-base 0.16.0",
  "schemars",
  "serde",
@@ -1417,8 +1374,8 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw4 0.16.0",
- "cw721 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw721-base 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "dao-testing",
  "serde",
  "thiserror",
@@ -1438,8 +1395,8 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
- "cw721 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw721-base 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "dao-interface",
  "dao-macros",
  "dao-proposal-sudo",
@@ -1701,7 +1658,7 @@ dependencies = [
  "cw3 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
- "cw721-base 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw721-base 0.17.0",
  "dao-core",
  "dao-interface",
  "dao-macros",
@@ -1743,7 +1700,7 @@ dependencies = [
  "cw3 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
- "cw721-base 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw721-base 0.17.0",
  "dao-core",
  "dao-interface",
  "dao-macros",
@@ -1795,7 +1752,7 @@ dependencies = [
  "cw20-stake 2.1.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
- "cw721-base 0.17.0 (git+https://github.com/CosmWasm/cw-nfts?rev=5179de0)",
+ "cw721-base 0.17.0",
  "cw721-roles",
  "dao-core",
  "dao-interface",
@@ -1910,8 +1867,8 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw4 0.16.0",
- "cw721 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw721-base 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "cw721-controllers",
  "cw721-roles",
  "dao-interface",
@@ -1933,8 +1890,8 @@ dependencies = [
  "cw-storage-plus 1.0.1",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
- "cw721 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw721-base 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "cw721-controllers",
  "dao-interface",
  "dao-macros",
@@ -2537,8 +2494,8 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 2.1.0",
- "cw721 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "cw721-base 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw721 0.17.0",
+ "cw721-base 0.17.0",
  "dao-core",
  "dao-interface",
  "dao-pre-propose-single",

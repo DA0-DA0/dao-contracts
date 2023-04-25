@@ -51,6 +51,7 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    // Only owner / minter can execute
     cw_ownable::assert_owner(deps.storage, &info.sender)?;
 
     match msg {
@@ -276,8 +277,6 @@ pub fn execute_add_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
     let hook = deps.api.addr_validate(&addr)?;
     HOOKS.add_hook(deps.storage, hook)?;
 
@@ -291,8 +290,6 @@ pub fn execute_remove_hook(
     info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
-    cw_ownable::assert_owner(deps.storage, &info.sender)?;
-
     let hook = deps.api.addr_validate(&addr)?;
     HOOKS.remove_hook(deps.storage, hook)?;
 
