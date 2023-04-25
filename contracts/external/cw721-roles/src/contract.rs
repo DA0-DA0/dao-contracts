@@ -274,7 +274,7 @@ pub fn execute_burn(
 
 pub fn execute_add_hook(
     deps: DepsMut,
-    info: MessageInfo,
+    _info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
     let hook = deps.api.addr_validate(&addr)?;
@@ -287,7 +287,7 @@ pub fn execute_add_hook(
 
 pub fn execute_remove_hook(
     deps: DepsMut,
-    info: MessageInfo,
+    _info: MessageInfo,
     addr: String,
 ) -> Result<Response, ContractError> {
     let hook = deps.api.addr_validate(&addr)?;

@@ -9,7 +9,7 @@ use crate::state::{
 use crate::ContractError;
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env,
-    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, WasmMsg,
+    MessageInfo, Reply, Response, StdResult, SubMsg, Uint128, Uint256, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ReceiveMsg, NumTokensResponse};
@@ -23,6 +23,10 @@ pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-staked";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const INSTANTIATE_NFT_CONTRACT_REPLY_ID: u64 = 0;
+
+// We multiply by this when calculating needed power for being active
+// when using active threshold with percent
+const PRECISION_FACTOR: u128 = 10u128.pow(9);
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -45,9 +49,16 @@ pub fn instantiate(
         .transpose()?;
 
     if let Some(active_threshold) = msg.active_threshold.as_ref() {
-        if let ActiveThreshold::Percentage { percent } = active_threshold {
-            if *percent > Decimal::percent(100) || *percent <= Decimal::percent(0) {
-                return Err(ContractError::InvalidActivePercentage {});
+        match active_threshold {
+            ActiveThreshold::Percentage { percent } => {
+                if percent > &Decimal::percent(100) || percent.is_zero() {
+                    return Err(ContractError::InvalidActivePercentage {});
+                }
+            }
+            ActiveThreshold::AbsoluteCount { count } => {
+                if count.is_zero() {
+                    return Err(ContractError::ZeroActiveCount {});
+                }
             }
         }
         ACTIVE_THRESHOLD.save(deps.storage, active_threshold)?;
@@ -443,14 +454,60 @@ pub fn query_is_active(deps: Deps, env: Env) -> StdResult<Binary> {
             config.nft_address,
             &cw721_base::msg::QueryMsg::<Empty>::NumTokens {},
         )?;
+        println!("staked_nfts: {}", staked_nfts);
+        println!("total_nfts: {}", total_nfts.count);
+        println!("threshold: {:?}", threshold);
+        println!("========");
+
         match threshold {
             ActiveThreshold::AbsoluteCount { count } => to_binary(&IsActiveResponse {
                 active: staked_nfts >= count,
             }),
             ActiveThreshold::Percentage { percent } => {
-                // Staked NFTs >= Percent * Total NFTs
+                // Check if there are any staked NFTs
+                if staked_nfts.is_zero() {
+                    return to_binary(&IsActiveResponse { active: false });
+                }
+
+                // percent is bounded between [0, 100]. decimal
+                // represents percents in u128 terms as p *
+                // 10^15. this bounds percent between [0, 10^17].
+                //
+                // total_potential_power is bounded between [0, 2^64]
+                // as it tracks the count of NFT tokens which has
+                // a max supply of 2^64.
+                //
+                // with our precision factor being 10^9:
+                //
+                // total_nfts <= 2^64 * 10^9 <= 2^256
+                //
+                // so we're good to put that in a u256.
+                //
+                // multiply_ratio promotes to a u512 under the hood,
+                // so it won't overflow, multiplying by a percent less
+                // than 100 is gonna make something the same size or
+                // smaller, applied + 10^9 <= 2^128 * 10^9 + 10^9 <=
+                // 2^256, so the top of the round won't overflow, and
+                // rounding is rounding down, so the whole thing can
+                // be safely unwrapped at the end of the day thank you
+                // for coming to my ted talk.
+                let total_nfts_count = Uint128::from(total_nfts.count).full_mul(PRECISION_FACTOR);
+
+                // under the hood decimals are `atomics / 10^decimal_places`.
+                // cosmwasm doesn't give us a Decimal * Uint256
+                // implementation so we take the decimal apart and
+                // multiply by the fraction.
+                let applied = total_nfts_count.multiply_ratio(
+                    percent.atomics(),
+                    Uint256::from(10u64).pow(percent.decimal_places()),
+                );
+                let rounded = (applied + Uint256::from(PRECISION_FACTOR) - Uint256::from(1u128))
+                    / Uint256::from(PRECISION_FACTOR);
+                let count: Uint128 = rounded.try_into().unwrap();
+
+                // staked_nfts >= total_nfts * percent
                 to_binary(&IsActiveResponse {
-                    active: Uint128::from(total_nfts.count) >= staked_nfts * percent,
+                    active: staked_nfts >= count,
                 })
             }
         }
