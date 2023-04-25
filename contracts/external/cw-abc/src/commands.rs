@@ -1,11 +1,18 @@
-use cosmwasm_std::{BankMsg, coins, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128};
-use token_bindings::{TokenFactoryQuery, TokenMsg};
-use cw_utils::must_pay;
-use crate::abc::{CommonsPhase, CurveFn};
-use crate::ContractError;
+use crate::abc::{CommonsPhase, CurveFn, MinMax};
 use crate::contract::CwAbcResult;
+use crate::ContractError;
+use cosmwasm_std::{
+    coins, ensure, Addr, BankMsg, Decimal as StdDecimal, DepsMut, Env, MessageInfo, QuerierWrapper,
+    Response, StdError, StdResult, Storage, Uint128,
+};
+use cw_utils::must_pay;
+use std::collections::HashSet;
+use std::ops::Deref;
+use token_bindings::{TokenFactoryMsg, TokenFactoryQuery, TokenMsg};
 
-use crate::state::{CURVE_STATE, HATCHERS, PHASE, PHASE_CONFIG, SUPPLY_DENOM};
+use crate::state::{
+    CURVE_STATE, DONATIONS, HATCHERS, HATCHER_ALLOWLIST, PHASE, PHASE_CONFIG, SUPPLY_DENOM,
+};
 
 pub fn execute_buy(
     deps: DepsMut<TokenFactoryQuery>,
@@ -21,16 +28,12 @@ pub fn execute_buy(
     let phase_config = PHASE_CONFIG.load(deps.storage)?;
     let mut phase = PHASE.load(deps.storage)?;
 
-    let (reserved, funded) = match phase {
+    let (reserved, funded) = match &phase {
         CommonsPhase::Hatch => {
-            let hatch_config = &phase_config.hatch;
-
+            let hatch_config = phase_config.hatch;
             // Check that the potential hatcher is allowlisted
-            hatch_config.assert_allowlisted(&info.sender)?;
-            HATCHERS.update(deps.storage, |mut hatchers| -> StdResult<_>{
-                hatchers.insert(info.sender.clone());
-                Ok(hatchers)
-            })?;
+            assert_allowlisted(deps.storage, &info.sender)?;
+            update_hatcher_contributions(deps.storage, &info.sender, payment)?;
 
             // Check if the initial_raise max has been met
             if curve_state.reserve + payment >= hatch_config.initial_raise.max {
@@ -39,26 +42,12 @@ pub fn execute_buy(
                 PHASE.save(deps.storage, &phase)?;
             }
 
-            // Calculate the number of tokens sent to the funding pool using the initial allocation percentage
-            // TODO: is it safe to multiply a Decimal with a Uint128?
-            let funded = payment * hatch_config.initial_allocation_ratio;
-            // Calculate the number of tokens sent to the reserve
-            let reserved = payment - funded;
-
-            (reserved, funded)
+            calculate_reserved_and_funded(payment, hatch_config.initial_allocation_ratio)
         }
         CommonsPhase::Open => {
-            let hatch_config = &phase_config.open;
-
-            // Calculate the number of tokens sent to the funding pool using the allocation percentage
-            let funded = payment * hatch_config.allocation_percentage;
-            // Calculate the number of tokens sent to the reserve
-            let reserved = payment - funded;
-
-            (reserved, funded)
+            calculate_reserved_and_funded(payment, phase_config.open.allocation_percentage)
         }
         CommonsPhase::Closed => {
-            // TODO: what to do here?
             return Err(ContractError::CommonsClosed {});
         }
     };
@@ -67,6 +56,7 @@ pub fn execute_buy(
     let curve = curve_fn(curve_state.clone().decimals);
     curve_state.reserve += reserved;
     curve_state.funding += funded;
+    // Calculate the supply based on the reserve
     let new_supply = curve.supply(curve_state.reserve);
     let minted = new_supply
         .checked_sub(curve_state.supply)
@@ -74,13 +64,7 @@ pub fn execute_buy(
     curve_state.supply = new_supply;
     CURVE_STATE.save(deps.storage, &curve_state)?;
 
-    let denom = SUPPLY_DENOM.load(deps.storage)?;
-    // mint supply token
-    let mint_msg = TokenMsg::MintTokens {
-        denom,
-        amount: minted,
-        mint_to_address: info.sender.to_string(),
-    };
+    let mint_msg = mint_supply_msg(deps.storage, minted, &info.sender)?;
 
     Ok(Response::new()
         .add_message(mint_msg)
@@ -91,51 +75,329 @@ pub fn execute_buy(
         .add_attribute("supply", minted))
 }
 
+/// Build a message to mint the supply token to the sender
+fn mint_supply_msg(storage: &dyn Storage, minted: Uint128, minter: &Addr) -> CwAbcResult<TokenMsg> {
+    let denom = SUPPLY_DENOM.load(storage)?;
+    // mint supply token
+    Ok(TokenMsg::mint_contract_tokens(
+        denom,
+        minted,
+        minter.to_string(),
+    ))
+}
+
+/// Return the reserved and funded amounts based on the payment and the allocation ratio
+fn calculate_reserved_and_funded(
+    payment: Uint128,
+    allocation_ratio: StdDecimal,
+) -> (Uint128, Uint128) {
+    let funded = payment * allocation_ratio;
+    let reserved = payment.checked_sub(funded).unwrap(); // Since allocation_ratio is < 1, this subtraction is safe
+    (reserved, funded)
+}
+
+/// Add the hatcher's contribution to the total contributions
+fn update_hatcher_contributions(
+    storage: &mut dyn Storage,
+    hatcher: &Addr,
+    contribution: Uint128,
+) -> StdResult<()> {
+    HATCHERS.update(storage, hatcher, |amount| -> StdResult<_> {
+        match amount {
+            Some(mut amount) => {
+                amount += contribution;
+                Ok(amount)
+            }
+            None => Ok(contribution),
+        }
+    })?;
+    Ok(())
+}
+
 pub fn execute_sell(
     deps: DepsMut<TokenFactoryQuery>,
     _env: Env,
     info: MessageInfo,
     curve_fn: CurveFn,
-    amount: Uint128,
 ) -> CwAbcResult {
-    let receiver = info.sender.clone();
+    let burner = info.sender.clone();
 
-    let denom = SUPPLY_DENOM.load(deps.storage)?;
-    let payment = must_pay(&info, &denom)?;
+    let supply_denom = SUPPLY_DENOM.load(deps.storage)?;
+    let burn_amount = must_pay(&info, &supply_denom)?;
+    // Burn the sent supply tokens
+    let burn_msg = TokenMsg::burn_contract_tokens(supply_denom, burn_amount, burner.to_string());
 
-    // calculate how many tokens can be purchased with this and mint them
-    let mut state = CURVE_STATE.load(deps.storage)?;
-    let curve = curve_fn(state.clone().decimals);
-    state.supply = state
+    let taxed_amount = calculate_exit_tax(deps.storage, burn_amount)?;
+
+    let mut curve_state = CURVE_STATE.load(deps.storage)?;
+    let curve = curve_fn(curve_state.clone().decimals);
+
+    // Reduce the supply by the amount burned
+    curve_state.supply = curve_state
         .supply
-        .checked_sub(amount)
+        .checked_sub(burn_amount)
         .map_err(StdError::overflow)?;
-    let new_reserve = curve.reserve(state.supply);
-    let released = state
+
+    // Calculate the new reserve based on the new supply
+    let new_reserve = curve.reserve(curve_state.supply);
+    curve_state.reserve = new_reserve;
+    curve_state.funding += taxed_amount;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    // Calculate how many reserve tokens to release based on the sell amount
+    let released_reserve = curve_state
         .reserve
         .checked_sub(new_reserve)
         .map_err(StdError::overflow)?;
-    state.reserve = new_reserve;
-    CURVE_STATE.save(deps.storage, &state)?;
 
-    // Burn the tokens
-    let burn_msg = TokenMsg::BurnTokens {
-        denom,
-        amount: payment,
-        burn_from_address: info.sender.to_string(),
-    };
-
-    // now send the tokens to the sender (TODO: for sell_from we do something else, right???)
+    // Now send the tokens to the sender
     let msg = BankMsg::Send {
-        to_address: receiver.to_string(),
-        amount: coins(released.u128(), state.reserve_denom),
+        to_address: burner.to_string(),
+        amount: coins(released_reserve.u128(), curve_state.reserve_denom),
     };
 
     Ok(Response::new()
         .add_message(msg)
         .add_message(burn_msg)
         .add_attribute("action", "burn")
-        .add_attribute("from", info.sender)
-        .add_attribute("supply", amount)
-        .add_attribute("reserve", released))
+        .add_attribute("from", burner)
+        .add_attribute("amount", burn_amount)
+        .add_attribute("burned", released_reserve)
+        .add_attribute("funded", taxed_amount))
+}
+
+/// Calculate the exit taxation for the sell amount based on the phase
+fn calculate_exit_tax(storage: &dyn Storage, sell_amount: Uint128) -> CwAbcResult<Uint128> {
+    // Load the phase config and phase
+    let phase = PHASE.load(storage)?;
+    let phase_config = PHASE_CONFIG.load(storage)?;
+
+    // Calculate the exit tax based on the phase
+    let exit_tax = match &phase {
+        CommonsPhase::Hatch => phase_config.hatch.exit_tax,
+        CommonsPhase::Open => phase_config.open.exit_tax,
+        CommonsPhase::Closed => return Err(ContractError::CommonsClosed {}),
+    };
+
+    debug_assert!(
+        exit_tax <= StdDecimal::percent(100),
+        "Exit tax must be <= 100%"
+    );
+
+    // This won't ever overflow because it's checked
+    let taxed_amount = sell_amount * exit_tax;
+    Ok(taxed_amount)
+}
+
+/// Send a donation to the funding pool
+pub fn execute_donate(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    info: MessageInfo,
+) -> CwAbcResult {
+    let mut curve_state = CURVE_STATE.load(deps.storage)?;
+
+    let payment = must_pay(&info, &curve_state.reserve_denom)?;
+    curve_state.funding += payment;
+    CURVE_STATE.save(deps.storage, &curve_state)?;
+
+    // No minting of tokens is necessary, the supply stays the same
+    DONATIONS.save(deps.storage, &info.sender, &payment)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "donate")
+        .add_attribute("donor", info.sender)
+        .add_attribute("amount", payment))
+}
+
+/// Check if the sender is allowlisted for the hatch phase
+fn assert_allowlisted(storage: &dyn Storage, hatcher: &Addr) -> Result<(), ContractError> {
+    let allowlist = HATCHER_ALLOWLIST.may_load(storage)?;
+    if let Some(allowlist) = allowlist {
+        ensure!(
+            allowlist.contains(hatcher),
+            ContractError::SenderNotAllowlisted {
+                sender: hatcher.to_string(),
+            }
+        );
+    }
+
+    Ok(())
+}
+
+/// Add and remove addresses from the hatcher allowlist
+pub fn update_hatch_allowlist(
+    deps: DepsMut<TokenFactoryQuery>,
+    info: MessageInfo,
+    to_add: Vec<String>,
+    to_remove: Vec<String>,
+) -> CwAbcResult {
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+    let mut allowlist = HATCHER_ALLOWLIST.may_load(deps.storage)?;
+
+    if allowlist.is_none() {
+        allowlist = Some(HashSet::new());
+    }
+
+    let allowlist = allowlist.as_mut().unwrap();
+
+    // Add addresses to the allowlist
+    for allow in to_add {
+        let addr = deps.api.addr_validate(allow.as_str())?;
+        allowlist.insert(addr);
+    }
+
+    // Remove addresses from the allowlist
+    for deny in to_remove {
+        let addr = deps.api.addr_validate(deny.as_str())?;
+        allowlist.remove(&addr);
+    }
+
+    HATCHER_ALLOWLIST.save(deps.storage, allowlist)?;
+
+    Ok(Response::new().add_attributes(vec![("action", "update_hatch_allowlist")]))
+}
+
+/// Update the hatch config
+pub fn update_hatch_config(
+    deps: DepsMut<TokenFactoryQuery>,
+    _env: Env,
+    info: MessageInfo,
+    initial_raise: Option<MinMax>,
+    initial_allocation_ratio: Option<StdDecimal>,
+) -> CwAbcResult {
+    // Assert that the sender is the contract owner
+    cw_ownable::assert_owner(deps.storage, &info.sender)?;
+
+    // Ensure we're in the Hatch phase
+    PHASE.load(deps.storage)?.expect_hatch()?;
+
+    // Load the current phase config
+    let mut phase_config = PHASE_CONFIG.load(deps.storage)?;
+
+    // Update the hatch config if new values are provided
+    if let Some(initial_raise) = initial_raise {
+        phase_config.hatch.initial_raise = initial_raise;
+    }
+    if let Some(initial_allocation_ratio) = initial_allocation_ratio {
+        phase_config.hatch.initial_allocation_ratio = initial_allocation_ratio;
+    }
+
+    phase_config.hatch.validate()?;
+    PHASE_CONFIG.save(deps.storage, &phase_config)?;
+
+    Ok(Response::new().add_attribute("action", "update_hatch_config"))
+}
+
+/// Update the ownership of the contract
+pub fn update_ownership(
+    deps: DepsMut<TokenFactoryQuery>,
+    env: &Env,
+    info: &MessageInfo,
+    action: cw_ownable::Action,
+) -> Result<Response<TokenFactoryMsg>, ContractError> {
+    let ownership = cw_ownable::update_ownership(
+        DepsMut {
+            storage: deps.storage,
+            api: deps.api,
+            querier: QuerierWrapper::new(deps.querier.deref()),
+        },
+        &env.block,
+        &info.sender,
+        action,
+    )?;
+
+    Ok(Response::default().add_attributes(ownership.into_attributes()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::prelude::*;
+    use cosmwasm_std::testing::*;
+
+    mod donate {
+        use super::*;
+        use crate::abc::CurveType;
+        use crate::testing::mock_init;
+        use cosmwasm_std::coin;
+        use cw_utils::PaymentError;
+
+        const TEST_DONOR: &str = "donor";
+
+        fn exec_donate(deps: DepsMut<TokenFactoryQuery>, donation_amount: u128) -> CwAbcResult {
+            execute_donate(
+                deps,
+                mock_env(),
+                mock_info(TEST_DONOR, &[coin(donation_amount, TEST_RESERVE_DENOM)]),
+            )
+        }
+
+        #[test]
+        fn should_fail_with_no_funds() -> CwAbcResult<()> {
+            let mut deps = mock_tf_dependencies();
+            let curve_type = CurveType::Linear {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            let res = exec_donate(deps.as_mut(), 0);
+            assert_that!(res)
+                .is_err()
+                .is_equal_to(ContractError::Payment(PaymentError::NoFunds {}));
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_fail_with_incorrect_denom() -> CwAbcResult<()> {
+            let mut deps = mock_tf_dependencies();
+            let curve_type = CurveType::Linear {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            let res = execute_donate(
+                deps.as_mut(),
+                mock_env(),
+                mock_info(TEST_DONOR, &[coin(1, "fake")]),
+            );
+            assert_that!(res)
+                .is_err()
+                .is_equal_to(ContractError::Payment(PaymentError::MissingDenom(
+                    TEST_RESERVE_DENOM.to_string(),
+                )));
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_add_to_funding_pool() -> CwAbcResult<()> {
+            let mut deps = mock_tf_dependencies();
+            // this matches `linear_curve` test case from curves.rs
+            let curve_type = CurveType::SquareRoot {
+                slope: Uint128::new(1),
+                scale: 1,
+            };
+            let init_msg = default_instantiate_msg(2, 8, curve_type);
+            mock_init(deps.as_mut(), init_msg)?;
+
+            let donation_amount = 5;
+            let _res = exec_donate(deps.as_mut(), donation_amount)?;
+
+            // check that the curve's funding has been increased while supply and reserve have not
+            let curve_state = CURVE_STATE.load(&deps.storage)?;
+            assert_that!(curve_state.funding).is_equal_to(Uint128::new(donation_amount));
+
+            // check that the donor is in the donations map
+            let donation = DONATIONS.load(&deps.storage, &Addr::unchecked(TEST_DONOR))?;
+            assert_that!(donation).is_equal_to(Uint128::new(donation_amount));
+
+            Ok(())
+        }
+    }
 }
