@@ -7,21 +7,21 @@ use token_bindings::Metadata;
 
 #[cw_serde]
 pub struct SupplyToken {
-    // The denom to create for the supply token
+    /// The denom to create for the supply token
     pub subdenom: String,
-    // Metadata for the supply token to create
+    /// Metadata for the supply token to create
     pub metadata: Metadata,
-    // Number of decimal places for the reserve token, needed for proper curve math.
-    // Same format as decimals above, eg. if it is uatom, where 1 unit is 10^-6 ATOM, use 6 here
+    /// Number of decimal places for the supply token, needed for proper curve math.
+    /// Default for token factory is 6
     pub decimals: u8,
 }
 
 #[cw_serde]
 pub struct ReserveToken {
-    // Reserve token denom (only support native for now)
+    /// Reserve token denom (only support native for now)
     pub denom: String,
-    // Number of decimal places for the reserve token, needed for proper curve math.
-    // Same format as decimals above, eg. if it is uatom, where 1 unit is 10^-6 ATOM, use 6 here
+    /// Number of decimal places for the reserve token, needed for proper curve math.
+    /// Same format as decimals above, eg. if it is uatom, where 1 unit is 10^-6 ATOM, use 6 here
     pub decimals: u8,
 }
 
@@ -35,15 +35,15 @@ pub struct MinMax {
 #[cw_serde]
 pub struct HatchConfig {
     // /// TODO: The minimum and maximum contribution amounts (min, max) in the reserve token
-    // pub contribution_limits: MinMax,
-    // The initial raise range (min, max) in the reserve token
+    /// pub contribution_limits: MinMax,
+    /// The initial raise range (min, max) in the reserve token
     pub initial_raise: MinMax,
-    // The initial price (p0) per reserve token
-    // TODO: initial price is not implemented yet
+    /// The initial price (p0) per reserve token
+    /// TODO: initial price is not implemented yet
     pub initial_price: Uint128,
-    // The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
+    /// The initial allocation (θ), percentage of the initial raise allocated to the Funding Pool
     pub initial_allocation_ratio: StdDecimal,
-    // Exit tax for the hatch phase
+    /// Exit tax for the hatch phase
     pub exit_tax: StdDecimal,
 }
 
@@ -86,9 +86,9 @@ impl HatchConfig {
 
 #[cw_serde]
 pub struct OpenConfig {
-    // Percentage of capital put into the Reserve Pool during the Open phase
+    /// Percentage of capital put into the Reserve Pool during the Open phase
     pub allocation_percentage: StdDecimal,
-    // Exit taxation ratio
+    /// Exit taxation ratio
     pub exit_tax: StdDecimal,
 }
 
@@ -125,32 +125,15 @@ impl ClosedConfig {
 
 #[cw_serde]
 pub struct CommonsPhaseConfig {
-    // The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
+    /// The Hatch phase where initial contributors (Hatchers) participate in a hatch sale.
     pub hatch: HatchConfig,
-    // The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
-    // pub vesting: VestingConfig,
-    // The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.
+    /// The Vesting phase where tokens minted during the Hatch phase are locked (burning is disabled) to combat early speculation/arbitrage.
+    /// pub vesting: VestingConfig,
+    /// The Open phase where anyone can mint tokens by contributing the reserve token into the curve and becoming members of the Commons.
     pub open: OpenConfig,
-    // The Closed phase where the Commons is closed to new members.
+    /// The Closed phase where the Commons is closed to new members.
     pub closed: ClosedConfig,
 }
-
-// #[derive(Default)]
-// #[cw_serde]
-// pub struct HatchPhaseState {
-//     // Initial contributors (Hatchers)
-//     pub hatchers: HashSet<Addr>,
-// }
-//
-// // TODO: maybe should be combined with config or just placed in state
-// #[cw_serde]
-// pub struct CommonsPhaseState {
-//     pub hatch: HatchPhaseState,
-//     // Vesting,
-//     pub open: (),
-//     // TODO: should we allow for a closed phase?
-//     pub closed: ()
-// }
 
 #[cw_serde]
 pub enum CommonsPhase {
