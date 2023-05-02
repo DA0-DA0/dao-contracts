@@ -3,6 +3,9 @@ use cosmwasm_std::CustomMsg;
 
 #[cw_serde]
 pub struct MetadataExt {
+    /// Optional on-chain role for this member, can be used by other contracts to enforce permissions
+    pub role: Option<String>,
+    /// The voting weight of this role
     pub weight: u64,
 }
 

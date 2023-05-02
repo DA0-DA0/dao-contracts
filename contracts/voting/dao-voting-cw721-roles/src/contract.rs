@@ -194,6 +194,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                                     owner: nft.owner.clone(),
                                     token_uri: nft.token_uri.clone(),
                                     extension: MetadataExt {
+                                        role: nft.clone().extension.role,
                                         weight: nft.extension.weight,
                                     },
                                 })?,

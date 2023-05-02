@@ -22,7 +22,10 @@ fn test_info_query_works() -> anyhow::Result<()> {
         token_id: "1".to_string(),
         owner: CREATOR_ADDR.to_string(),
         token_uri: None,
-        extension: MetadataExt { weight: 1 },
+        extension: MetadataExt {
+            role: None,
+            weight: 1,
+        },
     }]);
     let info = query_info(&app, &module_addr)?;
     assert_eq!(info.info.version, env!("CARGO_PKG_VERSION").to_string());
@@ -78,7 +81,10 @@ fn test_voting_queries() {
         token_id: "1".to_string(),
         owner: CREATOR_ADDR.to_string(),
         token_uri: None,
-        extension: MetadataExt { weight: 1 },
+        extension: MetadataExt {
+            role: Some("admin".to_string()),
+            weight: 1,
+        },
     }]);
 
     // Get config

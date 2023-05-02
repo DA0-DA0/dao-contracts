@@ -18,7 +18,10 @@ pub fn mint_nft(
             token_id: token_id.to_string(),
             owner: receiver.to_string(),
             token_uri: None,
-            extension: MetadataExt { weight: 1 },
+            extension: MetadataExt {
+                role: Some("admin".to_string()),
+                weight: 1,
+            },
         },
         &[],
     )

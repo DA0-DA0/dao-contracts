@@ -104,7 +104,10 @@ fn test_minting_and_burning() {
         token_id: "1".to_string(),
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
-        extension: MetadataExt { weight: 1 },
+        extension: MetadataExt {
+            role: None,
+            weight: 1,
+        },
     };
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
@@ -118,7 +121,10 @@ fn test_minting_and_burning() {
         token_id: "2".to_string(),
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
-        extension: MetadataExt { weight: 1 },
+        extension: MetadataExt {
+            role: None,
+            weight: 1,
+        },
     };
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
@@ -156,7 +162,10 @@ fn test_permissions() {
         token_id: "1".to_string(),
         owner: ALICE.to_string(),
         token_uri: Some("ipfs://xyz...".to_string()),
-        extension: MetadataExt { weight: 1 },
+        extension: MetadataExt {
+            role: Some("member".to_string()),
+            weight: 1,
+        },
     };
 
     // Non-minter can't mint
