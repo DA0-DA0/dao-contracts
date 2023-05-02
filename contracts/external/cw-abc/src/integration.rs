@@ -1,6 +1,6 @@
 use crate::{abc::CurveType, boot::CwAbc};
-use boot_core::{BootUpload, Mock};
 use cosmwasm_std::{Addr, Uint128};
+use cw_orch::{CwOrcUpload, Mock};
 
 use crate::testing::prelude::*;
 
