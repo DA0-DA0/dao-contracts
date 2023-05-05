@@ -18,7 +18,7 @@ impl<Chain: CwEnv> CwAbc<Chain> {
 
 /// Basic app for the token factory contract
 /// TODO: should be in the bindings, along with custom handler for multi-test
-pub(crate) type _TokenFactoryBasicApp = cw_orch::BasicApp<TokenFactoryMsg, TokenFactoryQuery>;
+pub(crate) type TokenFactoryBasicApp = cw_orch::BasicApp<TokenFactoryMsg, TokenFactoryQuery>;
 
 type TokenFactoryMock = Mock<MockState, TokenFactoryMsg, TokenFactoryQuery>;
 
