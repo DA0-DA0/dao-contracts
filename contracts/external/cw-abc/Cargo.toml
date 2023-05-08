@@ -1,7 +1,11 @@
 [package]
 name = "cw-abc"
 version = "0.0.1"
-authors = ["Ethan Frey <ethanfrey@users.noreply.github.com>", "Jake Hartnell", "Adair <adairrr@users.noreply.github.com>"]
+authors = [
+    "Ethan Frey <ethanfrey@users.noreply.github.com>",
+    "Jake Hartnell",
+    "Adair <adairrr@users.noreply.github.com>",
+]
 edition = { workspace = true }
 description = "Implements an Augmented Bonding Curve"
 license = "Apache-2.0"
@@ -16,7 +20,7 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 # use library feature to disable all instantiate/execute/query exports
 library = []
-boot = ["dep:boot-core"]
+boot = ["dep:cw-orch"]
 
 [dependencies]
 cw-utils = { workspace = true }
@@ -30,11 +34,12 @@ cw-address-like = "1.0.4"
 rust_decimal = "1.14.3"
 integer-sqrt = "0.1.5"
 integer-cbrt = "0.1.2"
+getrandom = { version = "0.2", features = ["js"] }
 # TODO publish this
 token-bindings = { git = "https://github.com/CosmosContracts/token-bindings", rev = "1412b94" }
 cw-ownable = { workspace = true }
 cw-paginate-storage = { workspace = true }
-boot-core = { version = "0.10.0", optional = true, git = "https://github.com/AbstractSDK/BOOT", branch = "fix/custom_binding_contract_wrapper" }
+cw-orch = { version = "0.13.3", optional = true, git = "https://github.com/AbstractSDK/cw-orchestrator", branch = "main" }
 
 [dev-dependencies]
 # TODO move to workspace

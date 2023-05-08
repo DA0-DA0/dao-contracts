@@ -33,8 +33,8 @@ pub(crate) mod testing {
 
     pub(crate) mod prelude {
         pub use super::{
-            default_instantiate_msg, default_supply_metadata, mock_tf_dependencies, TEST_BUYER,
-            TEST_CREATOR, TEST_INVESTOR, TEST_RESERVE_DENOM, TEST_SUPPLY_DENOM,
+            default_instantiate_msg, default_supply_metadata, mock_tf_dependencies, TEST_CREATOR,
+            TEST_RESERVE_DENOM, TEST_SUPPLY_DENOM, _TEST_BUYER, _TEST_INVESTOR,
         };
         pub use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
         pub use speculoos::prelude::*;
@@ -42,8 +42,8 @@ pub(crate) mod testing {
 
     pub const TEST_RESERVE_DENOM: &str = "satoshi";
     pub const TEST_CREATOR: &str = "creator";
-    pub const TEST_INVESTOR: &str = "investor";
-    pub const TEST_BUYER: &str = "buyer";
+    pub const _TEST_INVESTOR: &str = "investor";
+    pub const _TEST_BUYER: &str = "buyer";
 
     pub const TEST_SUPPLY_DENOM: &str = "subdenom";
 

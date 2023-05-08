@@ -1,9 +1,9 @@
 use crate::msg::*;
-use boot_core::{contract, Contract, CwEnv};
-#[cfg(feature = "daemon")]
-use boot_core::{ArtifactsDir, Daemon, WasmPath};
-use boot_core::{ContractWrapper, Mock, MockState, TxHandler, Uploadable};
 use cosmwasm_std::Empty;
+use cw_orch::{contract, Contract, CwEnv};
+#[cfg(feature = "daemon")]
+use cw_orch::{ArtifactsDir, Daemon, WasmPath};
+use cw_orch::{ContractWrapper, Mock, MockState, TxHandler, Uploadable};
 use token_bindings::{TokenFactoryMsg, TokenFactoryQuery};
 
 #[contract(InstantiateMsg, ExecuteMsg, QueryMsg, Empty)]
@@ -18,7 +18,7 @@ impl<Chain: CwEnv> CwAbc<Chain> {
 
 /// Basic app for the token factory contract
 /// TODO: should be in the bindings, along with custom handler for multi-test
-pub(crate) type TokenFactoryBasicApp = boot_core::BasicApp<TokenFactoryMsg, TokenFactoryQuery>;
+pub(crate) type TokenFactoryBasicApp = cw_orch::BasicApp<TokenFactoryMsg, TokenFactoryQuery>;
 
 type TokenFactoryMock = Mock<MockState, TokenFactoryMsg, TokenFactoryQuery>;
 
