@@ -45,7 +45,6 @@ speculoos = "0.11.0"
 anyhow = { workspace = true }
 cw-abc = { path = ".", features = ["boot"] }
 
-
 [profile.release]
 rpath = false
 lto = true
