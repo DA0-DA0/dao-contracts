@@ -25,7 +25,7 @@ cw721-controllers = { workspace = true }
 cw-paginate = { workspace = true }
 cw721 = { workspace = true }
 cw721-base = { workspace = true, features = ["library"] }
-cw721-roles = { workspace = true }
+cw721-roles = { workspace = true, features = ["library"] }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw4 = { workspace = true }

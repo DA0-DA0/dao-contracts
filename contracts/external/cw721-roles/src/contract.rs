@@ -1,6 +1,8 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response,
-    StdResult, SubMsg, Uint64,
+    from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
+    SubMsg, Uint64,
 };
 use cosmwasm_std::{Empty, StdError};
 use cw4::{
@@ -25,7 +27,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub type Cw721Roles<'a> = Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     mut deps: DepsMut,
     env: Env,
@@ -44,7 +46,7 @@ pub fn instantiate(
         .add_attribute("contract_version", CONTRACT_VERSION))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
     env: Env,
@@ -295,7 +297,7 @@ pub fn execute_remove_hook(
         .add_attribute("hook", addr))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Extension { msg } => match msg {
