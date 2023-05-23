@@ -6,7 +6,7 @@ use cw_multi_test::{App, Executor};
 use dao_testing::contracts::cw721_roles_contract;
 
 use crate::error::RolesContractError;
-use crate::msg::{ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
+use crate::msg::{ExecuteExt, ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
 
 const ALICE: &str = "alice";
 const BOB: &str = "bob";
@@ -190,4 +190,199 @@ fn test_permissions() {
 
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
     assert_eq!(owner.owner, BOB);
+}
+
+#[test]
+fn test_update_token_role() {
+    let (mut app, cw721_addr) = setup();
+
+    // Mint token
+    let msg = ExecuteMsg::Mint {
+        token_id: "1".to_string(),
+        owner: ALICE.to_string(),
+        token_uri: Some("ipfs://xyz...".to_string()),
+        extension: MetadataExt {
+            role: None,
+            weight: 1,
+        },
+    };
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    let msg = ExecuteMsg::Extension {
+        msg: ExecuteExt::UpdateTokenRole {
+            token_id: "1".to_string(),
+            role: Some("queen".to_string()),
+        },
+    };
+
+    // Only admin / minter can update role
+    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
+        .unwrap_err();
+
+    // Update token role
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Token was updated successfully
+    let info: NftInfoResponse<MetadataExt> = query_token_info(&app, &cw721_addr, "1").unwrap();
+    assert_eq!(info.extension.role, Some("queen".to_string()));
+}
+
+#[test]
+fn test_update_token_uri() {
+    let (mut app, cw721_addr) = setup();
+
+    // Mint token
+    let msg = ExecuteMsg::Mint {
+        token_id: "1".to_string(),
+        owner: ALICE.to_string(),
+        token_uri: Some("ipfs://xyz...".to_string()),
+        extension: MetadataExt {
+            role: None,
+            weight: 1,
+        },
+    };
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    let msg = ExecuteMsg::Extension {
+        msg: ExecuteExt::UpdateTokenUri {
+            token_id: "1".to_string(),
+            token_uri: Some("ipfs://abc...".to_string()),
+        },
+    };
+
+    // Only admin / minter can update token_uri
+    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
+        .unwrap_err();
+
+    // Update token_uri
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Token was updated successfully
+    let info: NftInfoResponse<MetadataExt> = query_token_info(&app, &cw721_addr, "1").unwrap();
+    assert_eq!(info.token_uri, Some("ipfs://abc...".to_string()));
+}
+
+#[test]
+fn test_update_token_weight() {
+    let (mut app, cw721_addr) = setup();
+
+    // Mint token
+    let msg = ExecuteMsg::Mint {
+        token_id: "1".to_string(),
+        owner: ALICE.to_string(),
+        token_uri: Some("ipfs://xyz...".to_string()),
+        extension: MetadataExt {
+            role: None,
+            weight: 1,
+        },
+    };
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    let msg = ExecuteMsg::Extension {
+        msg: ExecuteExt::UpdateTokenWeight {
+            token_id: "1".to_string(),
+            weight: 2,
+        },
+    };
+
+    // Only admin / minter can update token weight
+    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
+        .unwrap_err();
+
+    // Update token weight
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Token was updated successfully
+    let info: NftInfoResponse<MetadataExt> = query_token_info(&app, &cw721_addr, "1").unwrap();
+    assert_eq!(info.extension.weight, 2);
+
+    // New value should be reflected in member's voting weight
+    let member: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
+    assert_eq!(member.weight, Some(2));
+
+    // Update weight to a smaller value
+    app.execute_contract(
+        Addr::unchecked(DAO),
+        cw721_addr.clone(),
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::UpdateTokenWeight {
+                token_id: "1".to_string(),
+                weight: 1,
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // New value should be reflected in member's voting weight
+    let member: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
+    assert_eq!(member.weight, Some(1));
+
+    // Create another token for alice to give her even more total weight
+    let msg = ExecuteMsg::Mint {
+        token_id: "2".to_string(),
+        owner: ALICE.to_string(),
+        token_uri: Some("ipfs://xyz...".to_string()),
+        extension: MetadataExt {
+            role: None,
+            weight: 10,
+        },
+    };
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Alice's weight should be updated to include both tokens
+    let member: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
+    assert_eq!(member.weight, Some(11));
+
+    // Update Alice's second token to 0 weight
+    // Update weight to a smaller value
+    app.execute_contract(
+        Addr::unchecked(DAO),
+        cw721_addr.clone(),
+        &ExecuteMsg::Extension {
+            msg: ExecuteExt::UpdateTokenWeight {
+                token_id: "2".to_string(),
+                weight: 0,
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
+    // Alice's voting value should be 1
+    let member: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
+    assert_eq!(member.weight, Some(1));
+}
+
+#[test]
+fn test_zero_weight_token() {
+    let (mut app, cw721_addr) = setup();
+
+    // Mint token with zero weight
+    let msg = ExecuteMsg::Mint {
+        token_id: "1".to_string(),
+        owner: ALICE.to_string(),
+        token_uri: Some("ipfs://xyz...".to_string()),
+        extension: MetadataExt {
+            role: None,
+            weight: 0,
+        },
+    };
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Token was created successfully
+    let info: NftInfoResponse<MetadataExt> = query_token_info(&app, &cw721_addr, "1").unwrap();
+    assert_eq!(info.extension.weight, 0);
+
+    // Member query returns total weight for alice
+    let member: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
+    assert_eq!(member.weight, Some(0));
 }

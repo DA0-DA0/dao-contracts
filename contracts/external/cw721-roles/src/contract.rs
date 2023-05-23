@@ -1,10 +1,12 @@
+use std::cmp::Ordering;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+use cosmwasm_std::Empty;
 use cosmwasm_std::{
     from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
     SubMsg, Uint64,
 };
-use cosmwasm_std::{Empty, StdError};
 use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
@@ -67,6 +69,16 @@ pub fn execute(
         ExecuteMsg::Extension { msg } => match msg {
             ExecuteExt::AddHook { addr } => execute_add_hook(deps, info, addr),
             ExecuteExt::RemoveHook { addr } => execute_remove_hook(deps, info, addr),
+            ExecuteExt::UpdateTokenRole { token_id, role } => {
+                execute_update_token_role(deps, env, info, token_id, role)
+            }
+            ExecuteExt::UpdateTokenUri {
+                token_id,
+                token_uri,
+            } => execute_update_token_uri(deps, env, info, token_id, token_uri),
+            ExecuteExt::UpdateTokenWeight { token_id, weight } => {
+                execute_update_token_weight(deps, env, info, token_id, weight)
+            }
         },
         ExecuteMsg::TransferNft {
             recipient,
@@ -135,6 +147,87 @@ pub fn execute_mint(
     Ok(res.add_submessages(msgs))
 }
 
+pub fn execute_burn(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    // Lookup the owner of the NFT
+    let owner: OwnerOfResponse = from_binary(&Cw721Roles::default().query(
+        deps.as_ref(),
+        env.clone(),
+        QueryMsg::OwnerOf {
+            token_id: token_id.clone(),
+            include_expired: None,
+        },
+    )?)?;
+
+    // Get the weight of the token
+    let nft_info: NftInfoResponse<MetadataExt> = from_binary(&Cw721Roles::default().query(
+        deps.as_ref(),
+        env.clone(),
+        QueryMsg::NftInfo {
+            token_id: token_id.clone(),
+        },
+    )?)?;
+
+    let mut total = Uint64::from(TOTAL.load(deps.storage)?);
+    let mut diff = MemberDiff::new(owner.owner.clone(), None, None);
+
+    // Update member weights and total
+    let owner_addr = deps.api.addr_validate(&owner.owner)?;
+    let old_weight = MEMBERS.load(deps.storage, &owner_addr)?;
+
+    // Subtract the nft weight from the member's old weight
+    let new_weight = old_weight
+        .checked_sub(nft_info.extension.weight)
+        .ok_or(ContractError::CannotBurn {})?;
+
+    // Subtract nft weight from the total
+    total = total.checked_sub(Uint64::from(nft_info.extension.weight))?;
+
+    // Check if the new weight is now zero
+    if new_weight == 0 {
+        // New weight is now None
+        diff = MemberDiff::new(owner.owner, Some(old_weight), None);
+        // Remove owner from list of members
+        MEMBERS.remove(deps.storage, &owner_addr, env.block.height)?;
+    } else {
+        MEMBERS.update(
+            deps.storage,
+            &owner_addr,
+            env.block.height,
+            |old| -> StdResult<_> {
+                diff = MemberDiff::new(owner.owner.clone(), old, Some(new_weight));
+                Ok(new_weight)
+            },
+        )?;
+    }
+
+    TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
+
+    let diffs = MemberChangedHookMsg { diffs: vec![diff] };
+
+    // Prepare hook messages
+    let msgs = HOOKS.prepare_hooks(deps.storage, |h| {
+        diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
+    })?;
+
+    // Remove the token
+    Cw721Roles::default()
+        .tokens
+        .remove(deps.storage, &token_id)?;
+    // Decrement the account
+    Cw721Roles::default().decrement_tokens(deps.storage)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "burn")
+        .add_attribute("sender", info.sender)
+        .add_attribute("token_id", token_id)
+        .add_submessages(msgs))
+}
+
 pub fn execute_transfer(
     deps: DepsMut,
     _env: Env,
@@ -187,90 +280,6 @@ pub fn execute_send(
         .add_attribute("token_id", token_id))
 }
 
-pub fn execute_burn(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    token_id: String,
-) -> Result<Response, ContractError> {
-    // Lookup the owner of the NFT
-    let owner: OwnerOfResponse = from_binary(&Cw721Roles::default().query(
-        deps.as_ref(),
-        env.clone(),
-        QueryMsg::OwnerOf {
-            token_id: token_id.clone(),
-            include_expired: None,
-        },
-    )?)?;
-
-    // Get the weight of the token
-    let nft_info: NftInfoResponse<MetadataExt> = from_binary(&Cw721Roles::default().query(
-        deps.as_ref(),
-        env.clone(),
-        QueryMsg::NftInfo {
-            token_id: token_id.clone(),
-        },
-    )?)?;
-
-    let mut total = Uint64::from(TOTAL.load(deps.storage)?);
-    let mut diff = MemberDiff::new(owner.owner.clone(), None, None);
-
-    // Update member weights and total
-    let owner_addr = deps.api.addr_validate(&owner.owner)?;
-    let old_weight = MEMBERS.load(deps.storage, &owner_addr)?;
-
-    // Subtract the nft weight from the old weight
-    let new_weight = old_weight
-        .checked_sub(nft_info.extension.weight)
-        .ok_or_else(|| {
-            ContractError::Std(StdError::generic_err(
-                "Cannot burn NFT, member weight would be negative",
-            ))
-        })?;
-    // Subtract nft weight from the total
-    total = total.checked_sub(Uint64::from(nft_info.extension.weight))?;
-
-    // Check if the new weight is now zero
-    if new_weight == 0 {
-        // New weight is now None
-        diff = MemberDiff::new(owner.owner, Some(old_weight), None);
-        // Remove owner from list of members
-        MEMBERS.remove(deps.storage, &owner_addr, env.block.height)?;
-    } else {
-        MEMBERS.update(
-            deps.storage,
-            &owner_addr,
-            env.block.height,
-            |old| -> StdResult<_> {
-                diff = MemberDiff::new(owner.owner.clone(), old, Some(new_weight));
-                Ok(new_weight)
-            },
-        )?;
-    }
-
-    TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
-
-    let diffs = MemberChangedHookMsg { diffs: vec![diff] };
-
-    // Prepare hook messages
-    let msgs = HOOKS.prepare_hooks(deps.storage, |h| {
-        diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
-    })?;
-
-    // Remove the token
-    Cw721Roles::default()
-        .tokens
-        .remove(deps.storage, &token_id)?;
-    // Decrement the account
-    Cw721Roles::default().decrement_tokens(deps.storage)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "burn")
-        .add_attribute("sender", info.sender)
-        .add_attribute("token_id", token_id)
-        .add_submessages(msgs))
-}
-
 pub fn execute_add_hook(
     deps: DepsMut,
     _info: MessageInfo,
@@ -295,6 +304,134 @@ pub fn execute_remove_hook(
     Ok(Response::default()
         .add_attribute("action", "remove_hook")
         .add_attribute("hook", addr))
+}
+
+pub fn execute_update_token_role(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+    role: Option<String>,
+) -> Result<Response, ContractError> {
+    let contract = Cw721Roles::default();
+
+    // Make sure NFT exists
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+
+    // Update role with new value
+    token.extension.role = role.clone();
+    contract.tokens.save(deps.storage, &token_id, &token)?;
+
+    Ok(Response::default()
+        .add_attribute("action", "update_token_role")
+        .add_attribute("sender", info.sender)
+        .add_attribute("token_id", token_id)
+        .add_attribute("role", role.unwrap_or_default()))
+}
+
+pub fn execute_update_token_uri(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    token_id: String,
+    token_uri: Option<String>,
+) -> Result<Response, ContractError> {
+    let contract = Cw721Roles::default();
+
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+
+    // Set new token URI
+    token.token_uri = token_uri.clone();
+    contract.tokens.save(deps.storage, &token_id, &token)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_token_uri")
+        .add_attribute("sender", info.sender)
+        .add_attribute("token_id", token_id)
+        .add_attribute("token_uri", token_uri.unwrap_or_default()))
+}
+
+pub fn execute_update_token_weight(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_id: String,
+    weight: u64,
+) -> Result<Response, ContractError> {
+    let contract = Cw721Roles::default();
+
+    // Make sure NFT exists
+    let mut token = contract.tokens.load(deps.storage, &token_id)?;
+
+    let mut total = Uint64::from(TOTAL.load(deps.storage)?);
+    let mut diff = MemberDiff::new(token.clone().owner, None, None);
+
+    // Update member weights and total
+    MEMBERS.update(
+        deps.storage,
+        &token.owner,
+        env.block.height,
+        |old| -> Result<_, ContractError> {
+            let new_total_weight;
+            let old_total_weight = old.unwrap_or_default();
+
+            // Check if new token weight is great than, less than, or equal to
+            // the old token weight
+            match weight.cmp(&token.extension.weight) {
+                Ordering::Greater => {
+                    // Subtract the old token weight from the new token weight
+                    let weight_difference = weight
+                        .checked_sub(token.extension.weight)
+                        .ok_or(ContractError::NegativeValue {})?;
+
+                    // Increment the total weight by the weight difference of the new token
+                    total = total.checked_add(Uint64::from(weight_difference))?;
+                    // Add the new NFT weight to the old weight for the owner
+                    new_total_weight = old_total_weight + weight_difference;
+                    // Set the diff for use in hooks
+                    diff = MemberDiff::new(token.clone().owner, old, Some(new_total_weight));
+                }
+                Ordering::Less => {
+                    // Subtract the new token weight from the old token weight
+                    let weight_difference = token
+                        .extension
+                        .weight
+                        .checked_sub(weight)
+                        .ok_or(ContractError::NegativeValue {})?;
+
+                    // Subtract the weight difference from the old total weight
+                    new_total_weight = old_total_weight
+                        .checked_sub(weight_difference)
+                        .ok_or(ContractError::NegativeValue {})?;
+
+                    // Subtract difference from the total
+                    total = total.checked_sub(Uint64::from(weight_difference))?;
+                }
+                Ordering::Equal => return Err(ContractError::NoWeightChange {}),
+            }
+
+            Ok(new_total_weight)
+        },
+    )?;
+    TOTAL.save(deps.storage, &total.u64(), env.block.height)?;
+
+    let diffs = MemberChangedHookMsg { diffs: vec![diff] };
+
+    // Prepare hook messages
+    let msgs = HOOKS.prepare_hooks(deps.storage, |h| {
+        diffs.clone().into_cosmos_msg(h).map(SubMsg::new)
+    })?;
+
+    // Save token weight
+    token.extension.weight = weight;
+    contract.tokens.save(deps.storage, &token_id, &token)?;
+
+    Ok(Response::default()
+        .add_submessages(msgs)
+        .add_attribute("action", "update_token_weight")
+        .add_attribute("sender", info.sender)
+        .add_attribute("token_id", token_id)
+        .add_attribute("weight", weight.to_string()))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

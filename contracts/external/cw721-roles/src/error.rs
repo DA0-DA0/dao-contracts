@@ -17,4 +17,13 @@ pub enum RolesContractError {
 
     #[error(transparent)]
     Ownable(#[from] cw_ownable::OwnershipError),
+
+    #[error("Cannot burn NFT, member weight would be negative")]
+    CannotBurn {},
+
+    #[error("Would result in negative value")]
+    NegativeValue {},
+
+    #[error("The submitted weight is equal to the previous value, no change will occur")]
+    NoWeightChange {},
 }
