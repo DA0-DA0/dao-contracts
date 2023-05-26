@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "oneOf": [
+    {
+      "description": "Get the current ownership.",
+      "type": "object",
+      "required": [
+        "ownership"
+      ],
+      "properties": {
+        "ownership": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the configuration of the DAO registry.",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the active registration for the given address or None if no active registration exists.",
+      "type": "object",
+      "required": [
+        "registration"
+      ],
+      "properties": {
+        "registration": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "description": "The address with a registration.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the active registration for the given name or None if no active registration exists.",
+      "type": "object",
+      "required": [
+        "resolve"
+      ],
+      "properties": {
+        "resolve": {
+          "type": "object",
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "description": "The name of a registration.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the pending registration for the given address or None if no pending registration exists.",
+      "type": "object",
+      "required": [
+        "pending_registration"
+      ],
+      "properties": {
+        "pending_registration": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "description": "The address with a pending registration.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the most recent registration for the given address or None if the address has never been registered.",
+      "type": "object",
+      "required": [
+        "most_recent_registration"
+      ],
+      "properties": {
+        "most_recent_registration": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "description": "The address with a registration.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

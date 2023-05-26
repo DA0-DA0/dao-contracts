@@ -1683,6 +1683,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-registry"
+version = "2.1.0"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-denom",
+ "cw-multi-test",
+ "cw-ownable",
+ "cw-paginate 2.1.0",
+ "cw-storage-plus 1.0.1 (git+https://github.com/CosmWasm/cw-storage-plus?rev=6db957ce730a95141a3ab4dc5ab76fb38e8c0c42)",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw20 0.16.0",
+ "cw20-base 0.16.0",
+ "cw721 0.16.0",
+ "dao-testing",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "dao-testing"
 version = "2.1.0"
 dependencies = [
