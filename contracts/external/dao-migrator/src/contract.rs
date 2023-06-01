@@ -131,11 +131,16 @@ fn execute_migration_v1_v2(
             MigrationMsgs::DaoVotingCw20Staked(dao_voting_cw20_staked::msg::MigrateMsg {}),
         ), // cw20-staked-balances-voting -> dao-voting-cw20-staked
     ];
-    let staking_pair = CodeIdPair::new(
+    let v1_staking_pair = CodeIdPair::new(
         v1_code_ids.cw20_stake,
         v2_code_ids.cw20_stake,
         MigrationMsgs::Cw20Stake(cw20_stake::msg::MigrateMsg::FromV1 {}),
     ); // cw20-stake -> cw20_stake
+    let legacy_staking_pair = CodeIdPair::new(
+        v1_code_ids.cw20_stake,
+        v2_code_ids.cw20_stake,
+        MigrationMsgs::Cw20Stake(cw20_stake::msg::MigrateMsg::FromLegacy {}),
+    ); // stake-cw20 -> cw20_stake
 
     let mut msgs: Vec<CosmosMsg> = vec![];
     let mut modules_addrs = ModulesAddrs::default();
@@ -187,7 +192,7 @@ fn execute_migration_v1_v2(
                 &cw20_staked_balance_voting_v1::msg::QueryMsg::StakingContract {},
             )?;
 
-            let c20_staked_code_id = if let Ok(contract_info) = deps
+            let cw20_staked_code_id = if let Ok(contract_info) = deps
                 .querier
                 .query_wasm_contract_info(cw20_staked_addr.clone())
             {
@@ -199,21 +204,30 @@ fn execute_migration_v1_v2(
                 });
             };
 
-            // If module is not DAO DAO module
-            if c20_staked_code_id != staking_pair.v1_code_id {
+            // Match staking contract module to expected DAO DAO module
+            if cw20_staked_code_id == v1_staking_pair.v1_code_id {
+                msgs.push(
+                    WasmMsg::Migrate {
+                        contract_addr: cw20_staked_addr.to_string(),
+                        new_code_id: v1_staking_pair.v2_code_id,
+                        msg: to_binary(&v1_staking_pair.migrate_msg).unwrap(),
+                    }
+                    .into(),
+                );
+            } else if cw20_staked_code_id == legacy_staking_pair.v1_code_id {
+                msgs.push(
+                    WasmMsg::Migrate {
+                        contract_addr: cw20_staked_addr.to_string(),
+                        new_code_id: legacy_staking_pair.v2_code_id,
+                        msg: to_binary(&legacy_staking_pair.migrate_msg).unwrap(),
+                    }
+                    .into(),
+                );
+            } else {
                 return Err(ContractError::CantMigrateModule {
-                    code_id: c20_staked_code_id,
+                    code_id: cw20_staked_code_id,
                 });
             }
-
-            msgs.push(
-                WasmMsg::Migrate {
-                    contract_addr: cw20_staked_addr.to_string(),
-                    new_code_id: staking_pair.v2_code_id,
-                    msg: to_binary(&staking_pair.migrate_msg).unwrap(),
-                }
-                .into(),
-            );
         }
     } else {
         return Err(ContractError::VotingModuleNotFound);

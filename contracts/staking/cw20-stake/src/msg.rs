@@ -71,6 +71,10 @@ pub enum MigrateMsg {
     /// will remove the contract's current manager, and require a
     /// nomination -> acceptance flow for future ownership transfers.
     FromV1 {},
+    /// Migrates the contract from legacy version (v0.2.5) to version two. This
+    /// will remove the contract's current admin, and require a nomination ->
+    /// acceptance flow for future ownership transfers.
+    FromLegacy {},
 }
 
 #[cw_serde]

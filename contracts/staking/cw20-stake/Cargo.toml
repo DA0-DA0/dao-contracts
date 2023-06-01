@@ -32,6 +32,9 @@ cw-ownable = { workspace = true }
 cw20-stake-v1 = { workspace = true, features = ["library"] }
 cw-utils-v1 = { workspace = true }
 
+stake-cw20-legacy = { workspace = true, features = ["library"] }
+cw-utils-legacy = { workspace = true }
+
 [dev-dependencies]
 cw-multi-test = { workspace = true }
 anyhow = { workspace = true }

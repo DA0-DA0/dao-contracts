@@ -1103,12 +1103,14 @@ dependencies = [
  "cw-ownable",
  "cw-paginate 2.1.0",
  "cw-storage-plus 1.0.1 (git+https://github.com/CosmWasm/cw-storage-plus?rev=6db957ce730a95141a3ab4dc5ab76fb38e8c0c42)",
+ "cw-utils 0.11.1",
  "cw-utils 0.13.4",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 0.2.6",
+ "stake-cw20 0.2.5",
  "thiserror",
 ]
 
@@ -1714,7 +1716,7 @@ dependencies = [
  "dao-voting-cw721-staked",
  "dao-voting-native-staked",
  "rand",
- "stake-cw20",
+ "stake-cw20 0.2.6",
  "voting",
 ]
 
@@ -3273,6 +3275,24 @@ checksum = "67cf02bbac7a337dc36e4f5a693db6c21e7863f45070f7064577eb4367a3212b"
 dependencies = [
  "base64ct",
  "der",
+]
+
+[[package]]
+name = "stake-cw20"
+version = "0.2.5"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v0.2.5#799b6aac36236b30a0dcbdfbce08b8883f259abf"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-controllers 0.11.1",
+ "cw-storage-plus 0.11.1",
+ "cw-utils 0.11.1",
+ "cw2 0.11.1",
+ "cw20 0.11.1",
+ "cw20-base 0.11.1",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]

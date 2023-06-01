@@ -474,6 +474,7 @@ pub fn query_list_stakers(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     use cw20_stake_v1 as v1;
+    use stake_cw20_legacy as legacy;
 
     let ContractVersion { version, .. } = get_contract_version(deps.storage)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -495,6 +496,25 @@ pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, Co
                 unstaking_duration: config.unstaking_duration.map(|duration| match duration {
                     cw_utils_v1::Duration::Time(t) => Duration::Time(t),
                     cw_utils_v1::Duration::Height(h) => Duration::Height(h),
+                }),
+            };
+            CONFIG.save(deps.storage, &config)?;
+
+            Ok(Response::default())
+        }
+        MigrateMsg::FromLegacy {} => {
+            if version == CONTRACT_VERSION {
+                // Migrating from a version to a new one implies that
+                // the new version must be different.
+                return Err(ContractError::AlreadyMigrated {});
+            }
+            let config = legacy::state::CONFIG.load(deps.storage)?;
+            cw_ownable::initialize_owner(deps.storage, deps.api, Some(&config.admin.to_string()))?;
+            let config = Config {
+                token_address: config.token_address,
+                unstaking_duration: config.unstaking_duration.map(|duration| match duration {
+                    cw_utils_legacy::Duration::Time(t) => Duration::Time(t),
+                    cw_utils_legacy::Duration::Height(h) => Duration::Height(h),
                 }),
             };
             CONFIG.save(deps.storage, &config)?;

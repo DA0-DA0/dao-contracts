@@ -17,6 +17,7 @@ use cw_multi_test::{next_block, App, AppResponse, Contract, ContractWrapper, Exe
 
 use anyhow::Result as AnyResult;
 use cw20_stake_v1 as v1;
+use stake_cw20_legacy as legacy;
 
 use cw_controllers::{Claim, ClaimsResponse};
 use cw_utils::Expiration::AtHeight;
@@ -44,6 +45,15 @@ fn contract_staking_v1() -> Box<dyn Contract<Empty>> {
         v1::contract::query,
     )
     .with_migrate(v1::contract::migrate);
+    Box::new(contract)
+}
+
+fn contract_staking_legacy() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+        legacy::contract::execute,
+        legacy::contract::instantiate,
+        legacy::contract::query,
+    );
     Box::new(contract)
 }
 
@@ -1160,6 +1170,86 @@ fn test_migrate_from_v1() {
                 contract_addr: staking.to_string(),
                 new_code_id: v2_code,
                 msg: to_binary(&MigrateMsg::FromV1 {}).unwrap(),
+            }
+            .into(),
+        )
+        .unwrap_err()
+        .downcast()
+        .unwrap();
+    assert_eq!(err, ContractError::AlreadyMigrated {});
+
+    // owner is moved into cw_ownable.
+    let ownership = query_owner(&app, &staking);
+    assert_eq!(
+        ownership,
+        Ownership::<Addr> {
+            owner: Some(Addr::unchecked(OWNER)),
+            pending_owner: None,
+            pending_expiry: None
+        }
+    );
+
+    // config is loadable and has no manager, but is otherwise
+    // unchanged.
+    let config = query_config(&app, &staking);
+    assert_eq!(
+        config,
+        Config {
+            token_address: cw20_addr,
+            unstaking_duration: None,
+        }
+    );
+}
+
+
+#[test]
+fn test_migrate_from_legacy() {
+    let mut app = App::default();
+    let cw20_addr = instantiate_cw20(
+        &mut app,
+        vec![cw20::Cw20Coin {
+            address: OWNER.to_string(),
+            amount: Uint128::from(1000u64),
+        }],
+    );
+
+    let legacy_code = app.store_code(contract_staking_legacy());
+    let v2_code = app.store_code(contract_staking());
+
+    let staking = app
+        .instantiate_contract(
+            legacy_code,
+            Addr::unchecked(OWNER),
+            &legacy::msg::InstantiateMsg {
+                admin: Addr::unchecked(OWNER),
+                token_address: cw20_addr.clone(),
+                unstaking_duration: None,
+            },
+            &[],
+            "staking".to_string(),
+            Some(OWNER.to_string()),
+        )
+        .unwrap();
+
+    app.execute(
+        Addr::unchecked(OWNER),
+        WasmMsg::Migrate {
+            contract_addr: staking.to_string(),
+            new_code_id: v2_code,
+            msg: to_binary(&MigrateMsg::FromLegacy {}).unwrap(),
+        }
+        .into(),
+    )
+    .unwrap();
+
+    // can not migrate more than once.
+    let err: ContractError = app
+        .execute(
+            Addr::unchecked(OWNER),
+            WasmMsg::Migrate {
+                contract_addr: staking.to_string(),
+                new_code_id: v2_code,
+                msg: to_binary(&MigrateMsg::FromLegacy {}).unwrap(),
             }
             .into(),
         )
