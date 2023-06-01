@@ -38,6 +38,11 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
             module_addrs.proposals[0].clone(),
             module_addrs.voting.clone(),
         ),
+        VotingType::Cw20Legacy => query_state_v1_cw20(
+            &mut app,
+            module_addrs.proposals[0].clone(),
+            module_addrs.voting.clone(),
+        ),
     };
     //NOTE: We add 1 to count because we create a new proposal in execute_migration
     test_state_v1.proposal_count += 1;
@@ -67,6 +72,11 @@ pub fn basic_test(voting_type: VotingType, from_core: bool) {
             module_addrs.proposals[0].clone(),
             module_addrs.voting,
         ),
+        VotingType::Cw20Legacy => query_state_v2_cw20(
+            &mut app,
+            module_addrs.proposals[0].clone(),
+            module_addrs.voting,
+        ),
     };
 
     assert_eq!(test_state_v1, test_state_v2);
@@ -92,11 +102,13 @@ fn test_execute_migration() {
     basic_test(VotingType::Cw20, false);
     basic_test(VotingType::Cw4, false);
     basic_test(VotingType::Cw20V03, false);
+    basic_test(VotingType::Cw20Legacy, false);
 
     // Test basic migrator (called from core)
     basic_test(VotingType::Cw20, true);
     basic_test(VotingType::Cw4, true);
     basic_test(VotingType::Cw20V03, true);
+    basic_test(VotingType::Cw20Legacy, true);
 }
 
 #[test]

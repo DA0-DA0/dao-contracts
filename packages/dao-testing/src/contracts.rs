@@ -176,3 +176,12 @@ pub fn stake_cw20_v03_contract() -> Box<dyn Contract<Empty>> {
     );
     Box::new(contract)
 }
+
+pub fn stake_cw20_legacy_contract() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new(
+      stake_cw20_legacy::contract::execute,
+        stake_cw20_legacy::contract::instantiate,
+        stake_cw20_legacy::contract::query,
+    );
+    Box::new(contract)
+}

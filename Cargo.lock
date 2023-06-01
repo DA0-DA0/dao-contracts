@@ -1409,6 +1409,7 @@ dependencies = [
  "dao-voting",
  "dao-voting-cw20-staked",
  "dao-voting-cw4",
+ "stake-cw20 0.2.5",
  "thiserror",
  "voting",
 ]
@@ -1716,6 +1717,7 @@ dependencies = [
  "dao-voting-cw721-staked",
  "dao-voting-native-staked",
  "rand",
+ "stake-cw20 0.2.5",
  "stake-cw20 0.2.6",
  "voting",
 ]

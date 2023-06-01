@@ -6,7 +6,8 @@ use cw_multi_test::{next_block, App, Contract, ContractWrapper, Executor};
 use dao_core::query::SubDao;
 use dao_testing::contracts::{
     cw20_base_contract, cw20_staked_balances_voting_contract, cw4_group_contract,
-    dao_core_contract, proposal_single_contract, v1_dao_core_contract, v1_proposal_single_contract,
+    dao_core_contract, proposal_single_contract, stake_cw20_legacy_contract, v1_dao_core_contract,
+    v1_proposal_single_contract,
 };
 
 use crate::{
@@ -25,6 +26,7 @@ pub struct CodeIds {
     pub cw20_voting: u64,
     pub cw4_group: u64,
     pub cw4_voting: u64,
+    pub cw20_stake_legacy: u64,
 }
 
 pub struct ExecuteParams {
@@ -46,6 +48,7 @@ pub enum VotingType {
     Cw4,
     Cw20,
     Cw20V03,
+    Cw20Legacy,
 }
 
 pub fn get_v1_code_ids(app: &mut App) -> (CodeIds, V1CodeIds) {
@@ -57,6 +60,7 @@ pub fn get_v1_code_ids(app: &mut App) -> (CodeIds, V1CodeIds) {
         cw20_voting: app.store_code(cw20_staked_balances_voting_contract()),
         cw4_group: app.store_code(cw4_group_contract()),
         cw4_voting: app.store_code(v1_cw4_voting_contract()),
+        cw20_stake_legacy: app.store_code(stake_cw20_legacy_contract()),
     };
 
     let v1_code_ids = V1CodeIds {
@@ -77,6 +81,7 @@ pub fn get_v2_code_ids(app: &mut App) -> (CodeIds, V2CodeIds) {
         cw20_voting: app.store_code(dao_voting_cw20_staked_contract()),
         cw4_group: app.store_code(cw4_group_contract()),
         cw4_voting: app.store_code(dao_voting_cw4_contract()),
+        cw20_stake_legacy: app.store_code(v2_cw20_stake_contract()),
     };
 
     let v2_code_ids = V2CodeIds {
@@ -104,6 +109,57 @@ pub fn get_cw20_init_msg(code_ids: CodeIds) -> cw20_staked_balance_voting_v1::ms
             staking_code_id: code_ids.cw20_stake,
             unstaking_duration: None,
             initial_dao_balance: Some(Uint128::new(100)),
+        },
+        active_threshold: None,
+    }
+}
+
+pub fn get_cw20_legacy_init_msg(
+    app: &mut App,
+    code_ids: CodeIds,
+) -> cw20_staked_balance_voting_v1::msg::InstantiateMsg {
+    let cw20_base = app
+        .instantiate_contract(
+            code_ids.cw20_base,
+            Addr::unchecked(SENDER_ADDR),
+            &cw20_base::msg::InstantiateMsg {
+                name: "name".to_string(),
+                symbol: "symbol".to_string(),
+                decimals: 6,
+                initial_balances: vec![cw20::Cw20Coin {
+                    address: SENDER_ADDR.to_string(),
+                    amount: Uint128::new(2),
+                }],
+                marketing: None,
+                mint: None,
+            },
+            &[],
+            "cw20_base",
+            Some(SENDER_ADDR.into()),
+        )
+        .unwrap();
+
+    let cw20_stake_legacy = app
+        .instantiate_contract(
+            code_ids.cw20_stake_legacy,
+            Addr::unchecked(SENDER_ADDR),
+            &stake_cw20_legacy::msg::InstantiateMsg {
+                admin: Addr::unchecked(SENDER_ADDR),
+                token_address: cw20_base.clone(),
+                unstaking_duration: None,
+            },
+            &[],
+            "cw20_base",
+            Some(SENDER_ADDR.into()),
+        )
+        .unwrap();
+
+    cw20_staked_balance_voting_v1::msg::InstantiateMsg {
+        token_info: cw20_staked_balance_voting_v1::msg::TokenInfo::Existing {
+            address: cw20_base.into(),
+            staking_contract: cw20_staked_balance_voting_v1::msg::StakingInfo::Existing {
+                staking_contract_address: cw20_stake_legacy.into(),
+            },
         },
         active_threshold: None,
     }
