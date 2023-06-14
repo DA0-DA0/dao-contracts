@@ -17,11 +17,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install latest nightly toolchain
+      - name: Install latest stable toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown
           override: true
 

@@ -12,6 +12,7 @@ use dao_voting::{
     pre_propose::PreProposeInfo,
     threshold::{PercentageThreshold, Threshold::ThresholdQuorum},
 };
+use dao_voting_cw4::msg::GroupContract;
 
 use crate::msg::InstantiateMsg;
 
@@ -563,8 +564,10 @@ pub(crate) fn instantiate_with_cw4_groups_governance(
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&dao_voting_cw4::msg::InstantiateMsg {
-                cw4_group_code_id: cw4_id,
-                initial_members: initial_weights,
+                group_contract: GroupContract::New {
+                    cw4_group_code_id: cw4_id,
+                    initial_members: initial_weights,
+                },
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

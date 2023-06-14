@@ -19,6 +19,7 @@ use dao_voting::{
 };
 use dao_voting_cw20_staked::msg::ActiveThreshold;
 use dao_voting_cw20_staked::msg::ActiveThreshold::AbsoluteCount;
+use dao_voting_cw4::msg::GroupContract;
 
 use crate::testing::tests::ALTERNATIVE_ADDR;
 use crate::{
@@ -781,8 +782,10 @@ pub fn _instantiate_with_cw4_groups_governance(
         voting_module_instantiate_info: ModuleInstantiateInfo {
             code_id: votemod_id,
             msg: to_binary(&dao_voting_cw4::msg::InstantiateMsg {
-                cw4_group_code_id: cw4_id,
-                initial_members: initial_weights,
+                group_contract: GroupContract::New {
+                    cw4_group_code_id: cw4_id,
+                    initial_members: initial_weights,
+                },
             })
             .unwrap(),
             admin: Some(Admin::CoreModule {}),

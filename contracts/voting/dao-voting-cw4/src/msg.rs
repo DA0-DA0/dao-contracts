@@ -2,15 +2,23 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use dao_macros::voting_module_query;
 
 #[cw_serde]
-pub struct InstantiateMsg {
-    pub cw4_group_code_id: u64,
-    pub initial_members: Vec<cw4::Member>,
+pub enum GroupContract {
+    Existing {
+        address: String,
+    },
+    New {
+        cw4_group_code_id: u64,
+        initial_members: Vec<cw4::Member>,
+    },
 }
 
 #[cw_serde]
-pub enum ExecuteMsg {
-    MemberChangedHook { diffs: Vec<cw4::MemberDiff> },
+pub struct InstantiateMsg {
+    pub group_contract: GroupContract,
 }
+
+#[cw_serde]
+pub enum ExecuteMsg {}
 
 #[voting_module_query]
 #[cw_serde]
