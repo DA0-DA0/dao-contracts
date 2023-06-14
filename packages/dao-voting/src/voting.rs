@@ -87,7 +87,7 @@ pub fn compare_vote_count(
 }
 
 pub fn does_vote_count_pass(
-    yes_votes: Uint128,
+    vote_weights: Uint128,
     options: Uint128,
     percent: PercentageThreshold,
 ) -> bool {
@@ -96,9 +96,9 @@ pub fn does_vote_count_pass(
         return false;
     }
     match percent {
-        PercentageThreshold::Majority {} => yes_votes.full_mul(2u64) > options.into(),
+        PercentageThreshold::Majority {} => vote_weights.full_mul(2u64) > options.into(),
         PercentageThreshold::Percent(percent) => {
-            compare_vote_count(yes_votes, VoteCmp::Geq, options, percent)
+            compare_vote_count(vote_weights, VoteCmp::Geq, options, percent)
         }
     }
 }
