@@ -47,7 +47,7 @@ pub enum ExecuteExt {
 
 The query extension implements queries that are compatible with the previously mentioned [cw4-group contract](https://github.com/CosmWasm/cw-plus/tree/main/contracts/cw4-group).
 
-```rust
+```ignore
 pub enum QueryExt {
     /// Total weight at a given height
     #[returns(cw4::TotalWeightResponse)]
