@@ -18,7 +18,7 @@ pub enum ThresholdError {
 /// If a user specifies a 60% passing threshold, and there are 10
 /// voters they likely expect that proposal to pass when there are 6
 /// yes votes. This implies that the condition for passing should be
-/// `yes_votes >= total_votes * threshold`.
+/// `vote_weights >= total_votes * threshold`.
 ///
 /// With this in mind, how should a user specify that they would like
 /// proposals to pass if the majority of voters choose yes? Selecting
