@@ -27,7 +27,15 @@
           "weight"
         ],
         "properties": {
+          "role": {
+            "description": "Optional on-chain role for this member, can be used by other contracts to enforce permissions",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "weight": {
+            "description": "The voting weight of this role",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
@@ -82,6 +90,7 @@
                     "minimum": 0.0
                   },
                   "initial_nfts": {
+                    "description": "Initial NFTs to mint when instantiating the new cw721 contract. If empty, an error is thrown.",
                     "type": "array",
                     "items": {
                       "$ref": "#/definitions/NftMintMsg"
@@ -92,9 +101,11 @@
                     "type": "string"
                   },
                   "name": {
+                    "description": "NFT collection name",
                     "type": "string"
                   },
                   "symbol": {
+                    "description": "NFT collection symbol",
                     "type": "string"
                   }
                 },

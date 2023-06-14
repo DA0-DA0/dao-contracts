@@ -407,6 +407,90 @@
               }
             },
             "additionalProperties": false
+          },
+          {
+            "description": "Update the token_uri for a particular NFT. Must be called by minter / admin",
+            "type": "object",
+            "required": [
+              "update_token_uri"
+            ],
+            "properties": {
+              "update_token_uri": {
+                "type": "object",
+                "required": [
+                  "token_id"
+                ],
+                "properties": {
+                  "token_id": {
+                    "type": "string"
+                  },
+                  "token_uri": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Updates the voting weight of a token. Must be called by minter / admin",
+            "type": "object",
+            "required": [
+              "update_token_weight"
+            ],
+            "properties": {
+              "update_token_weight": {
+                "type": "object",
+                "required": [
+                  "token_id",
+                  "weight"
+                ],
+                "properties": {
+                  "token_id": {
+                    "type": "string"
+                  },
+                  "weight": {
+                    "type": "integer",
+                    "format": "uint64",
+                    "minimum": 0.0
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "description": "Udates the role of a token. Must be called by minter / admin",
+            "type": "object",
+            "required": [
+              "update_token_role"
+            ],
+            "properties": {
+              "update_token_role": {
+                "type": "object",
+                "required": [
+                  "token_id"
+                ],
+                "properties": {
+                  "role": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "token_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
           }
         ]
       },
@@ -463,7 +547,15 @@
           "weight"
         ],
         "properties": {
+          "role": {
+            "description": "Optional on-chain role for this member, can be used by other contracts to enforce permissions",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "weight": {
+            "description": "The voting weight of this role",
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0

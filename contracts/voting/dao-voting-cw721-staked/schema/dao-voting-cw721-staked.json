@@ -233,7 +233,7 @@
                     "minimum": 0.0
                   },
                   "initial_nfts": {
-                    "description": "Initial NFTs to mint when creating the NFT contract.",
+                    "description": "Initial NFTs to mint when creating the NFT contract. If empty, an error is thrown.",
                     "type": "array",
                     "items": {
                       "$ref": "#/definitions/NftMintMsg"
@@ -244,9 +244,11 @@
                     "type": "string"
                   },
                   "name": {
+                    "description": "NFT collection name",
                     "type": "string"
                   },
                   "symbol": {
+                    "description": "NFT collection symbol",
                     "type": "string"
                   }
                 },
