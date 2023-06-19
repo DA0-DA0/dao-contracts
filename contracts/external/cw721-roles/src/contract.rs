@@ -88,7 +88,7 @@ pub fn execute(
             contract,
             token_id,
             msg,
-        } => execute_send(deps, env, info, contract, token_id, msg),
+        } => execute_send(deps, env, info, token_id, contract, msg),
         _ => Cw721Roles::default()
             .execute(deps, env, info, msg)
             .map_err(Into::into),

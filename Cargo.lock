@@ -1377,6 +1377,7 @@ dependencies = [
  "cw721 0.17.0",
  "cw721-base 0.17.0",
  "dao-testing",
+ "dao-voting-cw721-staked",
  "serde",
  "thiserror",
 ]

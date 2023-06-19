@@ -1,9 +1,10 @@
-use cosmwasm_std::Addr;
+use cosmwasm_std::{to_binary, Addr, Binary};
 use cw4::{MemberResponse, TotalWeightResponse};
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::InstantiateMsg;
 use cw_multi_test::{App, Executor};
-use dao_testing::contracts::cw721_roles_contract;
+use dao_testing::contracts::{cw721_roles_contract, voting_cw721_staked_contract};
+use dao_voting_cw721_staked::msg::{InstantiateMsg as Cw721StakedInstantiateMsg, NftContract};
 
 use crate::error::RolesContractError;
 use crate::msg::{ExecuteExt, ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
@@ -154,7 +155,7 @@ fn test_minting_and_burning() {
 }
 
 #[test]
-fn test_permissions() {
+fn test_minting_and_transfer_permissions() {
     let (mut app, cw721_addr) = setup();
 
     // Mint token
@@ -190,6 +191,62 @@ fn test_permissions() {
 
     let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
     assert_eq!(owner.owner, BOB);
+}
+
+#[test]
+fn test_send_permissions() {
+    let (mut app, cw721_addr) = setup();
+
+    // Mint token
+    let msg = ExecuteMsg::Mint {
+        token_id: "1".to_string(),
+        owner: ALICE.to_string(),
+        token_uri: Some("ipfs://xyz...".to_string()),
+        extension: MetadataExt {
+            role: Some("member".to_string()),
+            weight: 1,
+        },
+    };
+    // DAO can mint successfully as the minter
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Instantiate an NFT staking voting contract for testing SendNft
+    let dao_voting_cw721_staked_id = app.store_code(voting_cw721_staked_contract());
+    let cw721_staked_addr = app
+        .instantiate_contract(
+            dao_voting_cw721_staked_id,
+            Addr::unchecked(DAO),
+            &Cw721StakedInstantiateMsg {
+                owner: None,
+                nft_contract: NftContract::Existing {
+                    address: cw721_addr.to_string(),
+                },
+                unstaking_duration: None,
+                active_threshold: None,
+            },
+            &[],
+            "cw721-staking",
+            None,
+        )
+        .unwrap();
+
+    // Non-minter can't send
+    let msg = ExecuteMsg::SendNft {
+        contract: cw721_staked_addr.to_string(),
+        token_id: "1".to_string(),
+        msg: to_binary(&Binary::default()).unwrap(),
+    };
+    app.execute_contract(Addr::unchecked(ALICE), cw721_addr.clone(), &msg, &[])
+        .unwrap_err();
+
+    // DAO can send
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Staking contract now owns the NFT
+    let owner: OwnerOfResponse = query_nft_owner(&app, &cw721_addr, "1").unwrap();
+    assert_eq!(owner.owner, cw721_staked_addr.as_str());
 }
 
 #[test]
