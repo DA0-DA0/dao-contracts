@@ -52,6 +52,4 @@ pub enum ExecuteMsg {}
 pub enum QueryMsg {
     #[returns(crate::state::Config)]
     Config {},
-    #[returns(::cw_controllers::HooksResponse)]
-    Hooks {},
 }

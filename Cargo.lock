@@ -1861,7 +1861,6 @@ dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-controllers 0.16.0",
  "cw-multi-test",
  "cw-paginate 2.1.0",
  "cw-storage-plus 1.0.1",

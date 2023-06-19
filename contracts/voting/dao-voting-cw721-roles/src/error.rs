@@ -18,9 +18,6 @@ pub enum ContractError {
     #[error("Only the owner of this contract my execute this message")]
     NotOwner {},
 
-    #[error(transparent)]
-    HookError(#[from] cw_controllers::HookError),
-
     #[error("Got a submessage reply with unknown id: {id}")]
     UnknownReplyId { id: u64 },
 }

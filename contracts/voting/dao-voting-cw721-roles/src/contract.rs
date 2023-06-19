@@ -12,7 +12,7 @@ use cw721_roles::msg::{
 use cw_utils::parse_reply_instantiate_data;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
-use crate::state::{Config, CONFIG, DAO, HOOKS, INITITIAL_NFTS};
+use crate::state::{Config, CONFIG, DAO, INITITIAL_NFTS};
 use crate::ContractError;
 
 pub(crate) const CONTRACT_NAME: &str = "crates.io:dao-voting-cw721-roles";
@@ -94,7 +94,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => query_config(deps),
         QueryMsg::Dao {} => query_dao(deps),
-        QueryMsg::Hooks {} => query_hooks(deps),
         QueryMsg::VotingPowerAtHeight { address, height } => {
             query_voting_power_at_height(deps, env, address, height)
         }
@@ -153,10 +152,6 @@ pub fn query_config(deps: Deps) -> StdResult<Binary> {
 pub fn query_dao(deps: Deps) -> StdResult<Binary> {
     let dao = DAO.load(deps.storage)?;
     to_binary(&dao)
-}
-
-pub fn query_hooks(deps: Deps) -> StdResult<Binary> {
-    to_binary(&HOOKS.query_hooks(deps)?)
 }
 
 pub fn query_info(deps: Deps) -> StdResult<Binary> {
