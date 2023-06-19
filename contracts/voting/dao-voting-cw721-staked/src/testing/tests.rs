@@ -411,7 +411,9 @@ fn test_info_query_works() -> anyhow::Result<()> {
 #[test]
 fn test_add_remove_hooks() -> anyhow::Result<()> {
     let CommonTest {
-        mut app, module, ..
+        mut app,
+        module,
+        nft,
     } = setup_test(
         Some(Admin::Address {
             addr: CREATOR_ADDR.to_string(),
@@ -422,10 +424,18 @@ fn test_add_remove_hooks() -> anyhow::Result<()> {
     add_hook(&mut app, &module, CREATOR_ADDR, "meow")?;
     remove_hook(&mut app, &module, CREATOR_ADDR, "meow")?;
 
+    // Minting NFT works if no hooks
+    mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1").unwrap();
+
+    // Add a hook to a fake contract called "meow"
     add_hook(&mut app, &module, CREATOR_ADDR, "meow")?;
 
     let hooks = query_hooks(&app, &module)?;
     assert_eq!(hooks.hooks, vec!["meow".to_string()]);
+
+    // Minting / staking now doesn't work because meow isn't a contract
+    // This failure means the hook is working
+    mint_and_stake_nft(&mut app, &nft, &module, CREATOR_ADDR, "1").unwrap_err();
 
     let res = add_hook(&mut app, &module, CREATOR_ADDR, "meow");
     is_error!(res => "Given address already registered as a hook");
@@ -855,4 +865,36 @@ fn test_active_threshold_percentage_lte_0() {
         None,
     )
     .unwrap();
+}
+
+#[test]
+fn test_no_initial_nfts_fails() {
+    let mut app = App::default();
+    let cw721_id = app.store_code(cw721_base_contract());
+    let module_id = app.store_code(voting_cw721_staked_contract());
+
+    app.instantiate_contract(
+        module_id,
+        Addr::unchecked(CREATOR_ADDR),
+        &InstantiateMsg {
+            owner: Some(Admin::Address {
+                addr: CREATOR_ADDR.to_string(),
+            }),
+            nft_contract: NftContract::New {
+                code_id: cw721_id,
+                label: "Test NFT".to_string(),
+                name: "Test NFT".to_string(),
+                symbol: "TEST".to_string(),
+                initial_nfts: vec![],
+            },
+            unstaking_duration: None,
+            active_threshold: Some(ActiveThreshold::Percentage {
+                percent: Decimal::percent(0),
+            }),
+        },
+        &[],
+        "cw721_voting",
+        None,
+    )
+    .unwrap_err();
 }
