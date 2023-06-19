@@ -1,5 +1,5 @@
 use cosmwasm_std::{to_binary, Addr, Binary};
-use cw4::{MemberResponse, TotalWeightResponse};
+use cw4::{Member, MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw721::{NftInfoResponse, OwnerOfResponse};
 use cw721_base::InstantiateMsg;
 use cw_multi_test::{App, Executor};
@@ -130,13 +130,55 @@ fn test_minting_and_burning() {
     app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
         .unwrap();
 
+    // Create a token for bob
+    let msg = ExecuteMsg::Mint {
+        token_id: "3".to_string(),
+        owner: BOB.to_string(),
+        token_uri: Some("ipfs://xyz...".to_string()),
+        extension: MetadataExt {
+            role: None,
+            weight: 1,
+        },
+    };
+    app.execute_contract(Addr::unchecked(DAO), cw721_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // Query list of members
+    let members_list: MemberListResponse = app
+        .wrap()
+        .query_wasm_smart(
+            cw721_addr.clone(),
+            &QueryMsg::Extension {
+                msg: QueryExt::ListMembers {
+                    start_after: None,
+                    limit: None,
+                },
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        members_list,
+        MemberListResponse {
+            members: vec![
+                Member {
+                    addr: ALICE.to_string(),
+                    weight: 2
+                },
+                Member {
+                    addr: BOB.to_string(),
+                    weight: 1
+                }
+            ]
+        }
+    );
+
     // Member query returns total weight for alice
     let member: MemberResponse = query_member(&app, &cw721_addr, ALICE, None).unwrap();
     assert_eq!(member.weight, Some(2));
 
-    // Total weight is now 2
+    // Total weight is now 3
     let total: TotalWeightResponse = query_total_weight(&app, &cw721_addr, None).unwrap();
-    assert_eq!(total.weight, 2);
+    assert_eq!(total.weight, 3);
 
     // Burn a role for alice
     let msg = ExecuteMsg::Burn {

@@ -439,6 +439,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Extension { msg } => match msg {
             QueryExt::Hooks {} => to_binary(&HOOKS.query_hooks(deps)?),
+            QueryExt::ListMembers { start_after, limit } => {
+                to_binary(&query_list_members(deps, start_after, limit)?)
+            }
             QueryExt::Member { addr, at_height } => {
                 to_binary(&query_member(deps, addr, at_height)?)
             }

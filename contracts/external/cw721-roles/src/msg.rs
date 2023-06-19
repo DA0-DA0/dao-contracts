@@ -40,6 +40,12 @@ pub enum QueryExt {
     /// Total weight at a given height
     #[returns(cw4::TotalWeightResponse)]
     TotalWeight { at_height: Option<u64> },
+    /// Returns a list of Members
+    #[returns(cw4::MemberListResponse)]
+    ListMembers {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
     /// Returns the weight of a certain member
     #[returns(cw4::MemberResponse)]
     Member {
