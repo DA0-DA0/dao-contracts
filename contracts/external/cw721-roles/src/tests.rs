@@ -572,7 +572,7 @@ fn test_hooks() {
     // Minting should now work again as there are no hooks to dead
     app.execute_contract(
         Addr::unchecked(DAO),
-        cw721_addr.clone(),
+        cw721_addr,
         &ExecuteMsg::Mint {
             token_id: "2".to_string(),
             owner: ALICE.to_string(),
