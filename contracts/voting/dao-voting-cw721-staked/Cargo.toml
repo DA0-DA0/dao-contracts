@@ -22,7 +22,7 @@ cw-controllers = { workspace = true }
 dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 cw721 = { workspace = true }
-cw721-base = { workspace = true }
+cw721-base = { workspace = true, features = ["library"] }
 cw721-controllers = { workspace = true }
 cw-paginate = { workspace = true }
 cw-utils = { workspace = true }
