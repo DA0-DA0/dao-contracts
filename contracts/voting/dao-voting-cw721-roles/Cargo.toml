@@ -1,11 +1,11 @@
 [package]
 name = "dao-voting-cw721-roles"
-version = "2.0.3"
 authors = ["Jake Hartnell"]
-edition = "2021"
-repository = "https://github.com/DA0-DA0/dao-contracts"
 description = "A DAO DAO voting module based on non-transferrable cw721 tokens."
+edition = { workspace = true }
 license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
 
 [lib]
 crate-type = ["cdylib", "rlib"]

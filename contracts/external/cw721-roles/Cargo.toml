@@ -2,7 +2,7 @@
 name          = "cw721-roles"
 authors       = ["Jake Hartnell"]
 description   = "Non-transferable CW721 NFT contract that incorporates voting weights and on-chain roles."
-version       = "0.1.0"
+version       = { workspace = true }
 edition       = { workspace = true }
 repository    = { workspace = true }
 license       = { workspace = true }
@@ -33,4 +33,4 @@ thiserror       = { workspace = true }
 [dev-dependencies]
 cw-multi-test   = { workspace = true }
 dao-testing     = { workspace = true }
-dao-voting-cw721-staked = { workspace = true, features = ["library"] }
+dao-voting-cw721-staked = { workspace = true }
