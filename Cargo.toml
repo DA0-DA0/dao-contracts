@@ -1,14 +1,14 @@
 [workspace]
 members = [
 	"contracts/dao-core",
+	"contracts/external/*",
 	"contracts/proposal/*",
 	"contracts/pre-propose/*",
 	"contracts/staking/*",
 	"contracts/voting/*",
 	"packages/*",
 	"test-contracts/*",
-	"ci/*",
-	"contracts/external/*"
+	"ci/*"
 	]
 exclude = ["ci/configs/"]
 

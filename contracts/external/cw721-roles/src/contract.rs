@@ -12,10 +12,7 @@ use cw4::{
     TotalWeightResponse,
 };
 use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
-pub use cw721_base::{
-    entry::{execute as _execute, query as _query},
-    Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse,
-};
+pub use cw721_base::{Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse};
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
 

@@ -2496,6 +2496,7 @@ dependencies = [
  "cw20-stake 2.1.0",
  "cw721 0.17.0",
  "cw721-base 0.17.0",
+ "cw721-roles",
  "dao-core",
  "dao-interface",
  "dao-pre-propose-single",
