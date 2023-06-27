@@ -1,28 +1,30 @@
-use std::cmp::Ordering;
-
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::Empty;
 use cosmwasm_std::{
-    from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Order, Response, StdResult,
-    SubMsg, Uint64,
+    from_binary, to_binary, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    StdResult, SubMsg, Uint64,
 };
 use cw4::{
     Member, MemberChangedHookMsg, MemberDiff, MemberListResponse, MemberResponse,
     TotalWeightResponse,
 };
 use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
-pub use cw721_base::{Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg, MinterResponse};
+use cw721_base::{Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg};
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
+use std::cmp::Ordering;
 
 use crate::msg::{ExecuteExt, ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
 use crate::state::{MEMBERS, TOTAL};
 use crate::{error::RolesContractError as ContractError, state::HOOKS};
 
-// version info for migration info
+// Version info for migration
 const CONTRACT_NAME: &str = "crates.io:cw721-roles";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+// Settings for query pagination
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
 
 pub type Cw721Roles<'a> = Cw721Contract<'a, MetadataExt, Empty, ExecuteExt, QueryExt>;
 
@@ -465,10 +467,6 @@ pub fn query_member(deps: Deps, addr: String, height: Option<u64>) -> StdResult<
     }?;
     Ok(MemberResponse { weight })
 }
-
-// settings for pagination
-const MAX_LIMIT: u32 = 30;
-const DEFAULT_LIMIT: u32 = 10;
 
 pub fn query_list_members(
     deps: Deps,
