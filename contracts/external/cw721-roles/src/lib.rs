@@ -9,3 +9,8 @@ pub mod state;
 mod tests;
 
 pub use crate::error::RolesContractError as ContractError;
+
+// So consumers don't need dependencies to interact with this contract.
+pub use cw721_base::MinterResponse;
+pub use cw_ownable::{Action, Ownership};
+pub use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};

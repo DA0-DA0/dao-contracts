@@ -1,6 +1,6 @@
 use cosmwasm_std::{Addr, Uint128};
-use cw721_roles::msg::MetadataExt;
 use cw_multi_test::{App, Executor};
+use dao_cw721_extensions::roles::MetadataExt;
 use dao_testing::contracts::dao_voting_cw721_roles_contract;
 
 use crate::{

@@ -6,10 +6,12 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw4::{MemberResponse, TotalWeightResponse};
-use cw721_roles::msg::{
-    ExecuteMsg as Cw721RolesExecuteMsg, MetadataExt, QueryExt, QueryMsg as Cw721RolesQueryMsg,
+use cw721_base::{
+    ExecuteMsg as Cw721ExecuteMsg, InstantiateMsg as Cw721InstantiateMsg, QueryMsg as Cw721QueryMsg,
 };
+use cw_ownable::Action;
 use cw_utils::parse_reply_instantiate_data;
+use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, NftContract, QueryMsg};
 use crate::state::{Config, CONFIG, DAO, INITITIAL_NFTS};
@@ -64,7 +66,7 @@ pub fn instantiate(
                     funds: vec![],
                     admin: Some(info.sender.to_string()),
                     label,
-                    msg: to_binary(&cw721_base::msg::InstantiateMsg {
+                    msg: to_binary(&Cw721InstantiateMsg {
                         name,
                         symbol,
                         // Admin must be set to contract to mint initial NFTs
@@ -111,7 +113,7 @@ pub fn query_voting_power_at_height(
     let config = CONFIG.load(deps.storage)?;
     let member: MemberResponse = deps.querier.query_wasm_smart(
         config.nft_address,
-        &Cw721RolesQueryMsg::Extension {
+        &Cw721QueryMsg::<QueryExt>::Extension {
             msg: QueryExt::Member {
                 addr: address,
                 at_height,
@@ -133,7 +135,7 @@ pub fn query_total_power_at_height(
     let config = CONFIG.load(deps.storage)?;
     let total: TotalWeightResponse = deps.querier.query_wasm_smart(
         config.nft_address,
-        &Cw721RolesQueryMsg::Extension {
+        &Cw721QueryMsg::<QueryExt>::Extension {
             msg: QueryExt::TotalWeight { at_height },
         },
     )?;
@@ -184,15 +186,17 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                             Ok(SubMsg::new(WasmMsg::Execute {
                                 contract_addr: nft_contract.clone(),
                                 funds: vec![],
-                                msg: to_binary(&Cw721RolesExecuteMsg::Mint {
-                                    token_id: nft.token_id.clone(),
-                                    owner: nft.owner.clone(),
-                                    token_uri: nft.token_uri.clone(),
-                                    extension: MetadataExt {
-                                        role: nft.clone().extension.role,
-                                        weight: nft.extension.weight,
+                                msg: to_binary(
+                                    &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::Mint {
+                                        token_id: nft.token_id.clone(),
+                                        owner: nft.owner.clone(),
+                                        token_uri: nft.token_uri.clone(),
+                                        extension: MetadataExt {
+                                            role: nft.clone().extension.role,
+                                            weight: nft.extension.weight,
+                                        },
                                     },
-                                })?,
+                                )?,
                             }))
                         })
                         .collect::<Vec<SubMsg>>();
@@ -203,12 +207,14 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
                     // Update minter message
                     let update_minter_msg = WasmMsg::Execute {
                         contract_addr: nft_contract.clone(),
-                        msg: to_binary(&Cw721RolesExecuteMsg::UpdateOwnership(
-                            cw721_base::Action::TransferOwnership {
-                                new_owner: dao.to_string(),
-                                expiry: None,
-                            },
-                        ))?,
+                        msg: to_binary(
+                            &Cw721ExecuteMsg::<MetadataExt, ExecuteExt>::UpdateOwnership(
+                                Action::TransferOwnership {
+                                    new_owner: dao.to_string(),
+                                    expiry: None,
+                                },
+                            ),
+                        )?,
                         funds: vec![],
                     };
 

@@ -18,13 +18,14 @@ library = []
 cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
+dao-cw721-extensions = { workspace = true }
 dao-macros = { workspace = true }
 dao-interface = { workspace = true }
+cw721-base = { workspace = true, features = ["library"] }
 cw721-controllers = { workspace = true }
+cw-ownable = { workspace = true }
 cw-paginate = { workspace = true }
 cw721 = { workspace = true }
-cw721-base = { workspace = true, features = ["library"] }
-cw721-roles = { workspace = true, features = ["library"] }
 cw-utils = { workspace = true }
 cw2 = { workspace = true }
 cw4 = { workspace = true }
@@ -32,5 +33,6 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
+cw721-roles = { workspace = true }
 anyhow = { workspace = true }
 dao-testing = { workspace = true }

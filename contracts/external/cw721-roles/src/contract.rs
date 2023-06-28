@@ -12,9 +12,10 @@ use cw721::{Cw721ReceiveMsg, NftInfoResponse, OwnerOfResponse};
 use cw721_base::{Cw721Contract, InstantiateMsg as Cw721BaseInstantiateMsg};
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
+use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 use std::cmp::Ordering;
 
-use crate::msg::{ExecuteExt, ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
+use crate::msg::{ExecuteMsg, QueryMsg};
 use crate::state::{MEMBERS, TOTAL};
 use crate::{error::RolesContractError as ContractError, state::HOOKS};
 

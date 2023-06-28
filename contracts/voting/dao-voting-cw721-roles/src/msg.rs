@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cw721_roles::msg::MetadataExt;
+use dao_cw721_extensions::roles::MetadataExt;
 use dao_macros::voting_module_query;
 
 #[cw_serde]

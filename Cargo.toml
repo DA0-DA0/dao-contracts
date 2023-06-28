@@ -72,6 +72,7 @@ cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "*" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "*" }
 cw721-roles = { path = "./contracts/external/cw721-roles", version = "*" }
 dao-core = { path = "./contracts/dao-core" }
+dao-cw721-extensions = { path = "./packages/dao-cw721-extensions", version = "*" }
 dao-interface = { path = "./packages/dao-interface", version = "*" }
 dao-macros = { path = "./packages/dao-macros", version = "*" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "*" }

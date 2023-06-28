@@ -1376,6 +1376,7 @@ dependencies = [
  "cw4 0.16.0",
  "cw721 0.17.0",
  "cw721-base 0.17.0",
+ "dao-cw721-extensions",
  "dao-testing",
  "dao-voting-cw721-staked",
  "serde",
@@ -1403,6 +1404,16 @@ dependencies = [
  "dao-proposal-sudo",
  "dao-voting-cw20-balance",
  "thiserror",
+]
+
+[[package]]
+name = "dao-cw721-extensions"
+version = "2.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-controllers 0.16.0",
+ "cw4 0.16.0",
 ]
 
 [[package]]
@@ -1862,6 +1873,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
+ "cw-ownable",
  "cw-paginate 2.1.0",
  "cw-storage-plus 1.0.1",
  "cw-utils 0.16.0",
@@ -1871,6 +1883,7 @@ dependencies = [
  "cw721-base 0.17.0",
  "cw721-controllers",
  "cw721-roles",
+ "dao-cw721-extensions",
  "dao-interface",
  "dao-macros",
  "dao-testing",

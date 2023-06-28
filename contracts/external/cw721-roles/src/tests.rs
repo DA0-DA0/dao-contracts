@@ -1,13 +1,13 @@
 use cosmwasm_std::{to_binary, Addr, Binary};
 use cw4::{HooksResponse, Member, MemberListResponse, MemberResponse, TotalWeightResponse};
 use cw721::{NftInfoResponse, OwnerOfResponse};
-use cw721_base::InstantiateMsg;
 use cw_multi_test::{App, Executor};
+use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt, QueryExt};
 use dao_testing::contracts::{cw721_roles_contract, voting_cw721_staked_contract};
 use dao_voting_cw721_staked::msg::{InstantiateMsg as Cw721StakedInstantiateMsg, NftContract};
 
 use crate::error::RolesContractError;
-use crate::msg::{ExecuteExt, ExecuteMsg, MetadataExt, QueryExt, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 const ALICE: &str = "alice";
 const BOB: &str = "bob";

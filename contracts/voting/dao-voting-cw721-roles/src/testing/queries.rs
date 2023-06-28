@@ -1,5 +1,6 @@
-use cosmwasm_std::{Addr, Empty, StdResult};
+use cosmwasm_std::{Addr, StdResult};
 use cw_multi_test::App;
+use dao_cw721_extensions::roles::QueryExt;
 use dao_interface::voting::{
     InfoResponse, TotalPowerAtHeightResponse, VotingPowerAtHeightResponse,
 };
@@ -46,6 +47,6 @@ pub fn query_info(app: &App, module: &Addr) -> StdResult<InfoResponse> {
 pub fn query_minter(app: &App, nft: &Addr) -> StdResult<cw721_base::MinterResponse> {
     let minter = app
         .wrap()
-        .query_wasm_smart(nft, &cw721_base::QueryMsg::<Empty>::Minter {})?;
+        .query_wasm_smart(nft, &cw721_base::QueryMsg::<QueryExt>::Minter {})?;
     Ok(minter)
 }

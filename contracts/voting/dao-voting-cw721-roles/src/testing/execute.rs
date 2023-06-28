@@ -1,6 +1,6 @@
 use cosmwasm_std::Addr;
-use cw721_roles::msg::{ExecuteExt, MetadataExt};
 use cw_multi_test::{App, AppResponse, Executor};
+use dao_cw721_extensions::roles::{ExecuteExt, MetadataExt};
 
 use anyhow::Result as AnyResult;
 
