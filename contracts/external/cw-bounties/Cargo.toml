@@ -1,0 +1,33 @@
+[package]
+name = "cw-bounties"
+authors = ["Jake Hartnell"]
+description = "A CosmWasm contract for creating and managing on-chain bounties."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+version = { workspace = true }
+
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# For more explicit tests, `cargo test --features=backtraces`.
+backtraces = ["cosmwasm-std/backtraces"]
+# Use library feature to disable all instantiate/execute/query exports.
+library = []
+
+[dependencies]
+cosmwasm-std = { workspace = true }
+cosmwasm-schema = { workspace = true }
+cw-denom = { workspace = true }
+cw-ownable = { workspace = true }
+cw-paginate-storage = { workspace = true }
+cw-storage-plus = { workspace = true }
+cw-utils = { workspace = true }
+cw2 = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+cosmwasm-schema = { workspace = true }
+cw-multi-test = { workspace = true }
