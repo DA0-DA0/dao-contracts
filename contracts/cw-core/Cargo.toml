@@ -3,6 +3,9 @@ name = "cw-core"
 version = "0.1.0"
 authors = ["Zeke Medley <zekemedley@gmail.com>"]
 edition = "2018"
+decription = "DAO DAO v1 macros."
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit

@@ -2,6 +2,9 @@
 name = "cw-core-macros"
 version = "0.1.0"
 edition = "2021"
+description = "DAO DAO v1 macros."
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
 
 [lib]
 proc-macro = true
