@@ -27,7 +27,7 @@ cw721 = { workspace = true }
 thiserror = { workspace = true }
 dao-interface = { workspace = true }
 dao-dao-macros = { workspace = true }
-cw-paginate = { workspace = true }
+cw-paginate-storage = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
 
 [dev-dependencies]

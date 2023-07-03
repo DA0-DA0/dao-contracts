@@ -341,7 +341,7 @@ pub fn query_list_stakers(
         .map(|addr| deps.api.addr_validate(&addr))
         .transpose()?;
 
-    let stakers = cw_paginate::paginate_snapshot_map(
+    let stakers = cw_paginate_storage::paginate_snapshot_map(
         deps,
         &STAKED_BALANCES,
         start_at.as_ref(),

@@ -68,13 +68,13 @@ cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
 cw-denom = { path = "./packages/cw-denom", version = "2.1.0" }
 cw-hooks = { path = "./packages/cw-hooks", version = "2.0.1" }
 cw-wormhole = { path = "./packages/cw-wormhole", version = "2.1.0" }
-cw-paginate = { path = "./packages/cw-paginate", version = "2.1.0" }
+cw-paginate-storage = { path = "./packages/cw-paginate-storage", version = "2.1.0" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory" }
 cw-vesting = { path = "./contracts/external/cw-vesting" }
 cw20-stake = { path = "./contracts/staking/cw20-stake", version = "2.1.0" }
 cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.1.0" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.1.0" }
-dao-dao = { path = "./contracts/dao-dao" }
+dao-dao = { path = "./contracts/dao-dao", version = "2.1.0" }
 dao-interface = { path = "./packages/dao-interface", version = "2.1.0" }
 dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.1.0" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.1.0" }

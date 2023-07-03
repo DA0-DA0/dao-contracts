@@ -21,7 +21,7 @@ cosmwasm-std = { workspace = true }
 cosmwasm-schema = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
-cw-paginate = { workspace = true }
+cw-paginate-storage = { workspace = true }
 dao-pre-propose-base = { workspace = true }
 dao-voting = { workspace = true }
 thiserror = { workspace = true }

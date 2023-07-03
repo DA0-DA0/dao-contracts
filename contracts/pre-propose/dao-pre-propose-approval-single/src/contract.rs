@@ -5,7 +5,7 @@ use cosmwasm_std::{
     WasmMsg,
 };
 use cw2::set_contract_version;
-use cw_paginate::paginate_map_values;
+use cw_paginate_storage::paginate_map_values;
 use dao_pre_propose_base::{
     error::PreProposeError, msg::ExecuteMsg as ExecuteBase, state::PreProposeContract,
 };

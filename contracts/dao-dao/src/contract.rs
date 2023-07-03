@@ -8,7 +8,7 @@ use cw2::{get_contract_version, set_contract_version, ContractVersion};
 use cw_storage_plus::Map;
 use cw_utils::{parse_reply_instantiate_data, Duration};
 
-use cw_paginate::{paginate_map, paginate_map_keys, paginate_map_values};
+use cw_paginate_storage::{paginate_map, paginate_map_keys, paginate_map_values};
 use dao_interface::{voting, Admin, ModuleInstantiateCallback, ModuleInstantiateInfo};
 
 use crate::error::ContractError;
@@ -810,7 +810,7 @@ pub fn query_list_sub_daos(
         .map(|addr| deps.api.addr_validate(&addr))
         .transpose()?;
 
-    let subdaos = cw_paginate::paginate_map(
+    let subdaos = cw_paginate_storage::paginate_map(
         deps,
         &SUBDAO_LIST,
         start_at.as_ref(),
