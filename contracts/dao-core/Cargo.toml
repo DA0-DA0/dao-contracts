@@ -26,7 +26,7 @@ cw20 = { workspace = true }
 cw721 = { workspace = true }
 thiserror = { workspace = true }
 dao-interface = { workspace = true }
-dao-macros = { workspace = true }
+dao-dao-macros = { workspace = true }
 cw-paginate = { workspace = true }
 cw-core-v1 = { workspace = true, features = ["library"] }
 

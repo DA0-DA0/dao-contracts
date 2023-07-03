@@ -22,7 +22,7 @@ cosmwasm-storage = { workspace = true }
 cw-storage-plus = { workspace = true }
 cw2 = { workspace = true }
 thiserror = { workspace = true }
-dao-macros = { workspace = true }
+dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 
 [dev-dependencies]

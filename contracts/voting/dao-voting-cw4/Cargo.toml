@@ -24,7 +24,7 @@ cw2 = { workspace = true }
 cw-utils = { workspace = true }
 cosmwasm-schema = { workspace = true }
 thiserror = { workspace = true }
-dao-macros = { workspace = true }
+dao-dao-macros = { workspace = true }
 dao-interface = { workspace = true }
 cw4 = { workspace = true }
 cw4-group = { workspace = true }

@@ -579,12 +579,33 @@ dependencies = [
 [[package]]
 name = "cw-core"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "468b8f2696f625c8e15b5468f9420c8eabfaf23cb4fd7e6c660fc7e0cc8d77b8"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-core-interface 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-core-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-paginate-storage",
+ "cw-storage-plus 0.13.4",
+ "cw-utils 0.13.4",
+ "cw2 0.13.4",
+ "cw20 0.13.4",
+ "cw721 0.13.4",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "cw-core"
+version = "0.1.0"
 source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw-core-macros 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
  "cw-paginate 0.1.0",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
@@ -599,13 +620,37 @@ dependencies = [
 [[package]]
 name = "cw-core-interface"
 version = "0.1.0"
-source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c93e684945473777ebed2bcaf9f0af2291653f79d5c81774c6826350ba6d88de"
 dependencies = [
  "cosmwasm-std",
- "cw-core-macros",
+ "cw-core-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw2 0.13.4",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw-core-interface"
+version = "0.1.0"
+source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5d057329afd98d62567aaa4dca2c96f"
+dependencies = [
+ "cosmwasm-std",
+ "cw-core-macros 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw2 0.13.4",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-core-macros"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f20a77489d2dc8a1c12cb0b9671b6cbdca88f12fe65e1a4ee9899490f7669dcc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -728,6 +773,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-paginate-storage"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b854833e07c557dee02d1b61a21bb0731743bb2e3bbdc3e446a0d8a38af40ec4"
+dependencies = [
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.13.4",
+ "serde",
+]
+
+[[package]]
 name = "cw-payroll-factory"
 version = "2.1.0"
 dependencies = [
@@ -753,9 +810,9 @@ source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw-core-macros 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
@@ -1150,8 +1207,8 @@ source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw-core-macros 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
@@ -1255,8 +1312,8 @@ source = "git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0#e531c760a5
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core-interface",
- "cw-core-macros",
+ "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
+ "cw-core-macros 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
  "cw-storage-plus 0.13.4",
  "cw-utils 0.13.4",
  "cw2 0.13.4",
@@ -1326,7 +1383,7 @@ version = "2.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-core",
+ "cw-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw-multi-test",
  "cw-paginate 2.1.0",
  "cw-storage-plus 1.1.0",
@@ -1336,26 +1393,15 @@ dependencies = [
  "cw20-base 0.16.0",
  "cw721 0.16.0",
  "cw721-base",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "dao-proposal-sudo",
  "dao-voting-cw20-balance",
  "thiserror",
 ]
 
 [[package]]
-name = "dao-interface"
-version = "2.1.0"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-hooks",
- "cw2 0.16.0",
- "dao-macros",
-]
-
-[[package]]
-name = "dao-macros"
+name = "dao-dao-macros"
 version = "2.1.0"
 dependencies = [
  "cosmwasm-schema",
@@ -1369,14 +1415,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "dao-interface"
+version = "2.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-hooks",
+ "cw2 0.16.0",
+ "dao-dao-macros",
+]
+
+[[package]]
 name = "dao-migrator"
 version = "2.0.2"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-core",
- "cw-core-interface",
+ "cw-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw-core-interface 0.1.0 (git+https://github.com/DA0-DA0/dao-contracts.git?tag=v1.0.0)",
  "cw-multi-test",
  "cw-proposal-single",
  "cw-storage-plus 1.1.0",
@@ -1537,8 +1594,8 @@ dependencies = [
  "cw4 0.16.0",
  "cw4-group 0.16.0",
  "dao-core",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "dao-testing",
  "dao-voting",
  "dao-voting-cw4",
@@ -1599,8 +1656,8 @@ dependencies = [
  "cw4-group 0.16.0",
  "cw721-base",
  "dao-core",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "dao-pre-propose-base",
  "dao-pre-propose-multiple",
  "dao-proposal-hooks",
@@ -1624,7 +1681,7 @@ dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
  "cosmwasm-storage",
- "cw-core",
+ "cw-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw-denom",
  "cw-hooks",
  "cw-multi-test",
@@ -1641,8 +1698,8 @@ dependencies = [
  "cw4-group 0.16.0",
  "cw721-base",
  "dao-core",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "dao-pre-propose-base",
  "dao-pre-propose-single",
  "dao-proposal-hooks",
@@ -1668,8 +1725,8 @@ dependencies = [
  "cw-multi-test",
  "cw-storage-plus 1.1.0",
  "cw2 0.16.0",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "thiserror",
 ]
 
@@ -1679,7 +1736,7 @@ version = "2.1.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
- "cw-core",
+ "cw-core 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw-hooks",
  "cw-multi-test",
  "cw-proposal-single",
@@ -1730,8 +1787,8 @@ dependencies = [
  "cw-utils 0.16.0",
  "cw20 0.16.0",
  "dao-core",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "thiserror",
 ]
 
@@ -1747,8 +1804,8 @@ dependencies = [
  "cw2 0.16.0",
  "cw20 0.16.0",
  "cw20-base 0.16.0",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "thiserror",
 ]
 
@@ -1766,8 +1823,8 @@ dependencies = [
  "cw20 0.16.0",
  "cw20-base 0.16.0",
  "cw20-stake 2.1.0",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "thiserror",
 ]
 
@@ -1784,8 +1841,8 @@ dependencies = [
  "cw2 0.16.0",
  "cw4 0.16.0",
  "cw4-group 0.16.0",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "thiserror",
 ]
 
@@ -1805,8 +1862,8 @@ dependencies = [
  "cw721 0.16.0",
  "cw721-base",
  "cw721-controllers",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "dao-testing",
  "thiserror",
 ]
@@ -1825,8 +1882,8 @@ dependencies = [
  "cw-storage-plus 1.1.0",
  "cw-utils 0.16.0",
  "cw2 0.16.0",
+ "dao-dao-macros",
  "dao-interface",
- "dao-macros",
  "thiserror",
 ]
 

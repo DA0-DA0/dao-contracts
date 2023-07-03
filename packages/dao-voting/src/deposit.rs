@@ -36,7 +36,7 @@ pub enum DepositToken {
     /// module. NOTE: in order to use the token address of the voting
     /// module the voting module must (1) use a cw20 token and (2)
     /// implement the `TokenContract {}` query type defined by
-    /// `dao_macros::token_query`. Failing to implement that
+    /// `dao_dao_macros::token_query`. Failing to implement that
     /// and using this option will cause instantiation to fail.
     VotingModuleToken {},
 }

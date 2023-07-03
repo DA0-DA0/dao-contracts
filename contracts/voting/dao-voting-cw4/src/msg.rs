@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use dao_macros::voting_module_query;
+use dao_dao_macros::voting_module_query;
 
 #[cw_serde]
 pub struct InstantiateMsg {

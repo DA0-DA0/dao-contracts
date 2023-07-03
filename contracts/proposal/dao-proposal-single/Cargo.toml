@@ -28,7 +28,7 @@ cw3 = { workspace = true }
 thiserror = { workspace = true }
 
 dao-core = { workspace = true, features = ["library"] }
-dao-macros = { workspace = true }
+dao-dao-macros = { workspace = true }
 dao-pre-propose-base = { workspace = true }
 dao-interface = { workspace = true }
 dao-voting = { workspace = true }

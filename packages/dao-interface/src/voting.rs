@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use cw2::ContractVersion;
-use dao_macros::{active_query, token_query, voting_module_query};
+use dao_dao_macros::{active_query, token_query, voting_module_query};
 
 #[token_query]
 #[voting_module_query]
@@ -40,7 +40,7 @@ mod tests {
     fn test_macro_expansion() {
         use cosmwasm_schema::{cw_serde, QueryResponses};
 
-        use dao_macros::{active_query, token_query, voting_module_query};
+        use dao_dao_macros::{active_query, token_query, voting_module_query};
         let query = Query::TokenContract {};
 
         #[token_query]

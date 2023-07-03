@@ -1,5 +1,5 @@
 [package]
-name = "dao-macros"
+name = "dao-dao-macros"
 authors = ["ekez ekez@withoutdoing.com"]
 description = "A package macros for deriving DAO module interfaces."
 edition = { workspace = true }

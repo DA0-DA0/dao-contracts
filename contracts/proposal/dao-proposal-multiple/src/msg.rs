@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cw_utils::Duration;
-use dao_macros::proposal_module_query;
+use dao_dao_macros::proposal_module_query;
 use dao_voting::{
     multiple_choice::{MultipleChoiceOptions, MultipleChoiceVote, VotingStrategy},
     pre_propose::PreProposeInfo,

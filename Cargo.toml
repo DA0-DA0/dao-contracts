@@ -66,7 +66,7 @@ cw-ownable = "0.5.0"
 
 cw-admin-factory = { path = "./contracts/external/cw-admin-factory" }
 cw-denom = { path = "./packages/cw-denom", version = "2.1.0" }
-cw-hooks = { path = "./packages/cw-hooks", version = "2.1.0" }
+cw-hooks = { path = "./packages/cw-hooks", version = "*" }
 cw-wormhole = { path = "./packages/cw-wormhole", version = "2.1.0" }
 cw-paginate = { path = "./packages/cw-paginate", version = "2.1.0" }
 cw-payroll-factory = { path = "./contracts/external/cw-payroll-factory" }
@@ -76,13 +76,13 @@ cw-stake-tracker = { path = "./packages/cw-stake-tracker", version = "2.1.0" }
 cw721-controllers = { path = "./packages/cw721-controllers", version = "2.1.0" }
 dao-core = { path = "./contracts/dao-core" }
 dao-interface = { path = "./packages/dao-interface", version = "2.1.0" }
-dao-macros = { path = "./packages/dao-macros", version = "2.1.0" }
+dao-dao-macros = { path = "./packages/dao-dao-macros", version = "2.1.0" }
 dao-pre-propose-approval-single = { path = "./contracts/pre-propose/dao-pre-propose-approval-single", version = "2.1.0" }
 dao-pre-propose-approver = { path = "./contracts/pre-propose/dao-pre-propose-approver", version = "2.1.0" }
 dao-pre-propose-base = { path = "./packages/dao-pre-propose-base", version = "2.1.0" }
 dao-pre-propose-multiple = { path = "./contracts/pre-propose/dao-pre-propose-multiple", version = "2.1.0" }
 dao-pre-propose-single = { path = "./contracts/pre-propose/dao-pre-propose-single", version = "2.1.0" }
-dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet", version = "2.1.0" }
+dao-proposal-condorcet = { path = "./contracts/proposal/dao-proposal-condorcet", version = "*" }
 dao-proposal-hooks = { path = "./packages/dao-proposal-hooks", version = "2.1.0" }
 dao-proposal-multiple = { path = "./contracts/proposal/dao-proposal-multiple", version = "2.1.0" }
 dao-proposal-single = { path = "./contracts/proposal/dao-proposal-single", version = "2.1.0" }

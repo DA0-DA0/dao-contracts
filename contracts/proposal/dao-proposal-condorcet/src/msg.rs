@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{CosmosMsg, Empty};
 
-use dao_macros::proposal_module_query;
+use dao_dao_macros::proposal_module_query;
 
 use crate::config::UncheckedConfig;
 

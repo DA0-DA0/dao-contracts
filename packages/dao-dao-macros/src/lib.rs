@@ -64,7 +64,7 @@ fn dao_interface_path(inside: &str) -> Path {
 /// For example:
 ///
 /// ```
-/// use dao_macros::voting_module_query;
+/// use dao_dao_macros::voting_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use dao_interface::voting::TotalPowerAtHeightResponse;
 /// use dao_interface::voting::VotingPowerAtHeightResponse;
@@ -98,7 +98,7 @@ fn dao_interface_path(inside: &str) -> Path {
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use dao_macros::voting_module_query;
+/// use dao_dao_macros::voting_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use dao_interface::voting::TotalPowerAtHeightResponse;
 /// use dao_interface::voting::VotingPowerAtHeightResponse;
@@ -157,7 +157,7 @@ pub fn voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenSt
 /// For example:
 ///
 /// ```
-/// use dao_macros::token_query;
+/// use dao_dao_macros::token_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cosmwasm_std::Addr;
 ///
@@ -181,7 +181,7 @@ pub fn voting_module_query(metadata: TokenStream, input: TokenStream) -> TokenSt
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use dao_macros::token_query;
+/// use dao_dao_macros::token_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 ///
 /// #[derive(Clone)]
@@ -217,7 +217,7 @@ pub fn token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// For example:
 ///
 /// ```
-/// use dao_macros::active_query;
+/// use dao_dao_macros::active_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 ///
 /// #[active_query]
@@ -240,7 +240,7 @@ pub fn token_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use dao_macros::active_query;
+/// use dao_dao_macros::active_query;
 ///
 /// #[derive(Clone)]
 /// #[active_query]
@@ -272,7 +272,7 @@ pub fn active_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// For example:
 ///
 /// ```
-/// use dao_macros::proposal_module_query;
+/// use dao_dao_macros::proposal_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cosmwasm_std::Addr;
 ///
@@ -299,7 +299,7 @@ pub fn active_query(metadata: TokenStream, input: TokenStream) -> TokenStream {
 /// occurs before the addition of the field.
 ///
 /// ```compile_fail
-/// use dao_macros::proposal_module_query;
+/// use dao_dao_macros::proposal_module_query;
 /// use cosmwasm_schema::{cw_serde, QueryResponses};
 /// use cosmwasm_std::Addr;
 ///
@@ -343,7 +343,7 @@ pub fn proposal_module_query(metadata: TokenStream, input: TokenStream) -> Token
 /// time. For example, the following will not compile:
 ///
 /// ```compile_fail
-/// use dao_macros::limit_variant_count;
+/// use dao_dao_macros::limit_variant_count;
 ///
 /// #[limit_variant_count(1)]
 /// enum Two {
