@@ -3,6 +3,9 @@ name = "cw20-staked-balance-voting"
 version = "0.1.0"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2018"
+description = "DAO DAO v1 voting module for staked cw20 balances."
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -38,9 +41,9 @@ cw-utils = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core-macros = { version = "*", path = "../../packages/cw-core-macros" }
-cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
-cw20-stake = { path = "../cw20-stake" }
+cw-core-macros = { version = "0.1.0", path = "../../packages/cw-core-macros" }
+cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
+cw20-stake = { path = "../cw20-stake", version = "0.2.6" }
 cw20-base = {  version = "0.13", features = ["library"] }
 
 [dev-dependencies]

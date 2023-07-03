@@ -3,6 +3,9 @@ name = "cw-proposal-single"
 version = "0.1.0"
 authors = ["Zeke Medley <zekemedley@gmail.com>"]
 edition = "2018"
+description = "DAO DAO v1 proposal single module."
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -39,23 +42,22 @@ cw3 = "0.13"
 schemars = "0.8"
 serde = { version = "1.0", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0" }
-cw-core = { path = "../cw-core", version = "*", features = ["library"] }
-cw-core-macros = { path = "../../packages/cw-core-macros", version = "*" }
-cw-core-interface = { version = "*", path = "../../packages/cw-core-interface" }
-voting = { version = "*", path = "../../packages/voting" }
-indexable-hooks = { version = "*", path = "../../packages/indexable-hooks" }
-proposal-hooks = { version = "*", path = "../../packages/proposal-hooks" }
-vote-hooks = { version = "*", path = "../../packages/vote-hooks" }
+cw-core = { path = "../cw-core", version = "0.1.0", features = ["library"] }
+cw-core-macros = { path = "../../packages/cw-core-macros", version = "0.1.0" }
+cw-core-interface = { version = "0.1.0", path = "../../packages/cw-core-interface" }
+voting = { version = "0.1.0", path = "../../packages/voting" }
+indexable-hooks = { version = "0.1.0", path = "../../packages/indexable-hooks" }
+proposal-hooks = { version = "0.1.0", path = "../../packages/proposal-hooks" }
+vote-hooks = { version = "0.1.0", path = "../../packages/vote-hooks" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0" }
 cw-multi-test = "0.13"
-cw4-voting = { path = "../cw4-voting", version = "*" }
-cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "*" }
-cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "*" }
+cw4-voting = { path = "../cw4-voting", version = "0.1.0" }
+cw20-balance-voting = { path = "../../debug/cw20-balance-voting", version = "0.1.0" }
+cw20-staked-balance-voting = { path = "../cw20-staked-balance-voting", version = "0.1.0" }
 testing = { version = "*", path = "../../packages/testing" }
-cw20-stake = { path= "../cw20-stake", version = "*" }
+cw20-stake = { path= "../cw20-stake", version = "0.2.6" }
 cw20-base = "0.13"
 cw4 = "0.13"
 cw4-group = "0.13"
-

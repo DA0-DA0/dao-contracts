@@ -3,6 +3,9 @@ name = "cw4-voting"
 version = "0.1.0"
 authors = ["Callum Anderson <callumanderson745@gmail.com>"]
 edition = "2018"
+description = "DAO DAO v1 voting module for cw4 groups."
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.

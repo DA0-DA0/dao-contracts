@@ -2,6 +2,9 @@
 name = "indexable-hooks"
 version = "0.1.0"
 edition = "2021"
+description = "Indexable hooks for DAO DAO v1."
+license = "Apache-2.0"
+repository = "https://github.com/DA0-DA0/dao-contracts"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
