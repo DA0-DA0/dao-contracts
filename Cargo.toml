@@ -97,7 +97,7 @@ dao-voting-cw721-staked = { path = "./contracts/voting/dao-voting-cw721-staked",
 dao-voting-native-staked = { path = "./contracts/voting/dao-voting-native-staked", version = "*" }
 
 # v1 dependencies. used for state migrations.
-cw-core-v1 = { package = "cw-core", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
+cw-core-v1 = { package = "cw-core", version = "0.1.0" }
 cw-proposal-single-v1 = { package = "cw-proposal-single", version = "0.1.0", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
 cw-utils-v1 = {package = "cw-utils", version = "0.13"}
 cw20-stake-external-rewards-v1 = { package = "stake-cw20-external-rewards", version = "0.2.6", git = "https://github.com/DA0-DA0/dao-contracts.git", tag = "v1.0.0" }
